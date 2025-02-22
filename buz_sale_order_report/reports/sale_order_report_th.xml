@@ -20,10 +20,12 @@
                                     style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
-                        <!-- Header -->
+                    <!-- Header -->
+                    <div class="mt-3">
                         <div style="text-align: center; margin-bottom: 20px;">
                             <h3>SALE ORDER</h3>
                         </div>
+                    </div>
 
                     <!-- Customer Information -->
 <div style="border: 1px solid black; margin-bottom: 20px;">
@@ -131,12 +133,12 @@
 <!-- Totals Section -->
 <div class="row" style="margin-top: 20px;">
     <div class="col-7">
-        <!-- หมายเหตุ Section -->
+        <!-- Notes Section -->
         <div style="margin-bottom: 10px;">
             <strong>หมายเหตุ</strong>
         </div>
-        <div>
-            <strong>PO หมายอ้างถึง</strong> <span t-field="doc.client_order_ref"/>
+        <div style="margin-left: 10px;">
+            <span t-field="doc.note"/>
         </div>
     </div>
     <div class="col-5">
