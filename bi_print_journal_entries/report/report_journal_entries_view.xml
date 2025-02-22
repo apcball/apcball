@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="journal_entry_template_report_view">
+            <t t-call="web.external_layout">
+                <t t-set="o" t-value="o.with_context({'lang':o.partner_id.lang})"/>
+                <!-- Add CSS Styles -->
+                <style>
+                    @font-face {
+                        font-family: 'Sarabun';
+                        src: url('/bi_print_journal_entries/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                    }
+                    /* Global color settings */
+                    * {
+                        color: #000000 !important;
+                    }
+                    .page {
+                        font-family: 'Sarabun', sans-serif;
+                        font-size: 20px;
+                        padding: 0;
+                        width: 100%;
+                        height: 100%;
+                        margin: 0;
+                        color: #000000;
+                    }
+                    .company-header {
+                        color: #000000;
+                        font-size: 20px;
+                        font-weight: bold;
+                    }
+                    .company-info {
+                        color: #000000;
+                        font-size: 16px;
+                    }
+                    .table th, 
+                    .table td {
+                        color: #000000;
+                        border: 1px solid #000000;
+                    }
+                    .table th {
+                        background-color: #f8f9fa;
+                        color: #000000;
+                    }
+                    .text-right {
+                        color: #000000;
+                    }
+                    .total-row {
+                        background-color: #f8f9fa;
+                        color: #000000;
+                    }
+                    /* Force black color for specific elements */
+                    span, strong, p, div, h2 {
+                        color: #000000 !important;
+                    }
+                    /* Force black color for table cells */
+                    td span, 
+                    th span,
+                    td strong,
+                    th strong {
+                        color: #000000 !important;
+                    }
+                    /* Override any external color settings */
+                    .o_report_layout_standard * {
+                        color: #000000 !important;
+                    }
+                </style>
+
+                <div class="page">
+                    <!-- Header Section -->
+                    <div class="row">
+                        <div class="col-8">
+                            <div class="company-header">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                            <div class="company-info">
+                                <div>9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                                <div>เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
+                                <div>โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
+                                 style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                        </div>
+                    </div>
+<!-- Document Title -->
+<div class="row mb-2">
+    <div class="col-12 text-center">
+        <t t-if="o.move_type == 'in_invoice'">
+            <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">สมุดรายวันซื้อ</h2>
+        </t>
+        <t t-else="">
+            <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">สมุดรายวัน</h2>
+        </t>
+        <p style="margin: 0; padding: 0; font-size: 18px; font-weight: bold;">Journal Entry</p>
+    </div>
+</div>
+
+                    <!-- Journal Info Table -->
+                    <table class="table info-table">
+                        <tbody>
+                            <tr>
+                                <td style="width: 20%; background-color: #f8f9fa;"><strong>Journal Entry:</strong></td>
+                                <td style="width: 30%"><span t-field="o.name"/></td>
+                                <td style="width: 20%; background-color: #f8f9fa;"><strong>Journal:</strong></td>
+                                <td style="width: 30%"><span t-field="o.journal_id"/></td>
+                            </tr>
+                            <tr>
+                                <td style="background-color: #f8f9fa;"><strong>Date:</strong></td>
+                                <td><span t-field="o.date"/></td>
+                                <td style="background-color: #f8f9fa;"><strong>Reference:</strong></td>
+                                <td><span t-field="o.ref"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Journal Entries Table -->
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%">Partner</th>
+                                <th style="width: 15%">Account</th>
+                                <th style="width: 15%">Label</th>
+                                <th style="width: 10%">Due Date</th>
+                                <th style="width: 20%">Analytic Account</th>
+                                <th style="width: 10%">Taxes(%)</th>
+                                <th style="width: 7.5%" class="text-right">Debit</th>
+                                <th style="width: 7.5%" class="text-right">Credit</th>
+                            </tr>
+                        </thead>  
+                        <tbody>
+                            <t t-set="total_debit" t-value="0.0"/>
+                            <t t-set="total_credit" t-value="0.0"/>
+                            <t t-foreach="o.line_ids" t-as="line">    
+                                <tr>
+                                    <td><span t-field="line.partner_id"/></td>
+                                    <td><span t-field="line.account_id"/></td>
+                                    <td><span t-field="line.name"/></td>
+                                    <td><span t-field="line.date_maturity"/></td>
+                                    <td>
+                                        <div t-foreach="line.analytic_distribution" t-as="distribution" style="font-size: 12px;">
+                                            <t t-set="distributions" t-value="distribution.split(',')"/>
+                                            <t t-foreach="distributions" t-as="dist">
+                                                <t t-if="line.env['account.analytic.account'].browse(int(dist))[0].partner_id">
+                                                    <t t-esc="line.env['account.analytic.account'].browse(int(dist))[0].name"/>- 
+                                                    <t t-esc="line.env['account.analytic.account'].browse(int(dist))[0].partner_id.name"/>, 
+                                                    <t t-esc="line.analytic_distribution.get(dist)"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <t t-esc="line.env['account.analytic.account'].browse(int(dist))[0].name"/>,
+                                                    <t t-esc="line.analytic_distribution.get(dist)"/>
+                                                </t>
+                                                <br/>
+                                            </t>
+                                        </div>
+                                    </td>
+                                    <td><span t-field="line.tax_ids"/></td>
+                                    <td class="text-right"><span t-field="line.debit"/></td>
+                                    <td class="text-right"><span t-field="line.credit"/></td>
+                                </tr>
+                                <t t-set="total_debit" t-value="total_debit + line.debit"/>
+                                <t t-set="total_credit" t-value="total_credit + line.credit"/>
+                            </t>
+                            <!-- Total Row -->
+                            <tr class="total-row">
+                                <td colspan="6" class="text-right"><strong>Total:</strong></td>
+                                <td class="text-right"><strong><span t-esc="'%.2f'% total_debit"/></strong></td>
+                                <td class="text-right"><strong><span t-esc="'%.2f'% total_credit"/></strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </template>
+
+        <template id="journal_entry_report_template_id">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="bi_print_journal_entries.journal_entry_template_report_view" t-lang="o.partner_id.lang"/>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>

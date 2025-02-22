@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_invoice" model="ir.actions.report">
+        <field name="name">Invoice/Tax Invoice</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_custom_invoice.report_invoice</field>
+        <field name="report_file">buz_custom_invoice.report_invoice</field>
+        <field name="paperformat_id" ref="paperformat_invoice"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

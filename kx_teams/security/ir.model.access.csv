@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_team_team,team_team,model_team_team,base.group_user,1,1,1,1
+access_approvals_approvals,approvals_approvals,model_approvals_approvals,base.group_user,1,1,1,1
+access_approval_model,approval_model,model_approval_model,base.group_user,1,1,1,1
+access_base_ir_model,Base IR Model,base.model_ir_model,base.group_user,1,1,0,0

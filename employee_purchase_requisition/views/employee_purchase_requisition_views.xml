@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <!-- Employee Purchase Requisition view -->
+    <record id="employee_purchase_requisition_action" model="ir.actions.act_window">
+        <field name="name">Purchase Requisition</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">employee.purchase.requisition</field>
+        <field name="view_mode">tree,form,kanban</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new record!
+            </p>
+        </field>
+    </record>
+
+    <record id="employee_purchase_requisition_view_form" model="ir.ui.view">
+        <field name="name">employee.purchase.requisition.view.form</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="arch" type="xml">
+            <form>
+<header>
+    <field name="state" widget='statusbar'
+           statusbar_visible='new,waiting_head_approval,waiting_purchase_approval,approved,purchase_order_created,received'/>
+    
+    <!-- Submit Button -->
+    <button name="action_confirm_requisition"
+            string="Confrim" 
+            type="object"
+            class="oe_highlight"
+            invisible="state != 'new'"
+            help="Submit to Head Approval"
+            groups="employee_purchase_requisition.employee_requisition_user"/>
+    
+    <!-- Head Approval -->
+    <button name="action_head_approval"
+            string="Head Approve" 
+            type="object"
+            class="oe_highlight"
+            invisible="state != 'waiting_head_approval'"
+            help="Head Approve Purchase Requisition"
+            groups="employee_purchase_requisition.employee_requisition_manager"/>
+    
+    <!-- Head Cancel -->
+    <button name="action_head_cancel"
+            string="Reject" 
+            type="object"
+            invisible="state != 'waiting_head_approval'"
+            help="Head Reject Purchase Requisition"
+            groups="employee_purchase_requisition.employee_requisition_manager"/>
+    
+    <!-- Purchase Department Approval -->
+    <button name="action_purchase_approval"
+            string="Purchase Approve" 
+            type="object"
+            class="oe_highlight"
+            invisible="state != 'waiting_purchase_approval'"
+            help="Purchase Department Approve"
+            groups="employee_purchase_requisition.employee_requisition_head"/>
+    
+    <!-- Purchase Department Cancel -->
+    <button name="action_purchase_cancel"
+            string="Reject" 
+            type="object"
+            invisible="state != 'waiting_purchase_approval'"
+            help="Purchase Department Reject"
+            groups="employee_purchase_requisition.employee_requisition_head"/>
+    
+    <!-- Create PO Button -->
+    <button name="action_create_purchase_order"
+            string="Create PO/Picking" 
+            type="object"
+            class="oe_highlight"
+            invisible="state != 'approved'"/>
+    
+    <!-- Receive Button -->
+    <button name="action_receive" 
+            string="Mark as Received" 
+            type="object"
+            class="oe_highlight"
+            invisible="state != 'purchase_order_created'"
+            help="Mark as Received by Department Head"
+            groups="employee_purchase_requisition.employee_requisition_manager"/>
+</header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" 
+                                type="object"
+                                name="get_purchase_order"
+                                icon="fa-book"
+                                invisible="not purchase_count">
+                            <field string="Purchase Order" 
+                                   name="purchase_count" 
+                                   widget="statinfo"/>
+                        </button>
+                        <button class="oe_stat_button" 
+                                type="object"
+                                name="get_internal_transfer"
+                                icon="fa-truck"
+                                invisible="not internal_transfer_count">
+                            <field string="Internal Transfer"
+                                   name="internal_transfer_count"
+                                   widget="statinfo"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="New"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="employee_id" readonly="state not in ['new']"/>
+                            <field name="dept_id"/>
+                            <field name="user_id" readonly="state not in ['new']"/>
+                        </group>
+                        <group>
+                            <field name="requisition_date" readonly="state not in ['new']"/>
+                            <field name="receive_date"/>
+                            <field name="requisition_deadline" readonly="state not in ['new']"/>
+                            <field name="company_id" readonly="state not in ['new']"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Requisition Orders">
+                            <field name="requisition_order_ids" 
+                                   readonly="state not in ['new','waiting_head_approval','waiting_purchase_approval']"/>
+                        </page>
+                        <page string="Picking Details" 
+                              groups="employee_purchase_requisition.employee_requisition_manager,employee_purchase_requisition.employee_requisition_head">
+                            <group>
+                                <group>
+                                    <field name="source_location_id"/>
+                                    <field name="delivery_type_id"/>
+                                </group>
+                                <group>
+                                    <field name="destination_location_id"/>
+                                    <field name="internal_picking_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Other Info">
+                            <group>
+                                <group>
+                                    <field name="confirm_id"/>
+                                    <field name="manager_id"/>
+                                    <field name="requisition_head_id"/>
+                                    <field name="rejected_user_id"/>
+                                </group>
+                                <group>
+                                    <field name="confirmed_date"/>
+                                    <field name="department_approval_date"/>
+                                    <field name="approval_date"/>
+                                    <field name="reject_date"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                    <group>
+                        <field name="requisition_description"/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="employee_purchase_requisition_view_tree" model="ir.ui.view">
+        <field name="name">employee.purchase.requisition.view.tree</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="dept_id"/>
+                <field name="user_id"/>
+                <field name="requisition_date"/>
+                <field name="state" widget="badge"
+                       decoration-success="state in ('approved','received')"
+                       decoration-warning="state in ('waiting_head_approval','waiting_purchase_approval')"
+                       decoration-info="state == 'purchase_order_created'"
+                       decoration-danger="state == 'cancelled'"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="employee_purchase_requisition_view_kanban" model="ir.ui.view">
+        <field name="name">employee.purchase.requisition.view.kanban</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="oe_kanban_content">
+                                <div class="oe_kanban_card">
+                                    <div>
+                                        <strong><field name="name"/></strong>
+                                    </div>
+                                    <div>
+                                        <field name="employee_id"/>
+                                    </div>
+                                    <div>
+                                        <field name="dept_id"/>
+                                    </div>
+                                    <div>
+                                        <field name="user_id"/>
+                                    </div>
+                                    <div>
+                                        <field name="requisition_date"/>
+                                    </div>
+                                    <div>
+                                        <field name="state" widget="badge"
+                                               decoration-success="state in ('approved','received')"
+                                               decoration-warning="state in ('waiting_head_approval','waiting_purchase_approval')"
+                                               decoration-info="state == 'purchase_order_created'"
+                                               decoration-danger="state == 'cancelled'"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="employee_purchase_requisition_view_search" model="ir.ui.view">
+        <field name="name">employee.purchase.requisition.view.search</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="arch" type="xml">
+            <search string="Search Tips">
+                <group expand="1" string="Group By">
+                    <filter string="Employee" name="employee_id"
+                            context="{'group_by':'employee_id', 'residual_visible':True}"/>
+                    <filter string="Department" name="dept_id"
+                            context="{'group_by':'dept_id', 'residual_visible':True}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>

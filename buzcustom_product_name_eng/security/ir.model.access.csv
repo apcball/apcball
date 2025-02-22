@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buzcustom_product_sku_buzcustom_product_sku,buzcustom_product_sku.buzcustom_product_sku,model_buzcustom_product_sku_buzcustom_product_sku,base.group_user,1,1,1,1

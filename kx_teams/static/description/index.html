@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<body>
+    <div style="background-color: rgb(30, 87, 132); color: #fff !important; font-family: Arial, sans-serif !important; padding: 15px;">
+        <header class="header position-relative" style="background-color: #e7effd; padding: 20px 40px; display: flex; justify-content: center; align-items: center; border-radius: 25px; flex-wrap: wrap;">
+            <div style="margin-left: 3rem;">
+                <img src="./assets/misc/logo.png" alt="Terabits TechnoLab" style="max-height: 50px; transform: scale(1.5); transition: transform 0.3s ease;">
+            </div>
+        </header>
+
+        <div class="version-info" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0;">
+            <span>10 June 2024 (v17.0.5.4.7)</span>
+        </div>
+        <div class="nav-links" style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <a href="#" class="btn" style="color: #1A1A5C; text-decoration: none; padding: 5px 15px; border-radius: 20px; background-color: #fff; border: 1px solid #ccc; display: flex; align-items: center;">
+                <span class="icon" style="margin-right: 5px; font-size: 12px;"><i class="fa fa-check mr-1"></i></span> Community
+            </a>
+            <a href="#" class="btn" style="color: #1A1A5C; text-decoration: none; padding: 5px 15px; border-radius: 20px; background-color: #fff; border: 1px solid #ccc; display: flex; align-items: center;">
+                <span class="icon" style="margin-right: 5px; font-size: 12px;"><i class="fa fa-check mr-1"></i></span> Enterprise
+            </a>
+            <a href="#" class="btn" style="color: #1A1A5C; text-decoration: none; padding: 5px 15px; border-radius: 20px; background-color: #fff; border: 1px solid #ccc; display: flex; align-items: center;">
+                <span class="icon" style="margin-right: 5px; font-size: 12px;"><i class="fa fa-check mr-1"></i></span> Odoo.sh
+            </a>
+        </div>
+        
+        <div class="container content" style="padding: 50px 20px; text-align: center;">
+            <h1 style="color: #fff !important; font-family: Arial, sans-serif !important;">Teams Approvals</h1>
+            <p style="color: #fff !important; font-family: Arial, sans-serif !important;">This module facilitates setting approvals for sales, invoice, and purchase modules.</p>
+            <div class="screenshot" style="text-align: center;">
+                <div class="col-md-12 pt-md-4 pb-md-3">
+                    <div class="w-100 text-center bg-white" style="border-radius: 10px; padding: 0.5rem; padding-bottom: 0.5rem !important; padding-top: 0.5rem !important;">
+                        <img src="./assets/screenshots/images.gif" alt="Access Management Features" style="max-width: 100%;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVIGATION SECTION -->
+    <div style="border-bottom: 2px solid #714B67; padding: 15px 0; margin-top: 18px; background-color: #F5F5F5; display: flex; align-items: center;">
+        <div style="background-color: #F5F5F5; border-radius: 50%; width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; margin-right: 10px;">
+            <img src="./assets/misc/compass.png" alt="Compass" style="width: 24px; height: 24px;">
+        </div>
+        <h2 style="font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: bold; color: #714B67; margin: 0;">Explore This Module</h2>
+    </div>
+
+    <div class="container my-4" style="font-family: 'Montserrat', sans-serif;">
+        <div class="row">
+            <!-- Overview Section -->
+            <div class="col-sm-12 col-md-6 my-3">
+                <a href="#overview" style="text-decoration: none;">
+                    <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); display: flex; justify-content: space-between; align-items: center; transition: transform 0.3s ease, box-shadow 0.3s ease; transform: translateY(0);">
+                        <div class="d-flex align-items-center">
+                            <i class="fa fa-info-circle" style="font-size: 40px; color: #714B67; margin-right: 10px;"></i>
+                            <div>
+                                <span style="color: #714B67; font-size: 20px; font-weight: 500; display: block;">Overview</span>
+                                <span style="color: #282F33; font-size: 14px; display: block;">Learn more about this module</span>
+                            </div>
+                        </div>
+                        <img src="./assets/misc/right-arrow.png" width="36" height="36" alt="Arrow" style="transition: transform 0.3s ease;">
+                    </div>
+                </a>
+            </div>
+            <!-- Features Section -->
+            <div class="col-sm-12 col-md-6 my-3">
+                <a href="#features" style="text-decoration: none;">
+                    <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); display: flex; justify-content: space-between; align-items: center; transition: transform 0.3s ease, box-shadow 0.3s ease; transform: translateY(0);">
+                        <div class="d-flex align-items-center">
+                            <i class="fa fa-star" style="font-size: 40px; color: #714B67; margin-right: 10px;"></i>
+                            <div>
+                                <span style="color: #714B67; font-size: 20px; font-weight: 500; display: block;">Features</span>
+                                <span style="color: #282F33; font-size: 14px; display: block;">View features of this module</span>
+                            </div>
+                        </div>
+                        <img src="./assets/misc/right-arrow.png" width="36" height="36" alt="Arrow" style="transition: transform 0.3s ease;">
+                    </div>
+                </a>
+            </div>
+            <!-- Screenshots Section -->
+            <div class="col-sm-12 col-md-6 my-3">
+                <a href="#screenshots" style="text-decoration: none;">
+                    <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); display: flex; justify-content: space-between; align-items: center; transition: transform 0.3s ease, box-shadow 0.3s ease; transform: translateY(0);">
+                        <div class="d-flex align-items-center">
+                            <i class="fa fa-camera" style="font-size: 40px; color: #714B67; margin-right: 10px;"></i>
+                            <div>
+                                <span style="color: #714B67; font-size: 20px; font-weight: 500; display: block;">Screenshots</span>
+                                <span style="color: #282F33; font-size: 14px; display: block;">View screenshots for this module</span>
+                            </div>
+                        </div>
+                        <img src="./assets/misc/right-arrow.png" width="36" height="36" alt="Arrow" style="transition: transform 0.3s ease;">
+                    </div>
+                </a>
+            </div>
+            <!-- Support Section -->
+                <div class="col-sm-12 col-md-6 my-3">
+                    <a href="#support" style="text-decoration: none;">
+                        <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); display: flex; justify-content: space-between; align-items: center; transition: transform 0.3s ease, box-shadow 0.3s ease; transform: translateY(0);">
+                            <div class="d-flex align-items-center">
+                                <i class="fa fa-headphones" style="font-size: 40px; color: #714B67; margin-right: 10px;"></i>
+                                <div>
+                                    <span style="color: #714B67; font-size: 20px; font-weight: 500; display: block;">Support</span>
+                                    <span style="color: #282F33; font-size: 14px; display: block;">Get support for this module</span>
+                                </div>
+                            </div>
+                            <img src="./assets/misc/right-arrow.png" width="36" height="36" alt="Arrow" style="transition: transform 0.3s ease;">
+                        </div>
+                    </a>
+                </div>
+        </div>
+    </div>
+    <!-- END OF NAVIGATION SECTION -->
+
+
+    <!-- OVERVIEW SECTION -->
+    <div style="margin-top: 20px;">
+        <div class="d-flex align-items-center" style="border-bottom: 2px solid #714B67; padding: 15px 0; margin-bottom: 20px;" id="overview">
+            <div class="d-flex justify-content-center align-items-center mr-2" style="background-color: #F5F5F5; border-radius: 50%; width: 50px; height: 50px;">
+                <img src="./assets/misc/pie-chart.png" alt="Overview Icon" style="width: 24px; height: 24px;">
+            </div>
+            <h2 style="font-family: 'Montserrat', sans-serif; font-size: 28px; font-weight: bold; color: #714B67; margin: 0;">
+                Overview
+            </h2>
+        </div>
+        <div class="d-flex ps-5" style="padding-right: 48px;">
+            <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); width: 100%;">
+                <p style="font-family: 'Montserrat', sans-serif; font-weight: 400; font-size: 16px; color: #282F33; line-height: 1.6;">
+                    This module provides multi-level approval functionality for different models, allowing users to set approvers and create teams for approval processes.
+                </p>
+            </div>
+        </div>
+    </div>
+    <!-- END OF OVERVIEW SECTION -->
+
+    <!-- FEATURES SECTION -->
+    <div style="margin-top: 20px;">
+        
+        <div class="d-flex align-items-center" style="border-bottom: 2px solid #714B67; padding: 15px 0; margin-bottom: 20px;" id="features">
+            <div class="d-flex justify-content-center align-items-center mr-2" style="background-color: #F5F5F5; border-radius: 50%; width: 50px; height: 50px;">
+                <img src="./assets/misc/features.png" alt="Features Icon" style="width: 24px; height: 24px;">
+            </div>
+            <h2 style="font-family: 'Montserrat', sans-serif; font-size: 28px; font-weight: bold; color: #714B67; margin: 0;">
+                Features
+            </h2>
+        </div>
+        <div class="row" style="font-family: 'Montserrat', sans-serif; font-weight: 400; font-size: 14px; line-height: 200%;">
+            <div class="col-sm-12 col-md-4 mb-4">
+                <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); height: 100%;">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fa fa-window-restore mr-3" aria-hidden="true" style="font-size: 40px;"></i>
+                        <div class="ms-3">
+                            <span style="font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: bold;">Community &amp; Enterprise Support</span>
+                            <p style="font-family: 'Roboto', sans-serif; font-weight: 400; color: #282F33; font-size: 14px; line-height: 1.6; margin-top: 5px;">
+                                Available in Odoo 17.0 Community and Enterprise.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-12 col-md-4 mb-4">
+                <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); height: 100%;">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fa fa-address-book-o mr-3" aria-hidden="true" style="font-size: 40px;"></i>
+                        <div class="ms-3">
+                            <span style="font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: bold;">Teams Approvals</span>
+                            <p style="font-family: 'Roboto', sans-serif; font-weight: 400; color: #282F33; font-size: 14px; line-height: 1.6; margin-top: 5px;">
+                                View detailed Teams Approval
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-12 col-md-4 mb-4">
+                <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); height: 100%;">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fa fa-handshake-o mr-3" aria-hidden="true" style="font-size: 40px;"></i>
+                        <div class="ms-3">
+                            <span style="font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: bold;">No Additional Configuration Needed</span>
+                            <p style="font-family: 'Roboto', sans-serif; font-weight: 400; color: #282F33; font-size: 14px; line-height: 1.6; margin-top: 5px;">
+                                Easy setup with no extra configuration required.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END OF FEATURES SECTION -->
+
+    <!-- SCREENSHOTS SECTION -->
+    <div class="d-flex align-items-center" style="border-bottom: 2px solid #714B67; padding: 15px 0;" id="screenshots">
+        <div class="d-flex justify-content-center align-items-center mr-2" style="background-color: #F5F5F5; border-radius: 0; width: 50px; height: 50px;">
+            <img src="./assets/misc/pictures.png" alt="Screenshots Icon" style="width: 20px; height: 20px;">
+        </div>
+        <h2 style="font-family: 'Montserrat', sans-serif; font-size: 28px; font-weight: bold; color: #714B67; margin: 0;">
+            Screenshots
+        </h2>
+    </div>
+    <div class="row" style="font-family: 'Montserrat', sans-serif; font-weight: 400; font-size: 14px; line-height: 1.6;">
+        <div class="col-sm-12">
+            <div style="text-align: center; margin: 30px auto; padding: 20px; border: 1px solid #d0d0d0; border-radius: 8px; background-color: #efebeb;">
+                <h3 style="font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: bold; color: #714B67; margin-bottom: 20px;">
+                    Teams seb-menu in Settings for Approval in Module
+                </h3>
+                <p style="font-weight: 400; font-family: 'Montserrat', sans-serif; font-size: 16px; color: #282F33; margin-bottom: 20px;">
+                    This screenshot displays a 'Teams' submenu in the settings menu for managing Team options. The 'Based on amoount' field is highlighted, featuring checkboxes for 'Minimum amount' options. These settings allow customization of how the minimum amount is defined for approval.
+                </p>
+                <img src="./assets/screenshots/Odoo-New (4).png" alt="Login Details Menu Screenshot" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); max-width: 80%; height: auto; margin-top: 20px;"/>
+            </div>
+
+            <div style="text-align: center; margin: 30px auto; padding: 20px; border: 1px solid #d0d0d0; border-radius: 8px; background-color: #efebeb;">
+                <h3 style="font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: bold; color: #714B67; margin-bottom: 20px;">
+                    Team leader and Members
+                </h3>
+                <p style="font-weight: 400; font-family: 'Montserrat', sans-serif; font-size: 16px; color: #282F33; margin-bottom: 20px;">
+                    This image shows a team leader being selected and members being auto-selected based on the team leader's choice.
+                </p>
+                <img src="./assets/screenshots/Odoo-New (5).png" alt="Display User Login Detail Screenshot" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); max-width: 80%; height: auto; margin-top: 20px;"/>
+            </div>
+
+            <div style="text-align: center; margin: 30px auto; padding: 20px; border: 1px solid #d0d0d0; border-radius: 8px; background-color: #efebeb;">
+                <h3 style="font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: bold; color: #714B67; margin-bottom: 20px;">
+                    Models and Approvers
+                </h3>
+                <p style="font-weight: 400; font-family: 'Montserrat', sans-serif; font-size: 16px; color: #282F33; margin-bottom: 20px;">
+                    This image displays a model field where multiple models can be added to enable multi-level approval. It also shows the approver tab where approvers can be added for the approval process.
+                </p>
+                <img src="./assets/screenshots/Odoo-New (6).png" alt="Display User Login Detail Screenshot" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); max-width: 80%; height: auto; margin-top: 20px;"/>
+            </div>
+
+            <div style="text-align: center; margin: 30px auto; padding: 20px; border: 1px solid #d0d0d0; border-radius: 8px; background-color: #efebeb;">
+                <h3 style="font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: bold; color: #714B67; margin-bottom: 20px;">
+                    List View
+                </h3>
+                <p style="font-weight: 400; font-family: 'Montserrat', sans-serif; font-size: 16px; color: #282F33; margin-bottom: 20px;">
+                    Here we see a list view of Teams
+                </p>
+                <img src="./assets/screenshots/Odoo-Teams (3).png" alt="Display User Login Detail Screenshot" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); max-width: 80%; height: auto; margin-top: 20px;"/>
+            </div>
+
+            <div style="text-align: center; margin: 30px auto; padding: 20px; border: 1px solid #d0d0d0; border-radius: 8px; background-color: #efebeb;">
+                <h3 style="font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: bold; color: #714B67; margin-bottom: 20px;">
+                    Kanban view
+                </h3>
+                <p style="font-weight: 400; font-family: 'Montserrat', sans-serif; font-size: 16px; color: #282F33; margin-bottom: 20px;">
+                    Here we see a kanban view of Teams
+                </p>
+                <img src="./assets/screenshots/Odoo-Teams (4).png" alt="Display User Login Detail Screenshot" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); max-width: 80%; height: auto; margin-top: 20px;"/>
+            </div>
+        </div>
+    </div>
+    <!-- END OF SCREENSHOTS SECTION -->
+
+    <!-- OUR SERVICES -->
+    <div class="d-flex align-items-center" style="border-bottom: 2px solid #714B67; padding: 15px 0;" id="services">
+        <div class="d-flex justify-content-center align-items-center mr-2" style="background-color: #F5F5F5; border-radius: 0; width: 50px; height: 50px;">
+            <img src="./assets/misc/star.png" alt="Services Icon" style="width: 20px; height: 20px;">
+        </div>
+        <h2 style="font-family: 'Montserrat', sans-serif; font-size: 28px; font-weight: bold; color: #714B67; margin: 0;">
+            Our Services
+        </h2>
+    </div>
+
+    <div class="container my-5">
+        <div class="row">
+            <!-- Service Card 1 -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card" style="border: 1px solid #ddd; border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                    <a href="https://koderxpert.com/services/odoo/odoo-customization" style="text-decoration: none; color: inherit;">
+                        <div class="card-body text-center">
+                            <div class="d-flex justify-content-center align-items-center mb-3" style="background-color: #1dd1a1; border-radius: 15px; height: 80px; width: 80px; margin: 0 auto;">
+                                <img src="assets/icons/cogs.png" alt="Odoo Customization" style="max-height: 48px; max-width: 48px;">
+                            </div>
+                            <h6 style="font-family: 'Montserrat', sans-serif; font-weight: bold; color: #333;">
+                                Odoo Customization
+                            </h6>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Service Card 2 -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card" style="border: 1px solid #ddd; border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                    <a href="https://koderxpert.com/services/odoo/odoo-implementation" style="text-decoration: none; color: inherit;">
+                        <div class="card-body text-center">
+                            <div class="d-flex justify-content-center align-items-center mb-3" style="background-color: #ff6b6b; border-radius: 15px; height: 80px; width: 80px; margin: 0 auto;">
+                                <img src="assets/icons/wrench.png" alt="Odoo Implementation" style="max-height: 48px; max-width: 48px;">
+                            </div>
+                            <h6 style="font-family: 'Montserrat', sans-serif; font-weight: bold; color: #333;">
+                                Odoo Implementation
+                            </h6>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Service Card 3 -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card" style="border: 1px solid #ddd; border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                    <a href="https://koderxpert.com/services/odoo/odoo-support" style="text-decoration: none; color: inherit;">
+                        <div class="card-body text-center">
+                            <div class="d-flex justify-content-center align-items-center mb-3" style="background-color: #6462CD; border-radius: 15px; height: 80px; width: 80px; margin: 0 auto;">
+                                <img src="assets/icons/lifebuoy.png" alt="Odoo Support" style="max-height: 48px; max-width: 48px;">
+                            </div>
+                            <h6 style="font-family: 'Montserrat', sans-serif; font-weight: bold; color: #333;">
+                                Odoo Support
+                            </h6>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Service Card 4 -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card" style="border: 1px solid #ddd; border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                    <a href="https://koderxpert.com/services/odoo/hire-odoo-developer" style="text-decoration: none; color: inherit;">
+                        <div class="card-body text-center">
+                            <div class="d-flex justify-content-center align-items-center mb-3" style="background-color: #ffa801; border-radius: 15px; height: 80px; width: 80px; margin: 0 auto;">
+                                <img src="assets/icons/user.png" alt="Hire A Developer" style="max-height: 48px; max-width: 48px;">
+                            </div>
+                            <h6 style="font-family: 'Montserrat', sans-serif; font-weight: bold; color: #333;">
+                                Hire A Developer
+                            </h6>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Service Card 5 -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card" style="border: 1px solid #ddd; border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                    <a href="https://koderxpert.com/services/odoo/odoo-customization" style="text-decoration: none; color: inherit;">
+                        <div class="card-body text-center">
+                            <div class="d-flex justify-content-center align-items-center mb-3" style="background-color: #54a0ff; border-radius: 15px; height: 80px; width: 80px; margin: 0 auto;">
+                                <img src="assets/icons/puzzle.png" alt="Odoo Integration" style="max-height: 48px; max-width: 48px;">
+                            </div>
+                            <h6 style="font-family: 'Montserrat', sans-serif; font-weight: bold; color: #333;">
+                                Odoo Integration
+                            </h6>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Service Card 6 -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card" style="border: 1px solid #ddd; border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                    <a href="https://koderxpert.com/services/odoo/odoo-migration" style="text-decoration: none; color: inherit;">
+                        <div class="card-body text-center">
+                            <div class="d-flex justify-content-center align-items-center mb-3" style="background-color: #6d7680; border-radius: 15px; height: 80px; width: 80px; margin: 0 auto;">
+                                <img src="assets/icons/update.png" alt="Odoo Migration" style="max-height: 48px; max-width: 48px;">
+                            </div>
+                            <h6 style="font-family: 'Montserrat', sans-serif; font-weight: bold; color: #333;">
+                                Odoo Migration
+                            </h6>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Service Card 7 -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card" style="border: 1px solid #ddd; border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                    <a href="https://koderxpert.com/services/odoo/odoo-consulting" style="text-decoration: none; color: inherit;">
+                        <div class="card-body text-center">
+                            <div class="d-flex justify-content-center align-items-center mb-3" style="background-color: #786fa6; border-radius: 15px; height: 80px; width: 80px; margin: 0 auto;">
+                                <img src="assets/icons/consultation.png" alt="Odoo Consultancy" style="max-height: 48px; max-width: 48px;">
+                            </div>
+                            <h6 style="font-family: 'Montserrat', sans-serif; font-weight: bold; color: #333;">
+                                Odoo Consultancy
+                            </h6>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Service Card 8 -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card" style="border: 1px solid #ddd; border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                    <a href="https://koderxpert.com/services/odoo/odoo-development" style="text-decoration: none; color: inherit;">
+                        <div class="card-body text-center">
+                            <div class="d-flex justify-content-center align-items-center mb-3" style="background-color: #f8a5c2; border-radius: 15px; height: 80px; width: 80px; margin: 0 auto;">
+                                <img src="assets/icons/training.png" alt="Odoo Development" style="max-height: 48px; max-width: 48px;">
+                            </div>
+                            <h6 style="font-family: 'Montserrat', sans-serif; font-weight: bold; color: #333;">
+                                Odoo Development
+                            </h6>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END OF OUR SERVICES -->
+
+    <!-- OUR INDUSTRIES -->
+    <div class="d-flex align-items-center" style="border-bottom: 2px solid #714B67; padding: 15px 0;" id="industries">
+        <div class="d-flex justify-content-center align-items-center mr-2" style="background-color: #F5F5F5; border-radius: 0; width: 50px; height: 50px;">
+            <img src="./assets/misc/corporate.png" alt="Industries Icon" style="width: 20px; height: 20px;">
+        </div>
+        <h2 style="font-family: 'Montserrat', sans-serif; font-size: 28px; font-weight: bold; color: #714B67; margin: 0;">
+            Our Industries
+        </h2>
+    </div>
+
+    <div class="container my-5">
+        <div class="row">
+            <!-- Industry Card 1 -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card" style="border: none; border-radius: 20px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); overflow: hidden; background: linear-gradient(145deg, #f6f8f9, #ffffff);">
+                    <div class="card-body text-center d-flex flex-column justify-content-center align-items-center" style="height: 250px;">
+                        <img src="./assets/icons/legal-hammer-symbol.png" alt="Legal" class="mb-3" style="height: 60px; width: 60px;">
+                        <h5 style="font-family: 'Montserrat', sans-serif; color: #333; font-weight: bold;">Legal</h5>
+                        <p style="font-family: 'Montserrat', sans-serif; font-size: 0.9rem; color: #666;">Ensuring legal compliance, our setup is user-friendly.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Industry Card 2 -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card" style="border: none; border-radius: 20px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); overflow: hidden; background: linear-gradient(145deg, #f6f8f9, #ffffff);">
+                    <div class="card-body text-center d-flex flex-column justify-content-center align-items-center" style="height: 250px;">
+                        <img src="./assets/icons/pos-black.png" alt="Banking" class="mb-3" style="height: 60px; width: 60px;">
+                        <h5 style="font-family: 'Montserrat', sans-serif; color: #333; font-weight: bold;">Banking</h5>
+                        <p style="font-family: 'Montserrat', sans-serif; font-size: 0.9rem; color: #666;">Legal-compliant, user-friendly banking setup.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Industry Card 3 -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card" style="border: none; border-radius: 20px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); overflow: hidden; background: linear-gradient(145deg, #f6f8f9, #ffffff);">
+                    <div class="card-body text-center d-flex flex-column justify-content-center align-items-center" style="height: 250px;">
+                        <img src="./assets/icons/delivery-truck.png" alt="Logistic" class="mb-3" style="height: 60px; width: 60px;">
+                        <h5 style="font-family: 'Montserrat', sans-serif; color: #333; font-weight: bold;">Logistic</h5>
+                        <p style="font-family: 'Montserrat', sans-serif; font-size: 0.9rem; color: #666;">A platform for Logistic management.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Industry Card 4 -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card" style="border: none; border-radius: 20px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); overflow: hidden; background: linear-gradient(145deg, #f6f8f9, #ffffff);">
+                    <div class="card-body text-center d-flex flex-column justify-content-center align-items-center" style="height: 250px;">
+                        <img src="./assets/icons/manufacturing-black.png" alt="Manufacturing" class="mb-3" style="height: 60px; width: 60px;">
+                        <h5 style="font-family: 'Montserrat', sans-serif; color: #333; font-weight: bold;">Manufacturing</h5>
+                        <p style="font-family: 'Montserrat', sans-serif; font-size: 0.9rem; color: #666;">Plan, track and schedule your operations.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Industry Card 5 -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card" style="border: none; border-radius: 20px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); overflow: hidden; background: linear-gradient(145deg, #f6f8f9, #ffffff);">
+                    <div class="card-body text-center d-flex flex-column justify-content-center align-items-center" style="height: 250px;">
+                        <img src="./assets/icons/ecom-black.png" alt="E-commerce" class="mb-3" style="height: 60px; width: 60px;">
+                        <h5 style="font-family: 'Montserrat', sans-serif; color: #333; font-weight: bold;">E-commerce</h5>
+                        <p style="font-family: 'Montserrat', sans-serif; font-size: 0.9rem; color: #666;">Mobile friendly, awe-inspiring product pages.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Industry Card 6 -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card" style="border: none; border-radius: 20px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); overflow: hidden; background: linear-gradient(145deg, #f6f8f9, #ffffff);">
+                    <div class="card-body text-center d-flex flex-column justify-content-center align-items-center" style="height: 250px;">
+                        <img src="./assets/icons/supervision.png" alt="Construction" class="mb-3" style="height: 60px; width: 60px;">
+                        <h5 style="font-family: 'Montserrat', sans-serif; color: #333; font-weight: bold;">Construction</h5>
+                        <p style="font-family: 'Montserrat', sans-serif; font-size: 0.9rem; color: #666;">Efficiently track construction services.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Industry Card 7 -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card" style="border: none; border-radius: 20px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); overflow: hidden; background: linear-gradient(145deg, #f6f8f9, #ffffff);">
+                    <div class="card-body text-center d-flex flex-column justify-content-center align-items-center" style="height: 250px;">
+                        <img src="./assets/icons/accessory.png" alt="Fashion" class="mb-3" style="height: 60px; width: 60px;">
+                        <h5 style="font-family: 'Montserrat', sans-serif; color: #333; font-weight: bold;">Fashion</h5>
+                        <p style="font-family: 'Montserrat', sans-serif; font-size: 0.9rem; color: #666;">Operate your fashion business systematically.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Industry Card 8 -->
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card" style="border: none; border-radius: 20px; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); overflow: hidden; background: linear-gradient(145deg, #f6f8f9, #ffffff);">
+                    <div class="card-body text-center d-flex flex-column justify-content-center align-items-center" style="height: 250px;">
+                        <img src="./assets/icons/drugstore.png" alt="Pharma" class="mb-3" style="height: 60px; width: 60px;">
+                        <h5 style="font-family: 'Montserrat', sans-serif; color: #333; font-weight: bold;">Pharma</h5>
+                        <p style="font-family: 'Montserrat', sans-serif; font-size: 0.9rem; color: #666;">Operate your pharmacy efficiently.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END OF OUR INDUSTRIES -->
+
+    <!-- SUPPORT SECTION -->
+    <div class="d-flex align-items-center" style="border-bottom: 2px solid #714B67; padding: 15px 0;">
+        <div class="d-flex justify-content-center align-items-center mr-2"
+            style="background-color: #F5F5F5; border-radius: 0px; width: 40px; height: 40px;">
+            <img src="./assets/misc/customer-support.png" alt="Support Icon" />
+        </div>
+        <h2 class="mt-2" style="font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: bold;">Support
+        </h2>
+    </div>
+
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div style="border-radius: 15px; padding: 2rem; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="mr-4" style="background-color: #714B67; display: flex; align-items: center; justify-content: center; height: 70px; width: 70px; border-radius: 50%;">
+                            <img src="./assets/misc/support.png" height="52" width="52" style="width: 52px; height: 52px; margin-top:10px; margin-left:9px;" />
+                        </div>
+                        <h3 style="font-family: 'Montserrat', sans-serif; font-size: 22px; font-weight: bold; margin: 0;" class="ms-3">Need Help?</h3>
+                    </div>
+                    <p style="font-family: 'Montserrat', sans-serif; font-size: 16px;">Got questions or need help? Get in touch.</p>
+                    <p style="font-family: 'Montserrat', sans-serif; font-size: 16px;"><a href="mailto:info@koderxpert.com">info@koderxpert.com</a></p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div style="border-radius: 15px; padding: 2rem; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="mr-4" style="background-color: #2AC44D; display: flex; align-items: center; justify-content: center; height: 70px; width: 70px; border-radius: 50%;">
+                            <img src="./assets/misc/whatsapp.png" height="52" width="52" style="width: 52px; height: 52px; margin-top:7px; margin-left: 9px;"/>
+                        </div>
+                        <h3 style="font-family: 'Montserrat', sans-serif; font-size: 22px; font-weight: bold; margin: 0;" class="ms-3">WhatsApp</h3>
+                    </div>
+                    <p style="font-family: 'Montserrat', sans-serif; font-size: 16px;">Say hi to us on WhatsApp!</p>
+                    <p style="font-family: 'Montserrat', sans-serif; font-size: 16px;">
+                        <a href="https://wa.me/917490974892?text=Hi%20need%20support" target="_blank">+91 7490974892</a>
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div style="border-radius: 15px; padding: 2rem; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="mr-4" style="background-color: #714B67; display: flex; align-items: center; justify-content: center; height: 70px; width: 70px; border-radius: 50%;">
+                            <span style="width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fa fa-globe" style="font-size: 52px; color: white; margin-top:9px; margin-left:12px;"></i>
+                            </span>
+                        </div>
+                        <h3 style="font-family: 'Montserrat', sans-serif; font-size: 22px; font-weight: bold; margin: 0;" class="ms-3">Website</h3>
+                    </div>
+                    <p style="font-family: 'Montserrat', sans-serif; font-size: 16px;">Visit our homepage for more information.</p>
+                    <p style="font-family: 'Montserrat', sans-serif; font-size: 16px;">
+                        <a href="https://www.koderxpert.com/contactus" target="_blank">KoderXpert Technologies LLP</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END OF SUPPORT SECTION -->
+
+        <div class="row">
+            <div class="col-sm-12 my-5 d-flex flex-column align-items-center">
+                <!-- Achievement Logos -->
+                <div class="d-flex justify-content-center mb-3">
+                    <!-- Odoo Certificate Logo -->
+                    <div class="d-flex flex-column align-items-center mx-3">
+                        <img src="./assets/misc/Certification.png" alt="Odoo Certificate" width="120" height="150">
+                    </div>
+                    <!-- Odoo Partner Logo -->
+                    <div class="d-flex flex-column align-items-center mx-3" style="align-self: center;">
+                        <img src="./assets/misc/ready_partner.png" alt="Odoo Partner" width="150" height="80">
+                    </div>
+                </div>
+                
+                <!-- Company Logo -->
+                <div class="d-flex flex-column align-items-center">
+                    <img src="./assets/misc/koderxpert.png" alt="Company Logo" width="250" height="200">
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</body>
+</html>

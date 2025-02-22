@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- สร้าง Template ใหม่ -->
+   <template id="report_commercial_invoice_document">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="o">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <!-- Header with Logo and Company Info -->
+                    <div class="row">
+                        <div class="col-6">
+                            <p><strong>MOGEN CO.,LTD.</strong></p>
+                            <p>9 Moo 12 Beungkhumproy, lumlukka, Pathumthani 12150 THAILAND, E-mail contact@mogen.co.th</p>
+                            <p><strong>MOGEN Customer Service Tel.:</strong> +66 2150 9709-13</p>
+                            <p><strong>Bangkok Service Center Tel.:</strong> +66 2789 9980 Ext #801,802</p>
+                        </div>
+                        <div class="col-6 text-right">
+                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="max-height: 50px;"/>
+                            <h2>Commercial Invoice</h2>
+                            <strong>No.: </strong><span t-field="o.commercial_invoice_number"/>
+
+                            <strong>Date: </strong><span t-field="o.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
+
+                            <strong>Tax Payer ID: </strong><span t-field="o.company_id.vat"/>
+                        </div>
+                    </div>
+
+                    <!-- Shipper and Consignee Information -->
+                    <div class="row mt-4">
+                        <div class="col-6">
+                            <strong>Shipper:</strong>
+                            <div t-field="o.company_id.partner_id" 
+                                 t-options='{"widget": "contact", "fields": ["address"], "no_marker": True}'/>
+                        </div>
+                        <div class="col-6">
+                            <strong>Consignee:</strong>
+                            <div t-field="o.partner_id"
+                                 t-options='{"widget": "contact", "fields": ["address"], "no_marker": True}'/>
+                        </div>
+                    </div>
+
+                    <!-- Additional Information -->
+                    <div class="row mt-3">
+                        <div class="col-6">
+                            <strong>Inco-Terms: </strong><span t-field="o.incoterms_id.name"/>
+
+                            <strong>Loading Date: </strong><span t-field="o.loading_date"/>
+
+                            <strong>Shipping Mark: </strong><span t-field="o.shipping_mark"/>
+
+                            <strong>Shipping By: </strong><span t-field="o.shipping_by"/>
+                        </div>
+                        <div class="col-6">
+                            <strong>Bank Info:</strong>
+                            <div t-field="o.bank_info"/>
+                        </div>
+                    </div>
+
+                    <!-- Invoice Lines -->
+                    <table class="table table-sm mt-4">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th class="text-right">Quantity</th>
+                                <th class="text-right">Unit Price</th>
+                                <th class="text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="o.invoice_line_ids" t-as="line">
+                                <td><span t-field="line.product_id.name"/></td>
+                                <td class="text-right">
+                                    <span t-field="line.quantity"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-field="line.price_unit"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-field="line.price_subtotal"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Totals -->
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>Said: </strong><span t-field="o.amount_text"/></p>
+                        </div>
+                        <div class="col-6 offset-6">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Subtotal</strong></td>
+                                    <td class="text-right">
+                                        <span t-field="o.amount_untaxed"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Tax</strong></td>
+                                    <td class="text-right">
+                                        <span t-field="o.amount_tax"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total</strong></td>
+                                    <td class="text-right">
+                                        <span t-field="o.amount_total"/>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Signatures -->
+                    <div class="row mt-4">
+                        <div class="col-6 text-center">
+                            <p>____________________</p>
+                            <p>Processed By
+(Document Administrator)</p>
+                        </div>
+                        <div class="col-6 text-center">
+                            <p>____________________</p>
+                            <p>Approved By
+(Managing Director)</p>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </t>
+</template>
+</odoo>

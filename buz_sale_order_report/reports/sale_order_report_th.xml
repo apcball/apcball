@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Thai Report Template -->
+    <template id="report_sale_order_document_th">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                    <!-- Company Info Section -->
+                        <div class="row mb-2">
+                            <div class="col-8">
+                                <div class="company-header mb-1">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                <div class="company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                                <div class="company-info">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
+                                <div class="company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
+                                    style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                            </div>
+                        </div>
+                        <!-- Header -->
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <h3>SALE ORDER</h3>
+                        </div>
+
+                    <!-- Customer Information -->
+<div style="border: 1px solid black; margin-bottom: 20px;">
+    <table class="table table-borderless mb-0" style="width: 100%;">
+        <tr>
+            <td style="width: 60%; border-right: 1px solid black; padding: 10px;">
+                <div>
+                    <strong>นามผู้ซื้อ / Sold To :</strong>
+                    <span t-field="doc.partner_id.name"/>
+                </div>
+                <div style="margin-top: 10px;">
+                    <strong>เลขประจำตัวผู้เสียภาษี :</strong>
+                    <span t-field="doc.partner_id.vat"/>
+                </div>
+                <div style="margin-top: 10px;">
+                    <strong>ที่อยู่ / ADDRESS :</strong><br/>
+                    <span t-field="doc.partner_id.street"/>
+                    <span t-field="doc.partner_id.street2"/><br/>
+                    <span t-field="doc.partner_id.city"/>
+                    <span t-field="doc.partner_id.zip"/>
+                </div>
+                <div style="margin-top: 10px;">
+                    <strong>ผู้ติดต่อ/CONTACT :</strong>
+                    <span t-field="doc.partner_id.child_ids[0].name" t-if="doc.partner_id.child_ids"/>
+                </div>
+            </td>
+            <td style="width: 40%; padding: 10px;">
+                <div class="row">
+                    <div class="col-5">
+                        <strong>อ้างถึง/ REF</strong><br/>
+                        <span t-field="doc.client_order_ref"/>
+                    </div>
+                    <div class="col-3">
+                        <strong>วันที่สั่งซื้อ/DATE</strong><br/>
+                        <span t-field="doc.date_order" t-options='{"format": "dd/MM/yyyy"}'/>
+                    </div>
+                    <div class="col-4">
+                        <strong>เลขที่ใบสั่งซื้อ</strong><br/>
+                        <span t-field="doc.name"/>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-5">
+                        <strong>พนักงานขาย</strong><br/>
+                        <span t-field="doc.user_id.name"/>
+                    </div>
+                    <div class="col-7">
+                        <strong>เงื่อนไขการขาย</strong><br/>
+                        <span t-field="doc.payment_term_id.name"/>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <strong>สถานที่ส่งสินค้า / PLACE OF DELIVERY:</strong><br/>
+                        <span t-field="doc.partner_shipping_id.street"/>
+                        <span t-field="doc.partner_shipping_id.street2"/>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+ <!-- Order Lines -->
+<table class="table table-sm">
+    <thead>
+        <tr>
+            <th style="width: 5%;">No.</th>
+            <th style="width: 15%;">Item No.</th>
+            <th style="width: 35%;">Description</th>
+            <th style="width: 12%;" class="text-right">Quantity</th>
+            <th style="width: 12%;" class="text-right">Unit Price</th>
+            <th style="width: 8%;" class="text-right">Disc.(%)</th>
+            <th style="width: 13%;" class="text-right">Amount</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr t-foreach="doc.order_line" t-as="line">
+            <td class="text-center">
+                <span t-esc="line_index + 1"/>
+            </td>
+            <td>
+                <span t-field="line.product_id.default_code"/>
+            </td>
+            <td>
+                <span t-field="line.product_id.name"/>
+            </td>
+            <td class="text-right">
+                <span t-field="line.product_uom_qty"/>
+                <span t-field="line.product_uom"/>
+            </td>
+            <td class="text-right">
+                <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+            </td>
+            <td class="text-right">
+                <span t-field="line.discount"/>%
+            </td>
+            <td class="text-right">
+                <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- Totals Section -->
+<div class="row" style="margin-top: 20px;">
+    <div class="col-7">
+        <!-- หมายเหตุ Section -->
+        <div style="margin-bottom: 10px;">
+            <strong>หมายเหตุ</strong>
+        </div>
+        <div>
+            <strong>PO หมายอ้างถึง</strong> <span t-field="doc.client_order_ref"/>
+        </div>
+    </div>
+    <div class="col-5">
+        <!-- Totals Table -->
+        <table class="table table-sm" style="margin-bottom: 0;">
+            <tr>
+                <td style="border-top: none;">รวมเงิน</td>
+                <td class="text-right" style="border-top: none;">
+                    <span t-field="doc.amount_untaxed" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                </td>
+            </tr>
+            <tr>
+                <td>ส่วนลด</td>
+                <td class="text-right">0</td>
+            </tr>
+            <tr>
+                <td>คงเหลือ</td>
+                <td class="text-right">
+                    <span t-field="doc.amount_untaxed" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                </td>
+            </tr>
+            <tr>
+                <td>ภาษีมูลค่าเพิ่ม 7%</td>
+                <td class="text-right">
+                    <span t-field="doc.amount_tax" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                </td>
+            </tr>
+            <tr>
+                <td style="border-bottom: 1px solid black;">รวมยอดสุทธิ</td>
+                <td class="text-right" style="border-bottom: 1px solid black;">
+                    <span t-field="doc.amount_total" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<!-- Amount in Text -->
+<div class="row" style="margin-top: 10px;">
+    <div class="col-12">
+        <div style="border-bottom: 1px solid black;">
+            <span>รวมเงิน (ตัวอักษร)</span>
+            <span t-esc="doc.amount_to_text_th()"/>
+        </div>
+    </div>
+</div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

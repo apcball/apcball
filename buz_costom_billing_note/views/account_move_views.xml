@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_move_form_inherit_billing_note" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.billing.note</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <button name="action_post" position="after">
+                <button name="action_create_billing_note" 
+                        type="object" 
+                        string="Create Billing Note" 
+                        class="oe_highlight"
+                        invisible="state != 'posted'"/>
+            </button>
+            <notebook position="inside">
+                <page string="Billing Notes">
+                    <field name="billing_note_ids" readonly="1">
+                        <tree>
+                            <field name="name"/>
+                            <field name="date"/>
+                            <field name="due_date"/>
+                            <field name="amount_total"/>
+                            <field name="state"/>
+                        </tree>
+                    </field>
+                </page>
+            </notebook>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_move_search_inherit_billing_note" model="ir.ui.view">
+        <field name="name">account.move.search.inherit.billing.note</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_move_filter"/>
+        <field name="arch" type="xml">
+            <filter name="posted" position="after">
+                <filter string="With Billing Notes" 
+                        name="with_billing_notes" 
+                        domain="[('billing_note_ids', '!=', False)]"/>
+                <filter string="Without Billing Notes" 
+                        name="without_billing_notes" 
+                        domain="[('billing_note_ids', '=', False)]"/>
+            </filter>
+        </field>
+    </record>
+
+    <!-- Tree View -->
+    <record id="view_move_tree_inherit_billing_note" model="ir.ui.view">
+        <field name="name">account.move.tree.inherit.billing.note</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_tree"/>
+        <field name="arch" type="xml">
+            <field name="state" position="after">
+                <field name="billing_note_ids" widget="many2many_tags" optional="show"/>
+            </field>
+        </field>
+    </record>
+</odoo>

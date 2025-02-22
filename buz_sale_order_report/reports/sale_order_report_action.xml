@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Thai Report Action -->
+    <record id="action_report_sale_order_th" model="ir.actions.report">
+        <field name="name">Sale Order (TH)</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_sale_order_report.report_sale_order_document_th</field>
+        <field name="report_file">buz_sale_order_report.report_sale_order_document_th</field>
+        <field name="print_report_name">'Sale Order TH - %s' % object.name</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- English Report Action -->
+    <record id="action_report_sale_order_en" model="ir.actions.report">
+        <field name="name">Sale Order (EN)</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_sale_order_report.report_sale_order_document_en</field>
+        <field name="report_file">buz_sale_order_report.report_sale_order_document_en</field>
+        <field name="print_report_name">'Sale Order EN - %s' % object.name</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Sale Order Model -->
+        <record id="approval_model_sale" model="approval.model">
+            <field name="name">Sale Order</field>
+            <field name="models_ids" eval="[(4, ref('sale.model_sale_order'))]"/>
+        </record>
+        
+        <!-- Purchase Order Model -->
+        <record id="approval_model_purchase" model="approval.model">
+            <field name="name">Purchase Order</field>
+            <field name="models_ids" eval="[(4, ref('purchase.model_purchase_order'))]"/>
+        </record>
+        
+        <!-- Invoice Model -->
+        <record id="approval_model_invoice" model="approval.model">
+            <field name="name">Invoice</field>
+            <field name="models_ids" eval="[(4, ref('account.model_account_move'))]"/>
+        </record>
+    </data>
+</odoo>

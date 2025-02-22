@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="print_check_custom">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.basic_layout">
+                    <div class="page" style="margin: 0; padding: 0;">
+                        <style>
+                            @font-face {
+                                font-family: 'THSarabunNew';
+                                src: url('/buz_custom_check_layout/static/fonts/THSarabunNew.ttf') format('truetype');
+                            }
+                            body {
+                                font-family: 'THSarabunNew', sans-serif;
+                                margin: 0;
+                                padding: 0;
+                            }
+                            .check-body {
+                                position: relative;
+                                width: 100%;
+                                height: 3.5in;
+                                margin: 0;
+                                padding: 0;
+                            }
+                            .partner-bank {
+                                position: absolute;
+                                top: 0;  /* ปรับให้อยู่บนสุด */
+                                right: 0;
+                                font-size: 20px;
+                                margin: 0;
+                                padding: 0;
+                            }
+                            .partner-bank span {
+                                display: inline-block;
+                                margin: 0 0.4em;
+                            }
+                            .ac-payee {
+                                position: absolute;
+                                top: 0.1in;  /* ปรับลงมาให้ต่ำกว่าเลขที่บัญชี */
+                                left: 50%;
+                                transform: translateX(-50%);
+                                font-size: 25px;
+                                font-weight: bold;
+                                text-decoration: underline;
+                                text-align: center;
+                            }
+                            .payee-name {
+                                position: absolute;
+                                top: 1.2in;
+                                left: 0.5in;
+                                font-size: 16px;
+                            }
+                            .amount-text {
+                                position: absolute;
+                                top: 1.6in;
+                                left: 0.5in;
+                                font-size: 16px;
+                            }
+                            .amount-number {
+                                position: absolute;
+                                top: 2.0in;
+                                right: 0.5in;
+                                font-size: 18px;
+                                font-weight: bold;
+                            }
+                        </style>
+
+                        <!-- Check Body -->
+                        <div class="check-body">
+                            <!-- เลขที่บัญชีลูกค้า -->
+                            <div class="partner-bank">
+                                <t t-if="o.partner_id.bank_ids">
+                                    <t t-foreach="str(o.partner_id.bank_ids[0].acc_number)" t-as="char">
+                                        <span><t t-esc="char"/></span>
+                                    </t>
+                                </t>
+                            </div>
+
+                            <!-- A/C PAYEE -->
+                            <div class="ac-payee">A/C PAYEE ONLY</div>
+
+                            <!-- ชื่อผู้รับเงิน -->
+                            <div class="payee-name">
+                                <span t-field="o.partner_id.name"/>
+                            </div>
+
+                            <!-- จำนวนเงินเป็นตัวอักษร -->
+                            <div class="amount-text">
+                                <t t-set="amount_text" t-value="o.amount_to_text_thai()"/>
+                                <span t-esc="amount_text"/>
+                            </div>
+
+                            <!-- จำนวนเงินเป็นตัวเลข -->
+                            <div class="amount-number">
+                                **<span t-field="o.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>**
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

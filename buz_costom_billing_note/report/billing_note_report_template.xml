@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_billing_note_document">
+        <t t-call="web.basic_layout">
+            <!-- Style section -->
+            <t t-set="style">
+                @font-face {
+                    font-family: 'Sarabun-Bold';
+                    src: url('/buz_costom_billing_note/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                    font-weight: bold;
+                    font-style: normal;
+                    font-size: 20px;
+                }
+                body {
+                    margin: 0;
+                    padding: 0;
+                }
+                .table td, .table th {
+                    border-width: 0.5px !important;
+                    border-style: solid !important;
+                    border-color: #000 !important;
+                    padding: 4px;
+                }
+                .bordered {
+                    border: 1px solid #000;
+                    padding: 10px;
+                    margin-bottom: 10px;
+                    height: 4cm;
+                }
+                .flex-container {
+                    display: flex;
+                    justify-content: space-between;
+                }
+                .flex-item {
+                    flex: 1;
+                    margin: 0 5px;
+                }
+                body, div, p, span, td, th {
+                    font-family: 'Sarabun-Bold', sans-serif;
+                }
+            </t>
+            <style t-out="style"/>
+
+            <div class="page" style="padding-top: 0;">
+                <!-- Header Section -->
+                <div class="row mb-2" style="padding-top: 0;">
+                    <div class="col-8">
+                        <div style="font-size: 20px;">
+                            <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
+                            <div style="font-size: 18px;">9 หมู่ 12 ตําบลบึงคําพรอย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                            <div style="font-size: 18px;">เลขที่ประจําตัวผูเสียภาษี 0105547076103</div>
+                            <div style="font-size: 18px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                        </div>
+                    </div>
+                    <div class="col-4 text-end">
+                        <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
+                             style="width: 180px; height: auto;"/>
+                    </div>
+                </div>
+
+                <!-- Document Title -->
+                <div class="text-center mb-4">
+                    <h2 style="font-size: 25px; margin: 0;">
+                        <t t-if="doc.note_type == 'receivable'">ใบวางบิล</t>
+                        <t t-else="">ใบรับวางบิล</t>
+                    </h2>
+                </div>
+
+                <!-- Partner and Document Info -->
+                <div class="row mb-4">
+                    <div class="col-6">
+                        <div class="bordered" style="height: 170px;">
+                            <strong>
+                                <t t-if="doc.note_type == 'receivable'">ชื่อลูกค้า / Customer:</t>
+                                <t t-else="">ชื่อผู้ขาย / Vendor:</t>
+                            </strong>
+                            <div t-field="doc.partner_id"
+                                 t-options='{"widget": "contact", "fields": ["name", "address"], "no_marker": True}'/>
+                            <div t-if="doc.partner_id.vat">
+                                เลขประจำตัวผู้เสียภาษี: <span t-field="doc.partner_id.vat"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bordered" style="height: 170px;">
+                            <div><strong>เลขที่:</strong> <span t-field="doc.name"/></div>
+                            <div><strong>วันที่:</strong> <span t-field="doc.date"/></div>
+                            <div><strong>วันครบกำหนด:</strong> <span t-field="doc.due_date"/></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invoice Table -->
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>เลขที่เอกสาร</th>
+                            <th>เลขที่ใบกำกับภาษี</th>
+                            <th>วันที่เอกสาร</th>
+                            <th>วันครบกำหนด</th>
+                            <th>จำนวนเงิน</th>
+                            <th>ภาษีมูลค่าเพิ่ม</th>
+                            <th>รวมทั้งสิ้น</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="doc.invoice_ids" t-as="inv">
+                            <td><span t-field="inv.name"/></td>
+                            <td><span t-field="inv.tax_invoice_number"/></td>
+                            <td><span t-field="inv.invoice_date"/></td>
+                            <td><span t-field="inv.invoice_date_due"/></td>
+                            <td class="text-right"><span t-field="inv.amount_untaxed"/></td>
+                            <td class="text-right"><span t-field="inv.amount_tax"/></td>
+                            <td class="text-right"><span t-field="inv.amount_total"/></td>
+                        </tr>
+                        <tr>
+                            <td colspan="4"></td>
+                            <td class="text-right" style="border-bottom: 1px solid #dee2e6; height: 16cm;"></td>
+                            <td class="text-right" style="border-bottom: 1px solid #dee2e6; height: 16cm;"></td>
+                            <td class="text-right" style="border-bottom: 1px solid #dee2e6; height: 16cm;"></td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="text-right"><strong>รวมทั้งสิ้น</strong></td>
+                            <td class="text-right">
+                                <strong t-esc="sum(doc.invoice_ids.mapped('amount_untaxed'))"
+                                        t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                            </td>
+                            <td class="text-right">
+                                <strong t-esc="sum(doc.invoice_ids.mapped('amount_tax'))"
+                                        t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                            </td>
+                            <td class="text-right">
+                                <strong t-esc="sum(doc.invoice_ids.mapped('amount_total'))"
+                                        t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <!-- Signature Section -->
+                <div class="row mt-5">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <p>____________________</p>
+                            <p>
+                                <t t-if="doc.note_type == 'receivable'">ผู้รับวางบิล</t>
+                                <t t-else="">ผู้วางบิล</t>
+                            </p>
+                            <p>วันที่ ____________________</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <p>____________________</p>
+                            <p>
+                                <t t-if="doc.note_type == 'receivable'">ผู้วางบิล</t>
+                                <t t-else="">ผู้รับวางบิล</t>
+                            </p>
+                            <p>วันที่ ____________________</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_billing_note">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="buz_costom_billing_note.report_billing_note_document"/>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,18 @@
+<odoo>
+    <record id="view_partner_form_inherit" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.buz</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vat']" position="after">
+                <field name="partner_code" placeholder="Enter Partner Code"/>
+            </xpath>
+            <xpath expr="//field[@name='partner_code']" position="after">
+                <field name="office" placeholder="Enter Office"/>  <!-- ฟิลด์ใหม่ -->
+                <field name="partner_group" placeholder="Enter Partner Group"/>  <!-- ฟิลด์ใหม่ -->
+                <field name="partner_type" placeholder="Enter Partner Type"/>  <!-- ฟิลด์ใหม่ -->
+            </xpath>
+            <!-- ลบการเพิ่มฟิลด์ old_partner_code ออก -->
+        </field>
+    </record>
+</odoo>

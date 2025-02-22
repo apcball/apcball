@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_sale_order_report_user,buz.sale.order.report.user,model_buz_sale_order_report,sales_team.group_sale_salesman,1,1,1,0
+access_buz_sale_order_report_manager,buz.sale.order.report.manager,model_buz_sale_order_report,sales_team.group_sale_manager,1,1,1,1

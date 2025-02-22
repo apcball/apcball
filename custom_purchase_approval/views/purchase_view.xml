@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View -->
+    <record id="purchase_order_form_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <button name="button_confirm" position="after">
+                <button name="approve_l1" 
+                        string="Approve (L1)" 
+                        type="object" 
+                        groups="custom_purchase_approval.group_purchase_approval_l1"
+                        invisible="state != 'waiting_l1'"
+                        data-hotkey="l"
+                        class="oe_highlight"/>
+                <button name="approve_l2" 
+                        string="Approve (L2)" 
+                        type="object" 
+                        groups="custom_purchase_approval.group_purchase_approval_l2"
+                        invisible="state != 'waiting_l2'"
+                        data-hotkey="k"
+                        class="oe_highlight"/>
+                <button name="action_reject" 
+                        string="Reject" 
+                        type="object" 
+                        groups="custom_purchase_approval.group_purchase_approval_l1,custom_purchase_approval.group_purchase_approval_l2"
+                        invisible="state not in ('waiting_l1', 'waiting_l2')"
+                        data-hotkey="x"
+                        class="btn btn-secondary"/>
+            </button>
+            <field name="state" position="after">
+                <field name="approval_state" 
+                       widget="badge"
+                       decoration-success="approval_state == 'approved'"
+                       decoration-danger="approval_state == 'rejected'"
+                       decoration-info="approval_state == 'pending'"/>
+            </field>
+            <notebook position="inside">
+                <page string="Approval Information" name="approval_info"
+                      invisible="approval_state != 'rejected'">
+                    <group>
+                        <group>
+                            <field name="rejection_reason" readonly="1"/>
+                            <field name="rejection_date" readonly="1"/>
+                            <field name="rejected_by" readonly="1"/>
+                        </group>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="purchase_order_search_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.search.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.view_purchase_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='draft']" position="after">
+                <filter string="Waiting L1 Approval" 
+                        name="waiting_l1" 
+                        domain="[('state', '=', 'waiting_l1')]"/>
+                <filter string="Waiting L2 Approval" 
+                        name="waiting_l2" 
+                        domain="[('state', '=', 'waiting_l2')]"/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter string="Approval Status" 
+                        name="group_by_approval_status" 
+                        context="{'group_by': 'approval_state'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Reject Wizard Form View -->
+    <record id="view_purchase_order_reject_wizard" model="ir.ui.view">
+        <field name="name">purchase.order.reject.wizard.form</field>
+        <field name="model">purchase.order.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reject Purchase Order">
+                <sheet>
+                    <group>
+                        <field name="rejection_reason" 
+                               placeholder="Please provide reason for rejection..."
+                               required="1"/>
+                    </group>
+                    <footer>
+                        <button name="action_reject" 
+                                string="Reject" 
+                                type="object" 
+                                class="btn-primary" 
+                                data-hotkey="q"/>
+                        <button string="Cancel" 
+                                class="btn-secondary" 
+                                special="cancel" 
+                                data-hotkey="z"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

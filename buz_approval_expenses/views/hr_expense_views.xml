@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_expense_sheet_form_inherit" model="ir.ui.view">
+        <field name="name">hr.expense.sheet.form.inherit</field>
+        <field name="model">hr.expense.sheet</field>
+        <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_submit_sheet']" position="replace">
+                <button name="action_submit_sheet" 
+                    string="Submit to Manager" 
+                    type="object" 
+                    class="oe_highlight"
+                    invisible="state != 'draft'"
+                    groups="buz_approval_expenses.group_expense_user"/>
+            </xpath>
+
+<xpath expr="//header" position="inside">
+  <button name="action_approve_manager" 
+          string="Approve by Manager" 
+          type="object" 
+          class="oe_highlight"
+          invisible="state != 'wait_manager'"
+          groups="hr_expense.group_hr_expense_team_approver"/>
+  <button name="action_approve_acc_manager" 
+          string="Approve by ACC Manager" 
+          type="object" 
+          class="oe_highlight"
+          invisible="state != 'wait_acc_manager'"
+          groups="buz_approval_expenses.group_expense_acc_manager"/>
+  <button name="action_refuse_sheet" 
+          string="Refuse" 
+          type="object"
+          invisible="state not in ('wait_manager', 'wait_acc_manager')"
+          groups="hr_expense.group_hr_expense_team_approver,buz_approval_expenses.group_expense_acc_manager"/>
+</xpath>
+
+            <!-- (ถ้าต้องการ)เพิ่มฟิลด์ refuse_reason ในส่วนของข้อมูลเพิ่มเติม -->
+            <xpath expr="//sheet//group" position="inside">
+                <field name="refuse_reason" readonly="1" widget="text" placeholder="Refusal Reason"/>
+            </xpath>
+
+            <field name="state" position="attributes">
+                <attribute name="statusbar_visible">draft,wait_manager,wait_acc_manager,approve,post,done,refused</attribute>
+            </field>
+        </field>
+    </record>
+</odoo>

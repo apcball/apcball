@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="paperformat_buz_quotation" model="report.paperformat">
+        <field name="name">BUZ Quotation A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- Assign Paper Format to Report -->
+    <record id="action_report_saleorder_buz" model="ir.actions.report">
+        <field name="name">Quotation / Order</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_custom_quotation.report_saleorder_buz</field>
+        <field name="report_file">buz_custom_quotation.report_saleorder_buz</field>
+        <field name="paperformat_id" ref="paperformat_buz_quotation"/>
+        <field name="print_report_name">'Quotation - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Main Template -->
+    <template id="report_saleorder_buz">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page" style="padding: 10px;">
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_custom_quotation/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            }
+                            .page {
+                                font-family: 'Sarabun', sans-serif;
+                                font-size: 20px;
+                                padding: 0;
+                                width: 100%;
+                                height: 100%;
+                                margin: 0;
+                                color: #000000;
+                            }
+                            .company-header {
+                                font-size: 20px;
+                                font-weight: bold;
+                                color: #000000;
+                            }
+                            .company-info {
+                                font-size: 18px;
+                                color: #000000;
+                            }
+                            .doc-title {
+                                font-size: 25px;
+                                font-weight: bold;
+                                color: #000000;
+                            }
+                            .section-title {
+                                font-size: 18px;
+                                font-weight: bold;
+                                color: #000000;
+                            }
+                            .table-header {
+                                font-size: 18px;
+                                font-weight: bold;
+                                background-color: #f8f9fa;
+                                color: #000000;
+                            }
+                            .table-content {
+                                font-size: 18px;
+                                color: #000000;
+                            }
+                            .terms-content {
+                                font-size: 18px;
+                                color: #000000;
+                            }
+                            .signature-section {
+                                font-size: 18px;
+                                color: #000000;
+                            }
+                        </style>
+
+                        <!-- Company Info Section -->
+                        <div class="row mb-2">
+                            <div class="col-8">
+                                <div class="company-header mb-1">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                <div class="company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                                <div class="company-info">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
+                                <div class="company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
+                                    style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                            </div>
+                        </div>
+
+                        <!-- Document Title -->
+                        <div class="row mb-3">
+                            <div class="col-12 text-center">
+                                <div class="doc-title">ใบเสนอราคา / Quotation</div>
+                                <div t-if="doc.project_name" class="section-title mt-2">
+                                    โครงการ / Project: <span t-field="doc.project_name"/>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Customer and Document Info -->
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="border p-2" style="background-color: #f8f9fa; min-height: 120px; height: 100%;">
+                                    <strong>Customer:</strong>
+                                    <div t-field="doc.partner_id" 
+                                        t-options='{"widget": "contact", "fields": ["name", "address", "phone"], "no_marker": True}'/>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="border p-2" style="background-color: #f8f9fa; min-height: 120px; height: 100%;">
+                                    <strong>Quotation No:</strong> <span t-field="doc.name"/><br/>
+                                    <strong>Date:</strong> <span t-field="doc.date_order" t-options='{"widget": "date"}'/><br/>
+                                    <strong>Sales Person:</strong> <span t-field="doc.user_id.name"/>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Product Table -->
+                        <table class="table table-sm" style="border: 1px solid #000;">
+                            <thead>
+                                <tr class="table-header">
+                                    <th style="border: 1px solid #000; padding: 4px 6px; width: 35%">DESCRIPTION</th>
+                                    <th style="border: 1px solid #000; padding: 4px 6px; width: 15%">QUANTITY</th>
+                                    <th style="border: 1px solid #000; padding: 4px 6px; width: 15%">UNIT PRICE</th>
+                                    <th style="border: 1px solid #000; padding: 4px 6px; width: 10%">DISC.%</th>
+                                    <th style="border: 1px solid #000; padding: 4px 6px; width: 10%">TAXES</th>
+                                    <th style="border: 1px solid #000; padding: 4px 6px; width: 15%">AMOUNT</th>
+                                </tr>
+                            </thead>
+                            <tbody class="table-content">
+                                <tr t-foreach="doc.order_line" t-as="line">
+                                    <td style="border: 1px solid #000; padding: 4px 6px;">
+                                        <span t-field="line.name"/>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 4px 6px; text-align: center;">
+                                        <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom"/>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 4px 6px; text-align: right;">
+                                        <span t-field="line.price_unit"/>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 4px 6px; text-align: center;">
+                                        <span t-field="line.discount"/>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 4px 6px; text-align: center;">
+                                        <span t-esc="', '.join(map(lambda x: str(x.amount) + '%', line.tax_id))"/>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 4px 6px; text-align: right;">
+                                        <span t-field="line.price_subtotal"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Summary Table -->
+                        <div class="row">
+                            <div class="col-6"></div>
+                            <div class="col-6">
+                                <table class="table table-sm" style="border: 1px solid #000;">
+                                    <tr class="table-content">
+                                        <td style="border: 1px solid #000; padding: 4px 6px;">Untaxed Amount</td>
+                                        <td style="border: 1px solid #000; padding: 4px 6px; text-align: right;">
+                                            <span t-field="doc.amount_untaxed"/>
+                                        </td>
+                                    </tr>
+                                    <tr class="table-content">
+                                        <td style="border: 1px solid #000; padding: 4px 6px;">VAT 7%</td>
+                                        <td style="border: 1px solid #000; padding: 4px 6px; text-align: right;">
+                                            <span t-field="doc.amount_tax"/>
+                                        </td>
+                                    </tr>
+                                    <tr style="background-color: #b8a97d;">
+                                        <td style="border: 1px solid #000; padding: 4px 6px;">
+                                            <strong>Total</strong>
+                                        </td>
+                                        <td style="border: 1px solid #000; padding: 4px 6px; text-align: right;">
+                                            <strong t-field="doc.amount_total"/>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                       <!-- Signatures -->
+                       <br/>
+<div class="row mt-4">
+    <div class="col-4">
+        <div class="text-center signature-section">
+            <p>_____________________</p>
+            <p>ผู้เสนอราคา / Quoted By</p>
+            <p>วันที่ / Date: ____</p>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="text-center signature-section">
+            <p>_____________________</p>
+            <p>ผู้อนุมัติ / Approved By</p>
+            <p>วันที่ / Date: ____</p>
+        </div>
+    </div>
+    <div class="col-4">
+        <div t-if="not doc.signature" class="text-center signature-section">
+            <p>_____________________</p>
+            <p>ลูกค้า / Customer</p>
+            <p>วันที่ / Date: ____</p>
+        </div>
+        <div t-else="" class="text-center signature-section">
+            <img t-att-src="image_data_uri(doc.signature)" style="max-height: 2cm; max-width: 4cm;"/>
+            <p>ลูกค้า / Customer</p>
+            <p><span t-field="doc.signed_by"/></p>
+        </div>
+    </div>
+</div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

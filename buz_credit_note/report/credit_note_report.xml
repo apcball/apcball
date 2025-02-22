@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+        <record id="paperformat_credit_note" model="report.paperformat">
+           <field name="name">Credit Note A4</field>
+           <field name="default" eval="True"/>
+           <field name="format">A4</field>
+           <field name="orientation">Portrait</field>
+           <field name="margin_top">10</field>
+           <field name="margin_bottom">10</field>
+           <field name="margin_left">4</field>
+           <field name="margin_right">4</field>
+           <field name="header_line" eval="False"/>
+           <field name="header_spacing">0</field>
+           <field name="dpi">90</field>
+        </record>
+<!-- Report Action -->
+        <record id="action_report_credit_note" model="ir.actions.report">
+            <field name="name">Credit Note Report</field>
+            <field name="model">account.move</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">buz_credit_note.report_credit_note_document</field>
+            <field name="report_file">buz_credit_note.report_credit_note_document</field>
+            <field name="print_report_name">'Credit Note - %s' % (object.name)</field>
+            <field name="binding_model_id" ref="account.model_account_move"/>
+            <field name="binding_type">report</field>
+            <field name="paperformat_id" ref="paperformat_credit_note"/>
+        </record>
+<template id="report_credit_note_document">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="doc">
+            <t t-if="doc.move_type == 'out_refund'">
+                <t t-call="web.external_layout">
+                    <div class="page thai-font">
+                        <!-- Header Section -->
+                        <div class="row mb-2" style="padding-top: 0;">
+                            <div class="col-8">
+                                <div style="font-size: 20px;">
+                                    <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
+                                    <div style="font-size: 18px;">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                                    <div style="font-size: 18px;">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
+                                    <div style="font-size: 18px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                                </div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
+                                     style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                            </div>
+                        </div>
+
+                        <!-- Document Title -->
+                        <div class="row mb-2">
+                            <div class="col-12 text-center">
+                                <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">ใบลดหนี้/ใบกำกับภาษี</h2>
+                                <p style="margin: 0; padding: 0; font-size: 18px; font-weight: bold;">Credit Note / Tax Invoice</p>
+                            </div>
+                        </div> 
+
+                        <!-- Add before the info containers -->
+<div class="row mb-2">
+    <div class="col-6">
+        <strong>รหัสผู้ซื้อ</strong> <span t-field="doc.partner_id.ref"/>
+    </div>
+    <br/>
+    <div class="col-6">
+        <strong>เลขประจำตัวผู้เสียภาษีลูกค้า</strong> <span t-field="doc.partner_id.vat"/>
+    </div>
+</div>
+
+<!-- Two equal containers with spacing -->
+<div class="row">
+    <div class="col-6 pe-3">
+        <div class="border border-dark p-3 h-100">
+            <p><strong>นามผู้ซื้อ:</strong> <span t-field="doc.partner_id.name"/></p>
+            <p><strong>โทร:</strong> <span t-field="doc.partner_id.phone"/></p>
+            <p><strong>แฟกซ์:</strong> <span t-field="doc.partner_id.fax"/></p>
+            <p><strong>ที่อยู่:</strong> <span t-field="doc.partner_id.street"/>
+                <t t-if="doc.partner_id.street2">
+                    <br/><span t-field="doc.partner_id.street2"/>
+                </t>
+                <br/>
+                <span t-field="doc.partner_id.city"/>
+                <span t-field="doc.partner_id.state_id.name"/>
+                <span t-field="doc.partner_id.zip"/>
+            </p>
+        </div>
+    </div>
+    <div class="col-6 ps-3">
+        <div class="border border-dark p-3 h-100">
+            <p><strong>เลขที่เอกสาร No. :</strong> <span t-field="doc.custom_document_number"/></p>
+            <p><strong>วันที่/Date :</strong> <span t-field="doc.invoice_date"/></p>
+            <p><strong>เลขที่ใบกำกับภาษีเดิม :</strong> <span t-field="doc.ref"/>
+            <span class="ms-4">ลงวันที่ <span t-field="doc.invoice_date"/></span>
+            </p>
+            <p><strong>เลขที่ใบรับคืนสินค้า :</strong> <span t-field="doc.custom_return_number"/>
+            <span class="ms-4">ลงวันที่ <span t-field="doc.invoice_date"/></span>
+            </p>
+        </div>
+    </div>
+</div>
+
+                        <!-- Invoice Lines -->
+<table class="table table-bordered" style="width: 100%; margin-top: 20px;">
+    <thead>
+        <tr>
+            <th style="width: 5%;" class="text-center">ลำดับ</th>
+            <th style="width: 15%;" class="text-center">รหัสสินค้า</th>
+            <th style="width: 30%;" class="text-center">ชื่อสินค้า</th>
+            <th style="width: 10%;" class="text-center">จำนวน</th>
+            <th style="width: 10%;" class="text-center">หน่วย</th>
+            <th style="width: 10%;" class="text-center">ราคาต่อหน่วย</th>
+            <th style="width: 10%;" class="text-center">ส่วนลด</th>
+            <th style="width: 10%;" class="text-center">จำนวนเงิน</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr t-foreach="doc.invoice_line_ids" t-as="line">
+            <td class="text-center"><span t-esc="line_index + 1"/></td>
+            <td><span t-field="line.product_id.default_code"/></td>
+            <td><span t-field="line.product_id.name"/></td>
+            <td class="text-right"><span t-field="line.quantity"/></td>
+            <td class="text-center"><span t-field="line.product_uom_id.name"/></td>
+            <td class="text-right"><span t-field="line.price_unit"/></td>
+            <td class="text-center"><span t-field="line.discount"/>%</td>
+            <td class="text-right"><span t-field="line.price_subtotal"/></td>
+        </tr>
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="7" class="text-right"><strong>รวมเงิน</strong></td>
+            <td class="text-right"><span t-field="doc.amount_untaxed"/></td>
+        </tr>
+        <tr>
+            <td colspan="7" class="text-right"><strong>มูลค่าสินค้าตามใบกำกับภาษีเดิม</strong></td>
+            <td class="text-right"><span t-field="doc.original_amount"/></td>
+        </tr>
+        <tr>
+            <td colspan="7" class="text-right"><strong>มูลค่าของสินค้าที่ถูกต้อง</strong></td>
+            <td class="text-right"><span t-field="doc.correct_amount"/></td>
+        </tr>
+        <tr>
+            <td colspan="7" class="text-right"><strong>ผลต่าง</strong></td>
+            <td class="text-right"><span t-field="doc.difference_amount"/></td>
+        </tr>
+        <tr>
+            <td colspan="7" class="text-right"><strong>ภาษีมูลค่าเพิ่ม 7%</strong></td>
+            <td class="text-right"><span t-field="doc.vat_amount"/></td>
+        </tr>
+        <tr>
+            <td colspan="7" class="text-right"><strong>รวมยอดสุทธิ</strong></td>
+            <td class="text-right"><span t-field="doc.amount_total"/></td>
+        </tr>
+    </tfoot>
+</table>
+
+                        <!-- Amount in Words -->
+                        <p class="mt-3">
+                            <strong>จำนวนเงินเป็นตัวอักษร: </strong>
+                            <span t-esc="doc.amount_to_text_thai()"/>
+                        </p>
+
+                        <!-- Signatures -->
+                        <div class="row mt-5">
+                            <div class="col-4 text-center">
+                                <p>____________________</p>
+                                <p>ผู้จัดทำ</p>
+                                <p>วันที่ ____/____/____</p>
+                            </div>
+                            <div class="col-4 text-center">
+                                <p>____________________</p>
+                                <p>ผู้ตรวจสอบ</p>
+                                <p>วันที่ ____/____/____</p>
+                            </div>
+                            <div class="col-4 text-center">
+                                <p>____________________</p>
+                                <p>ผู้อนุมัติ</p>
+                                <p>วันที่ ____/____/____</p>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </t>
+</template>
+</odoo>

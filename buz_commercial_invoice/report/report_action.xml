@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- กำหนด Report Action -->
+    <record id="action_report_commercial_invoice" model="ir.actions.report">
+        <field name="name">Commercial Invoice</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_commercial_invoice.report_commercial_invoice_document</field>
+        <field name="report_file">buz_commercial_invoice.report_commercial_invoice_document</field>
+        <field name="print_report_name">'Commercial Invoice - %s' % object.commercial_invoice_number</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_commercial_invoice"/>
+    </record>
+</odoo>

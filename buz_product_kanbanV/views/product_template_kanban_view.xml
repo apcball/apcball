@@ -1,0 +1,29 @@
+<odoo>
+    <record id="view_product_template_kanban_custom" model="ir.ui.view">
+        <field name="name">product.template.product.kanban.custom</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_kanban_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[contains(@class, 'o_kanban_record')]" position="inside">
+                <!-- บรรทัดแรก: Internal Reference -->
+                <div style="font-size: 16px; font-weight: bold; color: #333;">
+                    <t t-if="record.default_code.value">
+                        <t t-esc="record.default_code.value"/>
+                    </t>
+                    <t t-else>
+                        N/A
+                    </t>
+                </div>
+                <!-- บรรทัดที่สอง: Product Name -->
+                <div style="font-size: 14px; color: #666;">
+                    <t t-if="record.name.value">
+                        <t t-esc="record.name.value"/>
+                    </t>
+                    <t t-else>
+                        No Name
+                    </t>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

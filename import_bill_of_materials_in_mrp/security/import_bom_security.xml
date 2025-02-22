@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+        <!-- Security groups for Import BOM  -->
+    <record id="import_bom_group_id" model="res.groups">
+    <field name="name">Import BOM Group</field>
+    <field name="category_id" ref="base.module_category_inventory"/>
+</record>
+</odoo>

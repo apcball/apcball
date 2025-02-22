@@ -1,0 +1,60 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+<!--
+    <record model="ir.ui.view" id="buz_custom_po.list">
+      <field name="name">buz_custom_po list</field>
+      <field name="model">buz_custom_po.buz_custom_po</field>
+      <field name="arch" type="xml">
+        <tree>
+          <field name="name"/>
+          <field name="value"/>
+          <field name="value2"/>
+        </tree>
+      </field>
+    </record>
+-->
+
+    <!-- actions opening views on models -->
+<!--
+    <record model="ir.actions.act_window" id="buz_custom_po.action_window">
+      <field name="name">buz_custom_po window</field>
+      <field name="res_model">buz_custom_po.buz_custom_po</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+-->
+
+    <!-- server action to the one above -->
+<!--
+    <record model="ir.actions.server" id="buz_custom_po.action_server">
+      <field name="name">buz_custom_po server</field>
+      <field name="model_id" ref="model_buz_custom_po_buz_custom_po"/>
+      <field name="state">code</field>
+      <field name="code">
+        action = {
+          "type": "ir.actions.act_window",
+          "view_mode": "tree,form",
+          "res_model": model._name,
+        }
+      </field>
+    </record>
+-->
+
+    <!-- Top menu item -->
+<!--
+    <menuitem name="buz_custom_po" id="buz_custom_po.menu_root"/>
+-->
+    <!-- menu categories -->
+<!--
+    <menuitem name="Menu 1" id="buz_custom_po.menu_1" parent="buz_custom_po.menu_root"/>
+    <menuitem name="Menu 2" id="buz_custom_po.menu_2" parent="buz_custom_po.menu_root"/>
+-->
+    <!-- actions -->
+<!--
+    <menuitem name="List" id="buz_custom_po.menu_1_list" parent="buz_custom_po.menu_1"
+              action="buz_custom_po.action_window"/>
+    <menuitem name="Server to list" id="buz_custom_po" parent="buz_custom_po.menu_2"
+              action="buz_custom_po.action_server"/>
+-->
+  </data>
+</odoo>

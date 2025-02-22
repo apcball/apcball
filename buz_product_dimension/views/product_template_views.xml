@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_template_form_inherit_dimensions" model="ir.ui.view">
+        <field name="name">product.template.form.inherit.dimensions</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="stock.view_template_property_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='inventory']" position="inside">
+                <group name="dimensions_container" string="Product Specifications">
+                    <!-- Left side: Physical Dimensions -->
+                    <group name="physical_dimensions" string="Physical Dimensions">
+                        <field name="gross_width"/>
+                        <field name="gross_depth"/>
+                        <field name="gross_height"/>
+                    </group>
+                    <!-- Right side: Box Dimensions and Weight -->
+                    <group name="box_specifications" string="Box Specifications">
+                        <field name="box_width"/>
+                        <field name="box_depth"/>
+                        <field name="box_height"/>
+                        <field name="box_weight"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Customer Billing Note Sequence -->
+        <record id="seq_customer_billing_note" model="ir.sequence">
+            <field name="name">Customer Billing Note</field>
+            <field name="code">customer.billing.note</field>
+            <field name="prefix">CBN-%(y)s%(month)s</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Vendor Billing Note Sequence -->
+        <record id="seq_vendor_billing_note" model="ir.sequence">
+            <field name="name">Vendor Billing Note</field>
+            <field name="code">vendor.billing.note</field>
+            <field name="prefix">VBN-%(y)s%(month)s</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

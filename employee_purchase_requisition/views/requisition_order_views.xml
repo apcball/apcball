@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="requisition_order_view_tree" model="ir.ui.view">
+        <field name="name">requisition.order.view.tree</field>
+        <field name="model">requisition.order</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="product_id"/>
+                <field name="description"/>
+                <field name="analytic_distribution" 
+                       widget="analytic_distribution" 
+                       groups="analytic.group_analytic_accounting"
+                       options="{'product_field': 'product_id'}"/>
+                <field name="unit_price" string="Unit Price"/>       
+                <field name="quantity"/>
+                <field name="uom"/>
+                <field name="partner_id" 
+                       groups="employee_purchase_requisition.employee_requisition_head,employee_purchase_requisition.employee_requisition_manager"/>
+            </tree>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,5 @@
+<odoo>
+    <record id="advance_payment_in_purchase" model="res.groups">
+        <field name="name">Advance Payment (Purchase)</field>
+    </record>
+</odoo>
