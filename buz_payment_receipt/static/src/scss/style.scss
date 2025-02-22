@@ -1,0 +1,34 @@
+@font-face {
+    font-family: 'Sarabun';
+    src: url('/buz_custom_po/static/src/fonts/Sarabun-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+.o_report_layout_standard {
+    .header {
+        font-family: 'Sarabun', sans-serif;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+        border-bottom: 0px !important;
+    }
+    
+    .page {
+        padding-top: 10px !important;
+    }
+
+    table {
+        thead tr th {
+            background-color: #f8f9fa;
+            vertical-align: middle !important;
+        }
+    }
+
+    .text-end {
+        text-align: right !important;
+    }
+
+    .border {
+        border: 1px solid #dee2e6 !important;
+    }
+}

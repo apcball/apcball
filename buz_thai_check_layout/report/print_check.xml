@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Define Paper Format for Check -->
-    <record id="paperformat_check" model="report.paperformat">
-        <field name="name">Check Format</field>
+    <record id="paperformat_thai_check" model="report.paperformat">
+        <field name="name">Thai Check</field>
         <field name="default" eval="True"/>
         <field name="format">custom</field>
         <field name="page_height">80</field>
@@ -25,12 +25,11 @@
         <field name="report_name">buz_thai_check_layout.print_check_custom</field>
         <field name="report_file">buz_thai_check_layout.print_check_custom</field>
         <field name="print_report_name">'Check - %s' % object.name</field>
-        <field name="paperformat_id" ref="paperformat_check"/>
+        <field name="paperformat_id" ref="paperformat_thai_check"/>
         <field name="binding_model_id" ref="account.model_account_payment"/>
         <field name="binding_type">report</field>
     </record>
 
-    <!-- Check Template -->
     <template id="print_check_custom">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
@@ -41,7 +40,7 @@
                                 font-family: 'THSarabunNew';
                                 src: url('/buz_thai_check_layout/static/fonts/THSarabunNew.ttf') format('truetype');
                             }
-                            body {
+                             body {
                                 font-family: 'THSarabunNew', sans-serif;
                                 margin: 0;
                                 padding: 0;

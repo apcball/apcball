@@ -1,20 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-  <record id="hr_expense_refuse_wizard_form_view" model="ir.ui.view">
-    <field name="name">hr.expense.refuse.wizard.form</field>
-    <field name="model">hr.expense.refuse.wizard</field>
-    <field name="arch" type="xml">
-      <form string="Refuse Expense Report">
-        <group>
-          <!-- ใช้ field ที่ถูกต้อง คือ expense_sheet_id (ไม่ใช่ sheet_ids) -->
-          <field name="expense_sheet_id" invisible="1"/>
-          <field name="refuse_reason" placeholder="กรอกเหตุผลการปฏิเสธที่นี่..."/>
-        </group>
-        <footer>
-          <button name="action_confirm_refuse" type="object" string="Confirm" class="btn-primary"/>
-          <button string="Cancel" class="btn-secondary" special="cancel"/>
-        </footer>
-      </form>
-    </field>
-  </record>
+    <record id="hr_expense_refuse_wizard_form_view" model="ir.ui.view">
+        <field name="name">hr.expense.refuse.wizard.form</field>
+        <field name="model">hr.expense.refuse.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Refuse Expense Report">
+                <group>
+                    <field name="expense_sheet_id" invisible="1"/>
+                    <field name="refuse_reason" placeholder="Enter refusal reason here..." required="1"/>
+                </group>
+                <footer>
+                    <button name="action_confirm_refuse" 
+                            type="object" 
+                            string="Confirm" 
+                            class="btn-primary" 
+                            data-hotkey="q"/>
+                    <button string="Cancel" 
+                            class="btn-secondary" 
+                            special="cancel" 
+                            data-hotkey="z"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_hr_expense_refuse_wizard" model="ir.actions.act_window">
+        <field name="name">Refuse Expense Report</field>
+        <field name="res_model">hr.expense.refuse.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="hr_expense_refuse_wizard_form_view"/>
+        <field name="target">new</field>
+    </record>
 </odoo>

@@ -26,10 +26,10 @@
                         </div>
                     </div>
                         <!-- Customer Information -->
-                        <div style="border: 1px solid black; margin-bottom: 20px;">
+                        <div style="border: 1px white; margin-bottom: 20px;">
                             <table class="table table-borderless mb-0" style="width: 100%;">
                                 <tr>
-                                    <td style="width: 60%; border-right: 1px solid black; padding: 10px;">
+                                    <td style="width: 60%; border-right: 1px white; padding: 10px;">
                                         <div>
                                             <strong>Sold To:</strong>
                                             <span t-field="doc.partner_id.name"/>
