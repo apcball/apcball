@@ -7,18 +7,18 @@
         <field name="arch" type="xml">
             <xpath expr="//group[@name='inventory']" position="inside">
                 <group name="dimensions_container" string="Product Specifications">
-                    <!-- Left side: Physical Dimensions -->
-                    <group name="physical_dimensions" string="Physical Dimensions">
-                        <field name="gross_width"/>
-                        <field name="gross_depth"/>
-                        <field name="gross_height"/>
-                    </group>
-                    <!-- Right side: Box Dimensions and Weight -->
+                    <!-- Left side: Box Dimensions -->
                     <group name="box_specifications" string="Box Specifications">
                         <field name="box_width"/>
                         <field name="box_depth"/>
                         <field name="box_height"/>
                         <field name="box_weight"/>
+                    </group>
+                    <!-- Right side: Physical Dimensions -->
+                    <group name="physical_dimensions" string="Physical Dimensions">
+                        <field name="gross_width"/>
+                        <field name="gross_depth"/>
+                        <field name="gross_height"/>
                     </group>
                 </group>
             </xpath>
