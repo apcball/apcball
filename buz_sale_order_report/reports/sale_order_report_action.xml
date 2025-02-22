@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Paper Format for Sale Order Reports -->
+    <record id="paperformat_sale_order" model="report.paperformat">
+        <field name="name">Sale Order A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
     <!-- Thai Report Action -->
     <record id="action_report_sale_order_th" model="ir.actions.report">
         <field name="name">Sale Order (TH)</field>
@@ -8,6 +23,7 @@
         <field name="report_name">buz_sale_order_report.report_sale_order_document_th</field>
         <field name="report_file">buz_sale_order_report.report_sale_order_document_th</field>
         <field name="print_report_name">'Sale Order TH - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_sale_order"/>
         <field name="binding_model_id" ref="sale.model_sale_order"/>
         <field name="binding_type">report</field>
     </record>
@@ -20,6 +36,7 @@
         <field name="report_name">buz_sale_order_report.report_sale_order_document_en</field>
         <field name="report_file">buz_sale_order_report.report_sale_order_document_en</field>
         <field name="print_report_name">'Sale Order EN - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_sale_order"/>
         <field name="binding_model_id" ref="sale.model_sale_order"/>
         <field name="binding_type">report</field>
     </record>
