@@ -11,7 +11,6 @@
     'depends': ['base', 'sale', 'account'],
     'data': [
         'security/ir.model.access.csv',
-        'views/sale_order_views.xml',
         'reports/proforma_invoice_report.xml',
     ],
     'assets': {
