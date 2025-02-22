@@ -28,10 +28,11 @@
           invisible="state != 'wait_acc_manager'"
           groups="buz_approval_expenses.group_expense_acc_manager"/>
   <button name="action_refuse_sheet" 
-          string="Refuse" 
-          type="object"
-          invisible="state not in ('wait_manager', 'wait_acc_manager')"
-          groups="hr_expense.group_hr_expense_team_approver,buz_approval_expenses.group_expense_acc_manager"/>
+        string="Refuse" 
+        type="object"
+        invisible="state not in ('wait_manager', 'wait_acc_manager')"
+        groups="hr_expense.group_hr_expense_team_approver,buz_approval_expenses.group_expense_acc_manager"
+        data-hotkey="x"/>
 </xpath>
 
             <!-- (ถ้าต้องการ)เพิ่มฟิลด์ refuse_reason ในส่วนของข้อมูลเพิ่มเติม -->
