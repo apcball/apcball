@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+       <!-- Paper Format -->
+        <record id="paperformat_proforma_invoice" model="report.paperformat">
+            <field name="name">Proforma Invoice A4</field>
+            <field name="default" eval="True"/>
+            <field name="format">A4</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">10</field>
+            <field name="margin_bottom">10</field>
+            <field name="margin_left">4</field>
+            <field name="margin_right">4</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">90</field>
+        </record>
+
+        <!-- Modified report action to use the custom paper format -->
+        <record id="action_report_proforma_invoice" model="ir.actions.report">
+            <field name="name">Proforma Invoice</field>
+            <field name="model">sale.order</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">buz_proforma_invoice.report_proforma_invoice</field>
+            <field name="report_file">buz_proforma_invoice.report_proforma_invoice</field>
+            <field name="print_report_name">'Proforma Invoice - %s' % (object.name)</field>
+            <field name="paperformat_id" ref="paperformat_proforma_invoice"/>
+            <field name="binding_model_id" ref="sale.model_sale_order"/>
+            <field name="binding_type">report</field>
+        </record>
+
+        <!-- Report Template -->
+        <template id="report_proforma_invoice">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <div class="page">
+                            <!-- Company Info Section -->
+                            <div class="row mb-2">
+                                <div class="col-8">
+                                    <div class="company-header mb-1">MOGEN CO., LTD. (HEAD OFFICE)</div>
+                                    <div class="company-info">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+                                    <div class="company-info">Tax ID: 0105547076103</div>
+                                    <div class="company-info">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
+                                </div>
+                                <div class="col-4 text-end">
+                                    <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
+                                         style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                                </div>
+                            </div>
+
+                            <!-- Document Title -->
+                            <div class="row mb-4">
+                                <div class="col-12 text-center">
+                                    <h2>PROFORMA INVOICE</h2>
+                                </div>
+                            </div>
+
+                            <!-- Customer and Order Info -->
+                            <div class="row mb-4">
+                                <div class="col-6">
+                                    <strong>Bill To:</strong>
+                                    <address class="mb-0">
+                                        <div t-field="o.partner_id.name"/>
+                                        <div t-field="o.partner_id.street"/>
+                                        <div t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
+                                        <div>
+                                            <span t-field="o.partner_id.city"/>,
+                                            <span t-field="o.partner_id.state_id"/>,
+                                            <span t-field="o.partner_id.zip"/>
+                                        </div>
+                                        <div t-field="o.partner_id.country_id"/>
+                                        <div t-if="o.partner_id.vat">VAT: <span t-field="o.partner_id.vat"/></div>
+                                    </address>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <strong>Order Reference:</strong> <span t-field="o.name"/><br/>
+                                        <strong>Order Date:</strong> <span t-field="o.date_order"/><br/>
+                                        <strong>Payment Terms:</strong> <span t-field="o.payment_term_id.name"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Order Lines -->
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 5%;">No.</th>
+                                        <th style="width: 15%;">Item No.</th>
+                                        <th style="width: 40%;">Description</th>
+                                        <th style="width: 15%;" class="text-end">Quantity</th>
+                                        <th style="width: 12%;" class="text-end">Unit Price</th>
+                                        <th style="width: 13%;" class="text-end">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="o.order_line" t-as="line">
+                                        <td class="text-center">
+                                            <span t-esc="line_index + 1"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="line.product_id.default_code"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="line.product_id.name_eng"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-field="line.product_uom_qty"/>
+                                            <span t-field="line.product_uom"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <!-- Totals Section -->
+                            <div class="row" style="margin-top: 20px;">
+                                <div class="col-7">
+                                    <!-- Notes Section -->
+                                    <div style="margin-bottom: 10px;">
+                                        <strong>Remarks:</strong>
+                                    </div>
+                                    <div style="margin-left: 10px;">
+                                        <span t-field="o.note"/>
+                                    </div>
+                                </div>
+                                <div class="col-5">
+                                    <table class="table table-sm" style="margin-bottom: 0;">
+                                        <tr>
+                                            <td style="border-top: none;">Subtotal</td>
+                                            <td class="text-end" style="border-top: none;">
+                                                <span t-field="o.amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Net Amount</td>
+                                            <td class="text-end">
+                                                <span t-field="o.amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>VAT 7%</td>
+                                            <td class="text-end">
+                                                <span t-field="o.amount_tax" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="border-bottom: 1px solid black;">Grand Total</td>
+                                            <td class="text-end" style="border-bottom: 1px solid black;">
+                                                <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>

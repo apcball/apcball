@@ -1,0 +1,38 @@
+.o_proforma_invoice_report {
+    .page {
+        font-family: 'Helvetica', 'Arial', sans-serif;
+
+        .company-header {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .company-info {
+            font-size: 16px;
+        }
+        
+        .invoice-header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .text-primary {
+            color: #4a90e2 !important;
+        }
+        
+        .table-bordered {
+            border: 1px solid #dee2e6;
+            
+            thead th {
+                background-color: #f8f9fa;
+                border-bottom: 2px solid #dee2e6;
+            }
+        }
+        
+        .invoice-total {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-top: 20px;
+        }
+    }
+}
