@@ -1,4 +1,5 @@
 from odoo import models, fields, api
+from bahttext import bahttext
 from num2words import num2words
 
 class AccountMove(models.Model):
@@ -26,10 +27,37 @@ class AccountMove(models.Model):
             vals['custom_return_number'] = return_sequence
         return super(AccountMove, self).create(vals)
 
-    def amount_to_text_thai(self):
+    def amount_to_text_th(self):
+        """Convert amount to Thai text using bahttext"""
         self.ensure_one()
-        amount_text = num2words(self.amount_total, lang='th')
-        return amount_text + 'บาทถ้วน'
+        try:
+            return bahttext(abs(self.amount_total))
+        except Exception:
+            return ''
+
+    def amount_to_text_en(self):
+        """Convert amount to English text"""
+        self.ensure_one()
+        try:
+            amount_in_words = num2words(abs(self.amount_total), lang='en')
+            currency_name = self.currency_id.name or ''
+
+            # Format the first letter of each word to uppercase and add currency
+            amount_text = amount_in_words.title()
+
+            # Handle decimal part
+            amount_float = abs(self.amount_total)
+            decimal_part = round((amount_float - int(amount_float)) * 100)
+
+            if decimal_part > 0:
+                decimal_words = num2words(decimal_part, lang='en').title()
+                final_text = f"{amount_text} {currency_name} and {decimal_words} Cents Only"
+            else:
+                final_text = f"{amount_text} {currency_name} Only"
+
+            return final_text
+        except Exception:
+            return ''
 
     @api.depends('invoice_line_ids')
     def _compute_original_amount(self):
@@ -58,16 +86,22 @@ class AccountMove(models.Model):
             record.net_total = record.difference_amount + record.vat_amount
 
     def action_print_credit_note(self):
-        """ Print the credit note report """
+        """Print the credit note report"""
         return self.env.ref('buz_credit_note.action_report_credit_note').report_action(self)
 
-    # Additional helper methods for formatting
     def format_currency_amount(self, amount):
-        return "{:,.2f}".format(amount)
+        """Format currency amount with thousand separator and 2 decimal places"""
+        try:
+            return "{:,.2f}".format(abs(amount))
+        except Exception:
+            return "0.00"
 
     def get_thai_date(self, date):
+        """Convert date to Thai Buddhist calendar format"""
         if not date:
             return ''
-        # Convert date to Thai Buddhist calendar format
-        thai_year = date.year + 543
-        return date.strftime('%d/%m/') + str(thai_year)
+        try:
+            thai_year = date.year + 543
+            return date.strftime('%d/%m/') + str(thai_year)
+        except Exception:
+            return ''
