@@ -1,5 +1,5 @@
 {
-    'name': 'Modern Payment Receipt',
+    'name': 'buz Payment Receipt',
     'version': '17.0.1.0.0',
     'category': 'Accounting',
     'summary': 'Custom Modern Payment Receipt Report',
