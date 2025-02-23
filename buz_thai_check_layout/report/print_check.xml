@@ -8,10 +8,10 @@
         <field name="page_height">80</field>
         <field name="page_width">215</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">3</field>
-        <field name="margin_bottom">3</field>
-        <field name="margin_left">3</field>
-        <field name="margin_right">3</field>
+        <field name="margin_top">5</field>          <!-- ปรับขอบบน -->
+        <field name="margin_bottom">5</field>       <!-- ปรับขอบล่าง -->
+        <field name="margin_left">5</field>         <!-- ปรับขอบซ้าย -->
+        <field name="margin_right">5</field>        <!-- ปรับขอบขวา -->
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
@@ -40,7 +40,7 @@
                                 font-family: 'THSarabunNew';
                                 src: url('/buz_thai_check_layout/static/fonts/THSarabunNew.ttf') format('truetype');
                             }
-                             body {
+                            body {
                                 font-family: 'THSarabunNew', sans-serif;
                                 margin: 0;
                                 padding: 0;
@@ -55,7 +55,7 @@
                             .partner-bank {
                                 position: absolute;
                                 top: 0;
-                                right: 0;
+                                left: 0;  /* เปลี่ยนจาก right เป็น left เพื่อชิดซ้าย */
                                 font-size: 20px;
                                 margin: 0;
                                 padding: 0;
@@ -120,7 +120,7 @@
 
                             <!-- จำนวนเงินเป็นตัวเลข -->
                             <div class="amount-number">
-                                **<span t-field="o.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>**
+                                <span t-field="o.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                             </div>
                         </div>
                     </div>
