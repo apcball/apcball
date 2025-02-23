@@ -18,7 +18,7 @@
     ],
     'assets': {
         'web.report_assets_common': [
-            '/buz_credit_note/static/src/css/report_style.css',
+            
         ],
     },
     'installable': True,
