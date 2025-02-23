@@ -1,0 +1,182 @@
+// Variables
+:root {
+    --primary-color: #000000;
+    --border-color: #000000;
+    --background-color: #ffffff;
+    --font-family: 'THSarabunNew', sans-serif;
+    --header-font-size: 20px;
+    --normal-font-size: 18px;
+    --small-font-size: 18px;
+}
+
+// Global styles
+.o_post_receipt_report {
+    font-family: var(--font-family);
+    color: var(--primary-color);
+
+    // Header Section
+    .company-header {
+        .mb-1 {
+            font-size: var(--header-font-size);
+            strong {
+                font-weight: bold;
+            }
+        }
+        div:not(.mb-1) {
+            font-size: var(--normal-font-size);
+        }
+    }
+
+    // Logo
+    .company-logo {
+        width: 180px;
+        height: auto;
+        object-fit: contain;
+    }
+
+    // Document Title
+    .document-title {
+        text-align: center;
+        font-size: 28px;
+        font-weight: bold;
+        margin: 20px 0;
+    }
+
+    // Information Section
+    .info-section {
+        display: flex;
+        justify-content: space-between;
+        font-size: 20px;
+        margin: 18px 0;
+
+        .left-info, .right-info {
+            width: 48%;
+
+            .info-row {
+                margin: 5px 0;
+                
+                .label {
+                    font-weight: bold;
+                    margin-right: 10px;
+                }
+            }
+        }
+    }
+
+    // Table Styles
+    .receipt-table {
+        font-size: 20px;
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            text-align: left;
+
+            &.amount {
+                text-align: right;
+            }
+        }
+
+        thead {
+            background-color: var(--background-color);
+            th {
+                font-weight: bold;
+            }
+        }
+
+        tbody {
+            tr {
+                &:nth-child(even) {
+                    background-color: var(--background-color);
+                }
+            }
+        }
+
+        tfoot {
+            tr {
+                td {
+                    text-align: right;
+                    font-weight: bold;
+
+                    &:first-child {
+                        text-align: left;
+                    }
+                }
+            }
+        }
+    }
+
+    // Amount in Words
+    .amount-words {
+        font-size: 20px;
+        margin: 15px 0;
+        font-style: normal;
+    }
+
+    // Note Section
+    .note-section {
+        font-size: 20px;
+        margin: 15px 0;
+
+        .note-label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    }
+
+  // Signature Section
+.signature-section {
+    font-size: 20px;
+    margin-top: 30px;
+    text-align: right;
+
+    .signature-row {
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-start;  // จัดให้อยู่ชิดบน
+
+        .signature-block {
+            text-align: center;
+            width: 45%;
+
+            .signature-line {
+                border-bottom: 1px solid var(--border-color);
+                width: 200px;
+                margin: 30px auto 10px;
+            }
+
+            .date-line {
+                margin-top: 10px;
+            }
+        }
+    }
+}
+
+    // Footer Note
+    .footer-note {
+        font-size: 20px;
+        margin-top: 30px;
+        text-align: left;
+        font-size: var(--small-font-size);
+    }
+}
+
+// Override external layout styles
+.o_report_layout_standard {
+    color: var(--primary-color) !important;
+    
+    * {
+        color: var(--primary-color) !important;
+    }
+}
+
+// Print-specific styles
+@media print {
+    .o_post_receipt_report {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
