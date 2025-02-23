@@ -11,7 +11,6 @@
     """,
     'depends': ['base', 'account', 'account_check_printing'],
     'data': [
-        'security/security.xml',
         'security/ir.model.access.csv',
         'data/check_layout.xml',
         'report/print_check.xml',
