@@ -14,7 +14,7 @@
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
     </record>
-
+    
     <!-- Thai Report Action -->
     <record id="action_report_sale_order_th" model="ir.actions.report">
         <field name="name">Sale Order (TH)</field>

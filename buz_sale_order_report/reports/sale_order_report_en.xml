@@ -4,7 +4,41 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
-                    <div class="page">
+                    <div class="page" style="padding: 10px;">
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_sale_order_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            }
+                            .page {
+                                font-family: 'Sarabun', sans-serif;
+                                font-size: 20px;
+                                padding: 0;
+                                width: 100%;
+                                height: 100%;
+                                margin: 0;
+                                color: #000;
+                            }
+                            .company-header {
+                                font-size: 20px;
+                                font-weight: bold;
+                            }
+                            .company-info {
+                                font-size: 18px;
+                            }
+                            .doc-title {
+                                font-size: 25px;
+                                font-weight: bold;
+                            }
+                            .info-box {
+                                background-color: #f8f9fa !important;
+                                color: black !important;
+                                font-size: 20px !important;
+                                border: 1px solid #000 !important;
+                                padding: 10px;
+                            }
+                        </style>
+
                         <!-- Company Info Section -->
                         <div class="row mb-2">
                             <div class="col-8">
@@ -15,86 +49,60 @@
                             </div>
                             <div class="col-4 text-end">
                                 <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
-                                     style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                                    style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
 
-                        <!-- Header -->
-                    <div class="mt-3">
-                        <div style="text-align: center; margin-bottom: 20px;">
-                            <h3>SALE ORDER</h3>
-                        </div>
-                    </div>
-                        <!-- Customer Information -->
-                        <div style="border: 1px white; margin-bottom: 20px;">
-                            <table class="table table-borderless mb-0" style="width: 100%;">
-                                <tr>
-                                    <td style="width: 60%; border-right: 1px white; padding: 10px;">
-                                        <div>
-                                            <strong>Sold To:</strong>
-                                            <span t-field="doc.partner_id.name"/>
-                                        </div>
-                                        <div style="margin-top: 10px;">
-                                            <strong>Tax ID:</strong>
-                                            <span t-field="doc.partner_id.vat"/>
-                                        </div>
-                                        <div style="margin-top: 10px;">
-                                            <strong>ADDRESS:</strong><br/>
-                                            <span t-field="doc.partner_id.street"/>
-                                            <span t-field="doc.partner_id.street2"/><br/>
-                                            <span t-field="doc.partner_id.city"/>
-                                            <span t-field="doc.partner_id.zip"/>
-                                        </div>
-                                        <div style="margin-top: 10px;">
-                                            <strong>CONTACT:</strong>
-                                            <span t-field="doc.partner_id.child_ids[0].name" t-if="doc.partner_id.child_ids"/>
-                                        </div>
-                                    </td>
-                                    <td style="width: 40%; padding: 10px;">
-                                        <div class="row">
-                                            <div class="col-5">
-                                                <strong>REF</strong><br/>
-                                                <span t-field="doc.client_order_ref"/>
-                                            </div>
-                                            <div class="col-3">
-                                                <strong>DATE</strong><br/>
-                                                <span t-field="doc.date_order" t-options='{"format": "dd/MM/yyyy"}'/>
-                                            </div>
-                                            <div class="col-4">
-                                                <strong>Order No.</strong><br/>
-                                                <span t-field="doc.name"/>
-                                            </div>
-                                        </div>
-                                        <div class="row mt-3">
-                                            <div class="col-5">
-                                                <strong>Sales Person</strong><br/>
-                                                <span t-field="doc.user_id.name"/>
-                                            </div>
-                                            <div class="col-7">
-                                                <strong>Payment Terms</strong><br/>
-                                                <span t-field="doc.payment_term_id.name"/>
-                                            </div>
-                                        </div>
-                                        <div class="row mt-3">
-                                            <div class="col-12">
-                                                <strong>PLACE OF DELIVERY:</strong><br/>
-                                                <span t-field="doc.partner_shipping_id.street"/>
-                                                <span t-field="doc.partner_shipping_id.street2"/>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </table>
+                        <!-- Document Title -->
+                        <div class="row mb-3">
+                            <div class="col-12 text-center">
+                                <div class="doc-title">SALE ORDER</div>
+                            </div>
                         </div>
 
-                        <!-- Order Lines with Product Images -->
-                        <table class="table table-sm">
+                        <!-- Customer and Document Info -->
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="info-box" style="height: 150px;">
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">Customer:</strong>
+                                        <span t-field="doc.partner_id.name"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">Address:</strong>
+                                        <span t-field="doc.partner_id.street"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">Tax ID:</strong>
+                                        <span t-field="doc.partner_id.vat"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="info-box" style="height: 150px;">
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">Order No:</strong>
+                                        <span t-field="doc.name"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">Date:</strong>
+                                        <span t-field="doc.date_order" t-options='{"widget": "date"}'/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">Sales Person:</strong>
+                                        <span t-field="doc.user_id.name"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Product Table -->
+                        <table class="table table-sm" style="border: 1px solid #000;">
                             <thead>
-                                <tr>
+                                <tr class="table-header">
                                     <th style="width: 5%;">No.</th>
                                     <th style="width: 15%;">Product Image</th>
-                                    <th style="width: 15%;">Item No.</th>
-                                    <th style="width: 25%;">Description</th>
+                                    <th style="width: 40%;">Description</th>
                                     <th style="width: 10%;" class="text-right">Quantity</th>
                                     <th style="width: 12%;" class="text-right">Unit Price</th>
                                     <th style="width: 8%;" class="text-right">Disc.(%)</th>
@@ -111,7 +119,6 @@
                                              t-att-src="image_data_uri(line.product_id.image_128)"
                                              style="width: 64px; height: 64px; object-fit: contain;"/>
                                     </td>
-                                    <td><span t-field="line.product_id.default_code"/></td>
                                     <td><span t-field="line.product_id.name_eng"/></td>
                                     <td class="text-right">
                                         <span t-field="line.product_uom_qty"/>
@@ -130,31 +137,16 @@
                             </tbody>
                         </table>
 
-                        <!-- Totals Section -->
+                        <!-- Summary Section -->
                         <div class="row">
                             <div class="col-7">
-                                <!-- Notes Section -->
-                                    <div style="margin-bottom: 10px;">
-                                        <strong>Remarks:</strong>
-                                    </div>
-                                    <div style="margin-left: 10px;">
-                                        <span t-field="doc.note"/>
-                                    </div>
+                                <strong>Remarks:</strong>
+                                <p t-field="doc.note"/>
                             </div>
                             <div class="col-5">
                                 <table class="table table-sm">
                                     <tr>
                                         <td>Subtotal</td>
-                                        <td class="text-right">
-                                            <span t-field="doc.amount_untaxed"/>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>Discount</td>
-                                        <td class="text-right">0</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Net Amount</td>
                                         <td class="text-right">
                                             <span t-field="doc.amount_untaxed"/>
                                         </td>
@@ -166,16 +158,16 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td style="border-bottom: 1px solid black;">Grand Total</td>
-                                        <td class="text-right" style="border-bottom: 1px solid black;">
-                                            <span t-field="doc.amount_total"/>
+                                        <td><strong>Total Amount</strong></td>
+                                        <td class="text-right">
+                                            <strong t-field="doc.amount_total"/>
                                         </td>
                                     </tr>
                                 </table>
                             </div>
                         </div>
-
-                        <!-- Amount in Text -->
+                        
+             <!-- Amount in Text -->
 <div class="row" style="margin-top: 10px;">
     <div class="col-12">
         <div style="border-bottom: 1px solid black;">
@@ -183,7 +175,32 @@
             <span t-esc="doc.amount_to_text_en()"/>
         </div>
     </div>
-</div>
+</div>            
+
+                        <!-- Signatures -->
+                        <div class="row mt-4">
+                            <div class="col-4">
+                                <div class="text-center">
+                                    <p>____________________</p>
+                                    <p>Prepared By</p>
+                                    <p>Date: ____________________</p>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center">
+                                    <p>____________________</p>
+                                    <p>Approved By</p>
+                                    <p>Date: ____________________</p>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center">
+                                    <p>____________________</p>
+                                    <p>Customer Signature</p>
+                                    <p>Date: ____________________</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </t>
             </t>
