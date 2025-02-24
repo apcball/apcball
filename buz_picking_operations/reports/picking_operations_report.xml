@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Paper Format for Picking Operations Reports -->
+        <record id="paperformat_picking_operations" model="report.paperformat">
+            <field name="name">Picking Operations A4</field>
+            <field name="default" eval="True"/>
+            <field name="format">A4</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">10</field>
+            <field name="margin_bottom">10</field>
+            <field name="margin_left">4</field>
+            <field name="margin_right">4</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">90</field>
+        </record>
+
+        <!-- Report Template -->
+        <template id="report_picking_operations_custom">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                    <style>
+                    /* Set all text to black */
+                    .page {
+                        color: black !important;
+                        font-family: 'Sarabun', sans-serif;
+                    }
+                     /* Information box styles */
+                    .info-box {
+                        background-color: white !important;
+                        color: black !important;
+                        font-size: 20px !important;
+                        border: 1px solid #000 !important;
+                        padding: 10px;
+                    }
+                    /* Table styles */
+                    .table {
+                        color: black !important;
+                        font-size: 20px !important;
+                    }
+                    .table th {
+                        background-color: #f8f9fa !important;
+                        color: black !important;
+                        border: 1px solid #000 !important;
+                    }
+                    .table td {
+                        color: black !important;
+                        border: 1px solid #000 !important;
+                    }
+                    /* Header and text styles */
+                    h3, strong, p, span {
+                        color: black !important;
+                    }
+                    /* Company info styles */
+                    .company-header, .company-info {
+                        color: black !important;
+                    }
+                   
+                    /* Signature styles */
+                    .signature-line {
+                        border-top: 1px solid black !important;
+                        color: black !important;
+                    }
+                </style>
+                        <div class="page">
+                            <!-- Company Info Section -->
+                            <div class="row mb-2">
+                                <div class="col-8">
+                                    <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
+                                        บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
+                                    </div>
+                                    <div class="company-info" style="font-size: 18px;">
+                                        9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150
+                                    </div>
+                                    <div class="company-info" style="font-size: 18px;">
+                                        เลขที่ประจําตัวผู้เสียภาษี 0105547076103
+                                    </div>
+                                    <div class="company-info" style="font-size: 18px;">
+                                        โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th
+                                    </div>
+                                </div>
+                               <div class="col-4 text-end">
+                                    <!-- Fixed: Changed 'doc' to 'o' -->
+                                    <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
+                                        style="max-width: 150px; height: auto;" alt="Company Logo"/>
+                                </div>
+                            </div>
+
+                            <!-- Header -->
+                            <div class="mt-3 mb-4">
+                                <h3 class="text-center" style="font-size: 25px; font-weight: bold;">
+                                    ใบเบิกสินค้า / PICKING OPERATIONS
+                                </h3>
+                            </div>
+<!-- Header Information -->
+<div class="row mt-3">
+    <div class="col-6">
+        <div class="info-box">
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">เลขที่เอกสาร:</strong>
+                <span t-field="o.name"/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">วันที่:</strong>
+                <span t-field="o.scheduled_date"/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">ประเภทการดำเนินการ:</strong>
+                <span t-field="o.picking_type_id"/>
+            </div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="info-box">
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">ต้นทาง:</strong>
+                <span t-field="o.location_id"/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">ปลายทาง:</strong>
+                <span t-field="o.location_dest_id"/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">ผู้ควบคุม:</strong>
+                <span t-field="o.supervisor_id"/>
+            </div>
+        </div>
+    </div>
+</div>
+
+                            <!-- Products Table -->
+<table class="table table-sm table-bordered mt-4">
+    <thead>
+        <tr>
+            <th style="border: 1px solid #000; padding: 4px 6px; width: 5%">ลำดับ</th>
+            <th style="border: 1px solid #000; padding: 4px 6px; width: 30%">รายการสินค้า</th>
+            <th style="border: 1px solid #000; padding: 4px 6px; width: 10%">จำนวน</th>
+            <th style="border: 1px solid #000; padding: 4px 6px; width: 10%">หน่วย</th>
+            <th style="border: 1px solid #000; padding: 4px 6px; width: 15%">Lot/Serial</th>
+            <th style="border: 1px solid #000; padding: 4px 6px; width: 15%">ตำแหน่งต้นทาง</th>
+            <th style="border: 1px solid #000; padding: 4px 6px; width: 15%">ตำแหน่งปลายทาง</th>
+
+        </tr>
+    </thead>
+    <tbody>
+        <t t-set="line_number" t-value="1"/>
+        <t t-foreach="o.move_ids" t-as="move">
+            <tr>
+                <td class="text-center">
+                    <span t-esc="line_number"/>
+                </td>
+                <td><span t-field="move.product_id"/></td>
+                <td class="text-center"><span t-field="move.product_uom_qty"/></td>
+                <td class="text-center"><span t-field="move.product_uom"/></td>
+                <td class="text-center"><span t-field="move.lot_ids"/></td>
+                <td><span t-field="move.location_id"/></td>
+                <td><span t-field="move.location_dest_id"/></td>
+            </tr>
+            <t t-set="line_number" t-value="line_number + 1"/>
+        </t>
+    </tbody>
+</table>
+
+                            <!-- Custom Note -->
+                            <div class="row mt-4" t-if="o.custom_note">
+                                <div class="col-12">
+                                    <strong>หมายเหตุ:</strong>
+                                    <p t-field="o.custom_note"/>
+                                </div>
+                            </div>
+
+                            <!-- Signatures -->
+                            <div class="row mt-5">
+                                <div class="col-4">
+                                    <div class="text-center">
+                                        <p style="border-top: 1px solid black; margin-top: 50px; font-size: 20px;">
+                                            ผู้จัดทำ by
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center">
+                                        <p style="border-top: 1px solid black; margin-top: 50px; font-size: 20px;">
+                                            ผู้ตรวจ by
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center">
+                                        <p style="border-top: 1px solid black; margin-top: 50px; font-size: 20px;">
+                                            ผู้อนุมัติ by
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+
+        <!-- Report Action -->
+        <record id="action_report_picking_operations_custom" model="ir.actions.report">
+            <field name="name">Custom Picking Operations</field>
+            <field name="model">stock.picking</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">buz_picking_operations.report_picking_operations_custom</field>
+            <field name="report_file">buz_picking_operations.report_picking_operations_custom</field>
+            <field name="binding_model_id" ref="stock.model_stock_picking"/>
+            <field name="paperformat_id" ref="paperformat_picking_operations"/>
+            <field name="binding_type">report</field>
+        </record>
+    </data>
+</odoo>
