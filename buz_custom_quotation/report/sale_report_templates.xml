@@ -66,6 +66,13 @@
                                 font-weight: bold;
                                 color: #000000;
                             }
+                            .info-box {
+                                background-color: #f8f9fa !important;
+                                color: black !important;
+                                font-size: 20px !important;
+                                border: 1px solid #000 !important;
+                                padding: 10px;
+                            }
                             .table-header {
                                 font-size: 18px;
                                 font-weight: bold;
@@ -110,23 +117,41 @@
                             </div>
                         </div>
 
-                        <!-- Customer and Document Info -->
-                        <div class="row mb-3">
-                            <div class="col-6">
-                                <div class="border p-2" style="background-color: #f8f9fa; min-height: 120px; height: 100%;">
-                                    <strong>Customer:</strong>
-                                    <div t-field="doc.partner_id" 
-                                        t-options='{"widget": "contact", "fields": ["name", "address", "phone"], "no_marker": True}'/>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="border p-2" style="background-color: #f8f9fa; min-height: 120px; height: 100%;">
-                                    <strong>Quotation No:</strong> <span t-field="doc.name"/><br/>
-                                    <strong>Date:</strong> <span t-field="doc.date_order" t-options='{"widget": "date"}'/><br/>
-                                    <strong>Sales Person:</strong> <span t-field="doc.user_id.name"/>
-                                </div>
-                            </div>
-                        </div>
+                       <!-- Customer and Document Info -->
+<div class="row mb-3">
+    <div class="col-6">
+        <div class="info-box" style="height: 150px;">    
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">ลูกค้า:</strong>
+                <span t-field="doc.partner_id.name"/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">ที่อยู่:</strong>
+                <span t-field="doc.partner_id.street"/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">โทรศัพท์:</strong>
+                <span t-field="doc.partner_id.phone"/>
+            </div>
+        </div>    
+    </div>
+    <div class="col-6">    
+        <div class="info-box" style="height: 150px;">    
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">เลขที่เอกสาร:</strong>
+                <span t-field="doc.name"/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">วันที่:</strong>
+                <span t-field="doc.date_order" t-options='{"widget": "date"}'/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">พนักงานขาย:</strong>
+                <span t-field="doc.user_id.name"/>
+            </div>
+        </div>
+    </div>
+</div>
 
                         <!-- Product Table -->
                         <table class="table table-sm" style="border: 1px solid #000;">
