@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <data>
-        <!-- Paper Format for Sale Order Reports -->
+    <!-- Paper Format for Post Receipt Reports -->
     <record id="paperformat_post_receipt" model="report.paperformat">
         <field name="name">Post Receipt A4</field>
         <field name="default" eval="True"/>
@@ -15,174 +15,217 @@
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
     </record>
-        <!-- Report Action -->
-        <record id="action_report_post_receipt" model="ir.actions.report">
-            <field name="name">Post Receipt</field>
-            <field name="model">account.move</field>
-            <field name="report_type">qweb-pdf</field>
-            <field name="report_name">buz_post_receipt.report_post_receipt</field>
-            <field name="report_file">buz_post_receipt.report_post_receipt</field>
-            <field name="paperformat_id" ref="paperformat_post_receipt"/>
-            <field name="print_report_name">'Post Receipt - %s' % (object.receipt_number)</field>
-            <field name="binding_model_id" ref="account.model_account_move"/>
-            <field name="binding_type">report</field>
-        </record>
-        <template id="report_post_receipt">
-            <t t-call="web.html_container">
-                <t t-foreach="docs" t-as="o">
-                    <t t-call="web.external_layout">
-                        <div class="page o_post_receipt_report">
-                        <!-- ส่วนหัว (Header) -->
+
+    <!-- Report Action -->
+    <record id="action_report_post_receipt" model="ir.actions.report">
+        <field name="name">Post Receipt</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_post_receipt.report_post_receipt</field>
+        <field name="report_file">buz_post_receipt.report_post_receipt</field>
+        <field name="paperformat_id" ref="paperformat_post_receipt"/>
+        <field name="print_report_name">'Post Receipt - %s' % (object.receipt_number)</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Main Template -->
+    <template id="report_post_receipt">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page" style="padding: 10px;">
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_post_receipt/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            }
+                            .page {
+                                font-family: 'Sarabun', sans-serif;
+                                font-size: 20px;
+                                padding: 0;
+                                width: 100%;
+                                height: 100%;
+                                margin: 0;
+                                color: #000;
+                            }
+                            .company-header {
+                                font-size: 20px;
+                                font-weight: bold;
+                            }
+                            .company-info {
+                                font-size: 18px;
+                            }
+                            .doc-title {
+                                font-size: 25px;
+                                font-weight: bold;
+                                text-align: center;
+                            }
+                            .info-box {
+                                background-color: #f8f9fa !important;
+                                border: 1px solid #000 !important;
+                                padding: 10px;
+                                height: 150px;
+                            }
+                            .table-header {
+                                font-size: 18px;
+                                font-weight: bold;
+                                background-color: #f8f9fa;
+                            }
+                        </style>
+
+                        <!-- Company Info Section -->
                         <div class="row mb-2">
                             <div class="col-8">
-                                <div style="font-size: 20px;">
-                                    <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
-                                    <div style="font-size: 18px;">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
-                                    <div style="font-size: 18px;">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
-                                    <div style="font-size: 18px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
-                                </div>
+                                <div class="company-header mb-1">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                <div class="company-info">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
+                                <div class="company-info">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
+                                <div class="company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
                             </div>
                             <div class="col-4 text-end">
                                 <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
-                                     style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                                     style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
-                            <div class="document-title">ใบแจ้งค่าใช้จ่ายผลประโยชน์ร้านค้า</div>
 
-<!-- Information Section -->
-<div class="info-section">
-    <div class="left-info">
-        <div class="info-row">
-            <span class="label">เลขประจําตัวผู้เสียภาษี:</span>
-            <span t-field="o.partner_id.vat"/>
-        </div>
-        <div class="info-row">
-            <span class="label">รหัสผู้ซื้อ:</span>
-            <span t-field="o.partner_id.ref"/>
-        </div>
-        <div class="info-row">
-            <span class="label">นามผู้ซื้อ:</span>
-            <span t-field="o.partner_id.name"/>
-        </div>
-        <div class="info-row">
-            <span class="label">โทร:</span>
-            <span t-field="o.partner_id.phone"/>
-        </div>
-        <div class="info-row">
-            <span class="label">ที่อยู่:</span>
-            <span t-field="o.partner_id.contact_address"/>
-        </div>
-    </div>
-    <div class="right-info">
-        <div class="info-row">
-            <span class="label">เลขที่เอกสาร No.:</span>
-            <span t-field="o.receipt_number"/>
-        </div>
-        <div class="info-row">
-            <span class="label">วันที่/Date:</span>
-            <span t-field="o.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
-        </div>
-        <div class="info-row">
-            <span class="label">Ref No.:</span>
-            <span t-field="o.ref"/>
-        </div>
-        <div class="info-row">
-            <span class="label">Credit:</span>
-            <span t-field="o.invoice_payment_term_id.name"/>
-        </div>
-    </div>
-</div>
-
-<!-- Table Section -->
-<table class="receipt-table">
-    <thead>
-        <tr>
-            <th>ลำดับ</th>
-            <th>รายการ</th>
-            <th>จำนวน</th>
-            <th>ราคาต่อหน่วย</th>
-            <th>จำนวนเงิน</th>
-        </tr>
-    </thead>
-    <tbody>
-        <t t-foreach="o.invoice_line_ids" t-as="line">
-            <tr>
-                <td><span t-esc="line_index + 1"/></td>
-                <td><span t-field="line.name"/></td>
-                <td class="amount"><span t-field="line.quantity"/></td>
-                <td class="amount">
-                    <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                </td>
-                <td class="amount">
-                    <span t-field="line.price_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                </td>
-            </tr>
-        </t>
-    </tbody>
-    <tfoot>
-        <tr>
-            <td colspan="4">รวมเงิน</td>
-            <td class="amount">
-                <span t-field="o.amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="4">ภาษีมูลค่าเพิ่ม</td>
-            <td class="amount">
-                <span t-field="o.amount_tax" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="4">หัก ณ ที่จ่าย 3%</td>
-            <td class="amount">
-                <span t-esc="o.amount_total * 0.03" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="4">รวมยอดสุทธิ</td>
-            <td class="amount">
-                <span t-esc="o.amount_total * 0.97" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-            </td>
-        </tr>
-    </tfoot>
-</table>
-
-<!-- Amount in Words Section -->
-<div class="amount-words">
-    <t t-set="amount_data" t-value="o.get_amount_with_tax()"/>
-    <span t-esc="amount_data['amount_in_words']"/>
-</div>
-
-                            <!-- Note Section -->
-                            <div class="note-section">
-                                <span class="note-label">หมายเหตุ:</span>
-                                <span t-field="o.ref"/>
-                            </div>
-
-<!-- Signature Section -->
-<div class="signature-section">
-    <div class="signature-row">
-        <div class="signature-block">
-            <div>ตรวจสอบโดย</div>
-            <div class="signature-line">____________________</div>
-            <div class="date-line">วันที่ ____/____/____</div>
-        </div>
-        <div class="signature-block">
-            <div>ผู้มีอำนาจลงนาม</div>
-            <div class="signature-line">____________________</div>
-            <div class="date-line">วันที่ ____/____/____</div>
-        </div>
-    </div>
-</div>
-
-                            <!-- Footer Note -->
-                            <div class="footer-note">
-                                สีขาว สำหรับลูกค้า   สีฟ้า,เหลือง,ชมพู สำหรับบริษัท
+                        <!-- Document Title -->
+                        <div class="row mb-3">
+                            <div class="col-12 text-center">
+                                <div class="doc-title">ใบแจ้งค่าใช้จ่ายผลประโยชน์ร้านค้า</div>
                             </div>
                         </div>
-                    </t>
+
+                        <!-- Customer and Document Info -->
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="info-box">
+                                    <div class="mb-2">
+                                        <strong style="width: 20%; display: inline-block;">รหัสผู้ซื้อ:</strong>
+                                        <span t-field="o.partner_id.ref"/>
+                                        <strong style="width: 20%; display: inline-block; margin-left: 20px;">นามผู้ซื้อ:</strong>
+                                        <span t-field="o.partner_id.name"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 10%; display: inline-block;">ที่อยู่:</strong>
+                                        <span t-field="o.partner_id.contact_address"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">เลขประจําตัวผู้เสียภาษี:</strong>
+                                        <span t-field="o.partner_id.vat"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="info-box">
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">เลขที่เอกสาร:</strong>
+                                        <span t-field="o.receipt_number"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">วันที่:</strong>
+                                        <span t-field="o.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">Ref No.:</strong>
+                                        <span t-field="o.ref"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">Credit:</strong>
+                                        <span t-field="o.invoice_payment_term_id.name"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Product Table -->
+                        <table class="table table-sm" style="border: 1px solid #000;">
+                            <thead>
+                                <tr class="table-header">
+                                    <th style="border: 1px solid #000; padding: 4px 6px; width: 5%">ลำดับ</th>
+                                    <th style="border: 1px solid #000; padding: 4px 6px; width: 45%">รายการ</th>
+                                    <th style="border: 1px solid #000; padding: 4px 6px; width: 15%">จำนวน</th>
+                                    <th style="border: 1px solid #000; padding: 4px 6px; width: 15%">ราคาต่อหน่วย</th>
+                                    <th style="border: 1px solid #000; padding: 4px 6px; width: 20%">จำนวนเงิน</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.invoice_line_ids" t-as="line">
+                                    <td style="border: 1px solid #000; padding: 4px 6px; text-align: center;">
+                                        <span t-esc="line_index + 1"/>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 4px 6px;">
+                                        <span t-field="line.name"/>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 4px 6px; text-align: center;">
+                                        <span t-field="line.quantity"/>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 4px 6px; text-align: right;">
+                                        <span t-field="line.price_unit"/>
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 4px 6px; text-align: right;">
+                                        <span t-field="line.price_total"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Summary Table -->
+                        <div class="row">
+                            <div class="col-6"></div>
+                            <div class="col-6">
+                                <table class="table table-sm" style="border: 1px solid #000;">
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 4px 6px;">รวมเงิน</td>
+                                        <td style="border: 1px solid #000; padding: 4px 6px; text-align: right;">
+                                            <span t-field="o.amount_untaxed"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 4px 6px;">ภาษีมูลค่าเพิ่ม</td>
+                                        <td style="border: 1px solid #000; padding: 4px 6px; text-align: right;">
+                                            <span t-field="o.amount_tax"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 4px 6px;">หัก ณ ที่จ่าย 3%</td>
+                                        <td style="border: 1px solid #000; padding: 4px 6px; text-align: right;">
+                                            <span t-esc="o.amount_total * 0.03"/>
+                                        </td>
+                                    </tr>
+                                    <tr style="background-color: #b8a97d;">
+                                        <td style="border: 1px solid #000; padding: 4px 6px;">
+                                            <strong>รวมยอดสุทธิ</strong>
+                                        </td>
+                                        <td style="border: 1px solid #000; padding: 4px 6px; text-align: right;">
+                                            <strong t-esc="o.amount_total * 0.97"/>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+<!-- Signatures -->
+<div class="row mt-4">
+    <div class="col-2"></div>
+    <div class="col-4">
+        <div style="text-align: center;">
+            <p style="margin-bottom: 30px;">____________________</p>
+            <p style="margin-bottom: 5px;">ตรวจสอบโดย</p>
+            <p>วันที่ ____/____/____</p>
+        </div>
+    </div>
+    <div class="col-4">
+        <div style="text-align: center;">
+            <p style="margin-bottom: 30px;">____________________</p>
+            <p style="margin-bottom: 5px;">ผู้มีอำนาจลงนาม</p>
+            <p>วันที่ ____/____/____</p>
+        </div>
+    </div>
+    <div class="col-2"></div>
+</div>
+                    </div>
                 </t>
             </t>
-        </template>
+        </t>
+    </template>
     </data>
 </odoo>
