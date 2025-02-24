@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Paper Format -->
+    <record id="paperformat_buz_delivery" model="report.paperformat">
+        <field name="name">BUZ Delivery A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- Assign Paper Format to Report -->
+    <record id="action_report_delivery_custom" model="ir.actions.report">
+        <field name="name">ใบส่งสินค้า / Delivery Slip</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_delivery_report.report_delivery_document_custom</field>
+        <field name="report_file">buz_delivery_report.report_delivery_document_custom</field>
+        <field name="paperformat_id" ref="paperformat_buz_delivery"/>
+        <field name="print_report_name">'Delivery Slip - %s' % object.name</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Main Template -->
+    <template id="report_delivery_document_custom">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+<style>
+    @font-face {
+        font-family: 'Sarabun';
+        src: url('/buz_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
+    }
+    .page {
+        font-family: 'Sarabun', sans-serif;
+        font-size: 20px;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        color: #000000;
+    }
+    .company-header {
+        font-size: 20px;
+        font-weight: bold;
+        color: #000000;
+    }
+    .company-info {
+        font-size: 18px;
+        color: #000000;
+    }
+    .doc-title {
+        font-size: 25px;
+        font-weight: bold;
+        color: #000000;
+    }
+    .table-header {
+        font-size: 18px;
+        font-weight: bold;
+        background-color: #f8f9fa;
+        color: #000000;
+    }
+    .info-box {
+        background-color: #f8f9fa !important;
+        color: black !important;
+        font-size: 20px !important;
+        border: 1px solid #000 !important;
+        padding: 10px;
+    }
+    .table-content {
+        font-size: 18px;
+        color: #000000;
+    }
+    /* Add these new styles for the product table */
+    .table-product {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 20px !important;
+    }
+    
+    .table-product th {
+        border: 1px solid #000;
+        padding: 8px 10px;
+        background-color: #f8f9fa;
+        font-weight: bold;
+        font-size: 18px !important;
+        vertical-align: middle;
+    }
+    
+    .table-product td {
+        border: 1px solid #000;
+        padding: 8px 10px;
+        font-size: 20px !important;
+        vertical-align: middle;
+    }
+    
+    .table-product .product-code {
+        font-weight: bold;
+    }
+    
+    .table-product .quantity {
+        text-align: right;
+    }
+</style>
+
+                        <!-- Company Info Section -->
+                        <div class="row mb-2">
+                            <div class="col-8">
+                                <div class="company-header mb-1">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                <div class="company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                                <div class="company-info">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
+                                <div class="company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
+                                    style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                            </div>
+                        </div>
+
+                        <!-- Document Title -->
+                        <div class="row mb-3">
+                            <div class="col-12 text-center">
+                                <div class="doc-title">ใบส่งสินค้า / Delivery Slip</div>
+                            </div>
+                        </div>
+
+                        <!-- Customer and Document Info -->
+<div class="row mb-3">
+    <div class="col-6">
+        <div class="info-box" style="height: 180px;">
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">ลูกค้า / Customer:</strong>
+                <span t-field="doc.partner_id.name"/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">ที่อยู่ / Address:</strong>
+                <span t-field="doc.partner_id.street"/> <span t-field="doc.partner_id.street2"/>
+                <br/>
+                <span t-field="doc.partner_id.city"/> <span t-field="doc.partner_id.state_id.name"/>
+                <span t-field="doc.partner_id.zip"/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">โทรศัพท์ / Tel:</strong>
+                <span t-field="doc.partner_id.phone"/>
+            </div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="info-box" style="height: 180px;">
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">เลขที่เอกสาร / No.:</strong>
+                <span t-field="doc.name"/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">วันที่ / Date:</strong>
+                <span t-field="doc.date" t-options='{"widget": "date"}'/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">ใบสั่งขาย / Order:</strong>
+                <span t-field="doc.origin"/>
+            </div>
+            <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">วันที่จัดส่ง / Ship Date:</strong>
+                <span t-field="doc.scheduled_date" t-options='{"widget": "date"}'/>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Products Table -->
+<table class="table table-sm table-product" style="border: 1px solid #000;">
+    <thead>
+        <tr class="table-header">
+            <th style="width: 5%">No.<br/>ลำดับ</th>
+            <th style="width: 65%">Product<br/>สินค้า</th>
+            <th style="width: 15%">Ordered<br/>จำนวนสั่ง</th>
+            <th style="width: 15%">Delivered<br/>จำนวนส่ง</th>
+        </tr>
+    </thead>
+    <tbody class="table-content">
+        <t t-set="line_number" t-value="1"/>
+        <t t-foreach="doc.move_ids_without_package.sorted(key=lambda m: m.id)" t-as="move">
+            <tr>
+                <td class="text-center">
+                    <span t-esc="line_number"/>
+                    <t t-set="line_number" t-value="line_number + 1"/>
+                </td>
+                <td>
+                    <span class="product-code">[<span t-field="move.product_id.default_code"/>]</span> 
+                    <span t-field="move.product_id.name"/>
+                </td>
+                <td class="quantity">
+                    <span t-field="move.product_uom_qty"/> <span t-field="move.product_uom.name"/>
+                </td>
+                <td class="quantity">
+                    <t t-set="delivered_qty" t-value="sum(ml.quantity for ml in move.move_line_ids)"/>
+                    <span t-esc="delivered_qty"/> <span t-field="move.product_uom.name"/>
+                </td>
+            </tr>
+        </t>
+    </tbody>
+</table>
+
+<!-- Total Section -->
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="info-box">
+            <div class="row">
+                <div class="col-6">
+                    <strong>Total Items / จำนวนรายการรวม: </strong>
+                    <span t-esc="len(doc.move_ids_without_package)"/> รายการ
+                </div>
+                <div class="col-6 text-right">
+                    <strong>Total Quantity / จำนวนชิ้นรวม: </strong>
+                    <t t-set="total_delivered" t-value="sum(sum(ml.quantity for ml in move.move_line_ids) for move in doc.move_ids_without_package)"/>
+                    <span t-esc="'%.0f' % total_delivered"/> ชิ้น
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                        <!-- Signatures -->
+                        <div class="row mt-4">
+                            <div class="col-4">
+                                <div class="text-center signature-section">
+                                    <p>____________________</p>
+                                    <p>ผู้ส่งสินค้า / Delivered By</p>
+                                    <p>วันที่ / Date: ____________________</p>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center signature-section">
+                                    <p>____________________</p>
+                                    <p>ผู้ตรวจสอบ / Checked By</p>
+                                    <p>วันที่ / Date: ____________________</p>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center signature-section">
+                                    <p>____________________</p>
+                                    <p>ผู้รับสินค้า / Received By</p>
+                                    <p>วันที่ / Date: ____________________</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
