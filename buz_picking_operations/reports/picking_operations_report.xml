@@ -21,11 +21,19 @@
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="o">
                     <t t-call="web.external_layout">
-                    <style>
-                    /* Set all text to black */
+                <style>
+                    @font-face {
+                        font-family: 'Sarabun';
+                        src: url('/buz_picking_operations/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                    }
                     .page {
-                        color: black !important;
                         font-family: 'Sarabun', sans-serif;
+                        font-size: 20px;
+                        padding: 0;
+                        width: 100%;
+                        height: 100%;
+                        margin: 0;
+                        color: #000000;
                     }
                      /* Information box styles */
                     .info-box {
