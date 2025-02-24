@@ -1,164 +1,196 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+    <!-- Main Template -->
     <template id="report_payment_receipt_modern">
-<style>
-    .table-sm td, .table-sm th {
-        padding: 0.3rem;
-    }
-    .border-black td {
-        border-color: black !important;
-    }
-    .text-end {
-        text-align: right !important;
-    }
-    .text-center {
-        text-align: center !important;
-    }
-</style>
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
                     <div class="page">
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_custom_quotation/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            }
+                            .page {
+                                font-family: 'Sarabun', sans-serif;
+                                font-size: 20px;
+                                padding: 0;
+                                width: 100%;
+                                height: 100%;
+                                margin: 0;
+                                color: #000;
+                            }
+                            .company-header {
+                                font-size: 20px;
+                                font-weight: bold;
+                            }
+                            .company-info {
+                                font-size: 18px;
+                            }
+                            .info-box {
+                                background-color: #f8f9fa !important;
+                                border: 1px solid #000 !important;
+                                padding: 10px;
+                            }
+                            .table-header {
+                                font-size: 18px;
+                                font-weight: bold;
+                                background-color: #f8f9fa;
+                            }
+                            .table-sm td, .table-sm th {
+                                padding: 0.3rem;
+                            }
+                            .border-black td {
+                                border-color: black !important;
+                            }
+                            .text-end {
+                                text-align: right !important;
+                            }
+                            .text-center {
+                                text-align: center !important;
+                            }
+                        </style>
+
                         <!-- Company Info Section -->
                         <div class="row mb-2">
                             <div class="col-8">
-                                <div class="company-header mb-1" style="font-size: 18px; font-weight: bold;">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                <div class="company-header mb-1">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
                                 <div class="company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
                                 <div class="company-info">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
                                 <div class="company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
                             </div>
                             <div class="col-4 text-end">
                                 <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
-                                    style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                                     style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
 
                         <!-- Title Section -->
-                        <div class="mt-3">
-                            <div style="text-align: center; margin-bottom: 20px;">
+                        <div class="row mb-3">
+                            <div class="col-12 text-center">
                                 <h3>ใบเสร็จรับเงิน / RECEIPT</h3>
                             </div>
                         </div>
 
-                        <!-- Receipt Information -->
-                        <div style="border: 1px white; margin-bottom: 20px;">
-                            <table class="table table-borderless mb-0" style="width: 100%;">
-                                <tr>
-                                    <td style="width: 60%; border-right: 1px white; padding: 10px;">
-                                        <div>
-                                            <strong>ได้รับเงินจาก / Received From:</strong>
-                                            <span t-field="o.partner_id.name"/>
+                        <!-- Customer and Receipt Info -->
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="info-box" style="height: 150px;">
+                                    <div class="mb-2">
+                                        <strong>ได้รับเงินจาก / Received From:</strong>
+                                        <span t-field="o.partner_id.name"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong>เลขประจำตัวผู้เสียภาษี / Tax ID:</strong>
+                                        <span t-field="o.partner_id.vat"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong>ที่อยู่ / Address:</strong><br/>
+                                        <span t-field="o.partner_id.street"/>
+                                        <span t-field="o.partner_id.street2"/>
+                                        <span t-field="o.partner_id.city"/>
+                                        <span t-field="o.partner_id.zip"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="info-box" style="height: 150px;">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <strong>เลขที่ / No.:</strong><br/>
+                                            <span t-field="o.name"/>
                                         </div>
-                                        <div style="margin-top: 10px;">
-                                            <strong>เลขประจำตัวผู้เสียภาษี / Tax ID:</strong>
-                                            <span t-field="o.partner_id.vat"/>
+                                        <div class="col-6">
+                                            <strong>วันที่ / Date:</strong><br/>
+                                            <span t-esc="o.get_formatted_date()"/>
                                         </div>
-                                        <div style="margin-top: 10px;">
-                                            <strong>ที่อยู่ / Address:</strong><br/>
-                                            <span t-field="o.partner_id.street"/>
-                                            <span t-field="o.partner_id.street2"/><br/>
-                                            <span t-field="o.partner_id.city"/>
-                                            <span t-field="o.partner_id.zip"/>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <strong>วิธีการชำระเงิน / Payment Method:</strong><br/>
+                                            <span t-field="o.payment_method_line_id.name"/>
                                         </div>
-                                    </td>
-                                    <td style="width: 40%; padding: 10px;">
-                                        <div class="row">
-                                            <div class="col-6">
-                                                <strong>เลขที่ / No.:</strong><br/>
-                                                <span t-field="o.name"/>
-                                            </div>
-                                            <div class="col-6">
-                                                <strong>วันที่ / Date:</strong><br/>
-                                                <span t-esc="o.get_formatted_date()"/>
-                                            </div>
+                                    </div>
+                                    <div class="row mt-3" t-if="o.ref">
+                                        <div class="col-12">
+                                            <strong>อ้างอิง / Reference:</strong><br/>
+                                            <span t-field="o.ref"/>
                                         </div>
-                                        <div class="row mt-3">
-                                            <div class="col-12">
-                                                <strong>วิธีการชำระเงิน / Payment Method:</strong><br/>
-                                                <span t-field="o.payment_method_line_id.name"/>
-                                            </div>
-                                        </div>
-                                        <div class="row mt-3" t-if="o.ref">
-                                            <div class="col-12">
-                                                <strong>อ้างอิง / Reference:</strong><br/>
-                                                <span t-field="o.ref"/>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-<!-- Product Lines Section -->
-        <table class="table table-sm">
-            <thead>
+                       <!-- Product Lines Table -->
+<table class="table table-sm" style="border: 1px solid #000;">
+    <thead>
+        <tr class="table-header">
+            <th style="border: 1px solid #000; padding: 4px 6px; width: 5%;">ลำดับ<br/>No.</th>
+            <th style="border: 1px solid #000; padding: 4px 6px; width: 60%;">รายการ<br/>Description</th>
+            <th style="border: 1px solid #000; padding: 4px 6px; width: 15%;">จำนวน<br/>Quantity</th>
+            <th style="border: 1px solid #000; padding: 4px 6px; width: 20%;">จำนวนเงิน<br/>Amount</th>
+        </tr>
+    </thead>
+    <tbody>
+        <t t-set="line_number" t-value="1"/>
+        <t t-foreach="o.reconciled_invoice_ids" t-as="invoice">
+            <t t-foreach="invoice.invoice_line_ids" t-as="line">
                 <tr>
-                    <th name="th_sequence" class="text-center" style="width: 5%;">ลำดับ<br/>No.</th>
-                    <th name="th_description" class="text-start" style="width: 60%;">รายการ<br/>Description</th>
-                    <th name="th_quantity" class="text-end" style="width: 15%;">จำนวน<br/>Quantity</th>
-                    <th name="th_subtotal" class="text-end" style="width: 20%;">จำนวนเงิน<br/>Amount</th>
+                    <td class="text-center" style="border: 1px solid #000;"><span t-esc="line_number"/></td>
+                    <td style="border: 1px solid #000;">
+                        <span t-field="line.name"/>
+                    </td>
+                    <td class="text-end" style="border: 1px solid #000;">
+                        <span t-field="line.quantity"/>
+                        <span t-field="line.product_uom_id" groups="uom.group_uom"/>
+                    </td>
+                    <td class="text-end" style="border: 1px solid #000;">
+                        <span t-field="line.price_subtotal"
+                              t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-                <t t-set="line_number" t-value="1"/>
-                <t t-foreach="o.reconciled_invoice_ids" t-as="invoice">
-                    <t t-foreach="invoice.invoice_line_ids" t-as="line">
-                        <tr>
-                            <td class="text-center"><span t-esc="line_number"/></td>
-                            <td name="account_invoice_line_name"><span t-field="line.name"/></td>
-                            <td class="text-end">
-                                <span t-field="line.quantity"/>
-                                <span t-field="line.product_uom_id" groups="uom.group_uom"/>
-                            </td>
-                            <td class="text-end">
-                                <span t-field="line.price_subtotal"
-                                      t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                            </td>
-                        </tr>
-                        <t t-set="line_number" t-value="line_number + 1"/>
-                    </t>
-                </t>
-            </tbody>
-        </table>
-   
+                <t t-set="line_number" t-value="line_number + 1"/>
+            </t>
+        </t>
+    </tbody>
+</table>
 
+                        <!-- Totals Section -->
+                        <div class="row justify-content-end">
+                            <div class="col-4">
+                                <table class="table table-sm">
+                                    <tr class="border-black">
+                                        <td><strong>รวมเงิน / Subtotal</strong></td>
+                                        <td class="text-end">
+                                            <span t-esc="sum(o.reconciled_invoice_ids.mapped('amount_untaxed'))"
+                                                  t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>ภาษีมูลค่าเพิ่ม 7% / VAT 7%</td>
+                                        <td class="text-end">
+                                            <span t-esc="sum(o.reconciled_invoice_ids.mapped('amount_tax'))"
+                                                  t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-black">
+                                        <td><strong>รวมทั้งสิ้น / Total</strong></td>
+                                        <td class="text-end">
+                                            <strong>
+                                                <span t-field="o.amount"
+                                                      t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                            </strong>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
 
-<!-- Totals Section -->
-<div class="row justify-content-end">
-    <div class="col-4">
-        <table class="table table-sm" style="page-break-inside: avoid;">
-            <tr class="border-black">
-                <td style="border-top: 1px solid black;"><strong>รวมเงิน / Subtotal</strong></td>
-                <td class="text-end" style="border-top: 1px solid black;">
-                    <t t-set="amount_untaxed" t-value="sum(o.reconciled_invoice_ids.mapped('amount_untaxed'))"/>
-                    <span t-esc="amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                </td>
-            </tr>
-            <tr>
-                <td>ภาษีมูลค่าเพิ่ม 7% / VAT 7%</td>
-                <td class="text-end">
-                    <t t-set="amount_tax" t-value="sum(o.reconciled_invoice_ids.mapped('amount_tax'))"/>
-                    <span t-esc="amount_tax" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                </td>
-            </tr>
-            <tr class="border-black">
-                <td style="border-top: 1px solid black; border-bottom: 1px solid black;">
-                    <strong>รวมทั้งสิ้น / Total</strong>
-                </td>
-                <td class="text-end" style="border-top: 1px solid black; border-bottom: 1px solid black;">
-                    <strong>
-                        <span t-field="o.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                    </strong>
-                </td>
-            </tr>
-        </table>
-    </div>
-</div>
                         <!-- Amount in Words -->
                         <div class="row">
                             <div class="col-12">
                                 <div style="border-bottom: 1px solid black;">
-                                    <strong>จำนวนเงินตัวอักษร</strong>
+                                    <strong>จำนวนเงินตัวอักษร / Amount in Words: </strong>
                                     <span t-esc="o.amount_in_words()"/>
                                 </div>
                             </div>
@@ -167,15 +199,17 @@
                         <!-- Signature Section -->
                         <div class="row mt-5">
                             <div class="col-6">
-                                <div class="text-center">
+                                <div class="text-center signature-section">
                                     <div style="border-bottom: 1px solid black; width: 80%; margin: 50px auto 10px;"></div>
                                     <p>ผู้รับเงิน / Received By</p>
+                                    <p>วันที่ / Date: ____________________</p>
                                 </div>
                             </div>
                             <div class="col-6">
-                                <div class="text-center">
+                                <div class="text-center signature-section">
                                     <div style="border-bottom: 1px solid black; width: 80%; margin: 50px auto 10px;"></div>
                                     <p>ผู้มีอำนาจลงนาม / Authorized Signature</p>
+                                    <p>วันที่ / Date: ____________________</p>
                                 </div>
                             </div>
                         </div>
