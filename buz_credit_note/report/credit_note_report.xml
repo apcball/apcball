@@ -69,6 +69,13 @@
                                     background-color: #f8f9fa;
                                     color: #000000;
                                 }
+                                .info-box {
+                                    background-color: #f8f9fa !important;
+                                    color: black !important;
+                                    font-size: 20px !important;
+                                    border: 1px solid #000 !important;
+                                    padding: 10px;
+                                }
                                 .table-content {
                                     font-size: 18px;
                                     color: #000000;
@@ -100,17 +107,17 @@
                             <!-- Customer and Document Info -->
                             <div class="row mb-3">
                                 <div class="col-6">
-                                    <div class="border p-2" style="background-color: #f8f9fa; min-height: 120px;">
+                                    <div class="info-box" style="height: 150px;"> 
                                         <strong>รหัสผู้ซื้อ:</strong> <span t-field="doc.partner_id.ref"/><br/>
                                         <strong>นามผู้ซื้อ:</strong> <span t-field="doc.partner_id.name"/><br/>
                                         <strong>ที่อยู่:</strong> <span t-field="doc.partner_id.street"/>
                                         <t t-if="doc.partner_id.street2">
                                             <br/><span t-field="doc.partner_id.street2"/>
                                         </t>
-                                    </div>
+                                    </div>    
                                 </div>
                                 <div class="col-6">
-                                    <div class="border p-2" style="background-color: #f8f9fa; min-height: 120px;">
+                                    <div class="info-box" style="height: 150px;"> 
                                         <strong>เลขที่เอกสาร:</strong> <span t-field="doc.custom_document_number"/><br/>
                                         <strong>วันที่:</strong> <span t-field="doc.invoice_date"/><br/>
                                         <strong>เลขที่ใบกำกับภาษีเดิม:</strong> <span t-field="doc.ref"/>
