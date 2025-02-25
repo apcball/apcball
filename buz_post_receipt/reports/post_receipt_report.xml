@@ -203,25 +203,23 @@
                                 </table>
                             </div>
                         </div>
-<!-- Signatures -->
-<div class="row mt-4">
-    <div class="col-2"></div>
-    <div class="col-4">
-        <div style="text-align: center;">
-            <p style="margin-bottom: 30px;">____________________</p>
-            <p style="margin-bottom: 5px;">ตรวจสอบโดย</p>
-            <p>วันที่ ____/____/____</p>
-        </div>
-    </div>
-    <div class="col-4">
-        <div style="text-align: center;">
-            <p style="margin-bottom: 30px;">____________________</p>
-            <p style="margin-bottom: 5px;">ผู้มีอำนาจลงนาม</p>
-            <p>วันที่ ____/____/____</p>
-        </div>
-    </div>
-    <div class="col-2"></div>
-</div>
+                            <!-- Signatures -->
+                            <div class="row mt-4">
+                                <div class="col-6">
+                                    <div class="text-center signature-section">
+                                        <p>____________________</p>
+                                        <p>ตรวจสอบโดย</p>
+                                        <p>วันที่ / Date: ____________________</p>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center signature-section">
+                                        <p>____________________</p>
+                                        <p>ผู้มีอำนาจลงนาม</p>
+                                        <p>วันที่ / Date: ____________________</p>
+                                    </div>
+                                </div>
+                            </div>
                     </div>
                 </t>
             </t>
