@@ -1,132 +1,195 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- สร้าง Template ใหม่ -->
-   <template id="report_commercial_invoice_document">
-    <t t-call="web.html_container">
-        <t t-foreach="docs" t-as="o">
-            <t t-call="web.external_layout">
-                <div class="page">
-                    <!-- Header with Logo and Company Info -->
-                    <div class="row">
-                        <div class="col-6">
-                            <p><strong>MOGEN CO.,LTD.</strong></p>
-                            <p>9 Moo 12 Beungkhumproy, lumlukka, Pathumthani 12150 THAILAND, E-mail contact@mogen.co.th</p>
-                            <p><strong>MOGEN Customer Service Tel.:</strong> +66 2150 9709-13</p>
-                            <p><strong>Bangkok Service Center Tel.:</strong> +66 2789 9980 Ext #801,802</p>
+    <template id="report_commercial_invoice_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <style>
+                        .page {
+                            font-family: Arial, sans-serif;
+                            font-size: 14px;
+                            line-height: 1.4;
+                        }
+                        .company-header {
+                            margin-bottom: 20px;
+                        }
+                        .info-container {
+                            display: flex;
+                            margin-bottom: 20px;
+                        }
+                        .info-left {
+                            width: 48%;
+                            margin-right: 2%;
+                        }
+                        .info-right {
+                            width: 48%;
+                            margin-left: 2%;
+                        }
+                        .info-box {
+                            border: 1px solid #ddd;
+                            padding: 15px;
+                            margin-bottom: 15px;
+                            border-radius: 4px;
+                            background-color: #f9f9f9;
+                        }
+                        .info-box strong {
+                            color: #444;
+                        }
+                        .table-bordered {
+                            border: 1px solid #dee2e6;
+                        }
+                        .table-bordered th,
+                        .table-bordered td {
+                            border: 1px solid #dee2e6;
+                            padding: 8px;
+                        }
+                        .table thead th {
+                            background-color: #f8f9fa;
+                            border-bottom: 2px solid #dee2e6;
+                        }
+                        .signature-line {
+                            border-top: 1px solid black;
+                            display: inline-block;
+                            width: 200px;
+                            margin-bottom: 5px;
+                        }
+                        .totals-table td {
+                            padding: 8px;
+                        }
+                        .amount-in-words {
+                            font-style: italic;
+                            color: #666;
+                        }
+                    </style>
+
+                    <div class="page">
+                        <!-- Header with Logo and Company Info -->
+                        <div class="row company-header">
+                            <div class="col-6">
+                                <h4 style="color: #2c3e50;">MOGEN CO.,LTD.</h4>
+                                <p style="margin-bottom: 5px;">9 Moo 12 Beungkhumproy, lumlukka, Pathumthani 12150 THAILAND</p>
+                                <p style="margin-bottom: 5px;">E-mail: contact@mogen.co.th</p>
+                                <p style="margin-bottom: 5px;"><strong>MOGEN Customer Service Tel.:</strong> +66 2150 9709-13</p>
+                                <p style="margin-bottom: 5px;"><strong>Bangkok Service Center Tel.:</strong> +66 2789 9980 Ext #801,802</p>
+                            </div>
+                            <div class="col-6 text-right">
+                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="max-height: 70px;" alt="Company Logo"/>
+                                <h3 class="mt-2" style="color: #2c3e50;">Commercial Invoice</h3>
+                                <div class="mt-2">
+                                    <p><strong>No.: </strong><span t-field="o.commercial_invoice_number"/></p>
+                                    <p><strong>Date: </strong><span t-field="o.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/></p>
+                                    <p><strong>Tax Payer ID: </strong><span t-field="o.company_id.vat"/></p>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-6 text-right">
-                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="max-height: 50px;"/>
-                            <h2>Commercial Invoice</h2>
-                            <strong>No.: </strong><span t-field="o.commercial_invoice_number"/>
+                        <!-- Regrouped Information Sections -->
+                        <div class="row mb-4">
+                            <!-- Left Column: Combined Shipper and Consignee -->
+                            <div class="col-6">
+                                <div class="border p-3" style="height: 100%;">
+                                    <div class="mb-4">
+                                        <strong>Shipper:</strong>
+                                        <div t-field="o.company_id.partner_id" 
+                                             t-options='{"widget": "contact", "fields": ["address", "phone", "email"], "no_marker": True}'/>
+                                    </div>
+                                    <div>
+                                        <strong>Consignee:</strong>
+                                        <div t-field="o.partner_id"
+                                             t-options='{"widget": "contact", "fields": ["address", "phone", "email"], "no_marker": True}'/>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <strong>Date: </strong><span t-field="o.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
-
-                            <strong>Tax Payer ID: </strong><span t-field="o.company_id.vat"/>
+                            <!-- Right Column: Combined Additional Info and Bank Info -->
+                            <div class="col-6">
+                                <div class="border p-3" style="height: 100%;">
+                                    <div class="mb-4">
+                                        <p><strong>Inco-Terms: </strong><span t-field="o.incoterms_id.name"/></p>
+                                        <p><strong>Loading Date: </strong><span t-field="o.loading_date"/></p>
+                                        <p><strong>Shipping Mark: </strong><span t-field="o.shipping_mark"/></p>
+                                        <p><strong>Shipping By: </strong><span t-field="o.shipping_by"/></p>
+                                    </div>
+                                    <div>
+                                        <strong>Bank Info:</strong>
+                                        <div t-field="o.bank_info"/>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-
-                    <!-- Shipper and Consignee Information -->
-                    <div class="row mt-4">
-                        <div class="col-6">
-                            <strong>Shipper:</strong>
-                            <div t-field="o.company_id.partner_id" 
-                                 t-options='{"widget": "contact", "fields": ["address"], "no_marker": True}'/>
-                        </div>
-                        <div class="col-6">
-                            <strong>Consignee:</strong>
-                            <div t-field="o.partner_id"
-                                 t-options='{"widget": "contact", "fields": ["address"], "no_marker": True}'/>
-                        </div>
-                    </div>
-
-                    <!-- Additional Information -->
-                    <div class="row mt-3">
-                        <div class="col-6">
-                            <strong>Inco-Terms: </strong><span t-field="o.incoterms_id.name"/>
-
-                            <strong>Loading Date: </strong><span t-field="o.loading_date"/>
-
-                            <strong>Shipping Mark: </strong><span t-field="o.shipping_mark"/>
-
-                            <strong>Shipping By: </strong><span t-field="o.shipping_by"/>
-                        </div>
-                        <div class="col-6">
-                            <strong>Bank Info:</strong>
-                            <div t-field="o.bank_info"/>
-                        </div>
-                    </div>
-
-                    <!-- Invoice Lines -->
-                    <table class="table table-sm mt-4">
-                        <thead>
-                            <tr>
-                                <th>Description</th>
-                                <th class="text-right">Quantity</th>
-                                <th class="text-right">Unit Price</th>
-                                <th class="text-right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr t-foreach="o.invoice_line_ids" t-as="line">
-                                <td><span t-field="line.product_id.name"/></td>
-                                <td class="text-right">
-                                    <span t-field="line.quantity"/>
-                                </td>
-                                <td class="text-right">
-                                    <span t-field="line.price_unit"/>
-                                </td>
-                                <td class="text-right">
-                                    <span t-field="line.price_subtotal"/>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <!-- Totals -->
-                    <div class="row">
-                        <div class="col-12">
-                            <p><strong>Said: </strong><span t-field="o.amount_text"/></p>
-                        </div>
-                        <div class="col-6 offset-6">
-                            <table class="table table-sm">
+                        <!-- Invoice Lines -->
+                        <table class="table table-sm table-bordered">
+                            <thead>
                                 <tr>
-                                    <td><strong>Subtotal</strong></td>
+                                    <th class="text-center" style="width: 5%">No.</th>
+                                    <th style="width: 45%">Description</th>
+                                    <th class="text-right" style="width: 15%">Quantity</th>
+                                    <th class="text-right" style="width: 15%">Unit Price</th>
+                                    <th class="text-right" style="width: 20%">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.invoice_line_ids" t-as="line">
+                                    <td class="text-center">
+                                        <span t-esc="line_index + 1"/>
+                                    </td>
+                                    <td><span t-field="line.product_id.name"/></td>
                                     <td class="text-right">
-                                        <span t-field="o.amount_untaxed"/>
+                                        <span t-field="line.quantity"/>
+                                        <span t-field="line.product_uom_id"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                     </td>
                                 </tr>
-                                <tr>
-                                    <td><strong>Tax</strong></td>
-                                    <td class="text-right">
-                                        <span t-field="o.amount_tax"/>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Total</strong></td>
-                                    <td class="text-right">
-                                        <span t-field="o.amount_total"/>
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
+                            </tbody>
+                        </table>
 
-                    <!-- Signatures -->
-                    <div class="row mt-4">
-                        <div class="col-6 text-center">
-                            <p>____________________</p>
-                            <p>Processed By
-(Document Administrator)</p>
+                        <!-- Totals -->
+                       <div class="row">
+                            <div class="col-7">
+                                <p class="amount-in-words"><strong>Amount in Words: </strong><span t-field="o.amount_text"/></p>
+                            </div>
+                            <div class="col-5">
+                                <table class="table table-sm totals-table">
+                                    <tr>
+                                        <td><strong>Subtotal</strong></td>
+                                        <td class="text-right">
+                                            <span t-field="o.amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Tax</strong></td>
+                                        <td class="text-right">
+                                            <span t-field="o.amount_tax" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-top">
+                                        <td><strong>Total</strong></td>
+                                        <td class="text-right">
+                                            <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
                         </div>
-                        <div class="col-6 text-center">
-                            <p>____________________</p>
-                            <p>Approved By
-(Managing Director)</p>
+
+                        <!-- Signatures -->
+                        <div class="row mt-5">
+                            <div class="col-6 text-center">
+                                <div class="signature-line"></div>
+                                <p>Processed By<br/>(Document Administrator)</p>
+                            </div>
+                            <div class="col-6 text-center">
+                                <div class="signature-line"></div>
+                                <p>Approved By<br/>(Managing Director)</p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </t>
             </t>
         </t>
-    </t>
-</template>
+    </template>
 </odoo>
