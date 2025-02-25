@@ -17,7 +17,7 @@
 
     <!-- Report Action remains the same -->
     <record id="action_report_credit_note" model="ir.actions.report">
-        <field name="name">Credit Note Report</field>
+        <field name="name">ใบลดหนี้ / Credit Note Report</field>
         <field name="model">account.move</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_credit_note.report_credit_note_document</field>

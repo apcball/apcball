@@ -16,7 +16,7 @@
 
     <!-- Assign Paper Format to Report -->
     <record id="action_report_saleorder_buz" model="ir.actions.report">
-        <field name="name">Quotation / Order</field>
+        <field name="name">ใบเสนอราคา / Quotation Order</field>
         <field name="model">sale.order</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_custom_quotation.report_saleorder_buz</field>

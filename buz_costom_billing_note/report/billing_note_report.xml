@@ -17,7 +17,7 @@
 
     <!-- Define Report Action -->
     <record id="action_report_billing_note" model="ir.actions.report">
-        <field name="name">Billing Note</field>
+        <field name="name">ใบวางบิล / Billing Note</field>
         <field name="model">billing.note</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_costom_billing_note.report_billing_note</field>

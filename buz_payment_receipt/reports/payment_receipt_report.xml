@@ -17,7 +17,7 @@
 
     <!-- Create our new report -->
     <record id="action_report_payment_receipt_modern" model="ir.actions.report">
-        <field name="name">Payment Receipt</field>
+        <field name="name">ใบเสร็จรับเงิน / Payment Receipt</field>
         <field name="model">account.payment</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_payment_receipt.report_payment_receipt_modern</field>
