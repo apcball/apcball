@@ -15,132 +15,162 @@
         <field name="dpi">90</field>
     </record>
 
-    <!-- Assign Paper Format to Report -->
+    <!-- Report Action -->
     <record id="action_report_delivery_custom" model="ir.actions.report">
-        <field name="name">Receipt / Delivery Slip</field>
+        <field name="name">Receipt / Delivery</field>
         <field name="model">stock.picking</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">buz_delivery_report.report_delivery_document_custom</field>
-        <field name="report_file">buz_delivery_report.report_delivery_document_custom</field>
+        <field name="report_name">buz_delivery_report.report_picking_document_custom</field>
+        <field name="report_file">buz_delivery_report.report_picking_document_custom</field>
         <field name="paperformat_id" ref="paperformat_buz_delivery"/>
-        <field name="print_report_name">'Delivery Slip - %s' % object.name</field>
+        <field name="print_report_name">'%s - %s' % (object.picking_type_id.name, object.name)</field>
         <field name="binding_model_id" ref="stock.model_stock_picking"/>
         <field name="binding_type">report</field>
     </record>
 
     <!-- Main Template -->
-    <template id="report_delivery_document_custom">
+    <template id="report_picking_document_custom">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
                     <div class="page">
-                        <style>
-                            @font-face {
-                                font-family: 'Sarabun';
-                                src: url('/buz_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
-                            }
-                            .page {
-                                font-family: 'Sarabun', sans-serif;
-                                font-size: 20px;
-                                padding: 0;
-                                width: 100%;
-                                height: 100%;
-                                margin: 0;
-                                color: #000000;
-                            }
-                            .company-header {
-                                font-size: 20px;
-                                font-weight: bold;
-                                color: #000000;
-                            }
-                            .company-info {
-                                font-size: 18px;
-                                color: #000000;
-                            }
-                            .doc-title {
-                                font-size: 25px;
-                                font-weight: bold;
-                                color: #000000;
-                            }
-                            .table-header {
-                                font-size: 18px;
-                                font-weight: bold;
-                                background-color: #f8f9fa;
-                                color: #000000;
-                            }
-                            .info-box {
-                                background-color: #f8f9fa !important;
-                                color: black !important;
-                                font-size: 20px !important;
-                                border: 1px solid #000 !important;
-                                padding: 10px;
-                            }
-                            .table-content {
-                                font-size: 18px;
-                                color: #000000;
-                            }
-                            .table-product {
-                                width: 100%;
-                                border-collapse: collapse;
-                                font-size: 20px !important;
-                            }
-                            .table-product th {
-                                border: 1px solid #000;
-                                padding: 8px 10px;
-                                background-color: #f8f9fa;
-                                font-weight: bold;
-                                font-size: 18px !important;
-                                vertical-align: middle;
-                            }
-                            .table-product td {
-                                border: 1px solid #000;
-                                padding: 8px 10px;
-                                font-size: 20px !important;
-                                vertical-align: middle;
-                            }
-                            .table-product .product-code {
-                                font-weight: bold;
-                            }
-                            .table-product .quantity {
-                                text-align: right;
-                            }
-                        </style>
-                        
-                        <!-- Company Info Section -->
-                        <div class="row mb-2">
-                            <div class="col-8">
-                                <div class="company-header mb-1">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
-                                <div class="company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
-                                <div class="company-info">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
-                                <div class="company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
-                            </div>
-                            <div class="col-4 text-end">
-                                <img t-if="doc.company_id.logo" 
-                                     t-att-src="image_data_uri(doc.company_id.logo)" 
-                                     style="width: 150px; height: auto; object-fit: contain;" 
-                                     alt="Company Logo"/>
+            <style>
+              @font-face {
+                font-family: 'Sarabun';
+                src: url('/buz_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
+              }
+              .page {
+                font-family: 'Sarabun', sans-serif;
+                font-size: 20px;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                color: #000000;
+              }
+              .company-header {
+                font-size: 20px;
+                font-weight: bold;
+                color: #000000;
+              }
+              .company-info {
+                font-size: 18px;
+                color: #000000;
+              }
+              .doc-title {
+                font-size: 25px;
+                font-weight: bold;
+                color: #000000;
+              }
+              .table-header {
+                font-size: 18px;
+                font-weight: bold;
+                background-color: #f8f9fa;
+                color: #000000;
+              }
+              .info-box {
+                background-color: #f8f9fa !important;
+                color: black !important;
+                font-size: 20px !important;
+                border: 1px solid #000 !important;
+                padding: 10px;
+              }
+              .table-content {
+                font-size: 18px;
+                color: #000000;
+              }
+              .table-product {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 20px !important;
+              }
+              .table-product th {
+                border: 1px solid #000;
+                padding: 8px 10px;
+                background-color: #f8f9fa;
+                font-weight: bold;
+                font-size: 18px !important;
+                vertical-align: middle;
+              }
+              .table-product td {
+                border: 1px solid #000;
+                padding: 8px 10px;
+                font-size: 20px !important;
+                vertical-align: middle;
+              }
+              .table-product .product-code {
+                font-weight: bold;
+              }
+              .table-product .quantity {
+                text-align: right;
+              }
+            </style>
+
+            <!-- Company Info Section -->
+            <div class="row mb-2">
+              <div class="col-8">
+                <div class="company-header mb-1">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                <div class="company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                <div class="company-info">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
+                <div class="company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+              </div>
+              <div class="col-4 text-end">
+                <img t-if="doc.company_id.logo" 
+                     t-att-src="image_data_uri(doc.company_id.logo)" 
+                     style="width: 150px; height: auto; object-fit: contain;" 
+                     alt="Company Logo"/>
+              </div>
+            </div>
+            
+                        <!-- Document Title -->
+                        <div class="row mb-3">
+                            <div class="col-12 text-center">
+                                <div class="doc-title">
+                                    <t t-if="doc.picking_type_id.code == 'internal'">
+                                        ใบโอนสินค้า / Transfer Slip
+                                    </t>
+                                    <t t-elif="doc.picking_type_id.code == 'incoming'">
+                                        ใบรับสินค้า / Receipt Slip
+                                    </t>
+                                    <t t-else="">
+                                        ใบส่งสินค้า / Delivery Slip
+                                    </t>
+                                </div>
                             </div>
                         </div>
-                        
-                        <!-- Document Title: แสดงแตกต่างกันกรณี incoming กับ delivery -->
-                        <t t-if="doc.picking_type_id.code == 'incoming'">
+
+                        <!-- Document Info Section -->
+                        <t t-if="doc.picking_type_id.code == 'internal'">
+                            <!-- Internal Transfer Info -->
                             <div class="row mb-3">
-                                <div class="col-12 text-center">
-                                    <div class="doc-title">ใบรับสินค้า / Receipt Slip</div>
+                                <div class="col-6">
+                                    <div class="info-box" style="height: 180px;">
+                                        <div class="mb-2">
+                                            <strong style="width:35%; display:inline-block;">ต้นทาง / From:</strong>
+                                            <span t-field="doc.location_id.name"/>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong style="width:35%; display:inline-block;">ที่อยู่ / Address:</strong>
+                                            <span t-field="doc.location_id.complete_address"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="info-box" style="height: 180px;">
+                                        <div class="mb-2">
+                                            <strong style="width:35%; display:inline-block;">ปลายทาง / To:</strong>
+                                            <span t-field="doc.location_dest_id.name"/>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong style="width:35%; display:inline-block;">วันที่ / Date:</strong>
+                                            <span t-field="doc.date" t-options='{"widget": "date"}'/>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </t>
-                        <t t-else="">
-                            <div class="row mb-3">
-                                <div class="col-12 text-center">
-                                    <div class="doc-title">ใบส่งสินค้า / Delivery Slip</div>
-                                </div>
-                            </div>
-                        </t>
-                        
-                        <!-- Customer and Document Info -->
-                        <t t-if="doc.picking_type_id.code == 'incoming'">
-                            <!-- สำหรับ Operation Receipt: แสดง Vendor Address กับ Warehouse Address -->
+                        <t t-elif="doc.picking_type_id.code == 'incoming'">
+                            <!-- Receipt Info -->
                             <div class="row mb-3">
                                 <div class="col-6">
                                     <div class="info-box" style="height: 180px;">
@@ -187,7 +217,7 @@
                             </div>
                         </t>
                         <t t-else="">
-                            <!-- สำหรับ Operation Delivery: แสดงข้อมูลแบบเดิม -->
+                            <!-- Delivery Info -->
                             <div class="row mb-3">
                                 <div class="col-6">
                                     <div class="info-box" style="height: 180px;">
@@ -230,220 +260,258 @@
                                 </div>
                             </div>
                         </t>
-                        
-<t t-if="doc.picking_type_id.code == 'incoming'">                       
-<!-- Products Table -->
-<table class="table table-sm table-product" style="border: 1px solid #000;">
-    <thead>
-        <tr class="table-header">
-            <th style="width: 5%">No.<br/>ลำดับ</th>
-            <th style="width: 51%">Product<br/>สินค้า</th>
-            <th style="width: 12%">Ordered<br/>จำนวนสั่ง</th>
-            <th style="width: 12%">Delivered<br/>จำนวนส่ง</th>
-            <th style="width: 20%">Amount<br/>จำนวนเงิน</th>
-        </tr>
-    </thead>
-    <tbody class="table-content">
-        <t t-set="line_number" t-value="1"/>
-        <t t-foreach="doc.move_ids_without_package.sorted(key=lambda m: m.id)" t-as="move">
-            <!-- Get related purchase order line -->
-            <t t-set="po_line" t-value="env['purchase.order.line'].search([
-                ('order_id', '=', doc.purchase_id.id),
-                ('product_id', '=', move.product_id.id)
-            ], limit=1)"/>
-            <tr>
-                <td class="text-center">
-                    <span t-esc="line_number"/>
-                    <t t-set="line_number" t-value="line_number + 1"/>
-                </td>
-                <td>
-                    <span class="product-code">[<span t-field="move.product_id.default_code"/>]</span> 
-                    <span t-field="move.product_id.name"/>
-                </td>
-                <td class="quantity">
-                    <span t-field="move.product_uom_qty"/> <span t-field="move.product_uom.name"/>
-                </td>
-                <td class="quantity">
-                    <t t-set="delivered_qty" t-value="sum(ml.quantity for ml in move.move_line_ids)"/>
-                    <span t-esc="delivered_qty"/> <span t-field="move.product_uom.name"/>
-                </td>
-                <td class="text-right">
-                    <t t-if="po_line">
-                        <t t-set="line_amount" t-value="delivered_qty * po_line.price_unit"/>
-                        <span t-esc="line_amount" 
-                              t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
-                    </t>
-                </td>
-            </tr>
-        </t>
-    </tbody>
-</table>
 
-<!-- Total Section -->
-<div class="row mt-3">
-    <div class="col-7">
-        <div class="info-box">
-            <div class="row">
-                <div class="col-12">
-                    <strong>Total Items / จำนวนรายการรวม: </strong>
-                    <span t-esc="len(doc.move_ids_without_package)"/> รายการ
-                </div>
-                <div class="col-12">
-                    <strong>Total Quantity / จำนวนชิ้นรวม: </strong>
-                    <t t-set="total_delivered" t-value="sum(sum(ml.quantity for ml in move.move_line_ids) for move in doc.move_ids_without_package)"/>
-                    <span t-esc="'%.0f' % total_delivered"/> ชิ้น
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-5">
-        <div class="info-box">
-            <!-- Calculate totals from PO -->
-            <t t-set="subtotal" t-value="sum((sum(ml.quantity for ml in move.move_line_ids) * 
-                env['purchase.order.line'].search([
-                    ('order_id', '=', doc.purchase_id.id),
-                    ('product_id', '=', move.product_id.id)
-                ], limit=1).price_unit) for move in doc.move_ids_without_package)"/>
-            <t t-set="vat_amount" t-value="subtotal * 0.07"/>
-            <t t-set="total_amount" t-value="subtotal + vat_amount"/>
-            
-            <!-- Display amounts -->
-            <div class="row">
-                <div class="col-6">
-                    <strong>จำนวนเงิน / Subtotal:</strong>
-                </div>
-                <div class="col-6 text-right">
-                    <span t-esc="subtotal" 
-                          t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-6">
-                    <strong>ภาษีมูลค่าเพิ่ม / VAT 7%:</strong>
-                </div>
-                <div class="col-6 text-right">
-                    <span t-esc="vat_amount" 
-                          t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
-                </div>
-            </div>
-            <div class="row" style="border-top: 1px solid #000;">
-                <div class="col-6">
-                    <strong>จำนวนเงินรวม / Total:</strong>
-                </div>
-                <div class="col-6 text-right">
-                    <strong>
-                        <span t-esc="total_amount" 
-                              t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
-                    </strong>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-</t>     
-                    <t t-else="">                         
                         <!-- Products Table -->
-                        <table class="table table-sm table-product" style="border: 1px solid #000;">
-                            <thead>
-                                <tr class="table-header">
-                                    <th style="width: 5%">No.<br/>ลำดับ</th>
-                                    <th style="width: 65%">Product<br/>สินค้า</th>
-                                    <th style="width: 15%">Ordered<br/>จำนวนสั่ง</th>
-                                    <th style="width: 15%">Delivered<br/>จำนวนส่ง</th>
-                                </tr>
-                            </thead>
-                            <tbody class="table-content">
-                                <t t-set="line_number" t-value="1"/>
-                                <t t-foreach="doc.move_ids_without_package.sorted(key=lambda m: m.id)" t-as="move">
-                                    <tr>
-                                        <td class="text-center">
-                                            <span t-esc="line_number"/>
-                                            <t t-set="line_number" t-value="line_number + 1"/>
-                                        </td>
-                                        <td>
-                                            <span class="product-code">[<span t-field="move.product_id.default_code"/>]</span>
-                                            <span t-field="move.product_id.name"/>
-                                        </td>
-                                        <td class="quantity">
-                                            <span t-field="move.product_uom_qty"/> <span t-field="move.product_uom.name"/>
-                                        </td>
-                                        <td class="quantity">
-                                            <t t-set="delivered_qty" t-value="sum(ml.quantity for ml in move.move_line_ids)"/>
-                                            <span t-esc="delivered_qty"/> <span t-field="move.product_uom.name"/>
-                                        </td>
+                        <t t-if="doc.picking_type_id.code == 'incoming'">
+                            <!-- Receipt Products Table with Amount -->
+                            <table class="table table-sm table-product" style="border: 1px solid #000;">
+                                <thead>
+                                    <tr class="table-header">
+                                        <th style="width: 5%">No.<br/>ลำดับ</th>
+                                        <th style="width: 51%">Product<br/>สินค้า</th>
+                                        <th style="width: 12%">Ordered<br/>จำนวนสั่ง</th>
+                                        <th style="width: 12%">Delivered<br/>จำนวนส่ง</th>
+                                        <th style="width: 20%">Amount<br/>จำนวนเงิน</th>
                                     </tr>
-                                </t>
-                            </tbody>
-                        </table>
-                        
+                                </thead>
+                                <tbody class="table-content">
+                                    <t t-set="line_number" t-value="1"/>
+                                    <t t-foreach="doc.move_ids_without_package.sorted(key=lambda m: m.id)" t-as="move">
+                                        <t t-set="po_line" t-value="env['purchase.order.line'].search([
+                                            ('order_id', '=', doc.purchase_id.id),
+                                            ('product_id', '=', move.product_id.id)
+                                        ], limit=1)"/>
+                                        <tr>
+                                            <td class="text-center">
+                                                <span t-esc="line_number"/>
+                                                <t t-set="line_number" t-value="line_number + 1"/>
+                                            </td>
+                                            <td>
+                                                <span class="product-code">[<span t-field="move.product_id.default_code"/>]</span>
+                                                <span t-field="move.product_id.name"/>
+                                            </td>
+                                            <td class="quantity">
+                                                <span t-field="move.product_uom_qty"/>
+                                                <span t-field="move.product_uom.name"/>
+                                            </td>
+                                            <td class="quantity">
+                                                <t t-set="delivered_qty" t-value="sum(ml.quantity for ml in move.move_line_ids)"/>
+                                                <span t-esc="delivered_qty"/>
+                                                <span t-field="move.product_uom.name"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <t t-if="po_line">
+                                                    <t t-set="line_amount" t-value="delivered_qty * po_line.price_unit"/>
+                                                    <span t-esc="line_amount" t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </t>
+                        <t t-else="">
+                            <!-- Transfer/Delivery Products Table without Amount -->
+                            <table class="table table-sm table-product" style="border: 1px solid #000;">
+                                <thead>
+                                    <tr class="table-header">
+                                        <th style="width: 5%">No.<br/>ลำดับ</th>
+                                        <th style="width: 65%">Product<br/>สินค้า</th>
+                                        <th style="width: 15%">Ordered<br/>จำนวนสั่ง</th>
+                                        <th style="width: 15%">Delivered<br/>จำนวนส่ง</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="table-content">
+                                    <t t-set="line_number" t-value="1"/>
+                                    <t t-foreach="doc.move_ids_without_package.sorted(key=lambda m: m.id)" t-as="move">
+                                        <tr>
+                                            <td class="text-center">
+                                                <span t-esc="line_number"/>
+                                                <t t-set="line_number" t-value="line_number + 1"/>
+                                            </td>
+                                            <td>
+                                                <span class="product-code">[<span t-field="move.product_id.default_code"/>]</span>
+                                                <span t-field="move.product_id.name"/>
+                                            </td>
+                                            <td class="quantity">
+                                                <span t-field="move.product_uom_qty"/>
+                                                <span t-field="move.product_uom.name"/>
+                                            </td>
+                                            <td class="quantity">
+                                                <t t-set="delivered_qty" t-value="sum(ml.quantity for ml in move.move_line_ids)"/>
+                                                <span t-esc="delivered_qty"/>
+                                                <span t-field="move.product_uom.name"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </t>
+
                         <!-- Total Section -->
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <div class="info-box">
-                                    <div class="row">
-                                        <div class="col-6">
-                                            <strong>Total Items / จำนวนรายการรวม: </strong>
-                                            <span t-esc="len(doc.move_ids_without_package)"/> รายการ
+                        <t t-if="doc.picking_type_id.code == 'incoming'">
+                            <!-- Receipt Total with Amount -->
+                            <div class="row mt-3">
+                                <div class="col-7">
+                                    <div class="info-box">
+                                        <div class="row">
+                                            <div class="col-12">
+                                                <strong>Total Items / จำนวนรายการรวม: </strong>
+                                                <span t-esc="len(doc.move_ids_without_package)"/> รายการ
+                                            </div>
+                                            <div class="col-12">
+                                                <strong>Total Quantity / จำนวนชิ้นรวม: </strong>
+                                                <t t-set="total_delivered" t-value="sum(sum(ml.quantity for ml in move.move_line_ids) for move in doc.move_ids_without_package)"/>
+                                                <span t-esc="'%.0f' % total_delivered"/> ชิ้น
+                                            </div>
                                         </div>
-                                        <div class="col-6 text-right">
-                                            <strong>Total Quantity / จำนวนชิ้นรวม: </strong>
-                                            <t t-set="total_delivered" t-value="sum(sum(ml.quantity for ml in move.move_line_ids) for move in doc.move_ids_without_package)"/>
-                                            <span t-esc="'%.0f' % total_delivered"/> ชิ้น
+                                    </div>
+                                </div>
+                                <div class="col-5">
+                                    <div class="info-box">
+                                        <t t-set="subtotal" t-value="sum((sum(ml.quantity for ml in move.move_line_ids) * 
+                                            env['purchase.order.line'].search([
+                                                ('order_id', '=', doc.purchase_id.id),
+                                                ('product_id', '=', move.product_id.id)
+                                            ], limit=1).price_unit) for move in doc.move_ids_without_package)"/>
+                                        <t t-set="vat_amount" t-value="subtotal * 0.07"/>
+                                        <t t-set="total_amount" t-value="subtotal + vat_amount"/>
+                                        
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>จำนวนเงิน / Subtotal:</strong>
+                                            </div>
+                                            <div class="col-6 text-right">
+                                                <span t-esc="subtotal" t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </t>      
-                        
-                        <t t-if="doc.picking_type_id.code != 'incoming'">
-                            <!-- Signatures (เฉพาะ Operation Delivery) -->
-                            <div class="row mt-4">
-                                <div class="col-4">
-                                    <div class="text-center signature-section">
-                                        <p>____________________</p>
-                                        <p>ผู้ส่งสินค้า / Delivered By</p>
-                                        <p>วันที่ / Date: ____________________</p>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="text-center signature-section">
-                                        <p>____________________</p>
-                                        <p>ผู้ตรวจสอบ / Checked By</p>
-                                        <p>วันที่ / Date: ____________________</p>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="text-center signature-section">
-                                        <p>____________________</p>
-                                        <p>ผู้รับสินค้า / Received By</p>
-                                        <p>วันที่ / Date: ____________________</p>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>ภาษีมูลค่าเพิ่ม / VAT 7%:</strong>
+                                            </div>
+                                            <div class="col-6 text-right">
+                                                <span t-esc="vat_amount" t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
+                                            </div>
+                                        </div>
+                                        <div class="row" style="border-top: 1px solid #000;">
+                                            <div class="col-6">
+                                                <strong>จำนวนเงินรวม / Total:</strong>
+                                            </div>
+                                            <div class="col-6 text-right">
+                                                <strong>
+                                                    <span t-esc="total_amount" t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
+                                                </strong>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </t>
                         <t t-else="">
-                              <!-- Signatures (เฉพาะ Operation Delivery) -->
-                            <div class="row mt-4">
-                                <div class="col-6">
-                                    <div class="text-center signature-section">
-                                        <p>____________________</p>
-                                        <p>ผู้รับสินค้า / Received By</p>
-                                        <p>วันที่ / Date: ____________________</p>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="text-center signature-section">
-                                        <p>____________________</p>
-                                        <p>ผู้อนุมัติ / Approved By</p>
-                                        <p>วันที่ / Date: ____________________</p>
+                            <!-- Transfer/Delivery Total without Amount -->
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="info-box">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>Total Items / จำนวนรายการรวม: </strong>
+                                                <span t-esc="len(doc.move_ids_without_package)"/> รายการ
+                                            </div>
+                                            <div class="col-6 text-right">
+                                                <strong>Total Quantity / จำนวนชิ้นรวม: </strong>
+                                                <t t-set="total_delivered" t-value="sum(sum(ml.quantity for ml in move.move_line_ids) for move in doc.move_ids_without_package)"/>
+                                                <span t-esc="'%.0f' % total_delivered"/> ชิ้น
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </t>    
+                        </t>
+
+                        <!-- Signatures -->
+                        <t t-if="doc.picking_type_id.code == 'internal'">
+                            <!-- Transfer Signatures -->
+                            <div class="row mt-4">
+                                <div class="col-4">
+                                    <div class="text-center signature-section">
+                                        <p>________________________</p>
+                                        <p>ผู้โอน / Transferred By</p>
+                                        <p>วันที่ / Date: ___________</p>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center signature-section">
+                                        <p>________________________</p>
+                                        <p>ผู้ตรวจสอบ / Checked By</p>
+                                        <p>วันที่ / Date: ___________</p>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center signature-section">
+                                        <p>________________________</p>
+                                        <p>ผู้รับ / Received By</p>
+                                        <p>วันที่ / Date: ___________</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                        <t t-elif="doc.picking_type_id.code == 'incoming'">
+                            <!-- Receipt Signatures -->
+                            <div class="row mt-4">
+                                <div class="col-4">
+                                    <div class="text-center signature-section">
+                                        <p>________________________</p>
+                                        <p>ผู้รับสินค้า / Received By</p>
+                                        <p>วันที่ / Date: ___________</p>
+                                    </div>
+                                </div>
+                                 <div class="col-4">
+                                    <div class="text-center signature-section">
+                                        <p>________________________</p>
+                                        <p>ผู้ตรวจสอบ / Checked By</p>
+                                        <p>วันที่ / Date: ___________</p>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center signature-section">
+                                        <p>________________________</p>
+                                        <p>ผู้อนุมัติ / Approved By</p>
+                                        <p>วันที่ / Date: ___________</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <!-- Delivery Signatures -->
+                            <div class="row mt-4">
+                                <div class="col-4">
+                                    <div class="text-center signature-section">
+                                        <p>________________________</p>
+                                        <p>ผู้ส่งสินค้า / Delivered By</p>
+                                        <p>วันที่ / Date: ___________</p>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center signature-section">
+                                        <p>________________________</p>
+                                        <p>ผู้ตรวจสอบ / Checked By</p>
+                                        <p>วันที่ / Date: ___________</p>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center signature-section">
+                                        <p>________________________</p>
+                                        <p>ผู้รับสินค้า / Received By</p>
+                                        <p>วันที่ / Date: ___________</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+
                     </div>
                 </t>
             </t>
         </t>
     </template>
+
 </odoo>
