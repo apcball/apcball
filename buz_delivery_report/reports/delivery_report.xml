@@ -141,7 +141,7 @@
                 <span t-field="doc.partner_id.name"/>
             </div>
             <div class="mb-2">
-                <strong style="width: 35%; display: inline-block;">ที่อยู่ / Address:</strong>
+                <strong style="width: 35%; display: inline-block;">ที่อยู่จัดส่ง / Address:</strong>
                 <span t-field="doc.partner_id.street"/> <span t-field="doc.partner_id.street2"/>
                 <br/>
                 <span t-field="doc.partner_id.city"/> <span t-field="doc.partner_id.state_id.name"/>

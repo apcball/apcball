@@ -18,7 +18,7 @@
 
         <!-- Define Report Action -->
         <record id="action_report_journal_entry" model="ir.actions.report">
-            <field name="name">Journal Entry</field>
+            <field name="name">สมุดรายวัน / Journal Entry</field>
             <field name="model">account.move</field>
             <field name="report_type">qweb-pdf</field>
             <field name="report_name">bi_print_journal_entries.journal_entry_report_template_id</field>
