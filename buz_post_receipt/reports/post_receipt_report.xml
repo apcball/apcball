@@ -18,7 +18,7 @@
 
     <!-- Report Action -->
     <record id="action_report_post_receipt" model="ir.actions.report">
-        <field name="name">Post Receipt</field>
+        <field name="name">ใบ Post ค่าใช้จ่าย / Post Receipt</field>
         <field name="model">account.move</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_post_receipt.report_post_receipt</field>
