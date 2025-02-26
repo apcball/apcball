@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_report_purchase_order_custom" model="ir.actions.report">
-        <field name="name">ใบวางบิล / Purchase Order</field>
+        <field name="name">ใบสั่งซื้อ / Purchase Order</field>
         <field name="model">purchase.order</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_custom_po.report_purchaseorder_document_custom</field>

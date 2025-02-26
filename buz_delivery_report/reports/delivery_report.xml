@@ -17,7 +17,7 @@
 
     <!-- Report Action -->
     <record id="action_report_delivery_custom" model="ir.actions.report">
-        <field name="name">Receipt / Delivery</field>
+        <field name="name">Receipt / Transfer / Delivery</field>
         <field name="model">stock.picking</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_delivery_report.report_picking_document_custom</field>
