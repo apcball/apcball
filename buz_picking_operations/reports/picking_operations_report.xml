@@ -9,8 +9,8 @@
             <field name="orientation">Portrait</field>
             <field name="margin_top">10</field>
             <field name="margin_bottom">10</field>
-            <field name="margin_left">4</field>
-            <field name="margin_right">4</field>
+            <field name="margin_left">6</field>
+            <field name="margin_right">6</field>
             <field name="header_line" eval="False"/>
             <field name="header_spacing">0</field>
             <field name="dpi">90</field>
@@ -37,7 +37,7 @@
                     }
                      /* Information box styles */
                     .info-box {
-                        background-color: white !important;
+                        background-color: #f8f9fa !important;
                         color: black !important;
                         font-size: 20px !important;
                         border: 1px solid #000 !important;
@@ -45,16 +45,33 @@
                     }
                     /* Table styles */
                     .table {
+                        width: 100%;
                         color: black !important;
                         font-size: 20px !important;
+                        border-collapse: collapse !important;
                     }
-                    .table th {
-                        background-color: #f8f9fa !important;
-                        color: black !important;
+    
+                    .table th, .table td {
                         border: 1px solid #000 !important;
+                        padding: 4px 6px !important;
+                        height: 40px !important;
+                        vertical-align: middle !important;
                     }
-                    .table td {
-                        color: black !important;
+    
+                    .table thead th {
+                        background-color: #f8f9fa !important;
+                        font-weight: bold !important;
+                        border-bottom: 2px solid #000 !important;
+                    }
+    
+                    .table-container {
+                        height: 590px;
+                        margin-top: 20px;
+                        padding: 0;
+                        overflow: hidden;
+                    }
+    
+                    .empty-row td {
                         border: 1px solid #000 !important;
                     }
                     /* Header and text styles */
@@ -105,10 +122,14 @@
 <!-- Header Information -->
 <div class="row mt-3">
     <div class="col-6">
-        <div class="info-box">
+        <div class="info-box" style="height: 180px;">
             <div class="mb-2">
                 <strong style="width: 35%; display: inline-block;">เลขที่เอกสาร:</strong>
                 <span t-field="o.name"/>
+            </div>
+             <div class="mb-2">
+                <strong style="width: 35%; display: inline-block;">เอกสารอ้างอิง:</strong>
+                <span t-field="o.origin"/>
             </div>
             <div class="mb-2">
                 <strong style="width: 35%; display: inline-block;">วันที่:</strong>
@@ -118,10 +139,11 @@
                 <strong style="width: 35%; display: inline-block;">ประเภทการดำเนินการ:</strong>
                 <span t-field="o.picking_type_id"/>
             </div>
+           
         </div>
     </div>
     <div class="col-6">
-        <div class="info-box">
+        <div class="info-box" style="height: 180px;">
             <div class="mb-2">
                 <strong style="width: 35%; display: inline-block;">ต้นทาง:</strong>
                 <span t-field="o.location_id"/>
@@ -139,45 +161,65 @@
 </div>
 
                             <!-- Products Table -->
-<table class="table table-sm table-bordered mt-4">
-    <thead>
-        <tr>
-            <th style="border: 1px solid #000; padding: 4px 6px; width: 5%">ลำดับ</th>
-            <th style="border: 1px solid #000; padding: 4px 6px; width: 30%">รายการสินค้า</th>
-            <th style="border: 1px solid #000; padding: 4px 6px; width: 10%">จำนวน</th>
-            <th style="border: 1px solid #000; padding: 4px 6px; width: 10%">หน่วย</th>
-            <th style="border: 1px solid #000; padding: 4px 6px; width: 15%">Lot/Serial</th>
-            <th style="border: 1px solid #000; padding: 4px 6px; width: 15%">ตำแหน่งต้นทาง</th>
-            <th style="border: 1px solid #000; padding: 4px 6px; width: 15%">ตำแหน่งปลายทาง</th>
-
-        </tr>
-    </thead>
-    <tbody>
-        <t t-set="line_number" t-value="1"/>
-        <t t-foreach="o.move_ids" t-as="move">
-            <tr>
-                <td class="text-center">
-                    <span t-esc="line_number"/>
-                </td>
-                <td><span t-field="move.product_id"/></td>
-                <td class="text-center"><span t-field="move.product_uom_qty"/></td>
-                <td class="text-center"><span t-field="move.product_uom"/></td>
-                <td class="text-center"><span t-field="move.lot_ids"/></td>
-                <td><span t-field="move.location_id"/></td>
-                <td><span t-field="move.location_dest_id"/></td>
+<div class="table-container">
+    <table class="table table-sm">
+        <thead>
+            <tr class="header-row">
+                <th style="width: 5%">ลำดับ</th>
+                <th style="width: 10%">รหัสสินค้า</th>
+                <th style="width: 40%">รายการสินค้า</th>
+                <th style="width: 10%">จำนวน</th>
+                <th style="width: 15%">Lot/Serial</th>
+                <th style="width: 10%">ตำแหน่งต้นทาง</th>
+                <th style="width: 10%">ตำแหน่งปลายทาง</th>
             </tr>
-            <t t-set="line_number" t-value="line_number + 1"/>
-        </t>
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            <t t-set="line_number" t-value="1"/>
+            <t t-set="total_qty" t-value="0"/>
+            <t t-foreach="o.move_ids" t-as="move">
+                <tr class="data-row">
+                    <td style="text-align: center;"><span t-esc="line_number"/></td>
+                    <td><span t-field="move.product_id.default_code"/></td>
+                    <td><span t-field="move.product_id"/></td>
+                    <td style="text-align: center;">
+                        <t t-set="move_qty" t-value="move.product_uom_qty"/>
+                        <t t-set="total_qty" t-value="total_qty + move_qty"/>
+                        <span t-esc="'%.0f' % move_qty"/>
+                        <span t-field="move.product_uom.name"/>
+                    </td>
+                    <td style="text-align: center;"><span t-field="move.lot_ids"/></td>
+                    <td><span t-field="move.location_id"/></td>
+                    <td><span t-field="move.location_dest_id"/></td>
+                </tr>
+                <t t-set="line_number" t-value="line_number + 1"/>
+            </t>
+            <t t-foreach="range(max(0, 16 - len(o.move_ids)))" t-as="i">
+                <tr class="empty-row">
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
+            </t>
+        </tbody>
+    </table>
+</div>
 
-                            <!-- Custom Note -->
-                            <div class="row mt-4" t-if="o.custom_note">
-                                <div class="col-12">
-                                    <strong>หมายเหตุ:</strong>
-                                    <p t-field="o.custom_note"/>
-                                </div>
-                            </div>
+<!-- Update the Totals Section -->
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="info-box">
+            <div class="row">
+                <div class="col-6">
+                    <strong>Total Items / จำนวนรายการรวม: </strong>
+                    <span t-esc="len(o.move_ids)"/> รายการ
+                </div>
+                <div class="col-6 text-right">
+                    <strong>Total Quantity / จำนวนชิ้นรวม: </strong>
+                    <span t-esc="'%.0f' % total_qty"/> ชิ้น
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
                             <!-- Signatures -->
                             <div class="row mt-5">
