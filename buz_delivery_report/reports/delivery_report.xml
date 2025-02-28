@@ -202,7 +202,7 @@
                                 <div class="col-6">
                                     <div class="info-box" style="height: 200px;">
                                         <div class="mb-2">
-                                            <strong style="width: 20%; display: inline-block;">วันที่เอกสาร:</strong>
+                                            <strong style="width: 25%; display: inline-block;">วันที่ออกเอกสาร:</strong>
                                             <span t-field="doc.date" t-options='{"widget": "date"}'/>
                                             <span class="ml-4">
                                                 <strong style="width: 20%; display: inline-block;">วันที่จัดส่ง:</strong>
@@ -286,7 +286,8 @@
                                 <thead>
                                     <tr class="table-header">
                                         <th style="width: 5%; text-align: center;">No.<br/>ลำดับ</th>
-                                        <th style="width: 51%; text-align: center;">Product<br/>สินค้า</th>
+                                        <th style="width: 10%; text-align: center;">Code<br/>รหัสสินค้า</th> 
+                                        <th style="width: 41%; text-align: center;">Product<br/>สินค้า</th>
                                         <th style="width: 12%; text-align: center;">Ordered<br/>จำนวนสั่ง</th>
                                         <th style="width: 12%; text-align: center;">Delivered<br/>จำนวนส่ง</th>
                                         <th style="width: 20%; text-align: center;">Amount<br/>จำนวนเงิน</th>
@@ -303,6 +304,9 @@
                                             <td class="text-center">
                                                 <span t-esc="line_number"/>
                                                 <t t-set="line_number" t-value="line_number + 1"/>
+                                            </td>
+                                            <td class="text-center"> 
+                                                <span t-field="move.product_id.default_code"/>
                                             </td>
                                             <td>
                                                 <span class="product-code">[<span t-field="move.product_id.default_code"/>]</span>
