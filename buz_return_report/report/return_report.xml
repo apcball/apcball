@@ -8,8 +8,8 @@
         <field name="orientation">Portrait</field>
         <field name="margin_top">10</field>
         <field name="margin_bottom">10</field>
-        <field name="margin_left">4</field>
-        <field name="margin_right">4</field>
+        <field name="margin_left">6</field>
+        <field name="margin_right">6</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
@@ -171,8 +171,8 @@
                                         <span t-field="doc.date" t-options='{"widget": "date"}'/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">อ้างอิง / Reference:</strong>
-                                        <span t-field="doc.origin"/>
+                                        <strong style="width: 35%; display: inline-block;">เอกสารอ้างอิง:</strong>
+                                        <span t-field="doc.purchase_id.name"/>
                                     </div>
                                     <div class="mb-2">
                                         <strong style="width: 35%; display: inline-block;">วันที่ส่งคืน / Return Date:</strong>
@@ -186,11 +186,11 @@
 <table class="table table-sm table-product" style="border: 1px solid #000;">
     <thead>
         <tr class="table-header">
-            <th style="width: 5%">No.<br/>ลำดับ</th>
-            <th style="width: 51%">Product<br/>สินค้า</th>
-            <th style="width: 12%">Ordered<br/>จำนวนสั่ง</th>
-            <th style="width: 12%">Delivered<br/>จำนวนส่ง</th>
-            <th style="width: 20%">Amount<br/>จำนวนเงิน</th>
+            <th style="width: 5%; text-align: center;">No.<br/>ลำดับ</th>
+            <th style="width: 51%; text-align: center;">Product<br/>สินค้า</th>
+            <th style="width: 12%; text-align: center;">Ordered<br/>จำนวนสั่ง</th>
+            <th style="width: 12%; text-align: center;">Delivered<br/>จำนวนส่ง</th>
+            <th style="width: 20%; text-align: center;">Amount<br/>จำนวนเงิน</th>
         </tr>
     </thead>
     <tbody class="table-content">
@@ -290,6 +290,18 @@
         </div>
     </div>
 </div>
+                        <!-- Note Section -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <strong>หมายเหตุ / Note:</strong>
+                                            <span t-field="doc.note" t-if="doc.note"/>
+                                            <span t-if="not doc.note">-</span>
+                                        </div>
+                                    </div>
+                            </div>
+                        </div>
                         <!-- Signatures -->
                         <div class="row mt-4">
                             <div class="col-4">
