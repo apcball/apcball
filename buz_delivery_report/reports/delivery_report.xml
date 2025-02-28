@@ -122,19 +122,23 @@
               </div>
             </div>
             
-                        <!-- Document Title -->
+                        <!-- Document Title and Number -->
                         <div class="row mb-3">
-                            <div class="col-12 text-center">
-                                <div class="doc-title">
-                                    <t t-if="doc.picking_type_id.code == 'internal'">
-                                        ใบโอนสินค้า / Transfer Slip
-                                    </t>
-                                    <t t-elif="doc.picking_type_id.code == 'incoming'">
-                                        ใบรับสินค้า / Receipt Slip
-                                    </t>
-                                    <t t-else="">
-                                        ใบส่งสินค้า / Delivery Slip
-                                    </t>
+                            <div class="col-12">
+                                <div class="row">
+                                    <div class="col-12 text-center">
+                                        <div class="doc-title">
+                                            <t t-if="doc.picking_type_id.code == 'internal'">
+                                                ใบโอนสินค้า / Transfer Slip
+                                            </t>
+                                            <t t-elif="doc.picking_type_id.code == 'incoming'">
+                                                ใบรับสินค้า / Receipt Slip
+                                            </t>
+                                            <t t-else="">
+                                                ใบส่งสินค้า / Delivery Slip
+                                            </t>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -146,11 +150,11 @@
                                 <div class="col-6">
                                     <div class="info-box" style="height: 180px;">
                                         <div class="mb-2">
-                                            <strong style="width:35%; display:inline-block;">ต้นทาง / From:</strong>
+                                            <strong style="width: 20%; display: inline-block;">ต้นทาง:</strong>
                                             <span t-field="doc.location_id.name"/>
                                         </div>
                                         <div class="mb-2">
-                                            <strong style="width:35%; display:inline-block;">ที่อยู่ / Address:</strong>
+                                            <strong style="width: 20%; display: inline-block;">ที่อยู่:</strong>
                                             <span t-field="doc.location_id.complete_address"/>
                                         </div>
                                     </div>
@@ -158,11 +162,11 @@
                                 <div class="col-6">
                                     <div class="info-box" style="height: 180px;">
                                         <div class="mb-2">
-                                            <strong style="width:35%; display:inline-block;">ปลายทาง / To:</strong>
+                                            <strong style="width: 20%; display: inline-block;">ปลายทาง:</strong>
                                             <span t-field="doc.location_dest_id.name"/>
                                         </div>
                                         <div class="mb-2">
-                                            <strong style="width:35%; display:inline-block;">วันที่ / Date:</strong>
+                                            <strong style="width: 20%; display: inline-block;">วันที่:</strong>
                                             <span t-field="doc.date" t-options='{"widget": "date"}'/>
                                         </div>
                                     </div>
@@ -173,9 +177,9 @@
                             <!-- Receipt Info -->
                             <div class="row mb-3">
                                 <div class="col-6">
-                                    <div class="info-box" style="height: 180px;">
+                                    <div class="info-box" style="height: 200px;">
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">ผู้ขาย / Vendor:</strong>
+                                            <strong style="width: 10%; display: inline-block;">ผู้ขาย:</strong>
                                             <span t-field="doc.partner_id.name"/>
                                         </div>
                                         <div class="mb-2">
@@ -186,32 +190,46 @@
                                             <span t-field="doc.partner_id.zip"/>
                                         </div>
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">โทรศัพท์ / Tel:</strong>
+                                            <strong style="width: 20%; display: inline-block;">โทรศัพท์:</strong>
                                             <span t-field="doc.partner_id.phone"/>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong style="width: 30%; display: inline-block;">เลขประจำตัวผู้เสียภาษี:</strong>
+                                            <span t-field="doc.partner_id.vat"/>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-6">
-                                    <div class="info-box" style="height: 180px;">
+                                    <div class="info-box" style="height: 200px;">
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">เลขที่เอกสาร / No.:</strong>
+                                            <strong style="width: 20%; display: inline-block;">วันที่เอกสาร:</strong>
+                                            <span t-field="doc.date" t-options='{"widget": "date"}'/>
+                                            <span class="ml-4">
+                                                <strong style="width: 20%; display: inline-block;">วันที่จัดส่ง:</strong>
+                                                <span t-field="doc.scheduled_date" t-options='{"widget": "date"}'/> 
+                                            </span>    
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong style="width: 20%; display: inline-block;">เลขที่เอกสาร:</strong>
                                             <span t-field="doc.name"/>
+                                            <span class="ml-4">
+                                                <strong style="width: 20%; display: inline-block;">เลขที่ใบสั่งซื้อ:</strong>
+                                                <span t-field="doc.origin"/>
+                                            </span>
                                         </div>
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">เอกสารอ้างอิง / Ref:</strong>
-                                            <span t-field="doc.origin"/>
+                                            <strong style="width: 30%; display: inline-block;">เลขที่ใบกำกับภาษี:</strong>
+                                            <t t-set="vendor_bill" t-value="env['account.move'].search([('purchase_id', '=', doc.purchase_id.id)], limit=1)"/>
+                                            <span t-if="vendor_bill" t-field="vendor_bill.name"/>
+                                            <span t-else="">-</span>
                                         </div>
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">ที่อยู่จัดส่ง:</strong>
+                                            <strong style="width: 20%; display: inline-block;">ที่อยู่จัดส่ง:</strong>
                                             <span t-field="doc.company_id.street"/> <span t-field="doc.company_id.street2"/>
                                             <br/>
                                             <span t-field="doc.company_id.city"/> <span t-field="doc.company_id.state_id.name"/>
                                             <span t-field="doc.company_id.zip"/>
-                                        </div>
-                                        <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">วันที่จัดส่ง / Ship Date:</strong>
-                                            <span t-field="doc.scheduled_date" t-options='{"widget": "date"}'/>
-                                        </div>
+                                        </div>             
                                     </div>
                                 </div>
                             </div>
@@ -222,18 +240,18 @@
                                 <div class="col-6">
                                     <div class="info-box" style="height: 180px;">
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">ลูกค้า / Customer:</strong>
+                                            <strong style="width: 20%; display: inline-block;">ลูกค้า:</strong>
                                             <span t-field="doc.partner_id.name"/>
                                         </div>
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">ที่อยู่จัดส่ง / Address:</strong>
+                                            <strong style="width: 20%; display: inline-block;">ที่อยู่จัดส่ง:</strong>
                                             <span t-field="doc.partner_id.street"/> <span t-field="doc.partner_id.street2"/>
                                             <br/>
                                             <span t-field="doc.partner_id.city"/> <span t-field="doc.partner_id.state_id.name"/>
                                             <span t-field="doc.partner_id.zip"/>
                                         </div>
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">โทรศัพท์ / Tel:</strong>
+                                            <strong style="width: 20%; display: inline-block;">โทรศัพท์:</strong>
                                             <span t-field="doc.partner_id.phone"/>
                                         </div>
                                     </div>
@@ -241,19 +259,19 @@
                                 <div class="col-6">
                                     <div class="info-box" style="height: 180px;">
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">เลขที่เอกสาร / No.:</strong>
+                                            <strong style="width: 20%; display: inline-block;">เลขที่เอกสาร:</strong>
                                             <span t-field="doc.name"/>
                                         </div>
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">วันที่ / Date:</strong>
+                                            <strong style="width: 20%; display: inline-block;">วันที่:</strong>
                                             <span t-field="doc.date" t-options='{"widget": "date"}'/>
                                         </div>
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">ใบสั่งขาย / Order:</strong>
+                                            <strong style="width: 20%; display: inline-block;">ใบสั่งขาย:</strong>
                                             <span t-field="doc.origin"/>
                                         </div>
                                         <div class="mb-2">
-                                            <strong style="width: 35%; display: inline-block;">วันที่จัดส่ง / Ship Date:</strong>
+                                            <strong style="width: 20%; display: inline-block;">วันที่จัดส่ง:</strong>
                                             <span t-field="doc.scheduled_date" t-options='{"widget": "date"}'/>
                                         </div>
                                     </div>
@@ -267,11 +285,11 @@
                             <table class="table table-sm table-product" style="border: 1px solid #000;">
                                 <thead>
                                     <tr class="table-header">
-                                        <th style="width: 5%">No.<br/>ลำดับ</th>
-                                        <th style="width: 51%">Product<br/>สินค้า</th>
-                                        <th style="width: 12%">Ordered<br/>จำนวนสั่ง</th>
-                                        <th style="width: 12%">Delivered<br/>จำนวนส่ง</th>
-                                        <th style="width: 20%">Amount<br/>จำนวนเงิน</th>
+                                        <th style="width: 5%; text-align: center;">No.<br/>ลำดับ</th>
+                                        <th style="width: 51%; text-align: center;">Product<br/>สินค้า</th>
+                                        <th style="width: 12%; text-align: center;">Ordered<br/>จำนวนสั่ง</th>
+                                        <th style="width: 12%; text-align: center;">Delivered<br/>จำนวนส่ง</th>
+                                        <th style="width: 20%; text-align: center;">Amount<br/>จำนวนเงิน</th>
                                     </tr>
                                 </thead>
                                 <tbody class="table-content">
@@ -299,7 +317,7 @@
                                                 <span t-esc="delivered_qty"/>
                                                 <span t-field="move.product_uom.name"/>
                                             </td>
-                                            <td class="text-right">
+                                            <td class="text-center">
                                                 <t t-if="po_line">
                                                     <t t-set="line_amount" t-value="delivered_qty * po_line.price_unit"/>
                                                     <span t-esc="line_amount" t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
@@ -315,10 +333,10 @@
                             <table class="table table-sm table-product" style="border: 1px solid #000;">
                                 <thead>
                                     <tr class="table-header">
-                                        <th style="width: 5%">No.<br/>ลำดับ</th>
-                                        <th style="width: 65%">Product<br/>สินค้า</th>
-                                        <th style="width: 15%">Ordered<br/>จำนวนสั่ง</th>
-                                        <th style="width: 15%">Delivered<br/>จำนวนส่ง</th>
+                                        <th style="width: 5%; text-align: center;">No.<br/>ลำดับ</th>
+                                        <th style="width: 65%; text-align: center;">Product<br/>สินค้า</th>
+                                        <th style="width: 15%; text-align: center;">Ordered<br/>จำนวนสั่ง</th>
+                                        <th style="width: 15%; text-align: center;">Delivered<br/>จำนวนส่ง</th>
                                     </tr>
                                 </thead>
                                 <tbody class="table-content">
@@ -362,7 +380,7 @@
                                             <div class="col-12">
                                                 <strong>Total Quantity / จำนวนชิ้นรวม: </strong>
                                                 <t t-set="total_delivered" t-value="sum(sum(ml.quantity for ml in move.move_line_ids) for move in doc.move_ids_without_package)"/>
-                                                <span t-esc="'%.0f' % total_delivered"/> ชิ้น
+                                                <span t-esc="'%.0f' % total_delivered"/> Items
                                             </div>
                                         </div>
                                     </div>
@@ -420,7 +438,7 @@
                                             <div class="col-6 text-right">
                                                 <strong>Total Quantity / จำนวนชิ้นรวม: </strong>
                                                 <t t-set="total_delivered" t-value="sum(sum(ml.quantity for ml in move.move_line_ids) for move in doc.move_ids_without_package)"/>
-                                                <span t-esc="'%.0f' % total_delivered"/> ชิ้น
+                                                <span t-esc="'%.0f' % total_delivered"/> Items
                                             </div>
                                         </div>
                                     </div>
