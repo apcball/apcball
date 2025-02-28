@@ -91,21 +91,21 @@
                 </div>
 
                 <!-- Invoice Table -->
-                <table class="table table-sm">
+                <table class="table table-sm" style="border: 1px solid #000;">
                     <thead>
                         <tr>
-                            <th>เลขที่เอกสาร</th>
+                            <th style="width: 5%; text-align: center;">ลำดับ</th>
                             <th>เลขที่ใบกำกับภาษี</th>
                             <th>วันที่เอกสาร</th>
                             <th>วันครบกำหนด</th>
                             <th>จำนวนเงิน</th>
                             <th>ภาษีมูลค่าเพิ่ม</th>
                             <th>รวมทั้งสิ้น</th>
-                        </tr>
+                        </tr>    
                     </thead>
                     <tbody>
                         <tr t-foreach="doc.invoice_ids" t-as="inv">
-                            <td><span t-field="inv.name"/></td>
+                            <td><span t-esc="inv.sequence_number"/></td> 
                             <td><span t-field="inv.tax_invoice_number"/></td>
                             <td><span t-field="inv.invoice_date"/></td>
                             <td><span t-field="inv.invoice_date_due"/></td>
