@@ -96,30 +96,24 @@
                     </div>
                     <div class="col-6">
                         <div class="info-box" style="height: 180px;">
-                                <tr>
                                     <div class="mb-2">
-                                        <td style="width: 40%; padding: 5px;"><strong>เลขที่:</strong></td>
-                                        <td style="padding: 5px;"><span t-field="doc.name"/></td>
+                                        <strong style="width: 10%; display: inline-block;">เลขที่:</strong>
+                                        <span t-field="doc.name"/>
                                     </div>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 5px;"><strong>วันที่:</strong></td>
-                                    <td style="padding: 5px;">
-                                        <span t-field="doc.date" t-options='{"format": "dd/MM/yyyy"}'/>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 5px;"><strong>วันครบกำหนด:</strong></td>
-                                    <td style="padding: 5px;">
-                                        <span t-field="doc.due_date" t-options='{"format": "dd/MM/yyyy"}'/>
-                                    </td>
-                                </tr>
+                                    <div class="mb-2">
+                                        <strong style="width: 10%; display: inline-block;">วันที่:</strong>
+                                            <span t-field="doc.date" t-options='{"format": "dd/MM/yyyy"}'/>
+                                    </div>
+                                     <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">วันครบกำหนดชำระเงิน:</strong>
+                                            <span t-field="doc.due_date" t-options='{"format": "dd/MM/yyyy"}'/>
+                                    </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Invoice Table -->
-                <table class="table table-sm" style="border: 1px solid #000;">
+                <table class="table table-sm" style="border: 1px solid #000; font-size: 20px;">
                     <thead>
                         <tr>
                             <th style="width: 5%; text-align: center;">ลำดับ</th>
