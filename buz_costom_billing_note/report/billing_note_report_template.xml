@@ -15,6 +15,13 @@
                     margin: 0;
                     padding: 0;
                 }
+                 .info-box {
+                    background-color: #f8f9fa !important;
+                    color: black !important;
+                    font-size: 20px !important;
+                    border: 1px solid #000 !important;
+                    padding: 10px;
+                }
                 .table td, .table th {
                     border-width: 0.5px !important;
                     border-style: solid !important;
@@ -67,25 +74,46 @@
                 </div>
 
                 <!-- Partner and Document Info -->
-                <div class="row mb-4">
+                <div class="row mb-3">
                     <div class="col-6">
-                        <div class="bordered" style="height: 170px;">
-                            <strong>
-                                <t t-if="doc.note_type == 'receivable'">ชื่อลูกค้า / Customer:</t>
-                                <t t-else="">ชื่อผู้ขาย / Vendor:</t>
-                            </strong>
-                            <div t-field="doc.partner_id"
-                                 t-options='{"widget": "contact", "fields": ["name", "address"], "no_marker": True}'/>
-                            <div t-if="doc.partner_id.vat">
-                                เลขประจำตัวผู้เสียภาษี: <span t-field="doc.partner_id.vat"/>
-                            </div>
+                        <div class="info-box" style="height: 180px;">
+                                    <div class="mb-2">
+                                        <strong style="width: 15%; display: inline-block;">ชื่อลูกค้า:</strong>
+                                        <span t-field="doc.partner_id.name"/>
+                                    </div>                                  
+                                    <div class="mb-2">
+                                        <strong style="width: 10%; display: inline-block;">ที่อยู่:</strong>
+                                            <span t-field="doc.partner_id.street"/> <span t-field="doc.partner_id.street2"/>
+                                            <br/>
+                                            <span t-field="doc.partner_id.city"/> <span t-field="doc.partner_id.state_id.name"/>
+                                            <span t-field="doc.partner_id.zip"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">เลขประจำตัวผู้เสียภาษี: </strong>
+                                        <span t-field="doc.partner_id.vat"/>
+                                    </div>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="bordered" style="height: 170px;">
-                            <div><strong>เลขที่:</strong> <span t-field="doc.name"/></div>
-                            <div><strong>วันที่:</strong> <span t-field="doc.date"/></div>
-                            <div><strong>วันครบกำหนด:</strong> <span t-field="doc.due_date"/></div>
+                        <div class="info-box" style="height: 180px;">
+                                <tr>
+                                    <div class="mb-2">
+                                        <td style="width: 40%; padding: 5px;"><strong>เลขที่:</strong></td>
+                                        <td style="padding: 5px;"><span t-field="doc.name"/></td>
+                                    </div>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 5px;"><strong>วันที่:</strong></td>
+                                    <td style="padding: 5px;">
+                                        <span t-field="doc.date" t-options='{"format": "dd/MM/yyyy"}'/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 5px;"><strong>วันครบกำหนด:</strong></td>
+                                    <td style="padding: 5px;">
+                                        <span t-field="doc.due_date" t-options='{"format": "dd/MM/yyyy"}'/>
+                                    </td>
+                                </tr>
                         </div>
                     </div>
                 </div>
@@ -95,18 +123,24 @@
                     <thead>
                         <tr>
                             <th style="width: 5%; text-align: center;">ลำดับ</th>
-                            <th>เลขที่ใบกำกับภาษี</th>
-                            <th>วันที่เอกสาร</th>
-                            <th>วันครบกำหนด</th>
-                            <th>จำนวนเงิน</th>
-                            <th>ภาษีมูลค่าเพิ่ม</th>
-                            <th>รวมทั้งสิ้น</th>
+                            <th style="width: 30%; text-align: center;">เลขที่ใบกำกับภาษี</th>
+                            <th style="width: 10%; text-align: center;">วันที่เอกสาร</th>
+                            <th style="width: 10%; text-align: center;">วันครบกำหนด</th>
+                            <th style="width: 20%; text-align: center;">จำนวนเงิน</th>
+                            <th style="width: 10%; text-align: center;">ภาษีมูลค่าเพิ่ม</th>
+                            <th style="width: 15%; text-align: center;">รวมทั้งสิ้น</th>
                         </tr>    
                     </thead>
                     <tbody>
+                        <t t-set="line_number" t-value="1"/>
                         <tr t-foreach="doc.invoice_ids" t-as="inv">
-                            <td><span t-esc="inv.sequence_number"/></td> 
-                            <td><span t-field="inv.tax_invoice_number"/></td>
+                            <td class="text-center">
+                                <span t-esc="line_number"/>
+                                <t t-set="line_number" t-value="line_number + 1"/>
+                            </td>
+                            <td>
+                                <span t-field="inv.name"/>
+                            </td>
                             <td><span t-field="inv.invoice_date"/></td>
                             <td><span t-field="inv.invoice_date_due"/></td>
                             <td class="text-right"><span t-field="inv.amount_untaxed"/></td>
@@ -143,22 +177,22 @@
                 <div class="row mt-5">
                     <div class="col-6">
                         <div class="text-center">
-                            <p>____________________</p>
+                            <p>____</p>
                             <p>
                                 <t t-if="doc.note_type == 'receivable'">ผู้รับวางบิล</t>
                                 <t t-else="">ผู้วางบิล</t>
                             </p>
-                            <p>วันที่ ____________________</p>
+                            <p>วันที่ ____</p>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="text-center">
-                            <p>____________________</p>
+                            <p>____</p>
                             <p>
                                 <t t-if="doc.note_type == 'receivable'">ผู้วางบิล</t>
                                 <t t-else="">ผู้รับวางบิล</t>
                             </p>
-                            <p>วันที่ ____________________</p>
+                            <p>วันที่ ____</p>
                         </div>
                     </div>
                 </div>

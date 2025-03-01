@@ -5,6 +5,7 @@ class AccountMove(models.Model):
     _inherit = 'account.move'
 
     tax_invoice_number = fields.Char(string='Tax Invoice Number', default='')
+    vendor_bill_number = fields.Char(string='Vendor Bill Number')
 
     billing_note_ids = fields.Many2many(
         'billing.note',
