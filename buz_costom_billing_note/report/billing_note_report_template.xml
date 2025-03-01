@@ -168,25 +168,20 @@
                 </table>
 
                 <!-- Signature Section -->
-                <div class="row mt-5">
+                <div class="row mt-5" style="font-size: 20px;">
                     <div class="col-6">
                         <div class="text-center">
-                            <p>____</p>
-                            <p>
-                                <t t-if="doc.note_type == 'receivable'">ผู้รับวางบิล</t>
-                                <t t-else="">ผู้วางบิล</t>
-                            </p>
-                            <p>วันที่ ____</p>
+                            <p>ชื่อผู้รับวางบิล: _______________________</p>
+                            <p>วันที่รับ: ____/____/____</p>
+                            <p>วันที่รับชำระ ____/____/____</p>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="text-center">
-                            <p>____</p>
-                            <p>
-                                <t t-if="doc.note_type == 'receivable'">ผู้วางบิล</t>
-                                <t t-else="">ผู้รับวางบิล</t>
-                            </p>
-                            <p>วันที่ ____</p>
+                            <p>ในนามบริษัท โมเก้น จำกัด</p>
+                            <p>ชื่อผู้รับวางบิล: ______________________</p>
+        
+                            <p>วันที่: ____/____/____</p>
                         </div>
                     </div>
                 </div>
