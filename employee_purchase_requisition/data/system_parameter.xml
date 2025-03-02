@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- System Parameter for Purchase Requisition Document Approval -->
+        <record id="system_parameter_purchase_requisition_approve" model="ir.config_parameter">
+            <field name="key">purchase.requisition_document_approve</field>
+            <field name="value">True</field>
+        </record>
+    </data>
+</odoo>
