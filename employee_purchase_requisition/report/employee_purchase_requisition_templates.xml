@@ -1,209 +1,208 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!--    purchase requisition report template-->
     <template id="report_purchase_requisition">
-        <t t-call="web.external_layout">
-            <t t-call="web.html_container">
-                <div class="page">
-                    <t t-foreach="records" t-as="rec">
-                        <h5>Purchase Requisition :
-                            <t t-if="rec['name']">
-                                <t t-esc="rec['name']"/>
-                            </t>
-                        </h5>
-                        <table class="table table-striped">
-                            <tr>
-                                <th>Employee</th>
-                                <td>
-                                    <t t-if="rec['employee_id']">
-                                        <t t-esc="rec['employee_id'][1]"/>
-                                    </t>
-                                </td>
-                                <th>Requisition Date</th>
-                                <td>
-                                    <t t-if="rec['employee_id']">
-                                        <t t-esc="rec['requisition_date']"/>
-                                    </t>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Department</th>
-                                <td>
-                                    <t t-if="rec['dept_id']">
-                                        <t t-esc="rec['dept_id'][1]"/>
-                                    </t>
-                                </td>
-                                <th>Received Date</th>
-                                <td>
-                                    <t t-if="rec['receive_date']">
-                                        <t t-esc="rec['receive_date']"/>
-                                    </t>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Requisition Responsible</th>
-                                <td>
-                                    <t t-if="rec['user_id']">
-                                        <t t-esc="rec['user_id'][1]"/>
-                                    </t>
-                                </td>
-                                <th>Requisition Deadline</th>
-                                <td>
-                                    <t t-if="rec['requisition_deadline']">
-                                        <t t-esc="rec['requisition_deadline']"/>
-                                    </t>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Company</th>
-                                <td>
-                                    <t t-if="rec['company_id']">
-                                        <t t-esc="rec['company_id'][1]"/>
-                                    </t>
-                                </td>
-                            </tr>
-                        </table>
-                        <h5>Other Information</h5>
-                        <table class="table table-sm">
-                            <tr>
-                                <th>Confirmed By</th>
-                                <td>
-                                    <t t-if="rec['confirm_id']">
-                                        <t t-esc="rec['confirm_id'][1]"/>
-                                    </t>
-                                </td>
-                                <th>Confirmed Date</th>
-                                <td>
-                                    <t t-if="rec['confirmed_date']">
-                                        <t t-esc="rec['confirmed_date']"/>
-                                    </t>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Department Manager</th>
-                                <td>
-                                    <t t-if="rec['manager_id']">
-                                        <t t-esc="rec['manager_id'][1]"/>
-                                    </t>
-                                </td>
-                                <th>Department Approval Date</th>
-                                <td>
-                                    <t t-if="rec['department_approval_date']">
-                                        <t t-esc="rec['department_approval_date']"/>
-                                    </t>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Approved By:</th>
-                                <td>
-                                    <t t-if="rec['requisition_head_id']">
-                                        <t t-esc="rec['requisition_head_id'][1]"/>
-                                    </t>
-                                </td>
-                                <th>Approved Date:</th>
-                                <td>
-                                    <t t-if="rec['approval_date']">
-                                        <t t-esc="rec['approval_date']"/>
-                                    </t>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Rejected By</th>
-                                <td>
-                                    <t t-if="rec['rejected_user_id']">
-                                        <t t-esc="rec['rejected_user_id'][1]"/>
-                                    </t>
-                                </td>
-                                <th>Rejected Date</th>
-                                <td>
-                                    <t t-if="rec['reject_date']">
-                                        <t t-esc="rec['reject_date']"/>
-                                    </t>
-                                </td>
-                            </tr>
-                        </table>
-                        <h5>Picking Details</h5>
-                        <table class="table table-sm">
-                            <tr>
-                                <th>Source Location</th>
-                                <td>
-                                    <t t-if="rec['source_location_id']">
-                                        <t t-esc="rec['source_location_id'][1]"/>
-                                    </t>
-                                </td>
-                                <th>Destination Location</th>
-                                <td>
-                                    <t t-if="rec['destination_location_id']">
-                                        <t t-esc="rec['destination_location_id'][1]"/>
-                                    </t>
-                                </td>
-                            </tr>
-                            <tr>
-                                <t t-if="rec['delivery_type_id']">
-                                    <th>Delivery To</th>
-                                    <td>
-                                        <t t-esc="rec['delivery_type_id'][1]"/>
-                                    </td>
-                                </t>
-                                <t t-if="rec['internal_picking_id']">
-                                    <th>Internal Transfer</th>
-                                    <td>
-                                        <t t-esc="rec['internal_picking_id'][1]"/>
-                                    </td>
-                                </t>
-                            </tr>
-                        </table>
-                    </t>
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                   <div class="page">
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/employee_purchase_requisition/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            }
+                            .page {
+                                font-family: 'Sarabun', sans-serif;
+                                font-size: 20px;
+                                padding: 0;
+                                width: 100%;
+                                height: 100%;
+                                margin: 0;
+                                color: #000;
+                            }
+                            .company-header {
+                                font-size: 20px;
+                                font-weight: bold;
+                            }
+                            .company-info {
+                                font-size: 18px;
+                            }
+                            .info-box {
+                                background-color: #f8f9fa !important;
+                                border: 1px solid #000 !important;
+                                padding: 10px;
+                            }
+                            .table-header {
+                                font-size: 18px;
+                                font-weight: bold;
+                                background-color: #f8f9fa;
+                            }
+                            .table-sm td, .table-sm th {
+                                padding: 0.3rem;
+                            }
+                            .border-black td {
+                                border-color: black !important;
+                            }
+                            .text-end {
+                                text-align: right !important;
+                            }
+                            .text-center {
+                                text-align: center !important;
+                            }
+                        </style>
 
-                    <h5>Requisition Lines</h5>
-                    <table class='table'>
-                        <thead>
-                            <th>Requisition Action</th>
-                            <th>Product</th>
-                            <th>Description</th>
-                            <th>Quantity</th>
-                            <th>Unit Of Measure</th>
-                        </thead>
-                        <t t-foreach="order_ids" t-as="order">
-                            <tbody>
-                                <td>
-                                    <t t-if="order['requisition_type']=='internal_transfer'">
-                                        Internal Transfer
-                                    </t>
-                                    <t t-if="order['requisition_type']=='purchase_order'">
-                                        Purchase Order
-                                    </t>
-                                </td>
-                                <td>
-                                    <t t-if="order['product_id']">
-                                        <t t-esc="order['product_id'][1]"/>
-                                    </t>
-                                </td>
-                                <td>
-                                    <t t-if="order['description']">
-                                        <t t-esc="order['description']"/>
-                                    </t>
-                                </td>
-                                <td>
-                                    <t t-if="order['quantity']">
-                                        <t t-esc="order['quantity']"/>
-                                    </t>
-                                </td>
-                                <td>
-                                    <t t-if="order['uom']">
-                                        <t t-esc="order['uom']"/>
-                                    </t>
-                                </td>
+                        <!-- Company Info Section -->
+                        <div class="row mb-2">
+                            <div class="col-8">
+                                <div class="company-header mb-1">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                <div class="company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                                <div class="company-info">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
+                                <div class="company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
+                                     style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                            </div>
+                        </div>
+                         <!-- Title Section -->
+                        <div class="row mb-3">
+                            <div class="col-12 text-center">
+                                <h3>ใบขอซื้อ / Purchase Requisition</h3>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <div class="info-box" style="height: 160px;">
+                                    <div class="mb-2">
+                                        <strong style="width: 25%; display: inline-block;">เลขที่เอกสาร:</strong> 
+                                        <span t-field="o.name"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 25%; display: inline-block;">ชื่อพนักงาน:</strong>
+                                        <span t-field="o.employee_id"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 15%; display: inline-block;">แผนก:</strong>
+                                        <span t-field="o.dept_id"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 25%; display: inline-block;">Responsible:</strong> 
+                                        <span t-field="o.user_id"/>
+                                    </div>    
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="info-box" style="height: 160px;">
+                                    <div class="mb-2">
+                                        <strong style="width: 25%; display: inline-block;">วันที่ต้องการ:</strong> 
+                                        <span t-field="o.requisition_date"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 25%; display: inline-block;">วันครบกำหนด:</strong> 
+                                        <span t-field="o.requisition_deadline"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 25%; display: inline-block;">สถานที่จัดส่ง:</strong> 
+                                        <span t-field="o.destination_location_id"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 15%; display: inline-block;">Company:</strong> 
+                                        <span t-field="o.company_id"/>
+                                    </div>    
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4 class="mt-4">Requisition Lines</h4>
+                        <table class="table table-sm table-product" style="border: 1px solid #000;">
+                            <thead>
+                                <tr class="table-header">
+                                    <th style="width: 5%; text-align: center;">ลำดับ</th>
+                                    <th style="width: 30%; text-align: center;">สินค้า</th>
+                                    <th style="width: 5%; text-align: center;">จำนวน</th>
+                                    <th style="width: 5%; text-align: center;">หน่วย</th>
+                                    <th style="width: 15%; text-align: center;">ราคา/หน่วย</th>
+                                    <th style="width: 15%; text-align: center;">จำนวนเงินรวม</th>
+                                    <th style="width: 25%; text-align: center;">ผู้จัดจำหน่าย</th>
+                                </tr>
+                            </thead>
+                            <tbody class="table-content">
+                                <t t-set="line_number" t-value="1"/>
+                                <t t-foreach="o.requisition_order_ids" t-as="line">
+                                    <tr>
+                                        <td class="text-center">
+                                            <span t-esc="line_number"/>
+                                            <t t-set="line_number" t-value="line_number + 1"/>
+                                        </td>
+                                        <td class="text-center">
+                                           <span t-field="line.product_id"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <span t-field="line.quantity"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <span t-field="line.uom"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <span t-field="line.unit_price" t-options='{"widget": "float", "precision": 2}'/>
+                                        </td>
+                                         <td class="text-center">
+                                            <span t-esc="line.quantity * line.unit_price" t-options='{"widget": "float", "precision": 2}'/> 
+                                        </td>
+                                        <td class="text-center">
+                                            <span t-field="line.partner_id"/>
+                                        </td>
+                                    </tr>
+                                </t>
                             </tbody>
-                        </t>
-                    </table>
-                    <br/>
-                    <h5>Employee Signature :_____________________________</h5>
-                    <br/>
-                    <h5>Manager Signature :______________________________</h5>
-                    <br/>
-                    <h5>Approve Signature :______________________________</h5>
-                </div>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="5" class="text-end">
+                                        <strong>Total Amount:</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <t t-set="total" t-value="sum(line.quantity * line.unit_price for line in o.requisition_order_ids)"/>
+                                        <strong><span t-esc="total" t-options='{"widget": "float", "precision": 2}'/></strong>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <div class="row mt-5">
+                            <div class="col-12">
+                                <strong>Reason for Requisition:</strong>
+                                <p t-field="o.requisition_description"/>
+                            </div>
+                        </div>
+
+                        <div class="row mt-5">
+                            <div class="col-4 text-center">
+                                <h5>ผู้ขอซื้อ Signature</h5>
+                                <img t-if="o.employee_signature" t-att-src="image_data_uri(o.employee_signature)" style="max-height: 80px;"/>
+                                <p t-field="o.employee_id"/>
+                                <p t-field="o.confirmed_date"/>
+                            </div>
+                            <div class="col-4 text-center">
+                                <h5>ผู้อนุมัติ Signature</h5>
+                                <img t-if="o.head_signature" t-att-src="image_data_uri(o.head_signature)" style="max-height: 80px;"/>
+                                <p t-field="o.requisition_head_id"/>
+                                <p t-field="o.approval_date"/>
+                            </div>
+                            <div class="col-4 text-center">
+                                <h5> ผู้ตรวจรับเอกสาร Signature</h5>
+                                <img t-if="o.purchase_signature" t-att-src="image_data_uri(o.purchase_signature)" style="max-height: 80px;"/>
+                                <p t-field="o.manager_id"/>
+                                <p t-field="o.department_approval_date"/>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <strong>Status:</strong> <span t-field="o.state"/>
+                            </div>
+                        </div>
+                    </div>
+                </t>
             </t>
         </t>
     </template>

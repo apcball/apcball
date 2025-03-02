@@ -80,6 +80,13 @@
             invisible="state != 'purchase_order_created'"
             help="Mark as Received by Department Head"
             groups="employee_purchase_requisition.employee_requisition_manager"/>
+
+    <!-- Print Report Button -->
+    <button name="action_print_report"
+            string="Print Report"
+            type="object"
+            icon="fa-print"
+            class="oe_highlight"/>
 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -152,6 +159,23 @@
                                     <field name="approval_date"/>
                                     <field name="reject_date"/>
                                 </group>
+                            </group>
+                            <group string="Signatures">
+                                <!-- Employee Signature -->
+                                <field name="employee_signature" widget="signature" 
+                                       invisible="not user_is_creator"/>
+                                <!-- Head Signature -->
+                                <field name="head_signature" widget="signature"
+                                       invisible="not user_is_head"/>
+                                <!-- Purchase Department Signature -->
+                                <field name="purchase_signature" widget="signature"
+                                       invisible="not user_is_purchase"/>
+                                <!-- Hidden Fields -->
+                                <field name="user_is_creator" invisible="1"/>
+                                <field name="user_is_head" invisible="1"/>
+                                <field name="user_is_purchase" invisible="1"/>
+                                <field name="settings_approval" invisible="1"/>
+                                <field name="check_signature" invisible="1"/>
                             </group>
                         </page>
                     </notebook>
