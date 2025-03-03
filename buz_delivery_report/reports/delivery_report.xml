@@ -8,8 +8,8 @@
         <field name="orientation">Portrait</field>
         <field name="margin_top">10</field>
         <field name="margin_bottom">10</field>
-        <field name="margin_left">4</field>
-        <field name="margin_right">4</field>
+        <field name="margin_left">6</field>
+        <field name="margin_right">6</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
@@ -219,7 +219,7 @@
                                         </div>
                                         <div class="mb-2">
                                             <strong style="width: 30%; display: inline-block;">เลขที่ใบกำกับภาษี:</strong>
-                                            <t t-set="vendor_bill" t-value="env['account.move'].search([('purchase_id', '=', doc.purchase_id.id)], limit=1)"/>
+                                            <t t-set="vendor_bill" t-value="doc.purchase_id.invoice_ids[:1] if doc.purchase_id else None"/>
                                             <span t-if="vendor_bill" t-field="vendor_bill.name"/>
                                             <span t-else="">-</span>
                                         </div>
