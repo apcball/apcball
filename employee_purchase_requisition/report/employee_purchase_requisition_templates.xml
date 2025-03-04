@@ -81,7 +81,7 @@
                                         <span t-field="o.employee_id"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 25%; display: inline-block;">แผนก:</strong>
+                                        <strong style="width: 15%; display: inline-block;">แผนก:</strong>
                                         <span t-field="o.dept_id"/>
                                     </div>
                                     <div class="mb-2">
@@ -93,7 +93,7 @@
                             <div class="col-6">
                                 <div class="info-box" style="height: 160px;">
                                     <div class="mb-2">
-                                        <strong style="width: 25%; display: inline-block;">วันที่ขอ:</strong> 
+                                        <strong style="width: 25%; display: inline-block;">วันที่ต้องการ:</strong> 
                                         <span t-field="o.requisition_date"/>
                                     </div>
                                     <div class="mb-2">
@@ -105,7 +105,7 @@
                                         <span t-field="o.destination_location_id"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 25%; display: inline-block;">Company:</strong> 
+                                        <strong style="width: 15%; display: inline-block;">Company:</strong> 
                                         <span t-field="o.company_id"/>
                                     </div>    
                                 </div>
@@ -133,7 +133,7 @@
                                             <span t-esc="line_number"/>
                                             <t t-set="line_number" t-value="line_number + 1"/>
                                         </td>
-                                        <td class="text-right">
+                                        <td class="text-center">
                                            <span t-field="line.product_id"/>
                                         </td>
                                         <td class="text-center">
@@ -177,19 +177,19 @@
 
                         <div class="row mt-5">
                             <div class="col-4 text-center">
-                                <h5>ผู้ขอซื้อ Employee</h5>
+                                <h5>ผู้ขอซื้อ Signature</h5>
                                 <img t-if="o.employee_signature" t-att-src="image_data_uri(o.employee_signature)" style="max-height: 80px;"/>
                                 <p t-field="o.employee_id"/>
                                 <p t-field="o.confirmed_date"/>
                             </div>
                             <div class="col-4 text-center">
-                                <h5>ผู้อนุมัติ Head</h5>
+                                <h5>ผู้อนุมัติ Signature</h5>
                                 <img t-if="o.head_signature" t-att-src="image_data_uri(o.head_signature)" style="max-height: 80px;"/>
                                 <p t-field="o.requisition_head_id"/>
                                 <p t-field="o.approval_date"/>
                             </div>
                             <div class="col-4 text-center">
-                                <h5> ผู้ตรวจรับเอกสาร Purchase</h5>
+                                <h5> ผู้ตรวจรับเอกสาร Signature</h5>
                                 <img t-if="o.purchase_signature" t-att-src="image_data_uri(o.purchase_signature)" style="max-height: 80px;"/>
                                 <p t-field="o.manager_id"/>
                                 <p t-field="o.department_approval_date"/>

@@ -21,7 +21,6 @@ class PurchaseRequisition(models.Model):
         string='Department',
         related='employee_id.department_id',
         store=True,
-        domain="[('id', '=', employee_id.department_id.id)]",
         help='Select an department'
     )
     user_id = fields.Many2one(
