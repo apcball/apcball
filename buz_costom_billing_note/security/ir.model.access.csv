@@ -1,5 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_billing_note_user,billing.note.user,model_billing_note,base.group_user,1,1,1,1
+access_billing_note_user,billing.note.user,model_billing_note,account.group_account_invoice,1,1,1,0
 access_billing_note_manager,billing.note.manager,model_billing_note,account.group_account_manager,1,1,1,1
-access_billing_note_line_user,billing.note.line.user,model_billing_note_line,base.group_user,1,1,1,1
+access_billing_note_line_user,billing.note.line.user,model_billing_note_line,account.group_account_invoice,1,1,1,0
 access_billing_note_line_manager,billing.note.line.manager,model_billing_note_line,account.group_account_manager,1,1,1,1
