@@ -9,8 +9,8 @@
             <field name="orientation">Portrait</field>
             <field name="margin_top">10</field>
             <field name="margin_bottom">10</field>
-            <field name="margin_left">4</field>
-            <field name="margin_right">4</field>
+            <field name="margin_left">6</field>
+            <field name="margin_right">6</field>
             <field name="header_line" eval="False"/>
             <field name="header_spacing">0</field>
             <field name="dpi">90</field>
@@ -35,13 +35,35 @@
                 <t t-foreach="docs" t-as="o">
                     <t t-call="web.external_layout">
                         <div class="page">
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_sale_order_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            }
+                            .page {
+                                font-family: 'Sarabun', sans-serif;
+                                font-size: 20px;
+                                padding: 0;
+                                width: 100%;
+                                height: 100%;
+                                margin: 0;
+                                color: #000;
+                            }
+                            .company-info {
+                                font-size: 18px;
+                            }
+                            .doc-title {
+                                font-size: 25px;
+                                font-weight: bold;
+                            }
+                        </style>
                             <!-- Company Info Section -->
                             <div class="row mb-2">
                                 <div class="col-8">
                                     <div class="company-header mb-1">MOGEN CO., LTD. (HEAD OFFICE)</div>
                                     <div class="company-info">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
                                     <div class="company-info">Tax ID: 0105547076103</div>
-                                    <div class="company-info">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
+                                    <div class="company-info">Tel: 02 1509710 Fax: 02 1528803, E-mail: contact@mogen.co.th</div>
                                 </div>
                                 <div class="col-4 text-end">
                                     <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
@@ -59,9 +81,8 @@
                             <!-- Customer and Order Info -->
                             <div class="row mb-4">
                                 <div class="col-6">
-                                    <strong>Bill To:</strong>
+                                    <strong>Bill To: </strong><span t-field="o.partner_id.name"/>
                                     <address class="mb-0">
-                                        <div t-field="o.partner_id.name"/>
                                         <div t-field="o.partner_id.street"/>
                                         <div t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
                                         <div>
@@ -70,6 +91,7 @@
                                             <span t-field="o.partner_id.zip"/>
                                         </div>
                                         <div t-field="o.partner_id.country_id"/>
+                                        <div t-field="o.partner_id.email"/>
                                         <div t-if="o.partner_id.vat">VAT: <span t-field="o.partner_id.vat"/></div>
                                     </address>
                                 </div>
@@ -87,10 +109,11 @@
                                 <thead>
                                     <tr>
                                         <th style="width: 5%;">No.</th>
-                                        <th style="width: 15%;">Item No.</th>
-                                        <th style="width: 40%;">Description</th>
-                                        <th style="width: 15%;" class="text-end">Quantity</th>
-                                        <th style="width: 12%;" class="text-end">Unit Price</th>
+                                        <th style="width: 15%;">Product Image</th>
+                                        <th style="width: 10%;">Item No.</th>
+                                        <th style="width: 34%;">Description</th>
+                                        <th style="width: 10%;" class="text-end">Quantity</th>
+                                        <th style="width: 13%;" class="text-end">Unit Price</th>
                                         <th style="width: 13%;" class="text-end">Amount</th>
                                     </tr>
                                 </thead>
@@ -98,6 +121,11 @@
                                     <tr t-foreach="o.order_line" t-as="line">
                                         <td class="text-center">
                                             <span t-esc="line_index + 1"/>
+                                        </td>
+                                        <td>
+                                            <img t-if="line.product_id.image_128" 
+                                                t-att-src="image_data_uri(line.product_id.image_128)"
+                                                style="width: 64px; height: 64px; object-fit: contain;"/>
                                         </td>
                                         <td>
                                             <span t-field="line.product_id.default_code"/>

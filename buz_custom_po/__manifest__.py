@@ -14,7 +14,6 @@
     ],
     'assets': {
         'web.report_assets_common': [
-            'buz_custom_po/static/src/scss/style.scss',
         ],
     },
     'installable': True,
