@@ -177,19 +177,19 @@
 
                         <div class="row mt-5">
                             <div class="col-4 text-center">
-                                <h5>ผู้ขอซื้อ Signature</h5>
+                                <h5>ผู้ขอซื้อ Employee</h5>
                                 <img t-if="o.employee_signature" t-att-src="image_data_uri(o.employee_signature)" style="max-height: 80px;"/>
                                 <p t-field="o.employee_id"/>
                                 <p t-field="o.confirmed_date"/>
                             </div>
                             <div class="col-4 text-center">
-                                <h5>ผู้อนุมัติ Signature</h5>
+                                <h5>ผู้อนุมัติ Head Approve</h5>
                                 <img t-if="o.head_signature" t-att-src="image_data_uri(o.head_signature)" style="max-height: 80px;"/>
                                 <p t-field="o.requisition_head_id"/>
                                 <p t-field="o.approval_date"/>
                             </div>
                             <div class="col-4 text-center">
-                                <h5> ผู้ตรวจรับเอกสาร Signature</h5>
+                                <h5> ผู้ตรวจรับเอกสาร Purchase</h5>
                                 <img t-if="o.purchase_signature" t-att-src="image_data_uri(o.purchase_signature)" style="max-height: 80px;"/>
                                 <p t-field="o.manager_id"/>
                                 <p t-field="o.department_approval_date"/>
