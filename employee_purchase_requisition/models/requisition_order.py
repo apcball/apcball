@@ -46,13 +46,23 @@ class RequisitionOrder(models.Model):
     )
     analytic_distribution = fields.Json(
         string="Analytic Distribution",
+        compute="_compute_analytic_distribution",
         store=True,
-        copy=True
+        copy=True,
+        precompute=True
     )
     analytic_precision = fields.Integer(
         string="Analytic Precision",
         default=lambda self: self.env['decimal.precision'].precision_get('Percentage Analytic')
     )
+    
+    @api.depends('product_id')
+    def _compute_analytic_distribution(self):
+        for record in self:
+            if record.product_id and record.product_id.analytic_distribution:
+                record.analytic_distribution = record.product_id.analytic_distribution
+            else:
+                record.analytic_distribution = False
     
     unit_price = fields.Float(
         string="Unit Price",

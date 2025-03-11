@@ -306,16 +306,20 @@ class PurchaseRequisition(models.Model):
             if vendor_id not in purchase_orders:
                 purchase_orders[vendor_id] = []
 
-            purchase_orders[vendor_id].append({
+            line_vals = {
                 'name': rec.product_id.name,
                 'product_id': rec.product_id.id,
                 'product_qty': rec.quantity,
                 'product_uom': rec.product_id.uom_po_id.id,
-                'price_unit': rec.product_id.standard_price,
                 'date_planned': fields.Date.today(),
-                'analytic_distribution': rec.analytic_distribution,
                 'price_unit': rec.unit_price or rec.product_id.standard_price,
-            })
+            }
+            
+            # Only add analytic distribution if it exists
+            if rec.analytic_distribution:
+                line_vals['analytic_distribution'] = rec.analytic_distribution
+            
+            purchase_orders[vendor_id].append(line_vals)
 
         # สร้าง Purchase Orders
         for vendor_id, lines in purchase_orders.items():
