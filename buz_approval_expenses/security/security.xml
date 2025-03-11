@@ -12,7 +12,11 @@
         <record id="group_expense_user" model="res.groups">
             <field name="name">Employee</field>
             <field name="category_id" ref="module_category_expense_approval"/>
-            <field name="implied_ids" eval="[(4, ref('hr_expense.group_hr_expense_user'))]"/>
+            <field name="implied_ids" eval="[
+                (4, ref('hr_expense.group_hr_expense_user')),
+                (4, ref('base.group_user')),
+                (4, ref('hr.group_hr_user'))
+            ]"/>
         </record>
 
         <!-- Manager Group -->
@@ -75,6 +79,52 @@
             <field name="perm_write" eval="True"/>
             <field name="perm_create" eval="False"/>
             <field name="perm_unlink" eval="False"/>
+        </record>
+        <!-- Employee Read Access Rule -->
+        <record id="expense_employee_read_rule" model="ir.rule">
+            <field name="name">Employee Read Access for Expense Users</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_expense_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Employee Public Read Access Rule -->
+        <record id="expense_employee_public_read_rule" model="ir.rule">
+            <field name="name">Employee Public Read Access for Expense Users</field>
+            <field name="model_id" ref="hr.model_hr_employee_public"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_expense_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Employee Department Read Access Rule -->
+        <record id="expense_department_read_rule" model="ir.rule">
+            <field name="name">Department Read Access for Expense Users</field>
+            <field name="model_id" ref="hr.model_hr_department"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_expense_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        <!-- Expense Line Rule -->
+        <record id="expense_line_user_rule" model="ir.rule">
+            <field name="name">User Expense Line Rule</field>
+            <field name="model_id" ref="hr_expense.model_hr_expense"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_expense_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
         </record>
     </data>
 </odoo>
