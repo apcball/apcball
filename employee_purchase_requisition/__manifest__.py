@@ -26,8 +26,6 @@
         'views/purchase_order_views.xml',
         'views/stock_picking_views.xml',
         'views/employee_purchase_requisition_actions.xml',
-        'report/employee_purchase_requisition_templates.xml',
-        'report/employee_purchase_requisition_report.xml',
     ],
     'images': ['static/description/banner.png'],
     'license': 'AGPL-3',
