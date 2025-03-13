@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_customize_kanban.KanbanRecord" t-inherit="web.KanbanRecord" t-inherit-mode="primary" owl="1">
+        <xpath expr="//div[hasclass('o_kanban_record_title')]" position="replace">
+            <div class="o_kanban_record_title">
+                <span t-if="record.default_code.value" class="me-1">
+                    [<t t-esc="record.default_code.value"/>]
+                </span>
+                <field name="name"/>
+            </div>
+        </xpath>
+        <xpath expr="//div[hasclass('o_kanban_record_bottom')]" position="inside">
+            <div class="oe_kanban_bottom_right" t-if="record.list_price.value">
+                <span class="badge text-bg-info">
+                    Price with VAT: 
+                    <t t-esc="(parseFloat(record.list_price.value) * 1.07).toFixed(2)"/>
+                    <t t-esc="record.currency_id.value"/>
+                </span>
+            </div>
+        </xpath>
+    </t>
+</templates>
