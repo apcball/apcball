@@ -30,6 +30,12 @@ class PurchaseRequisition(models.Model):
         domain=lambda self: [('share', '=', False), ('id', '!=', self.env.uid)],
         help='Select a user who is responsible for requisition'
     )
+    
+    manager_user_id = fields.Many2one(
+        comodel_name='res.users',
+        string='Manager',
+        help='Manager who will approve the requisition'
+    )
     requisition_date = fields.Date(
         string="Requisition Date",
         default=lambda self: fields.Date.today(),
@@ -141,36 +147,6 @@ class PurchaseRequisition(models.Model):
         ('cancelled', 'Cancelled')
     ], default='new', copy=False, tracking=True)
 
-    # Employee Signature
-    employee_signature = fields.Binary(
-        string='Employee Signature',
-        help="Signature of the employee who created this requisition"
-    )
-    # Head Signature
-    head_signature = fields.Binary(
-        string='Head Signature',
-        help="Signature of the department head who approved this requisition"
-    )
-    # Purchase Manager Signature
-    purchase_signature = fields.Binary(
-        string='Purchase Department Signature',
-        help="Signature of the purchase manager who approved this requisition"
-    )
-    check_signature = fields.Boolean(
-        compute='_compute_check_signature',
-        help="Check if user is creator and settings are enabled",
-        string="Check Signature"
-    )
-    user_is_creator = fields.Boolean(
-        string="Is Creator",
-        compute="_compute_user_is_creator",
-        help="Check if current user is the requisition creator"
-    )
-    settings_approval = fields.Boolean(
-        string="Requisition approval enabled",
-        compute="_compute_settings_approval",
-        help="Check if requisition approval is enabled"
-    )
     user_is_head = fields.Boolean(
         string="Is Department Head",
         compute="_compute_user_is_head",
@@ -181,20 +157,6 @@ class PurchaseRequisition(models.Model):
         compute="_compute_user_is_purchase",
         help="Check if current user is purchase manager"
     )
-
-    @api.depends('user_is_creator')
-    def _compute_settings_approval(self):
-        """Computes the settings_approval field based on settings"""
-        for rec in self:
-            rec.settings_approval = True if rec.env[
-                'ir.config_parameter'].sudo().get_param(
-                'purchase.requisition_document_approve') else False
-
-    @api.depends('create_uid')
-    def _compute_user_is_creator(self):
-        """Computes if current user is the requisition creator"""
-        for rec in self:
-            rec.user_is_creator = True if rec.create_uid == rec.env.user else False
 
     @api.depends('dept_id')
     def _compute_user_is_head(self):
@@ -208,25 +170,6 @@ class PurchaseRequisition(models.Model):
         for rec in self:
             rec.user_is_purchase = self.env.user.has_group('employee_purchase_requisition.employee_requisition_head')
 
-    @api.depends('user_is_creator', 'employee_signature', 'head_signature', 'purchase_signature')
-    def _compute_check_signature(self):
-        """Computes if signature should be checked based on settings and signature presence"""
-        for rec in self:
-            if rec.user_is_creator:
-                rec.check_signature = True if rec.env[
-                    'ir.config_parameter'].sudo().get_param(
-                    'purchase.requisition_document_approve') and rec.employee_signature else False
-            elif rec.user_is_head:
-                rec.check_signature = True if rec.env[
-                    'ir.config_parameter'].sudo().get_param(
-                    'purchase.requisition_document_approve') and rec.head_signature else False
-            elif rec.user_is_purchase:
-                rec.check_signature = True if rec.env[
-                    'ir.config_parameter'].sudo().get_param(
-                    'purchase.requisition_document_approve') and rec.purchase_signature else False
-            else:
-                rec.check_signature = False
-
     @api.model
     def create(self, vals):
         """Function to generate purchase requisition sequence"""
@@ -236,11 +179,19 @@ class PurchaseRequisition(models.Model):
         result = super(PurchaseRequisition, self).create(vals)
         return result
 
+    @api.onchange('employee_id')
+    def _onchange_employee_id(self):
+        """When employee is selected, get their manager"""
+        if self.employee_id and self.employee_id.parent_id:
+            # Get the user associated with the manager (parent_id)
+            manager_user = self.env['res.users'].search([
+                ('employee_id', '=', self.employee_id.parent_id.id)
+            ], limit=1)
+            if manager_user:
+                self.manager_user_id = manager_user.id
+
     def action_confirm_requisition(self):
         """Function to submit to purchase approval"""
-        if not self.employee_signature:
-            raise ValidationError('Please add your signature before confirming the requisition.')
-            
         self.source_location_id = (
             self.employee_id.department_id.department_location_id.id) if (
             self.employee_id.department_id.department_location_id) else (
@@ -259,10 +210,6 @@ class PurchaseRequisition(models.Model):
 
     def action_head_approval(self):
         """Approval from department head"""
-        if not self.employee_signature:
-            raise ValidationError('Employee signature is required before approval.')
-        if not self.head_signature:
-            raise ValidationError('Please add your signature as department head before approval.')
         self.write({'state': 'waiting_purchase_approval'})
         self.requisition_head_id = self.env.uid
         self.approval_date = fields.Date.today()
@@ -275,12 +222,6 @@ class PurchaseRequisition(models.Model):
 
     def action_purchase_approval(self):
         """Approval from purchase department"""
-        if not self.employee_signature:
-            raise ValidationError('Employee signature is required before approval.')
-        if not self.head_signature:
-            raise ValidationError('Department head signature is required before approval.')
-        if not self.purchase_signature:
-            raise ValidationError('Please add your signature as purchase manager before approval.')
         for rec in self.requisition_order_ids:
             if not rec.partner_id:
                 raise ValidationError('Please select vendor for purchase items')
@@ -374,10 +315,3 @@ class PurchaseRequisition(models.Model):
             'res_model': 'stock.picking',
             'domain': [('requisition_order', '=', self.name)],
         }
-
-    def action_print_report(self):
-        """Print purchase requisition report with signatures"""
-        self.ensure_one()
-        return self.env.ref(
-            'employee_purchase_requisition.action_report_purchase_requisition'
-        ).report_action(self)
