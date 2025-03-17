@@ -33,7 +33,7 @@ class PurchaseRequisition(models.Model):
     
     manager_user_id = fields.Many2one(
         comodel_name='res.users',
-        string='Manager',
+        string='Head',
         help='Manager who will approve the requisition'
     )
     requisition_date = fields.Date(
