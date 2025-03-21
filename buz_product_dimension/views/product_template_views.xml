@@ -17,6 +17,7 @@
                         <field name="gross_width" string="Gross Width"/>
                         <field name="gross_depth" string="Gross Depth"/>
                         <field name="gross_height" string="Gross Height"/>
+                        <field name="cubic_meter" string="Cubic Meter"/>
                     </group>
                 </group>
             </xpath>
