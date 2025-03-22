@@ -1,106 +1,94 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <record id="paperformat_buz_quotation" model="report.paperformat">
-        <field name="name">BUZ List Price A4</field>
+    <record id="paperformat_invoice" model="report.paperformat">
+        <field name="name">Invoice A4</field>
         <field name="default" eval="True"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">0</field>
-        <field name="margin_bottom">20</field>
-        <field name="margin_left">7</field>
-        <field name="margin_right">7</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">8</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
     </record>
-
-    <record id="action_report_saleorder_buz" model="ir.actions.report">
-        <field name="name">List Price</field>
-        <field name="model">sale.order</field>
-        <field name="report_type">qweb-pdf</field>
-        <field name="report_name">buz_custom_quotation.report_saleorder_buz</field>
-        <field name="report_file">buz_custom_quotation.report_saleorder_buz</field>
-        <field name="paperformat_id" ref="paperformat_buz_quotation"/>
-        <field name="print_report_name">'List Price - %s' % (object.name)</field>
-        <field name="binding_model_id" ref="sale.model_sale_order"/>
-        <field name="binding_type">report</field>
-    </record>
-
     <template id="report_saleorder_buz">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <div class="article o_report_layout_standard">
+                <t t-call="web.external_layout">
                     <div class="page">
-                        <style>
-                            .page {
-                                font-family: 'Sarabun', sans-serif;
-                                padding: 0;
-                                margin: 0;
-                            }
-                            .header-image {
-                                width: 100%;
-                                margin-bottom: 20px;
-                                margin-left: -7px;
-                                margin-right: -7px;
-                            }
-                            .header-image img {
-                                width: 100%;
-                                display: block;
-                            }
-                            .table th {
-                                background-color: #f8f9fa;
-                                color: #000000;
-                                font-weight: bold;
-                                border: 1px solid #000;
-                                text-align: center;
-                                vertical-align: middle;
-                                padding: 8px;
-                            }
-                            .table td {
-                                border: 1px solid #000;
-                                padding: 8px;
-                                vertical-align: middle;
-                            }
-                            .doc-title {
-                                font-size: 24px;
-                                font-weight: bold;
-                                text-align: center;
-                                margin-bottom: 20px;
-                            }
-                            .project-name {
-                                font-size: 18px;
-                                text-align: center;
-                                margin-bottom: 20px;
-                            }
-                            .doc-info {
-                                margin-bottom: 20px;
-                            }
-                            .signature-section {
-                                margin-top: 50px;
-                            }
-                            .content-wrapper {
-                                padding: 15px;
-                            }
-                        </style>
-
-                        <!-- Header Image -->
-                        <div class="header-image">
-                            <img src="/buz_custom_quotation/static/img/cover/Header3.png"/>
+                        <!-- Cover Page Content -->
+                        <div style="page-break-after: always;">
+                            <div style="text-align: center; margin-top: -10mm; margin-right: -4mm;">
+                                <img t-att-src="'/buz_custom_quotation/static/img/cover/top_image.jpeg'" style="width: calc(95% + 8mm); max-width: none; margin-bottom: 5px;"/>
+                                <div style="text-align: right;">
+                                <div style="margin: 5px 0; font-size: 20px;">
+                                    <h3>Project Name:</h3>
+                                    <div style="font-size: 20px;" t-field="doc.project_name"/>
+                                </div>
+                                  <div style="margin: 30px 0; font-size: 20px;">
+                                    <h3>Customer:</h3>
+                                    <div style="font-size: 20px;" t-field="doc.partner_id.name"/>
+                                </div>
+                                <div style="margin: 50px 0; font-size: 18px;">
+                                    <div style="margin: 10px 0;">
+                                        <strong>Proposal No.:</strong>
+                                        <span t-field="doc.name"/>
+                                    </div>
+                                </div>
+                                </div>
+                            </div>
+                              <!-- Company Info Section -->
+                        <!-- Company Info Section -->
+<div class="row mb-2" style="margin-top: -40px;"> <!-- Adjusted margin-top to move up by 2 lines -->
+    <div class="col-8">
+        <div class="company-header mb-1">MOGEN CO., LTD. (HEAD OFFICE)</div>
+        <div class="company-info">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+        <div class="company-info">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
+        <div class="company-info">www.mogen.co.th</div>
+    </div>
+    <div class="col-4 text-end">
+        <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
+             style="width: 150px; height: auto; object-fit: contain; margin-top: 50px;" alt="Company Logo"/> <!-- Adjusted margin-top to move down by 1 line -->
+    </div>
+</div>
                         </div>
 
-                        <div class="content-wrapper">
-                            <!-- Document Title -->
-                            <div class="doc-title">
-                                เอกสารประกอบใบเสนอราคา / List Price
+                        <!-- Middle Page -->
+                        <div style="page-break-after: always;">
+                            <div style="text-align: center;">
+                                <img t-att-src="'/buz_custom_quotation/static/img/cover/middle_image.png'" style="width: 60%; max-width: 60%; margin-bottom: 40px;"/>
+                                
+                                <div style="margin: 40px 0;">
+                                    <h2 style="font-size: 28px; margin-bottom: 20px;">Project Information</h2>
+                                    
+                                    <div style="margin: 30px 0;" t-if="doc.partner_id">
+                                        <h3 style="font-size: 24px; color: #666;">Customer</h3>
+                                        <div style="font-size: 28px; margin-top: 10px;" t-field="doc.partner_id.name"/>
+                                    </div>
+                                    
+                                    <div style="margin: 30px 0;" t-if="doc.project_name">
+                                        <h3 style="font-size: 24px; color: #666;">Project Name</h3>
+                                        <div style="font-size: 28px; margin-top: 10px;" t-field="doc.project_name"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Content Page -->
+                        <div>
+                            <img t-att-src="'/buz_custom_quotation/static/img/cover/Header3.png'" style="width: 100%; margin-bottom: 20px; margin-left: -2px; margin-right: -2px;"/>
+
+                            <div style="text-align: center;">
+                                <h2>เอกสารประกอบใบเสนอราคา / List Price</h2>
                             </div>
 
-                            <!-- Project Name if exists -->
-                            <div t-if="doc.project_name" class="project-name">
-                                โครงการ / Project: <span t-field="doc.project_name"/>
+                            <div t-if="doc.project_name" style="text-align: center; margin-bottom: 20px;">
+                                <strong>โครงการ / Project:</strong> <span t-field="doc.project_name"/>
                             </div>
 
-                            <!-- Document Info -->
-                            <div class="doc-info row">
+                            <div class="row mb-4">
                                 <div class="col-6">
                                     <strong>เลขที่เอกสาร / Document No: </strong>
                                     <span t-field="doc.name"/>
@@ -111,35 +99,32 @@
                                 </div>
                             </div>
 
-                            <!-- Product Table -->
                             <table class="table table-sm">
                                 <thead>
                                     <tr>
-                                        <th style="width: 5%">NO.</th>
-                                        <th style="width: 15%">BRAND</th>
-                                        <th style="width: 15%">MODEL</th>
-                                        <th style="width: 35%">DESCRIPTION</th>
-                                        <th style="width: 15%">UNIT PRICE</th>
-                                        <th style="width: 15%">REMARK</th>
+                                        <th style="width: 5%; border: 1px solid black; padding: 8px; text-align: center;">NO.</th>
+                                        <th style="width: 15%; border: 1px solid black; padding: 8px; text-align: center;">BRAND</th>
+                                        <th style="width: 15%; border: 1px solid black; padding: 8px; text-align: center;">MODEL</th>
+                                        <th style="width: 35%; border: 1px solid black; padding: 8px; text-align: center;">DESCRIPTION</th>
+                                        <th style="width: 15%; border: 1px solid black; padding: 8px; text-align: center;">UNIT PRICE</th>
+                                        <th style="width: 15%; border: 1px solid black; padding: 8px; text-align: center;">REMARK</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr t-foreach="doc.order_line" t-as="line">
-                                        <td class="text-center"><span t-esc="line_index + 1"/></td>
-                                        <td><span t-field="line.product_id.x_studio_brand"/></td>
-                                        <td><span t-field="line.product_id.x_studio_model"/></td>
-                                        <td><span t-field="line.name"/></td>
-                                        <td class="text-right">
-                                            <span t-field="line.price_unit" 
-                                                  t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                        <td style="border: 1px solid black; padding: 8px; text-align: center;"><span t-esc="line_index + 1"/></td>
+                                        <td style="border: 1px solid black; padding: 8px;"><span t-field="line.product_id.x_studio_brand"/></td>
+                                        <td style="border: 1px solid black; padding: 8px;"><span t-field="line.product_id.x_studio_model"/></td>
+                                        <td style="border: 1px solid black; padding: 8px;"><span t-field="line.name"/></td>
+                                        <td style="border: 1px solid black; padding: 8px; text-align: right;">
+                                            <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                                         </td>
-                                        <td></td>
+                                        <td style="border: 1px solid black; padding: 8px;"></td>
                                     </tr>
                                 </tbody>
                             </table>
 
-                            <!-- Note Section -->
-                            <div class="mt-4">
+                            <div style="margin-top: 20px;">
                                 <strong>หมายเหตุ / Remark:</strong>
                                 <ol>
                                     <li>ราคาข้างต้นเป็นราคาที่ยังไม่รวมภาษีมูลค่าเพิ่ม 7% / Above prices are excluded VAT 7%</li>
@@ -147,28 +132,41 @@
                                 </ol>
                             </div>
 
-                            <!-- Signatures -->
-                            <div class="row signature-section">
-                                <div class="col-4 text-center">
-                                    <p>_____________________</p>
-                                    <p>ผู้จัดทำ / Prepared By</p>
-                                    <p>วันที่ / Date: ____</p>
-                                </div>
-                                <div class="col-4 text-center">
-                                    <p>_____________________</p>
-                                    <p>ผู้ตรวจสอบ / Checked By</p>
-                                    <p>วันที่ / Date: ____</p>
-                                </div>
-                                <div class="col-4 text-center">
-                                    <p>_____________________</p>
-                                    <p>ผู้อนุมัติ / Approved By</p>
-                                    <p>วันที่ / Date: ____</p>
+                            <div style="margin-top: 50px;">
+                                <div class="row">
+                                    <div class="col-4 text-center">
+                                        <p>_____________________</p>
+                                        <p>ผู้จัดทำ / Prepared By</p>
+                                        <p>วันที่ / Date: ____</p>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <p>_____________________</p>
+                                        <p>ผู้ตรวจสอบ / Checked By</p>
+                                        <p>วันที่ / Date: ____</p>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <p>_____________________</p>
+                                        <p>ผู้อนุมัติ / Approved By</p>
+                                        <p>วันที่ / Date: ____</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </t>
             </t>
         </t>
     </template>
+
+    <record id="action_report_saleorder_buz" model="ir.actions.report">
+        <field name="name">List Price</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_custom_quotation.report_saleorder_buz</field>
+        <field name="report_file">buz_custom_quotation.report_saleorder_buz</field>
+        <field name="print_report_name">'List Price - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="buz_custom_quotation.paperformat_invoice"/>
+    </record>
 </odoo>
