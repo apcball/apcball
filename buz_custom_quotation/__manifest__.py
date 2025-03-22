@@ -18,3 +18,4 @@
     'installable': True,
     'application': True,
 }
+    
