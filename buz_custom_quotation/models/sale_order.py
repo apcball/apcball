@@ -1,5 +1,15 @@
 from odoo import api, fields, models
 
+class SaleOrderLine(models.Model):
+    _inherit = 'sale.order.line'
+
+    purchase_price = fields.Float(string='Purchase Price', digits='Product Price')
+
+    @api.onchange('product_id')
+    def _onchange_product_id_set_purchase_price(self):
+        if self.product_id:
+            self.purchase_price = self.product_id.standard_price
+
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 

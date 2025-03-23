@@ -243,7 +243,7 @@
                               t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </td>
                 </tr>
-                <tr style="border-bottom: 1px solid #8B9B7C;">
+                <tr style="border-bottom: 3px solid #FFA500;">
                     <td style="border: none; padding: 10px 0;">
                         <span style="color: #000000; padding: 3px 8px;">Including vat:</span>
                     </td>
