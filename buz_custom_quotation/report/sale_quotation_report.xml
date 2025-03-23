@@ -222,7 +222,10 @@
             </table>
         </div>
     </div>
-
+ <!-- Conditional page break based on number of items -->
+     <t t-if="len(doc.order_line) > 7">
+         <div style="page-break-before: always;"></div>
+     </t>
                         <!-- Signature Section -->
                         <div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
                             <div style="width: 200px; display: inline-block; text-align: center;">
