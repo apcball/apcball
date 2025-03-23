@@ -5,7 +5,7 @@
         <field name="default" eval="True"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">10</field>
+        <field name="margin_top">5</field>
         <field name="margin_bottom">10</field>
         <field name="margin_left">4</field>
         <field name="margin_right">8</field>
@@ -23,25 +23,25 @@
                             <div style="text-align: center; margin-top: -10mm; margin-right: -4mm;">
                                 <img t-att-src="'/buz_custom_quotation/static/img/cover/top_image.jpeg'" style="width: calc(95% + 8mm); max-width: none; margin-bottom: 5px;"/>
                                 <div style="text-align: right;">
-                                <div style="margin: 5px 0; font-size: 20px;">
-                                    <h3>Project Name:</h3>
-                                    <div style="font-size: 20px;" t-field="doc.project_name"/>
+                                <div style="margin: 5px 0;">
+                                    <h3 style="font-size: 40px;">Project Name:</h3>
+                                    <div style="font-size: 40px;" t-field="doc.project_name"/>
                                 </div>
-                                  <div style="margin: 30px 0; font-size: 20px;">
-                                    <h3>Customer:</h3>
-                                    <div style="font-size: 20px;" t-field="doc.partner_id.name"/>
+                                  <div style="margin: 30px 0;">
+                                    <h3 style="font-size: 40px;">Customer:</h3>
+                                    <div style="font-size: 40px;" t-field="doc.partner_id.name"/>
                                 </div>
-                                <div style="margin: 50px 0; font-size: 18px;">
+                                <div style="margin: 50px 0;">
                                     <div style="margin: 10px 0;">
-                                        <strong>Proposal No.:</strong>
-                                        <span t-field="doc.name"/>
+                                        <strong style="font-size: 30px;">Proposal No.:</strong>
+                                        <span style="font-size: 30px;" t-field="doc.name"/>
                                     </div>
                                 </div>
                                 </div>
                             </div>
                               <!-- Company Info Section -->
                         <!-- Company Info Section -->
-<div class="row mb-2" style="margin-top: -40px;"> <!-- Adjusted margin-top to move up by 2 lines -->
+<div class="row mb-2" style="margin-top: -10px; font-size: 20px;"> <!-- Adjusted margin-top to move up by 2 lines -->
     <div class="col-8">
         <div class="company-header mb-1">MOGEN CO., LTD. (HEAD OFFICE)</div>
         <div class="company-info">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
@@ -50,18 +50,28 @@
     </div>
     <div class="col-4 text-end">
         <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
-             style="width: 150px; height: auto; object-fit: contain; margin-top: 50px;" alt="Company Logo"/> <!-- Adjusted margin-top to move down by 1 line -->
+             style="width: 250px; height: auto; object-fit: contain; margin-top: 100px;" alt="Company Logo"/> <!-- Adjusted margin-top to move down by 1 line -->
     </div>
 </div>
                         </div>
 
                         <!-- Middle Page -->
                         <div style="page-break-after: always;">
-                            <div style="text-align: center;">
-                                <img t-att-src="'/buz_custom_quotation/static/img/cover/middle_image.png'" style="width: 60%; max-width: 60%; margin-bottom: 40px;"/>
+                            <!-- Logo Header -->
+                            <div style="text-align: left; margin-top: -10mm;">
+                                <img t-att-src="'/buz_custom_quotation/static/img/cover/logo_header.png'" style="margin: 0;"/>
+                            </div>
+                            
+                            <!-- Content Container -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 230px; min-height: calc(100vh - 200px);">
+                                <!-- Left Side - Image -->
+                                <div style="flex: 0 0 70%;">
+                                    <img t-att-src="'/buz_custom_quotation/static/img/cover/middle_image.png'" style="width: 100%; max-width: 100%;"/>
+                                </div>
                                 
-                                <div style="margin: 40px 0;">
-                                    <h2 style="font-size: 28px; margin-bottom: 20px;">Project Information</h2>
+                                <!-- Right Side - Content -->
+                                <div style="flex: 0 0 30%; text-align: left;">
+                                    <h2 style="font-size: 28px; margin-bottom: 30px;">Project Information</h2>
                                     
                                     <div style="margin: 30px 0;" t-if="doc.partner_id">
                                         <h3 style="font-size: 24px; color: #666;">Customer</h3>
@@ -78,7 +88,9 @@
 
                         <!-- Content Page -->
                         <div>
-                            <img t-att-src="'/buz_custom_quotation/static/img/cover/Header3.png'" style="width: 100%; margin-bottom: 20px; margin-left: -2px; margin-right: -2px;"/>
+                            <div style="text-align: left;">
+                                <img t-att-src="'/buz_custom_quotation/static/img/cover/Header3.png'" style="margin-bottom: 20px;"/>
+                            </div>
 
                             <div style="text-align: center;">
                                 <h2>เอกสารประกอบใบเสนอราคา / List Price</h2>
