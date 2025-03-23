@@ -35,14 +35,14 @@
                                     <div style="margin: 50px 0;">
                                         <div style="margin: 10px 0;">
                                             <strong style="font-size: 30px;">Proposal No.:</strong>
-                                            <span style="font-size: 30px;" t-field="doc.name"/>
+                                            <span style="font-size: 30px;" t-field="doc.proposal_no"/>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Company Info Section -->
-                            <div class="row mb-2" style="margin-top: 150px; font-size: 20px;">
+                            <div class="row mb-2" style="margin-top: 100px; font-size: 20px;">
                                 <div class="col-8">
                                     <div class="company-header mb-1">MOGEN CO., LTD. (HEAD OFFICE)</div>
                                     <div class="company-info">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
@@ -51,144 +51,210 @@
                                 </div>
                                 <div class="col-4 text-end">
                                     <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
-                                         style="width: 300px; height: auto; object-fit: contain; margin-top: 50px;" alt="Company Logo"/>
+                                         style="width: 300px; height: auto; object-fit: contain; margin-top: 10px;" alt="Company Logo"/>
                                 </div>
                             </div>
                         </div>
 
 <!-- Middle Page -->
-<div style="page-break-after: always; position: relative; min-height: 100vh;">
+<div style="page-break-after: always;">
     <!-- Logo Header -->
     <div style="text-align: left; margin-top: -10mm; margin-left: 8mm;">
         <img t-att-src="'/buz_custom_quotation/static/img/cover/logo_header.png'" style="margin: 0;"/>
     </div>
 
-    <!-- Content Container -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 230px; min-height: calc(100vh - 200px);">
-        <!-- Left Side - Image -->
-        <div style="flex: 0 0 70%;">
-            <img t-att-src="'/buz_custom_quotation/static/img/cover/middle_image.png'" style="width: 100%; max-width: 100%;"/>
+    <!-- Main Content Section -->
+    <div style="position: relative; min-height: 100vh; padding-bottom: 100px;">
+        <!-- Content Container -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 250px;">
+            <!-- Left Side - Image -->
+            <div style="flex: 0 0 70%;">
+                <img t-att-src="'/buz_custom_quotation/static/img/cover/middle_image.png'" style="width: 100%; max-width: 100%;"/>
+            </div>
+
+            <!-- Right Side - Content -->
+            <div style="margin-left: 10mm;">
+                <div style="margin: 5px 0; text-align: left;">
+                    <h3 style="font-size: 40px;">Project Name:</h3>
+                    <div style="font-size: 40px;" t-field="doc.project_name"/>
+                </div>
+                <div style="margin: 30px 0; text-align: left;">
+                    <h3 style="font-size: 40px;">Customer:</h3>
+                    <div style="font-size: 40px;" t-field="doc.partner_id.name"/>
+                </div>
+                <div style="margin: 50px 0; text-align: left;">
+                    <div style="margin: 10px 0;">
+                        <strong style="font-size: 30px;">Proposal No.:</strong>
+                        <span style="font-size: 30px;" t-field="doc.proposal_no"/>
+                    </div>
+                </div>
+                <div style="margin: 50px 0; text-align: left;">
+                    <div style="margin: 10px 0;">
+                        <strong style="font-size: 30px;">Valid To:</strong>
+                        <span style="font-size: 30px;" t-field="doc.validity_date"/>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; font-size: 25px; text-align: left;">
+                    <ol style="text-align: left; padding-left: 20px;">
+                        <li>ราคาข้างต้นเป็นราคาที่ยังไม่รวมภาษีมูลค่าเพิ่ม 7% / Above prices are excluded VAT 7%</li>
+                        <li>ราคาอาจมีการเปลี่ยนแปลงโดยไม่ต้องแจ้งให้ทราบล่วงหน้า / Prices are subject to change without prior notice</li>
+                        <li>ราคาดังกล่าวข้างต้นยืนยันราคาถึงวันที่ <span t-field="doc.validity_date"/></li>
+                        <li>หากมีการเปลี่ยนแปลงรายการใดๆ ข้างตั้น จะต้องแจ้งให้บริษัทฯ ทราบล่วงหน้าไม่น้อยกว่า 30 วัน ก่อนส่งสินค้า</li>
+                        <li>สามารถทยอยส่งสินค้าได้ 60 วัน หลังจากได้รับเอกสารยืนยันการสังซื้อ</li>
+                        <li>ระยะทางการยกของให้สูงสุด ไม่เกินระยะทาง 25 เมตร จากจุดจอดรถ</li>
+                        <li>ทางเดินต้องกว้างพอให้สามารถยกของได้ 2 คนต่อกล่อง</li>
+                        <li>ราคาสินค้าไม่รวมบริการติดตั้ง</li>
+                        <li>ราคาเสนอถึงโครงการ <span t-field="doc.project_name"/></li>
+                    </ol>
+                </div>
+            </div>
         </div>
 
-        <!-- Right Side - Content -->
-        <div style="margin-top: -300px; margin-left: 10mm;">
-            <div style="margin: 5px 0; text-align: left;">
-                <h3 style="font-size: 40px;">Project Name:</h3>
-                <div style="font-size: 40px;" t-field="doc.project_name"/>
+        <!-- Bottom Section with Social Tab and Company Logo -->
+        <div style="position: absolute; bottom: -200px; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0;">
+            <!-- Social Tab on the left -->
+            <div>
+                <img t-att-src="'/buz_custom_quotation/static/img/cover/social_tab.png'" style="width: 700px;"/>
             </div>
-            <div style="margin: 30px 0; text-align: left;">
-                <h3 style="font-size: 40px;">Customer:</h3>
-                <div style="font-size: 40px;" t-field="doc.partner_id.name"/>
-            </div>
-            <div style="margin: 50px 0; text-align: left;">
-                <div style="margin: 10px 0;">
-                    <strong style="font-size: 30px;">Proposal No.:</strong>
-                    <span style="font-size: 30px;" t-field="doc.name"/>
-                </div>
-            </div>
-            <div style="margin-top: 20px; font-size: 20px; text-align: left;">
-                <ol style="text-align: left; padding-left: 20px;">
-                    <li>ราคาข้างต้นเป็นราคาที่ยังไม่รวมภาษีมูลค่าเพิ่ม 7% / Above prices are excluded VAT 7%</li>
-                    <li>ราคาอาจมีการเปลี่ยนแปลงโดยไม่ต้องแจ้งให้ทราบล่วงหน้า / Prices are subject to change without prior notice</li>
-                    <li>ราคาดังกล่าวข้างต้นยืนยันราคาถึงวันที่ 2025-12-31</li>
-                    <li>หากมีการเปลี่ยนแปลงรายการใดๆ ข้างตั้น จะต้องแจ้งให้บริษัทฯ ทราบล่วงหน้าไม่น้อยกว่า 30 วัน ก่อนส่งสินค้า</li>
-                    <li>สามารถทยอยส่งสินค้าได้ 60 วัน หลังจากได้รับเอกสารยืนยันการสังซื้อ</li>
-                    <li>ระยะทางการยกของให้สูงสุด ไม่เกินระยะทาง 25 เมตร จากจุดจอดรถ</li>
-                    <li>ทางเดินต้องกว้างพอให้สามารถยกของได้ 2 คนต่อกล่อง</li>
-                    <li>ราคาสินค้าไม่รวมบริการติดตั้ง</li>
-                    <li>ราคาเสนอถึงโครงการ <span t-field="doc.project_name"/></li>
-                </ol>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer Section -->
-    <div class="footer o_standard_footer" style="border-top: none !important; padding-top: 0;">
-        <div style="position: absolute; bottom: 0; left: 0; right: 0; width: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px;">
-                <div style="text-align: left;">
-                    <img t-if="True" t-att-src="'/buz_custom_quotation/static/description/social_tab.png'" style="max-width: 250px; height: auto;"/>
-                </div>
-                <div style="text-align: right;">
-                    <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" style="max-width: 250px; height: auto;"/>
-                </div>
+            <!-- Company Logo on the right -->
+            <div>
+                <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
+                    style="width: 300px; height: auto; object-fit: contain;" alt="Company Logo"/>
             </div>
         </div>
     </div>
 </div>
-                       
 
-                        <!-- Content Page -->
-                        <div>
-                            <div style="text-align: left;">
-                                <img t-att-src="'/buz_custom_quotation/static/img/cover/Header3.png'" style="margin-bottom: 20px;"/>
-                            </div>
+<!-- Content Page -->
+<div style="page-break-after: always;">
+    <div style="text-align: left; margin-top: -10mm; margin-left: 0mm; margin-right: 0mm;">
+        <img t-att-src="'/buz_custom_quotation/static/img/cover/Header3.png'" style="width: calc(100% + 12mm); max-width: none; margin-bottom: 20px;"/>
+    </div>
+<!-- Header Section -->
+    <div class="row mb-4" style="font-size: 30px; background-color: #8B9B7C; color: white; text-align: center;">
+        <div class="col-6">
+            <div style="margin-bottom: 10px;">
+                <strong style="color: white;">To:</strong> <span t-field="doc.partner_id.name"/>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: white;">Company:</strong> <span t-field="doc.company_id.name"/>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: white;">Address:</strong>
+                <div style="margin-left: 20px;">
+                    <span t-field="doc.partner_id.street"/>
+                    <div t-if="doc.partner_id.street2" t-field="doc.partner_id.street2"/>
+                    <div t-if="doc.partner_id.city" t-field="doc.partner_id.city"/>
+                </div>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: white;">Tel:</strong> <span t-field="doc.partner_id.phone"/>
+            </div>
+            <div>
+                <strong style="color: white;">Email:</strong> <span t-field="doc.partner_id.email"/>
+            </div>
+        </div>
+        <div class="col-6 text-center">
+            <div style="margin-bottom: 10px;">
+                <strong style="color: white;">Date:</strong> <span t-field="doc.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: white;">Proposal No:</strong> <span t-field="doc.proposal_no"/>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: white;">Project:</strong> <span t-field="doc.project_name"/>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: white;">Sale Condition:</strong> <span t-field="doc.payment_term_id.name"/>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: white;">Ordered By:</strong> <span t-field="doc.user_id.name"/>
+            </div>
+            <div>
+                <strong style="color: white;">Phone:</strong> <span t-field="doc.user_id.phone"/>
+            </div>
+        </div>
+    </div>
 
-                            <div style="text-align: center;">
-                                <h2>เอกสารประกอบใบเสนอราคา / List Price</h2>
-                            </div>
+    <!-- Order Lines Table -->
+    <table class="table table-sm" style="margin-top: 20px; font-size: 25px; border-collapse: collapse;">
+        <thead>
+            <tr style="background-color:rgb(127, 124, 124); border: none;">
+                <th style="width: 5%; color: white; border: none;"></th>
+                <th style="width: 30%; color: white; border: none;">Product Description</th>
+                <th style="width: 15%; color: white; border: none;">Image</th>
+                <th style="width: 10%; color: white; border: none;">Quantity</th>
+                <th style="width: 15%; color: white; border: none;">List Price</th>
+                <th style="width: 10%; color: white; border: none;">Discount</th>
+                <th style="width: 15%; color: white; border: none;">Net Price</th>
+                <th style="width: 15%; color: white; border: none;">Net Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr t-foreach="doc.order_line" t-as="line" style="border-bottom: 1px solid #8B9B7C;">
+                <td style="text-align: center; border: none; padding: 10px 0;"><span style="background-color: #8B9B7C; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span></td>
+                <td style="border: none; padding: 10px 0;">
+                    <div><span t-field="line.name"/></div>
+                </td>
+                <td style="text-align: center; border: none; padding: 10px 0;">
+                    <img t-if="line.product_id.image_1920" t-att-src="image_data_uri(line.product_id.image_1920)" style="max-height: 100px;"/>
+                </td>
+                <td style="text-align: center; border: none; padding: 10px 0;">
+                    <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom.name"/>
+                </td>
+                <td style="text-align: right; border: none; padding: 10px 0;">
+                    <span t-field="line.price_unit" 
+                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                </td>
+                <td style="text-align: right; border: none; padding: 10px 0;">
+                    <span t-field="line.discount"/>%
+                </td>
+                <td style="text-align: right; border: none; padding: 10px 0;">
+                    <span t-esc="line.price_unit * (1 - (line.discount or 0.0) / 100.0)"
+                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                </td>
+                <td style="text-align: right; border: none; padding: 10px 0;">
+                    <span t-field="line.price_subtotal" 
+                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                </td>
+            </tr>
+        </tbody>
+    </table>                       
 
-                            <div t-if="doc.project_name" style="text-align: center; margin-bottom: 20px;">
-                                <strong>โครงการ / Project:</strong> <span t-field="doc.project_name"/>
-                            </div>
-
-                            <div class="row mb-4">
-                                <div class="col-6">
-                                    <strong>เลขที่เอกสาร / Document No: </strong>
-                                    <span t-field="doc.name"/>
-                                </div>
-                                <div class="col-6 text-end">
-                                    <strong>วันที่ / Date: </strong>
-                                    <span t-field="doc.date_order" t-options='{"widget": "date"}'/>
-                                </div>
-                            </div>
-
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 5%; border: 1px solid black; padding: 8px; text-align: center;">NO.</th>
-                                        <th style="width: 15%; border: 1px solid black; padding: 8px; text-align: center;">BRAND</th>
-                                        <th style="width: 15%; border: 1px solid black; padding: 8px; text-align: center;">MODEL</th>
-                                        <th style="width: 35%; border: 1px solid black; padding: 8px; text-align: center;">DESCRIPTION</th>
-                                        <th style="width: 15%; border: 1px solid black; padding: 8px; text-align: center;">UNIT PRICE</th>
-                                        <th style="width: 15%; border: 1px solid black; padding: 8px; text-align: center;">REMARK</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="doc.order_line" t-as="line">
-                                        <td style="border: 1px solid black; padding: 8px; text-align: center;"><span t-esc="line_index + 1"/></td>
-                                        <td style="border: 1px solid black; padding: 8px;"><span t-field="line.product_id.x_studio_brand"/></td>
-                                        <td style="border: 1px solid black; padding: 8px;"><span t-field="line.product_id.x_studio_model"/></td>
-                                        <td style="border: 1px solid black; padding: 8px;"><span t-field="line.name"/></td>
-                                        <td style="border: 1px solid black; padding: 8px; text-align: right;">
-                                            <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                                        </td>
-                                        <td style="border: 1px solid black; padding: 8px;"></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-
-                           
-
-                            <div style="margin-top: 50px;">
-                                <div class="row">
-                                    <div class="col-4 text-center">
-                                        <p>____</p>
-                                        <p>ผู้จัดทำ / Prepared By</p>
-                                        <p>วันที่ / Date: ____</p>
-                                    </div>
-                                    <div class="col-4 text-center">
-                                        <p>____</p>
-                                        <p>ผู้ตรวจสอบ / Checked By</p>
-                                        <p>วันที่ / Date: ____</p>
-                                    </div>
-                                    <div class="col-4 text-center">
-                                        <p>____</p>
-                                        <p>ผู้อนุมัติ / Approved By</p>
-                                        <p>วันที่ / Date: ____</p>
-                                    </div>
-                                </div>
-                            </div>
+    <!-- Totals Section -->
+    <div class="row justify-content-end" style="margin-top: 20px; font-size: 25px;">
+        <div class="col-4">
+            <table class="table table-sm" style="border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #8B9B7C;">
+                    <td style="border: none; padding: 10px 0;">
+                        <span style="color: #000000; padding: 3px 8px;">Excluding vat:</span>
+                    </td>
+                    <td class="text-end" style="border: none; padding: 10px 0;">
+                        <span t-field="doc.amount_untaxed"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #8B9B7C;">
+                    <td style="border: none; padding: 10px 0;">
+                        <span style="color: #000000; padding: 3px 8px;">Vat 7%:</span>
+                    </td>
+                    <td class="text-end" style="border: none; padding: 10px 0;">
+                        <span t-field="doc.amount_tax"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #8B9B7C;">
+                    <td style="border: none; padding: 10px 0;">
+                        <span style="color: #000000; padding: 3px 8px;">Including vat:</span>
+                    </td>
+                    <td class="text-end" style="border: none; padding: 10px 0;">
+                        <span t-field="doc.amount_total"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
                         </div>
                     </div>
                 </t>

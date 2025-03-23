@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
-        <record id="seq_buz_custom_quotation" model="ir.sequence">
-            <field name="name">Custom Quotation Sequence</field>
-            <field name="code">buz.custom.quotation</field>
-            <field name="prefix">QT-%(y)s%(month)s</field>
-            <field name="padding">4</field>
+        <record id="seq_sale_proposal" model="ir.sequence">
+            <field name="name">Sale Proposal</field>
+            <field name="code">sale.proposal</field>
+            <field name="prefix">PS</field>
+            <field name="padding">5</field>
             <field name="company_id" eval="False"/>
         </record>
     </data>

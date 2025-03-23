@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- เพิ่ม Report Action -->
-    <record id="action_report_saleorder_buz" model="ir.actions.report">
-        <field name="name">Quotation Report</field>
+    <record id="view_order_form_inherit_buz" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.buz</field>
         <field name="model">sale.order</field>
-        <field name="report_type">qweb-pdf</field>
-        <field name="report_name">buz_custom_quotation.report_saleorder_buz</field>
-        <field name="report_file">buz_custom_quotation.report_saleorder_buz</field>
-        <field name="print_report_name">'Quotation - %s' % (object.name)</field>
-        <field name="binding_model_id" ref="sale.model_sale_order"/>
-        <field name="binding_type">report</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="project_name" placeholder="Project Name"/>
+                <field name="proposal_no" readonly="1"/>
+            </xpath>
+        </field>
     </record>
 </odoo>
