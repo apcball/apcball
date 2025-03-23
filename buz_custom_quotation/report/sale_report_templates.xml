@@ -13,6 +13,7 @@
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
     </record>
+
     <template id="report_saleorder_buz">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
@@ -23,68 +24,99 @@
                             <div style="text-align: center; margin-top: -10mm; margin-right: -4mm;">
                                 <img t-att-src="'/buz_custom_quotation/static/img/cover/top_image.jpeg'" style="width: calc(95% + 8mm); max-width: none; margin-bottom: 5px;"/>
                                 <div style="text-align: right;">
-                                <div style="margin: 5px 0;">
-                                    <h3 style="font-size: 40px;">Project Name:</h3>
-                                    <div style="font-size: 40px;" t-field="doc.project_name"/>
-                                </div>
-                                  <div style="margin: 30px 0;">
-                                    <h3 style="font-size: 40px;">Customer:</h3>
-                                    <div style="font-size: 40px;" t-field="doc.partner_id.name"/>
-                                </div>
-                                <div style="margin: 50px 0;">
-                                    <div style="margin: 10px 0;">
-                                        <strong style="font-size: 30px;">Proposal No.:</strong>
-                                        <span style="font-size: 30px;" t-field="doc.name"/>
+                                    <div style="margin: 5px 0;">
+                                        <h3 style="font-size: 40px;">Project Name:</h3>
+                                        <div style="font-size: 40px;" t-field="doc.project_name"/>
+                                    </div>
+                                    <div style="margin: 30px 0;">
+                                        <h3 style="font-size: 40px;">Customer:</h3>
+                                        <div style="font-size: 40px;" t-field="doc.partner_id.name"/>
+                                    </div>
+                                    <div style="margin: 50px 0;">
+                                        <div style="margin: 10px 0;">
+                                            <strong style="font-size: 30px;">Proposal No.:</strong>
+                                            <span style="font-size: 30px;" t-field="doc.name"/>
+                                        </div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <!-- Company Info Section -->
+                            <div class="row mb-2" style="margin-top: 150px; font-size: 20px;">
+                                <div class="col-8">
+                                    <div class="company-header mb-1">MOGEN CO., LTD. (HEAD OFFICE)</div>
+                                    <div class="company-info">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+                                    <div class="company-info">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
+                                    <div class="company-info">www.mogen.co.th</div>
+                                </div>
+                                <div class="col-4 text-end">
+                                    <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
+                                         style="width: 300px; height: auto; object-fit: contain; margin-top: 50px;" alt="Company Logo"/>
                                 </div>
                             </div>
-                              <!-- Company Info Section -->
-                        <!-- Company Info Section -->
-<div class="row mb-2" style="margin-top: -10px; font-size: 20px;"> <!-- Adjusted margin-top to move up by 2 lines -->
-    <div class="col-8">
-        <div class="company-header mb-1">MOGEN CO., LTD. (HEAD OFFICE)</div>
-        <div class="company-info">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
-        <div class="company-info">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
-        <div class="company-info">www.mogen.co.th</div>
-    </div>
-    <div class="col-4 text-end">
-        <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
-             style="width: 250px; height: auto; object-fit: contain; margin-top: 100px;" alt="Company Logo"/> <!-- Adjusted margin-top to move down by 1 line -->
-    </div>
-</div>
                         </div>
 
-                        <!-- Middle Page -->
-                        <div style="page-break-after: always;">
-                            <!-- Logo Header -->
-                            <div style="text-align: left; margin-top: -10mm;">
-                                <img t-att-src="'/buz_custom_quotation/static/img/cover/logo_header.png'" style="margin: 0;"/>
-                            </div>
-                            
-                            <!-- Content Container -->
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 230px; min-height: calc(100vh - 200px);">
-                                <!-- Left Side - Image -->
-                                <div style="flex: 0 0 70%;">
-                                    <img t-att-src="'/buz_custom_quotation/static/img/cover/middle_image.png'" style="width: 100%; max-width: 100%;"/>
-                                </div>
-                                
-                                <!-- Right Side - Content -->
-                                <div style="flex: 0 0 30%; text-align: left;">
-                                    <h2 style="font-size: 28px; margin-bottom: 30px;">Project Information</h2>
-                                    
-                                    <div style="margin: 30px 0;" t-if="doc.partner_id">
-                                        <h3 style="font-size: 24px; color: #666;">Customer</h3>
-                                        <div style="font-size: 28px; margin-top: 10px;" t-field="doc.partner_id.name"/>
-                                    </div>
-                                    
-                                    <div style="margin: 30px 0;" t-if="doc.project_name">
-                                        <h3 style="font-size: 24px; color: #666;">Project Name</h3>
-                                        <div style="font-size: 28px; margin-top: 10px;" t-field="doc.project_name"/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+<!-- Middle Page -->
+<div style="page-break-after: always;">
+    <!-- Logo Header -->
+    <div style="text-align: left; margin-top: -10mm; margin-left: 8mm;">
+        <img t-att-src="'/buz_custom_quotation/static/img/cover/logo_header.png'" style="margin: 0;"/>
+    </div>
+
+    <!-- Content Container -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 230px; min-height: calc(100vh - 200px);">
+        <!-- Left Side - Image -->
+        <div style="flex: 0 0 70%;">
+            <img t-att-src="'/buz_custom_quotation/static/img/cover/middle_image.png'" style="width: 100%; max-width: 100%;"/>
+        </div>
+
+        <!-- Right Side - Content -->
+        <div style="margin-top: -300px; margin-left: 10mm;">
+            <div style="margin: 5px 0; text-align: left;">
+                <h3 style="font-size: 40px;">Project Name:</h3>
+                <div style="font-size: 40px;" t-field="doc.project_name"/>
+            </div>
+            <div style="margin: 30px 0; text-align: left;">
+                <h3 style="font-size: 40px;">Customer:</h3>
+                <div style="font-size: 40px;" t-field="doc.partner_id.name"/>
+            </div>
+            <div style="margin: 50px 0; text-align: left;">
+                <div style="margin: 10px 0;">
+                    <strong style="font-size: 30px;">Proposal No.:</strong>
+                    <span style="font-size: 30px;" t-field="doc.name"/>
+                </div>
+            </div>
+            <div style="margin-top: 20px; font-size: 20px; text-align: left;">
+                <ol style="text-align: left; padding-left: 20px;">
+                    <li>ราคาข้างต้นเป็นราคาที่ยังไม่รวมภาษีมูลค่าเพิ่ม 7% / Above prices are excluded VAT 7%</li>
+                    <li>ราคาอาจมีการเปลี่ยนแปลงโดยไม่ต้องแจ้งให้ทราบล่วงหน้า / Prices are subject to change without prior notice</li>
+                    <li>ราคาดังกล่าวข้างต้นยืนยันราคาถึงวันที่ 2025-12-31</li>
+                    <li>หากมีการเปลี่ยนแปลงรายการใดๆ ข้างตั้น จะต้องแจ้งให้บริษัทฯ ทราบล่วงหน้าไม่น้อยกว่า 30 วัน ก่อนส่งสินค้า</li>
+                    <li>สามารถทยอยส่งสินค้าได้ 60 วัน หลังจากได้รับเอกสารยืนยันการสังซื้อ</li>
+                    <li>ระยะทางการยกของให้สูงสุด ไม่เกินระยะทาง 25 เมตร จากจุดจอดรถ</li>
+                    <li>ทางเดินต้องกว้างพอให้สามารถยกของได้ 2 คนต่อกล่อง</li>
+                    <li>ราคาสินค้าไม่รวมบริการติดตั้ง</li>
+                    <li>ราคาเสนอถึงโครงการ <span t-field="doc.project_name"/></li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Section -->
+    <div class="footer o_standard_footer" style="border-top: none !important; padding-top: 0;">
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px;">
+                <div style="text-align: left;">
+                    <img t-if="True" t-att-src="'/buz_custom_quotation/static/description/social_tab.png'" style="max-width: 250px; height: auto;"/>
+                </div>
+                <div style="text-align: right;">
+                    <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" style="max-width: 250px; height: auto;"/>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+                       
 
                         <!-- Content Page -->
                         <div>
@@ -136,28 +168,22 @@
                                 </tbody>
                             </table>
 
-                            <div style="margin-top: 20px;">
-                                <strong>หมายเหตุ / Remark:</strong>
-                                <ol>
-                                    <li>ราคาข้างต้นเป็นราคาที่ยังไม่รวมภาษีมูลค่าเพิ่ม 7% / Above prices are excluded VAT 7%</li>
-                                    <li>ราคาอาจมีการเปลี่ยนแปลงโดยไม่ต้องแจ้งให้ทราบล่วงหน้า / Prices are subject to change without prior notice</li>
-                                </ol>
-                            </div>
+                           
 
                             <div style="margin-top: 50px;">
                                 <div class="row">
                                     <div class="col-4 text-center">
-                                        <p>_____________________</p>
+                                        <p>____</p>
                                         <p>ผู้จัดทำ / Prepared By</p>
                                         <p>วันที่ / Date: ____</p>
                                     </div>
                                     <div class="col-4 text-center">
-                                        <p>_____________________</p>
+                                        <p>____</p>
                                         <p>ผู้ตรวจสอบ / Checked By</p>
                                         <p>วันที่ / Date: ____</p>
                                     </div>
                                     <div class="col-4 text-center">
-                                        <p>_____________________</p>
+                                        <p>____</p>
                                         <p>ผู้อนุมัติ / Approved By</p>
                                         <p>วันที่ / Date: ____</p>
                                     </div>
