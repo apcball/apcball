@@ -6,6 +6,7 @@
     'description': """Custom Quotation form for BUZ""",
     'author': 'BUZ',
     'depends': [
+        'sale',
         'sale_management',
         'web',
     ],
@@ -13,7 +14,7 @@
         'data/sequence.xml',
         'security/ir.model.access.csv',
         'report/sale_report_templates.xml',
-        'views/res_config_settings_views.xml',
+        'report/sale_quotation_report.xml',
         'views/sale_order_views.xml',
     ],
     'installable': True,
