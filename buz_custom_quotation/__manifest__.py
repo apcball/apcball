@@ -4,9 +4,10 @@
     'category': 'Sales',
     'summary': 'Custom Quotation Template',
     'description': """Custom Quotation form for BUZ""",
+    'author': 'BUZ',
     'depends': [
         'sale_management',
-        'sale_pdf_quote_builder',
+        'web',
     ],
     'data': [
         'data/sequence.xml',
@@ -16,6 +17,7 @@
         'views/sale_order_views.xml',
     ],
     'installable': True,
-    'application': True,
+    'application': False,
+    'auto_install': False,
+    'license': 'LGPL-3',
 }
-    
