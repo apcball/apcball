@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- เพิ่ม Report Action -->
+    <!-- Inherit Form View -->
+    <record id="view_order_form_inherit_project_name" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.project.name</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='sale_order_template_id']" position="after">
+                <field name="project_name" string="Project Name"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Report Action -->
     <record id="action_report_saleorder_buz" model="ir.actions.report">
         <field name="name">Quotation Report</field>
         <field name="model">sale.order</field>
