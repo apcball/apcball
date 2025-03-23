@@ -1,6 +1,6 @@
 {
     'name': 'BUZ Custom Quotation',
-    'version': '1.0',
+    'version': '17.0.1.0.0',
     'category': 'Sales',
     'summary': 'Custom Quotation Template',
     'description': """Custom Quotation form for BUZ""",
