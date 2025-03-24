@@ -10,6 +10,7 @@
     'data': [
         'security/ir.model.access.csv',
         'reports/purchase_order_report.xml',
+        'reports/purchase_order_report_eng.xml',
         'views/report_menu.xml',
     ],
     'assets': {
