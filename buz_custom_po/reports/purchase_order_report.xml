@@ -21,14 +21,25 @@
     @font-face {
         font-family: 'Sarabun';
         src: url('/buz_custom_po/static/fonts/Sarabun-Bold.ttf') format('truetype');
+        font-weight: bold;
+        font-style: normal;
     }
+
+    html, body {
+        font-family: 'Sarabun', sans-serif !important;
+    }
+
     .page {
-        font-family: 'Sarabun', sans-serif;
-        font-size: 20px;
+        font-family: 'Sarabun', sans-serif !important;
+        font-size: 14px;
         padding: 0;
         width: 100%;
         height: 100%;
         margin: 0;
+    }
+
+    table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+        font-family: 'Sarabun', sans-serif !important;
     }
     /* แก้ไข style สำหรับตาราง */
     .table {
@@ -50,6 +61,10 @@
     .table-bordered th {
         border: none !important;
     }
+    /* Add font size for vendor and delivery info */
+    .vendor-info, .delivery-info {
+        font-size: 14px;
+    }
 </style>
         <t t-call="web.basic_layout">
             <t t-foreach="docs" t-as="o">
@@ -60,15 +75,15 @@
 
                 <!-- วนลูปสร้างหน้ากระดาษ -->
                 <t t-foreach="range(total_pages)" t-as="page_num">
-                    <div class="page" style="font-family: 'Sarabun', sans-serif;">
+                    <div class="page">
                         <!-- ส่วนหัว (Header) -->
                         <div class="row mb-2">
                             <div class="col-8">
-                                <div style="font-size: 20px;">
+                                <div style="font-size: 16px;">
                                     <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
-                                    <div style="font-size: 18px;">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
-                                    <div style="font-size: 18px;">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
-                                    <div style="font-size: 18px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                                    <div style="font-size: 14px;">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
+                                    <div style="font-size: 14px;">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
+                                    <div style="font-size: 14px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
                                 </div>
                             </div>
                             <div class="col-4 text-end">
@@ -80,17 +95,17 @@
                         <!-- Document Title -->
                         <div class="row mb-2">
                            <div class="col-12 text-center">
-                                <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
+                                <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 20px; margin-top: 10px;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
                            </div>
                         </div>
 
                         <!-- Document Info -->
                         <div class="row mb-2">
                             <div class="col-8">
-                                <p style="margin-bottom: 0; margin-top: 20px; font-size: 18px;">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
+                                <p style="margin-bottom: 0; margin-top: 20px; font-size: 14px;">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
                             </div>
                             <div class="col-4">
-                                <div class="text-end" style="font-size: 18px;">
+                                <div class="text-end" style="font-size: 14px;">
                                     <div>เลขที่/NO.: <strong><span t-field="o.name"/></strong></div>
                                     <div>วันที่/DATE: <strong><span t-field="o.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></strong></div>
                                     <div>หน้า/PAGE: <t t-esc="page_num + 1"/> / <t t-esc="total_pages"/></div>
@@ -98,57 +113,62 @@
                             </div>
                         </div>
 
-                        <!-- Vendor and Delivery Info -->
-                        <t t-if="page_num == 0">
-                            <div class="row mb-3">
-                                <div class="col-6">
-                                    <div style="border: 1px solid #000; padding: 8px; min-height: 130px;">
-                                            <tr>
-                                                <td style="width: 35%; padding: 2px;"><strong>ผู้ขาย/VENDOR:</strong></td>
-                                                <td style="padding: 2px;"><span t-field="o.partner_id.name"/></td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding: 2px;"><strong>ที่อยู่/ADDRESS:</strong></td>
-                                                <td style="padding: 2px;">
-                                                    <span t-field="o.partner_id.street"/>
-                                                    <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
-                                                </td>
-                                            </tr>
-                                            <tr t-if="o.partner_id.vat">
-                                                <td style="padding: 2px;"><strong>เลขประจำตัวผู้เสียภาษี:</strong></td>
-                                                <td style="padding: 2px;"><span t-field="o.partner_id.vat"/></td>
-                                            </tr>
-                                            <tr t-if="o.partner_id.phone">
-                                                <td style="padding: 2px;"><strong>โทรศัพท์/TEL:</strong></td>
-                                                <td style="padding: 2px;"><span t-field="o.partner_id.phone"/></td>
-                                            </tr>
-                                            <tr t-if="o.partner_id.email">
-                                                <td style="padding: 2px;"><strong>อีเมล/EMAIL:</strong></td>
-                                                <td style="padding: 2px;"><span t-field="o.partner_id.email"/></td>
-                                            </tr>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div style="border: 1px solid #000; padding: 8px; min-height: 130px;">                  
-                                            <tr>
-                                                <td colspan="2" style="padding: 2px;"><strong>สถานที่ส่งของ/SHIP TO:</strong></td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="2" style="padding: 2px;">
-                                                    <div><span t-field="o.picking_type_id.warehouse_id.partner_id.name"/></div>
-                                                    <div><span t-field="o.picking_type_id.warehouse_id.partner_id.street"/></div>
-                                                    <div><span t-field="o.picking_type_id.warehouse_id.partner_id.street2"/></div>
-                                                </td>
-                                            </tr>
-                                    </div>
-                                </div>
-                            </div>
-                        </t>
-            <t t-set="line_number" t-value="page_num * items_per_page + 1"/>
+    <!-- Vendor and Delivery Info -->
+<t t-if="page_num == 0">
+    <div class="row mb-3">
+        <div class="col-6">
+            <div style="border: 1px solid #000; padding: 8px; height: 180px; font-size: 14px;">
+                <table>
+                    <tr>
+                        <td style="width: 35%; padding: 2px; font-size: 14px;"><strong>ผู้ขาย/VENDOR:</strong></td>
+                        <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.name"/></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 2px; font-size: 14px;"><strong>ที่อยู่/ADDRESS:</strong></td>
+                        <td style="padding: 2px; font-size: 14px;">
+                            <span t-field="o.partner_id.street"/>
+                            <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
+                        </td>
+                    </tr>
+                    <tr t-if="o.partner_id.vat">
+                        <td style="padding: 2px; font-size: 14px;"><strong>เลขประจำตัวผู้เสียภาษี:</strong></td>
+                        <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.vat"/></td>
+                    </tr>
+                    <tr t-if="o.partner_id.phone">
+                        <td style="padding: 2px; font-size: 14px;"><strong>โทรศัพท์/TEL:</strong></td>
+                        <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.phone"/></td>
+                    </tr>
+                    <tr t-if="o.partner_id.email">
+                        <td style="padding: 2px; font-size: 14px;"><strong>อีเมล/EMAIL:</strong></td>
+                        <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.email"/></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="col-6">
+            <div style="border: 1px solid #000; padding: 8px; height: 180px; font-size: 14px;">
+                <table>
+                    <tr>
+                        <td colspan="2" style="padding: 2px; font-size: 14px;"><strong>สถานที่ส่งของ/SHIP TO:</strong></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="padding: 2px; font-size: 14px;">
+                            <div><span t-field="o.picking_type_id.warehouse_id.partner_id.name"/></div>
+                            <div><span t-field="o.picking_type_id.warehouse_id.partner_id.street"/></div>
+                            <div><span t-field="o.picking_type_id.warehouse_id.partner_id.street2"/></div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</t>
+
+<t t-set="line_number" t-value="page_num * items_per_page + 1"/>
                         <!-- Order Lines -->
                     <div class="row">
     <div class="col-12">
-        <table class="table" style="font-size: 18px; width: 100%; margin: 0 0 20px 0; padding: 0; border-collapse: collapse;">
+        <table class="table" style="font-size: 14px; width: 100%; margin: 0 0 20px 0; padding: 0; border-collapse: collapse;">
             <thead>
                 <tr class="text-center" style="background-color: #f8f9fa;">
                     <th style="width: 5%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">ลำดับ<br/>NO.</th>
@@ -209,7 +229,7 @@
     </div>
     <div class="col-5">
         <!-- ตารางสรุปยอด -->
-        <table class="table" style="font-size: 18px; width: 100%; margin: 0; padding: 0; border-collapse: collapse;">
+        <table class="table" style="font-size: 14px; width: 100%; margin: 0; padding: 0; border-collapse: collapse;">
             <!-- คำนวณค่าต่างๆ -->
             <t t-set="amount_untaxed" t-value="sum([line.product_qty * line.price_unit for line in o.order_line])"/>
             <t t-set="total_discount" t-value="sum([(line.product_qty * line.price_unit * line.discount/100.0) for line in o.order_line])"/>
@@ -260,21 +280,26 @@
         </table>
     </div>
 </div>
+                     <!-- Conditional page break based on number of items -->
+                     <t t-if="len(o.order_line) > 7">
+                         <div style="page-break-before: always;"></div>
+                     </t>
+
                      <!-- Signature Section -->
 <div class="row mt-5" style="margin-top: 4rem !important;">
-    <div class="col-4 text-center">
+    <div class="col-4 text-center" style="font-size: 14px;">
         <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
             <p class="mt-1" style="margin-bottom: 5px;">ผู้จัดทำ / Prepared by</p>
             <p style="margin-bottom: 5px;">วันที่/Date: ___/___/___</p>
         </div>
     </div>
-    <div class="col-4 text-center">
+    <div class="col-4 text-center" style="font-size: 14px;">
         <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
             <p class="mt-1" style="margin-bottom: 5px;">ผู้ตรวจสอบ / Checked by</p>
             <p style="margin-bottom: 5px;">วันที่/Date: ___/___/___</p>
         </div>
     </div>
-    <div class="col-4 text-center">
+    <div class="col-4 text-center" style="font-size: 14px;">
         <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
             <p class="mt-1" style="margin-bottom: 5px;">ผู้อนุมัติ / Approved by</p>
             <p style="margin-bottom: 5px;">วันที่/Date: ___/___/___</p>
@@ -282,35 +307,35 @@
     </div>
 </div>
 
-                            <!-- Footer Section -->
-                            <div class="row mt-3">
-                                <div class="col-12">
-                                    <div style="border: 1px solid #000; padding: 8px;">
-                                        <div class="row">
-                                            <div class="col-6">
-                                                <strong style="font-size: 18px;">***หมายเหตุ*** เงื่อนไขและการส่งมอบ</strong>
-                                                <ol style="font-size: 16px; margin-bottom: 0px;">
-                                                    <li>สินค้าที่ส่งมอบต้องให้มีคุณภาพ ขนาด ปริมาณ และจัดส่งตามกำหนด</li>
-                                                    <li>ถ้าไม่เป็นไปตามเงื่อนไขข้างต้นนี้ขอมีสิทธิ์ยกเลิกในสั่งซื้อ และไม่ต้องรับผิดชอบใดๆ ทั้งสิ้น</li>
-                                                    <li>ใบส่งของทุกฉบับต้องมีสำเนา 2 ฉบับ พร้อมระบุเลขที่ในสั่งซื้อ</li>
-                                                    <li>กรรมสิทธิ์และความรับผิดชอบของสินค้าจะเปลี่ยนจากของท่านเป็นของบริษัท ณ สถานที่ และเวลาที่มีการส่งมอบสินค้านั้น</li>
-                                                    <li>บริษัทฯ จะไม่รับผิดชอบในการชำระเงินใดๆ ทั้งสิ้นสำหรับสินค้าที่ผู้ขายส่งมอบเกินจำนวนที่ได้ระบุไว้ในใบสั่งซื้อ</li>
-                                                </ol>
-                                            </div>
-                                            <div class="col-6">
-                                                <strong style="font-size: 18px;">***REMARK*** CONDITION:</strong>
-                                                <ol style="font-size: 16px; margin-bottom: 0px;">
-                                                    <li>ALL SUPPLIES ARE TO BE MADE STRICTLY IN ACCORDANCE WITH OUR SPECIFICATION</li>
-                                                    <li>THIS ORDER SHALL BE CANCELLED IF DELIVERY IS NOT MADE WITH TIME STATED</li>
-                                                    <li>ALL SUPPLIES SHOULD BE COVERED BY YOUR INVOICE IN TRIPLICATION</li>
-                                                    <li>TITLE AND RISK OF THE GOODS STATED ABOVE SHALL PASS FROM YOU TO US AT THE PLACE AND TIME OF DELIVERY</li>
-                                                    <li>INVOICE/DELIVERY NOTE MUST BE STATED THE NUMBER OF THIS ORDER AND OUR PART NUMBER OF MERCHANDISES WE ARE NOT LIABLE TO PAY FOR GOODS DELIVERY IN EXCESS OF THIS ORDER</li>
-                                                </ol>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+    <!-- Footer Section -->
+<div class="row mt-3" style="margin-top: 4rem !important; font-size: 12px;">
+    <div class="col-12">
+        <div style="border: 1px solid #000; padding: 8px;">
+            <div class="row">
+                <div class="col-6">
+                    <strong style="font-size: 15px;">***หมายเหตุ*** เงื่อนไขและการส่งมอบ</strong>
+                    <ol style="font-size: 12px; margin-bottom: 0px;">
+                        <li>สินค้าที่ส่งมอบต้องให้มีคุณภาพ ขนาด ปริมาณ และจัดส่งตามกำหนด</li>
+                        <li>ถ้าไม่เป็นไปตามเงื่อนไขข้างต้นนี้ขอมีสิทธิ์ยกเลิกในสั่งซื้อ และไม่ต้องรับผิดชอบใดๆ ทั้งสิ้น</li>
+                        <li>ใบส่งของทุกฉบับต้องมีสำเนา 2 ฉบับ พร้อมระบุเลขที่ในสั่งซื้อ</li>
+                        <li>กรรมสิทธิ์และความรับผิดชอบของสินค้าจะเปลี่ยนจากของท่านเป็นของบริษัท ณ สถานที่ และเวลาที่มีการส่งมอบสินค้านั้น</li>
+                        <li>บริษัทฯ จะไม่รับผิดชอบในการชำระเงินใดๆ ทั้งสิ้นสำหรับสินค้าที่ผู้ขายส่งมอบเกินจำนวนที่ได้ระบุไว้ในใบสั่งซื้อ</li>
+                    </ol>
+                </div>
+                <div class="col-6">
+                    <strong style="font-size: 15px;">***REMARK*** CONDITION:</strong>
+                    <ol style="font-size: 12px; margin-bottom: 0px;">
+                        <li>ALL SUPPLIES ARE TO BE MADE STRICTLY IN ACCORDANCE WITH OUR SPECIFICATION</li>
+                        <li>THIS ORDER SHALL BE CANCELLED IF DELIVERY IS NOT MADE WITH TIME STATED</li>
+                        <li>ALL SUPPLIES SHOULD BE COVERED BY YOUR INVOICE IN TRIPLICATION</li>
+                        <li>TITLE AND RISK OF THE GOODS STATED ABOVE SHALL PASS FROM YOU TO US AT THE PLACE AND TIME OF DELIVERY</li>
+                        <li>INVOICE/DELIVERY NOTE MUST BE STATED THE NUMBER OF THIS ORDER AND OUR PART NUMBER OF MERCHANDISES WE ARE NOT LIABLE TO PAY FOR GOODS DELIVERY IN EXCESS OF THIS ORDER</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
                         </t>
                     </div>
                 </t>

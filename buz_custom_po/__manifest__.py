@@ -13,7 +13,11 @@
         'views/report_menu.xml',
     ],
     'assets': {
+        'web.assets_backend': [
+            'buz_custom_po/static/src/scss/style.scss',
+        ],
         'web.report_assets_common': [
+            'buz_custom_po/static/src/scss/style.scss',
         ],
     },
     'installable': True,
