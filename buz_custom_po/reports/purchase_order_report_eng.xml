@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <!-- Define Paper Format -->
-    <record id="paperformat_purchase_order" model="report.paperformat">
-        <field name="name">Purchase Order A4</field>
+    <record id="paperformat_purchase_order_eng" model="report.paperformat">
+        <field name="name">Purchase Order A4 English</field>
         <field name="default" eval="True"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
@@ -16,7 +16,7 @@
     </record>
 
     <!-- Report Template -->
-    <template id="report_purchaseorder_document_custom">
+    <template id="report_purchaseorder_document_custom_eng">
       <style>
     @font-face {
         font-family: 'Sarabun';
@@ -41,7 +41,6 @@
     table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
         font-family: 'Sarabun', sans-serif !important;
     }
-    /* แก้ไข style สำหรับตาราง */
     .table {
         border-collapse: collapse !important;
         width: 100%;
@@ -55,35 +54,31 @@
         padding: 4px;
     }
     
-    /* ลบ style ที่ซ้ำซ้อน */
     .table-bordered,
     .table-bordered td,
     .table-bordered th {
         border: none !important;
     }
-    /* Add font size for vendor and delivery info */
     .vendor-info, .delivery-info {
         font-size: 14px;
     }
 </style>
         <t t-call="web.basic_layout">
             <t t-foreach="docs" t-as="o">
-                <!-- คำนวณจำนวนหน้ากระดาษ -->
                 <t t-set="items_per_page" t-value="15"/>
                 <t t-set="total_items" t-value="len(o.order_line)"/>
                 <t t-set="total_pages" t-value="(total_items + items_per_page - 1) // items_per_page"/>
 
-                <!-- วนลูปสร้างหน้ากระดาษ -->
                 <t t-foreach="range(total_pages)" t-as="page_num">
                     <div class="page">
-                        <!-- ส่วนหัว (Header) -->
+                        <!-- Header -->
                         <div class="row mb-2">
                             <div class="col-8">
                                 <div style="font-size: 16px;">
-                                    <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
-                                    <div style="font-size: 14px;">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
-                                    <div style="font-size: 14px;">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
-                                    <div style="font-size: 14px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                                    <div class="mb-1"><strong>MOGEN CO., LTD. (HEAD OFFICE)</strong></div>
+                                    <div style="font-size: 14px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+                                    <div style="font-size: 14px;">Tax ID: 0105547076103</div>
+                                    <div style="font-size: 14px;">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
                                 </div>
                             </div>
                             <div class="col-4 text-end">
@@ -95,20 +90,20 @@
                         <!-- Document Title -->
                         <div class="row mb-2">
                            <div class="col-12 text-center">
-                                <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 20px; margin-top: 10px;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
+                                <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 20px; margin-top: 10px;">PURCHASE ORDER</h2>
                            </div>
                         </div>
 
                         <!-- Document Info -->
                         <div class="row mb-2">
                             <div class="col-8">
-                                <p style="margin-bottom: 0; margin-top: 20px; font-size: 14px;">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
+                                <p style="margin-bottom: 0; margin-top: 20px; font-size: 14px;">Please attach this purchase order when delivering goods and billing</p>
                             </div>
                             <div class="col-4">
                                 <div class="text-end" style="font-size: 14px;">
-                                    <div>เลขที่/NO.: <strong><span t-field="o.name"/></strong></div>
-                                    <div>วันที่/DATE: <strong><span t-field="o.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></strong></div>
-                                    <div>หน้า/PAGE: <t t-esc="page_num + 1"/> / <t t-esc="total_pages"/></div>
+                                    <div>NO.: <strong><span t-field="o.name"/></strong></div>
+                                    <div>DATE: <strong><span t-field="o.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></strong></div>
+                                    <div>PAGE: <t t-esc="page_num + 1"/> / <t t-esc="total_pages"/></div>
                                 </div>
                             </div>
                         </div>
@@ -120,26 +115,26 @@
             <div style="border: 1px solid #000; padding: 8px; height: 180px; font-size: 14px;">
                 <table>
                     <tr>
-                        <td style="width: 35%; padding: 2px; font-size: 14px;"><strong>ผู้ขาย/VENDOR:</strong></td>
+                        <td style="width: 35%; padding: 2px; font-size: 14px;"><strong>VENDOR:</strong></td>
                         <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.name"/></td>
                     </tr>
                     <tr>
-                        <td style="padding: 2px; font-size: 14px;"><strong>ที่อยู่/ADDRESS:</strong></td>
+                        <td style="padding: 2px; font-size: 14px;"><strong>ADDRESS:</strong></td>
                         <td style="padding: 2px; font-size: 14px;">
                             <span t-field="o.partner_id.street"/>
                             <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
                         </td>
                     </tr>
                     <tr t-if="o.partner_id.vat">
-                        <td style="padding: 2px; font-size: 14px;"><strong>เลขประจำตัวผู้เสียภาษี:</strong></td>
+                        <td style="padding: 2px; font-size: 14px;"><strong>TAX ID:</strong></td>
                         <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.vat"/></td>
                     </tr>
                     <tr t-if="o.partner_id.phone">
-                        <td style="padding: 2px; font-size: 14px;"><strong>โทรศัพท์/TEL:</strong></td>
+                        <td style="padding: 2px; font-size: 14px;"><strong>TEL:</strong></td>
                         <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.phone"/></td>
                     </tr>
                     <tr t-if="o.partner_id.email">
-                        <td style="padding: 2px; font-size: 14px;"><strong>อีเมล/EMAIL:</strong></td>
+                        <td style="padding: 2px; font-size: 14px;"><strong>EMAIL:</strong></td>
                         <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.email"/></td>
                     </tr>
                 </table>
@@ -149,7 +144,7 @@
             <div style="border: 1px solid #000; padding: 8px; height: 180px; font-size: 14px;">
                 <table>
                     <tr>
-                        <td colspan="2" style="padding: 2px; font-size: 14px;"><strong>สถานที่ส่งของ/SHIP TO:</strong></td>
+                        <td colspan="2" style="padding: 2px; font-size: 14px;"><strong>SHIP TO:</strong></td>
                     </tr>
                     <tr>
                         <td colspan="2" style="padding: 2px; font-size: 14px;">
@@ -165,21 +160,20 @@
 </t>
 
 <t t-set="line_number" t-value="page_num * items_per_page + 1"/>
-                        <!-- Order Lines -->
-                    <div class="row">
+<!-- Order Lines -->
+<div class="row">
     <div class="col-12">
         <table class="table" style="font-size: 14px; width: 100%; margin: 0 0 20px 0; padding: 0; border-collapse: collapse;">
             <thead>
                 <tr class="text-center" style="background-color: #f8f9fa;">
-                    <th style="width: 5%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">ลำดับ<br/>NO.</th>
-                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">รหัสสินค้า<br/>CODE</th>
-                    <th style="width: 25%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">รายการ<br/>DESCRIPTION</th>
-                    <th style="width: 10%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">วันที่ส่ง<br/>DELIVERY</th>
-                    <th style="width: 8%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">จำนวน<br/>QTY</th>
-                    <th style="width: 8%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">หน่วย<br/>UNIT</th>
-                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">ราคา/หน่วย<br/>UNIT PRICE</th>
-                    <th style="width: 8%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">ส่วนลด<br/>DISC %</th>
-                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">จำนวนเงิน<br/>AMOUNT</th>
+                    <th style="width: 5%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">NO.</th>
+                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">IMAGE</th>
+                    <th style="width: 25%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">DESCRIPTION</th>
+                    <th style="width: 10%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">DELIVERY</th>
+                    <th style="width: 18%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">QTY/UNIT</th>
+                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">UNIT PRICE</th>
+                    <th style="width: 8%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">DISC %</th>
+                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">AMOUNT</th>
                 </tr>
             </thead>
             <tbody>
@@ -187,20 +181,19 @@
                     <td style="text-align: center; padding: 4px; border: 0.5px solid #dee2e6;">
                         <span t-esc="line_index + 1"/>
                     </td>
-                    <td style="padding: 4px; border: 0.5px solid #dee2e6;">
-                        <span t-field="line.product_id.default_code"/>
+                    <td>
+                        <img t-if="line.product_id.image_128" 
+                            t-att-src="image_data_uri(line.product_id.image_128)"
+                            style="width: 64px; height: 64px; object-fit: contain;"/>
                     </td>
                     <td style="padding: 4px; border: 0.5px solid #dee2e6;">
-                        <span t-field="line.name"/>
+                        <span t-field="line.product_id.name_eng"/>
                     </td>
                     <td style="text-align: center; padding: 4px; border: 0.5px solid #dee2e6;">
                         <span t-field="line.date_planned" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
                     </td>
                     <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                        <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
-                    </td>
-                    <td style="text-align: center; padding: 4px; border: 0.5px solid #dee2e6;">
-                        <span t-field="line.product_uom.name"/>
+                        <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/> <span t-field="line.product_uom.name"/>
                     </td>
                     <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
                         <span t-field="line.price_unit" t-options='{"widget": "float", "precision": 2}'/>
@@ -216,21 +209,18 @@
         </table>
     </div>
 </div>
-
-                        <!-- สรุป, ลายเซ็น และเงื่อนไข (เฉพาะหน้าสุดท้าย) -->
                         <t t-if="page_num == total_pages - 1">
-                      <!-- ส่วนสรุป -->
+                      <!-- Summary Section -->
 <div class="row" style="margin-top: 20px;">
     <div class="col-7">
-        <!-- ส่วนหมายเหตุ -->
-       <div style="border: 0.5px solid #dee2e6; padding: 8px; min-height: 150px;">
-            <strong>หมายเหตุ:</strong> <span t-field="o.notes"/>
+        <!-- Notes Section -->
+        <div style="border: 0.5px solid #dee2e6; padding: 8px; min-height: 150px;">
+            <strong>Remark.</strong> <span t-field="o.notes"/>
         </div>
     </div>
     <div class="col-5">
-        <!-- ตารางสรุปยอด -->
+        <!-- Summary Table -->
         <table class="table" style="font-size: 14px; width: 100%; margin: 0; padding: 0; border-collapse: collapse;">
-            <!-- คำนวณค่าต่างๆ -->
             <t t-set="amount_untaxed" t-value="sum([line.product_qty * line.price_unit for line in o.order_line])"/>
             <t t-set="total_discount" t-value="sum([(line.product_qty * line.price_unit * line.discount/100.0) for line in o.order_line])"/>
             <t t-set="amount_after_discount" t-value="amount_untaxed - total_discount"/>
@@ -239,7 +229,7 @@
 
             <tr>
                 <td style="width: 60%; text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                    <span>ราคารวม/Total:</span>
+                    <span>Total:</span>
                 </td>
                 <td style="width: 40%; text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
                     <span t-esc="'{:,.2f}'.format(amount_untaxed)"/> 
@@ -247,7 +237,7 @@
             </tr>
             <tr>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                    <span>ส่วนลด/Discount:</span>
+                    <span>Discount:</span>
                 </td>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
                     <span t-esc="'{:,.2f}'.format(total_discount)"/> 
@@ -255,7 +245,7 @@
             </tr>
             <tr>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                    <span>ราคาหลังหักส่วนลด/Net:</span>
+                    <span>Net:</span>
                 </td>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
                     <span t-esc="'{:,.2f}'.format(amount_after_discount)"/> 
@@ -263,7 +253,7 @@
             </tr>
             <tr>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                    <span>ภาษีมูลค่าเพิ่ม/VAT 7%:</span>
+                    <span>VAT 7%:</span>
                 </td>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
                     <span t-esc="'{:,.2f}'.format(amount_tax)"/> 
@@ -271,7 +261,7 @@
             </tr>
             <tr>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                    <span>รวมทั้งสิ้น/Grand Total:</span>
+                    <span>Grand Total:</span>
                 </td>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
                     <span t-esc="'{:,.2f}'.format(amount_total)"/> 
@@ -280,7 +270,6 @@
         </table>
     </div>
 </div>
-                     <!-- Conditional page break based on number of items -->
                      <t t-if="len(o.order_line) > 7">
                          <div style="page-break-before: always;"></div>
                      </t>
@@ -289,20 +278,20 @@
 <div class="row mt-5" style="margin-top: 4rem !important;">
     <div class="col-4 text-center" style="font-size: 14px;">
         <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
-            <p class="mt-1" style="margin-bottom: 5px;">ผู้จัดทำ / Prepared by</p>
-            <p style="margin-bottom: 5px;">วันที่/Date: ___/___/___</p>
+            <p class="mt-1" style="margin-bottom: 5px;">Prepared by</p>
+            <p style="margin-bottom: 5px;">Date: ___/___/___</p>
         </div>
     </div>
     <div class="col-4 text-center" style="font-size: 14px;">
         <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
-            <p class="mt-1" style="margin-bottom: 5px;">ผู้ตรวจสอบ / Checked by</p>
-            <p style="margin-bottom: 5px;">วันที่/Date: ___/___/___</p>
+            <p class="mt-1" style="margin-bottom: 5px;">Checked by</p>
+            <p style="margin-bottom: 5px;">Date: ___/___/___</p>
         </div>
     </div>
     <div class="col-4 text-center" style="font-size: 14px;">
         <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
-            <p class="mt-1" style="margin-bottom: 5px;">ผู้อนุมัติ / Approved by</p>
-            <p style="margin-bottom: 5px;">วันที่/Date: ___/___/___</p>
+            <p class="mt-1" style="margin-bottom: 5px;">Approved by</p>
+            <p style="margin-bottom: 5px;">Date: ___/___/___</p>
         </div>
     </div>
 </div>
@@ -312,18 +301,8 @@
     <div class="col-12">
         <div style="border: 1px solid #000; padding: 8px;">
             <div class="row">
-                <div class="col-6">
-                    <strong style="font-size: 15px;">***หมายเหตุ*** เงื่อนไขและการส่งมอบ</strong>
-                    <ol style="font-size: 12px; margin-bottom: 0px;">
-                        <li>สินค้าที่ส่งมอบต้องให้มีคุณภาพ ขนาด ปริมาณ และจัดส่งตามกำหนด</li>
-                        <li>ถ้าไม่เป็นไปตามเงื่อนไขข้างต้นนี้ขอมีสิทธิ์ยกเลิกในสั่งซื้อ และไม่ต้องรับผิดชอบใดๆ ทั้งสิ้น</li>
-                        <li>ใบส่งของทุกฉบับต้องมีสำเนา 2 ฉบับ พร้อมระบุเลขที่ในสั่งซื้อ</li>
-                        <li>กรรมสิทธิ์และความรับผิดชอบของสินค้าจะเปลี่ยนจากของท่านเป็นของบริษัท ณ สถานที่ และเวลาที่มีการส่งมอบสินค้านั้น</li>
-                        <li>บริษัทฯ จะไม่รับผิดชอบในการชำระเงินใดๆ ทั้งสิ้นสำหรับสินค้าที่ผู้ขายส่งมอบเกินจำนวนที่ได้ระบุไว้ในใบสั่งซื้อ</li>
-                    </ol>
-                </div>
-                <div class="col-6">
-                    <strong style="font-size: 15px;">***REMARK*** CONDITION:</strong>
+                <div class="col-12">
+                    <strong style="font-size: 15px;">***REMARK*** CONDITIONS:</strong>
                     <ol style="font-size: 12px; margin-bottom: 0px;">
                         <li>ALL SUPPLIES ARE TO BE MADE STRICTLY IN ACCORDANCE WITH OUR SPECIFICATION</li>
                         <li>THIS ORDER SHALL BE CANCELLED IF DELIVERY IS NOT MADE WITH TIME STATED</li>
@@ -344,15 +323,15 @@
     </template>
 
     <!-- Report Action -->
-    <record id="action_report_purchase_order_custom" model="ir.actions.report">
-        <field name="name">Custom Purchase Order</field>
+    <record id="action_report_purchase_order_custom_eng" model="ir.actions.report">
+        <field name="name">Purchase Order (English)</field>
         <field name="model">purchase.order</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">buz_custom_po.report_purchaseorder_document_custom</field>
-        <field name="report_file">buz_custom_po.report_purchaseorder_document_custom</field>
+        <field name="report_name">buz_custom_po.report_purchaseorder_document_custom_eng</field>
+        <field name="report_file">buz_custom_po.report_purchaseorder_document_custom_eng</field>
         <field name="print_report_name">'Purchase Order - %s' % object.name</field>
         <field name="binding_model_id" ref="purchase.model_purchase_order"/>
         <field name="binding_type">report</field>
-        <field name="paperformat_id" ref="paperformat_purchase_order"/>
+        <field name="paperformat_id" ref="paperformat_purchase_order_eng"/>
     </record>
 </odoo>
