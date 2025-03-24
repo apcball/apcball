@@ -115,7 +115,7 @@
             <div style="border: 1px solid #000; padding: 8px; height: 180px; font-size: 14px;">
                 <table>
                     <tr>
-                        <td style="width: 35%; padding: 2px; font-size: 14px;"><strong>VENDOR:</strong></td>
+                        <td style="width: 25%; padding: 2px; font-size: 14px;"><strong>VENDOR:</strong></td>
                         <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.name"/></td>
                     </tr>
                     <tr>
@@ -149,7 +149,6 @@
                     <tr>
                         <td colspan="2" style="padding: 2px; font-size: 14px;">
                             <div><span t-field="o.picking_type_id.warehouse_id.partner_id.name"/></div>
-                            <div><span t-field="o.picking_type_id.warehouse_id.partner_id.street"/></div>
                             <div><span t-field="o.picking_type_id.warehouse_id.partner_id.street2"/></div>
                         </td>
                     </tr>
@@ -270,25 +269,28 @@
         </table>
     </div>
 </div>
-                     <t t-if="len(o.order_line) > 7">
+                     <t t-if="len(o.order_line) > 5">
                          <div style="page-break-before: always;"></div>
                      </t>
 
-                     <!-- Signature Section -->
+<!-- Signature Section -->
 <div class="row mt-5" style="margin-top: 4rem !important;">
     <div class="col-4 text-center" style="font-size: 14px;">
+        <p style="margin-bottom: 5px;"><strong><span t-field="o.create_uid.name"/></strong></p>
         <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
             <p class="mt-1" style="margin-bottom: 5px;">Prepared by</p>
             <p style="margin-bottom: 5px;">Date: ___/___/___</p>
         </div>
     </div>
     <div class="col-4 text-center" style="font-size: 14px;">
+        <p style="margin-bottom: 5px;">&amp;nbsp;</p>
         <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
             <p class="mt-1" style="margin-bottom: 5px;">Checked by</p>
             <p style="margin-bottom: 5px;">Date: ___/___/___</p>
         </div>
     </div>
     <div class="col-4 text-center" style="font-size: 14px;">
+        <p style="margin-bottom: 5px;">&amp;nbsp;</p>
         <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
             <p class="mt-1" style="margin-bottom: 5px;">Approved by</p>
             <p style="margin-bottom: 5px;">Date: ___/___/___</p>
