@@ -285,24 +285,41 @@
                          <div style="page-break-before: always;"></div>
                      </t>
 
-                     <!-- Signature Section -->
+<!-- Signature Section -->
 <div class="row mt-5" style="margin-top: 4rem !important;">
     <div class="col-4 text-center" style="font-size: 14px;">
-        <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
-            <p class="mt-1" style="margin-bottom: 5px;">ผู้จัดทำ / Prepared by</p>
-            <p style="margin-bottom: 5px;">วันที่/Date: ___/___/___</p>
+        <div style="height: 100px; display: flex; flex-direction: column; justify-content: flex-end;">
+            <strong><span t-field="o.create_uid.name"/></strong>
+            <t t-if="o.create_uid.employee_id">
+                <p style="margin: 0;">(<span t-field="o.create_uid.employee_id.name"/>)</p>
+            </t>
+            <t t-if="not o.create_uid.employee_id">
+                <p style="margin: 0;">&amp;nbsp;</p>
+            </t>
+        </div>
+        <div style="border-top: 1px solid #000; margin: 10px auto 0; width: 80%;">
+            <p style="margin: 5px 0;">ผู้จัดทำ / Prepared by</p>
+            <p style="margin: 5px 0;">วันที่/Date: <span t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></p>
         </div>
     </div>
     <div class="col-4 text-center" style="font-size: 14px;">
-        <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
-            <p class="mt-1" style="margin-bottom: 5px;">ผู้ตรวจสอบ / Checked by</p>
-            <p style="margin-bottom: 5px;">วันที่/Date: ___/___/___</p>
+        <div style="height: 100px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;">
+            <img src="/buz_custom_po/static/img/signatute1.jpg" style="width: 100px; height: auto;"/>
+            <p style="margin: 0;">(พรเพ็ชร วสันตกิจกำจร)</p>
+        </div>
+        <div style="border-top: 1px solid #000; margin: 10px auto 0; width: 80%;">
+            <p style="margin: 5px 0;">ผู้ตรวจสอบ / Checked by</p>
+            <p style="margin: 5px 0;">วันที่/Date: <span t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></p>
         </div>
     </div>
     <div class="col-4 text-center" style="font-size: 14px;">
-        <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
-            <p class="mt-1" style="margin-bottom: 5px;">ผู้อนุมัติ / Approved by</p>
-            <p style="margin-bottom: 5px;">วันที่/Date: ___/___/___</p>
+        <div style="height: 100px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;">
+            <img src="/buz_custom_po/static/img/signatute2.jpg" style="width: 100px; height: auto;"/>
+            <p style="margin: 0;">(นภัคสรณ์ วชิรพันธ์วิชาญ)</p>
+        </div>
+        <div style="border-top: 1px solid #000; margin: 10px auto 0; width: 80%;">
+            <p style="margin: 5px 0;">ผู้อนุมัติ / Approved by</p>
+            <p style="margin: 5px 0;">วันที่/Date: <span t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></p>
         </div>
     </div>
 </div>
