@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="billing_note_payment_report" model="ir.actions.report">
+        <field name="name">Payment Status Report</field>
+        <field name="model">billing.note</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_custom_billing_note.report_billing_note_payment</field>
+        <field name="report_file">buz_custom_billing_note.report_billing_note_payment</field>
+        <field name="binding_model_id" ref="model_billing_note"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_billing_note_payment">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Payment Status Report</h2>
+                        <div class="row mt32 mb32">
+                            <div class="col-6">
+                                <strong>Billing Note:</strong> <span t-field="doc.name"/>
+                                <br/>
+                                <strong>Partner:</strong> <span t-field="doc.partner_id"/>
+                                <br/>
+                                <strong>Date:</strong> <span t-field="doc.date"/>
+                                <br/>
+                                <strong>Due Date:</strong> <span t-field="doc.due_date"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Status:</strong> <span t-field="doc.state"/>
+                                <br/>
+                                <strong>Payment Status:</strong> <span t-field="doc.payment_state"/>
+                                <br/>
+                                <strong>Total Amount:</strong> <span t-field="doc.amount_total"/>
+                                <br/>
+                                <strong>Amount Paid:</strong> <span t-field="doc.amount_paid"/>
+                                <br/>
+                                <strong>Amount Due:</strong> <span t-field="doc.amount_residual"/>
+                            </div>
+                        </div>
+                        
+                        <h3>Payment History</h3>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Reference</th>
+                                    <th>Method</th>
+                                    <th>Amount</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.payment_line_ids" t-as="payment">
+                                    <td><span t-field="payment.payment_date"/></td>
+                                    <td><span t-field="payment.name"/></td>
+                                    <td><span t-field="payment.payment_method"/></td>
+                                    <td><span t-field="payment.amount"/></td>
+                                    <td><span t-field="payment.notes"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
