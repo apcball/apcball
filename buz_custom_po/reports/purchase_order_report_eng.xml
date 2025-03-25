@@ -324,9 +324,6 @@
                 <p class="signature-name">
                     <strong><span t-field="o.create_uid.name"/></strong>
                 </p>
-                <t t-if="o.create_uid.employee_id">
-                    <p class="signature-name">(<span t-field="o.create_uid.employee_id.name"/>)</p>
-                </t>
             </div>
             <div class="signature-line">
                 <p class="signature-title">Prepared by</p>
@@ -341,7 +338,7 @@
             <div class="signature-content">
                 <t t-if="o.l1_approved_by">
                     <img src="/buz_custom_po/static/img/signatute1.jpg" class="signature-image"/>
-                    <p class="signature-name">(พรเพ็ชร วสันตกิจกำจร)</p>
+                    <p class="signature-name">(Pornpetch Wasantakijkamjon)</p>
                 </t>
                 <t t-if="not o.l1_approved_by">
                     <div style="height: 60px;"></div> <!-- Empty space for signature -->
@@ -366,7 +363,7 @@
             <div class="signature-content">
                 <t t-if="o.l2_approved_by">
                     <img src="/buz_custom_po/static/img/signatute2.jpg" class="signature-image"/>
-                    <p class="signature-name">(นภัคสรณ์ วชิรพันธ์วิชาญ)</p>
+                    <p class="signature-name">(Naphaksorn Wachirapanwichan)</p>
                 </t>
                 <t t-if="not o.l2_approved_by">
                     <div style="height: 60px;"></div> <!-- Empty space for signature -->
