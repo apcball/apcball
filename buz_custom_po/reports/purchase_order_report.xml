@@ -220,7 +220,7 @@
                         <!-- สรุป, ลายเซ็น และเงื่อนไข (เฉพาะหน้าสุดท้าย) -->
                         <t t-if="page_num == total_pages - 1">
                       <!-- ส่วนสรุป -->
-<div class="row" style="margin-top: 20px;">
+<div class="row" style="margin-top: 5px;">
     <div class="col-7">
         <!-- ส่วนหมายเหตุ -->
        <div style="border: 0.5px solid #dee2e6; padding: 8px; min-height: 150px;">
@@ -280,50 +280,125 @@
         </table>
     </div>
 </div>
-                     <!-- Conditional page break based on number of items -->
-                     <t t-if="len(o.order_line) > 7">
+<!-- Conditional page break based on number of items -->
+                     <t t-if="len(o.order_line) > 10">
                          <div style="page-break-before: always;"></div>
                      </t>
-
 <!-- Signature Section -->
-<div class="row mt-5" style="margin-top: 4rem !important;">
-    <div class="col-4 text-center" style="font-size: 14px;">
-        <div style="height: 100px; display: flex; flex-direction: column; justify-content: flex-end;">
-            <strong><span t-field="o.create_uid.name"/></strong>
-            <t t-if="o.create_uid.employee_id">
-                <p style="margin: 0;">(<span t-field="o.create_uid.employee_id.name"/>)</p>
-            </t>
-            <t t-if="not o.create_uid.employee_id">
-                <p style="margin: 0;">&amp;nbsp;</p>
-            </t>
-        </div>
-        <div style="border-top: 1px solid #000; margin: 10px auto 0; width: 80%;">
-            <p style="margin: 5px 0;">ผู้จัดทำ / Prepared by</p>
-            <p style="margin: 5px 0;">วันที่/Date: <span t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></p>
+<div class="row mt-5" style="margin-top: calc(4rem - 80px) !important;">
+    <!-- Common styles for signature boxes -->
+    <style>
+        .signature-box {
+            font-size: 14px;
+            text-align: center;
+            width: 100%;
+        }
+        .signature-content {
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .signature-line {
+            border-top: 1px solid #000;
+            margin: 0 auto;
+            width: 80%;
+            padding-top: 5px;
+        }
+        .signature-title {
+            margin: 5px 0;
+            font-weight: normal;
+        }
+        .signature-date {
+            margin: 5px 0;
+        }
+        .signature-image {
+            width: 100px;
+            height: 60px;
+            object-fit: contain;
+            margin-bottom: 5px;
+        }
+        .signature-name {
+            margin: 0;
+            line-height: 1.5;
+        }
+    </style>
+
+    <!-- ผู้จัดทำ -->
+    <div class="col-4">
+        <div class="signature-box">
+            <div class="signature-content">
+                <div style="height: 60px;"></div> <!-- Placeholder for signature height -->
+                <p class="signature-name">
+                    <strong><span t-field="o.create_uid.name"/></strong>
+                </p>
+                <t t-if="o.create_uid.employee_id">
+                    <p class="signature-name">(<span t-field="o.create_uid.employee_id.name"/>)</p>
+                </t>
+            </div>
+            <div class="signature-line">
+                <p class="signature-title">ผู้จัดทำ / Prepared by</p>
+                <p class="signature-date">วันที่/Date: <span t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></p>
+            </div>
         </div>
     </div>
-    <div class="col-4 text-center" style="font-size: 14px;">
-        <div style="height: 100px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;">
-            <img src="/buz_custom_po/static/img/signatute1.jpg" style="width: 100px; height: auto;"/>
-            <p style="margin: 0;">(พรเพ็ชร วสันตกิจกำจร)</p>
-        </div>
-        <div style="border-top: 1px solid #000; margin: 10px auto 0; width: 80%;">
-            <p style="margin: 5px 0;">ผู้ตรวจสอบ / Checked by</p>
-            <p style="margin: 5px 0;">วันที่/Date: <span t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></p>
+
+    <!-- ผู้ตรวจสอบ L1 -->
+    <div class="col-4">
+        <div class="signature-box">
+            <div class="signature-content">
+                <t t-if="o.l1_approved_by">
+                    <img src="/buz_custom_po/static/img/signatute1.jpg" class="signature-image"/>
+                    <p class="signature-name">(พรเพ็ชร วสันตกิจกำจร)</p>
+                </t>
+                <t t-if="not o.l1_approved_by">
+                    <div style="height: 60px;"></div> <!-- Empty space for signature -->
+                    <p class="signature-name">&amp;nbsp;</p>
+                </t>
+            </div>
+            <div class="signature-line">
+                <p class="signature-title">ผู้ตรวจสอบ / Checked by</p>
+                <p class="signature-date">วันที่/Date: 
+                    <t t-if="o.l1_approved_date">
+                        <span t-field="o.l1_approved_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                    </t>
+                    <t t-if="not o.l1_approved_date">&amp;nbsp;</t>
+                </p>
+            </div>
         </div>
     </div>
-    <div class="col-4 text-center" style="font-size: 14px;">
-        <div style="height: 100px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;">
-            <img src="/buz_custom_po/static/img/signatute2.jpg" style="width: 100px; height: auto;"/>
-            <p style="margin: 0;">(นภัคสรณ์ วชิรพันธ์วิชาญ)</p>
-        </div>
-        <div style="border-top: 1px solid #000; margin: 10px auto 0; width: 80%;">
-            <p style="margin: 5px 0;">ผู้อนุมัติ / Approved by</p>
-            <p style="margin: 5px 0;">วันที่/Date: <span t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></p>
+
+    <!-- ผู้อนุมัติ L2 -->
+    <div class="col-4">
+        <div class="signature-box">
+            <div class="signature-content">
+                <t t-if="o.l2_approved_by">
+                    <img src="/buz_custom_po/static/img/signatute2.jpg" class="signature-image"/>
+                    <p class="signature-name">(นภัคสรณ์ วชิรพันธ์วิชาญ)</p>
+                </t>
+                <t t-if="not o.l2_approved_by">
+                    <div style="height: 60px;"></div> <!-- Empty space for signature -->
+                    <p class="signature-name">&amp;nbsp;</p>
+                </t>
+            </div>
+            <div class="signature-line">
+                <p class="signature-title">ผู้อนุมัติ / Approved by</p>
+                <p class="signature-date">วันที่/Date: 
+                    <t t-if="o.l2_approved_date">
+                        <span t-field="o.l2_approved_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                    </t>
+                    <t t-if="not o.l2_approved_date">&amp;nbsp;</t>
+                </p>
+            </div>
         </div>
     </div>
 </div>
-
+ <!-- Conditional page break based on number of items -->
+                     <t t-if="len(o.order_line) > 4">
+                         <div style="page-break-before: always;"></div>
+                     </t>
     <!-- Footer Section -->
 <div class="row mt-3" style="margin-top: 4rem !important; font-size: 12px;">
     <div class="col-12">
