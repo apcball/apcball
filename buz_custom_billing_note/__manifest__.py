@@ -2,6 +2,7 @@
     'name': 'Billing Note Management',
     'version': '17.0.1.0.0',
     'category': 'Accounting',
+    'sequence': 4,
     'summary': 'จัดการใบวางบิล',
     'description': """
         โมดูลสำหรับจัดการใบวางบิล

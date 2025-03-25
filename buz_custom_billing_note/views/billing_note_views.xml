@@ -83,12 +83,16 @@
                         </page>
                         <page string="Other Information" name="other_info">
                             <group>
-                                <field name="line_ids">
-                                    <tree editable="bottom">
-                                        <field name="name"/>
-                                        <field name="amount"/>
-                                    </tree>
-                                </field>
+                                <group string="การติดตามเอกสาร">
+                                    <field name="messenger_sent_date"/>
+                                    <field name="messenger_received_date"/>
+                                    <field name="ar_sent_date"/>
+                                    <field name="ar_received_date"/>
+                                    <field name="expected_payment_date"/>
+                                </group>
+                                <group string="หมายเหตุ">
+                                    <field name="note" nolabel="1" placeholder="บันทึกหมายเหตุเพิ่มเติม..." colspan="2"/>
+                                </group>
                             </group>
                         </page>
                     </notebook>
@@ -144,12 +148,13 @@
     </record>
 
     <menuitem id="menu_billing_note_root" 
-        name="Billing Notes" 
-        sequence="5"/>
+        name="Billing Notes"
+        parent="account.menu_finance"
+        sequence="4"/>
 
     <menuitem id="menu_billing_note" 
         name="Billing Notes"
         parent="menu_billing_note_root"
         action="action_billing_note"
-        sequence="10"/>
+        sequence="1"/>
 </odoo>
