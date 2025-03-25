@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <data noupdate="1">
-        <record id="thai_check_layout" model="account.check.layout">
-            <field name="name">Thai Check Layout</field>
-            <field name="code">thai</field>
-        </record>
-    </data>
-</odoo>
