@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Email Template for L1 Approval Request -->
+    <record id="email_template_po_approval_l1" model="mail.template">
+        <field name="name">Purchase Order - L1 Approval Request</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="subject">L1 Approval Required: Purchase Order ${object.name}</field>
+        <field name="email_from">${object.company_id.email}</field>
+        <field name="partner_to">${object.company_id.id}</field>
+        <field name="body_html" type="html">
+            <div style="margin: 0px; padding: 0px;">
+                <p>Dear L1 Approver,</p>
+                <p>A new purchase order requires your approval:</p>
+                <ul>
+                    <li>Purchase Order: <strong>${object.name}</strong></li>
+                    <li>Vendor: ${object.partner_id.name}</li>
+                    <li>Total Amount: ${format_amount(object.amount_total, object.currency_id)}</li>
+                    <li>Created by: ${object.create_uid.name}</li>
+                </ul>
+                <p>Please review and approve the purchase order.</p>
+                <br/>
+                <p>Best regards,</p>
+            </div>
+        </field>
+        <field name="lang">${object.partner_id.lang}</field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <!-- Email Template for L2 Approval Request -->
+    <record id="email_template_po_approval_l2" model="mail.template">
+        <field name="name">Purchase Order - L2 Approval Request</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="subject">L2 Approval Required: Purchase Order ${object.name}</field>
+        <field name="email_from">${object.company_id.email}</field>
+        <field name="partner_to">${object.company_id.id}</field>
+        <field name="body_html" type="html">
+            <div style="margin: 0px; padding: 0px;">
+                <p>Dear L2 Approver,</p>
+                <p>A purchase order has been approved by L1 and now requires your approval:</p>
+                <ul>
+                    <li>Purchase Order: <strong>${object.name}</strong></li>
+                    <li>Vendor: ${object.partner_id.name}</li>
+                    <li>Total Amount: ${format_amount(object.amount_total, object.currency_id)}</li>
+                    <li>L1 Approved by: ${object.l1_approved_by.name}</li>
+                    <li>L1 Approval Date: ${format_datetime(object.l1_approved_date)}</li>
+                </ul>
+                <p>Please review and approve the purchase order.</p>
+                <br/>
+                <p>Best regards,</p>
+            </div>
+        </field>
+        <field name="lang">${object.partner_id.lang}</field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <!-- Email Template for PO Approved -->
+    <record id="email_template_po_approved" model="mail.template">
+        <field name="name">Purchase Order - Approved</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="subject">Purchase Order ${object.name} Approved</field>
+        <field name="email_from">${object.company_id.email}</field>
+        <field name="partner_to">${object.create_uid.partner_id.id}</field>
+        <field name="body_html" type="html">
+            <div style="margin: 0px; padding: 0px;">
+                <p>Dear ${object.create_uid.name},</p>
+                <p>Your purchase order has been fully approved:</p>
+                <ul>
+                    <li>Purchase Order: <strong>${object.name}</strong></li>
+                    <li>Vendor: ${object.partner_id.name}</li>
+                    <li>Total Amount: ${format_amount(object.amount_total, object.currency_id)}</li>
+                    <li>L1 Approved by: ${object.l1_approved_by.name}</li>
+                    <li>L2 Approved by: ${object.l2_approved_by.name}</li>
+                </ul>
+                <p>The purchase order has been confirmed and sent to the vendor.</p>
+                <br/>
+                <p>Best regards,</p>
+            </div>
+        </field>
+        <field name="lang">${object.partner_id.lang}</field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <!-- Email Template for PO Rejected -->
+    <record id="email_template_po_rejected" model="mail.template">
+        <field name="name">Purchase Order - Rejected</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="subject">Purchase Order ${object.name} Rejected</field>
+        <field name="email_from">${object.company_id.email}</field>
+        <field name="partner_to">${object.create_uid.partner_id.id}</field>
+        <field name="body_html" type="html">
+            <div style="margin: 0px; padding: 0px;">
+                <p>Dear ${object.create_uid.name},</p>
+                <p>Your purchase order has been rejected:</p>
+                <ul>
+                    <li>Purchase Order: <strong>${object.name}</strong></li>
+                    <li>Vendor: ${object.partner_id.name}</li>
+                    <li>Rejected by: ${object.rejected_by.name}</li>
+                    <li>Rejection Date: ${format_datetime(object.rejection_date)}</li>
+                    <li>Rejection Reason: ${object.rejection_reason}</li>
+                </ul>
+                <p>Please review the rejection reason and make necessary adjustments.</p>
+                <br/>
+                <p>Best regards,</p>
+            </div>
+        </field>
+        <field name="lang">${object.partner_id.lang}</field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+</odoo>
