@@ -16,7 +16,6 @@
     'data': [
         'security/ir.model.access.csv',
         'views/receipt_views.xml',
-        'reports/receipt_report.xml',
         'reports/receipt_templates.xml',
     ],
     'installable': True,
