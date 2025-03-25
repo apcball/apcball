@@ -1,44 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+    <record id="paperformat_receipt" model="report.paperformat">
+        <field name="name">Receipt Letter</field>
+        <field name="default" eval="True"/>
+        <field name="format">custom</field>
+        <field name="page_height">279</field>
+        <field name="page_width">216</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">3</field>
+        <field name="margin_bottom">3</field>
+        <field name="margin_left">3</field>
+        <field name="margin_right">3</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_receipt_preprint" model="ir.actions.report">
+        <field name="name">Pre-printed Receipt</field>
+        <field name="model">account.payment</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_receipt_preprint.report_receipt_preprint</field>
+        <field name="report_file">buz_receipt_preprint.report_receipt_preprint</field>
+        <field name="print_report_name">'Receipt - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_receipt"/>
+        <field name="binding_model_id" ref="account.model_account_payment"/>
+        <field name="binding_type">report</field>
+    </record>
     <template id="report_receipt_preprint_document">
-        <t t-call="web.basic_layout">
-            <div class="page" style="padding: 0; margin: 0; width: 215.9mm; height: 279.4mm; position: relative;">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.basic_layout">
+                <div class="page" style="margin: 0; padding: 0;">
                 <style>
+                    :root {
+                        /* Font Sizes */
+                        --font-size-normal: 16px;
+                        --font-size-large: 18px;
+                        --font-size-small: 14px;
+                        
+                        /* Vertical Positions */
+                        --receipt-number-top: 55mm;
+                        --date-top: 65mm;
+                        --customer-info-top: 80mm;
+                        --description-top: 110mm;
+                        --amount-words-top: 130mm;
+                        --signatures-bottom: 45mm;
+                        
+                        /* Horizontal Positions */
+                        --left-margin: 25mm;
+                        --right-margin: 30mm;
+                        --customer-info-width: 100mm;
+                        --description-width: 110mm;
+                        --amount-words-width: 170mm;
+                    }
+                    
+                    @font-face {
+                        font-family: 'THSarabunNew';
+                        src: url('/buz_receipt_preprint/static/fonts/THSarabunNew.ttf') format('truetype');
+                    }
+                    
+                    body {
+                        font-family: 'THSarabunNew', sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        font-size: var(--font-size-normal);
+                    }
+                    
+                    .page {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    
+                    .receipt-body {
+                        position: relative;
+                        width: 216mm;
+                        height: 279mm;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    
+                    .text-normal {
+                        font-size: var(--font-size-normal);
+                    }
+                    
+                    .text-large {
+                        font-size: var(--font-size-large);
+                    }
+                    
+                    .text-small {
+                        font-size: var(--font-size-small);
+                    }
+                    
                     @media print {
                         @page {
-                            size: letter;
-                            margin: 0;
+                            size: 216mm 279mm;
+                            margin: 3mm;
                         }
                         body {
                             margin: 0;
                             padding: 0;
                         }
                         .page {
-                            width: 215.9mm;
-                            height: 279.4mm;
-                            margin: 0;
-                            padding: 0;
-                            overflow: hidden;
-                        }
-                    }
-                    @media screen {
-                        .page {
-                            background: white;
-                            display: block;
-                            margin: 0 auto;
-                            box-shadow: 0 0 0.5cm rgba(0,0,0,0.5);
+                            margin: 0 !important;
+                            padding: 0 !important;
                         }
                     }
                 </style>
 
                 <!-- Content -->
-                <div style="position: relative; z-index: 1; width: 215.9mm; height: 279.4mm;">
+                <div class="receipt-body">
                     <!-- Customer Info Section -->
-                    <div style="position: absolute; top: 80mm; left: 25mm; width: 100mm;">
-                        <div t-field="o.partner_id.name" style="margin-bottom: 3mm; font-size: 14px;"/>
-                        <div t-field="o.partner_id.street" style="margin-bottom: 2mm; font-size: 14px;"/>
-                        <div t-field="o.partner_id.street2" style="margin-bottom: 2mm; font-size: 14px;"/>
-                        <div style="font-size: 14px;">
+                    <div style="position: absolute; top: var(--customer-info-top); left: 0; width: var(--customer-info-width);">
+                        <div t-field="o.partner_id.name" class="text-normal" style="margin-bottom: 3mm;"/>
+                        <div t-field="o.partner_id.street" class="text-normal" style="margin-bottom: 2mm;"/>
+                        <div t-field="o.partner_id.street2" class="text-normal" style="margin-bottom: 2mm;"/>
+                        <div class="text-normal">
                             <t t-if="o.partner_id.city" t-esc="o.partner_id.city"/>
                             <t t-if="o.partner_id.state_id" t-esc="o.partner_id.state_id.name"/>
                             <t t-if="o.partner_id.zip" t-esc="o.partner_id.zip"/>
@@ -46,45 +123,47 @@
                     </div>
 
                     <!-- Receipt Number -->
-                    <div style="position: absolute; top: 55mm; right: 30mm; text-align: right; font-size: 14px;">
+                    <div style="position: absolute; top: var(--receipt-number-top); right: var(--right-margin); text-align: right;" class="text-normal">
                         <span t-field="o.name"/>
                     </div>
 
                     <!-- Date -->
-                    <div style="position: absolute; top: 65mm; right: 30mm; text-align: right; font-size: 14px;">
+                    <div style="position: absolute; top: var(--date-top); right: var(--right-margin); text-align: right;" class="text-normal">
                         <span t-field="o.date" t-options='{"format": "dd/MM/yyyy"}'/>
                     </div>
 
                     <!-- Description -->
-                    <div style="position: absolute; top: 110mm; left: 25mm; width: 110mm; font-size: 14px;">
+                    <div style="position: absolute; top: var(--description-top); left: var(--left-margin); width: var(--description-width);" class="text-normal">
                         <span t-field="o.ref"/>
                     </div>
 
                     <!-- Amount -->
-                    <div style="position: absolute; top: 110mm; right: 30mm; text-align: right; font-size: 14px;">
+                    <div style="position: absolute; top: var(--description-top); right: var(--right-margin); text-align: right;" class="text-normal">
                         <span t-field="o.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                     </div>
 
                     <!-- Amount in Words -->
-                    <div style="position: absolute; top: 130mm; left: 25mm; width: 170mm; font-size: 14px;">
+                    <div style="position: absolute; top: var(--amount-words-top); left: var(--left-margin); width: var(--amount-words-width);" class="text-normal">
                         <span t-esc="o.currency_id.amount_to_text(o.amount)"/>
                     </div>
 
                     <!-- Signatures -->
-                    <div style="position: absolute; bottom: 45mm; width: 215.9mm;">
-                        <div style="margin: 0 25mm; display: flex; justify-content: space-between;">
+                    <div style="position: absolute; bottom: var(--signatures-bottom); width: 100%;">
+                        <div style="margin: 0 var(--left-margin); display: flex; justify-content: space-between;">
                             <div style="text-align: center; width: 45%;">
-                                <div>____________________</div>
-                                <div style="margin-top: 2mm; font-size: 14px;">ผู้รับเงิน / Received By</div>
+                                <div style="border-bottom: 1px solid black; margin-bottom: 2mm;">&#160;</div>
+                                <div style="margin-top: 2mm;" class="text-normal">ผู้รับเงิน / Received By</div>
                             </div>
                             <div style="text-align: center; width: 45%;">
-                                <div>____________________</div>
-                                <div style="margin-top: 2mm; font-size: 14px;">ผู้จ่ายเงิน / Paid By</div>
+                                <div style="border-bottom: 1px solid black; margin-bottom: 2mm;">&#160;</div>
+                                <div style="margin-top: 2mm;" class="text-normal">ผู้จ่ายเงิน / Paid By</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            </t>
+            </t>
         </t>
     </template>
 
