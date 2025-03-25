@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <record id="module_billing_note_category" model="ir.module.category">
+            <field name="name">Billing Note</field>
+            <field name="description">Helps you handle billing notes.</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <record id="group_billing_note_user" model="res.groups">
+            <field name="name">User</field>
+            <field name="category_id" ref="module_billing_note_category"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
+        <record id="group_billing_note_manager" model="res.groups">
+            <field name="name">Manager</field>
+            <field name="category_id" ref="module_billing_note_category"/>
+            <field name="implied_ids" eval="[(4, ref('group_billing_note_user'))]"/>
+            <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        </record>
+    </data>
+
+    <data noupdate="1">
+        <record id="billing_note_comp_rule" model="ir.rule">
+            <field name="name">Billing Note Multi-Company</field>
+            <field name="model_id" ref="model_billing_note"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|',('company_id','=',False),('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="billing_note_payment_comp_rule" model="ir.rule">
+            <field name="name">Billing Note Payment Multi-Company</field>
+            <field name="model_id" ref="model_billing_note_payment"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|',('company_id','=',False),('company_id', 'in', company_ids)]</field>
+        </record>
+    </data>
+</odoo>
