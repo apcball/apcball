@@ -3,9 +3,9 @@
     <record id="paperformat_receipt" model="report.paperformat">
         <field name="name">Receipt Letter</field>
         <field name="default" eval="True"/>
-        <field name="format">Letter</field>
-        <field name="page_height">0</field>
-        <field name="page_width">0</field>
+        <field name="format">custom</field>
+        <field name="page_height">279</field>
+        <field name="page_width">216</field>
         <field name="orientation">Portrait</field>
         <field name="margin_top">0</field>
         <field name="margin_bottom">0</field>
