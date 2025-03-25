@@ -77,12 +77,12 @@
                         </div>
 
                         <div class="header-info" style="display: flex; justify-content: space-between;">
-                            <!-- Header Information Left -->
+                            <!-- Header Information -->
                             <div style="width: 48%; margin-top: 20px;">
                                 <table style="width: 100%; border-spacing: 0;">
                                     <tr>
-                                        <td style="width: 40%; padding: 2px;"><span class="info-label">Project Name</span></td>
-                                        <td style="width: 60%; padding: 2px;"><span t-field="doc.project_name"/></td>
+                                        <td style="width: 30%; padding: 2px;"><span class="info-label">Project Name</span></td>
+                                        <td style="width: 70%; padding: 2px;"><span t-field="doc.project_name"/></td>
                                     </tr>
                                     <tr>
                                         <td style="padding: 2px;"><span class="info-label">To</span></td>
@@ -94,12 +94,11 @@
                                     </tr>
                                 </table>
                             </div>
-                            <!-- Header Information Right -->
                             <div style="width: 48%; margin-top: 20px;">
                                 <table style="width: 100%; border-spacing: 0;">
                                     <tr>
-                                        <td style="width: 40%; padding: 2px;"><span class="info-label">Date</span></td>
-                                        <td style="width: 60%; padding: 2px;"><span t-field="doc.date_order" t-options='{"widget": "date"}'/></td>
+                                        <td style="width: 30%; padding: 2px;"><span class="info-label">Date</span></td>
+                                        <td style="width: 70%; padding: 2px;"><span t-field="doc.date_order" t-options='{"widget": "date"}'/></td>
                                     </tr>
                                     <tr>
                                         <td style="padding: 2px;"><span class="info-label">Proposal No</span></td>
