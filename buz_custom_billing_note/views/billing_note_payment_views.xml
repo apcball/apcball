@@ -48,5 +48,5 @@
         name="Payments"
         parent="menu_billing_note_root"
         action="action_billing_note_payment"
-        sequence="20"/>
+        sequence="2"/>
 </odoo>

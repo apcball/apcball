@@ -43,6 +43,14 @@ class BillingNote(models.Model):
     notification_sent = fields.Boolean(string='Notification Sent', default=False)
     days_before_due = fields.Integer(string='Days Before Due for Notification', default=7)
 
+    # Fields for tracking dates
+    messenger_sent_date = fields.Date(string='วันที่ส่งแมสเซนเจอร์', tracking=True)
+    messenger_received_date = fields.Date(string='วันที่รับจากแมสเซนเจอร์', tracking=True)
+    ar_sent_date = fields.Date(string='วันที่ส่งบัญชีลูกหนี้', tracking=True)
+    ar_received_date = fields.Date(string='วันที่บัญชีลูกหนี้รับ', tracking=True)
+    expected_payment_date = fields.Date(string='วันที่คาดว่าจะได้รับเงิน', tracking=True)
+    note = fields.Text(string='หมายเหตุ', tracking=True)
+
     _sql_constraints = [
         ('name_uniq', 'unique(name, company_id)', 'Billing Note number must be unique per company!')
     ]
@@ -197,13 +205,6 @@ class BillingNote(models.Model):
         if template:
             template.send_mail(self.id, force_send=True)
 
-class BillingNoteLine(models.Model):
-    _name = 'billing.note.line'
-    _description = 'Billing Note Line'
-
-    billing_note_id = fields.Many2one('billing.note', string='Billing Note')
-    name = fields.Char(string='Description')
-    amount = fields.Float(string='Amount')
 
 class BillingNotePayment(models.Model):
     _name = 'billing.note.payment'
