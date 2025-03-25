@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- No specific views needed for now as we're using existing account.move views -->
+</odoo>
