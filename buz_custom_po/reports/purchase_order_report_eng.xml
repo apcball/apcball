@@ -210,7 +210,7 @@
 </div>
                         <t t-if="page_num == total_pages - 1">
                       <!-- Summary Section -->
-<div class="row" style="margin-top: 20px;">
+<div class="row" style="margin-top: 5px;">
     <div class="col-7">
         <!-- Notes Section -->
         <div style="border: 0.5px solid #dee2e6; padding: 8px; min-height: 150px;">
@@ -269,34 +269,126 @@
         </table>
     </div>
 </div>
-                     <t t-if="len(o.order_line) > 5">
+<!-- Conditional page break based on number of items -->
+                     <t t-if="len(o.order_line) > 8">
                          <div style="page-break-before: always;"></div>
                      </t>
 
 <!-- Signature Section -->
-<div class="row mt-5" style="margin-top: 4rem !important;">
-    <div class="col-4 text-center" style="font-size: 14px;">
-        <p style="margin-bottom: 5px;"><strong><span t-field="o.create_uid.name"/></strong></p>
-        <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
-            <p class="mt-1" style="margin-bottom: 5px;">Prepared by</p>
-            <p style="margin-bottom: 5px;">Date: ___/___/___</p>
+<div class="row mt-5" style="margin-top: calc(4rem - 80px) !important;">
+    <!-- Common styles for signature boxes -->
+    <style>
+        .signature-box {
+            font-size: 14px;
+            text-align: center;
+            width: 100%;
+        }
+        .signature-content {
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .signature-line {
+            border-top: 1px solid #000;
+            margin: 0 auto;
+            width: 80%;
+            padding-top: 5px;
+        }
+        .signature-title {
+            margin: 5px 0;
+            font-weight: normal;
+        }
+        .signature-date {
+            margin: 5px 0;
+        }
+        .signature-image {
+            width: 100px;
+            height: 60px;
+            object-fit: contain;
+            margin-bottom: 5px;
+        }
+        .signature-name {
+            margin: 0;
+            line-height: 1.5;
+        }
+    </style>
+
+    <!-- ผู้จัดทำ -->
+    <div class="col-4">
+        <div class="signature-box">
+            <div class="signature-content">
+                <div style="height: 60px;"></div> <!-- Placeholder for signature height -->
+                <p class="signature-name">
+                    <strong><span t-field="o.create_uid.name"/></strong>
+                </p>
+                <t t-if="o.create_uid.employee_id">
+                    <p class="signature-name">(<span t-field="o.create_uid.employee_id.name"/>)</p>
+                </t>
+            </div>
+            <div class="signature-line">
+                <p class="signature-title">Prepared by</p>
+                <p class="signature-date">Date: <span t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></p>
+            </div>
         </div>
     </div>
-    <div class="col-4 text-center" style="font-size: 14px;">
-        <p style="margin-bottom: 5px;">&amp;nbsp;</p>
-        <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
-            <p class="mt-1" style="margin-bottom: 5px;">Checked by</p>
-            <p style="margin-bottom: 5px;">Date: ___/___/___</p>
+
+    <!-- ผู้ตรวจสอบ L1 -->
+    <div class="col-4">
+        <div class="signature-box">
+            <div class="signature-content">
+                <t t-if="o.l1_approved_by">
+                    <img src="/buz_custom_po/static/img/signatute1.jpg" class="signature-image"/>
+                    <p class="signature-name">(พรเพ็ชร วสันตกิจกำจร)</p>
+                </t>
+                <t t-if="not o.l1_approved_by">
+                    <div style="height: 60px;"></div> <!-- Empty space for signature -->
+                    <p class="signature-name">&amp;nbsp;</p>
+                </t>
+            </div>
+            <div class="signature-line">
+                <p class="signature-title">Checked by</p>
+                <p class="signature-date">Date: 
+                    <t t-if="o.l1_approved_date">
+                        <span t-field="o.l1_approved_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                    </t>
+                    <t t-if="not o.l1_approved_date">&amp;nbsp;</t>
+                </p>
+            </div>
         </div>
     </div>
-    <div class="col-4 text-center" style="font-size: 14px;">
-        <p style="margin-bottom: 5px;">&amp;nbsp;</p>
-        <div style="border-top: 1px solid #000; margin: 0 auto; width: 80%;">
-            <p class="mt-1" style="margin-bottom: 5px;">Approved by</p>
-            <p style="margin-bottom: 5px;">Date: ___/___/___</p>
+
+    <!-- ผู้อนุมัติ L2 -->
+    <div class="col-4">
+        <div class="signature-box">
+            <div class="signature-content">
+                <t t-if="o.l2_approved_by">
+                    <img src="/buz_custom_po/static/img/signatute2.jpg" class="signature-image"/>
+                    <p class="signature-name">(นภัคสรณ์ วชิรพันธ์วิชาญ)</p>
+                </t>
+                <t t-if="not o.l2_approved_by">
+                    <div style="height: 60px;"></div> <!-- Empty space for signature -->
+                    <p class="signature-name">&amp;nbsp;</p>
+                </t>
+            </div>
+            <div class="signature-line">
+                <p class="signature-title">Approved by</p>
+                <p class="signature-date">Date: 
+                    <t t-if="o.l2_approved_date">
+                        <span t-field="o.l2_approved_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                    </t>
+                    <t t-if="not o.l2_approved_date">&amp;nbsp;</t>
+                </p>
+            </div>
         </div>
     </div>
 </div>
+<!-- Conditional page break based on number of items -->
+                     <t t-if="len(o.order_line) > 4">
+                         <div style="page-break-before: always;"></div>
+                     </t>
 
     <!-- Footer Section -->
 <div class="row mt-3" style="margin-top: 4rem !important; font-size: 12px;">
