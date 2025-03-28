@@ -17,7 +17,7 @@
         <field name="name">employee.purchase.requisition.view.form</field>
         <field name="model">employee.purchase.requisition</field>
         <field name="arch" type="xml">
-            <form>
+            <form duplicate="false">
 <header>
     <field name="state" widget='statusbar'
            statusbar_visible='new,waiting_head_approval,waiting_purchase_approval,approved,purchase_order_created,received'/>
