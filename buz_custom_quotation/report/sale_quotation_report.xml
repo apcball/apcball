@@ -102,7 +102,7 @@
                                     </tr>
                                     <tr>
                                         <td style="padding: 2px;"><span class="info-label">Proposal No</span></td>
-                                        <td style="padding: 2px;"><span t-field="doc.name"/></td>
+                                        <td style="padding: 2px;"><span t-field="doc.proposal_no"/></td>
                                     </tr>
                                     <tr>
                                         <td style="padding: 2px;"><span class="info-label">Sale Name: </span><span t-field="doc.user_id.name"/></td>
