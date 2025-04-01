@@ -350,7 +350,7 @@
         <div class="signature-box">
             <div class="signature-content">
                 <t t-if="o.l1_approved_by">
-                    <img src="/buz_custom_po/static/img/signatute1.jpg" class="signature-image"/>
+                    <img src="/buz_custom_po/static/img/signature1.jpg" class="signature-image"/>
                     <p class="signature-name">(พรเพ็ชร วสันตกิจกำจร)</p>
                 </t>
                 <t t-if="not o.l1_approved_by">
@@ -375,7 +375,7 @@
         <div class="signature-box">
             <div class="signature-content">
                 <t t-if="o.l2_approved_by">
-                    <img src="/buz_custom_po/static/img/signatute2.jpg" class="signature-image"/>
+                    <img src="/buz_custom_po/static/img/signature2.jpg" class="signature-image"/>
                     <p class="signature-name">(นภัคสรณ์ วชิรพันธ์วิชาญ)</p>
                 </t>
                 <t t-if="not o.l2_approved_by">
