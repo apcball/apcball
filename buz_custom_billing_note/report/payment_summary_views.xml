@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_billing_note_payment_summary_pivot" model="ir.ui.view">
+        <field name="name">billing.note.payment.summary.pivot</field>
+        <field name="model">billing.note.payment.summary</field>
+        <field name="arch" type="xml">
+            <pivot string="Payment Summary">
+                <field name="date" type="row"/>
+                <field name="partner_id" type="row"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_billing_note_payment_summary_graph" model="ir.ui.view">
+        <field name="name">billing.note.payment.summary.graph</field>
+        <field name="model">billing.note.payment.summary</field>
+        <field name="arch" type="xml">
+            <graph string="Payment Summary">
+                <field name="date"/>
+                <field name="amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_billing_note_payment_summary_tree" model="ir.ui.view">
+        <field name="name">billing.note.payment.summary.tree</field>
+        <field name="model">billing.note.payment.summary</field>
+        <field name="arch" type="xml">
+            <tree string="Payment Summary">
+                <field name="date"/>
+                <field name="partner_id"/>
+                <field name="billing_note_id"/>
+                <field name="payment_id"/>
+                <field name="payment_method_id"/>
+                <field name="journal_id"/>
+                <field name="amount"/>
+                <field name="currency_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_billing_note_payment_summary_search" model="ir.ui.view">
+        <field name="name">billing.note.payment.summary.search</field>
+        <field name="model">billing.note.payment.summary</field>
+        <field name="arch" type="xml">
+            <search string="Payment Summary">
+                <field name="partner_id"/>
+                <field name="billing_note_id"/>
+                <field name="payment_id"/>
+                <separator/>
+                <filter string="This Month" name="this_month"
+                    domain="[('date','&gt;=', (context_today() + relativedelta(day=1)).strftime('%Y-%m-%d')),
+                            ('date','&lt;=', (context_today() + relativedelta(months=1, day=1, days=-1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Last Month" name="last_month"
+                    domain="[('date','&gt;=', (context_today() + relativedelta(months=-1, day=1)).strftime('%Y-%m-%d')),
+                            ('date','&lt;=', (context_today() + relativedelta(day=1, days=-1)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Partner" name="partner" context="{'group_by':'partner_id'}"/>
+                    <filter string="Payment Method" name="payment_method" context="{'group_by':'payment_method_id'}"/>
+                    <filter string="Journal" name="journal" context="{'group_by':'journal_id'}"/>
+                    <filter string="Month" name="month" context="{'group_by':'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_billing_note_payment_summary" model="ir.actions.act_window">
+        <field name="name">Payment Summary</field>
+        <field name="res_model">billing.note.payment.summary</field>
+        <field name="view_mode">tree,pivot,graph</field>
+        <field name="search_view_id" ref="view_billing_note_payment_summary_search"/>
+        <field name="context">{'search_default_this_month': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No payment records found
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_billing_note_payment_summary"
+        name="Payment Summary"
+        parent="menu_billing_note_reporting"
+        action="action_billing_note_payment_summary"
+        sequence="20"/>
+</odoo>

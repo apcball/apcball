@@ -8,6 +8,11 @@ class BillingNote(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
 
+    # Add indexes for better performance
+    _sql_constraints = [
+        ('name_uniq', 'unique(name, company_id)', 'Billing note number must be unique per company!'),
+    ]
+
     name = fields.Char(string='Number', readonly=True, copy=False, default='/')
     note_type = fields.Selection([
         ('receivable', 'Customer Invoice'),
@@ -42,7 +47,7 @@ class BillingNote(models.Model):
         ('cancel', 'Cancelled')
     ], string='Status', default='draft', tracking=True)
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
-    currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
+    currency_id = fields.Many2one('res.currency', string='Currency', default=lambda self: self.env.company.currency_id)
     line_ids = fields.One2many('billing.note.line', 'billing_note_id', string='Lines')
     
     # Fields for partial payment
@@ -68,14 +73,65 @@ class BillingNote(models.Model):
     expected_payment_date = fields.Date(string='วันที่คาดว่าจะได้รับเงิน', tracking=True)
     note = fields.Text(string='หมายเหตุ', tracking=True)
 
-    # Fields for tracking billing status in invoices
-    available_invoice_ids = fields.Many2many(
-        'account.move', 'billing_note_available_invoice_rel',
-        'billing_note_id', 'invoice_id',
-        string='Available Invoices',
-        compute='_compute_available_invoices',
-        store=True
-    )
+    def action_register_payment(self):
+        """Open the standard payment wizard"""
+        self.ensure_one()
+        
+        # Get invoices from billing note
+        invoices = self.invoice_ids
+
+        # Create context for the payment wizard
+        ctx = {
+            'active_model': 'account.move',
+            'active_ids': invoices.ids,
+        }
+
+        # Return the action to open the payment wizard
+        return {
+            'name': _('Register Payment'),
+            'res_model': 'account.payment.register',
+            'view_mode': 'form',
+            'context': ctx,
+            'target': 'new',
+            'type': 'ir.actions.act_window',
+        }
+
+    def action_register_batch_payment(self):
+        """Open the batch payment wizard from account_payment_batch_process"""
+        if not self:
+            raise UserError(_('Please select at least one billing note.'))
+            
+        # Check if all selected billing notes have same type
+        note_types = set(self.mapped('note_type'))
+        if len(note_types) > 1:
+            raise UserError(_('Selected billing notes must be of the same type (all receivable or all payable).'))
+            
+        # Check if all selected billing notes are in correct state
+        invalid_states = self.filtered(lambda r: r.state != 'confirm' or r.payment_state == 'paid')
+        if invalid_states:
+            raise UserError(_('All selected billing notes must be confirmed and not fully paid.'))
+
+        # Get all invoices from selected billing notes
+        invoices = self.env['account.move']
+        for note in self:
+            invoices |= note.invoice_ids
+
+        # Create context for the payment wizard
+        ctx = {
+            'active_model': 'account.move',
+            'active_ids': invoices.ids,
+        }
+
+        # Return the action to open the batch payment wizard
+        return {
+            'name': _('Register Batch Payment'),
+            'res_model': 'account.payment.register',
+            'view_mode': 'form',
+            'view_id': self.env.ref('account_payment_batch_process.view_account_payment_register_form').id,
+            'context': ctx,
+            'target': 'new',
+            'type': 'ir.actions.act_window',
+        }
 
     @api.depends('partner_id', 'note_type', 'state')
     def _compute_available_invoices(self):
@@ -149,6 +205,30 @@ class BillingNote(models.Model):
         """Reset partner and invoices when note type changes"""
         self.invoice_ids = False
         self.partner_id = False
+        # Return domain for partner selection based on note type
+        return {
+            'domain': {
+                'partner_id': [('id', 'in', self._get_valid_partners().ids)]
+            }
+        }
+
+    def _get_valid_partners(self):
+        """Get partners that have valid unpaid invoices"""
+        domain = [
+            ('state', '=', 'posted'),
+            ('payment_state', '!=', 'paid'),
+        ]
+        
+        if self.note_type == 'receivable':
+            domain.append(('move_type', '=', 'out_invoice'))
+            partner_domain = [('customer_rank', '>', 0)]
+        else:
+            domain.append(('move_type', '=', 'in_invoice'))
+            partner_domain = [('supplier_rank', '>', 0)]
+
+        invoices = self.env['account.move'].search(domain)
+        partners = self.env['res.partner'].search(partner_domain)
+        return partners.filtered(lambda p: p.id in invoices.mapped('partner_id').ids)
 
     @api.depends('invoice_ids', 'invoice_ids.amount_total')
     def _compute_amount_total(self):
@@ -164,219 +244,50 @@ class BillingNote(models.Model):
     @api.depends('amount_total', 'amount_paid')
     def _compute_payment_state(self):
         for rec in self:
+            old_state = rec.payment_state
             if rec.amount_paid <= 0:
                 rec.payment_state = 'not_paid'
             elif rec.amount_paid >= rec.amount_total:
                 rec.payment_state = 'paid'
             else:
                 rec.payment_state = 'partial'
-
-    @api.onchange('note_type')
-    def _onchange_note_type(self):
-        """Reset partner and invoices when note type changes"""
-        self.invoice_ids = False
-        self.partner_id = False
-        # Return domain for partner selection based on note type
-        return {
-            'domain': {
-                'partner_id': [
-                    ('id', 'in', self._get_valid_partners().ids)
-                ]
-            }
-        }
-
-    def _get_valid_partners(self):
-        """Get partners that have valid unpaid invoices"""
-        domain = [
-            ('state', '=', 'posted'),
-            ('payment_state', '!=', 'paid'),
-        ]
-        
-        if self.note_type == 'receivable':
-            domain.append(('move_type', '=', 'out_invoice'))
-        else:
-            domain.append(('move_type', '=', 'in_invoice'))
-            
-        valid_invoices = self.env['account.move'].search(domain)
-        return valid_invoices.mapped('partner_id')
-
-    @api.onchange('partner_id')
-    def _onchange_partner_id(self):
-        """Reset invoices when partner changes and validate partner selection"""
-        self.invoice_ids = False
-        
-        if self.partner_id:
-            # Validate if partner has valid invoices
-            valid_partners = self._get_valid_partners()
-            if self.partner_id not in valid_partners:
-                warning_msg = _('Selected partner has no valid unpaid invoices of type {}').format(
-                    _('Customer Invoice') if self.note_type == 'receivable' else _('Vendor Bill')
-                )
-                return {
-                    'warning': {
-                        'title': _('Warning'),
-                        'message': warning_msg,
-                    }
-                }
                 
-    @api.constrains('partner_id', 'invoice_ids')
-    def _check_partner_invoices(self):
-        """Validate partner and invoice relationship"""
-        for record in self:
-            if record.invoice_ids:
-                invalid_invoices = record.invoice_ids.filtered(
-                    lambda inv: inv.partner_id != record.partner_id
-                )
-                if invalid_invoices:
-                    raise ValidationError(_(
-                        'The following invoices do not belong to the selected partner:\n%s'
-                    ) % '\n'.join(invalid_invoices.mapped('name')))
-
-    @api.constrains('date', 'due_date')
-    def _check_dates(self):
-        for record in self:
-            if record.due_date < record.date:
-                raise ValidationError(_('Due date must be greater than or equal to the billing date.'))
-
-    def action_add_invoices(self):
-        """Open wizard to add invoices with enhanced validation"""
-        self.ensure_one()
-        if not self.partner_id:
-            raise UserError(_('Please select a partner first.'))
-
-        if not self.available_invoice_ids:
-            raise UserError(_(
-                'No valid unpaid invoices available for selection.\n'
-                'All invoices are either already billed or fully paid.'
-            ))
-
-        if self.note_type == 'receivable':
-            title = _('Select Customer Invoices')
-            view_ref = 'account.view_out_invoice_tree'
-        else:
-            title = _('Select Vendor Bills')
-            view_ref = 'account.view_in_invoice_tree'
-
-        # Get view references
-        tree_view = self.env.ref(view_ref)
-        search_view = self.env.ref('account.view_account_invoice_filter')
-
-        return {
-            'name': title,
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.move',
-            'view_mode': 'list',
-            'views': [(tree_view.id, 'list')],
-            'search_view_id': search_view.id,
-            'domain': [('id', 'in', self.available_invoice_ids.ids)],
-            'target': 'new',
-            'context': {
-                'create': False,
-                'edit': False,
-                'delete': False,
-                'default_partner_id': self.partner_id.id,
-                'search_default_posted': 1,
-                'no_breadcrumbs': True,
-                'list_selection': True,
-                'no_create': True,
-                'no_open': True
-            }
-        }
+            # Send email notification when payment is received
+            if old_state != rec.payment_state and rec.payment_state in ['partial', 'paid']:
+                template = self.env.ref('buz_custom_billing_note.email_template_billing_note_payment')
+                template.send_mail(rec.id, force_send=True)
 
     def action_confirm(self):
-        for rec in self:
-            if not rec.invoice_ids:
-                raise UserError(_('Please add at least one document.'))
-            if rec.state == 'draft':
-                if rec.name == '/':
-                    if rec.note_type == 'receivable':
-                        sequence_code = 'customer.billing.note'
-                    else:
-                        sequence_code = 'vendor.billing.note'
-                    rec.name = self.env['ir.sequence'].next_by_code(sequence_code)
-                rec.state = 'confirm'
+        """Confirm billing note"""
+        for record in self:
+            if not record.invoice_ids:
+                raise UserError(_('Please add at least one invoice before confirming.'))
+            if record.state != 'draft':
+                continue
+            record.write({
+                'state': 'confirm',
+                'name': self.env['ir.sequence'].next_by_code(
+                    'customer.billing.note' if record.note_type == 'receivable' else 'vendor.billing.note'
+                ) or '/'
+            })
 
     def action_done(self):
-        for rec in self:
-            if rec.state == 'confirm':
-                rec.state = 'done'
-
-    def action_cancel(self):
-        for rec in self:
-            if rec.state != 'done':
-                rec.state = 'cancel'
+        """Mark billing note as done"""
+        for record in self:
+            if record.state != 'confirm':
+                continue
+            record.write({'state': 'done'})
 
     def action_draft(self):
-        for rec in self:
-            if rec.state == 'cancel':
-                rec.state = 'draft'
+        """Reset billing note to draft"""
+        for record in self:
+            if record.state != 'confirm':
+                continue
+            record.write({'state': 'draft'})
 
-    def unlink(self):
-        if any(rec.state != 'draft' for rec in self):
-            raise UserError(_('You can only delete draft billing notes.'))
-        return super().unlink()
-
-    def action_register_payment(self):
-        self.ensure_one()
-        return {
-            'name': _('Register Payment'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'billing.note.payment.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_billing_note_id': self.id,
-                'default_amount': self.amount_residual,
-            }
-        }
-
-    def action_view_payments(self):
-        self.ensure_one()
-        return {
-            'name': _('Payments'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'billing.note.payment',
-            'view_mode': 'tree,form',
-            'domain': [('billing_note_id', '=', self.id)],
-            'context': {'default_billing_note_id': self.id}
-        }
-
-    def _check_due_date_notification(self):
-        today = fields.Date.today()
-        domain = [
-            ('state', '=', 'confirm'),
-            ('notification_sent', '=', False),
-            ('payment_state', 'in', ['not_paid', 'partial']),
-        ]
-        billing_notes = self.search(domain)
-        
-        for note in billing_notes:
-            days_until_due = (note.due_date - today).days
-            if days_until_due <= note.days_before_due and days_until_due >= 0:
-                note._send_due_date_notification()
-                note.notification_sent = True
-
-    def _send_due_date_notification(self):
-        self.ensure_one()
-        template = self.env.ref('buz_custom_billing_note.billing_note_due_date_template')
-        if template:
-            template.send_mail(self.id, force_send=True)
-
-
-class BillingNotePayment(models.Model):
-    _name = 'billing.note.payment'
-    _description = 'Billing Note Payment'
-    _order = 'payment_date desc, id desc'
-
-    billing_note_id = fields.Many2one('billing.note', string='Billing Note', required=True)
-    name = fields.Char(string='Reference', required=True)
-    amount = fields.Monetary(string='Amount', required=True)
-    payment_date = fields.Date(string='Payment Date', required=True, default=fields.Date.context_today)
-    payment_method = fields.Selection([
-        ('cash', 'Cash'),
-        ('bank', 'Bank Transfer'),
-        ('check', 'Check'),
-    ], string='Payment Method', required=True)
-    notes = fields.Text(string='Notes')
-    company_id = fields.Many2one('res.company', related='billing_note_id.company_id', store=True)
-    currency_id = fields.Many2one('res.currency', related='billing_note_id.currency_id')
+    def action_cancel(self):
+        """Cancel billing note"""
+        for record in self:
+            if record.state not in ['draft', 'confirm']:
+                continue
+            record.write({'state': 'cancel'})
