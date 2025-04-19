@@ -5,7 +5,7 @@
         <field name="name">billing.note.tree</field>
         <field name="model">billing.note</field>
         <field name="arch" type="xml">
-            <tree string="Billing Notes" decoration-info="state=='draft'" decoration-success="state=='done'" decoration-warning="state=='confirm'">
+            <tree string="Billing Notes">
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="date"/>
@@ -13,7 +13,7 @@
                 <field name="amount_total" sum="Total"/>
                 <field name="amount_residual" sum="Due"/>
                 <field name="payment_state"/>
-                <field name="state"/>
+                <field name="state" widget="badge" decoration-primary="state == 'draft'" decoration-warning="state == 'confirm'" decoration-success="state == 'done'" decoration-danger="state == 'cancel'"/>
             </tree>
         </field>
     </record>
@@ -143,7 +143,7 @@
         <field name="name">Billing Notes</field>
         <field name="res_model">billing.note</field>
         <field name="view_mode">tree,form</field>
-        <field name="context">{'search_default_draft': 1}</field>
+        <field name="context">{}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Create your first billing note!

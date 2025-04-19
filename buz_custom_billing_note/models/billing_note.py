@@ -1,5 +1,6 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_is_zero, float_compare
 from dateutil.relativedelta import relativedelta
 import logging
 
@@ -50,7 +51,6 @@ class BillingNotePayment(models.Model):
 
     def _get_payment_method(self, payment):
         """Map account.payment method to billing note payment method"""
-        # Map payment method based on journal type and payment method code
         if payment.journal_id.type == 'cash':
             return 'cash'
         elif payment.journal_id.type == 'bank':
@@ -67,12 +67,13 @@ class AccountPayment(models.Model):
         res = super()._post(soft=soft)
         self.env['billing.note']._handle_payment_creation(self)
         return res
+
+class BillingNote(models.Model):
     _name = 'billing.note'
     _description = 'Billing Note'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
 
-    # Add indexes for better performance
     _sql_constraints = [
         ('name_uniq', 'unique(name, company_id)', 'Billing note number must be unique per company!'),
     ]
@@ -87,7 +88,6 @@ class AccountPayment(models.Model):
     date = fields.Date(string='Date', required=True, default=fields.Date.context_today, tracking=True)
     due_date = fields.Date(string='Due Date', required=True, default=fields.Date.context_today, tracking=True)
     
-    # Fields for documents
     invoice_ids = fields.Many2many(
         'account.move', 'billing_note_invoice_rel',
         'billing_note_id', 'invoice_id',
@@ -114,29 +114,178 @@ class AccountPayment(models.Model):
     currency_id = fields.Many2one('res.currency', string='Currency', default=lambda self: self.env.company.currency_id)
     line_ids = fields.One2many('billing.note.line', 'billing_note_id', string='Lines')
     
-    # Fields for partial payment
     amount_paid = fields.Monetary(string='Amount Paid', compute='_compute_amount_paid', store=True)
     amount_residual = fields.Monetary(string='Amount Due', compute='_compute_amount_paid', store=True)
     payment_state = fields.Selection([
         ('not_paid', 'Not Paid'),
-        ('partial', 'Partially Paid'),
         ('in_payment', 'In Payment'),
+        ('partial', 'Partially Paid'),
         ('paid', 'Paid'),
-        ('reversed', 'Reversed')
+        ('reversed', 'Reversed'),
+        ('invoicing_legacy', 'Invoicing App Legacy')
     ], string='Payment Status', compute='_compute_payment_state', store=True)
     payment_line_ids = fields.One2many('billing.note.payment', 'billing_note_id', string='Payments')
     
-    # Fields for notification
     notification_sent = fields.Boolean(string='Notification Sent', default=False)
     days_before_due = fields.Integer(string='Days Before Due for Notification', default=7)
 
-    # Fields for tracking dates
     messenger_sent_date = fields.Date(string='วันที่ส่งแมสเซนเจอร์', tracking=True)
     messenger_received_date = fields.Date(string='วันที่รับจากแมสเซนเจอร์', tracking=True)
     ar_sent_date = fields.Date(string='วันที่ส่งบัญชีลูกหนี้', tracking=True)
     ar_received_date = fields.Date(string='วันที่บัญชีลูกหนี้รับ', tracking=True)
     expected_payment_date = fields.Date(string='วันที่คาดว่าจะได้รับเงิน', tracking=True)
     note = fields.Text(string='หมายเหตุ', tracking=True)
+
+    @api.depends('partner_id', 'note_type')
+    def _compute_available_invoices(self):
+        """Compute available invoices for selection"""
+        for rec in self:
+            # Clear the field if no partner is selected
+            if not rec.partner_id:
+                rec.available_invoice_ids = self.env['account.move']
+                continue
+
+            domain = [
+                ('partner_id', '=', rec.partner_id.id),
+                ('state', '=', 'posted'),
+                ('payment_state', 'not in', ['paid', 'in_payment']),  # Exclude fully paid and in-payment invoices
+                ('amount_residual', '>', 0),  # Must have remaining amount to pay
+            ]
+            
+            # Only exclude invoices from other billing notes if this is an existing record
+            if not rec._origin.id:
+                used_invoices = self.env['account.move']
+            else:
+                used_invoices = self.env['billing.note'].search([
+                    ('id', '!=', rec._origin.id),  # Exclude current billing note
+                    ('state', 'in', ['confirm', 'done']),  # Only consider confirmed/done billing notes
+                ]).mapped('invoice_ids')
+                if used_invoices:
+                    domain.append(('id', 'not in', used_invoices.ids))  # Exclude invoices already in other billing notes
+            
+            if rec.note_type == 'receivable':
+                domain.extend([
+                    ('move_type', '=', 'out_invoice'),
+                ])
+            else:
+                domain.extend([
+                    ('move_type', '=', 'in_invoice'),
+                ])
+            
+            rec.available_invoice_ids = self.env['account.move'].search(domain)
+
+    @api.depends('invoice_ids', 'invoice_ids.amount_total')
+    def _compute_amount_total(self):
+        """Compute total amount from invoices"""
+        for rec in self:
+            # Use amount_total to show actual total amount of invoices
+            rec.amount_total = sum(rec.invoice_ids.mapped('amount_total'))
+
+    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.amount_residual', 'payment_line_ids', 'payment_line_ids.amount')
+    def _compute_payment_state(self):
+        precision = self.env['decimal.precision'].precision_get('Payment Terms')
+        for rec in self:
+            if not rec.invoice_ids:
+                rec.payment_state = 'not_paid'  # ถ้าไม่มีใบแจ้งหนี้ถือว่ายังไม่ได้จ่าย
+            elif float_is_zero(rec.amount_total, precision_digits=precision):
+                rec.payment_state = 'paid'  # ถ้ายอดรวมเป็น 0
+            else:
+                # Calculate total residual amount from invoices
+                total_residual = sum(rec.invoice_ids.mapped('amount_residual'))
+                
+                if float_is_zero(total_residual, precision_digits=precision):
+                    rec.payment_state = 'paid'  # จ่ายครบแล้ว
+                elif float_compare(total_residual, rec.amount_total, precision_digits=precision) == 0:
+                    rec.payment_state = 'not_paid'  # ยังไม่มีการจ่ายเลย
+                elif any(inv.payment_state == 'in_payment' for inv in rec.invoice_ids):
+                    rec.payment_state = 'in_payment'  # มีการจ่ายเงินอยู่ในระหว่างดำเนินการ
+                else:
+                    rec.payment_state = 'partial'  # จ่ายบางส่วน
+
+    @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.amount_residual')
+    def _compute_amount_paid(self):
+        """Compute amount paid and amount residual"""
+        for rec in self:
+            # Calculate total residual from invoices
+            total_residual = sum(rec.invoice_ids.mapped('amount_residual'))
+            # Amount paid is the difference between total and residual
+            rec.amount_paid = rec.amount_total - total_residual
+            rec.amount_residual = total_residual
+
+    def _handle_payment_creation(self, payments):
+        """Handle payment creation from account.payment"""
+        for payment in payments:
+            # Find related billing notes through invoices
+            billing_notes = self.env['billing.note'].search([
+                ('invoice_ids', 'in', payment.reconciled_invoice_ids.ids),
+                ('state', '=', 'confirm'),
+            ])
+            
+            for note in billing_notes:
+                # Get invoices that are both in the billing note and reconciled by this payment
+                note_invoices = note.invoice_ids & payment.reconciled_invoice_ids
+                
+                # Calculate the actual payment amount for these invoices
+                payment_amount = 0
+                for inv in note_invoices:
+                    # Get the payment amount for this specific invoice
+                    reconciled_amount = sum(
+                        line.amount
+                        for line in payment.move_id.line_ids
+                        if line.account_type in ('asset_receivable', 'liability_payable')
+                        and line.partner_id == inv.partner_id
+                    )
+                    payment_amount += reconciled_amount
+                
+                if payment_amount > 0:
+                    # Create payment record
+                    self.env['billing.note.payment']._create_from_payment(payment, note, payment_amount)
+                
+                # Create payment record
+                self.env['billing.note.payment']._create_from_payment(payment, note, payment_amount)
+
+    @api.model
+    def create(self, vals):
+        if vals.get('name', '/') == '/':
+            # Get the correct sequence code based on note type
+            if vals.get('note_type') == 'receivable':
+                sequence_code = 'customer.billing.note'
+            else:
+                sequence_code = 'vendor.billing.note'
+            vals['name'] = self.env['ir.sequence'].next_by_code(sequence_code) or '/'
+        return super(BillingNote, self).create(vals)
+
+    @api.onchange('invoice_ids')
+    def _onchange_invoice_ids(self):
+        """Auto fill due date from first selected invoice"""
+        if self.invoice_ids:
+            # Sort invoices by due date to get the earliest one
+            sorted_invoices = self.invoice_ids.sorted(lambda x: x.invoice_date_due or fields.Date.context_today(self))
+            first_invoice = sorted_invoices[0]
+            if first_invoice.invoice_date_due:
+                self.due_date = first_invoice.invoice_date_due
+
+    def action_confirm(self):
+        """Confirm billing note"""
+        for rec in self:
+            if not rec.invoice_ids:
+                raise UserError(_('Please select at least one document.'))
+            rec.write({'state': 'confirm'})
+
+    def action_done(self):
+        """Mark billing note as done"""
+        for rec in self:
+            rec.write({'state': 'done'})
+
+    def action_draft(self):
+        """Reset billing note to draft"""
+        for rec in self:
+            rec.write({'state': 'draft'})
+
+    def action_cancel(self):
+        """Cancel billing note"""
+        for rec in self:
+            rec.write({'state': 'cancel'})
 
     def action_register_payment(self):
         """Open the standard payment wizard"""
@@ -162,7 +311,7 @@ class AccountPayment(models.Model):
         }
 
     def action_register_batch_payment(self):
-        """Open the batch payment wizard from account_payment_batch_process"""
+        """Open the batch payment wizard"""
         if not self:
             raise UserError(_('Please select at least one billing note.'))
             
@@ -187,7 +336,7 @@ class AccountPayment(models.Model):
             'active_ids': invoices.ids,
             'default_payment_type': 'inbound' if self[0].note_type == 'receivable' else 'outbound',
             'default_partner_type': 'customer' if self[0].note_type == 'receivable' else 'supplier',
-            'default_billing_notes': self.ids,  # Pass billing note IDs to context
+            'default_billing_notes': self.ids,
         }
 
         # Return the action to open the batch payment wizard
@@ -195,259 +344,7 @@ class AccountPayment(models.Model):
             'name': _('Register Batch Payment'),
             'res_model': 'account.payment.register',
             'view_mode': 'form',
-            'view_id': self.env.ref('account_payment_batch_process.view_account_payment_register_form').id,
             'context': ctx,
             'target': 'new',
             'type': 'ir.actions.act_window',
         }
-
-    @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.amount_residual', 'invoice_ids.payment_state')
-    def _compute_amount_total(self):
-        for record in self:
-            record.amount_total = sum(record.invoice_ids.filtered(lambda x: x.state == 'posted').mapped('amount_total'))
-
-    @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.amount_residual', 'invoice_ids.payment_state')
-    def _compute_amount_paid(self):
-        for record in self:
-            posted_invoices = record.invoice_ids.filtered(lambda x: x.state == 'posted')
-            total = sum(posted_invoices.mapped('amount_total'))
-            residual = sum(posted_invoices.mapped('amount_residual'))
-            record.amount_paid = total - residual
-            record.amount_residual = residual
-
-    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.amount_residual', 'invoice_ids.state')
-    def _compute_payment_state(self):
-        for record in self:
-            if not record.invoice_ids:
-                record.payment_state = 'not_paid'
-                continue
-
-            # กรองเฉพาะใบแจ้งหนี้ที่ posted แล้ว
-            posted_invoices = record.invoice_ids.filtered(lambda x: x.state == 'posted')
-            if not posted_invoices:
-                record.payment_state = 'not_paid'
-                continue
-
-            # รวบรวมข้อมูลจากใบแจ้งหนี้
-            payment_states = posted_invoices.mapped('payment_state')
-            total_residual = sum(posted_invoices.mapped('amount_residual'))
-            total_amount = sum(posted_invoices.mapped('amount_total'))
-
-            # Debug log
-            _logger.info(f'Billing Note {record.name} - Payment States: {payment_states}')
-            _logger.info(f'Total Residual: {total_residual}, Total Amount: {total_amount}')
-
-            # ตรวจสอบสถานะการชำระเงิน
-            if all(state == 'paid' for state in payment_states):
-                record.payment_state = 'paid'
-            elif all(state == 'in_payment' for state in payment_states):
-                record.payment_state = 'in_payment'
-            elif any(state in ['in_payment', 'partial'] for state in payment_states) or \
-                 (total_residual > 0 and total_residual < total_amount):
-                record.payment_state = 'partial'
-            else:
-                record.payment_state = 'not_paid'
-
-            _logger.info(f'Final Payment State: {record.payment_state}')
-
-    @api.depends('partner_id', 'note_type', 'state')
-    def _compute_available_invoices(self):
-        """Compute available invoices that can be added to billing note"""
-        for record in self:
-            if not record.partner_id or record.state not in ['draft']:
-                record.available_invoice_ids = [(5, 0, 0)]
-                continue
-
-            domain = [
-                ('partner_id', '=', record.partner_id.id),
-                ('state', '=', 'posted'),
-                ('payment_state', '!=', 'paid'),
-                ('amount_residual', '>', 0.0),
-            ]
-
-            if record.note_type == 'receivable':
-                domain.append(('move_type', '=', 'out_invoice'))
-            else:
-                domain.append(('move_type', '=', 'in_invoice'))
-
-            # Get all confirmed billing notes except current one (if it exists in DB)
-            if not record._origin or not record._origin.id:
-                confirmed_notes_domain = [('state', 'in', ['confirm', 'done'])]
-            else:
-                confirmed_notes_domain = [
-                    ('state', 'in', ['confirm', 'done']),
-                    ('id', '!=', record._origin.id)
-                ]
-
-            confirmed_billing_notes = self.search(confirmed_notes_domain)
-            billed_invoice_ids = confirmed_billing_notes.mapped('invoice_ids').ids
-
-            # Exclude already billed invoices from domain
-            if billed_invoice_ids:
-                domain.append(('id', 'not in', billed_invoice_ids))
-
-            # Exclude currently selected invoices if any
-            if record.invoice_ids:
-                domain.append(('id', 'not in', record.invoice_ids.ids))
-
-            available_invoices = self.env['account.move'].search(domain)
-            record.available_invoice_ids = [(6, 0, available_invoices.ids)]
-
-    @api.constrains('invoice_ids')
-    def _check_duplicate_invoices(self):
-        """Check for duplicate invoices across billing notes"""
-        for record in self:
-            if record.invoice_ids:
-                # Get all other billing notes
-                other_billing_notes = self.search([
-                    ('id', '!=', record.id),
-                    ('state', 'in', ['draft', 'confirm', 'done'])
-                ])
-                
-                # Check each invoice
-                for invoice in record.invoice_ids:
-                    duplicate_notes = other_billing_notes.filtered(
-                        lambda bn: invoice in bn.invoice_ids
-                    )
-                    if duplicate_notes:
-                        raise ValidationError(_(
-                            'Invoice %(invoice)s is already included in billing note(s): %(notes)s'
-                        ) % {
-                            'invoice': invoice.name,
-                            'notes': ', '.join(duplicate_notes.mapped('name'))
-                        })
-
-    @api.onchange('note_type')
-    def _onchange_note_type(self):
-        """Reset partner and invoices when note type changes"""
-        self.invoice_ids = False
-        self.partner_id = False
-        # Return domain for partner selection based on note type
-        return {
-            'domain': {
-                'partner_id': [('id', 'in', self._get_valid_partners().ids)]
-            }
-        }
-
-    def _get_valid_partners(self):
-        """Get partners that have valid unpaid invoices"""
-        domain = [
-            ('state', '=', 'posted'),
-            ('payment_state', '!=', 'paid'),
-        ]
-        
-        if self.note_type == 'receivable':
-            domain.append(('move_type', '=', 'out_invoice'))
-            partner_domain = [('customer_rank', '>', 0)]
-        else:
-            domain.append(('move_type', '=', 'in_invoice'))
-            partner_domain = [('supplier_rank', '>', 0)]
-
-        invoices = self.env['account.move'].search(domain)
-        partners = self.env['res.partner'].search(partner_domain)
-        return partners.filtered(lambda p: p.id in invoices.mapped('partner_id').ids)
-
-    @api.depends('invoice_ids', 'invoice_ids.amount_residual')
-    def _compute_amount_total(self):
-        for rec in self:
-            rec.amount_total = sum(rec.invoice_ids.mapped('amount_residual'))
-
-    @api.depends('amount_total', 'payment_line_ids.amount')
-    def _compute_amount_paid(self):
-        for rec in self:
-            rec.amount_paid = sum(rec.payment_line_ids.mapped('amount'))
-            rec.amount_residual = rec.amount_total - rec.amount_paid
-
-    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.amount_residual')
-    def _compute_payment_state(self):
-        for rec in self:
-            old_state = rec.payment_state
-            
-            # Check if all invoices are paid
-            all_paid = all(inv.payment_state == 'paid' for inv in rec.invoice_ids)
-            any_paid = any(inv.payment_state in ['partial', 'paid'] for inv in rec.invoice_ids)
-            
-            if all_paid:
-                rec.payment_state = 'paid'
-            elif any_paid:
-                rec.payment_state = 'partial'
-            else:
-                rec.payment_state = 'not_paid'
-                
-            # Send email notification when payment is received
-            if old_state != rec.payment_state and rec.payment_state in ['partial', 'paid']:
-                template = self.env.ref('buz_custom_billing_note.email_template_billing_note_payment')
-                template.send_mail(rec.id, force_send=True)
-
-    def action_confirm(self):
-        """Confirm billing note"""
-        for record in self:
-            if not record.invoice_ids:
-                raise UserError(_('Please add at least one invoice before confirming.'))
-            if record.state != 'draft':
-                continue
-            record.write({
-                'state': 'confirm',
-                'name': self.env['ir.sequence'].next_by_code(
-                    'customer.billing.note' if record.note_type == 'receivable' else 'vendor.billing.note'
-                ) or '/'
-            })
-
-    def action_done(self):
-        """Mark billing note as done"""
-        for record in self:
-            if record.state != 'confirm':
-                continue
-            record.write({'state': 'done'})
-
-    def action_draft(self):
-        """Reset billing note to draft"""
-        for record in self:
-            if record.state != 'confirm':
-                continue
-            record.write({'state': 'draft'})
-
-    def action_cancel(self):
-        """Cancel billing note"""
-        for record in self:
-            if record.state not in ['draft', 'confirm']:
-                continue
-            record.write({'state': 'cancel'})
-
-    def _create_payment_from_wizard(self, payment_vals):
-        """Create payment record from payment wizard"""
-        self.ensure_one()
-        payment = self.env['account.payment'].create(payment_vals)
-        
-        # Create billing note payment record
-        self.env['billing.note.payment']._create_from_payment(
-            payment=payment,
-            billing_note=self,
-            amount=payment.amount
-        )
-        return payment
-
-    @api.model
-    def _handle_payment_creation(self, payment):
-        """Handle payment creation for billing notes"""
-        # Find related billing notes through invoices
-        billing_notes = self.env['billing.note'].search([
-            ('invoice_ids', 'in', payment.reconciled_invoice_ids.ids),
-            ('state', '=', 'confirm')
-        ])
-        
-        for note in billing_notes:
-            # Calculate amount for this billing note
-            note_invoices = note.invoice_ids & payment.reconciled_invoice_ids
-            total_amount = sum(note_invoices.mapped('amount_total'))
-            paid_amount = sum(note_invoices.mapped(lambda i: i.amount_total - i.amount_residual))
-            payment_ratio = paid_amount / total_amount if total_amount else 0
-            note_amount = payment.amount * payment_ratio
-
-            if note_amount > 0:
-                # Create billing note payment record
-                self.env['billing.note.payment']._create_from_payment(
-                    payment=payment,
-                    billing_note=note,
-                    amount=note_amount
-                )
