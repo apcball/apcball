@@ -204,39 +204,45 @@ class AccountPayment(models.Model):
     @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.amount_residual', 'invoice_ids.payment_state')
     def _compute_amount_total(self):
         for record in self:
-            record.amount_total = sum(record.invoice_ids.mapped('amount_total'))
+            record.amount_total = sum(record.invoice_ids.filtered(lambda x: x.state == 'posted').mapped('amount_total'))
 
     @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.amount_residual', 'invoice_ids.payment_state')
     def _compute_amount_paid(self):
         for record in self:
-            total = sum(record.invoice_ids.mapped('amount_total'))
-            residual = sum(record.invoice_ids.mapped('amount_residual'))
+            posted_invoices = record.invoice_ids.filtered(lambda x: x.state == 'posted')
+            total = sum(posted_invoices.mapped('amount_total'))
+            residual = sum(posted_invoices.mapped('amount_residual'))
             record.amount_paid = total - residual
             record.amount_residual = residual
 
-    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.amount_residual')
+    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.amount_residual', 'invoice_ids.state')
     def _compute_payment_state(self):
         for record in self:
             if not record.invoice_ids:
                 record.payment_state = 'not_paid'
                 continue
 
+            # กรองเฉพาะใบแจ้งหนี้ที่ posted แล้ว
+            posted_invoices = record.invoice_ids.filtered(lambda x: x.state == 'posted')
+            if not posted_invoices:
+                record.payment_state = 'not_paid'
+                continue
+
             # รวบรวมข้อมูลจากใบแจ้งหนี้
-            invoices = record.invoice_ids
-            payment_states = invoices.mapped('payment_state')
-            total_residual = sum(invoices.mapped('amount_residual'))
-            total_amount = sum(invoices.mapped('amount_total'))
+            payment_states = posted_invoices.mapped('payment_state')
+            total_residual = sum(posted_invoices.mapped('amount_residual'))
+            total_amount = sum(posted_invoices.mapped('amount_total'))
 
             # Debug log
             _logger.info(f'Billing Note {record.name} - Payment States: {payment_states}')
             _logger.info(f'Total Residual: {total_residual}, Total Amount: {total_amount}')
 
             # ตรวจสอบสถานะการชำระเงิน
-            if total_residual <= 0 and total_amount > 0:
+            if all(state == 'paid' for state in payment_states):
                 record.payment_state = 'paid'
-            elif any(state == 'in_payment' for state in payment_states):
+            elif all(state == 'in_payment' for state in payment_states):
                 record.payment_state = 'in_payment'
-            elif any(state in ['partial'] for state in payment_states) or \
+            elif any(state in ['in_payment', 'partial'] for state in payment_states) or \
                  (total_residual > 0 and total_residual < total_amount):
                 record.payment_state = 'partial'
             else:
