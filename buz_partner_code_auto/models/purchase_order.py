@@ -26,3 +26,8 @@ class PurchaseOrder(models.Model):
                         'message': 'No vendor found with this partner code.'
                     }
                 }
+
+    @api.onchange('partner_id')
+    def _onchange_partner_id_code(self):
+        if self.partner_id and self.partner_id.partner_code:
+            self.partner_code = self.partner_id.partner_code
