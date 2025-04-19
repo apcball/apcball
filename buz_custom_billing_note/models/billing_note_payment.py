@@ -7,7 +7,7 @@ class BillingNotePayment(models.Model):
 
     name = fields.Char(string='Reference', compute='_compute_name', store=True)
     billing_note_id = fields.Many2one('billing.note', string='Billing Note', required=True, ondelete='cascade')
-    payment_id = fields.Many2one('account.payment', string='Payment', required=True)
+    payment_id = fields.Many2one('account.payment', string='Payment')
     payment_date = fields.Date(string='Payment Date', required=True)
     payment_method = fields.Selection([
         ('cash', 'Cash'),
@@ -25,10 +25,12 @@ class BillingNotePayment(models.Model):
     @api.depends('payment_id', 'payment_date')
     def _compute_name(self):
         for record in self:
-            if record.payment_id:
-                record.name = record.payment_id.name or _('Payment %s') % record.payment_date.strftime('%Y/%m/%d')
-            else:
+            if record.payment_id and record.payment_id.name:
+                record.name = record.payment_id.name
+            elif record.payment_date:
                 record.name = _('Payment %s') % record.payment_date.strftime('%Y/%m/%d')
+            else:
+                record.name = _('New Payment')
 
     @api.model_create_multi
     def create(self, vals_list):

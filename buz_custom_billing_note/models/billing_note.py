@@ -2,7 +2,68 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 from dateutil.relativedelta import relativedelta
 
-class BillingNote(models.Model):
+class BillingNotePayment(models.Model):
+    _name = 'billing.note.payment'
+    _description = 'Billing Note Payment'
+    _order = 'date desc, id desc'
+
+    name = fields.Char(string='Reference', readonly=True, copy=False)
+    billing_note_id = fields.Many2one('billing.note', string='Billing Note', required=True, ondelete='cascade')
+    payment_id = fields.Many2one('account.payment', string='Payment', readonly=True)
+    payment_date = fields.Date(string='Payment Date', required=True, default=fields.Date.context_today)
+    date = fields.Date(string='Date', required=True, default=fields.Date.context_today)
+    amount = fields.Monetary(string='Amount', required=True)
+    currency_id = fields.Many2one('res.currency', string='Currency', 
+        related='billing_note_id.currency_id', store=True, readonly=True)
+    company_id = fields.Many2one('res.company', string='Company',
+        related='billing_note_id.company_id', store=True, readonly=True)
+    payment_method = fields.Selection([
+        ('cash', 'Cash'),
+        ('bank', 'Bank Transfer'),
+        ('check', 'Check'),
+        ('other', 'Other')
+    ], string='Payment Method', required=True)
+    notes = fields.Text(string='Notes')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('name'):
+                vals['name'] = self.env['ir.sequence'].next_by_code('billing.note.payment')
+        return super().create(vals_list)
+
+    @api.model
+    def _create_from_payment(self, payment, billing_note, amount):
+        """Create payment record from account.payment"""
+        return self.create({
+            'billing_note_id': billing_note.id,
+            'payment_id': payment.id,
+            'payment_date': payment.date,
+            'date': payment.date,
+            'amount': amount,
+            'payment_method': self._get_payment_method(payment),
+            'notes': f'Created from payment {payment.name}'
+        })
+
+    def _get_payment_method(self, payment):
+        """Map account.payment method to billing note payment method"""
+        # Map payment method based on journal type and payment method code
+        if payment.journal_id.type == 'cash':
+            return 'cash'
+        elif payment.journal_id.type == 'bank':
+            return 'bank'
+        elif payment.payment_method_line_id.code == 'check_printing':
+            return 'check'
+        return 'other'
+
+class AccountPayment(models.Model):
+    _inherit = 'account.payment'
+
+    def _post(self, soft=True):
+        """Override to handle billing note payments"""
+        res = super()._post(soft=soft)
+        self.env['billing.note']._handle_payment_creation(self)
+        return res
     _name = 'billing.note'
     _description = 'Billing Note'
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -120,6 +181,9 @@ class BillingNote(models.Model):
         ctx = {
             'active_model': 'account.move',
             'active_ids': invoices.ids,
+            'default_payment_type': 'inbound' if self[0].note_type == 'receivable' else 'outbound',
+            'default_partner_type': 'customer' if self[0].note_type == 'receivable' else 'supplier',
+            'default_billing_notes': self.ids,  # Pass billing note IDs to context
         }
 
         # Return the action to open the batch payment wizard
@@ -230,10 +294,10 @@ class BillingNote(models.Model):
         partners = self.env['res.partner'].search(partner_domain)
         return partners.filtered(lambda p: p.id in invoices.mapped('partner_id').ids)
 
-    @api.depends('invoice_ids', 'invoice_ids.amount_total')
+    @api.depends('invoice_ids', 'invoice_ids.amount_residual')
     def _compute_amount_total(self):
         for rec in self:
-            rec.amount_total = sum(rec.invoice_ids.mapped('amount_total'))
+            rec.amount_total = sum(rec.invoice_ids.mapped('amount_residual'))
 
     @api.depends('amount_total', 'payment_line_ids.amount')
     def _compute_amount_paid(self):
@@ -241,16 +305,21 @@ class BillingNote(models.Model):
             rec.amount_paid = sum(rec.payment_line_ids.mapped('amount'))
             rec.amount_residual = rec.amount_total - rec.amount_paid
 
-    @api.depends('amount_total', 'amount_paid')
+    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.amount_residual')
     def _compute_payment_state(self):
         for rec in self:
             old_state = rec.payment_state
-            if rec.amount_paid <= 0:
-                rec.payment_state = 'not_paid'
-            elif rec.amount_paid >= rec.amount_total:
+            
+            # Check if all invoices are paid
+            all_paid = all(inv.payment_state == 'paid' for inv in rec.invoice_ids)
+            any_paid = any(inv.payment_state in ['partial', 'paid'] for inv in rec.invoice_ids)
+            
+            if all_paid:
                 rec.payment_state = 'paid'
-            else:
+            elif any_paid:
                 rec.payment_state = 'partial'
+            else:
+                rec.payment_state = 'not_paid'
                 
             # Send email notification when payment is received
             if old_state != rec.payment_state and rec.payment_state in ['partial', 'paid']:
@@ -291,3 +360,41 @@ class BillingNote(models.Model):
             if record.state not in ['draft', 'confirm']:
                 continue
             record.write({'state': 'cancel'})
+
+    def _create_payment_from_wizard(self, payment_vals):
+        """Create payment record from payment wizard"""
+        self.ensure_one()
+        payment = self.env['account.payment'].create(payment_vals)
+        
+        # Create billing note payment record
+        self.env['billing.note.payment']._create_from_payment(
+            payment=payment,
+            billing_note=self,
+            amount=payment.amount
+        )
+        return payment
+
+    @api.model
+    def _handle_payment_creation(self, payment):
+        """Handle payment creation for billing notes"""
+        # Find related billing notes through invoices
+        billing_notes = self.env['billing.note'].search([
+            ('invoice_ids', 'in', payment.reconciled_invoice_ids.ids),
+            ('state', '=', 'confirm')
+        ])
+        
+        for note in billing_notes:
+            # Calculate amount for this billing note
+            note_invoices = note.invoice_ids & payment.reconciled_invoice_ids
+            total_amount = sum(note_invoices.mapped('amount_total'))
+            paid_amount = sum(note_invoices.mapped(lambda i: i.amount_total - i.amount_residual))
+            payment_ratio = paid_amount / total_amount if total_amount else 0
+            note_amount = payment.amount * payment_ratio
+
+            if note_amount > 0:
+                # Create billing note payment record
+                self.env['billing.note.payment']._create_from_payment(
+                    payment=payment,
+                    billing_note=note,
+                    amount=note_amount
+                )

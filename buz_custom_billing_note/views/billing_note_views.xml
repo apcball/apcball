@@ -29,14 +29,8 @@
                     <button name="action_done" string="Mark as Done" type="object" class="oe_highlight" invisible="state != 'confirm'"/>
                     <button name="action_draft" string="Reset to Draft" type="object" invisible="state != 'confirm'"/>
                     <button name="action_cancel" string="Cancel" type="object" invisible="state not in ('draft', 'confirm')"/>
-                    <button name="action_register_payment" 
-                            string="Register Payment" 
-                            type="object" 
-                            class="oe_highlight"
-                            groups="account.group_account_invoice"
-                            invisible="state != 'confirm' or payment_state == 'paid'"/>
                     <button name="action_register_batch_payment" 
-                            string="Register Batch Payment" 
+                            string="Register Payment" 
                             type="object" 
                             class="oe_highlight"
                             groups="account.group_account_invoice"
