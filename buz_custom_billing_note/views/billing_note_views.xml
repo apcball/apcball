@@ -156,14 +156,10 @@
     </record>
 
     <!-- Menu -->
-    <menuitem id="menu_billing_note_root" 
-        name="Billing Notes" 
-        sequence="5"/>
-
     <menuitem id="menu_billing_note_main" 
         name="Billing Notes"
-        parent="menu_billing_note_root" 
-        sequence="1"/>
+        parent="account.menu_finance" 
+        sequence="5"/>
 
     <menuitem id="menu_billing_note" 
         name="Billing Notes"
@@ -173,7 +169,7 @@
 
     <menuitem id="menu_billing_note_reporting" 
         name="Reporting"
-        parent="menu_billing_note_root" 
+        parent="menu_billing_note_main" 
         sequence="99"/>
 
 </odoo>
