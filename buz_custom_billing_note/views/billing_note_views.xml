@@ -9,10 +9,12 @@
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="date"/>
-                <field name="due_date"/>
+                <field name="due_date" widget="remaining_days" decoration-success="due_date &gt; context_today()" 
+                                     decoration-warning="due_date &gt;= context_today() and due_date &lt;= context_today() + relativedelta(days=7)"
+                                     decoration-danger="due_date &lt; context_today()"/>
                 <field name="amount_total" sum="Total"/>
                 <field name="amount_residual" sum="Due"/>
-                <field name="payment_state"/>
+                <field name="payment_state" widget="badge" decoration-danger="payment_state == 'not_paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-success="payment_state == 'paid'"/>
                 <field name="state" widget="badge" decoration-primary="state == 'draft'" decoration-warning="state == 'confirm'" decoration-success="state == 'done'" decoration-danger="state == 'cancel'"/>
             </tree>
         </field>
