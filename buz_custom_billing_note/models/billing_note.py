@@ -1,6 +1,9 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 from dateutil.relativedelta import relativedelta
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class BillingNotePayment(models.Model):
     _name = 'billing.note.payment'
@@ -117,6 +120,7 @@ class AccountPayment(models.Model):
     payment_state = fields.Selection([
         ('not_paid', 'Not Paid'),
         ('partial', 'Partially Paid'),
+        ('in_payment', 'In Payment'),
         ('paid', 'Paid'),
         ('reversed', 'Reversed')
     ], string='Payment Status', compute='_compute_payment_state', store=True)
@@ -196,6 +200,49 @@ class AccountPayment(models.Model):
             'target': 'new',
             'type': 'ir.actions.act_window',
         }
+
+    @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.amount_residual', 'invoice_ids.payment_state')
+    def _compute_amount_total(self):
+        for record in self:
+            record.amount_total = sum(record.invoice_ids.mapped('amount_total'))
+
+    @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.amount_residual', 'invoice_ids.payment_state')
+    def _compute_amount_paid(self):
+        for record in self:
+            total = sum(record.invoice_ids.mapped('amount_total'))
+            residual = sum(record.invoice_ids.mapped('amount_residual'))
+            record.amount_paid = total - residual
+            record.amount_residual = residual
+
+    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.amount_residual')
+    def _compute_payment_state(self):
+        for record in self:
+            if not record.invoice_ids:
+                record.payment_state = 'not_paid'
+                continue
+
+            # รวบรวมข้อมูลจากใบแจ้งหนี้
+            invoices = record.invoice_ids
+            payment_states = invoices.mapped('payment_state')
+            total_residual = sum(invoices.mapped('amount_residual'))
+            total_amount = sum(invoices.mapped('amount_total'))
+
+            # Debug log
+            _logger.info(f'Billing Note {record.name} - Payment States: {payment_states}')
+            _logger.info(f'Total Residual: {total_residual}, Total Amount: {total_amount}')
+
+            # ตรวจสอบสถานะการชำระเงิน
+            if total_residual <= 0 and total_amount > 0:
+                record.payment_state = 'paid'
+            elif any(state == 'in_payment' for state in payment_states):
+                record.payment_state = 'in_payment'
+            elif any(state in ['partial'] for state in payment_states) or \
+                 (total_residual > 0 and total_residual < total_amount):
+                record.payment_state = 'partial'
+            else:
+                record.payment_state = 'not_paid'
+
+            _logger.info(f'Final Payment State: {record.payment_state}')
 
     @api.depends('partner_id', 'note_type', 'state')
     def _compute_available_invoices(self):

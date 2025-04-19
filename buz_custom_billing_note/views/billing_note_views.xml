@@ -56,9 +56,6 @@
                         <group>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="currency_id" groups="base.group_multi_currency"/>
-                            <field name="amount_total"/>
-                            <field name="amount_residual"/>
-                            <field name="payment_state"/>
                         </group>
                     </group>
                     <notebook>
@@ -73,6 +70,11 @@
                                     <field name="payment_state"/>
                                 </tree>
                             </field>
+                            <group class="oe_subtotal_footer" name="billing_note_totals">
+                                <field name="amount_total" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
+                                <field name="amount_residual" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
+                                <field name="payment_state" class="oe_subtotal_footer_separator" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'not_paid'"/>
+                            </group>
                         </page>
                         <page string="Payments" invisible="state == 'draft'">
                             <field name="payment_line_ids">
