@@ -78,7 +78,7 @@
                                 <field name="payment_state" class="oe_subtotal_footer_separator" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'not_paid'"/>
                             </group>
                         </page>
-                        <page string="Payments" invisible="state == 'draft'">
+                        <page string="Payments" invisible="1">
                             <field name="payment_line_ids">
                                 <tree>
                                     <field name="payment_date"/>
