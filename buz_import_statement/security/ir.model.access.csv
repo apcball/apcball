@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_bank_statement_profile_user,bank.statement.profile.user,model_bank_statement_profile,account.group_account_user,1,1,1,1
+access_bank_statement_mapping_user,bank.statement.mapping.user,model_bank_statement_mapping,account.group_account_user,1,1,1,1
+access_import_bank_statement_user,import.bank.statement.user,model_import_bank_statement,account.group_account_user,1,1,1,0

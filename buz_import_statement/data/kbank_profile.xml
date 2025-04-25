@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Create Kbank -->
+        <record id="res_bank_kbank" model="res.bank">
+            <field name="name">ธนาคารกสิกรไทย</field>
+            <field name="bic">KASITHBK</field>
+        </record>
+
+        <!-- Create Bank Journal -->
+        <record id="kbank_journal" model="account.journal">
+            <field name="name">ธนาคารกสิกรไทย</field>
+            <field name="code">KBANK</field>
+            <field name="type">bank</field>
+            <field name="bank_id" ref="res_bank_kbank"/>
+            <field name="bank_acc_number">4641007744</field>
+            <field name="currency_id" ref="base.THB"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Kbank Profile -->
+        <record id="bank_statement_profile_kbank" model="bank.statement.profile">
+            <field name="name">Kbank Statement Profile</field>
+            <field name="bank_id" ref="res_bank_kbank"/>
+            <field name="journal_id" ref="kbank_journal"/>
+            <field name="file_type">csv</field>
+            <field name="delimiter">,</field>
+            <field name="has_header">True</field>
+            <field name="encoding">tis-620</field>
+            <field name="skip_rows">9</field>
+            
+            <!-- Column Mapping -->
+            <field name="date_column">0</field>  <!-- วันที่รายการมีผล -->
+            <field name="amount_column">4,5</field>  <!-- จำนวนเงินหักบัญชี,จำนวนเงินนำฝากเข้าบัญชี -->
+            <field name="description_column">11</field>  <!-- รายละเอียด -->
+            <field name="reference_column">2,3</field>  <!-- รายการ,เลขที่เช็ค -->
+            
+            <!-- Date Format -->
+            <field name="date_format">%d/%m/%Y</field>
+            
+            <!-- Amount Format -->
+            <field name="decimal_separator">.</field>
+            <field name="thousands_separator">,</field>
+            
+            <!-- Currency -->
+            <field name="currency_id" ref="base.THB"/>
+        </record>
+
+        <!-- Kbank Transaction Mappings -->
+        <record id="bank_statement_mapping_kbank_1" model="bank.statement.mapping">
+            <field name="profile_id" ref="bank_statement_profile_kbank"/>
+            <field name="name">รับโอนเงิน</field>
+            <field name="label">รับโอนเงินเข้าบัญชี</field>
+        </record>
+
+        <record id="bank_statement_mapping_kbank_2" model="bank.statement.mapping">
+            <field name="profile_id" ref="bank_statement_profile_kbank"/>
+            <field name="name">หักบัญชีด้วยเช็ค</field>
+            <field name="label">จ่ายเช็ค</field>
+        </record>
+
+        <record id="bank_statement_mapping_kbank_3" model="bank.statement.mapping">
+            <field name="profile_id" ref="bank_statement_profile_kbank"/>
+            <field name="name">โอนเงิน ชำระ/ตัดLC</field>
+            <field name="label">ชำระ LC</field>
+        </record>
+    </data>
+</odoo>

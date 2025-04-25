@@ -14,24 +14,28 @@
             <field name="name">Kbank Statement Template</field>
             <field name="is_template">True</field>
             <field name="journal_id" ref="kbank_journal"/>
+            
+            <!-- ตั้งค่าการอ่านไฟล์ -->
             <field name="file_type">csv</field>
             <field name="delimiter">,</field>
             <field name="has_header">True</field>
             <field name="encoding">tis-620</field>
-            <field name="skip_rows">9</field>
+            <field name="skip_rows">10</field>  <!-- ข้ามส่วนหัว 10 บรรทัด -->
             
-            <!-- Column Mapping -->
+            <!-- กำหนดตำแหน่งคอลัมน์ -->
             <field name="date_column">0</field>  <!-- วันที่รายการมีผล -->
-            <field name="amount_column">4,5</field>  <!-- จำนวนเงินหักบัญชี,จำนวนเงินนำฝากเข้าบัญชี -->
+            <field name="debit_column">4</field>  <!-- จำนวนเงินหักบัญชี -->
+            <field name="credit_column">5</field>  <!-- จำนวนเงินนำฝากเข้าบัญชี -->
             <field name="description_column">11</field>  <!-- รายละเอียด -->
-            <field name="reference_column">2,3</field>  <!-- รายการ,เลขที่เช็ค -->
+            <field name="reference_column">2</field>  <!-- รายการ -->
+            <field name="reference_column2">3</field>  <!-- เลขที่เช็ค -->
             
-            <!-- Date Format -->
+            <!-- รูปแบบวันที่ -->
             <field name="date_format">%d/%m/%Y</field>
             
-            <!-- Amount Format -->
-            <field name="decimal_separator">.</field>
-            <field name="thousands_separator">,</field>
+            <!-- รูปแบบตัวเลข -->
+            <field name="decimal_separator">.</field>  <!-- ใช้จุด (.) เป็นตัวคั่นทศนิยม -->
+            <field name="thousands_separator">,</field>  <!-- ใช้จุลภาค (,) คั่นหลักพัน -->
         </record>
     </data>
 </odoo>

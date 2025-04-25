@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Root Menu -->
+    <menuitem id="menu_bank_statement_import_root"
+              name="Bank Statement Import"
+              parent="account.menu_finance"
+              sequence="5"/>
+
+    <!-- Bank Profile Menu -->
+    <menuitem id="menu_bank_statement_profile"
+              name="Bank Profiles"
+              parent="menu_bank_statement_import_root"
+              action="action_bank_statement_profile"
+              sequence="1"/>
+
+    <!-- Statement Upload Menu -->
+    <menuitem id="menu_bank_statement_upload"
+              name="Statement Uploads"
+              parent="menu_bank_statement_import_root"
+              action="action_bank_statement_upload"
+              sequence="2"/>
+</odoo>

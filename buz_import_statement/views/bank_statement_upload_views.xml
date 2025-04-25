@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bank_statement_upload_tree" model="ir.ui.view">
+        <field name="name">bank.statement.upload.tree</field>
+        <field name="model">bank.statement.upload</field>
+        <field name="arch" type="xml">
+            <tree decoration-info="state == 'draft'" decoration-success="state == 'imported'" decoration-warning="state == 'validated'" decoration-danger="state == 'failed'">
+                <field name="name"/>
+                <field name="profile_id"/>
+                <field name="filename"/>
+                <field name="create_date"/>
+                <field name="import_date"/>
+                <field name="state"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bank_statement_upload_form" model="ir.ui.view">
+        <field name="name">bank.statement.upload.form</field>
+        <field name="model">bank.statement.upload</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_validate" string="Validate" type="object" class="oe_highlight"
+                            invisible="state != 'draft'"/>
+                    <button name="action_import" string="Import" type="object" class="oe_highlight"
+                            invisible="state != 'validated'"/>
+                    <button name="action_reset" string="Reset to Draft" type="object"
+                            invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,validated,imported"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="e.g., January 2024 Statement"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="profile_id" options="{'no_create': True}" invisible="state != 'draft'"/>
+                            <field name="profile_id" options="{'no_create': True}" readonly="1" invisible="state == 'draft'"/>
+                            <field name="file" filename="filename" invisible="state != 'draft'"/>
+                            <field name="filename" invisible="state != 'draft'"/>
+                            <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="create_date" readonly="1"/>
+                            <field name="import_date" readonly="1"/>
+                            <field name="statement_id" readonly="1" invisible="not statement_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes" name="notes">
+                            <field name="notes" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_bank_statement_upload_search" model="ir.ui.view">
+        <field name="name">bank.statement.upload.search</field>
+        <field name="model">bank.statement.upload</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="profile_id"/>
+                <field name="filename"/>
+                <filter string="Draft" name="draft" domain="[('state','=','draft')]"/>
+                <filter string="Validated" name="validated" domain="[('state','=','validated')]"/>
+                <filter string="Imported" name="imported" domain="[('state','=','imported')]"/>
+                <filter string="Failed" name="failed" domain="[('state','=','failed')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_by_state" context="{'group_by': 'state'}"/>
+                    <filter string="Profile" name="group_by_profile" context="{'group_by': 'profile_id'}"/>
+                    <filter string="Import Date" name="group_by_import_date" context="{'group_by': 'import_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bank_statement_upload" model="ir.actions.act_window">
+        <field name="name">Statement Uploads</field>
+        <field name="res_model">bank.statement.upload</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_draft': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Upload your first bank statement
+            </p>
+            <p>
+                Upload bank statements in various formats (CSV, Excel) and import them into Odoo.
+            </p>
+        </field>
+    </record>
+</odoo>
