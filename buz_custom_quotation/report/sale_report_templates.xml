@@ -47,27 +47,57 @@
                              style="width: 50%;"/>
                     </div>
 
+    
     <!-- Content Section (ย้ายมาอยู่ในส่วนของ cover) -->
+
+    <div class="footer" style="width: 100%; background-color: #1F2B6C; padding: 15px; position: absolute; bottom: -50; left: 0; right: 0;">
+        <div style="text-align: left;">
+            <div style="color: white; font-size: 10px; font-weight: bold;">MOGEN CO., LTD. (HEAD OFFICE)</div>
+            <div style="color: white; font-size: 10px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+            <div style="color: white; font-size: 10px;">Tax ID: 0105547076103</div>
+            <div style="color: white; font-size: 10px;">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
+        </div>
+    </div>
+
     <div style="position: absolute; bottom: -30%; left: 5%; z-index: 2;">
-        <span style="margin-bottom: 15px; display: block;">
-            <span style="font-size: 25px; color: black; font-weight: bold;">Project Name : </span>
-            <span style="font-size: 25px; color: black; font-weight: bold;" t-field="doc.project_name"/>
-        </span>
-        
-        <span style="margin-bottom: 15px; display: block;">
-            <span style="font-size: 25px; color: black; font-weight: bold;">Customer : </span>
-            <span style="font-size: 25px; color: black; font-weight: bold;" t-field="doc.partner_id.name"/>
-        </span>
-        
-        <span style="display: block;">
-            <span style="display: inline;">
+        <div style="line-height: 2.5; margin-bottom: 20px;">
+            <div style="margin-bottom: 1px;">
+                <span style="font-size: 25px; color: black; font-weight: bold;">Project Name      : </span>
+                <span style="font-size: 25px; color: black; font-weight: bold;" t-field="doc.project_name"/>
+            </div>
+            
+            <div style="margin-bottom: 0px;">
+                <span style="font-size: 25px; color: black; font-weight: bold;">Customer : </span>
+                <span style="font-size: 25px; color: black; font-weight: bold;" t-field="doc.partner_id.name"/>
+            </div>
+            
+            <div style="margin-bottom: 0px;">
+                <span style="font-size: 25px; color: black; font-weight: bold;">Address : </span>
+                <span style="font-size: 25px; color: black; font-weight: bold;" t-field="doc.partner_id.street"/>
+            </div>
+
+            <div style="margin-bottom: 0px;">
                 <span style="font-size: 25px; color: black; font-weight: bold;">Proposal No. : </span>
                 <span style="font-size: 25px; color: black; font-weight: bold;" t-field="doc.proposal_no"/>
-            </span>
-        </span>
+            </div>
+
+            <div style="margin-bottom: 0px;">
+                <span style="font-size: 25px; color: black; font-weight: bold;">Date : </span>
+                <span style="font-size: 25px; color: black; font-weight: bold;" t-field="doc.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+            </div>
+
+            <!-- Company Info Section -->
+            <div style="margin-top: 20px;">
+                <div style="text-align: left;">
+                    <div style="color: black; font-size: 20px; font-weight: bold;">MOGEN CO., LTD. (HEAD OFFICE)</div>
+                    <div style="color: black; font-size: 20px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+                    <div style="color: black; font-size: 20px;">Tax ID: 0105547076103</div>
+                    <div style="color: black; font-size: 20px;">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-
 <!-- Content Page -->
 <div style="margin-top: 0;">
     <div style="text-align: left; margin-top: -5mm; margin-left: 0mm; margin-right: 0mm;">
