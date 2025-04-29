@@ -1,22 +1,22 @@
 @font-face {
-    font-family: 'Sarabun';
-    src: url('/buz_custom_quotation/static/fonts/Sarabun-Bold.ttf') format('truetype');
-    font-weight: bold;
+    font-family: 'DB ADMAN X';
+    src: url('/buz_custom_quotation/static/fonts/DB ADMAN X.TTF') format('truetype');
+    font-weight: normal;
     font-style: normal;
 }
 
 .o_report_layout_standard {
-    font-family: 'Sarabun', sans-serif !important;
+    font-family: 'DB ADMAN X', sans-serif !important;
 }
 
 .page {
-    font-family: 'Sarabun', sans-serif !important;
+    font-family: 'DB ADMAN X', sans-serif !important;
 }
 
 .o_company_1_layout {
-    font-family: 'Sarabun', sans-serif !important;
+    font-family: 'DB ADMAN X', sans-serif !important;
 }
 
 table, tr, td, th, p, span, div, h1, h2, h3, h4, h5, h6 {
-    font-family: 'Sarabun', sans-serif !important;
+    font-family: 'DB ADMAN X', sans-serif !important;
 }

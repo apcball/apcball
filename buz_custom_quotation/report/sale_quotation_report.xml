@@ -20,14 +20,14 @@
                     <div class="page">
                         <style>
                             @font-face {
-                                font-family: 'Sarabun';
-                                src: url('/buz_custom_quotation/static/fonts/Sarabun-Bold.ttf') format('truetype');
-                                font-weight: bold;
+                                font-family: 'DB ADMAN X';
+                                src: url('/buz_custom_quotation/static/fonts/DB ADMAN X.TTF') format('truetype');
+                                font-weight: normal;
                                 font-style: normal;
                             }
                             .page {
                                 padding: 20px;
-                                font-family: 'Sarabun', 'THSarabunNew', sans-serif;
+                                font-family: 'DB ADMAN X', sans-serif;
                                 font-size: 20px;
                             }
                             .header-info {
