@@ -42,23 +42,27 @@
                         <img t-att-src="'/buz_custom_quotation/static/img/cover/Cover1.jpeg'" 
                              style="width: calc(100% + 12mm); height: 297mm; object-fit: cover; margin: 0;"/>
                     </div>
+                    <div style="position: absolute; bottom: -90px; left: 15px; z-index: 2;">
+                        <img t-att-src="'/buz_custom_quotation/static/img/cover/logo-ci-mogen.png'"
+                             style="width: 50%;"/>
+                    </div>
 
     <!-- Content Section (ย้ายมาอยู่ในส่วนของ cover) -->
-    <div style="position: absolute; bottom: -25%; left: 5%; z-index: 2;">
-        <span style="margin: 5px 0; display: block;">
-            <span style="font-size: 25px; color: black;">Project Name : </span>
-            <span style="font-size: 25px; color: black;" t-field="doc.project_name"/>
+    <div style="position: absolute; bottom: -30%; left: 5%; z-index: 2;">
+        <span style="margin-bottom: 15px; display: block;">
+            <span style="font-size: 25px; color: black; font-weight: bold;">Project Name : </span>
+            <span style="font-size: 25px; color: black; font-weight: bold;" t-field="doc.project_name"/>
         </span>
         
-        <span style="margin: 30px 0; display: block;">
-            <span style="font-size: 25px; color: black;">Customer : </span>
-            <span style="font-size: 25px; color: black;" t-field="doc.partner_id.name"/>
+        <span style="margin-bottom: 15px; display: block;">
+            <span style="font-size: 25px; color: black; font-weight: bold;">Customer : </span>
+            <span style="font-size: 25px; color: black; font-weight: bold;" t-field="doc.partner_id.name"/>
         </span>
         
-        <span style="margin: 50px 0; display: block;">
-            <span style="margin: 10px 0; display: inline;">
-                <strong style="font-size: 25px; color: black;">Proposal No. : </strong>
-                <span style="font-size: 25px; color: black;" t-field="doc.proposal_no"/>
+        <span style="display: block;">
+            <span style="display: inline;">
+                <span style="font-size: 25px; color: black; font-weight: bold;">Proposal No. : </span>
+                <span style="font-size: 25px; color: black; font-weight: bold;" t-field="doc.proposal_no"/>
             </span>
         </span>
     </div>
