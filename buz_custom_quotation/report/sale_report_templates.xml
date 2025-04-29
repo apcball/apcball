@@ -36,28 +36,33 @@
                         }
                     </style>
                     <div class="page">
-                        <!-- Cover Page Content -->
-                        <div style="page-break-after: always;">
-                            <div style="text-align: center; position: relative; margin: -5mm -8mm -10mm -4mm;">
-                                <img t-att-src="'/buz_custom_quotation/static/img/cover/Cover1.jpeg'" style="width: calc(100% + 12mm); height: 297mm; object-fit: cover; margin: 0;"/>
-                                <div style="text-align: left; position: absolute; bottom: 5%; left: 5%;">
-                                    <div style="margin: 5px 0;">
-                                        <h3 style="font-size: 40px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Project Name:</h3>
-                                        <div style="font-size: 40px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);" t-field="doc.project_name"/>
-                                    </div>
-                                    <div style="margin: 30px 0;">
-                                        <h3 style="font-size: 40px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Customer:</h3>
-                                        <div style="font-size: 40px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);" t-field="doc.partner_id.name"/>
-                                    </div>
-                                    <div style="margin: 50px 0;">
-                                        <div style="margin: 10px 0;">
-                                            <strong style="font-size: 30px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Proposal No.:</strong>
-                                            <span style="font-size: 30px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);" t-field="doc.proposal_no"/>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                 <!-- Cover Image Section -->
+                    <div style="page-break-after: always; position: relative;">
+                    <div style="text-align: center; margin: -15mm -8mm -10mm -4mm;">
+                        <img t-att-src="'/buz_custom_quotation/static/img/cover/Cover1.jpeg'" 
+                             style="width: calc(100% + 12mm); height: 297mm; object-fit: cover; margin: 0;"/>
+                    </div>
+
+    <!-- Content Section (ย้ายมาอยู่ในส่วนของ cover) -->
+    <div style="position: absolute; bottom: -25%; left: 5%; z-index: 2;">
+        <span style="margin: 5px 0; display: block;">
+            <span style="font-size: 25px; color: black;">Project Name : </span>
+            <span style="font-size: 25px; color: black;" t-field="doc.project_name"/>
+        </span>
+        
+        <span style="margin: 30px 0; display: block;">
+            <span style="font-size: 25px; color: black;">Customer : </span>
+            <span style="font-size: 25px; color: black;" t-field="doc.partner_id.name"/>
+        </span>
+        
+        <span style="margin: 50px 0; display: block;">
+            <span style="margin: 10px 0; display: inline;">
+                <strong style="font-size: 25px; color: black;">Proposal No. : </strong>
+                <span style="font-size: 25px; color: black;" t-field="doc.proposal_no"/>
+            </span>
+        </span>
+    </div>
+</div>
 
 <!-- Content Page -->
 <div style="margin-top: 0;">
