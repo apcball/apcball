@@ -5,10 +5,10 @@
         <field name="default" eval="True"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">5</field>
-        <field name="margin_bottom">10</field>
-        <field name="margin_left">4</field>
-        <field name="margin_right">8</field>
+        <field name="margin_top">0</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
@@ -18,117 +18,51 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
+                    <style>
+                        @font-face {
+                            font-family: 'DB ADMAN X';
+                            src: url('/buz_custom_quotation/static/fonts/DB ADMAN X.TTF') format('truetype');
+                            font-weight: normal;
+                            font-style: normal;
+                        }
+                        body, div, p, span, h1, h2, h3, h4, h5, h6, table, tr, td, th, strong, li {
+                            font-family: 'DB ADMAN X' !important;
+                        }
+                        .page {
+                            font-family: 'DB ADMAN X' !important;
+                        }
+                        .o_report_layout_standard {
+                            font-family: 'DB ADMAN X' !important;
+                        }
+                    </style>
                     <div class="page">
                         <!-- Cover Page Content -->
                         <div style="page-break-after: always;">
-                            <div style="text-align: center; margin-top: -10mm; margin-right: -4mm;">
-                                <img t-att-src="'/buz_custom_quotation/static/img/cover/top_image.jpeg'" style="width: calc(95% + 8mm); max-width: none; margin-bottom: 5px;"/>
-                                <div style="text-align: right;">
+                            <div style="text-align: center; position: relative; margin: -5mm -8mm -10mm -4mm;">
+                                <img t-att-src="'/buz_custom_quotation/static/img/cover/Cover1.jpeg'" style="width: calc(100% + 12mm); height: 297mm; object-fit: cover; margin: 0;"/>
+                                <div style="text-align: left; position: absolute; bottom: 5%; left: 5%;">
                                     <div style="margin: 5px 0;">
-                                        <h3 style="font-size: 40px;">Project Name:</h3>
-                                        <div style="font-size: 40px;" t-field="doc.project_name"/>
+                                        <h3 style="font-size: 40px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Project Name:</h3>
+                                        <div style="font-size: 40px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);" t-field="doc.project_name"/>
                                     </div>
                                     <div style="margin: 30px 0;">
-                                        <h3 style="font-size: 40px;">Customer:</h3>
-                                        <div style="font-size: 40px;" t-field="doc.partner_id.name"/>
+                                        <h3 style="font-size: 40px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Customer:</h3>
+                                        <div style="font-size: 40px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);" t-field="doc.partner_id.name"/>
                                     </div>
                                     <div style="margin: 50px 0;">
                                         <div style="margin: 10px 0;">
-                                            <strong style="font-size: 30px;">Proposal No.:</strong>
-                                            <span style="font-size: 30px;" t-field="doc.proposal_no"/>
+                                            <strong style="font-size: 30px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Proposal No.:</strong>
+                                            <span style="font-size: 30px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);" t-field="doc.proposal_no"/>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Company Info Section -->
-                            <div class="row mb-2" style="margin-top: 100px; font-size: 20px;">
-                                <div class="col-8">
-                                    <div class="company-header mb-1">MOGEN CO., LTD. (HEAD OFFICE)</div>
-                                    <div class="company-info">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
-                                    <div class="company-info">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
-                                    <div class="company-info">www.mogen.co.th</div>
-                                </div>
-                                <div class="col-4 text-end">
-                                    <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
-                                         style="width: 300px; height: auto; object-fit: contain; margin-top: 10px;" alt="Company Logo"/>
-                                </div>
-                            </div>
                         </div>
 
-<!-- Middle Page -->
-<div style="page-break-after: always;">
-    <!-- Logo Header -->
-    <div style="text-align: left; margin-top: -10mm; margin-left: 8mm;">
-        <img t-att-src="'/buz_custom_quotation/static/img/cover/logo_header.png'" style="margin: 0;"/>
-    </div>
-
-    <!-- Main Content Section -->
-    <div style="position: relative; min-height: 100vh; padding-bottom: 100px;">
-        <!-- Content Container -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 250px;">
-            <!-- Left Side - Image -->
-            <div style="flex: 0 0 70%;">
-                <img t-att-src="'/buz_custom_quotation/static/img/cover/middle_image.png'" style="width: 100%; max-width: 100%;"/>
-            </div>
-
-            <!-- Right Side - Content -->
-            <div style="margin-left: 10mm;">
-                <div style="margin: 5px 0; text-align: left;">
-                    <h3 style="font-size: 40px;">Project Name:</h3>
-                    <div style="font-size: 40px;" t-field="doc.project_name"/>
-                </div>
-                <div style="margin: 30px 0; text-align: left;">
-                    <h3 style="font-size: 40px;">Customer:</h3>
-                    <div style="font-size: 40px;" t-field="doc.partner_id.name"/>
-                </div>
-                <div style="margin: 50px 0; text-align: left;">
-                    <div style="margin: 10px 0;">
-                        <strong style="font-size: 30px;">Proposal No.:</strong>
-                        <span style="font-size: 30px;" t-field="doc.proposal_no"/>
-                    </div>
-                </div>
-                <div style="margin: 50px 0; text-align: left;">
-                    <div style="margin: 10px 0;">
-                        <strong style="font-size: 30px;">Valid To:</strong>
-                        <span style="font-size: 30px;" t-field="doc.validity_date"/>
-                    </div>
-                </div>
-                <div style="margin-top: 20px; font-size: 25px; text-align: left;">
-                    <ol style="text-align: left; padding-left: 20px;">
-                        <li>ราคาข้างต้นเป็นราคาที่ยังไม่รวมภาษีมูลค่าเพิ่ม 7% / Above prices are excluded VAT 7%</li>
-                        <li>ราคาอาจมีการเปลี่ยนแปลงโดยไม่ต้องแจ้งให้ทราบล่วงหน้า / Prices are subject to change without prior notice</li>
-                        <li>ราคาดังกล่าวข้างต้นยืนยันราคาถึงวันที่ <span t-field="doc.validity_date"/></li>
-                        <li>หากมีการเปลี่ยนแปลงรายการใดๆ ข้างตั้น จะต้องแจ้งให้บริษัทฯ ทราบล่วงหน้าไม่น้อยกว่า 30 วัน ก่อนส่งสินค้า</li>
-                        <li>สามารถทยอยส่งสินค้าได้ 60 วัน หลังจากได้รับเอกสารยืนยันการสังซื้อ</li>
-                        <li>ระยะทางการยกของให้สูงสุด ไม่เกินระยะทาง 25 เมตร จากจุดจอดรถ</li>
-                        <li>ทางเดินต้องกว้างพอให้สามารถยกของได้ 2 คนต่อกล่อง</li>
-                        <li>ราคาสินค้าไม่รวมบริการติดตั้ง</li>
-                        <li>ราคาเสนอถึงโครงการ <span t-field="doc.project_name"/></li>
-                    </ol>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bottom Section with Social Tab and Company Logo -->
-        <div style="position: absolute; bottom: -200px; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0;">
-            <!-- Social Tab on the left -->
-            <div>
-                <img t-att-src="'/buz_custom_quotation/static/img/cover/social_tab.png'" style="width: 700px;"/>
-            </div>
-            <!-- Company Logo on the right -->
-            <div>
-                <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
-                    style="width: 300px; height: auto; object-fit: contain;" alt="Company Logo"/>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Content Page -->
-<div style="page-break-after: always;">
-    <div style="text-align: left; margin-top: -10mm; margin-left: 0mm; margin-right: 0mm;">
-        <img t-att-src="'/buz_custom_quotation/static/img/cover/Header3.png'" style="width: calc(100% + 12mm); max-width: none; margin-bottom: 20px;"/>
+<div style="margin-top: 0;">
+    <div style="text-align: left; margin-top: -5mm; margin-left: 0mm; margin-right: 0mm;">
+        <img t-att-src="'/buz_custom_quotation/static/img/cover/haeder_1.jpg'" style="width: calc(100% + 12mm); max-width: none; margin-bottom: 10px;"/>
     </div>
 <!-- Header Section -->
     <div class="row mb-4" style="font-size: 30px; background-color: #8B9B7C; color: white; text-align: center;">
