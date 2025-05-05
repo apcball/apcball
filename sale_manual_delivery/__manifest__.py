@@ -8,8 +8,9 @@
     "version": "17.0.1.0.0",
     "website": "https://github.com/OCA/sale-workflow",
     "summary": "Create manually your deliveries",
-    "depends": ["stock_delivery", "sale_stock", "sales_team"],
+    "depends": ["base", "sale", "stock_delivery", "sale_stock", "sales_team"],
     "data": [
+        "security/manual_delivery_security.xml",
         "security/ir.model.access.csv",
         "views/crm_team.xml",
         "views/sale_order.xml",
