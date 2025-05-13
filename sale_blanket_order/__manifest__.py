@@ -10,6 +10,7 @@
     "summary": "Blanket Orders",
     "depends": ["uom", "sale_management"],
     "data": [
+        "security/groups.xml",
         "security/security.xml",
         "security/ir.model.access.csv",
         "data/sequence.xml",
