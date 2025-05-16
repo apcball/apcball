@@ -89,7 +89,10 @@
 
 <!-- Content Page -->
 <div style="margin-top: 0;">
-    <div style="text-align: left; margin-top: -5mm; margin-left: 0mm; margin-right: 0mm;">
+    <div style="text-align: left; margin-right: 10px; background-color: #1E3A78;">
+        <img t-att-src="'/buz_custom_quotation/static/img/cover/logo-ci-mogen.png'" style="width: 400px;"/>
+    </div>
+    <div style="text-align: left; margin-top: 0; margin-left: 0mm; margin-right: 0mm;">
         <img t-att-src="'/buz_custom_quotation/static/img/cover/haeder_1.jpg'" style="width: calc(100% + 12mm); max-width: none; margin-bottom: 10px;"/>
     </div>
 <!-- Header Section -->
