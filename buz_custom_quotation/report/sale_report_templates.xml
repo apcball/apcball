@@ -173,7 +173,7 @@
         </thead>
         <tbody>
             <tr t-foreach="doc.order_line" t-as="line" style="border-bottom: 1px solid #8B9B7C;">
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;"><span style="background-color: #8B9B7C; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span></td>
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;"><span style="background-color: #1E3A78; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span></td>
                 <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <div><span t-field="line.name"/></div>
                 </td>
@@ -200,9 +200,80 @@
                 </td>
             </tr>
         </tbody>
-    </table>                       
+    </table>
 
-    <!-- Totals Section -->
+    <!-- Page 3: Conditions Page -->
+    <div style="page-break-before: always; margin-top: 0;">
+        <div style="text-align: left; margin-right: -10mm; margin-left: -10mm; background-color: #1E3A78; padding-left: 10mm; padding-right: 10mm;">
+            <img t-att-src="'/buz_custom_quotation/static/img/cover/logo-ci-mogen.png'" style="width: 400px; margin-left: -5mm;"/>
+        </div>
+        <div style="text-align: left; margin-top: 0; margin-left: 0mm; margin-right: 0mm;">
+            <img t-att-src="'/buz_custom_quotation/static/img/cover/haeder_1.jpg'" style="width: calc(100% + 12mm); max-width: none; margin-bottom: 10px; margin-left: -5mm;"/>
+        </div>
+
+        <!-- Header Section -->
+        <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
+            <!-- Left Column -->
+            <div class="col-6" style="text-align: left;">
+                <table style="width: 95%; border: none; margin: 10px;">
+                    <tr style="border: none;">
+                        <td style="padding: 5px; border: none;"><strong>To:</strong></td>
+                        <td style="padding: 5px; border: none;"><span t-field="doc.partner_id.name"/></td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 5px; border: none;"><strong>Company:</strong></td>
+                        <td style="padding: 5px; border: none;"><span t-field="doc.company_id.name"/></td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 5px; vertical-align: top; border: none;"><strong>Address:</strong></td>
+                        <td style="padding: 5px; border: none;">
+                            <span t-field="doc.partner_id.street"/>
+                            <span t-if="doc.partner_id.street2"><br/><span t-field="doc.partner_id.street2"/></span>
+                            <span t-if="doc.partner_id.city"><br/><span t-field="doc.partner_id.city"/></span>
+                        </td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 5px; border: none;"><strong>Tel:</strong></td>
+                        <td style="padding: 5px; border: none;"><span t-field="doc.partner_id.phone"/></td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 5px; border: none;"><strong>Email:</strong></td>
+                        <td style="padding: 5px; border: none;"><span t-field="doc.partner_id.email"/></td>
+                    </tr>
+                </table>
+            </div>
+            <!-- Right Column -->
+            <div class="col-6" style="text-align: left;">
+                <table style="width: 95%; border: none; margin: 10px;">
+                    <tr style="border: none;">
+                        <td style="padding: 5px; border: none;"><strong>Date:</strong></td>
+                        <td style="padding: 5px; border: none;"><span t-field="doc.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 5px; border: none;"><strong>Proposal No:</strong></td>
+                        <td style="padding: 5px; border: none;"><span t-field="doc.proposal_no"/></td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 5px; border: none;"><strong>Project:</strong></td>
+                        <td style="padding: 5px; border: none;"><span t-field="doc.project_name"/></td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 5px; border: none;"><strong>Sale Condition:</strong></td>
+                        <td style="padding: 5px; border: none;"><span t-field="doc.payment_term_id.name"/></td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 5px; border: none;"><strong>Ordered By:</strong></td>
+                        <td style="padding: 5px; border: none;"><span t-field="doc.user_id.name"/></td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 5px; border: none;"><strong>Phone:</strong></td>
+                        <td style="padding: 5px; border: none;"><span t-field="doc.user_id.phone"/></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+         <!-- Totals Section -->
     <div class="row justify-content-end" style="margin-top: 20px; font-size: 25px;">
         <div class="col-4">
             <table class="table table-sm" style="border-collapse: collapse;">
@@ -224,7 +295,7 @@
                               t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </td>
                 </tr>
-                <tr style="border-bottom: 3px solid #FFA500;">
+                <tr style="border-bottom: 3px solid #1E3A78;">
                     <td style="border: none; padding: 10px 0;">
                         <span style="color: #000000; padding: 3px 8px;">Including vat:</span>
                     </td>
@@ -236,6 +307,68 @@
             </table>
         </div>
     </div>
+
+        <!-- Terms and Conditions Section -->
+        <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
+            <div class="col-12">
+                <h2 style="color: #1E3A78; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Terms and Conditions</h2>
+                
+                <table style="width: 100%; border: none; margin: 10px;">
+                    <tr style="border: none;">
+                        <td style="padding: 10px; border: none;"><strong>1. Validity:</strong></td>
+                        <td style="padding: 10px; border: none;">This quotation is valid for 30 days from the date of issue.</td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 10px; border: none;"><strong>2. Payment Terms:</strong></td>
+                        <td style="padding: 10px; border: none;">
+                            • 50% advance payment upon order confirmation<br/>
+                            • 50% balance payment before delivery
+                        </td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 10px; border: none;"><strong>3. Delivery:</strong></td>
+                        <td style="padding: 10px; border: none;">
+                            • Delivery period: 4-6 weeks after receipt of advance payment<br/>
+                            • Delivery terms: Ex-works our factory
+                        </td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 10px; border: none;"><strong>4. Warranty:</strong></td>
+                        <td style="padding: 10px; border: none;">12 months from the date of delivery against manufacturing defects</td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 10px; border: none;"><strong>5. Installation:</strong></td>
+                        <td style="padding: 10px; border: none;">Installation and commissioning charges are not included unless specifically mentioned in the quotation</td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 10px; border: none;"><strong>6. Taxes:</strong></td>
+                        <td style="padding: 10px; border: none;">All prices are exclusive of VAT/GST and other applicable taxes</td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="padding: 10px; border: none;"><strong>7. Cancellation:</strong></td>
+                        <td style="padding: 10px; border: none;">Orders once confirmed cannot be cancelled without our written consent</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Signature Section -->
+        <div class="row" style="margin: 40px 15px;">
+            <div class="col-6" style="float: left; width: 45%;">
+                <p style="border-top: 1px solid #000; padding-top: 10px; margin-top: 30px; font-size: 20px;">
+                    Customer's Signature &amp; Stamp<br/>
+                    Date: _________________
+                </p>
+            </div>
+            <div class="col-6" style="float: right; width: 45%;">
+                <p style="border-top: 1px solid #000; padding-top: 10px; margin-top: 30px; font-size: 20px;">
+                    For MOGEN CO., LTD.<br/>
+                    Date: _________________
+                </p>
+            </div>
+        </div>
+    </div>                       
+
                         </div>
                     </div>
                 </t>
