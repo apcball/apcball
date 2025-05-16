@@ -89,70 +89,86 @@
 
 <!-- Content Page -->
 <div style="margin-top: 0;">
-    <div style="text-align: left; margin-right: 10px; background-color: #1E3A78;">
-        <img t-att-src="'/buz_custom_quotation/static/img/cover/logo-ci-mogen.png'" style="width: 400px;"/>
-    </div>
+    <div style="text-align: left; margin-right: -10mm; margin-left: -10mm; background-color: #1E3A78; padding-left: 10mm; padding-right: 10mm;">
+    <img t-att-src="'/buz_custom_quotation/static/img/cover/logo-ci-mogen.png'" style="width: 400px; margin-left: -5mm;"/>
+</div>
     <div style="text-align: left; margin-top: 0; margin-left: 0mm; margin-right: 0mm;">
-        <img t-att-src="'/buz_custom_quotation/static/img/cover/haeder_1.jpg'" style="width: calc(100% + 12mm); max-width: none; margin-bottom: 10px;"/>
+        <img t-att-src="'/buz_custom_quotation/static/img/cover/haeder_1.jpg'" style="width: calc(100% + 12mm); max-width: none; margin-bottom: 10px; margin-left: -5mm;"/>
     </div>
 <!-- Header Section -->
-    <div class="row mb-4" style="font-size: 30px; background-color: #8B9B7C; color: white; text-align: center;">
-        <div class="col-6">
-            <div style="margin-bottom: 10px;">
-                <strong style="color: white;">To:</strong> <span t-field="doc.partner_id.name"/>
-            </div>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: white;">Company:</strong> <span t-field="doc.company_id.name"/>
-            </div>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: white;">Address:</strong>
-                <div style="margin-left: 20px;">
-                    <span t-field="doc.partner_id.street"/>
-                    <div t-if="doc.partner_id.street2" t-field="doc.partner_id.street2"/>
-                    <div t-if="doc.partner_id.city" t-field="doc.partner_id.city"/>
-                </div>
-            </div>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: white;">Tel:</strong> <span t-field="doc.partner_id.phone"/>
-            </div>
-            <div>
-                <strong style="color: white;">Email:</strong> <span t-field="doc.partner_id.email"/>
-            </div>
+    <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
+        <!-- Left Column -->
+        <div class="col-6" style="text-align: left;">
+            <table style="width: 95%; border: none; margin: 10px;">
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none;"><strong>To:</strong></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.partner_id.name"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none;"><strong>Company:</strong></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.company_id.name"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; vertical-align: top; border: none;"><strong>Address:</strong></td>
+                    <td style="padding: 5px; border: none;">
+                        <span t-field="doc.partner_id.street"/>
+                        <span t-if="doc.partner_id.street2"><br/><span t-field="doc.partner_id.street2"/></span>
+                        <span t-if="doc.partner_id.city"><br/><span t-field="doc.partner_id.city"/></span>
+                    </td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none;"><strong>Tel:</strong></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.partner_id.phone"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none;"><strong>Email:</strong></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.partner_id.email"/></td>
+                </tr>
+            </table>
         </div>
-        <div class="col-6 text-center">
-            <div style="margin-bottom: 10px;">
-                <strong style="color: white;">Date:</strong> <span t-field="doc.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
-            </div>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: white;">Proposal No:</strong> <span t-field="doc.proposal_no"/>
-            </div>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: white;">Project:</strong> <span t-field="doc.project_name"/>
-            </div>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: white;">Sale Condition:</strong> <span t-field="doc.payment_term_id.name"/>
-            </div>
-            <div style="margin-bottom: 10px;">
-                <strong style="color: white;">Ordered By:</strong> <span t-field="doc.user_id.name"/>
-            </div>
-            <div>
-                <strong style="color: white;">Phone:</strong> <span t-field="doc.user_id.phone"/>
-            </div>
+        <!-- Right Column -->
+        <div class="col-6" style="text-align: left;">
+            <table style="width: 95%; border: none; margin: 10px;">
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none;"><strong>Date:</strong></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none;"><strong>Proposal No:</strong></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.proposal_no"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none;"><strong>Project:</strong></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.project_name"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none;"><strong>Sale Condition:</strong></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.payment_term_id.name"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none;"><strong>Ordered By:</strong></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.user_id.name"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none;"><strong>Phone:</strong></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.user_id.phone"/></td>
+                </tr>
+            </table>
         </div>
     </div>
 
     <!-- Order Lines Table -->
-    <table class="table table-sm" style="margin-top: 20px; font-size: 25px; border-collapse: collapse;">
+    <table class="table table-sm" style="margin-top: 20px; font-size: 20px; border-collapse: collapse;">
         <thead>
             <tr style="background-color:rgb(127, 124, 124); border: none;">
-                <th style="width: 5%; color: white; border: none;"></th>
-                <th style="width: 30%; color: white; border: none;">Product Description</th>
-                <th style="width: 15%; color: white; border: none;">Image</th>
-                <th style="width: 10%; color: white; border: none;">Quantity</th>
-                <th style="width: 15%; color: white; border: none;">List Price</th>
-                <th style="width: 10%; color: white; border: none;">Discount</th>
-                <th style="width: 15%; color: white; border: none;">Net Price</th>
-                <th style="width: 15%; color: white; border: none;">Net Amount</th>
+                <th style="width: 5%; color: white; border: none; background-color: #1E3A78;"></th>
+                <th style="width: 30%; color: white; border: none; background-color: #1E3A78;">Product Description</th>
+                <th style="width: 15%; color: white; border: none; background-color: #1E3A78;">Image</th>
+                <th style="width: 10%; color: white; border: none; background-color: #898989;">Quantity</th>
+                <th style="width: 15%; color: white; border: none; background-color: #898989;">List Price</th>
+                <th style="width: 10%; color: white; border: none; background-color: #898989;">Discount</th>
+                <th style="width: 15%; color: white; border: none; background-color: #898989;">Net Price</th>
+                <th style="width: 15%; color: white; border: none; background-color: #898989;">Net Amount</th>
             </tr>
         </thead>
         <tbody>
@@ -228,7 +244,7 @@
     </template>
 
     <record id="action_report_saleorder_buz" model="ir.actions.report">
-        <field name="name">List Price</field>
+        <field name="name">List Price bathroom</field>
         <field name="model">sale.order</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_custom_quotation.report_saleorder_buz</field>
