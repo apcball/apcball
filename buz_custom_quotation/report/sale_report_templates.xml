@@ -158,44 +158,44 @@
     </div>
 
     <!-- Order Lines Table -->
-    <table class="table table-sm" style="margin-top: 20px; font-size: 20px; border-collapse: collapse;">
-        <thead>
-            <tr style="background-color:rgb(127, 124, 124); border: none;">
-                <th style="width: 5%; color: white; border: none; background-color: #1E3A78;"></th>
-                <th style="width: 30%; color: white; border: none; background-color: #1E3A78;">Product Description</th>
-                <th style="width: 15%; color: white; border: none; background-color: #1E3A78;">Image</th>
-                <th style="width: 10%; color: white; border: none; background-color: #898989;">Quantity</th>
-                <th style="width: 15%; color: white; border: none; background-color: #898989;">List Price</th>
-                <th style="width: 10%; color: white; border: none; background-color: #898989;">Discount</th>
-                <th style="width: 15%; color: white; border: none; background-color: #898989;">Net Price</th>
-                <th style="width: 15%; color: white; border: none; background-color: #898989;">Net Amount</th>
+    <table class="table table-sm" style="margin-top: 20px; font-size: 20px; border: none; border-collapse: separate; border-spacing: 0 5px;">
+        <thead style="border: none;">
+            <tr style="border: none;">
+                <th style="width: 1%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;"></th>
+                <th style="width: 30%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Product Description</th>
+                <th style="width: 15%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Image</th>
+                <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Quantity</th>
+                <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">List Price</th>
+                <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Discount</th>
+                <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Price</th>
+                <th style="width: 19%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Amount</th>
             </tr>
         </thead>
         <tbody>
             <tr t-foreach="doc.order_line" t-as="line" style="border-bottom: 1px solid #8B9B7C;">
-                <td style="text-align: center; border: none; padding: 10px 0;"><span style="background-color: #8B9B7C; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span></td>
-                <td style="border: none; padding: 10px 0;">
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;"><span style="background-color: #8B9B7C; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span></td>
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <div><span t-field="line.name"/></div>
                 </td>
-                <td style="text-align: center; border: none; padding: 10px 0;">
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <img t-if="line.product_id.image_1920" t-att-src="image_data_uri(line.product_id.image_1920)" style="max-height: 100px;"/>
                 </td>
-                <td style="text-align: center; border: none; padding: 10px 0;">
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom.name"/>
                 </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
-                    <span t-field="line.price_unit" 
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                    <span t-field="line.price_unit"
                           t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                 </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <span t-field="line.discount"/>%
                 </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <span t-esc="line.price_unit * (1 - (line.discount or 0.0) / 100.0)"
                           t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                 </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
-                    <span t-field="line.price_subtotal" 
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                    <span t-field="line.price_subtotal"
                           t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                 </td>
             </tr>
