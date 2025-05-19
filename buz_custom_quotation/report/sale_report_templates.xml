@@ -325,12 +325,13 @@
                 </ol>
             </div>
         </div>
-                        </div>
                     </div>
-                </t>
+                </div>
+                    </div>
             </t>
         </t>
-    </template>
+    </t>
+</template>
 
     <record id="action_report_saleorder_buz" model="ir.actions.report">
         <field name="name">List Price bathroom</field>
