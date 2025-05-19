@@ -106,7 +106,7 @@
                 </tr>
                 <tr style="border: none;">
                     <td style="padding: 5px; border: none;"><strong>Company:</strong></td>
-                    <td style="padding: 5px; border: none;"><span t-field="doc.company_id.name"/></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.partner_id.name"/></td>
                 </tr>
                 <tr style="border: none;">
                     <td style="padding: 5px; vertical-align: top; border: none;"><strong>Address:</strong></td>
@@ -222,7 +222,7 @@
                     </tr>
                     <tr style="border: none;">
                         <td style="padding: 5px; border: none;"><strong>Company:</strong></td>
-                        <td style="padding: 5px; border: none;"><span t-field="doc.company_id.name"/></td>
+                        <td style="padding: 5px; border: none;"><span t-field="doc.partner_id.name"/></td>
                     </tr>
                     <tr style="border: none;">
                         <td style="padding: 5px; vertical-align: top; border: none;"><strong>Address:</strong></td>
