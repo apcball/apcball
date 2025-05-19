@@ -15,6 +15,7 @@ class SaleOrder(models.Model):
 
     proposal_no = fields.Char(string='Proposal Number', readonly=True, copy=False)
     project_name = fields.Char(string='Project Name')
+    customer_name = fields.Char(string='Customer Name')
 
     @api.model_create_multi
     def create(self, vals_list):
