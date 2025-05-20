@@ -5,11 +5,12 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='partner_id']" position="after">
+            <xpath expr="//field[@name='payment_term_id']" position="after">
                 <field name="customer_name" placeholder="Customer Name"/>
                 <field name="project_name" placeholder="Project Name"/>
                 <field name="proposal_no" readonly="0"/>
             </xpath>
+
             <xpath expr="//notebook" position="inside">
                 <page string="Terms and Conditions" name="terms_conditions">
                     <field name="terms_conditions"/>
