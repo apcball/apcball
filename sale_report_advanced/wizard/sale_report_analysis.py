@@ -215,202 +215,52 @@ class SaleReportAnalysis(models.TransientModel):
                      },
         }
 
-    def get_xlsx_report(self, data, response):
-        """Function for generating an Excel analysis report"""
-        loaded_data = json.loads(data)
+    def get_xlsx_report(self, options, response):
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
         sheet = workbook.add_worksheet()
-        record = []
-        cell_format = workbook.add_format({'font_size': '12px', })
-        head = workbook.add_format(
-            {'align': 'center', 'bold': True, 'font_size': '20px'})
-        txt = workbook.add_format({'font_size': '10px', 'align': 'center'})
-        if loaded_data.get('type') == 'sale':
-            sheet.merge_range('G2:L3', 'Sales Analysis Report', head)
-            if loaded_data.get('start_date') and loaded_data.get('end_date'):
-                sheet.write('G6', 'From:', cell_format)
-                sheet.merge_range('H6:I6', loaded_data.get('start_date'), txt)
-                sheet.write('J6', 'To:', cell_format)
-                sheet.merge_range('K6:L6', loaded_data.get('end_date'), txt)
-            h_col = 9
+
+        # Define formats
+        format1 = workbook.add_format({'font_size': 16, 'align': 'center', 'bold': True})
+        format2 = workbook.add_format({'font_size': 10, 'align': 'center'})
+        format3 = workbook.add_format({'bold': True, 'border': 1, 'font_size': 10})
+        format4 = workbook.add_format({'border': 1, 'font_size': 10})
+
+        sheet.merge_range('A2:H3', 'Sales Analysis Report', format1)
+
+        if options.get('type') == 'sale':
+            # Headers for sale order report
+            headers = ['Order', 'Date', 'Sales Person', 'Sales Amount', 'Paid Amount', 'Balance']
+            for col, header in enumerate(headers):
+                sheet.write(4, col, header, format3)
+
+            row = 5
+            for data in options.get('form', []):
+                sheet.write(row, 0, data.get('so'), format4)
+                sheet.write(row, 1, str(data.get('date')), format4)
+                sheet.write(row, 2, data.get('sales_person'), format4)
+                sheet.write(row, 3, data.get('s_amt'), format4)
+                sheet.write(row, 4, data.get('p_amt'), format4)
+                sheet.write(row, 5, data.get('balance'), format4)
+                row += 1
         else:
-            sheet.merge_range('G2:N3', 'Sales Analysis Report', head)
-            if loaded_data.get('start_date') and loaded_data.get('end_date'):
-                sheet.write('G6', 'From:', cell_format)
-                sheet.merge_range('H6:I6', loaded_data.get('start_date'), txt)
-                sheet.write('K6', 'To:', cell_format)
-                sheet.merge_range('L6:N6', loaded_data.get('end_date'), txt)
-            h_col = 10
-        format1 = workbook.add_format(
-            {'font_size': 10, 'align': 'center', 'bg_color': '#f5f9ff',
-             'border': 1})
-        format2 = workbook.add_format(
-            {'font_size': 10, 'align': 'center', 'bold': True,
-             'bg_color': '#6BA6FE', 'border': 1})
-        format4 = workbook.add_format(
-            {'font_size': 10, 'align': 'center', 'bold': True})
-        if loaded_data.get('partner_id'):
-            record = loaded_data.get('partner_id')
-        h_row = 7
-        count = 0
-        row = 5
-        row_number = 6
-        t_row = 6
-        for rec in record:
-            if loaded_data.get('type') == 'sale':
-                sheet.merge_range(h_row, h_col - 3, h_row, h_col + 2,
-                                  rec['name'], format1)
-                row = row + count + 3
-                col = 6
-                sheet.write(row, col, 'Order', format2)
-                col += 1
-                sheet.write(row, col, 'Date', format2)
-                sheet.set_column('H:H', 17)
-                col += 1
-                sheet.write(row, col, 'Sales Person', format2)
-                sheet.set_column('I:I', 15)
-                col += 1
-                sheet.write(row, col, 'Sales Amount', format2)
-                sheet.set_column('J:J', 13)
-                col += 1
-                sheet.write(row, col, 'Amount Paid', format2)
-                sheet.set_column('K:K', 12)
-                col += 1
-                sheet.write(row, col, 'Balance', format2)
-                sheet.set_column('L:L', 10)
-                count = 0
-                row_number = row_number + count + 3
-                t_samt = 0
-                t_pamt = 0
-                t_bal = 0
-                t_col = 8
-                for val in loaded_data.get('form'):
-                    if val['partner_id'] == rec['id']:
-                        count += 1
-                        column_number = 6
-                        sheet.write(row_number, column_number, val['so'],
-                                    format1)
-                        column_number += 1
-                        sheet.write(row_number, column_number, val['date'],
-                                    format1)
-                        sheet.set_column('H:H', 17)
-                        column_number += 1
-                        sheet.write(row_number, column_number,
-                                    val['sales_person'], format1)
-                        sheet.set_column('I:I', 15)
-                        column_number += 1
-                        sheet.write(row_number, column_number, val['s_amt'],
-                                    format1)
-                        sheet.set_column('J:J', 13)
-                        t_samt += val['s_amt']
-                        column_number += 1
-                        sheet.write(row_number, column_number, val['p_amt'],
-                                    format1)
-                        sheet.set_column('K:K', 12)
-                        t_pamt += val['p_amt']
-                        column_number += 1
-                        sheet.write(row_number, column_number, val['balance'],
-                                    format1)
-                        sheet.set_column('L:L', 10)
-                        t_bal += val['balance']
-                        column_number += 1
-                        row_number += 1
-                t_row = t_row + count + 3
-                sheet.write(t_row, t_col, 'Total', format4)
-                t_col += 1
-                sheet.write(t_row, t_col, t_samt, format4)
-                t_col += 1
-                sheet.write(t_row, t_col, t_pamt, format4)
-                t_col += 1
-                sheet.write(t_row, t_col, t_bal, format4)
-                h_row = h_row + count + 3
-            if loaded_data.get('type') == 'product':
-                sheet.merge_range(h_row, h_col - 4, h_row, h_col + 3,
-                                  rec['name'], format1)
-                row = row + count + 3
-                col = 6
-                sheet.write(row, col, 'Order', format2)
-                col += 1
-                sheet.write(row, col, 'Date', format2)
-                sheet.set_column('H:H', 17)
-                col += 1
-                sheet.write(row, col, 'Product', format2)
-                sheet.set_column('I:I', 17)
-                col += 1
-                sheet.write(row, col, 'Quantity', format2)
-                sheet.set_column('J:J', 7)
-                col += 1
-                sheet.write(row, col, 'Price', format2)
-                sheet.set_column('K:K', 12)
-                col += 1
-                sheet.write(row, col, 'Discount(%)', format2)
-                sheet.set_column('L:L', 12)
-                col += 1
-                sheet.write(row, col, 'Tax(%)', format2)
-                sheet.set_column('M:M', 10)
-                col += 1
-                sheet.write(row, col, 'Subtotal', format2)
-                sheet.set_column('N:N', 10)
-                col += 1
-                count = 0
-                row_number = row_number + count + 3
-                t_qty = 0
-                t_price = 0
-                t_tax = 0
-                t_total = 0
-                t_col = 8
-                for val in loaded_data.get('form'):
-                    if val['partner_id'] == rec['id']:
-                        count += 1
-                        column_number = 6
-                        sheet.write(row_number, column_number, val['so'],
-                                    format1)
-                        column_number += 1
-                        sheet.write(row_number, column_number, val['date'],
-                                    format1)
-                        sheet.set_column('H:H', 17)
-                        column_number += 1
-                        sheet.write(row_number, column_number,
-                                    val['product_id'], format1)
-                        sheet.set_column('I:I', 17)
-                        column_number += 1
-                        sheet.write(row_number, column_number, val['quantity'],
-                                    format1)
-                        sheet.set_column('J:J', 7)
-                        t_qty += val['quantity']
-                        column_number += 1
-                        sheet.write(row_number, column_number, val['price'],
-                                    format1)
-                        sheet.set_column('K:K', 12)
-                        t_price += val['price']
-                        column_number += 1
-                        sheet.write(row_number, column_number, val['discount'],
-                                    format1)
-                        sheet.set_column('L:L', 12)
-                        column_number += 1
-                        sheet.write(row_number, column_number, val['tax'],
-                                    format1)
-                        sheet.set_column('M:M', 10)
-                        t_tax += val['tax']
-                        column_number += 1
-                        sheet.write(row_number, column_number, val['total'],
-                                    format1)
-                        sheet.set_column('N:N', 10)
-                        t_total += val['total']
-                        column_number += 1
-                        row_number += 1
-                t_row = t_row + count + 3
-                sheet.write(t_row, t_col, 'Total', format4)
-                t_col += 1
-                sheet.write(t_row, t_col, t_qty, format4)
-                t_col += 1
-                sheet.write(t_row, t_col, t_price, format4)
-                t_col += 2
-                sheet.write(t_row, t_col, t_tax, format4)
-                t_col += 1
-                sheet.write(t_row, t_col, t_total, format4)
-                h_row = h_row + count + 3
+            # Headers for product report
+            headers = ['Order', 'Date', 'Product', 'Price', 'Quantity', 'Discount', 'Tax', 'Total']
+            for col, header in enumerate(headers):
+                sheet.write(4, col, header, format3)
+
+            row = 5
+            for data in options.get('form', []):
+                sheet.write(row, 0, data.get('so'), format4)
+                sheet.write(row, 1, str(data.get('date')), format4)
+                sheet.write(row, 2, data.get('product_id'), format4)
+                sheet.write(row, 3, data.get('price'), format4)
+                sheet.write(row, 4, data.get('quantity'), format4)
+                sheet.write(row, 5, data.get('discount'), format4)
+                sheet.write(row, 6, data.get('tax'), format4)
+                sheet.write(row, 7, data.get('total'), format4)
+                row += 1
+
         workbook.close()
         output.seek(0)
         response.stream.write(output.read())
