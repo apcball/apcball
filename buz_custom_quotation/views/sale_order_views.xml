@@ -10,6 +10,11 @@
                 <field name="project_name" placeholder="Project Name"/>
                 <field name="proposal_no" readonly="0"/>
             </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Terms and Conditions" name="terms_conditions">
+                    <field name="terms_conditions"/>
+                </page>
+            </xpath>
         </field>
     </record>
 </odoo>

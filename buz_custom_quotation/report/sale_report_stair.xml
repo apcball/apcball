@@ -307,24 +307,13 @@
             </table>
         </div>
     </div>
-
-        <!-- Terms and Conditions Section -->
-        <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
-            <div class="col-12">
-                <h2 style="color: #1E3A78; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Terms and Conditions</h2>
-                <ol>
-                    <li>ราคาข้างต้นเป็นราคาที่ยังไม่รวมภาษีมูลค่าเพิ่ม 7% / Above prices are excluded VAT 7%</li>
-                    <li>ราคาอาจมีการเปลี่ยนแปลงโดยไม่ต้องแจ้งให้ทราบล่วงหน้า / Prices are subject to change without prior notice</li>
-                    <li>ราคาดังกล่าวข้างต้นยืนยันราคาถึงวันที่ <span t-field="doc.validity_date"/></li>
-                    <li>หากมีการเปลี่ยนแปลงรายการใดๆ ข้างตั้น จะต้องแจ้งให้บริษัทฯ ทราบล่วงหน้าไม่น้อยกว่า 30 วัน ก่อนส่งสินค้า</li>
-                    <li>สามารถทยอยส่งสินค้าได้ 60 วัน หลังจากได้รับเอกสารยืนยันการสังซื้อ</li>
-                    <li>ระยะทางการยกของให้สูงสุด ไม่เกินระยะทาง 25 เมตร จากจุดจอดรถ</li>
-                    <li>ทางเดินต้องกว้างพอให้สามารถยกของได้ 2 คนต่อกล่อง</li>
-                    <li>ราคาสินค้าไม่รวมบริการติดตั้ง</li>
-                    <li>ราคาเสนอถึงโครงการ <span t-field="doc.project_name"/></li>
-                </ol>
-            </div>
-        </div>
+ <!-- Replace the existing Terms and Conditions section with: -->
+ <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
+    <div class="col-12">
+        <h2 style="color: #1E3A78; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Terms and Conditions</h2>
+        <div t-field="doc.terms_conditions" style="white-space: pre-line;"/>
+    </div>
+</div>
                     </div>
                 </div>
                     </div>
