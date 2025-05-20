@@ -32,6 +32,8 @@
                             }
                             .header-info {
                                 margin-bottom: 20px;
+                                background-color: #f0f0f0;
+                                padding: 10px;
                             }
                             .info-label {
                                 font-weight: bold;
@@ -69,6 +71,11 @@
                                 margin-top: 30px;
                                 font-size: 12px;
                             }
+                            .page-break {
+                                page-break-before: always;
+                                clear: both;
+                                display: block;
+                            }
                         </style>
 
                         <!-- Title -->
@@ -86,7 +93,7 @@
                                     </tr>
                                     <tr>
                                         <td style="padding: 2px;"><span class="info-label">To</span></td>
-                                        <td style="padding: 2px;"><span t-field="doc.partner_id.name"/></td>
+                                        <td style="padding: 2px;"><span t-field="doc.customer_name"/></td>
                                     </tr>
                                     <tr>
                                         <td style="padding: 2px;"><span class="info-label">Customer</span></td>
@@ -119,18 +126,18 @@
     <table class="table table-sm" style="margin-top: 20px; font-size: 20px; border-collapse: collapse;">
         <thead>
             <tr style="background-color: #8B9B7C; border: none;">
-                <th style="width: 5%; color: white; border: none;"></th>
-                <th style="width: 35%; color: white; border: none;">Product Description</th>
-                <th style="width: 10%; color: white; border: none;">Quantity</th>
-                <th style="width: 10%; color: white; border: none;">Cost</th>
-                <th style="width: 10%; color: white; border: none;">GP</th>
-                <th style="width: 15%; color: white; border: none;">Net Price</th>
-                <th style="width: 15%; color: white; border: none;">Net Amount</th>
+                <th style="width: 5%; color: white; border: none; background-color: #1E3A78;"></th>
+                <th style="width: 35%; color: white; border: none; background-color: #1E3A78;">Product Description</th>
+                <th style="width: 10%; color: white; border: none; background-color: #898989;">Quantity</th>
+                <th style="width: 10%; color: white; border: none; background-color: #898989;">Cost</th>
+                <th style="width: 10%; color: white; border: none; background-color: #898989;">GP</th>
+                <th style="width: 15%; color: white; border: none; background-color: #898989;">Net Price</th>
+                <th style="width: 15%; color: white; border: none; background-color: #898989;">Net Amount</th>
             </tr>
         </thead>
         <tbody>
             <tr t-foreach="doc.order_line" t-as="line" style="border-bottom: 1px solid #8B9B7C;">
-                <td style="text-align: center; border: none; padding: 10px 0;"><span style="background-color: #8B9B7C; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span></td>
+                <td style="text-align: center; border: none; padding: 10px 0;"><span style="background-color: #1E3A78; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span></td>
                 <td style="border: none; padding: 10px 0;">
                     <div><span t-field="line.name"/></div>
                 </td>
@@ -180,7 +187,7 @@
                               t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </td>
                 </tr>
-                <tr style="border-bottom: 2px solid #FFA500;">
+                <tr style="border-bottom: 2px solid #1E3A78;">
                     <td style="border: none; padding: 10px 0;">
                         <span style="color: #000000; padding: 3px 8px;">Including vat:</span>
                     </td>
@@ -221,10 +228,10 @@
             </table>
         </div>
     </div>
- <!-- Conditional page break based on number of items -->
-     <t t-if="len(doc.order_line) > 7">
-         <div style="page-break-before: always;"></div>
-     </t>
+    
+    <t t-if="len(doc.order_line) > 7">
+        <div class="page-break"/>
+    </t>
                         <!-- Signature Section -->
                         <div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
                             <div style="width: 200px; display: inline-block; text-align: center;">
@@ -253,7 +260,7 @@
     </template>
 
     <record id="action_report_sale_quotation_custom" model="ir.actions.report">
-        <field name="name">Custom Quotation</field>
+        <field name="name">ใบขออนุมัติราคา</field>
         <field name="model">sale.order</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_custom_quotation.report_sale_quotation_custom</field>

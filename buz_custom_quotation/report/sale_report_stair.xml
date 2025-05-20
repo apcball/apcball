@@ -50,27 +50,27 @@
     <div style="position: absolute; bottom: -38%; left: 0; right: 0; z-index: 2;">
         <div style="line-height: 2.5; margin-bottom: 20px; padding: 0 5%;">
             <div style="margin-bottom: -3px;">
-                <span style="font-size: 26px; color: black; font-weight: bold;">Project Name      : </span>
+                <span style="font-size: 26px; color: black; font-weight: bold;">Project Name&#160;&#160;&#160;: </span>
                 <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.project_name"/>
             </div>
             
             <div style="margin-bottom: -3px;">
-                <span style="font-size: 26px; color: black; font-weight: bold;">Customer : </span>
+                <span style="font-size: 26px; color: black; font-weight: bold;">Customer&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;: </span>
                 <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.customer_name"/>
             </div>
             
             <div style="margin-bottom: -3px;">
-                <span style="font-size: 26px; color: black; font-weight: bold;">Address : </span>
+                <span style="font-size: 26px; color: black; font-weight: bold;">Address&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;: </span>
                 <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.partner_id.street"/>
             </div>
 
             <div style="margin-bottom: -3px;">
-                <span style="font-size: 26px; color: black; font-weight: bold;">Proposal No. : </span>
+                <span style="font-size: 26px; color: black; font-weight: bold;">Proposal No.&#160;&#160;&#160;&#160;: </span>
                 <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.proposal_no"/>
             </div>
 
             <div style="margin-bottom: -3px;">
-                <span style="font-size: 26px; color: black; font-weight: bold;">Date : </span>
+                <span style="font-size: 26px; color: black; font-weight: bold;">Date&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;: </span>
                 <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
             </div>
         </div>
