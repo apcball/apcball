@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Odoo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+    <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
+    <link href="https://apps.odoocdn.com/web/content/7297172-19e3d31/1/web.assets_frontend.css" rel="stylesheet">
+
+    <style>
+        /* Define alignment for images within oe_screenshot class */
+        .oe_screenshot img {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-left: 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Main container with relative positioning -->
+    <div class="container position-relative">
+        <!-- Header section -->
+        <div class="position-relative my-5">
+            <div class="row no-gutters shadow-sm">
+                <!-- Header content -->
+                <div class="col-md-12">
+                    <div class="bg-white h-100 d-flex justify-content-between align-items-center shadow p-4">
+                        <!-- Logo -->
+                        <div class="text-center mr-lg-5 mb-3 mb-lg-0">
+                            <a class="btn p-2" href="http://warlocktechnologies.com/" target="_blank">
+                                <img src="icon.png" alt="warlock-logo" style="height: 125px">
+                            </a>
+                        </div>
+                        
+                        <!-- Title -->
+                        <div class="text-center flex-grow-1">
+                            <h4 style="font-family: 'Montserrat', sans-serif !important; font-weight: 600 !important; color: #045373 !important; font-size: 1.7rem !important; margin-bottom: 0;">
+                                Pos Fix Discount
+                            </h4>
+                        </div>
+
+                        <!-- Badges -->
+                        <div class="d-flex align-items-center">
+                            <div style="background-color: #7C7BAD !important; color: #fff !important; font-weight: 600 !important; padding: 5px 15px 8px !important; margin: 0 5px !important;">
+                                <i class="fa fa-check mr-1">Community</i>
+                            </div>
+                            <div style="background-color: #7C7BAD !important; color: #fff !important; font-weight: 600 !important; padding: 5px 15px 8px !important; margin: 0 5px !important;">
+                                <i class="fa fa-check mr-1">Enterprise</i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Explore module section -->
+        <div class="row">
+            <!-- Overview -->
+            <div class="col-md-12" style="border-bottom: 1px solid #d5d5d5 !important; margin-bottom: 2rem !important">
+                <h2 style="font-family: 'Montserrat', sans-serif !important; font-weight: 600 !important; color: #714B67 !important; font-size: 2.5rem !important;">
+                    <i class="fa fa-compass mr-2"></i>Explore this module
+                </h2>
+            </div>
+
+            <!-- Overview -->
+            <div class="col-md-4">
+                <a href="#overview" style="text-decoration: none !important;">
+                    <div class="row" style="background-color: #f5f2f5 !important; border-radius: 10px !important; margin: 1rem !important; padding: 1.5em !important; height: auto !important;">
+                        <div class="col-8">
+                            <h3 style="font-family: 'Montserrat', sans-serif !important; font-weight: 600 !important; color: #714B67 !important; font-size: 1.0rem !important;">
+                                Overview
+                            </h3>
+                            <p style="font-family: 'Roboto', sans-serif !important; font-weight: 400 !important; color: #714B67 !important; font-size: 0.8rem !important;">
+                                Learn more about this module
+                            </p>
+                        </div>
+                        <div class="col-4 text-right d-flex justify-content-end align-items-center">
+                            <i class="fa fa-chevron-right" style="color: #714B67 !important;"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Features -->
+            <div class="col-md-4">
+                <a href="#features" style="text-decoration: none !important;">
+                    <div class="row" style="background-color: #f5f2f5 !important; border-radius: 10px !important; margin: 1rem !important; padding: 1.5em !important; height: auto !important;">
+                        <div class="col-8">
+                            <h3 style="font-family: 'Montserrat', sans-serif !important; font-weight: 600 !important; color: #714B67 !important; font-size: 1.0rem !important;">
+                                Features
+                            </h3>
+                            <p style="font-family: 'Roboto', sans-serif !important; font-weight: 400 !important; color: #714B67 !important; font-size: 0.8rem !important;">
+                                View features of this module
+                            </p>
+                        </div>
+                        <div class="col-4 text-right d-flex justify-content-end align-items-center">
+                            <i class="fa fa-chevron-right" style="color: #714B67 !important;"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Configuration -->
+            <div class="col-md-4">
+                <a href="#configuration" style="text-decoration: none !important;">
+                    <div class="row" style="background-color: #f5f2f5 !important; border-radius: 10px !important; margin: 1rem !important; padding: 1.5em !important; height: auto !important;">
+                        <div class="col-8">
+                            <h3 style="font-family: 'Montserrat', sans-serif !important; font-weight: 600 !important; color: #714B67 !important; font-size: 1.0rem !important;">
+                                Configuration
+                            </h3>
+                            <p style="font-family: 'Roboto', sans-serif !important; font-weight: 400 !important; color: #714B67 !important; font-size: 0.8rem !important;">
+                                See key configuration of this module.
+                            </p>
+                        </div>
+                        <div class="col-4 text-right d-flex justify-content-end align-items-center">
+                            <i class="fa fa-chevron-right" style="color: #714B67 !important;"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Overview Section -->
+        <div class="row" id="overview">
+            <!-- Overview Heading -->
+            <div class="col-md-12" style="border-bottom: 1px solid #d5d5d5 !important; margin: 2rem 0 !important">
+                <h2 style="font-family: 'Montserrat', sans-serif !important; font-weight: 600 !important; color: #714B67 !important; font-size: 2.5rem !important;justify-content: center !important;">
+                    <i class="fa fa-pie-chart mr-2"></i> Overview
+                </h2>
+            </div>
+            <!-- Overview Content -->
+            <div class="col-md-12 pl-3 py-3 d-flex">
+                <div>
+                    <p style="font-family: 'Roboto', sans-serif !important; font-weight: 400 !important; color: #000000 !important; font-size: 1.4rem !important;"><b>
+                        The POS Fixed Discount is a feature in the Point of Sale (POS) module that allows you to apply a fixed discount to a sale. This can be useful for promotions, special deals, or any situation where a specific discount amount should be deducted from the total sale. Here's an overview of how it works.</b></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="row" id="features">
+            <!-- Features Heading -->
+            <div class="col-md-12" style="border-bottom: 1px solid #d5d5d5 !important; margin: 2rem 0 !important">
+                <h2 style="font-family: 'Montserrat', sans-serif !important; font-weight: 600 !important; color: #714B67 !important; font-size: 2.5rem !important;">
+                    <i class="fa fa-star mr-2"></i> Features
+                </h2>
+            </div>
+
+            <!-- Features Content -->
+            <div class="col-md-12 pl-3 py-1 d-flex">
+                <div>
+                    <img src="check.png">
+                </div>
+                <div>
+                    <h4 style="font-family: 'Roboto', sans-serif !important; font-weight: 600 !important; color: #000000 !important; font-size: 1.5rem !important;">
+                        The fixed discount is easy to apply during the sales process.                    </h4>
+                </div>
+            </div>
+            <!-- Add more features here -->
+            <div class="col-md-12 pl-3 py-1 d-flex">
+                <div>
+                    <img src="check.png">
+                </div>
+                <div>
+                    <h4
+                        style="font-family: 'Roboto', sans-serif !important; font-weight: 600 !important; color: #000000 !important; font-size: 1.5rem !important;">
+                        You simply select the discount option, enter the discount amount, and it is applied directly to the total.                    </h4>
+                </div>
+            </div>
+            <div class="col-md-12 pl-3 py-1 d-flex">
+                <!-- <div>
+                    <img src="check.png">
+                </div> -->
+                <!-- <div>
+                    <h4
+                        style="font-family: 'Roboto', sans-serif !important; font-weight: 600 !important; color: #000000 !important; font-size: 1.5rem !important;">
+                        You can select a product and create discount using this module.
+                    </h4>
+                </div> -->
+            </div>
+            <div class="col-md-12 pl-3 py-1 d-flex">
+                <div>
+                    <img src="check.png">
+                </div>
+                <div>
+                    <h4
+                        style="font-family: 'Roboto', sans-serif !important; font-weight: 600 !important; color: #000000 !important; font-size: 1.5rem !important;">
+                        It can improve customer experience and satisfaction.
+                    </h4>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Section -->
+        <div class="row" id="configuration">
+            <!-- Configuration Heading -->
+            <div class="col-md-12" style="border-bottom: 1px solid #d5d5d5 !important; margin: 2rem 0 !important">
+                <h2 style="font-family: 'Montserrat', sans-serif !important; font-weight: 600 !important; color: #714B67 !important; font-size: 2.5rem !important;">
+                    <i class="fa fa-image mr-2"></i> Configuration
+                </h2>
+            </div>
+
+            <!-- Configuration Content -->
+            <div class="oe_row oe_spaced">
+                <!-- Add configuration steps here -->
+                <ul>
+                    <li class="mt-5" style="color:#000000;font-weight:bold; font-size:20px;">Here it's add a custom field for a fixed discount.</li>
+                    <!-- <li class="mt-2" style="color:#000000;font-weight:bold; font-size:20px;">Select the product and get a discount(fix).</li>       -->
+                </ul>
+                
+                <div class="oe_screenshot mt-5">
+                    <img style="width: 95%; height: 60%;" src="1.png">
+                </div>
+                
+                <ul>
+                    <li class="mt-5" style="color:#000000;font-weight:bold; font-size:20px;">Here is add new button "Fix Discount".</li>
+                    <li class="mt-2" style="color:#000000;font-weight:bold; font-size:20px;">When you click on this button select the discount and click on confirm it will automatically calculate and show the price.</li>
+                </ul>
+                <div class="oe_screenshot mt-5">
+                    <img style="width: 95%; height: 60%;" src="2.png">
+                </div>
+                 <div class="oe_screenshot mt-5">
+                    <img style="width: 95%; height: 60%;" src="3.png">
+                </div>
+                
+                <ul>
+                    <li class="mt-5" style="color:#000000;font-weight:bold; font-size:20px;">Here is the show dicsount on product.</li>
+                    <!-- <li class="mt-2" style="color:#000000;font-weight:bold; font-size:20px;">If you want to create sale order instead of quotation, you have to check this create delivery field.</li> -->
+                </ul>
+                <div class="oe_screenshot mt-5">
+                    <img style="width: 95%; height: 60%;" src="4.png">
+                </div>  
+                <ul>
+                    <li class="mt-5" style="color:#000000;font-weight:bold; font-size:20px;">After done the Payment the dicount(Fix) will show in the product.</li>
+                </ul>
+                <div class="oe_screenshot mt-5">
+                    <img style="width: 95%; height: 60%;" src="5.png">
+                </div>
+                <!-- <ul>
+                    <li class="mt-5" style="color:#000000;font-weight:bold; font-size:20px;">Also the delivery is created.</li>
+                </ul> -->
+                <!-- <div class="oe_screenshot mt-5">
+                    <img style="width: 95%; height: 60%;" src="6.png">
+                </div> -->
+                <!-- <ul>
+                    <li class="mt-5" style="color:#000000;font-weight:bold; font-size:20px;">Sale order confirmation mail will be automatically send to the customer.</li>
+                </ul>
+                <div class="oe_screenshot mt-5">
+                    <img style="width: 95%; height: 60%;" src="7.png">
+                </div> -->
+            </div>
+
+        <!-- Contact Section -->
+        <div class="container-fluid">
+            <div class="row h-100">
+                <div class="col-12 h-100 d-flex align-items-center justify-content-center" style="border-top: 1px solid black;margin-top:50px;">
+                    <div class="d-flex align-items-center "></div>
+                    <div class="mb-sm-0 mb-3 d-flex align-items-center">
+                        <img src="letter.png" style="width: 60px;height: 60px;margin-right: 20px" />
+                        <span class="text-center my-4" style="font-size: 18px; color: #045373;">sales@warlocktechnologies.com</span>
+                    </div>
+                    <div class="d-flex align-items-center"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
