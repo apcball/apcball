@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Paper Format for Payment Voucher -->
+    <record id="paperformat_payment_voucher" model="report.paperformat">
+        <field name="name">Payment Voucher A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+    <!-- Main Template -->
+    <template id="report_payment_voucher">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_custom_quotation/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            }
+                            .page {
+                                font-family: 'Sarabun', sans-serif;
+                                font-size: 20px;
+                                padding: 0;
+                                width: 100%;
+                                height: 100%;
+                                margin: 0;
+                                color: #000;
+                            }
+                            .company-header {
+                                font-size: 20px;
+                                font-weight: bold;
+                            }
+                            .company-info {
+                                font-size: 18px;
+                            }
+                        
+                        </style>
+
+                        <!-- Company Info Section -->
+                        <div class="row mb-2">
+                            <div class="col-8">
+                                <div class="company-header mb-1">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                <div class="company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                                <div class="company-info">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
+                                <div class="company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
+                                     style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                            </div>
+                        </div>
+
+                        <!-- Title Section -->
+                        <div class="row mb-3">
+                            <div class="col-12 text-center">
+                                <h3>Payment Voucher</h3>
+                            </div>
+                        </div>   
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+     <!-- Create our new report -->
+    <record id="action_report_payment_voucher" model="ir.actions.report">
+        <field name="name">Payment Voucher</field>
+        <field name="model">account.payment</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_payment_receipt.report_payment_voucher</field>
+        <field name="report_file">buz_payment_receipt.report_payment_voucher</field>
+        <field name="print_report_name">'Payment Receipt - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_payment_voucher"/>
+        <field name="binding_model_id" ref="account.model_account_payment"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

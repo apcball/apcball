@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="report_delivery_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="row">
+                            <div class="col-12">
+                                <h2>Delivery Order: <span t-field="o.name"/></h2>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-6">
+                                <strong>Customer:</strong>
+                                <div t-field="o.partner_id"/>
+                                <div t-field="o.partner_id.street"/>
+                                <div t-field="o.partner_id.city"/>
+                                <div t-field="o.partner_id.country_id"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Order Information:</strong>
+                                <div>Date: <span t-field="o.scheduled_date"/></div>
+                                <div>Reference: <span t-field="o.origin"/></div>
+                                <div>Status: <span t-field="o.state"/></div>
+                            </div>
+                        </div>
+
+                        <table class="table table-sm mt-4">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Demand</th>
+                                    <th>Done</th>
+                                    <th>Unit of Measure</th>
+                                    <th>Lot/Serial Number</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.move_ids" t-as="move">
+                                    <td>
+                                        <span t-field="move.product_id"/>
+                                    </td>
+                                    <td>
+                                        <span t-field="move.product_uom_qty"/>
+                                    </td>
+                                    <td>
+                                        <span t-field="move.forecast_availability"/>
+                                    </td>
+                                    <td>
+                                        <span t-field="move.product_uom"/>
+                                    </td>
+                                    <td>
+                                        <t t-foreach="move.move_line_ids" t-as="move_line">
+                                            <t t-if="move_line.lot_id">
+                                                <span t-field="move_line.lot_id"/><br/>
+                                            </t>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <t t-set="delivery_values" t-value="o.get_delivery_report_values()"/>
+                        <div class="row mt-4">
+                            <div class="col-4">
+                                <strong>Total Weight:</strong>
+                                <span t-esc="delivery_values['total_weight']"/> kg
+                            </div>
+                            <div class="col-4">
+                                <strong>Total Volume:</strong>
+                                <span t-esc="delivery_values['total_volume']"/> m³
+                            </div>
+                            <div class="col-4">
+                                <strong>Total Packages:</strong>
+                                <span t-esc="delivery_values['total_packages']"/>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <strong>Notes:</strong>
+                                <p t-field="o.note"/>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-6">
+                                <div class="mt-4">
+                                    <strong>Signature:</strong>
+                                    <div style="border-top: 1px solid black; margin-top: 50px;"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

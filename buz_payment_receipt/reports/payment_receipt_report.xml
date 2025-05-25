@@ -27,7 +27,7 @@
         <field name="binding_model_id" ref="account.model_account_payment"/>
         <field name="binding_type">report</field>
     </record>
-
+    
     <!-- Modify the binding of the original report -->
     <function model="ir.actions.report" name="unlink_action">
         <value eval="[ref('account.action_report_payment_receipt')]"/>
