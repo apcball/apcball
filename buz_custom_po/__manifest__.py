@@ -20,6 +20,7 @@
         'views/reject_wizard_view.xml',
         'reports/purchase_order_report.xml',
         'reports/purchase_order_report_eng.xml',
+        'reports/purchase_order_test.xml',
         'views/report_menu.xml',
     ],
     'assets': {

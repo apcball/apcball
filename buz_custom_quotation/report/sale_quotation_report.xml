@@ -136,34 +136,61 @@
             </tr>
         </thead>
         <tbody>
-            <tr t-foreach="doc.order_line" t-as="line" style="border-bottom: 1px solid #8B9B7C;">
-                <td style="text-align: center; border: none; padding: 10px 0;"><span style="background-color: #1E3A78; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span></td>
-                <td style="border: none; padding: 10px 0;">
-                    <div><span t-field="line.name"/></div>
-                </td>
-                <td style="text-align: center; border: none; padding: 10px 0;">
-                    <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom.name"/>
-                </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
-                    <t t-set="total_cost" t-value="line.product_uom_qty * line.purchase_price"/>
-                    <span t-esc="total_cost" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
-                    <t t-if="line.price_unit and line.purchase_price and line.price_unit != 0">
-                        <span t-esc="((line.price_unit - line.purchase_price) / line.price_unit * 100)" t-options='{"widget": "float", "precision": 2}'/>%
-                    </t>
-                </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
-                    <span t-field="line.price_unit"
-                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
-                    <span t-field="line.price_subtotal" 
-                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                </td>
-            </tr>
+            <t t-foreach="doc.order_line" t-as="line">
+                <tr style="border-bottom: 1px solid #8B9B7C;">
+                    <td style="text-align: center; border: none; padding: 10px 0;"><span style="background-color: #1E3A78; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span></td>
+                    <td style="border: none; padding: 10px 0;">
+                        <div><span t-field="line.name"/></div>
+                    </td>
+                    <td style="text-align: center; border: none; padding: 10px 0;">
+                        <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom.name"/>
+                    </td>
+                    <td style="text-align: right; border: none; padding: 10px 0;">
+                        <t t-set="total_cost" t-value="line.product_uom_qty * line.purchase_price"/>
+                        <span t-esc="total_cost" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                    <td style="text-align: right; border: none; padding: 10px 0;">
+                        <t t-if="line.price_unit and line.purchase_price and line.price_unit != 0">
+                            <span t-esc="((line.price_unit - line.purchase_price) / line.price_unit * 100)" t-options='{"widget": "float", "precision": 2}'/>%
+                        </t>
+                    </td>
+                    <td style="text-align: right; border: none; padding: 10px 0;">
+                        <span t-field="line.price_unit"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                    <td style="text-align: right; border: none; padding: 10px 0;">
+                        <span t-field="line.price_subtotal"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <t t-if="(line_index + 1) % 7 == 0 and line_index != len(doc.order_line) - 1">
+                    <tr>
+                        <td colspan="7" style="border: none; padding: 0;">
+                            <div class="page-break"/>
+                        </td>
+                    </tr>
+                </t>
+            </t>
         </tbody>
-    </table>                       
+    </table>
+
+    <t t-if="len(doc.order_line) > 0">
+        <!-- Signature Section -->
+        <div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
+            <div style="width: 200px; display: inline-block; text-align: center;">
+                <p style="margin-bottom: 40px;">ผู้อนุมัติราคา</p>
+                <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- Terms and Conditions section -->
+        <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
+            <div class="col-12">
+                <h2 style="color: #1E3A78; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Terms and Conditions</h2>
+                <div t-field="doc.terms_conditions" style="white-space: pre-line;"/>
+            </div>
+        </div>
+    </t>
 
     <!-- Totals Section -->
     <div class="row justify-content-end" style="margin-top: 20px; font-size: 20px;">
@@ -229,24 +256,6 @@
         </div>
     </div>
     
-    <t t-if="len(doc.order_line) > 7">
-        <div class="page-break"/>
-    </t>
-                        <!-- Signature Section -->
-                        <div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
-                            <div style="width: 200px; display: inline-block; text-align: center;">
-                                <p style="margin-bottom: 40px;">ผู้อนุมัติราคา</p>
-                                <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
-                            </div>
-                        </div>
-
-                         <!-- Replace the existing Terms and Conditions section with: -->
-<div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
-    <div class="col-12">
-        <h2 style="color: #1E3A78; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Terms and Conditions</h2>
-        <div t-field="doc.terms_conditions" style="white-space: pre-line;"/>
-    </div>
-</div>
                     </div>
                 </div>
             </t>
