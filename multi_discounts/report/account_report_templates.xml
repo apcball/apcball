@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_invoice_document_multi_discount" inherit_id="account.report_invoice_document">
+        <xpath expr="//span[@t-field='line.discount']/../.." position="before">
+            <td class="text-end">
+                <span t-field="line.multi_discount" t-options="{'widget': 'text'}"/>
+            </td>
+        </xpath>
+        <xpath expr="//th[@t-if='display_discount']" position="before">
+            <th class="text-end">Multi-Discount (%)</th>
+        </xpath>
+    </template>
+</odoo>

@@ -4,6 +4,10 @@ from datetime import datetime
 class AccountPayment(models.Model):
     _inherit = 'account.payment'
 
+    check_date = fields.Date(string="Check Date")
+    check_pay_to = fields.Char(string="Pay To", help="Name of the person or entity to whom the check is payable")
+
+
     def amount_in_words(self):
         def thai_number_to_text(number):
             thai_numbers = ["ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"]

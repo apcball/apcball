@@ -17,6 +17,8 @@
         'security/ir.model.access.csv',
         'report/delivery_report_template.xml',
         'report/delivery_report.xml',
+        'report/distributor_delivery_note.xml',
+        'report/distributor_delivery_export.xml',
     ],
     'installable': True,
     'application': False,

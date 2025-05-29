@@ -9,5 +9,6 @@
         <field name="print_report_name">'Delivery Report - %s' % object.name</field>
         <field name="binding_model_id" ref="stock.model_stock_picking"/>
         <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_delivery_document"/>
     </record>
 </odoo>

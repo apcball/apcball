@@ -14,6 +14,7 @@
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
     </record>
+
     <!-- Main Template -->
     <template id="report_payment_voucher">
         <t t-call="web.html_container">
@@ -38,38 +39,263 @@
                                 font-size: 20px;
                                 font-weight: bold;
                             }
-                            .company-info {
-                                font-size: 18px;
+                            .vendor-info, .delivery-info {
+                                font-size: 14px;
                             }
-                        
                         </style>
 
                         <!-- Company Info Section -->
                         <div class="row mb-2">
                             <div class="col-8">
-                                <div class="company-header mb-1">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
-                                <div class="company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
-                                <div class="company-info">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
-                                <div class="company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                                <div class="company-header mb-1" style="font-size: 24px;">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
+                                <div class="company-info" style="font-size: 20px;">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
+                                <div class="company-info" style="font-size: 20px;">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
+                                <div class="company-info" style="font-size: 20px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
                             </div>
                             <div class="col-4 text-end">
-                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
+                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
                                      style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
 
-                        <!-- Title Section -->
+                        <!-- Document Title -->
                         <div class="row mb-3">
                             <div class="col-12 text-center">
-                                <h3>Payment Voucher</h3>
+                                <div class="mb-2">
+                                    <div class="doc-title" style="padding: 10px; font-size: 28px;">ใบสำคัญจ่ายเงิน</div>
+                                    <h3 style="font-size: 24px;">Payment Voucher</h3>
+                                </div>
+                                <div class="text-end" style="min-width: 100px;">
+                                    <div style="font-size: 24px;">
+                                        <strong>No.:</strong>
+                                        <span t-field="o.name"/>
+                                    </div>
+                                    <div style="font-size: 24px;">
+                                        <strong>Date.:</strong>
+                                        <span t-field="o.date" t-options='{"widget": "date"}'/>
+                                    </div>
+                                </div>
                             </div>
-                        </div>   
-                    </div>
+                        </div>
+
+                        <!-- รหัสเจ้าหนี้ -->
+                        <table class="table" style="width: 100%; table-layout: fixed; margin-top:30px; text-align: center; border-collapse: collapse; border: 1px solid black;">
+                            <thead>
+                                <tr>
+                                    <th style="font-size: 20px; width: 17%; border: 1px solid black; padding: 6px;">รหัสเจ้าหนี้</th>
+                                    <th style="font-size: 20px; width: 30%; border: 1px solid black; padding: 8px;">ชื่อเจ้าหนี้</th>
+                                    <th style="font-size: 20px; width: 18%; border: 1px solid black; padding: 8px;">เอกสาร</th>
+                                    <th style="font-size: 20px; width: 18%; border: 1px solid black; padding: 6px;">เลขที่เอกสาร</th>
+                                    <th style="font-size: 20px; width: 17%; border: 1px solid black; padding: 6px;">จำนวนเงิน</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <span t-field="o.partner_id.ref" t-if="o.partner_id.ref"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <span t-field="o.partner_id.name"/>
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <span t-field="o.payment_type"/>
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <span t-field="o.name"/>
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <span t-field="o.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" style="font-size: 20px; border: 1px solid black; padding: 8px; text-align: right;">
+                                        <strong>จำนวนเงินรวม:</strong>
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <strong><span t-field="o.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></strong>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        
+
+                        <!-- ชำระเงิน -->
+                        <table class="table" style="width: 100%; table-layout: fixed; margin-top:60px; text-align: center; border-collapse: collapse; border: 1px solid black;">
+                            <thead>
+                                <tr>
+                                    <th style="font-size: 20px; width: 14%; border: 1px solid black; padding: 6px;">ชำระเงิน</th>
+                                    <th style="font-size: 20px; width: 16%; border: 1px solid black; padding: 8px;">ชื่อ</th>
+                                    <th style="font-size: 20px; width: 12%; border: 1px solid black; padding: 8px;">เลขที่เช็ค</th>
+                                    <th style="font-size: 20px; width: 12%; border: 1px solid black; padding: 6px;">วันที่เช็ค</th>
+                                    <th style="font-size: 20px; width: 16%; border: 1px solid black; padding: 6px;">สั่งจ่ายเช็คในนาม</th>
+                                    <th style="font-size: 20px; width: 18%; border: 1px solid black; padding: 6px;">ตัดบัญชีธนาคาร</th>
+                                    <th style="font-size: 20px; width: 12%; border: 1px solid black; padding: 6px;">จำนวนเงินจ่าย</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <span t-field="o.partner_id.name"/>
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <span t-field="o.check_number"/>
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <span t-field="o.date" t-options='{"widget": "date"}'/>
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <span t-field="o.check_pay_to"/>
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <span t-field="o.destination_journal_id.name"/>
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <span t-field="o.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="font-size: 20px; border: 1px solid black; padding: 8px; text-align: right;">
+                                        <strong>รวมจำนวนเงิน:</strong>
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 8px;">
+                                        <strong><span t-field="o.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></strong>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        
+
+                        <!--เลขที่บัญชี -->
+                        <table class="table" style="width: 100%; table-layout: fixed; text-align: center; margin-top:60px; border-collapse: collapse; border: 1px solid black;">
+                            <thead>
+                                <tr>
+                                    <th style="font-size: 20px; width: 14%; border: 1px solid black; padding: 6px;">เลขที่บัญชี</th>
+                                    <th style="font-size: 20px; width: 16%; border: 1px solid black; padding: 8px;">ชื่อบัญชี</th>
+                                    <th style="font-size: 20px; width: 12%; border: 1px solid black; padding: 8px;">เลขที่เอกสาร</th>
+                                    <th style="font-size: 20px; width: 12%; border: 1px solid black; padding: 6px;">วันที่</th>
+                                    <th style="font-size: 20px; width: 12%; border: 1px solid black; padding: 6px;">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="o.line_ids" t-as="line">
+                                    <tr>
+                                        <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.account_id.code or '-'"/>
+                                        <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.account_id.name or '-'"/>
+                                        <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.move_id.name or '-'"/>
+                                        <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.date or '-'"/>
+                                        
+                                        <!-- ช่องข้อมูล -->
+                                        <td style="font-size: 20px; border: 1px solid black; padding: 0;">
+                                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid black; padding: 4px 6px;">
+                                                <span style="width: 50%; text-align: center; font-weight: bold;">Dr.</span>
+                                                <span style="width: 50%; text-align: center; font-weight: bold;">Cr.</span>
+                                            </div>
+                                            <div style="display: flex; height: 100%;">
+                                                <div style="width: 50%; border-right: 1px solid black; padding: 6px; text-align: right;">
+                                                    <t t-if="line.debit > 0">
+                                                        <span t-esc="'{:,.2f}'.format(line.debit)"/>
+                                                    </t>
+                                                    <t t-else="">
+                                                        -
+                                                    </t>
+                                                </div>
+                                                <div style="width: 50%; padding: 6px; text-align: right;">
+                                                    <t t-if="line.credit > 0">
+                                                        <span t-esc="'{:,.2f}'.format(line.credit)"/>
+                                                    </t>
+                                                    <t t-else="">
+                                                        -
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </td>   
+                                 </tr>
+                                </t>
+                                <!-- Total Row -->
+                                <tr>
+                                    <td colspan="4" style="font-size: 20px; border: 1px solid black; padding: 6px; text-align: right; font-weight: bold;">
+                                        Total:
+                                    </td>
+                                    <td style="font-size: 20px; border: 1px solid black; padding: 0;">
+                                        
+                                        <div style="display: flex; height: 100%;">
+                                            <div style="width: 50%; border-right: 1px solid black; padding: 6px; text-align: right; font-weight: bold;">
+                                                <span t-esc="'{:,.2f}'.format(sum(o.line_ids.mapped('debit')))"/>
+                                            </div>
+                                            <div style="width: 50%; padding: 6px; text-align: right; font-weight: bold;">
+                                                <span t-esc="'{:,.2f}'.format(sum(o.line_ids.mapped('credit')))"/>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                             </tbody>
+                          </table>
+
+                          <!-- หมายเหตุ -->
+                          <div style="padding: 20px; min-height: 60px; font-size: 22px;">
+                            <strong style="font-size: 24px;">หมายเหตุ:</strong> <span t-field="o.narration" style="font-size: 22px;"/>
+                         </div>
+
+                         <!-- ส่วนของลายเซ็น -->
+<table style="width: 100%; text-align: center; margin-top: 30px; border: 1px solid #000;">
+    <thead>
+        <tr>
+            <th style="font-size: 20px; border: 1px solid #000;">Prepare By:</th>
+            <th style="font-size: 20px; border: 1px solid #000;">Checked(1):</th>
+            <th style="font-size: 20px; border: 1px solid #000;">Checked(2):</th>
+            <th style="font-size: 20px; border: 1px solid #000;">Approved By:</th>
+            <th style="font-size: 20px; border: 1px solid #000;">Received By:</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td style="border: 1px solid #000;">
+                <div style="height: 2em; border-bottom: 2px solid #000;"></div>
+                <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
+            </td>
+            <td style="border: 1px solid #000;">
+                <div style="height: 2em; border-bottom: 2px solid #000;"></div>
+                <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
+            </td>
+            <td style="border: 1px solid #000;">
+                <div style="height: 2em; border-bottom: 2px solid #000;"></div>
+                <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
+            </td>
+            <td style="border: 1px solid #000;">
+                <div style="height: 2em; border-bottom: 2px solid #000;"></div>
+                <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
+            </td>
+            <td style="border: 1px solid #000;">
+                <div style="height: 2em; border-bottom: 2px solid #000;"></div>
+                <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+                         
+                           </div>
+                               <div class="col-5">
+                             </div>
+                      
+
+                                        
+                                    
+                       </t>
+                    
                 </t>
             </t>
-        </t>
+        
     </template>
-     <!-- Create our new report -->
+
+    <!-- Create our new report -->
     <record id="action_report_payment_voucher" model="ir.actions.report">
         <field name="name">Payment Voucher</field>
         <field name="model">account.payment</field>
