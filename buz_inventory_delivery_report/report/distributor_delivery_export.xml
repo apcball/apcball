@@ -106,7 +106,7 @@
                         <div class="row mb-3">
                             <div class="col-4 offset-4 text-center">
                                 <div class="doc-title" style="border: 1px solid black; padding: 14px; font-size: 24px; font-family: 'TH SarabunPSK', 'THSarabunNew', Tahoma, Arial, sans-serif;">
-                                    ใบเเจ้งส่งสินค้าคืนผู้ขาย [ ต่างประเทศ ]
+                                    ใบเเจ้งคืนสินค้าผู้จัดจำหน่าย [ ต่างประเทศ ]
                                 </div>
                             </div>
                         </div>
@@ -242,7 +242,7 @@
     </template>
 
     <record id="action_distributor_delivery_export" model="ir.actions.report">
-        <field name="name">distributor_delivery_export</field>
+        <field name="name">ใบแจ้งคืนสินค้าผู้จัดจำหน่าย [ ต่างประเทศ ]</field>
         <field name="model">stock.picking</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_inventory_delivery_report.distributor_delivery_export_document</field>

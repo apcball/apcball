@@ -12,7 +12,7 @@
     """,
     'author': 'Your Name',
     'website': 'https://www.yourwebsite.com',
-    'depends': ['base', 'account','purchase'],
+    'depends': ['base', 'account', 'purchase', 'stock', 'sale_management'],
     'data': [
         'security/security.xml',           # เพิ่มไฟล์ security.xml
         'security/ir.model.access.csv',

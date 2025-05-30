@@ -17,6 +17,32 @@ class AccountMove(models.Model):
     stored_grand_total = fields.Float(string='Stored Grand Total', store=True, digits=(16, 2))
     amount_total_words = fields.Text(string='จำนวนเงินรวมทั้งสิ้นในคำอ่าน', compute='_compute_amount_total_words', store=True)
     purchase_order_number = fields.Char(string='เลขที่ใบสั่งซื้อ', related='purchase_id.name', store=True)
+    picking_ids = fields.Many2many('stock.picking', string='Delivery Orders', compute='_compute_picking_ids', store=True)
+
+    @api.depends('invoice_origin', 'purchase_id')
+    def _compute_picking_ids(self):
+        """Compute the related delivery orders (stock.picking) for this invoice"""
+        for move in self:
+            pickings = self.env['stock.picking']
+            # If we have a purchase order, get its pickings
+            if move.purchase_id:
+                pickings |= move.purchase_id.picking_ids
+            # If we have an invoice origin, try to find related pickings
+            elif move.invoice_origin:
+                # Try to find sale order
+                sale_orders = self.env['sale.order'].search([('name', '=', move.invoice_origin)])
+                for order in sale_orders:
+                    pickings |= order.picking_ids
+                # Try to find purchase order if no sale order
+                if not sale_orders:
+                    purchase_orders = self.env['purchase.order'].search([('name', '=', move.invoice_origin)])
+                    for order in purchase_orders:
+                        pickings |= order.picking_ids
+                # Try to find pickings directly
+                if not pickings:
+                    pickings |= self.env['stock.picking'].search([('name', '=', move.invoice_origin)])
+                    pickings |= self.env['stock.picking'].search([('origin', '=', move.invoice_origin)])
+            move.picking_ids = pickings
 
     @api.depends('invoice_line_ids.price_unit', 'invoice_line_ids.quantity')
     def _compute_total_amount(self):
