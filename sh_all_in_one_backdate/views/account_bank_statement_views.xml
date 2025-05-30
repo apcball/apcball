@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+BANK STATEMENT VIEWS MOVED TO OPTIONAL MODULE
+
+This file is intentionally empty. Bank statement backdating functionality 
+has been moved to optional_modules/ due to compatibility issues.
+
+To enable bank statement backdating:
+1. Check optional_modules/README.md for instructions
+2. Copy files from optional_modules/ to main module
+3. Update configuration files
+4. Upgrade the module
+
+This ensures the core module works on all Odoo installations.
+-->
+<odoo>
+    <!-- Empty file - bank statement views are optional -->
+</odoo>

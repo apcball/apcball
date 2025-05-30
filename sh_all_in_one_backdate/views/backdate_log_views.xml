@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Backdate Log Tree View -->
+    <record id="view_backdate_log_tree" model="ir.ui.view">
+        <field name="name">backdate.log.tree</field>
+        <field name="model">backdate.log</field>
+        <field name="arch" type="xml">
+            <tree string="Backdate Logs" default_order="create_date desc">
+                <field name="create_date" string="Date"/>
+                <field name="user_id"/>
+                <field name="document_model"/>
+                <field name="document_name"/>
+                <field name="old_date"/>
+                <field name="new_date"/>
+                <field name="reason"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Backdate Log Form View -->
+    <record id="view_backdate_log_form" model="ir.ui.view">
+        <field name="name">backdate.log.form</field>
+        <field name="model">backdate.log</field>
+        <field name="arch" type="xml">
+            <form string="Backdate Log" create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="create_date" string="Date"/>
+                            <field name="user_id"/>
+                            <field name="document_model"/>
+                            <field name="document_id"/>
+                            <field name="document_name"/>
+                        </group>
+                        <group>
+                            <field name="old_date"/>
+                            <field name="new_date"/>
+                            <field name="reason"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Backdate Log Search View -->
+    <record id="view_backdate_log_search" model="ir.ui.view">
+        <field name="name">backdate.log.search</field>
+        <field name="model">backdate.log</field>
+        <field name="arch" type="xml">
+            <search string="Backdate Logs">
+                <field name="user_id"/>
+                <field name="document_model"/>
+                <field name="document_name"/>
+                <field name="reason"/>
+                <filter name="today" string="Today" 
+                        domain="[('create_date', '>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                <filter name="this_week" string="This Week" 
+                        domain="[('create_date', '>=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+                <filter name="this_month" string="This Month" 
+                        domain="[('create_date', '>=', context_today().strftime('%Y-%m-01'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_user" string="User" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_by_model" string="Document Type" context="{'group_by': 'document_model'}"/>
+                    <filter name="group_by_date" string="Date" context="{'group_by': 'create_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Backdate Log Action -->
+    <record id="action_backdate_log" model="ir.actions.act_window">
+        <field name="name">Backdate Logs</field>
+        <field name="res_model">backdate.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_backdate_log_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No backdate logs found!
+            </p>
+            <p>
+                This view shows all backdating operations performed in the system.
+                Logs are automatically created when documents are backdated.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Items -->
+    <menuitem id="menu_backdate_main"
+              name="Backdate"
+              web_icon="sh_all_in_one_backdate,static/description/icon.png"
+              groups="sh_all_in_one_backdate.group_backdate_user"
+              sequence="100"/>
+
+    <menuitem id="menu_backdate_logs"
+              name="Backdate Logs"
+              parent="menu_backdate_main"
+              action="action_backdate_log"
+              groups="sh_all_in_one_backdate.group_backdate_user"
+              sequence="10"/>
+
+</odoo>

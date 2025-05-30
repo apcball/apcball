@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Paper Format for Production Order Reports -->
+        <record id="paperformat_production_order_report" model="report.paperformat">
+            <field name="name">Production Order Report A4</field>
+            <field name="default" eval="True"/>
+            <field name="format">A4</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">10</field>
+            <field name="margin_bottom">10</field>
+            <field name="margin_left">4</field>
+            <field name="margin_right">4</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">90</field>
+        </record>
+        
+        <!-- Main Template -->
+        <template id="production_order_report">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <div class="page" style="padding: 10px;">
+                            <!-- Add your report content here -->
+                            <h2 class="text-center">ใบเปิด JOB</h2>
+                            <div class="row mt-4">
+                                <div class="col-6">
+                                    <strong>เลขที่:</strong> <span t-field="o.name"/>
+                                </div>
+                                <div class="col-6">
+                                    <!-- Using the correct field name for Odoo 17 -->
+                                    <strong>วันที่:</strong> 
+                                </div>
+                            </div>
+                            
+                            <!-- Product Information -->
+                            <div class="row mt-3">
+                                <div class="col-6">
+                                    <strong>สินค้า:</strong> <span t-field="o.product_id.name"/>
+                                </div>
+                                <div class="col-6">
+                                    <strong>จำนวน:</strong> <span t-field="o.product_qty"/> <span t-field="o.product_uom_id.name"/>
+                                </div>
+                            </div>
+                            
+                            <!-- Components Table -->
+                            <h4 class="mt-4">ส่วนประกอบ</h4>
+                            <table class="table table-sm table-bordered mt-2">
+                                <thead>
+                                    <tr>
+                                        <th>รหัสสินค้า</th>
+                                        <th>รายการ</th>
+                                        <th class="text-right">จำนวน</th>
+                                        <th>หน่วย</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="o.move_raw_ids" t-as="line">
+                                        <td><span t-field="line.product_id.default_code"/></td>
+                                        <td><span t-field="line.product_id.name"/></td>
+                                        <td class="text-right"><span t-field="line.product_uom_qty"/></td>
+                                        <td><span t-field="line.product_uom.name"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+        
+        <!-- Add Production Order Report to Manufacturing Orders -->
+        <record id="action_report_production_order" model="ir.actions.report">
+            <field name="name">ใบเปิด JOB</field>
+            <field name="model">mrp.production</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">buz_manufacturing_report.production_order_report</field>
+            <field name="report_file">buz_manufacturing_report.production_order_report</field>
+            <field name="binding_model_id" ref="mrp.model_mrp_production"/>
+            <field name="binding_type">report</field>
+            <field name="print_report_name">'Production Order Report - %s' % (object.name)</field>
+            <field name="paperformat_id" ref="buz_manufacturing_report.paperformat_production_order_report"/>
+        </record>
+    </data>
+</odoo>

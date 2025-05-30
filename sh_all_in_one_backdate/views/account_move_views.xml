@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Account Move Form View -->
+    <record id="view_move_form_backdate" model="ir.ui.view">
+        <field name="name">account.move.form.backdate</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="allow_backdate" invisible="1"/>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <button name="action_backdate_invoice" 
+                        type="object" 
+                        string="Backdate" 
+                        class="btn-secondary"
+                        groups="sh_all_in_one_backdate.group_backdate_user"
+                        invisible="not allow_backdate"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Account Move Tree View -->
+    <record id="view_account_move_tree_backdate" model="ir.ui.view">
+        <field name="name">account.move.tree.backdate</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <field name="allow_backdate" column_invisible="1"/>
+            </xpath>
+            <xpath expr="//tree" position="attributes">
+                <attribute name="decoration-info">allow_backdate</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Backdate Log Menu -->
+    <record id="action_backdate_log" model="ir.actions.act_window">
+        <field name="name">Backdate Log</field>
+        <field name="res_model">backdate.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('document_model', '=', 'account.move')]</field>
+        <field name="context">{'default_document_model': 'account.move'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No backdate logs found!
+            </p>
+            <p>
+                This view shows all backdating operations performed on invoices and bills.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_backdate_log_invoices"
+              name="Invoice Backdate Log"
+              parent="account.menu_finance_reports"
+              action="action_backdate_log"
+              groups="sh_all_in_one_backdate.group_backdate_user"
+              sequence="100"/>
+
+</odoo>

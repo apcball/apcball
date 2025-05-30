@@ -20,6 +20,7 @@
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
                     <div class="page">
+                        
                         <style>
                             @page {
                                 margin-top: 0mm;
@@ -48,53 +49,7 @@
                                 border-width: 0.5px !important;
                                 border-style: solid !important;
                                 border-color: #000 !important;
-                                padding: 4px;
-                            }
-                            
-                            .no-inner-borders td,
-                            .no-inner-borders th {
-                                border: none !important;
-                            }
-                            
-                            .table-bordered,
-                            .table-bordered td,
-                            .table-bordered th {
-                                border: none !important;
-                            }
-                            
-                            .vendor-info, .delivery-info {
-                                font-size: 14px;
-                            }
-                        </style>
-                        <style>
-                            @page {
-                                margin-top: 0mm;
-                                margin-bottom: 10mm;
-                                margin-left: 10mm;
-                                margin-right: 10mm;
-                            }
-                            
-                            body, .page, .row {
-                                margin-top: 0 !important;
-                                padding-top: 0 !important;
-                            }
-                            
-                            html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
-                                font-family: 'Sarabun', sans-serif !important;
-                                font-size: 20px;
-                            }
-                            
-                            .table {
-                                border-collapse: collapse !important;
-                                width: 100%;
-                            }
-                            
-                            .table td,
-                            .table th {
-                                border-width: 0.5px !important;
-                                border-style: solid !important;
-                                border-color: #000 !important;
-                                padding: 4px;
+                                padding: 2px;
                             }
                             
                             .no-inner-borders td,
@@ -274,7 +229,7 @@
                         </div>
 
                         <!-- ผู้ขอเบิกสินค้า -->    
-                        <table style="width: 100%; table-layout: fixed; text-align: center; border-collapse: collapse; min-height: 150px; margin-top: 60px;">
+                        <table style="width: 100%; table-layout: fixed; text-align: center; border-collapse: collapse; min-height: 100px; margin-top: 15px;">
                             <tbody>
                                 <tr>
                                     <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Simple Configuration Wizard for Backdate Settings -->
+    <record id="backdate_config_wizard_view_form" model="ir.ui.view">
+        <field name="name">backdate.config.wizard.view.form</field>
+        <field name="model">res.config.settings</field>
+        <field name="arch" type="xml">
+            <form string="Backdate Configuration" class="oe_form_configuration">
+                <header>
+                    <button string="Apply" type="object" name="execute" class="oe_highlight"/>
+                    <button string="Cancel" type="object" name="cancel" class="oe_link"/>
+                </header>
+                <sheet>
+                    <div class="o_setting_container">
+                        <h2>Backdate Settings</h2>
+                        <p class="text-muted">Configure backdating options for your system</p>
+                        
+                        <group>
+                            <group string="General Settings">
+                                <field name="backdate_require_reason"/>
+                                <field name="backdate_max_days"/>
+                                <field name="backdate_log_retention_days"/>
+                            </group>
+                            
+                            <group string="Enable Backdating For">
+                                <field name="backdate_enable_invoice"/>
+                                <field name="backdate_enable_payment"/>
+                                <field name="backdate_enable_sale"/>
+                                <field name="backdate_enable_purchase"/>
+                                <field name="backdate_enable_picking"/>
+                                <field name="backdate_enable_statement"/>
+                            </group>
+                        </group>
+                        
+                        <div class="mt16">
+                            <h4>Field Descriptions:</h4>
+                            <ul class="text-muted">
+                                <li><strong>Require Reason:</strong> Force users to provide a reason when backdating documents</li>
+                                <li><strong>Maximum Days:</strong> Limit how far back users can backdate (0 = unlimited for managers)</li>
+                                <li><strong>Log Retention:</strong> Number of days to keep backdate logs (0 = keep forever)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action for the configuration wizard -->
+    <record id="action_backdate_config_wizard" model="ir.actions.act_window">
+        <field name="name">Backdate Configuration</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="backdate_config_wizard_view_form"/>
+        <field name="target">inline</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Menu item under Settings -->
+    <menuitem id="menu_backdate_configuration"
+              name="Backdate Configuration"
+              parent="base.menu_administration"
+              action="action_backdate_config_wizard"
+              sequence="100"/>
+
+</odoo>

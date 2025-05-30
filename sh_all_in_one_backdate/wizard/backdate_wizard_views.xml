@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Backdate Wizard Form View -->
+    <record id="view_backdate_wizard_form" model="ir.ui.view">
+        <field name="name">backdate.wizard.form</field>
+        <field name="model">backdate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Backdate Document">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="document_name" readonly="1"/>
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group>
+                            <field name="current_date" readonly="1"/>
+                            <field name="new_date" required="1"/>
+                        </group>
+                        <group>
+                            <field name="document_model" invisible="1"/>
+                            <field name="document_id" invisible="1"/>
+                            <field name="require_reason" invisible="1"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Reason" invisible="not require_reason">
+                        <field name="reason" nolabel="1" placeholder="Please provide a reason for backdating this document..." required="require_reason"/>
+                    </group>
+                    
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Warning:</strong> Backdating documents may affect financial reports and should be done with caution. 
+                        This operation will be logged for audit purposes.
+                    </div>
+                </sheet>
+                
+                <footer>
+                    <button name="action_backdate" type="object" string="Backdate" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_backdate_log_user,backdate.log.user,model_backdate_log,group_backdate_user,1,0,1,0
+access_backdate_log_manager,backdate.log.manager,model_backdate_log,group_backdate_manager,1,1,1,1
+access_backdate_wizard_user,backdate.wizard.user,model_backdate_wizard,group_backdate_user,1,1,1,1
+access_backdate_wizard_manager,backdate.wizard.manager,model_backdate_wizard,group_backdate_manager,1,1,1,1

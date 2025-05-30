@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Purchase Order Form View -->
+    <record id="purchase_order_form_backdate" model="ir.ui.view">
+        <field name="name">purchase.order.form.backdate</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='date_order']" position="after">
+                <field name="allow_backdate" invisible="1"/>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <button name="action_backdate_purchase_order" 
+                        type="object" 
+                        string="Backdate" 
+                        class="btn-secondary"
+                        groups="sh_all_in_one_backdate.group_backdate_user"
+                        invisible="not allow_backdate"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Purchase Order Tree View -->
+    <record id="purchase_order_tree_backdate" model="ir.ui.view">
+        <field name="name">purchase.order.tree.backdate</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <field name="allow_backdate" column_invisible="1"/>
+            </xpath>
+            <xpath expr="//tree" position="attributes">
+                <attribute name="decoration-info">allow_backdate</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Purchase Order Backdate Log -->
+    <record id="action_backdate_log_purchase_orders" model="ir.actions.act_window">
+        <field name="name">Purchase Order Backdate Log</field>
+        <field name="res_model">backdate.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('document_model', '=', 'purchase.order')]</field>
+        <field name="context">{'default_document_model': 'purchase.order'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No backdate logs found!
+            </p>
+            <p>
+                This view shows all backdating operations performed on purchase orders.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_backdate_log_purchase_orders"
+              name="Purchase Order Backdate Log"
+              parent="purchase.menu_purchase_root"
+              action="action_backdate_log_purchase_orders"
+              groups="sh_all_in_one_backdate.group_backdate_user"
+              sequence="100"/>
+
+</odoo>

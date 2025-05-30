@@ -30,7 +30,7 @@
     'company': 'Cybrosys Techno Solutions',
     'maintainer': 'Cybrosys Techno Solutions',
     'website': "https://www.cybrosys.com",
-    'depends': [''],
+    'depends': ['account', 'account_check_printing'],
     'data': [
         'security/ir.model.access.csv',
         'views/res_config_settings_views.xml',

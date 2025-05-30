@@ -1,0 +1,13 @@
+ICON PLACEHOLDER
+
+Please place a 128x128 PNG icon file named "icon.png" in this directory.
+
+The icon should represent the backdate functionality, such as:
+- A calendar with a back arrow
+- A clock with reverse arrow
+- A document with date modification symbol
+
+You can create or download an appropriate icon and save it as:
+sh_all_in_one_backdate/static/description/icon.png
+
+This will be used as the module icon in the Odoo Apps menu.
