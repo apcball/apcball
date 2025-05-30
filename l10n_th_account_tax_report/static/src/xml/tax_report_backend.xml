@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="l10n_th_account_tax_report.TaxReportBackend" owl="1">
+        <div class="o_tax_report_backend">
+            <div class="o_report_content" t-raw="state.html"/>
+        </div>
+    </t>
+    
+    <t t-name="l10n_th_account_tax_report.WithholdingTaxReportWidget" owl="1">
+        <div class="o_withholding_tax_report_widget">
+            <t t-slot="default"/>
+        </div>
+    </t>
+</templates>

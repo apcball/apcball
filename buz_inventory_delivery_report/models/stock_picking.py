@@ -12,6 +12,8 @@ class StockPicking(models.Model):
     return_reason = fields.Char(string='สาเหตุที่คืน')
     return_doc_no = fields.Char(string='เลขที่เอกสารคืน')
 
+    @api.depends('move_ids.product_uom_qty', 'price_unit')
+
     def _compute_price_subtotal(self):
         for picking in self:
             # Calculate subtotal based on move lines
@@ -29,10 +31,12 @@ class StockPicking(models.Model):
         total_pages = (total_items + items_per_page - 1) // items_per_page  # Calculate total pages
         
         return {
+            'doc': self,
             'total_weight': sum(move.product_id.weight * move.product_uom_qty for move in self.move_ids),
             'total_volume': sum(move.product_id.volume * move.product_uom_qty for move in self.move_ids),
             'total_packages': len(self.package_ids),
             'items_per_page': items_per_page,
             'total_items': total_items,
             'total_pages': total_pages,
+            
         }
