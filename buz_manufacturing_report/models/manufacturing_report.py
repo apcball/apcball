@@ -10,6 +10,10 @@ class ManufacturingReport(models.Model):
     _description = 'Manufacturing Report'
     _order = 'id desc'
     _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = 'mrp.production' 
+    department_id = fields.Many2one('hr.department', string='Department')
+    production_id = fields.Many2one('mrp.production', string='Production Order')
+    date_planned_finished = fields.Datetime(string='Planned End Date')
 
     name = fields.Char(string='Name', required=True, copy=False, readonly=True,
                        default=lambda self: _('New'))
@@ -37,6 +41,9 @@ class ManufacturingReport(models.Model):
     move_finished_ids = fields.One2many('stock.move', string='Finished Products', related='production_id.move_finished_ids')
     report_date = fields.Date(string='Report Date', default=fields.Date.today, required=True)
     notes = fields.Text(string='Notes')
+    note = fields.Text(string='Notes')  # Add this line to define the note field
+    date_planned_finished = fields.Datetime(string='Planned End Date', store=True)
+
     
     @api.model_create_multi
     def create(self, vals_list):

@@ -18,75 +18,75 @@
     <template id="report_delivery_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
-                <!-- กำหนดตัวแปรเริ่มต้นก่อนใช้งาน -->
-                <t t-set="lines_per_page" t-value="7"/>
-                <t t-set="total_lines" t-value="len(o.move_ids)"/>
-                <t t-set="total_pages" t-value="max(1, (total_lines + lines_per_page - 1) // lines_per_page)"/>
-                
-                <t t-foreach="range(total_pages)" t-as="page_idx">
-                    <t t-call="web.external_layout">
-                        <div class="page">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        
+                        <style>
+                            @page {
+                                margin-top: 0mm;
+                                margin-bottom: 10mm;
+                                margin-left: 10mm;
+                                margin-right: 10mm;
+                            }
                             
-                            <style>
-                                @page {
-                                    margin-top: 0mm;
-                                    margin-bottom: 10mm;
-                                    margin-left: 10mm;
-                                    margin-right: 10mm;
-                                }
-                                
-                                body, .page, .row {
-                                    margin-top: 0 !important;
-                                    padding-top: 0 !important;
-                                }
-                                
-                                html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
-                                    font-family: 'Sarabun', sans-serif !important;
-                                    font-size: 20px;
-                                }
-                                
-                                .table {
-                                    border-collapse: collapse !important;
-                                    width: 100%;
-                                }
-                                
-                                .table td,
-                                .table th {
-                                    border-width: 0.5px !important;
-                                    border-style: solid !important;
-                                    border-color: #000 !important;
-                                    padding:  1px 1px;
-                                }
+                            body, .page, .row {
+                                margin-top: 0 !important;
+                                padding-top: 0 !important;
+                            }
+                            
+                            html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+                                font-family: 'Sarabun', sans-serif !important;
+                                font-size: 20px;
+                            }
+                            
+                            .table {
+                                border-collapse: collapse !important;
+                                width: 100%;
+                            }
+                            
+                            .table td,
+                            .table th {
+                                border-width: 0.5px !important;
+                                border-style: solid !important;
+                                border-color: #000 !important;
+                                padding:  1px 1px;
+                            }
 
-                                .order-line-table th,
-                                .order-line-table td {
-                                    padding-top: 10px !important;
-                                    padding-bottom: 10px !important;
-                                   line-height: 1.1 !important;
-                                }
-                                
-                                .no-inner-borders td,
-                                .no-inner-borders th {
-                                    border: none !important;
-                                }
-                                
-                                .table-bordered,
-                                .table-bordered td,
-                                .table-bordered th {
-                                    border: none !important;
-                                }
-                                
-                                .vendor-info, .delivery-info {
-                                    font-size: 14px;
-                                }
-                            </style>
+                            .order-line-table th,
+                            .order-line-table td {
+                                padding-top: 20px !important;
+                                padding-bottom: 20px !important;
+                               line-height: 1.1 !important;
+                            }
                             
-                            <!-- Page Number (only show if more than 1 page) -->
-                            <t t-if="total_pages > 1">
-                                <div style="text-align: right; font-size: 16px; margin-bottom: 10px;">
-                                    หน้า <span t-esc="page_idx + 1"/>/<span t-esc="total_pages"/>
-                                </div>
-                            </t>
+                            .no-inner-borders td,
+                            .no-inner-borders th {
+                                border: none !important;
+                            }
+                            
+                            .table-bordered,
+                            .table-bordered td,
+                            .table-bordered th {
+                                border: none !important;
+                            }
+
+                            .page {
+                                page-break-after: always;
+                            }
+                            .page:last-child {
+                                page-break-after: auto;
+                            }
+
+                            .page-break {
+                                page-break-after: always;
+                              }
+
+                            .vendor-info, .delivery-info {
+                                font-size: 14px;
+                            }
+                        </style>
+
+                 
 
                         <!-- Company Info Section -->
                         <div class="row mb-1">
@@ -107,21 +107,14 @@
                                     E-mail: contact@mogen.co.th
                                 </div>
                             </div>
-
                             <div class="col-4 text-end">
                                 <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
                                      style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
-
-                        <!-- Document Title -->
-                        <div class="row mb-3">
-                            <div class="col-4 offset-4 text-center">
-                                <div class="doc-title" style="border: 2px solid black; padding: 10px; font-size: 24px;">
-                                    ใบส่งสินค้า-กรณีเครมต่างรุ่น
-                                </div>
-                            </div>
-                        </div>
+                        
+                        
+                        
 
                         <!-- Customer and Document Info -->
                         <div class="col-12 text-end">
@@ -136,7 +129,7 @@
                                 </div>
                             </div>
                         </div>
-
+                        
                         <div class="row" style="display: flex;">
                             <div style="flex: 1;">
                                 <strong style="display: inline-block; width: 15%; font-size: 20px;">ชื่อลูกค้า </strong>
@@ -146,7 +139,7 @@
                                 (Customer Name)
                             </div>
                         </div>
-
+                        
                         <div class="row" style="display: flex;">
                             <div style="flex: 1;">
                                 <strong style="display: inline-block; width: 15%; font-size: 20px;">สถานที่ส่งสินค้า</strong>
@@ -156,7 +149,7 @@
                                 (Ship To)
                             </div>
                         </div>
-
+                        
                         <table class="table table-bordered" style="width: 100%; table-layout: fixed; text-align: center;">
                             <thead>
                                 <tr>
@@ -185,124 +178,126 @@
                             </tbody>
                         </table>
 
-                        <!-- Order Lines -->
-                        <!-- กำหนดตัวแปรเริ่มต้น -->
-                        <t t-set="lines_per_page" t-value="7"/>
-                        <t t-set="line_number" t-value="1"/>
-                        <t t-set="total_lines" t-value="len(o.move_ids)"/>
-                        <t t-set="total_pages" t-value="(total_lines + lines_per_page - 1) // lines_per_page"/>
-
-                        <!-- ลูปตามหน้า -->
-                        <t t-foreach="range(total_pages)" t-as="page_idx">
-                            <!-- เริ่มหน้าใหม่ถ้าไม่ใช่หน้าแรก -->
-                            <t t-if="page_idx > 0">
-                                <div style="page-break-before: always;"></div>
-                            </t>
-
-                            <!-- Page Number (show on all pages if more than 1 page) -->
-                            <t t-if="total_pages > 1">
-                                <div style="text-align: right; font-size: 16px; margin-bottom: 10px;">
-                                    หน้า <span t-esc="page_idx + 1"/>/<span t-esc="total_pages"/>
-                                </div>
-                            </t>
-
-
-                            <table class="table table-sm mt-4 order-line-table" style="border-collapse: collapse; width: 100%;">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 6%; padding: 1px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
-                                            ลำดับ<br/><span style="font-size: 16px; font-weight: normal;">(No)</span>
-                                        </th>
-                                        <th style="width: 12%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
-                                            รหัสสินค้า<br/><span style="font-size: 16px; font-weight: normal;">(Item No)</span>
-                                        </th>
-                                        <th style="padding: 22px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
-                                            รายการสินค้า<br/><span style="font-size: 16px; font-weight: normal;">(Description)</span>
-                                        </th>
-                                        <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
-                                            จำนวน/หน่วย<br/><span style="font-size: 16px; font-weight: normal;">(Qty / Unit)</span>
-                                        </th>
-                                        <th style="width: 14%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
-                                            หมายเหตุ<br/><span style="font-size: 16px; font-weight: normal;">(Remark)</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- วนแสดงแถวสินค้าในแต่ละหน้า -->
-                                    <t t-foreach="o.move_ids[page_idx * lines_per_page : (page_idx + 1) * lines_per_page]" t-as="move">
-                                        <tr style="font-size: 20px;">
-                                            <td style="text-align: center;"><t t-esc="line_number"/></td>
-                                            <td><t t-esc="move.product_id.default_code"/></td>
-                                            <td><t t-esc="move.product_id.name"/></td>
-                                            <td style="text-align: center;">
-                                                <t t-esc="move.product_uom_qty"/>
-                                                <t t-esc="move.product_uom.name"/>
-                                            </td>
-                                            <td style="text-align: center;">
-                                                <t t-if="move.lot_ids">
-                                                    <t t-esc="', '.join([lot.name for lot in move.lot_ids])"/>
-                                                </t>
-                                            </td>
-                                        </tr>
-                                        <!-- เพิ่มตัวนับลำดับ -->
-                                        <t t-set="line_number" t-value="line_number + 1"/>
-                                    </t>
-                                </tbody>
-                            </table>
-
-                            <!-- แสดงหมายเหตุและลายเซ็นเฉพาะในหน้าสุดท้าย -->
-                            <t t-if="page_idx == total_pages - 1">
-                                <!-- หมายเหตุ -->
-                                <div style="padding: 20px; min-height: 60px; font-size: 22px;">
-                                    <strong style="font-size: 20px;">หมายเหตุ:</strong>
-                                    <span t-field="o.note" style="font-size: 22px;"/>
-                                </div>
-
-                                <!-- ผู้ขอเบิกสินค้า -->
-                                <table style="width: 100%; table-layout: fixed; text-align: center; border-collapse: collapse; min-height: 100px; margin-top: 15px;">
-                                    <tbody>
-                                        <tr>
-                                            <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
-                                            <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
-                                            <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding-top: 10px; font-size: 20px; text-align: center;">
-                                                ผู้ขอเบิกสินค้า<br/>
-                                                <span style="font-size: 16px; font-weight: normal;">[Withdrawed By]</span>
-                                            </td>
-                                            <td style="padding-top: 10px; font-size: 20px; text-align: center;">
-                                                ผู้อนุมัติจ่ายสินค้า<br/>
-                                                <span style="font-size: 16px; font-weight: normal;">[Approved By]</span>
-                                            </td>
-                                            <td style="padding-top: 10px; font-size: 20px; text-align: center;">
-                                                ผู้รับสินค้า(ตัวบรรจง)<br/>
-                                                <span style="font-size: 16px; font-weight: normal;">[Received By]</span>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-
-                                <!-- ศูนย์บริการ -->
-                                <div class="row justify-content-center">
-                                    <div class="company-header text-center" style="font-size: 20px;">
-                                        ศูนย์บริการและรับข้อร้องเรียน โทร(02-5691980)
-                                    </div>
-                                    <div class="company-info text-center" style="font-size: 20px;">
-                                        Customer Service Tel.(02-5691980)
-                                    </div>
-                                </div>
-                            </t>
-                        </t>
-                            
+                    
                         
+                        <!-- Order Lines -->
+                        <t t-set="move_list" t-value="o.move_ids"/>
+                        <t t-set="groups_of_7" t-value="[move_list[i:i+7] for i in range(0, len(move_list), 7)]"/>
+                        <t t-set="page_number" t-value="1"/>
+                        <t t-foreach="groups_of_7" t-as="group">
+                            <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                        
+                        <table class="table table-sm mt-4 order-line-table" style="border-collapse: collapse; width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 6%; padding: 1px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                                        ลำดับ<br/><span style="font-size: 16px; font-weight: normal;">(No)</span>
+                                    </th>
+                                    <th style="width: 12%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                                        รหัสสินค้า<br/><span style="font-size: 16px; font-weight: normal;">(Item No)</span>
+                                    </th>
+                                    <th style="padding: 22px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                                        รายการสินค้า<br/><span style="font-size: 16px; font-weight: normal;">(Description)</span>
+                                    </th>
+                                    <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                                        จำนวน/หน่วย<br/><span style="font-size: 16px; font-weight: normal;">(Qty / Unit)</span>
+                                    </th>
+                                    <th style="width: 14%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                                        หมายเหตุ<br/><span style="font-size: 16px; font-weight: normal;">(Remark)</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                           <tbody>
+                                           <t t-set="line_number" t-value="((page_number - 1) * 7) + 1"/>
+                                           <t t-set="current_line_number" t-value="line_number"/>
+                                           <t t-foreach="group" t-as="move">
+                                               <tr class="data-row" style="font-size: 20px;">
+                                                   <td style="text-align: center;"><span t-esc="current_line_number"/></td>
+                                                   <td><span t-field="move.product_id.default_code"/></td>
+                                                   <td><span t-field="move.product_id"/></td>
+                                                   <td style="text-align: center;">
+                                                       <t t-set="move_qty" t-value="move.product_uom_qty"/>
+                                                       <span t-esc="'%.0f' % move_qty"/>
+                                                       <span t-field="move.product_uom.name"/>
+                                                   </td>
+                                                   <td style="text-align: center;"><span t-field="move.lot_ids"/></td>
+                                               </tr>
+                                               <t t-set="current_line_number" t-value="current_line_number + 1"/>
+                                           </t>
+
+                                           <!-- เติมแถวเปล่าให้ครบ 7 แถวต่อหน้า -->
+                                           <t t-set="empty_rows" t-value="7 - len(group)"/>
+                                           <t t-foreach="range(empty_rows)" t-as="i">
+                                               <tr class="data-row" style="font-size: 20px; height: 50px; line-height: 50px;">
+                                                   <td style="text-align: center;"></td>
+                                                   <td></td><td></td><td></td><td></td>
+                                               </tr>
+                                           </t>
+                                       </tbody>
+                                   </table>
+                               </div>
+                               <t t-set="page_number" t-value="page_number + 1"/></t>
+
+                                   <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
+                                   <t t-if="page_number == len(groups_of_7)">
+                                       <!-- ลายเซ็นหรือหมายเหตุ -->
+                                   </t>
+
+                                   <!-- เพิ่มหน้า -->
+                                   <t t-set="page_number" t-value="page_number + 1"/>
                     </div>
+                 </t>
+                               
+                           </t>
+                        <!-- หมายเหตุ -->
+                        <div style="padding: 20px; min-height: 60px; font-size: 22px;">
+                            <strong style="font-size: 20px;">หมายเหตุ:</strong> 
+                            <span t-field="o.note" style="font-size: 22px;"/>
+                        </div>
+
+                        <!-- ผู้ขอเบิกสินค้า -->    
+                        <table style="width: 100%; table-layout: fixed; text-align: center; border-collapse: collapse; min-height: 100px; margin-top: 15px;">
+                            <tbody>
+                                <tr>
+                                    <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
+                                    <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
+                                    <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                        ผู้ขอเบิกสินค้า<br/>
+                                        <span style="font-size: 16px; font-weight: normal;">[Withdrawed By]</span>
+                                    </td>
+                                    <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                        ผู้อนุมัติจ่ายสินค้า<br/>
+                                        <span style="font-size: 16px; font-weight: normal;">[Approved By]</span>
+                                    </td>
+                                    <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                        ผู้รับสินค้า(ตัวบรรจง)<br/>
+                                        <span style="font-size: 16px; font-weight: normal;">[Received By]</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- ศูนย์บริการ -->
+                        <div class="row justify-content-center">
+                            <div class="company-header text-center" style="font-size: 20px;">
+                                ศูนย์บริการและรับข้อร้องเรียน โทร(02-5691980)
+                            </div>
+                            <div class="company-info text-center" style="font-size: 20px;">
+                                Customer Service Tel.(02-5691980)
+                            </div>
+                        </div>
+
                     
                 </t>
-            </t>
-        </t>
-        </t>
+                    
+                
+            
+        
     </template>
-    
-
 </odoo>
+
+
+                      

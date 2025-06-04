@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_order_form_inherit" model="ir.ui.view">
+        <field name="name">view.sale.order.form.inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="after">
+                <div class="alert alert-warning text-center o_form_header" invisible="is_credit_limit_approval == False" role="status">
+                    <div>
+                        <strong>
+                            Customer Blocking Limit is
+                            <field name="customer_blocking_limit"/>
+                        </strong>
+                        <br/>
+                        <strong>
+                            Customer Due Amount is
+                            <field name="amount_due"/>
+                        </strong>
+                    </div>
+                </div>
+            </xpath>
+            <xpath expr="//button[@name='action_confirm'][2]" position="attributes">
+                <attribute name="invisible">state not in ['draft'] or is_credit_limit_approval == True</attribute>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <button class="oe_highlight" groups="base.group_erp_manager" invisible="is_credit_limit_approval == False or state not in ['draft', 'sent']" name="send_credit_limit_approval" string="Credit Limit Approval" type="object"/>
+                <button class="oe_highlight" groups="sales_team.group_sale_manager" invisible="state not in ['sales_approval']" name="approved_credit_limit_from_sales_manager" string="Approve" type="object"/>
+                <button class="oe_highlight" groups="account.group_account_manager" invisible="state not in ['finance_approval']" name="approved_credit_limit_from_account_manager" string="Approve" type="object"/>
+                <button class="oe_highlight" groups="sales_team.group_sale_manager" invisible="state not in ['sales_approval']" name="reject_sale_order" string="Reject" type="object"/>
+                <button class="oe_highlight" groups="account.group_account_manager" invisible="state not in ['finance_approval']" name="reject_sale_order" string="Reject" type="object"/>
+            </xpath>
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                <field invisible="1" name="company_currency_id"/>
+                <field invisible="1" name="is_credit_limit_approval"/>
+                <field invisible="1" name="is_credit_limit_final_approved"/>
+            </xpath>
+            <xpath expr="//button[@name='action_confirm'][1]" position="attributes">
+                <attribute name="invisible">state not in ['sent', 'approved']</attribute>
+            </xpath>
+            <xpath expr="//page/field[@name='order_line']" position="attributes">
+                <attribute name="readonly">state in ('done', 'cancel', 'approved')</attribute>
+            </xpath></field>
+    </record>
+</odoo>

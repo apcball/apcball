@@ -11,6 +11,17 @@ class StockPicking(models.Model):
     notes = fields.Text(string="หมายเหตุ")  # Add notes field for remarks
     return_reason = fields.Char(string='สาเหตุที่คืน')
     return_doc_no = fields.Char(string='เลขที่เอกสารคืน')
+    date_notice = fields.Datetime(string="วันที่แจ้ง")
+    date_confirmed = fields.Datetime(string="วันที่ Confirm")
+    department_install = fields.Char(string='แผนกติดตั้ง')
+    project_name = fields.Char(string="ชื่อโครงการ")
+    seller_contact_name = fields.Char(string='ผู้ติดต่อประสานงาน')
+    seller_contact_phone = fields.Char(string='เบอร์โทรตัวแทนจำหน่าย')
+    project_plot_number = fields.Char(string='เฉพาะโครงการ: เลขที่แปลง')
+    house_model = fields.Char(string='แบบบ้าน')
+    is_garage = fields.Boolean(string='โรงรถ')
+
+
 
     @api.depends('move_ids.product_uom_qty', 'price_unit')
 

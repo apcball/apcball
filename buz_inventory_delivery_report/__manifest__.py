@@ -19,6 +19,8 @@
         'report/delivery_report.xml',
         'report/distributor_delivery_note.xml',
         'report/distributor_delivery_export.xml',
+        'report/delivery_note_report.xml',
+
     ],
     'installable': True,
     'application': False,
