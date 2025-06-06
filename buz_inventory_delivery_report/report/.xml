@@ -1,0 +1,447 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Paper Format for delivery document Reports -->
+    <record id="paperformat_delivery_note_report" model="report.paperformat">
+        <field name="name">delivery note report A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">6</field>
+        <field name="margin_right">6</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <template id="delivery_note_report_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+
+                        <style>
+                            @page {
+                                margin-top: 0mm;
+                                margin-bottom: 10mm;
+                                margin-left: 10mm;
+                                margin-right: 10mm;
+                            }
+                            
+                            body, .page, .row {
+                                margin-top: 0 !important;
+                                padding-top: 0 !important;
+                            }
+                            
+                            html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+                                font-family: 'Sarabun', sans-serif !important;
+                                font-size: 20px;
+                            }
+                            
+                            .table {
+                                border-collapse: collapse !important;
+                                width: 100%;
+                            }
+                            
+                            .table td,
+                            .table th {
+                                border-width: 0.5px !important;
+                                border-style: solid !important;
+                                border-color: #fff !important;
+                                background-color: inherit;
+                                padding:  1px 1px;
+                            }
+
+                           
+                            .no-inner-borders td,
+                            .no-inner-borders th {
+                                border: none !important;
+                            }
+                            
+                            .table-bordered,
+                            .table-bordered td,
+                            .table-bordered th {
+                                border: none !important;
+                            }
+                            
+                            table, th, td {
+                                border: 1px solid white !important;
+                                border-collapse: collapse !important;
+                            }
+                            
+
+
+                            .page {
+                                page-break-after: always;
+                            }
+                            .page:last-child {
+                                page-break-after: auto;
+                            }
+
+                            .page-break {
+                                page-break-after: always;
+                              }
+
+                            .vendor-info, .delivery-info {
+                                font-size: 16px;
+                            }
+                            .checkbox-option {
+                                display: flex;
+                                align-items: center;
+                                cursor: pointer;
+                                margin-bottom: 3px; /* ถ้าต้องการให้มีระยะห่างบรรทัด */
+                              }
+                            
+                              .checkbox-box {
+                                border: 1px solid black;
+                                display: inline-block;
+                                width: 15px;
+                                height: 15px;
+                                line-height: 15px;
+                                text-align: center;
+                                vertical-align: middle;
+                                margin: 0 10px 0 15px;
+                              }
+                        </style>
+
+                        
+                        <!-- Company Info Section -->
+                        <div class="row mb-1">
+                            <div class="col-8">
+                                <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;  line-height: 1; ">
+                                    บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
+                                </div>
+                                <div class="company-info" style="font-size: 18px; line-height: 1;">
+                                    9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150
+                                </div>
+                                <div class="company-info" style="font-size: 18px; line-height: 1;">
+                                    โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th
+                                </div>
+                                
+                            </div>
+                            <div class="col-4 text-end">
+                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                     style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                            </div>
+                        </div>
+                        
+                        <!-- Document Title -->
+                        <div class="row mb-3">
+                            <div class="col-4 offset-4 text-center">
+                                <div class="doc-title" style=" padding: 10px; font-size: 24px;  line-height: 1; ">
+                                    ใบส่งมอบงาน/ตรวจรับการติดตั้ง
+                                </div>
+                            </div>
+                        </div>
+
+                        
+                    <!-- Customer and Document Info -->
+                    <div class="row" style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 20px; margin-top: -40px; ">
+    
+                        <!--  เรียน, ผู้แจ้งงาน, ผู้ Confirm -->
+                        <div style="flex: 1;margin-top: -40px;line-height: -5; ">
+                            <div style="margin-bottom: 5px;">
+                                <strong style="width: 120px;margin-top: -10px;  display: inline-block;line-height: -5;">เรียน  แผนกติดตั้ง</strong>
+                                
+                            </div>
+                            <div style="margin-bottom: 5px;line-height: 0.5;">
+                                <strong style="width: 120px; display: inline-block;margin-top: -10px;line-height: -5;">ผู้แจ้งงาน</strong>
+                                <span>__________________________</span>
+                            </div>
+                            <div>
+                                <strong style="width: 120px; display: inline-block;margin-top: -10px;line-height: -5;">ผู้ Confirm ลูกค้า</strong>
+                                <span>__________________________</span>
+                            </div>
+                        </div>
+
+                        <!-- เลขที่เอกสาร + วันที่แจ้ง + วันที่ Confirm -->
+                        <div style="flex: 1; text-align: right;margin-top: -40px; ">
+                            <div style="margin-bottom: 5px;">
+                                <strong>
+                                    เลขที่เอกสาร:
+                                </strong>
+                                <span t-field="o.name" />
+                            </div>
+                            <div style="margin-bottom: 5px;margin-top: -10px;">
+                                <strong>
+                                    วันที่เเจ้ง
+                                    <span style="display: inline-block; width: 50px;"></span>
+                                    เวลา_________________:
+                                </strong>
+                                <span t-field="o.date_notice" t-options='{"widget": "datetime"}'/>
+                            </div>
+                            <div style="margin-bottom: 5px;margin-top: -10px;">
+                                <strong>
+                                    วันที่ Confirm
+                                    <span style="display: inline-block; width: 50px;"></span>
+                                    เวลา_________________:
+                                </strong>
+                                <span t-field="o.date_confirmed" t-options='{"widget": "datetime"}'/>
+                            </div>
+                            
+                        </div>
+
+                    </div>
+
+                 <!-- ประเภทลูกค้า -->
+                   <div style="font-size: 20px; margin-bottom: 2px; line-height: 1;">
+                        ประเภทลูกค้า:
+                        <span style="border: 1px solid black; display: inline-block; width: 15px; height: 15px; line-height: 15px; text-align: center; margin: 0 10px 0 5px; vertical-align: middle; cursor: pointer;"></span> Project
+                        <span style="border: 1px solid black; display: inline-block; width: 15px; height: 15px; line-height: 15px; text-align: center; margin: 0 10px 0 15px; vertical-align: middle; cursor: pointer;"></span> End User
+                   </div>
+                   
+                   <!-- ประเภทลูกค้า (มีเส้นบนเท่านั้น ชิดเนื้อหา) -->
+                   <div style="border-top: 1px solid black; padding:0px 0px; margin: 8px 0; font-size: 16px; line-height: 1;">
+                   <div style="padding: 4px 0;margin-top: -5px;  font-size: 16px; width: 100%;">
+                     <div class="row" style="line-height: 1; margin: 0;">
+
+                            <!-- ฝั่งซ้าย: ข้อมูลลูกค้า -->
+                            <div class="col-6" style="padding-right: 10px;">
+                                <strong style="font-size: 18px; text-decoration: underline;">ข้อมูลลูกค้า</strong>
+                                <div style="margin-top: 3px; margin-bottom: 0;">
+                                    <strong>ชื่อ:</strong>
+                                    <span t-field="o.partner_id.name"/>
+                                </div>
+                                <div style="margin: 0;">
+                                    <strong>เบอร์โทร:</strong>
+                                    <span t-esc="o.partner_id.phone or '-'"/>
+                                </div>
+                                <div style="margin: 0;">
+                                    <strong>ชื่อโครงการ:</strong>
+                                    <span t-esc="o.project_name or '-'"/>
+                                </div>
+                                <div style="margin: 0;">
+                                    <strong>ที่อยู่:</strong><br/>
+                                    <span t-esc="o.partner_id.street or ''"/><br/>
+                                    <span t-esc="o.partner_id.street2 or ''"/><br/>
+                                    <span t-esc="(o.partner_id.city or '') + ' ' + (o.partner_id.state_id.name or '') + ' ' + (o.partner_id.zip or '')"/><br/>
+                                    <span t-esc="o.partner_id.country_id.name or ''"/>
+                                </div>
+                            </div>
+
+              
+                            <!-- ฝั่งขวา: ข้อมูลร้านค้าตัวแทนจำหน่าย -->
+                            <div class="col-6" style="padding-left: 5px;margin-top: -5px;  line-height: -5;">
+                                <strong style="font-size: 18px; text-decoration: underline;">ข้อมูลร้านค้าตัวแทนจำหน่าย</strong>
+                                <div style="margin-top: 3px; margin-bottom: 0;line-height: 0.5;">
+                                    <strong>ผู้ติดต่อประสานงาน:</strong>
+                                    <span t-if="o.seller_contact_name" t-field="o.seller_contact_name" style="font-size: 16px;"></span>
+                                    <span t-if="not o.seller_contact_name" style="font-size: 16px;">-</span>
+                                </div>
+                                <div style="margin: 0;line-height: 0.5;">
+                                    <strong>เบอร์โทร:</strong>
+                                    <span t-esc="o.seller_contact_phone or '-'"/>
+                                </div>
+                                <div style="margin: 0;line-height: 0.5;">
+                                    <strong>เฉพาะโครงการ: เลขที่แปลง:</strong>
+                                    <span t-esc="o.project_plot_number or '-'"/>
+                                </div>
+                                <div style="margin: 0;line-height: 0.5;">
+                                    <strong>แบบบ้าน:</strong>
+                                    <span t-esc="o.house_model or '-'"/>
+                                </div>
+                                <div style="margin: 0;line-height: 0.5;">
+                                    <strong>โรงรถ:</strong>
+                                    <span t-if="o.is_garage"></span>
+                                </div>
+                            </div>
+                          </div>
+                   </div>
+                   <!-- <div style="border-bottom: 1px solid black; margin-top: 2px;"></div> -->
+                </div>
+
+
+                    <!-- ประเภทงาน -->
+                    <div style="margin -80px; line-height: 1;">
+                        <div style="border-top: 0.5px solid black; margin-bottom: 0px;"></div>
+                        ประเภทงาน:
+                        <div style="margin-top: 1px; display: flex; gap: 40px; flex-wrap: wrap;">
+                            <div class="checkbox-option">
+                                <span class="checkbox-box"></span>
+                                ส่งสินค้า พร้อมเข้าติดตั้ง
+                            </div>
+                            <div class="checkbox-option">
+                                <span class="checkbox-box"></span>
+                                ต้องรื้อถอนของเดิมออกก่อน
+                            </div>
+                            <div class="checkbox-option">
+                                <span class="checkbox-box"></span>
+                                ติดตั้งอย่างเดียว สินค้าอยู่ที่หน้างานแล้ว
+                            </div>
+                            <div class="checkbox-option">
+                                <span class="checkbox-box"></span>
+                                หน้างานใหม่ ไม่ต้องมีการรื้อถอน
+                            </div>
+                        </div>
+                     </div>
+             
+
+                          <!-- Order Lines -->
+                        <table style=" min-height: 8px; width: 100%; margin-top: 20px; line-height: 1; ">
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%; padding: 2px 2px; text-align: center;  font-size: 18px; background-color: white; font-weight: bold;">
+                                        ลำดับ<br/><span style="font-size: 14px; font-weight: normal;"></span>
+                                    </th>
+
+                                    <th style="width: 40%; padding: 2px 2px; text-align: center; font-size: 18px; background-color: white; font-weight: bold;">
+                                        ชื่อสินค้า<br/><span style="font-size: 14px; font-weight: normal;"></span>
+                                    </th>
+                                    <th style="width: 15%; padding: 2px 2px; text-align: center; font-size: 18px; background-color: white; font-weight: bold;">
+                                        จำนวน<br/><span style="font-size: 14px; font-weight: normal;"></span>
+                                    </th>
+                                    <th style="width: 10%; padding: 2px 2px; text-align: center; font-size: 18px; background-color: white; font-weight: bold;">
+                                        หน่วย<br/><span style="font-size: 14px; font-weight: normal;"></span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-set="line_number" t-value="1"/>
+                                <t t-set="total_qty" t-value="0.0"/>
+                                <t t-foreach="o.move_ids_without_package" t-as="move">
+                                    <tr style="font-size: 14px;">
+                                        <td style="text-align: center; padding: 2px 2px; background-color: white;"><span t-esc="line_number"/></td>
+                                        <td style=" padding: 2px 2px; background-color: white;"><span t-field="move.product_id.display_name"/></td>
+                                        <td style="text-align: right;  padding: 2px 2px; background-color: white;"><span t-field="move.product_uom_qty"/></td>
+                                        <td style="text-align: center;  padding: 2px 2px; background-color: white;"><span t-field="move.product_uom"/></td>
+                                    </tr>
+                                    <t t-set="line_number" t-value="line_number + 1"/>
+                                    <t t-set="total_qty" t-value="total_qty + move.product_uom_qty"/>
+                                </t>
+
+                            </tbody>
+                          </table>
+
+                           <!-- ศูนย์บริการ -->
+                    <div class="row" style="margin-top: 0; padding-top: 0;line-height: 1;">
+                        <div class="company-header" style="font-size: 18px; width: 100%; text-align: left;">
+                            บริษัทโมเก้น จำกัด ได้จัดส่งสินค้าครบตามจำนวน และทำการติดตั้งสินค้าดังกล่าวข้างต้นครบตามแบบเรียบร้อยแล้ว
+                            ดังนั้นทางบริษัทฯ จึงใคร่ขอส่งมอบงานให้ท่านผู้มีอำนาจรับผิดชอบ พิจารณาลงนามตรวจรับบริการติดตั้งดังกล่าว
+                        </div>
+                        <div class="company-info" style="font-size: 18px; width: 100%; text-align: left; margin-top: 5px;line-height: ;">
+                            <strong>หมายเหตุ:</strong> หากหลังจากการตรวจรับการติดตั้ง/ส่งมอบงานนี้แล้ว เกิดความเสียหายใดๆ กับตัวสินค้าที่ได้ทำการติดตั้งไปเรียบร้อยแล้ว
+                            ทางบริษัทโมเก้นฯ จะไม่รับผิดชอบใดๆ ทั้งสิ้น บริษัทโมเก้นจะขอรับผิดชอบในส่วนความเสียหายที่เกิดจากความผิดปกติ / บกพร่องของตัวสินค้าเท่านั้น
+                            ซึ่งหากทางโครงการ/ลูกค้าต้องการให้ทางบริษัทฯ เข้าทำการแก้ไข ซ่อม ประกอบติดตั้งให้ใหม่ ทางบริษัทฯ ใคร่ขอแจ้งว่าอาจจะมีค่าใช้จ่ายเพิ่ม
+                            ซึ่งทางโครงการ/ลูกค้าต้องเป็นผู้ชำระให้กับบริษัทฯ
+                        </div>
+                    </div>
+
+
+                      <!-- มีเส้นบนล่าง ชิดเนื้อหา -->
+                   <div style="border-top: 2px dashed blue; border-bottom: 2px dashed blue; padding: 8px 2px; margin: 12px 0; font-size: 18px; line-height: 0.5;">
+
+                    <div style="display: flex; margin-top: 0px; font-size: 16px; line-height: 0.5">
+                        <!-- ฝั่งส่งมอบ (ซ้าย) -->
+                        <div style="flex: 1;">
+                          
+                            <div style="margin: 0 0 1px 0; line-height: 1;">
+                                <strong style="font-size:16px;">ส่งมอบครั้งที่ 1: วันที่ ______________</strong>
+                                <span style="border: 1px solid black; width: 15px; height: 15px; display: inline-block; margin-left: 10px; vertical-align: middle;"></span>
+                                <span style="font-size:16px;">รับมอบ</span>
+                                <span style="border: 1px solid black; width: 15px; height: 15px; display: inline-block; margin-left: 10px; vertical-align: middle;"></span>
+                                <span style="font-size:16px;">ไม่รับมอบ</span>
+                            </div>
+                            <div style="margin: 0 0 8px 0; line-height: 1;">
+                                <strong style="font-size:16px;">สาเหตุ:</strong>_________________________________________________________________________
+                            </div>
+
+                            <div style="margin: 0 0 1px 0; line-height: 1;">
+                                <strong style="font-size:16px;">ส่งมอบครั้งที่ 2: วันที่ ______________</strong>
+                                <span style="border: 1px solid black; width: 15px; height: 15px; display: inline-block; margin-left: 10px; vertical-align: middle;"></span>
+                                <span style="font-size:16px;">รับมอบ</span>
+                                <span style="border: 1px solid black; width: 15px; height: 15px; display: inline-block; margin-left: 10px; vertical-align: middle;"></span>
+                                <span style="font-size:16px;">ไม่รับมอบ</span>
+                            </div>
+                            <div style="margin: 0 0 8px 0; line-height: 1;">
+                                <strong style="font-size:16px;">สาเหตุ:</strong>_________________________________________________________________________
+                            </div>
+
+                            <div style="margin: 0 0 1px 0; line-height: 1;">
+                                <strong style="font-size:16px;">ส่งมอบครั้งที่ 3: วันที่ ______________</strong>
+                                <span style="border: 1px solid black; width: 15px; height: 15px; display: inline-block; margin-left: 10px; vertical-align: middle;"></span>
+                                <span style="font-size:16px;">รับมอบ</span>
+                                <span style="border: 1px solid black; width: 15px; height: 15px; display: inline-block; margin-left: 10px; vertical-align: middle;"></span>
+                                <span style="font-size:16px;">ไม่รับมอบ</span>
+                            </div>
+                            <div style="margin: 0 0 8px 0; line-height: 1;">
+                                <strong style="font-size:16px;">สาเหตุ:</strong>_________________________________________________________________________
+                            </div>
+
+                            <div style="margin: 0 0 1px 0; line-height: 1;">
+                                <strong style="font-size:16px;">ส่งมอบครั้งที่ 4: วันที่ ______________</strong>
+                                <span style="border: 1px solid black; width: 15px; height: 15px; display: inline-block; margin-left: 10px; vertical-align: middle;"></span>
+                                <span style="font-size:16px;">รับมอบ</span>
+                                <span style="border: 1px solid black; width: 15px; height: 15px; display: inline-block; margin-left: 10px; vertical-align: middle;"></span>
+                                <span style="font-size:16px;">ไม่รับมอบ</span>
+                            </div>
+                            <div style="margin: 0 0 8px 0; line-height: 1;">
+                                <strong style="font-size:16px;">สาเหตุ:</strong>_________________________________________________________________________
+                            </div>
+                        </div>
+                    
+                        <!-- ฝั่งเซ็นชื่อ (ขวา) -->
+                        <div style="flex: 1; padding-left: 100px; align-items: flex-end; display: flex; flex-direction: column;">
+
+                            <div style="margin: 0 0 1px 0; line-height: 1; align-self: flex-end;">
+                                <strong style="font-size:16px;">ผู้อนุมัติ/ตรวจสอบ: ___________________</strong>
+                            </div>
+                            <div style="margin: 0 0 8px 0; line-height: 1; align-self: flex-end;">
+                                <strong style="font-size:16px;">ช่างติดตั้ง: ___________________</strong>
+                            </div>
+
+                            <div style="margin: 0 0 1px 0; line-height: 1; align-self: flex-end;">
+                                <strong style="font-size:16px;">ผู้อนุมัติ/ตรวจสอบ: ___________________</strong>
+                            </div>
+                            <div style="margin: 0 0 8px 0; line-height: 1; align-self: flex-end;">
+                                <strong style="font-size:16px;">ช่างติดตั้ง: ___________________</strong>
+                            </div>
+
+                            <div style="margin: 0 0 1px 0; line-height: 1; align-self: flex-end;">
+                                <strong style="font-size:16px;">ผู้อนุมัติ/ตรวจสอบ: ___________________</strong>
+                            </div>
+                            <div style="margin: 0 0 8px 0; line-height: 1; align-self: flex-end;">
+                                <strong style="font-size:16px;">ช่างติดตั้ง: ___________________</strong>
+                            </div>
+
+                            <div style="margin: 0 0 1px 0; line-height: 1; align-self: flex-end;">
+                                <strong style="font-size:16px;">ผู้อนุมัติ/ตรวจสอบ: ___________________</strong>
+                            </div>
+                            <div style="margin: 0 0 8px 0; line-height: 1; align-self: flex-end;">
+                                <strong style="font-size:16px;">ช่างติดตั้ง: ___________________</strong>
+                            </div>
+
+                            <div style="margin: 0 0 1px 0; line-height: 1; align-self: flex-end;">
+                                <strong style="font-size:16px;"> ___________________________</strong>
+                            </div>
+                            <div style="text-align: right; margin: 0 0 0 0; line-height: 1; align-self: flex-end;">
+                                <strong style="font-size:16px;">ผู้อนุมัติ</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    
+                  
+                
+                    </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template> 
+    
+    
+
+    <record id="action_delivery_note_report" model="ir.actions.report">
+        <field name="name">ใบส่งมอบงาน/ตรวจรับการติดตั้ง</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_inventory_delivery_report.delivery_note_report_document</field>
+        <field name="report_file">buz_inventory_delivery_report.delivery_note_report_document</field>
+        <field name="print_report_name">'Delivery Report - %s' % object.name</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_delivery_note_report"/>
+    </record>
+      
+</odoo>
