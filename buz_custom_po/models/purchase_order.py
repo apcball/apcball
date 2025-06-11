@@ -24,6 +24,22 @@ class PurchaseOrder(models.Model):
     l2_approved_by = fields.Many2one('res.users', string='L2 Approved By', readonly=True)
     l2_approved_date = fields.Datetime(string='L2 Approved Date', readonly=True)
 
+    department_id = fields.Many2one(
+        'hr.department', 
+        string='Department'
+    )
+
+    # ถ้าอยากได้ชื่อ department แบบ string ตรง ๆ ก็สามารถสร้าง computed field ได้ เช่น
+    department_name = fields.Char(
+        string='Department Name', 
+        compute='_compute_department_name', 
+        store=False
+    )
+
+    def _compute_department_name(self):
+        for rec in self:
+            rec.department_name = rec.department_id.name if rec.department_id else '-'
+
     def _create_approval_activity(self, user, summary, note):
         self.env['mail.activity'].sudo().create({
             'activity_type_id': self.env.ref('mail.mail_activity_data_todo').id,
@@ -91,6 +107,29 @@ class PurchaseOrder(models.Model):
                 if template:
                     template.send_mail(order.id, force_send=True)
         return True
+
+    def _get_report_values(self, docids, data=None):
+       docs = self.env['purchase.order'].browse(docids)
+       for doc in docs:
+        doc.amount_total_text = num2words(doc.amount_total, lang='th')
+       return {
+        'docs': docs,
+        # ... other context ...
+    }
+
+    def get_report_values(self, docids, data=None):
+       ...
+       return {
+        'doc_ids': docids,
+        'doc_model': 'purchase.order',
+        'docs': docs,
+        'amount_total_text': self.get_text_amount(docs.amount_total),
+    }
+
+    def get_text_amount(self, amount_total):
+    # ตัวอย่างฟังก์ชันที่แปลงตัวเลขเป็นข้อความภาษาไทย
+      return baht_text(amount_total) 
+
 
     def approve_l2(self):
         if not self.env.user.has_group('buz_custom_po.group_purchase_approval_l2'):

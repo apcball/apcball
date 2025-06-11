@@ -21,6 +21,7 @@
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="o">
                     <t t-call="web.external_layout">
+                        <div class="page">
                 <style>
                     @font-face {
                         font-family: 'Sarabun';
@@ -89,7 +90,30 @@
                         color: black !important;
                     }
                 </style>
-                        <div class="page">
+
+        
+                 <!-- Order Lines -->
+                 <t t-set="move_list" t-value="o.move_ids"/>
+                 <t t-set="groups_of_7" t-value="[move_list[i:i+7] for i in range(0, len(move_list), 7)]"/>
+                 <t t-set="page_number" t-value="1"/>
+                 <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
+                 <t t-set="page_number" t-value="1"/>
+                 <t t-set="line_number" t-value="1"/>
+                 <t t-set="total_qty" t-value="0"/>
+                 <t t-foreach="groups_of_7" t-as="group">
+                     <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                     <t t-set="groups_of_7" t-value="[move_list[i:i+7] for i in range(0, len(move_list), 7)]"/>
+ 
+                     <t t-if="groups_of_7">
+                     <div>
+                         <!-- เงื่อนไขแสดงเลขหน้าเฉพาะถ้ามีหลายหน้า -->
+                          <t t-if="total_pages &gt; 1">
+                             <div style="text-align: right; font-weight: bold; font-size: 14px; margin-bottom: 5px;">
+                                 หน้า <t t-esc="page_number"/> / <t t-esc="total_pages"/>
+                            </div>
+                         </t>
+
+                      
                             <!-- Company Info Section -->
                             <div class="row mb-2">
                                 <div class="col-8">
@@ -116,110 +140,121 @@
                             <!-- Header -->
                             <div class="mt-3 mb-4">
                                 <h3 class="text-center" style="font-size: 25px; font-weight: bold;">
-                                    ใบเบิกสินค้า / PICKING OPERATIONS
+                                    ใบเบิกสินค้า / PICKING OPERATIONS 
                                 </h3>
                             </div>
-<!-- Header Information -->
-<div class="row mt-3">
-    <div class="col-6">
-        <div class="info-box" style="height: 180px;">
-            <div class="mb-2">
-                <strong style="width: 35%; display: inline-block;">เลขที่เอกสาร:</strong>
-                <span t-field="o.name"/>
-            </div>
-             <div class="mb-2">
-                <strong style="width: 35%; display: inline-block;">เอกสารอ้างอิง:</strong>
-                <span t-field="o.origin"/>
-            </div>
-            <div class="mb-2">
-                <strong style="width: 35%; display: inline-block;">วันที่:</strong>
-                <span t-field="o.scheduled_date"/>
-            </div>
-            <div class="mb-2">
-                <strong style="width: 35%; display: inline-block;">ประเภทการดำเนินการ:</strong>
-                <span t-field="o.picking_type_id"/>
-            </div>
-           
-        </div>
-    </div>
-    <div class="col-6">
-        <div class="info-box" style="height: 180px;">
-            <div class="mb-2">
-                <strong style="width: 35%; display: inline-block;">ต้นทาง:</strong>
-                <span t-field="o.location_id"/>
-            </div>
-            <div class="mb-2">
-                <strong style="width: 35%; display: inline-block;">ปลายทาง:</strong>
-                <span t-field="o.location_dest_id"/>
-            </div>
-            <div class="mb-2">
-                <strong style="width: 35%; display: inline-block;">ผู้ควบคุม:</strong>
-                <span t-field="o.supervisor_id"/>
-            </div>
-        </div>
-    </div>
-</div>
+                            <!-- Header Information -->
+                            <div class="row mt-3">
+                                <div class="col-6">
+                                    <div class="info-box" style="height: 180px;">
+                                        <div class="mb-2">
+                                            <strong style="width: 35%; display: inline-block;">เลขที่เอกสาร:</strong>
+                                            <span t-field="o.name"/>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong style="width: 35%; display: inline-block;">เอกสารอ้างอิง:</strong>
+                                            <span t-field="o.origin"/>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong style="width: 35%; display: inline-block;">วันที่:</strong>
+                                            <span t-field="o.scheduled_date"/>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong style="width: 35%; display: inline-block;">ประเภทการดำเนินการ:</strong>
+                                            <span t-field="o.picking_type_id"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="info-box" style="height: 180px;">
+                                        <div class="mb-2">
+                                            <strong style="width: 35%; display: inline-block;">ต้นทาง:</strong>
+                                            <span t-field="o.location_id"/>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong style="width: 35%; display: inline-block;">ปลายทาง:</strong>
+                                            <span t-field="o.location_dest_id"/>
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong style="width: 35%; display: inline-block;">ผู้ควบคุม:</strong>
+                                            <span t-field="o.supervisor_id"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- Products Table -->
-<div class="table-container">
-    <table class="table table-sm">
-        <thead>
-            <tr class="header-row">
-                <th style="width: 5%">ลำดับ</th>
-                <th style="width: 10%">รหัสสินค้า</th>
-                <th style="width: 40%">รายการสินค้า</th>
-                <th style="width: 10%">จำนวน</th>
-                <th style="width: 15%">Lot/Serial</th>
-                <th style="width: 10%">ตำแหน่งต้นทาง</th>
-                <th style="width: 10%">ตำแหน่งปลายทาง</th>
-            </tr>
-        </thead>
-        <tbody>
-            <t t-set="line_number" t-value="1"/>
-            <t t-set="total_qty" t-value="0"/>
-            <t t-foreach="o.move_ids" t-as="move">
-                <tr class="data-row">
-                    <td style="text-align: center;"><span t-esc="line_number"/></td>
-                    <td><span t-field="move.product_id.default_code"/></td>
-                    <td><span t-field="move.product_id"/></td>
-                    <td style="text-align: center;">
-                        <t t-set="move_qty" t-value="move.product_uom_qty"/>
-                        <t t-set="total_qty" t-value="total_qty + move_qty"/>
-                        <span t-esc="'%.0f' % move_qty"/>
-                        <span t-field="move.product_uom.name"/>
-                    </td>
-                    <td style="text-align: center;"><span t-field="move.lot_ids"/></td>
-                    <td><span t-field="move.location_id"/></td>
-                    <td><span t-field="move.location_dest_id"/></td>
-                </tr>
-                <t t-set="line_number" t-value="line_number + 1"/>
-            </t>
-            <t t-foreach="range(max(0, 16 - len(o.move_ids)))" t-as="i">
-                <tr class="empty-row">
-                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                </tr>
-            </t>
-        </tbody>
-    </table>
-</div>
+                            <table class="table table-sm mt-4 order-line-table" style="border-collapse: collapse; width: 100%;">
+                                    <thead>
+                                        <tr class="header-row">
+                                            <th style="width: 5%">ลำดับ</th>
+                                            <th style="width: 10%">รหัสสินค้า</th>
+                                            <th style="width: 40%">รายการสินค้า</th>
+                                            <th style="width: 10%">จำนวน</th>
+                                            <th style="width: 15%">Lot/Serial</th>
+                                            <th style="width: 10%">ตำแหน่งต้นทาง</th>
+                                            <th style="width: 10%">ตำแหน่งปลายทาง</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="group" t-as="move">
+                                            <tr class="data-row">
+                                                <td style="text-align: center;"><span t-esc="line_number"/></td>
+                                                <td><span t-field="move.product_id.default_code"/></td>
+                                                <td><span t-field="move.product_id"/></td>
+                                                <td style="text-align: center;">
+                                                    <t t-set="move_qty" t-value="move.product_uom_qty"/>
+                                                    <t t-set="total_qty" t-value="total_qty + move_qty"/>
+                                                    <span t-esc="'%.0f' % move_qty"/>
+                                                    <span t-field="move.product_uom.name"/>
+                                                </td>
+                                                <td style="text-align: center;"><span t-field="move.lot_ids"/></td>
+                                                <td><span t-field="move.location_id"/></td>
+                                                <td><span t-field="move.location_dest_id"/></td>
+                                            </tr>
+                                            <t t-set="line_number" t-value="line_number + 1"/>
+                                        </t>
+                                       
+                                        <!-- เติมแถวเปล่าให้ครบ 7 แถวต่อหน้า -->
+                                        <t t-if="len(group) == 7">
+                                            <t t-set="empty_rows" t-value="7 - len(group)"/>
+                                            <t t-foreach="range(empty_rows)" t-as="i">
+                                                <tr class="data-row" style="font-size: 20px; height: 50px; line-height: 50px;">
+                                                    <td style="text-align: center;"></td>
+                                                    <td></td><td></td><td></td><td></td>
+                                                </tr>
+                                            </t>
+                                        </t>
+                                    </tbody>
+                                </table>
+                               </div>
+                              </t>
+                             </div>
+                    
+                                   <t t-set="page_number" t-value="page_number + 1"/></t>
+    
+                                       <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
+                                       <t t-if="page_number == len(groups_of_7)">
+                                           <!-- ลายเซ็นหรือหมายเหตุ -->
+                                       </t>
 
-<!-- Update the Totals Section -->
-<div class="row mt-3">
-    <div class="col-12">
-        <div class="info-box">
-            <div class="row">
-                <div class="col-6">
-                    <strong>Total Items / จำนวนรายการรวม: </strong>
-                    <span t-esc="len(o.move_ids)"/> รายการ
-                </div>
-                <div class="col-6 text-right">
-                    <strong>Total Quantity / จำนวนชิ้นรวม: </strong>
-                    <span t-esc="'%.0f' % total_qty"/> ชิ้น
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                            <!-- Update the Totals Section -->
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="info-box">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>Total Items / จำนวนรายการรวม: </strong>
+                                                <span t-esc="len(o.move_ids)"/> รายการ
+                                            </div>
+                                            <div class="col-6 text-right">
+                                                <strong>Total Quantity / จำนวนชิ้นรวม: </strong>
+                                                <span t-esc="'%.0f' % total_qty"/> ชิ้น
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- Signatures -->
                             <div class="row mt-5">
@@ -246,9 +281,11 @@
                                 </div>
                             </div>
                         </div>
+                           
+                        </t>
                     </t>
                 </t>
-            </t>
+            
         </template>
 
         <!-- Report Action -->

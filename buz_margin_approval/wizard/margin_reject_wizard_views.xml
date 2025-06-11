@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View -->
+    <record id="view_margin_reject_wizard_form" model="ir.ui.view">
+        <field name="name">margin.reject.wizard.form</field>
+        <field name="model">margin.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reject Margin">
+                <sheet>
+                    <group>
+                        <field name="sale_order_id" readonly="1"/>
+                        <field name="margin_percentage"/>
+                        <field name="rule_id"/>
+                        <field name="rejection_reason" placeholder="Please provide a reason for rejection..." required="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_reject" string="Reject" type="object" class="btn-danger"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action Window -->
+    <record id="action_margin_reject_wizard" model="ir.actions.act_window">
+        <field name="name">Reject Margin</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">margin.reject.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

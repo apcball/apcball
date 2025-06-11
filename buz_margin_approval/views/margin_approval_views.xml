@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Margin Approval Rule Form View -->
+    <record id="view_margin_approval_rule_form" model="ir.ui.view">
+        <field name="name">margin.approval.rule.form</field>
+        <field name="model">margin.approval.rule</field>
+        <field name="arch" type="xml">
+            <form string="Margin Approval Rule">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="min_margin"/>
+                            <field name="max_margin"/>
+                            <field name="send_email" widget="boolean_toggle"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Approvers">
+                            <field name="user_ids" widget="many2many_tags"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Margin Approval Rule Tree View -->
+    <record id="view_margin_approval_rule_tree" model="ir.ui.view">
+        <field name="name">margin.approval.rule.tree</field>
+        <field name="model">margin.approval.rule</field>
+        <field name="arch" type="xml">
+            <tree string="Margin Approval Rules">
+                <field name="name"/>
+                <field name="min_margin"/>
+                <field name="max_margin"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="send_email" widget="boolean_toggle"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Margin Approval Rule Search View -->
+    <record id="view_margin_approval_rule_search" model="ir.ui.view">
+        <field name="name">margin.approval.rule.search</field>
+        <field name="model">margin.approval.rule</field>
+        <field name="arch" type="xml">
+            <search string="Search Margin Approval Rules">
+                <field name="name"/>
+                <filter string="Active" name="active" domain="[('active','=',True)]"/>
+                <filter string="Archived" name="inactive" domain="[('active','=',False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Company" name="company" domain="[]" context="{'group_by':'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Margin Approval Rules Action -->
+    <record id="action_margin_approval_rules" model="ir.actions.act_window">
+        <field name="name">Margin Approval Rules</field>
+        <field name="res_model">margin.approval.rule</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_margin_approval_rule_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first margin approval rule!
+            </p>
+            <p>
+                Define margin ranges and assign approvers for each range.
+            </p>
+        </field>
+    </record>
+
+    <!-- Add Margin Rules to Configuration Menu -->
+    <menuitem id="menu_margin_approval_rules"
+              name="Margin Approval Rules"
+              action="action_margin_approval_rules"
+              parent="sale.menu_sale_config"
+              sequence="20"/>
+              
+    <!-- Action for pending approvals -->
+    <record id="action_sale_orders_pending_approval" model="ir.actions.act_window">
+        <field name="name">Orders Pending Approval</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,form,kanban</field>
+        <field name="domain">[('margin_approval_state', '=', 'pending')]</field>
+        <field name="context">{'search_default_pending_margin_approval': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No sales orders pending your approval!
+            </p>
+        </field>
+    </record>
+    
+    <!-- Server Action for my approvals -->
+    <record id="action_my_approval_orders" model="ir.actions.server">
+        <field name="name">My Approval Orders</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_get_approval_orders()</field>
+    </record>
+
+    <!-- Add menu for pending approvals -->
+    <menuitem id="menu_sale_orders_pending_approval"
+              name="Orders Pending Approval"
+              action="action_my_approval_orders" 
+              parent="sale.menu_sale_order"
+              sequence="5"
+              groups="buz_margin_approval.group_margin_approval"/>
+
+</odoo>

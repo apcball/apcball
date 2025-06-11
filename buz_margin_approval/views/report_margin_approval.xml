@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Margin Approval Report -->
+    <record id="paperformat_margin_approval" model="report.paperformat">
+        <field name="name">Margin Approval</field>
+        <field name="default" eval="True" />
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">40</field>
+        <field name="margin_bottom">25</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False" />
+        <field name="header_spacing">35</field>
+    </record>
+
+    <record id="action_report_margin_approval" model="ir.actions.report">
+        <field name="name">Margin Approval Document</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_margin_approval.report_margin_approval</field>
+        <field name="report_file">buz_margin_approval.report_margin_approval</field>
+        <field name="print_report_name">'Margin Approval - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_margin_approval"/>
+    </record>
+
+    <template id="report_margin_approval">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Margin Approval Request</h2>
+                        
+                        <div class="row mt32 mb32">
+                            <div class="col-6">
+                                <strong>Order Reference:</strong> <span t-field="doc.name"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Date:</strong> <span t-field="doc.date_order"/>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Customer:</strong> <span t-field="doc.partner_id"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Salesperson:</strong> <span t-field="doc.user_id"/>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt16">
+                            <div class="col-6">
+                                <strong>Order Total:</strong> <span t-field="doc.amount_total" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Margin:</strong> <span t-field="doc.margin" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt16">
+                            <div class="col-6">
+                                <strong>Margin Percentage:</strong> <span t-field="doc.margin_percentage" t-options='{"widget": "float", "precision": 2}'/> %
+                            </div>
+                            <div class="col-6">
+                                <strong>Approval Status:</strong>
+                                <span t-if="doc.margin_approval_state == 'pending'" class="badge badge-warning">Pending</span>
+                                <span t-if="doc.margin_approval_state == 'approved'" class="badge badge-success">Approved</span>
+                                <span t-if="doc.margin_approval_state == 'rejected'" class="badge badge-danger">Rejected</span>
+                                <span t-if="not doc.margin_approval_state" class="badge badge-info">Not Required</span>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt16" t-if="doc.margin_rule_id">
+                            <div class="col-12">
+                                <strong>Applied Rule:</strong> <span t-field="doc.margin_rule_id.name"/> 
+                                (Min: <span t-field="doc.margin_rule_id.min_margin"/>% - Max: <span t-field="doc.margin_rule_id.max_margin"/>%)
+                            </div>
+                        </div>
+                        
+                        <h4 class="mt32">Order Lines:</h4>
+                        <table class="table table-sm o_main_table">
+                            <thead>
+                                <tr>
+                                    <th class="text-left">Product</th>
+                                    <th class="text-right">Qty</th>
+                                    <th class="text-right">Unit Price</th>
+                                    <th class="text-right">Cost</th>
+                                    <th class="text-right">Margin</th>
+                                    <th class="text-right">Margin %</th>
+                                    <th class="text-right">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.order_line" t-as="line">
+                                    <td class="text-left"><span t-field="line.product_id.name"/></td>
+                                    <td class="text-right"><span t-field="line.product_uom_qty"/></td>
+                                    <td class="text-right"><span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td>
+                                    <td class="text-right"><span t-field="line.purchase_price" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td>
+                                    <td class="text-right"><span t-field="line.margin" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td>
+                                    <td class="text-right">
+                                        <span t-if="line.price_subtotal != 0.0">
+                                            <t t-esc="(line.margin / line.price_subtotal) * 100" t-options='{"widget": "float", "precision": 2}'/>%
+                                        </span>
+                                        <span t-else="">0.00%</span>
+                                    </td>
+                                    <td class="text-right"><span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="5"></td>
+                                    <td class="text-right"><strong>Total Margin:</strong></td>
+                                    <td class="text-right">
+                                        <strong><span t-field="doc.margin" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/></strong>
+                                        (<span t-field="doc.margin_percentage" t-options='{"widget": "float", "precision": 2}'/>%)
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <div class="row mt32">
+                            <div class="col-6">
+                                <div t-if="doc.margin_approval_user_ids">
+                                    <strong>Required Approvers:</strong>
+                                    <ul>
+                                        <li t-foreach="doc.margin_approval_user_ids" t-as="user">
+                                            <span t-field="user.name"/>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="mt32">
+                                    <p>Approval:</p>
+                                    <div style="border-top: 1px solid black; width: 70%; margin-top: 50px;">
+                                        <p class="text-center">Signature &amp; Date</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

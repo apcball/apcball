@@ -81,7 +81,7 @@ class TaxReport(models.TransientModel):
                 and ml.account_id in (select distinct account_id
                                         from account_tax_repartition_line
                                         where account_id is not null
-                                        and invoice_tax_id = %s or refund_tax_id = %s)
+                                        and tax_id = %s)
                 -- query condition with normal report date by report date
                 -- and late report date within range date end
                 and (
@@ -99,7 +99,6 @@ class TaxReport(models.TransientModel):
                 self._query_select_tax(), self._query_select_sub_tax(), domain_cancel
             ),
             (
-                self.tax_id.id,
                 self.tax_id.id,
                 self.date_from,
                 self.date_to,

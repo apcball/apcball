@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Action for pending approvals -->
+    <record id="action_pending_approval_orders" model="ir.actions.act_window">
+        <field name="name">Orders Pending Approval</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,form,kanban</field>
+        <field name="domain">[('margin_approval_state', '=', 'pending')]</field>
+        <field name="context">{'search_default_pending_margin_approval': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No sales orders pending approval!
+            </p>
+        </field>
+    </record>
+    
+    <!-- Add menu for pending approvals -->
+    <menuitem id="menu_pending_approval_orders"
+              name="Margin Approvals"
+              action="action_pending_approval_orders"
+              parent="sale.menu_sale_order"
+              sequence="5"
+              groups="buz_margin_approval.group_margin_approval"/>
+</odoo>

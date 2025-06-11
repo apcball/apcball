@@ -54,8 +54,8 @@
 
                             .order-line-table th,
                             .order-line-table td {
-                                padding-top: 20px !important;
-                                padding-bottom: 20px !important;
+                                padding-top: 10px !important;
+                                padding-bottom: 10px !important;
                                line-height: 1.1 !important;
                             }
                             
@@ -86,106 +86,121 @@
                             }
                         </style>
 
-                 
+                        
+                         <!-- Order Lines -->
+                         <t t-set="move_list" t-value="o.move_ids"/>
+                         <t t-set="groups_of_7" t-value="[move_list[i:i+7] for i in range(0, len(move_list), 7)]"/>
+                         <t t-set="page_number" t-value="1"/>
+                         <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
+                         <t t-set="page_number" t-value="1"/>
+                         <t t-foreach="groups_of_7" t-as="group">
+                             <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                          <t t-set="groups_of_7" t-value="[move_list[i:i+7] for i in range(0, len(move_list), 7)]"/>
+ 
+                          <t t-if="groups_of_7">
+                              <div>
+                             <!-- เงื่อนไขแสดงเลขหน้าเฉพาะถ้ามีหลายหน้า -->
+                                    <t t-if="total_pages &gt; 1">
+                                        <div style="text-align: right; font-weight: bold; font-size: 14px; margin-bottom: 5px;">
+                                            หน้า <t t-esc="page_number"/> / <t t-esc="total_pages"/>
+                                        </div>
+                                    </t>
 
-                        <!-- Company Info Section -->
-                        <div class="row mb-1">
-                            <div class="col-8">
-                                <div class="company-header mb-1" style="font-size: 24px; font-weight: bold;">
-                                    บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
-                                </div>
-                                <div class="company-info" style="font-size: 20px;">
-                                    9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150
-                                </div>
-                                <div class="company-info" style="font-size: 20px;">
-                                    เลขที่ประจําตัวผู้เสียภาษี 0105547076103
-                                </div>
-                                <div class="company-info" style="font-size: 20px;">
-                                    โทร 02 1509710 แฟกซ์ 02 1528803
-                                </div>
-                                <div class="company-info" style="font-size: 20px;">
-                                    E-mail: contact@mogen.co.th
-                                </div>
-                            </div>
-                            <div class="col-4 text-end">
-                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
-                                     style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
-                            </div>
-                        </div>
-                        
-                        
-                        
+                           <!-- Company Info Section -->
+                           <div class="row mb-1">
+                               <div class="col-8">
+                                   <div class="company-header mb-1" style="font-size: 24px; font-weight: bold;">
+                                       บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
+                                   </div>
+                                   <div class="company-info" style="font-size: 20px;">
+                                       9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150
+                                   </div>
+                                   <div class="company-info" style="font-size: 20px;">
+                                       เลขที่ประจําตัวผู้เสียภาษี 0105547076103
+                                   </div>
+                                   <div class="company-info" style="font-size: 20px;">
+                                       โทร 02 1509710 แฟกซ์ 02 1528803
+                                   </div>
+                                   <div class="company-info" style="font-size: 20px;">
+                                       E-mail: contact@mogen.co.th
+                                   </div>
+                               </div>
+                               <div class="col-4 text-end">
+                                   <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                        style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                               </div>
+                           </div>
 
-                        <!-- Customer and Document Info -->
-                        <div class="col-12 text-end">
-                            <div class="info-box" style="height: 40px; font-size: 20px;">
-                                <div class="mb-2">
-                                    <strong style="width: 35%; display: inline-block; font-size: 20px;">เลขที่ (Shipment No):</strong>
-                                    <span t-field="o.name" style="font-size: 20px;"/>
-                                </div>
-                                <div class="mb-2">
-                                    <strong style="width: 35%; display: inline-block; font-size: 20px;">วันที่ (Date):</strong>
-                                    <span t-field="o.scheduled_date" t-options='{"widget": "date"}' style="font-size: 20px;"/>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row" style="display: flex;">
-                            <div style="flex: 1;">
-                                <strong style="display: inline-block; width: 15%; font-size: 20px;">ชื่อลูกค้า </strong>
-                                <span t-field="o.partner_id.name" style="font-size: 20px;"/>
-                            </div>
-                            <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
-                                (Customer Name)
-                            </div>
-                        </div>
-                        
-                        <div class="row" style="display: flex;">
-                            <div style="flex: 1;">
-                                <strong style="display: inline-block; width: 15%; font-size: 20px;">สถานที่ส่งสินค้า</strong>
-                                <span t-field="o.partner_id.street" style="font-size: 20px;"/>
-                            </div>
-                            <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
-                                (Ship To)
-                            </div>
-                        </div>
-                        
-                        <table class="table table-bordered" style="width: 100%; table-layout: fixed; text-align: center;">
-                            <thead>
-                                <tr>
-                                    <th style="font-size: 20px;">เลขที่ใบขออนุมัติเปลี่ยนสินค้า</th>
-                                    <th style="font-size: 20px;">ประเภทรถ</th>
-                                    <th style="font-size: 20px;">ทะเบียนรถ</th>
-                                    <th style="font-size: 20px;">พนักงานขับรถ</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <!-- ช่องนี้ใช้ค่าจากฟิลด์ในระบบ - แก้ไขให้ใช้ field ที่มีอยู่จริง -->
-                                    <td>
-                                        <t t-if="o.origin">
-                                            <span t-field="o.origin" style="font-size: 20px;"/>
-                                        </t>
-                                        <t t-else="">
-                                            <div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div>
-                                        </t>
-                                    </td>
-                                    <!-- ช่องว่างไว้สำหรับเขียนด้วยลายมือ -->
-                                    <td><div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div></td>
-                                    <td><div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div></td>
-                                    <td><div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div></td>
-                                </tr>
-                            </tbody>
-                        </table>
+                            <!-- Document Title -->
+                            <div class="row mb-3">
+                               <div class="col-4 offset-4 text-center">
+                                   <div class="doc-title" style="padding: 14px; margin-bottom: -10px;font-size: 24px; font-family: 'TH SarabunPSK', 'THSarabunNew', Tahoma, Arial, sans-serif;">
+                                       ใบส่งสินค้ากรณี-เครมต่างรุ่น
+                                   </div>
+                               </div>
+                           </div>
 
-                    
-                        
-                        <!-- Order Lines -->
-                        <t t-set="move_list" t-value="o.move_ids"/>
-                        <t t-set="groups_of_7" t-value="[move_list[i:i+7] for i in range(0, len(move_list), 7)]"/>
-                        <t t-set="page_number" t-value="1"/>
-                        <t t-foreach="groups_of_7" t-as="group">
-                            <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                           <!-- Customer and Document Info -->
+                           <div class="row" style="display: flex; align-items: flex-start; margin-bottom: -10px;">
+                              <!-- Left side: Customer name -->
+                               <div class="col-6" style="text-align: left; padding-right: 0;">
+                                   <div>
+                                       <strong style="display: inline-block; width: 35%; font-size: 20px;">ชื่อลูกค้า </strong>
+                                       <span t-field="o.partner_id.name" style="font-size: 20px;"/>
+                                   </div>
+                                   <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
+                                       (Customer Name)
+                                   </div>
+                                   <div style="margin-top: 10px;">
+                                       <strong style="display: inline-block; width: 35%; font-size: 20px;">สถานที่ส่งสินค้า</strong>
+                                       <span t-field="o.partner_id.street" style="font-size: 20px;"/>
+                                   </div>
+                                   <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
+                                       (Ship To)
+                                   </div>
+                               </div>
+                               <!-- Right side: Document info -->
+                               <div class="col-6" style="text-align: right; padding-left: 0;">
+                                   <div class="info-box" style="font-size: 20px;">
+                                       <div class="mb-2">
+                                           <strong style="width: 60%; display: inline-block; font-size: 20px;">เลขที่ (Shipment No):</strong>
+                                           <span t-field="o.name" style="font-size: 20px;"/>
+                                       </div>
+                                       <div class="mb-2">
+                                           <strong style="width: 60%; display: inline-block; font-size: 20px;">วันที่ (Date):</strong>
+                                           <span t-field="o.scheduled_date" t-options='{"widget": "date"}' style="font-size: 20px;"/>
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
+
+                           <table class="table table-bordered" style="width: 100%; table-layout: fixed; text-align: center;">
+                               <thead>
+                                   <tr>
+                                       <th style="font-size: 20px;">เลขที่ใบขออนุมัติเปลี่ยนสินค้า</th>
+                                       <th style="font-size: 20px;">ประเภทรถ</th>
+                                       <th style="font-size: 20px;">ทะเบียนรถ</th>
+                                       <th style="font-size: 20px;">พนักงานขับรถ</th>
+                                   </tr>
+                               </thead>
+                               <tbody>
+                                   <tr>
+                                       <!-- ช่องนี้ใช้ค่าจากฟิลด์ในระบบ - แก้ไขให้ใช้ field ที่มีอยู่จริง -->
+                                       <td>
+                                           <t t-if="o.origin">
+                                               <span t-field="o.origin" style="font-size: 20px;"/>
+                                           </t>
+                                           <t t-else="">
+                                              <div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div>
+                                           </t>
+                                       </td>
+                                       <!-- ช่องว่างไว้สำหรับเขียนด้วยลายมือ -->
+                                       <td><div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div></td>
+                                       <td><div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div></td>
+                                       <td><div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div></td>
+                                   </tr>
+                               </tbody>
+                           </table>
                         
                         <table class="table table-sm mt-4 order-line-table" style="border-collapse: collapse; width: 100%;">
                             <thead>
@@ -226,16 +241,20 @@
                                            </t>
 
                                            <!-- เติมแถวเปล่าให้ครบ 7 แถวต่อหน้า -->
-                                           <t t-set="empty_rows" t-value="7 - len(group)"/>
-                                           <t t-foreach="range(empty_rows)" t-as="i">
-                                               <tr class="data-row" style="font-size: 20px; height: 50px; line-height: 50px;">
-                                                   <td style="text-align: center;"></td>
-                                                   <td></td><td></td><td></td><td></td>
-                                               </tr>
-                                           </t>
+                                           <t t-if="len(group) == 7">
+                                            <t t-set="empty_rows" t-value="7 - len(group)"/>
+                                            <t t-foreach="range(empty_rows)" t-as="i">
+                                                <tr class="data-row" style="font-size: 20px; height: 50px; line-height: 50px;">
+                                                    <td style="text-align: center;"></td>
+                                                    <td></td><td></td><td></td><td></td>
+                                                </tr>
+                                            </t>
+                                        </t>
                                        </tbody>
                                    </table>
-                               </div>
+                             </div>
+                       </t>
+                    </div>
                                <t t-set="page_number" t-value="page_number + 1"/></t>
 
                                    <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
@@ -243,59 +262,53 @@
                                        <!-- ลายเซ็นหรือหมายเหตุ -->
                                    </t>
 
-                                   <!-- เพิ่มหน้า -->
-                                   <t t-set="page_number" t-value="page_number + 1"/>
-                    </div>
-                 </t>
-                               
-                           </t>
-                        <!-- หมายเหตุ -->
-                        <div style="padding: 20px; min-height: 60px; font-size: 22px;">
-                            <strong style="font-size: 20px;">หมายเหตุ:</strong> 
-                            <span t-field="o.note" style="font-size: 22px;"/>
-                        </div>
-
-                        <!-- ผู้ขอเบิกสินค้า -->    
-                        <table style="width: 100%; table-layout: fixed; text-align: center; border-collapse: collapse; min-height: 100px; margin-top: 15px;">
-                            <tbody>
-                                <tr>
-                                    <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
-                                    <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
-                                    <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
-                                </tr>
-                                <tr>
-                                    <td style="padding-top: 10px; font-size: 20px; text-align: center;">
-                                        ผู้ขอเบิกสินค้า<br/>
-                                        <span style="font-size: 16px; font-weight: normal;">[Withdrawed By]</span>
-                                    </td>
-                                    <td style="padding-top: 10px; font-size: 20px; text-align: center;">
-                                        ผู้อนุมัติจ่ายสินค้า<br/>
-                                        <span style="font-size: 16px; font-weight: normal;">[Approved By]</span>
-                                    </td>
-                                    <td style="padding-top: 10px; font-size: 20px; text-align: center;">
-                                        ผู้รับสินค้า(ตัวบรรจง)<br/>
-                                        <span style="font-size: 16px; font-weight: normal;">[Received By]</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <!-- ศูนย์บริการ -->
-                        <div class="row justify-content-center">
-                            <div class="company-header text-center" style="font-size: 20px;">
-                                ศูนย์บริการและรับข้อร้องเรียน โทร(02-5691980)
-                            </div>
-                            <div class="company-info text-center" style="font-size: 20px;">
-                                Customer Service Tel.(02-5691980)
-                            </div>
-                        </div>
-
-                    
-                </t>
-                    
-                
-            
+                       
         
+                                  <!-- หมายเหตุ -->
+                                  <div style="padding: 20px; min-height: 60px; font-size: 22px;">
+                                     <strong style="font-size: 20px;">หมายเหตุ:</strong>
+                                    <span t-field="o.note" style="font-size: 22px;"/>
+                                 </div>
+   
+                               <!-- ผู้ขอเบิกสินค้า -->
+                               <table style="width: 100%; table-layout: fixed; text-align: center; border-collapse: collapse; min-height: 100px; margin-top: 15px;">
+                                   <tbody>
+                                       <tr>
+                                           <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
+                                           <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
+                                           <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
+                                       </tr>
+                                       <tr>
+                                           <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                               ผู้ขอเบิกสินค้า<br/>
+                                               <span style="font-size: 16px; font-weight: normal;">[Withdrawed By]</span>
+                                           </td>
+                                           <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                               ผู้อนุมัติจ่ายสินค้า<br/>
+                                               <span style="font-size: 16px; font-weight: normal;">[Approved By]</span>
+                                           </td>
+                                           <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                               ผู้รับสินค้า(ตัวบรรจง)<br/>
+                                               <span style="font-size: 16px; font-weight: normal;">[Received By]</span>
+                                           </td>
+                                       </tr>
+                                   </tbody>
+                               </table>
+   
+                               <!-- ศูนย์บริการ -->
+                               <div class="row justify-content-center">
+                                   <div class="company-header text-center" style="font-size: 20px;">
+                                       ศูนย์บริการและรับข้อร้องเรียน โทร(02-5691980)
+                                   </div>
+                                   <div class="company-info text-center" style="font-size: 20px;">
+                                       Customer Service Tel.(02-5691980)
+                                   </div>
+                               </div>
+
+                    </div>
+              </t>        
+           </t>     
+         </t>                 
     </template>
 </odoo>
 

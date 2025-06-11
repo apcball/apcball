@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="not_authorized" name="Not Authorized">
+        <t t-call="web.login_layout">
+            <div class="container">
+                <div class="alert alert-danger">
+                    <p><t t-esc="message"/></p>
+                </div>
+                <div class="mt-3">
+                    <a t-att-href="'/web#id=%s&amp;view_type=form&amp;model=sale.order' % sale_order.id" class="btn btn-primary">
+                        Back to Order
+                    </a>
+                </div>
+            </div>
+        </t>
+    </template>
+    
+    <template id="reject_reason_form" name="Reject Margin - Add Reason">
+        <t t-call="web.login_layout">
+            <div class="container">
+                <h3>Reject Order Margin</h3>
+                <h4 t-esc="'Order: ' + sale_order.name"/>
+                
+                <form method="post" t-att-action="'/margin/reject/%s' % sale_order.id">
+                    <div class="form-group">
+                        <label for="reason">Reason for rejection</label>
+                        <textarea name="reason" class="form-control" rows="5" placeholder="Provide reason for rejection..."></textarea>
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-danger">Reject</button>
+                        <a t-att-href="'/web#id=%s&amp;view_type=form&amp;model=sale.order' % sale_order.id" class="btn btn-secondary ml-2">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </t>
+    </template>
+</odoo>

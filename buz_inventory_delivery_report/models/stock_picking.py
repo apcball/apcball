@@ -20,7 +20,7 @@ class StockPicking(models.Model):
     project_plot_number = fields.Char(string='เฉพาะโครงการ: เลขที่แปลง')
     house_model = fields.Char(string='แบบบ้าน')
     is_garage = fields.Boolean(string='โรงรถ')
-
+  
 
 
     @api.depends('move_ids.product_uom_qty', 'price_unit')

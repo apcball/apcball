@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_margin_approval_rule_manager,margin.approval.rule manager,buz_margin_approval.model_margin_approval_rule,buz_margin_approval.group_margin_approval,1,1,1,1
+access_margin_approval_rule_user,margin.approval.rule user,buz_margin_approval.model_margin_approval_rule,base.group_user,1,0,0,0
+access_margin_approval_rule_approver,margin.approval.rule approver,buz_margin_approval.model_margin_approval_rule,base.group_user,1,0,0,0
+access_margin_approval_wizard_manager,margin.approval.wizard manager,buz_margin_approval.model_margin_approval_wizard,buz_margin_approval.group_margin_approval,1,1,1,1
+access_margin_approval_wizard_user,margin.approval.wizard user,buz_margin_approval.model_margin_approval_wizard,base.group_user,1,1,1,0
+access_margin_rejection_wizard_manager,margin.rejection.wizard manager,buz_margin_approval.model_margin_rejection_wizard,buz_margin_approval.group_margin_approval,1,1,1,1
+access_margin_rejection_wizard_user,margin.rejection.wizard user,buz_margin_approval.model_margin_rejection_wizard,base.group_user,1,1,1,0

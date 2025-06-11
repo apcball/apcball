@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main Menu -->
+    <menuitem id="menu_sales_target_root" 
+              name="Sales Target" 
+              parent="sale.sale_menu_root"
+              groups="sales_target_custom.group_sales_target_user,sales_target_custom.group_sales_target_lead,sales_target_custom.group_sales_target_manager"
+              sequence="20"/>
+    
+    <!-- Sales Target Menu - For Users -->
+    <menuitem id="menu_sales_target" 
+              name="My Targets" 
+              parent="menu_sales_target_root" 
+              action="action_sales_target"
+              groups="sales_target_custom.group_sales_target_user"
+              sequence="10"/>
+    
+    <!-- Lead Menu - For Sales Target Leads -->
+    <menuitem id="menu_sales_target_lead" 
+              name="Team Targets" 
+              parent="menu_sales_target_root" 
+              action="action_sales_target"
+              groups="sales_target_custom.group_sales_target_lead"
+              sequence="15"/>
+    
+    <!-- Manager Menu - For Sales Target Managers -->
+    <menuitem id="menu_sales_target_manager" 
+              name="All Targets" 
+              parent="menu_sales_target_root" 
+              action="action_sales_target_manager"
+              groups="sales_target_custom.group_sales_target_manager"
+              sequence="20"/>
+    
+    <!-- Dashboard Menu -->
+    <menuitem id="menu_sales_target_dashboard" 
+              name="Dashboard" 
+              parent="menu_sales_target_root" 
+              action="action_sales_target_analysis"
+              groups="sales_target_custom.group_sales_target_user,sales_target_custom.group_sales_target_lead,sales_target_custom.group_sales_target_manager"
+              sequence="30"/>
+</odoo>

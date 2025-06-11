@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Dashboard Action -->
+    <record id="action_sales_target_dashboard" model="ir.actions.client">
+        <field name="name">Sales Target Dashboard</field>
+        <field name="tag">sales_target_dashboard</field>
+    </record>
+
+    <!-- Main Dashboard View -->
+    <record id="view_sales_target_dashboard" model="ir.ui.view">
+        <field name="name">sales.target.dashboard</field>
+        <field name="model">sales.target</field>
+        <field name="arch" type="xml">
+            <dashboard>
+                <view type="graph" ref="view_sales_target_achievement_gauge"/>
+                <view type="graph" ref="view_sales_target_achievement_bar"/>
+                <view type="kanban" ref="view_sales_target_kanban_dashboard"/>
+                <group expand="0" string="Group By">
+                    <filter string="Salesperson" name="group_user_id" context="{'group_by':'user_id'}"/>
+                    <filter string="Sales Team" name="group_team_id" context="{'group_by':'team_id'}"/>
+                    <filter string="Target Point" name="group_target_point" context="{'group_by':'target_point'}"/>
+                    <filter string="State" name="group_state" context="{'group_by':'state'}"/>
+                </group>
+            </dashboard>
+        </field>
+    </record>
+
+    <!-- Enhanced Gauge Chart View for Achievement Percentage -->
+    <record id="view_sales_target_achievement_gauge" model="ir.ui.view">
+        <field name="name">sales.target.achievement.gauge</field>
+        <field name="model">sales.target</field>
+        <field name="arch" type="xml">
+            <graph string="Achievement Percentage" type="gauge" js_class="gauge_chart">
+                <field name="user_id" type="row"/>
+                <field name="percent_achieved" type="measure"/>
+                <field name="name" invisible="1"/>
+                <field name="state" invisible="1"/>
+                <field name="target_amount" invisible="1"/>
+                <field name="achieved_amount" invisible="1"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Additional Graph Views for Dashboard -->
+    <record id="view_sales_target_achievement_bar" model="ir.ui.view">
+        <field name="name">sales.target.achievement.bar</field>
+        <field name="model">sales.target</field>
+        <field name="arch" type="xml">
+            <graph string="Achievement by Salesperson" type="bar">
+                <field name="user_id" type="row"/>
+                <field name="target_amount" type="measure"/>
+                <field name="achieved_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_sales_target_achievement_line" model="ir.ui.view">
+        <field name="name">sales.target.achievement.line</field>
+        <field name="model">sales.target</field>
+        <field name="arch" type="xml">
+            <graph string="Achievement Progress" type="line">
+                <field name="date_start" type="row"/>
+                <field name="percent_achieved" type="measure"/>
+                <field name="theoretical_percent" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Pivot View for Analysis -->
+    <record id="view_sales_target_pivot" model="ir.ui.view">
+        <field name="name">sales.target.pivot</field>
+        <field name="model">sales.target</field>
+        <field name="arch" type="xml">
+            <pivot string="Sales Target Analysis">
+                <field name="user_id" type="row"/>
+                <field name="target_point" type="col"/>
+                <field name="target_amount" type="measure"/>
+                <field name="achieved_amount" type="measure"/>
+                <field name="percent_achieved" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Enhanced Dashboard with Gauge Chart -->
+    <record id="view_sales_target_dashboard_kanban" model="ir.ui.view">
+        <field name="name">sales.target.dashboard.kanban</field>
+        <field name="model">sales.target</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_dashboard o_sales_target_dashboard">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="target_amount"/>
+                <field name="achieved_amount"/>
+                <field name="percent_achieved"/>
+                <field name="theoretical_percent"/>
+                <field name="state"/>
+                <field name="currency_id"/>
+                <field name="target_point"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_card oe_kanban_global_click o_sales_target_card">
+                            <div class="o_kanban_card_header">
+                                <div class="o_kanban_card_header_title">
+                                    <div class="o_primary">
+                                        <strong><field name="name"/></strong>
+                                    </div>
+                                    <div class="o_secondary">
+                                        <i class="fa fa-user"/> <field name="user_id"/>
+                                        <span class="float-right">
+                                            <field name="target_point" class="badge badge-info"/>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="o_kanban_card_content">
+                                <!-- Gauge Chart Area -->
+                                <div class="text-center mb-3">
+                                    <div class="o_progress_circle">
+                                        <svg width="120" height="120" viewBox="0 0 120 120">
+                                            <!-- Background circle -->
+                                            <circle cx="60" cy="60" r="50" fill="none" stroke="#e0e0e0" stroke-width="10"/>
+                                            <!-- Progress circle -->
+                                            <circle cx="60" cy="60" r="50" fill="none" 
+                                                    t-att-stroke="record.percent_achieved.raw_value >= 100 ? '#28a745' : (record.percent_achieved.raw_value >= 75 ? '#ffc107' : (record.percent_achieved.raw_value >= 50 ? '#fd7e14' : '#dc3545'))"
+                                                    stroke-width="10" 
+                                                    stroke-linecap="round"
+                                                    t-att-stroke-dasharray="Math.PI * 100"
+                                                    t-att-stroke-dashoffset="Math.PI * 100 - (Math.PI * 100 * Math.min(record.percent_achieved.raw_value, 100) / 100)"
+                                                    style="transition: stroke-dashoffset 0.5s ease-in-out;"/>
+                                        </svg>
+                                        <div class="progress-text">
+                                            <span class="o_gauge_value" 
+                                                  t-att-class="record.percent_achieved.raw_value >= 100 ? 'success' : (record.percent_achieved.raw_value >= 75 ? 'warning' : 'danger')">
+                                                <t t-esc="Math.round(record.percent_achieved.raw_value)"/>%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Target vs Achievement -->
+                                <div class="row text-center mb-3">
+                                    <div class="col-6">
+                                        <div class="o_stat_text">Target</div>
+                                        <div class="o_stat_value">
+                                            <field name="target_amount" widget="monetary"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="o_stat_text">Achieved</div>
+                                        <div class="o_stat_value">
+                                            <field name="achieved_amount" widget="monetary"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Progress Bar -->
+                                <div class="mb-3">
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar" 
+                                             t-att-style="'width:' + Math.min(record.percent_achieved.raw_value, 100) + '%'"
+                                             t-att-class="record.percent_achieved.raw_value >= 100 ? 'bg-success' : (record.percent_achieved.raw_value >= 75 ? 'bg-warning' : (record.percent_achieved.raw_value >= 50 ? 'bg-info' : 'bg-danger'))">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">
+                                        Theoretical: <span t-esc="Math.round(record.theoretical_percent.raw_value)"/>%
+                                    </small>
+                                </div>
+                                
+                                <!-- Status Badge -->
+                                <div class="text-center">
+                                    <span class="badge" 
+                                          t-att-class="record.state.raw_value == 'confirmed' ? 'badge-primary' : (record.state.raw_value == 'closed' ? 'badge-success' : 'badge-secondary')">
+                                        <field name="state"/>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Enhanced Dashboard Action -->
+    <record id="action_sales_target_analysis" model="ir.actions.act_window">
+        <field name="name">Sales Target Dashboard</field>
+        <field name="res_model">sales.target</field>
+        <field name="view_mode">kanban,graph,pivot</field>
+        <field name="view_id" ref="view_sales_target_dashboard_kanban"/>
+        <field name="context">{
+            'search_default_confirmed': 1,
+            'search_default_my_targets': 1
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Sales Target Dashboard
+            </p>
+            <p>
+                Monitor your sales target achievement with interactive gauge charts.
+                Track progress in real-time and stay motivated to reach your goals!
+            </p>
+        </field>
+    </record>
+
+</odoo>
