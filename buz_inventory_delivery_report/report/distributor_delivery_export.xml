@@ -263,14 +263,10 @@
                             </div>
                         </div>
 
-
-                    
-                    
-                    
-                </t>
-            </t>
-        </t>
-     
+                 </div>
+               </t>
+              </t>
+             </t>
     </template>
 
     <record id="action_distributor_delivery_export" model="ir.actions.report">
