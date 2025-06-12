@@ -19,6 +19,7 @@
         "views/product_template.xml",
         "views/stock_picking_type.xml",
         "views/stock_lot.xml",
+        "views/menu.xml",
     ],
     "license": "AGPL-3",
     "development_status": "Beta",
