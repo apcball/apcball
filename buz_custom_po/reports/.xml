@@ -448,3 +448,266 @@
         <field name="paperformat_id" ref="paperformat_purchase_order"/>
     </record>
 </odoo>
+
+
+
+
+ 
+                                    <!-- กล่องขวา: ตารางสรุปยอด -->
+                                    <div style="width: 40%; text-align: right;">
+                                        <table class="table" style="font-size: 14px; width: 100%; margin: 0; padding: 0; border-collapse: collapse;">
+                                            <tr>
+                                                <td style="width: 55%; text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span>ราคารวม/Total:</span>
+                                                </td>
+                                                <td style="width: 45%; text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span t-esc="'{:,.2f}'.format(amount_untaxed if amount_untaxed is not None else 0.00)"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span>ส่วนลด/Discount:</span>
+                                                </td>
+                                                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span t-esc="'{:,.2f}'.format(total_discount if total_discount is not None else 0.00)"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span>ค่าขนส่ง/Shipping Fee:</span>
+                                                </td>
+                                                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span t-esc="'{:,.2f}'.format(shipping_fee if shipping_fee is not None else 0.00)"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span>ส่วนลด/Discount:</span>
+                                                </td>
+                                                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span t-esc="'{:,.2f}'.format(total_discount if total_discount is not None else 0.00)"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span>ภาษีมูลค่าเพิ่ม/VAT 7%:</span>
+                                                </td>
+                                                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span t-esc="'{:,.2f}'.format(amount_tax if amount_tax is not None else 0.00)"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span>รวมทั้งสิ้น/Grand Total:</span>
+                                                </td>
+                                                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                                                    <span t-esc="'{:,.2f}'.format(amount_total if amount_total is not None else 0.00)"/>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+
+
+
+
+
+                                     <!-- บรรทัดที่ 2: จำนวนเงินตัวอักษร -->
+                                     <div style="display: flex; flex-direction: row; width: 100%; margin-top: 15px;">
+                                        <!-- ช่องที่ 1: label -->
+                                        <div style="width: 50%; font-size: 20px;">
+                                            <strong>จำนวนเงิน (ตัวอักษร):</strong>
+                                        </div>
+                                        <!-- ช่องที่ 2: แปลงจำนวนเงินเป็นตัวหนังสือไทย -->
+                                        <div style="width: 50%;">
+                                            <t t-set="amount_total_text" t-value="num2words(amount_total, lang='th')" />
+                                            <span t-esc="amount_total_text" />
+                                        </div>
+                                    </div>
+
+
+
+
+
+
+                                       <!-- กล่องนอก -->
+                        <div style="width: 100%; border: 1px solid #000; padding: 0; font-size: 20px; box-sizing: border-box;">
+                            <div style="display: flex; gap: 0;">
+
+                                <!-- ฝั่งซ้าย: 40% -->
+                                <div style="width: 40%; padding: 0; box-sizing: border-box; border-right: 1px solid #000;">
+                                    <div class="mb-1" style="margin-bottom:0; padding: 4px;">
+                                        <strong style="display: inline-block; width: 35%;">ผู้ขาย/VENDOR:</strong>
+                                        <span t-field="o.partner_id.name"/>
+                                    </div>
+                                    <div class="mb-1" style="margin-bottom:0; padding: 4px;">
+                                        <strong style="display: inline-block; width: 35%;">ที่อยู่/ADDRESS:</strong>
+                                        <span t-field="o.partner_id.street"/>
+                                        <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
+                                    </div>
+                                    <div class="mb-1" style="margin-bottom:0; padding: 4px;">
+                                        <strong style="display: inline-block; width: 35%;">เลขประจำตัวผู้เสียภาษี:</strong>
+                                        <span t-field="o.partner_id.vat"/>
+                                    </div>
+                                    <div class="mb-1" style="margin-bottom:0; padding: 4px;">
+                                        <strong style="display: inline-block; width: 35%;">โทรศัพท์/TEL:</strong>
+                                        <span t-field="o.partner_id.phone"/>
+                                    </div>
+                                    <div class="mb-1" style="margin-bottom:0; padding: 4px;">
+                                        <strong style="display: inline-block; width: 35%;">อีเมล/EMAIL:</strong>
+                                        <span t-field="o.partner_id.email"/>
+                                    </div>
+                                </div>
+
+                                <!-- ฝั่งขวา: 60% -->
+                                 <div style="width: 60%; padding: 0; box-sizing: border-box;">
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <tbody>
+                                            <!-- บรรทัดที่ 1 -->
+                                            <tr>
+                                                <td style="width: 40%; border-bottom: 1px solid #000; padding: 1px;" colspan="2">
+                                                    <strong>สถานที่ส่ง:</strong>
+                                                    <span t-field="o.picking_type_id.warehouse_id.partner_id.name"/>
+                                                    <br/>
+                                                    <span t-field="o.picking_type_id.warehouse_id.partner_id.street"/>
+                                                    <br/>
+                                                    <span t-field="o.picking_type_id.warehouse_id.partner_id.street2"/>
+                                                </td>
+                                                <td style="width: 60%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 1px;" colspan="2">
+                                                    <strong>ผู้ขายยืนยันรับ:</strong>
+                                                    <br/><br/><br/>
+                                                </td>
+                                            </tr>
+                                            <!-- บรรทัดที่ 2 -->
+                                            <tr>
+                                                <td style="width: 40%; border-bottom: 1px solid #000; padding: 4px;" colspan="2">
+                                                    <strong>แผนกที่ขอซื้อ:</strong>
+                                                    <t t-if="o.department_name">
+                                                        <span t-esc="o.department_name"/>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span>-</span>
+                                                    </t>
+                                                </td>
+                                                <td style="width: 60%;border-bottom: 1px solid #000; border-left: 1px solid #000; padding: 4px;" colspan="2">
+                                                    <strong>วันที่:</strong>
+                                                    <span t-esc="o.date_order.strftime('%d/%m/%Y')"/>
+                                                </td>
+                                            </tr>
+                                            <!-- บรรทัดที่ 3 -->
+                                            <tr>
+                                                <td style="width: 32%; border-bottom: 1px ; border-left: 1px solid #fff; padding: -8px;">
+                                                   <strong>ผู้ติดต่อ:</strong> <span t-field="o.user_id.name"/>
+                                                </td>
+                                                <td style="width: 38%; border-bottom: 1px ; border-left: 1px solid #000; padding: -8px;">
+                                                    <strong>ใบขอซื้อเลขที่:</strong> <span t-field="o.name"/>
+                                                </td>
+                                                <td style="width: 18%; border-bottom: 1px ; border-left: 1px solid #000; padding: -8px;">
+                                                    <strong>Credit:</strong> <span t-field="o.partner_id.credit_limit"/>
+                                                </td>
+                                                <td style="width: 12%; border-bottom: 1px ; border-left: 1px solid #000; padding: -8px;">
+                                                    <strong>เงื่อนไขฯ:</strong>
+                                                    <br/><br/>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                            </div>
+                        </div>
+
+
+
+
+
+
+                        <!-- กล่องนอก -->
+<div style="width: 100%; border: 1px solid #000; padding: 0; font-size: 20px; box-sizing: border-box;">
+    <div style="display: flex; gap: 0;">
+
+        <!-- ฝั่งซ้าย: 60% (เดิมคือฝั่งขวา) -->
+        <div style="width: 60%; padding: 0; box-sizing: border-box; border-right: 1px solid #000;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody>
+                    <!-- บรรทัดที่ 1 -->
+                    <tr>
+                        <td style="width: 40%; border-bottom: 1px solid #000; padding: 1px;" colspan="2">
+                            <strong>สถานที่ส่ง:</strong>
+                            <span t-field="o.picking_type_id.warehouse_id.partner_id.name"/>
+                            <br/>
+                            <span t-field="o.picking_type_id.warehouse_id.partner_id.street"/>
+                            <br/>
+                            <span t-field="o.picking_type_id.warehouse_id.partner_id.street2"/>
+                        </td>
+                        <td style="width: 60%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 1px;" colspan="2">
+                            <strong>ผู้ขายยืนยันรับ:</strong>
+                            <br/><br/><br/>
+                        </td>
+                    </tr>
+                    <!-- บรรทัดที่ 2 -->
+                    <tr>
+                        <td style="width: 40%; border-bottom: 1px solid #000; padding: 4px;" colspan="2">
+                            <strong>แผนกที่ขอซื้อ:</strong>
+                            <t t-if="o.department_name">
+                                <span t-esc="o.department_name"/>
+                            </t>
+                            <t t-else="">
+                                <span>-</span>
+                            </t>
+                        </td>
+                        <td style="width: 60%; border-bottom: 1px solid #000; border-left: 1px solid #000; padding: 4px;" colspan="2">
+                            <strong>วันที่:</strong>
+                            <span t-esc="o.date_order.strftime('%d/%m/%Y')"/>
+                        </td>
+                    </tr>
+                    <!-- บรรทัดที่ 3 -->
+                    <tr>
+                        <td style="width: 32%; border-bottom: 1px; border-left: 1px solid #fff; padding: -8px;">
+                            <strong>ผู้ติดต่อ:</strong> <span t-field="o.user_id.name"/>
+                        </td>
+                        <td style="width: 38%; border-bottom: 1px; border-left: 1px solid #000; padding: -8px;">
+                            <strong>ใบขอซื้อเลขที่:</strong> <span t-field="o.name"/>
+                        </td>
+                        <td style="width: 18%; border-bottom: 1px; border-left: 1px solid #000; padding: -8px;">
+                            <strong>Credit:</strong> <span t-field="o.partner_id.credit_limit"/>
+                        </td>
+                        <td style="width: 12%; border-bottom: 1px; border-left: 1px solid #000; padding: -8px;">
+                            <strong>เงื่อนไขฯ:</strong>
+                            <br/><br/>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ฝั่งขวา: 40% (เดิมคือฝั่งซ้าย) -->
+        <div style="width: 40%; padding: 0; box-sizing: border-box;">
+            <div class="mb-1" style="margin-bottom:0; padding: 4px;">
+                <strong style="display: inline-block; width: 35%;">ผู้ขาย/VENDOR:</strong>
+                <span t-field="o.partner_id.name"/>
+            </div>
+            <div class="mb-1" style="margin-bottom:0; padding: 4px;">
+                <strong style="display: inline-block; width: 35%;">ที่อยู่/ADDRESS:</strong>
+                <span t-field="o.partner_id.street"/>
+                <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
+            </div>
+            <div class="mb-1" style="margin-bottom:0; padding: 4px;">
+                <strong style="display: inline-block; width: 35%;">เลขประจำตัวผู้เสียภาษี:</strong>
+                <span t-field="o.partner_id.vat"/>
+            </div>
+            <div class="mb-1" style="margin-bottom:0; padding: 4px;">
+                <strong style="display: inline-block; width: 35%;">โทรศัพท์/TEL:</strong>
+                <span t-field="o.partner_id.phone"/>
+            </div>
+            <div class="mb-1" style="margin-bottom:0; padding: 4px;">
+                <strong style="display: inline-block; width: 35%;">อีเมล/EMAIL:</strong>
+                <span t-field="o.partner_id.email"/>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+
+

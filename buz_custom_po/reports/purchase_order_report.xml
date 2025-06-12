@@ -20,7 +20,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
-                    <div class="page">
+                   <div class="page">
 
                         <style>
                             @page {
@@ -85,264 +85,444 @@
                             .vendor-info, .delivery-info {
                                 font-size: 14px;
                             }
+
+                            
                         </style>
+    <!-- Order Lines - Refactored: Loop only once, paginated in one loop -->
+    <t t-set="line_count" t-value="len(o.order_line)"/>
+    <t t-set="lines_per_page" t-value="7"/>
+    <t t-set="total_pages" t-value="int((line_count + lines_per_page - 1) / lines_per_page)"/>
+    <t t-foreach="range(total_pages)" t-as="page_num">
+        <div t-attf-style="#{page_num > 0 and 'page-break-before: always;' or ''}">
 
-                         <!-- ส่วนหัว (Header) -->
-                         <div class="row mb-2">
-                            <div class="col-8">
-                                <div style="font-size: 16px;">
-                                    <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
-                                    <div style="font-size: 14px;">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
-                                    <div style="font-size: 14px;">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
-                                    <div style="font-size: 14px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
-                                </div>
-                            </div>
-                            <div class="col-4 text-end">
-                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
-                                     style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
-                            </div>
+            
+
+            <!-- ส่วนหัว (Header) -->
+            <div class="row mb-2">
+                <div class="col-8">
+                    <div style="font-size: 16px;">
+                        <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
+                        <div style="font-size: 14px;">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
+                        <div style="font-size: 14px;">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
+                        <div style="font-size: 14px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                    </div>
+                </div>
+                <div class="col-4 text-end">
+                    <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                         style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                </div>
+            </div>
+
+            <!-- Document Title -->
+            <div class="row mb-2">
+                <div class="col-12 text-center">
+                    <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 20px; margin-top: 10px;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
+                </div>
+            </div>
+
+            <!-- Document Info -->
+            <div class="row mb-2">
+                <div class="col-8">
+                    <p style="margin-bottom: 0; margin-top: 20px; font-size: 16px;">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
+                </div>
+                <div class="col-4">
+                    <div class="text-end" style="font-size: 14px;">
+                        <div>เลขที่/NO.: <strong><span t-field="o.name"/></strong></div>
+                        <div>วันที่/DATE: <strong><span t-field="o.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></strong></div>
+                        <div>หน้า/PAGE: <t t-esc="page_num + 1"/> / <t t-esc="total_pages"/></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- กล่องนอก -->
+            <div style="width: 100%; border: 1px solid #000; padding: 0; font-size: 16px; box-sizing: border-box; margin-bottom: 6px;">
+                <div style="display: flex; gap: 0;">
+
+                    <!-- ฝั่งซ้าย: 40% -->
+                    <div style="width: 40%; padding: 0; box-sizing: border-box; border-right: 1px solid #000;">
+                        <div class="mb-1" style="margin-bottom:0; padding: 0.5px 2px;">
+                            <strong style="display: inline-block; width: 35%;">ผู้ขาย/VENDOR:</strong>
+                            <span t-field="o.partner_id.name"/>
                         </div>
-
-                        <!-- Document Title -->
-                        <div class="row mb-2">
-                           <div class="col-12 text-center">
-                                <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 20px; margin-top: 10px;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
-                           </div>
+                        <div class="mb-1" style="margin-bottom:0; padding: 0.5px 2px;">
+                            <strong style="display: inline-block; width: 35%;">ที่อยู่/ADDRESS:</strong>
+                            <span t-field="o.partner_id.street"/>
+                            <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
                         </div>
-
-                           <!-- Document Info -->
-                        <div class="row mb-2">
-                            <div class="col-8">
-                                <p style="margin-bottom: 0; margin-top: 20px; font-size: 14px;">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-end" style="font-size: 14px;">
-                                    <div>เลขที่/NO.: <strong><span t-field="o.name"/></strong></div>
-                                    <div>วันที่/DATE: <strong><span t-field="o.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></strong></div>
-                                    <div>หน้า/PAGE: <t t-esc="(page_num or 0) + 1"/> / <t t-esc="total_pages"/></div>
-                                </div>
-                            </div>
+                        <div class="mb-1" style="margin-bottom:0; padding: 0.5px 2px;">
+                            <strong style="display: inline-block; width: 35%;">เลขประจำตัวผู้เสียภาษี:</strong>
+                            <span t-field="o.partner_id.vat"/>
                         </div>
-
-                        <!-- กล่องนอก -->
-                        <div style="width: 100%; border: 1px solid #000; padding: 0; font-size: 20px; box-sizing: border-box;">
-                            <div style="display: flex; gap: 0;">
-
-                                <!-- ฝั่งซ้าย: 40% -->
-                                <div style="width: 40%; padding: 0; box-sizing: border-box; border-right: 1px solid #000;">
-                                    <div class="mb-1" style="margin-bottom:0; padding: 4px;">
-                                        <strong style="display: inline-block; width: 35%;">ผู้ขาย/VENDOR:</strong>
-                                        <span t-field="o.partner_id.name"/>
-                                    </div>
-                                    <div class="mb-1" style="margin-bottom:0; padding: 4px;">
-                                        <strong style="display: inline-block; width: 35%;">ที่อยู่/ADDRESS:</strong>
-                                        <span t-field="o.partner_id.street"/>
-                                        <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
-                                    </div>
-                                    <div class="mb-1" style="margin-bottom:0; padding: 4px;">
-                                        <strong style="display: inline-block; width: 35%;">เลขประจำตัวผู้เสียภาษี:</strong>
-                                        <span t-field="o.partner_id.vat"/>
-                                    </div>
-                                    <div class="mb-1" style="margin-bottom:0; padding: 4px;">
-                                        <strong style="display: inline-block; width: 35%;">โทรศัพท์/TEL:</strong>
-                                        <span t-field="o.partner_id.phone"/>
-                                    </div>
-                                    <div class="mb-1" style="margin-bottom:0; padding: 4px;">
-                                        <strong style="display: inline-block; width: 35%;">อีเมล/EMAIL:</strong>
-                                        <span t-field="o.partner_id.email"/>
-                                    </div>
-                                </div>
-
-                                <!-- ฝั่งขวา: 60% -->
-                                 <div style="width: 60%; padding: 0; box-sizing: border-box;">
-                                    <table style="width: 100%; border-collapse: collapse;">
-                                        <tbody>
-                                            <!-- บรรทัดที่ 1 -->
-                                            <tr>
-                                                <td style="width: 40%; border-bottom: 1px solid #000; padding: 1px;" colspan="2">
-                                                    <strong>สถานที่ส่ง:</strong>
-                                                    <span t-field="o.picking_type_id.warehouse_id.partner_id.name"/>
-                                                    <br/>
-                                                    <span t-field="o.picking_type_id.warehouse_id.partner_id.street"/>
-                                                    <br/>
-                                                    <span t-field="o.picking_type_id.warehouse_id.partner_id.street2"/>
-                                                </td>
-                                                <td style="width: 60%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 1px;" colspan="2">
-                                                    <strong>ผู้ขายยืนยันรับ:</strong>
-                                                    <br/><br/><br/>
-                                                </td>
-                                            </tr>
-                                            <!-- บรรทัดที่ 2 -->
-                                            <tr>
-                                                <td style="width: 40%; border-bottom: 1px solid #000; padding: 4px;" colspan="2">
-                                                    <strong>แผนกที่ขอซื้อ:</strong>
-                                                    <t t-if="o.department_name">
-                                                        <span t-esc="o.department_name"/>
-                                                    </t>
-                                                    <t t-else="">
-                                                        <span>-</span>
-                                                    </t>
-                                                </td>
-                                                <td style="width: 60%;border-bottom: 1px solid #000; border-left: 1px solid #000; padding: 4px;" colspan="2">
-                                                    <strong>วันที่:</strong>
-                                                    <span t-esc="o.date_order.strftime('%d/%m/%Y')"/>
-                                                </td>
-                                            </tr>
-                                            <!-- บรรทัดที่ 3 -->
-                                            <tr>
-                                                <td style="width: 32%; border-bottom: 1px ; border-left: 1px solid #fff; padding: -8px;">
-                                                   <strong>ผู้ติดต่อ:</strong> <span t-field="o.user_id.name"/>
-                                                </td>
-                                                <td style="width: 38%; border-bottom: 1px ; border-left: 1px solid #000; padding: -8px;">
-                                                    <strong>ใบขอซื้อเลขที่:</strong> <span t-field="o.name"/>
-                                                </td>
-                                                <td style="width: 18%; border-bottom: 1px ; border-left: 1px solid #000; padding: -8px;">
-                                                    <strong>Credit:</strong> <span t-field="o.partner_id.credit_limit"/>
-                                                </td>
-                                                <td style="width: 12%; border-bottom: 1px ; border-left: 1px solid #000; padding: -8px;">
-                                                    <strong>เงื่อนไขฯ:</strong>
-                                                    <br/><br/>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                            </div>
+                        <div class="mb-1" style="margin-bottom:0; padding: 0.5px 2px;">
+                            <strong style="display: inline-block; width: 35%;">โทรศัพท์/TEL:</strong>
+                            <span t-field="o.partner_id.phone"/>
                         </div>
+                        <div class="mb-1" style="margin-bottom:0; padding: 0.5px 2px;">
+                            <strong style="display: inline-block; width: 35%;">อีเมล/EMAIL:</strong>
+                            <span t-field="o.partner_id.email"/>
+                        </div>
+                    </div>
 
-
-
-                       <table class="table table-sm mt-4 order-line-table" style="border-collapse: collapse; width: 100%;">
-                          <thead>
-                            <tr>
-                                <th style="width: 4%; text-align: center; border: 1px solid black; padding: 2px 3px;">ลำดับ<br/><span style="font-size: 16px;">(No)</span></th>
-                                <th style="width: 10%; text-align: center; border: 1px solid black; padding: 2px 3px;">รหัสสินค้า<br/><span style="font-size: 16px;">(Item No)</span></th>
-                                <th style="width: 20%; text-align: center; border: 1px solid black; padding: 2px 3px;">รายการสินค้า<br/><span style="font-size: 16px;">(Description)</span></th>
-                                <th style="width: 10%; text-align: center; border: 1px solid black; padding: 2px 3px;">วันที่ส่ง<br/><span style="font-size: 16px;">(Delivery Date)</span></th>
-                                <th style="width: 8%; text-align: center; border: 1px solid black; padding: 2px 3px;">จำนวน<br/><span style="font-size: 16px;">(Qty)</span></th>
-                                <th style="width: 8%; text-align: center; border: 1px solid black; padding: 2px 3px;">หน่วย<br/><span style="font-size: 16px;">(Unit)</span></th>
-                                <th style="width: 10%; text-align: center; border: 1px solid black; padding: 2px 3px;">ราคา/หน่วย<br/><span style="font-size: 16px;">(Unit Price)</span></th>
-                                <th style="width: 8%; text-align: center; border: 1px solid black; padding: 2px 3px;">ส่วนลด<br/><span style="font-size: 16px;">(Discount)</span></th>
-                                <th style="width: 12%; text-align: center; border: 1px solid black; padding: 2px 3px;">จำนวนเงิน<br/><span style="font-size: 16px;">(Amount)</span></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <t t-set="page_number" t-value="1"/>
-                            <t t-set="line_number" t-value="((page_number - 1) * 7) + 1"/>
-                            <t t-set="current_line_number" t-value="line_number or 1"/>
-                            <t t-foreach="o.order_line" t-as="line">
-                                <tr style="font-size: 18px;">
-
-                                    <td style="text-align: center; border: 1px solid black; background-color: #f9f9f9; padding: 2px 3px;">
-                                        <span t-esc="current_line_number"/>
+                    <!-- ฝั่งขวา: 60% -->
+                    <div style="width: 60%; padding: 1; box-sizing: border-box;">
+                        <table style="width: 100%; border-collapse: collapse; margin: 1;">
+                            <tbody>
+                                <!-- บรรทัดที่ 1 -->
+                                <tr>
+                                    <td style="width: 40%; border-bottom: 1px solid #000; padding: 0.5px 2px;" colspan="2">
+                                        <strong>สถานที่ส่ง:</strong>
+                                        <span t-field="o.picking_type_id.warehouse_id.partner_id.name"/>
+                                        <br/>
+                                        <span t-field="o.picking_type_id.warehouse_id.partner_id.street"/>
+                                        <br/>
+                                        <span t-field="o.picking_type_id.warehouse_id.partner_id.street2"/>
                                     </td>
-                                    <td style="border: 1px solid black; padding: 2px 3px;"><span t-field="line.product_id.default_code"/></td>
-                                    <td style="border: 1px solid black; padding: 2px 3px;"><span t-field="line.product_id.name"/></td>
-                                    <td style="text-align: center; border: 1px solid black; padding: 2px 3px;"><span t-field="line.date_planned"/></td>
-                                    <td style="text-align: right; border: 1px solid black; padding: 2px 3px;"><span t-esc="'%.0f' % line.product_uom_qty"/></td>
-                                    <td style="text-align: center; border: 1px solid black; padding: 2px 3px;"><span t-field="line.product_uom.name"/></td>
-                                    <td style="text-align: right; border: 1px solid black; padding: 2px 3px;"><span t-esc="'{:,.2f}'.format(line.price_unit)"/></td>
-                                    <td style="text-align: right; border: 1px solid black; padding: 2px 3px;"><span t-esc="'{:,.2f}'.format(line.discount)"/>%</td>
-                                    <td style="text-align: right; border: 1px solid black; padding: 2px 3px;">
-                                        <t t-set="subtotal" t-value="line.product_uom_qty * line.price_unit * (1 - (line.discount or 0.0)/100)"/>
-                                        <span t-esc="'{:,.2f}'.format(subtotal)"/>
+                                    <td style="width: 60%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 0.5px 2px;" colspan="2">
+                                        <strong>ผู้ขายยืนยันรับ:</strong>
+                                        <br/><br/><br/>
                                     </td>
                                 </tr>
-                                <t t-set="current_line_number" t-value="current_line_number + 1"/>
-                            </t>
-                          </tbody>
+                                <!-- บรรทัดที่ 2 -->
+                                <tr>
+                                    <td style="width: 40%; border-bottom: 1px solid #000; padding: 0.5px 2px;" colspan="2">
+                                        <strong>แผนกที่ขอซื้อ:</strong>
+                                        <t t-if="o.department_name">
+                                            <span t-esc="o.department_name"/>
+                                        </t>
+                                        <t t-else="">
+                                            <span>-</span>
+                                        </t>
+                                    </td>
+                                    <td style="width: 60%;border-bottom: 1px solid #000; border-left: 1px solid #000; padding: 0.5px 2px;" colspan="2">
+                                        <strong>วันที่:</strong>
+                                        <span t-esc="o.date_order.strftime('%d/%m/%Y')"/>
+                                    </td>
+                                </tr>
+                                <!-- บรรทัดที่ 3 -->
+                                <tr>
+                                    <td style="width: 32%; border-bottom: 1px ; border-left: 1px solid #fff; padding: 0.5px 1px;">
+                                        <strong>ผู้ติดต่อ:</strong> <span t-field="o.user_id.name"/>
+                                    </td>
+                                    <td style="width: 38%; border-bottom: 1px ; border-left: 1px solid #000; padding: 0.5px 1px;">
+                                        <strong>ใบขอซื้อเลขที่:</strong> <span t-field="o.name"/>
+                                    </td>
+                                    <td style="width: 18%; border-bottom: 1px ; border-left: 1px solid #000; padding: 0.5px 1px;">
+                                        <strong>Credit:</strong> <span t-field="o.partner_id.credit_limit"/>
+                                    </td>
+                                    <td style="width: 12%; border-bottom: 1px ; border-left: 1px solid #000; padding: 0.5px 1px;">
+                                        <strong>เงื่อนไขฯ:</strong>
+                                        <br/><br/>
+                                    </td>
+                                </tr>
+                            </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
 
-                                <!-- หมายเหตุและตารางสรุป -->
-                                <div style="display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; width: 100%; margin-top: 10px; gap: 2%;">
-                                    <!-- กล่องซ้าย: หมายเหตุ + จำนวนเงินตัวอักษร -->
-                                    <div style="width: 60%; border: 1px solid #000; padding: 15px; font-size: 22px; box-sizing: border-box;">
-                                        <!-- บรรทัดที่ 1: หมายเหตุ -->
-                                        <div style="display: flex; flex-direction: row; width: 100%;">
-                                            <div style="width: 100%;">
-                                                <strong style="font-size: 20px;">หมายเหตุ:</strong>
-                                                <div t-if="'note' in o._fields and o.note" style="margin-top: 5px;">
-                                                    <span t-field="o.note" style="font-size: 22px;"/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- บรรทัดที่ 2: จำนวนเงินตัวอักษร -->
-                                        <div style="display: flex; flex-direction: row; width: 100%; margin-top: 15px;">
-                                            <!-- ช่องที่ 1: label -->
-                                            <div style="width: 50%; font-size: 20px;">
-                                                <strong>จำนวนเงิน (ตัวอักษร):</strong>
-                                            </div>
-                                            <!-- ช่องที่ 2: แปลงจำนวนเงินเป็นตัวหนังสือไทย -->
-                                            <div style="width: 50%;">
-                                                <t t-set="amount_total_text" t-value="num2words(amount_total, lang='th')" />
-                                                <span t-esc="amount_total_text" />
-                                            </div>
+            <table class="table table-sm mt-4 order-line-table" style="border-collapse: collapse; width: 100%; margin-bottom: 4px;">
+                <thead>
+                    <tr>
+                        <th style="width: 4%; text-align: center; border: 1px solid black; padding: 1px 2px;">ลำดับ<br/><span style="font-size: 16px;">(No)</span></th>
+                        <th style="width: 10%; text-align: center; border: 1px solid black; padding: 1px 2px;">รหัสสินค้า<br/><span style="font-size: 16px;">(Item No)</span></th>
+                        <th style="width: 20%; text-align: center; border: 1px solid black; padding: 1px 2px;">รายการสินค้า<br/><span style="font-size: 16px;">(Description)</span></th>
+                        <th style="width: 10%; text-align: center; border: 1px solid black; padding: 1px 2px;">วันที่ส่ง<br/><span style="font-size: 16px;">(Delivery Date)</span></th>
+                        <th style="width: 8%; text-align: center; border: 1px solid black; padding: 1px 2px;">จำนวน<br/><span style="font-size: 16px;">(Qty)</span></th>
+                        <th style="width: 8%; text-align: center; border: 1px solid black; padding: 1px 2px;">หน่วย<br/><span style="font-size: 16px;">(Unit)</span></th>
+                        <th style="width: 10%; text-align: center; border: 1px solid black; padding: 1px 2px;">ราคา/หน่วย<br/><span style="font-size: 16px;">(Unit Price)</span></th>
+                        <th style="width: 8%; text-align: center; border: 1px solid black; padding: 1px 2px;">ส่วนลด<br/><span style="font-size: 16px;">(Discount)</span></th>
+                        <th style="width: 12%; text-align: center; border: 1px solid black; padding: 1px 2px;">จำนวนเงิน<br/><span style="font-size: 16px;">(Amount)</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-set="start_idx" t-value="page_num * lines_per_page"/>
+                    <t t-set="end_idx" t-value="min((page_num + 1) * lines_per_page, line_count)"/>
+                    <t t-set="current_line_number" t-value="start_idx + 1"/>
+                    <t t-foreach="enumerate(o.order_line[start_idx:end_idx])" t-as="line_tuple">
+                        <tr style="font-size: 18px;">
+                            <td style="text-align: center; border: 1px solid black; background-color: #f9f9f9; padding: 1px 2px;">
+                                <span t-esc="current_line_number + line_tuple[0]"/>
+                            </td>
+                            <td style="border: 1px solid black; padding: 1px 2px;"><span t-field="line_tuple[1].product_id.default_code"/></td>
+                            <td style="border: 1px solid black; padding: 1px 2px;"><span t-field="line_tuple[1].product_id.name"/></td>
+                            <td style="text-align: center; border: 1px solid black; padding: 1px 2px;">
+                                <span t-esc="line_tuple[1].date_planned.strftime('%d/%m/%Y') if line_tuple[1].date_planned else ''"/>
+                            </td>
+                            <td style="text-align: right; border: 1px solid black; padding: 1px 2px;"><span t-esc="'%.0f' % line_tuple[1].product_uom_qty"/></td>
+                            <td style="text-align: center; border: 1px solid black; padding: 1px 2px;"><span t-field="line_tuple[1].product_uom.name"/></td>
+                            <td style="text-align: right; border: 1px solid black; padding: 1px 2px;"><span t-esc="'{:,.2f}'.format(line_tuple[1].price_unit)"/></td>
+                            <td style="text-align: right; border: 1px solid black; padding: 1px 2px;"><span t-esc="'{:,.2f}'.format(line_tuple[1].discount)"/>%</td>
+                            <td style="text-align: right; border: 1px solid black; padding: 1px 2px;">
+                                <t t-set="subtotal" t-value="line_tuple[1].product_uom_qty * line_tuple[1].price_unit * (1 - (line_tuple[1].discount or 0.0)/100)"/>
+                                <span t-esc="'{:,.2f}'.format(subtotal)"/>
+                            </td>
+                        </tr>
+                    </t>
+                    <!-- เติมแถวเปล่าให้ครบ 7 แถวต่อหน้า -->
+                    <t t-set="num_lines" t-value="end_idx - start_idx"/>
+                    <t t-if="num_lines &lt; lines_per_page">
+                        <t t-foreach="range(lines_per_page - num_lines)" t-as="i">
+                            <tr class="data-row" style="font-size: 20px; height: 50px; line-height: 50px;">
+                                <td style="text-align: center;"></td>
+                                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            </tr>
+                        </t>
+                    </t>
+                </tbody>
+            </table>
+             <!-- Document Info: อยู่ล่างสุดของแต่ละหน้า (วนลูปแสดงทุกหน้า)-->
+                <div style="position: absolute; bottom: 0; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px 8px 20px;">
+                    <div>
+                        <p style="margin-bottom: 0; font-size: 16px;">อนุมัติใช้วันที่ 14/09/2563</p>
+                    </div>
+                    <div>
+                        <p style="margin-bottom: 0; font-size: 16px; text-align: right;">FM-PUR-08.REV.01</p>
+                    </div>
+                </div>
+            
+        </div>
+    </t>
+
+         
+
+                
+
+                        <div style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px;">
+
+                            <!-- ฝั่งซ้าย: หมายเหตุ + จำนวนเงินตัวอักษร (มีกรอบ + พื้นหลัง + ความสูงเท่าฝั่งขวา) -->
+                            <div style="width: 60%; padding: 0 4px 0 0; box-sizing: border-box;">
+                                <div style="border: 1px solid #000; border-radius: 1px; padding: 8px; min-height: 174px;">
+                                    <t t-set="amount_untaxed" t-value="sum([line.product_qty * line.price_unit for line in o.order_line])"/>
+
+                                    <!-- หมายเหตุ -->
+                                    <div style="font-size: 22px;">
+                                        <strong>หมายเหตุ:</strong>
+                                        <div t-if="'note' in o._fields and o.note" style="margin-top: 4px; margin-bottom: 4px;">
+                                            <span t-field="o.note"/>
                                         </div>
                                     </div>
-                                    
-                                    <!-- กล่องขวา: ตารางสรุปยอด -->
-                                    <div style="width: 40%; text-align: right;">
-                                        <table class="table" style="font-size: 14px; width: 100%; margin: 0; padding: 0; border-collapse: collapse;">
-                                            <tr>
-                                                <td style="width: 55%; text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span>ราคารวม/Total:</span>
-                                                </td>
-                                                <td style="width: 45%; text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span t-esc="'{:,.2f}'.format(amount_untaxed if amount_untaxed is not None else 0.00)"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span>ส่วนลด/Discount:</span>
-                                                </td>
-                                                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span t-esc="'{:,.2f}'.format(total_discount if total_discount is not None else 0.00)"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span>ค่าขนส่ง/Shipping Fee:</span>
-                                                </td>
-                                                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span t-esc="'{:,.2f}'.format(shipping_fee if shipping_fee is not None else 0.00)"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span>ส่วนลด/Discount:</span>
-                                                </td>
-                                                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span t-esc="'{:,.2f}'.format(total_discount if total_discount is not None else 0.00)"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span>ภาษีมูลค่าเพิ่ม/VAT 7%:</span>
-                                                </td>
-                                                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span t-esc="'{:,.2f}'.format(amount_tax if amount_tax is not None else 0.00)"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="text-align: left; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span>รวมทั้งสิ้น/Grand Total:</span>
-                                                </td>
-                                                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                                                    <span t-esc="'{:,.2f}'.format(amount_total if amount_total is not None else 0.00)"/>
-                                                </td>
-                                            </tr>
-                                        </table>
+
+                                    <div style="border-top: 1px solid #000; margin-top: 80px; margin-bottom: 2px; width: 100%;"></div>
+
+                                    <!-- จำนวนเงินตัวอักษร -->
+                                    <div style="display: flex; flex-wrap: wrap; font-size: 13px; margin-top: 4px;">
+                                        <div style="width: 45%; font-weight: bold;">จำนวนเงิน (ตัวอักษร):</div>
+                                        <div style="width: 55%; font-weight: bold;">
+                                            <span t-field="o.amount_total_text"/>
+                                        </div>
                                     </div>
                                 </div>
+                            </div>
 
-  
-                 
-                    </div>
+                            <!-- ฝั่งขวา: ผลรวม (ตารางมีเส้น แต่ไม่มีกรอบนอก) -->
+                            <div style="width: 40%; padding: 0 0 0 2px; box-sizing: border-box;">
+                                <t t-set="total_discount" t-value="sum([(line.product_qty * line.price_unit * line.discount/100.0) for line in o.order_line])"/>
+                                <t t-set="amount_after_discount" t-value="amount_untaxed - total_discount"/>
+                                <t t-set="amount_tax" t-value="amount_after_discount * 0.07"/>
+                                <t t-set="amount_total" t-value="amount_after_discount + amount_tax"/>
+
+                                <table style="width: 100%; border-collapse: collapse; font-size: 13px; border: 1px solid #000; margin: 0;">
+                                    <tr>
+                                        <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ราคารวม/Total:</td>
+                                        <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
+                                            <span t-esc="'{:,.2f}'.format(amount_untaxed)"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ส่วนลด/Discount:</td>
+                                        <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
+                                            <span t-esc="'{:,.2f}'.format(total_discount)"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ราคาหลังหักส่วนลด/Net:</td>
+                                        <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
+                                            <span t-esc="'{:,.2f}'.format(amount_after_discount)"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ภาษีมูลค่าเพิ่ม/VAT 7%:</td>
+                                        <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
+                                            <span t-esc="'{:,.2f}'.format(amount_tax)"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;"><strong>รวมทั้งสิ้น/Grand Total:</strong></td>
+                                        <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;"><strong>
+                                            <span t-esc="'{:,.2f}'.format(amount_total)"/>
+                                        </strong></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
                     
+
+                        <!-- Signature Section -->
+                        <div class="row mt-5" style="margin-top: 10px;">
+                            <!-- Common styles for signature boxes -->
+                            <style>
+                                .signature-box {
+                                    font-size: 16px;
+                                    text-align: center;
+                                    width: 100%;
+                                }
+                                .signature-content {
+                                    height: 120px;
+                                    display: flex;
+                                    flex-direction: column;
+                                    justify-content: flex-end;
+                                    align-items: center;
+                                    margin-bottom: 10px;
+                                }
+                                .signature-line {
+                                    border-top: 1px solid #000;
+                                    margin: 0 auto;
+                                    width: 80%;
+                                    padding-top: 5px;
+                                }
+                                .signature-title {
+                                    margin: 5px 0;
+                                    font-weight: normal;
+                                }
+                                .signature-date {
+                                    margin: 5px 0;
+                                }
+                                .signature-image {
+                                    width: 100px;
+                                    height: 60px;
+                                    object-fit: contain;
+                                    margin-bottom: 5px;
+                                }
+                                .signature-name {
+                                    margin: 0;
+                                    line-height: 1.5;
+                                }
+                            </style>
+                            <!-- ผู้จัดทำ -->
+                            <div class="col-4">
+                                <div class="signature-box">
+                                    <div class="signature-content">
+                                        <div style="height: 60px;"></div> <!-- Placeholder for signature height -->
+                                        <p class="signature-name">
+                                            <strong>
+                                                <span t-field="o.create_uid.name"/>
+                                            </strong>
+                                        </p>
+                                        <t t-if="o.create_uid.employee_id">
+                                            <p class="signature-name">
+                                                (<span t-field="o.create_uid.employee_id.name"/>)
+                                            </p>
+                                        </t>
+                                    </div>
+                                    <div class="signature-line">
+                                        <p class="signature-title">ผู้จัดทำ / Prepared by</p>
+                                        <p class="signature-date">
+                                            วันที่/Date:
+                                            <span t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- ผู้ตรวจสอบ L1 -->
+                            <div class="col-4">
+                                <div class="signature-box">
+                                    <div class="signature-content">
+                                        <t t-if="o.l1_approved_by">
+                                            <img src="/buz_custom_po/static/img/signature1.jpg" class="signature-image"/>
+                                            <p class="signature-name">
+                                                (พรเพ็ชร วสันตกิจกำจร)
+                                            </p>
+                                        </t>
+                                        <t t-if="not o.l1_approved_by">
+                                            <div style="height: 60px;"></div> <!-- Empty space for signature -->
+                                            <p class="signature-name"></p>
+                                        </t>
+                                    </div>
+                                    <div class="signature-line">
+                                        <p class="signature-title">ผู้ตรวจสอบ / Checked by</p>
+                                        <p class="signature-date">
+                                            วันที่/Date:
+                                            <t t-if="o.l1_approved_date">
+                                                <span t-field="o.l1_approved_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                            </t>
+                                            <t t-if="not o.l1_approved_date"></t>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- ผู้อนุมัติ L2 -->
+                            <div class="col-4">
+                                <div class="signature-box">
+                                    <div class="signature-content">
+                                        <t t-if="o.l2_approved_by">
+                                            <img src="/buz_custom_po/static/img/signature2.jpg" class="signature-image"/>
+                                            <p class="signature-name">
+                                                (นภัคสรณ์ วชิรพันธ์วิชาญ)
+                                            </p>
+                                        </t>
+                                        <t t-if="not o.l2_approved_by">
+                                            <div style="height: 60px;"></div> <!-- Empty space for signature -->
+                                            <p class="signature-name"></p>
+                                        </t>
+                                    </div>
+                                    <div class="signature-line">
+                                        <p class="signature-title">ผู้อนุมัติ / Approved by</p>
+                                        <p class="signature-date">
+                                            วันที่/Date:
+                                            <t t-if="o.l2_approved_date">
+                                                <span t-field="o.l2_approved_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                            </t>
+                                            <t t-if="not o.l2_approved_date"></t>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Conditional page break based on number of items -->
+                        <t t-if="len(o.order_line) > 4">
+                            <div style="page-break-before: always; margin-top:0px !important; padding-top:0px !important;"></div>
+                        </t>
+                        <!-- Footer Section -->
+
+                        <!-- Conditional page break based on number of items -->
+                        <t t-if="len(o.order_line) > 4">
+                            <div style="page-break-before: always;"></div>
+                        </t>
+
+                        <!-- Footer Section -->
+                        <div class="row mt-3" style=" font-size: 16px;">
+                            <div class="col-12">
+                                <div style="border: 1px solid #000; padding: 16px;">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <strong style="font-size: 16px;">***หมายเหตุ*** เงื่อนไขและการส่งมอบ</strong>
+                                            <ol style="font-size: 16px; margin-bottom: 0px;">
+                                                <li>สินค้าที่ส่งมอบต้องให้มีคุณภาพ ขนาด ปริมาณ และจัดส่งตามกำหนด</li>
+                                                <li>ถ้าไม่เป็นไปตามเงื่อนไขข้างต้นนี้ขอมีสิทธิ์ยกเลิกในสั่งซื้อ และไม่ต้องรับผิดชอบใดๆ ทั้งสิ้น</li>
+                                                <li>ใบส่งของทุกฉบับต้องมีสำเนา 2 ฉบับ พร้อมระบุเลขที่ในสั่งซื้อ</li>
+                                                <li>กรรมสิทธิ์และความรับผิดชอบของสินค้าจะเปลี่ยนจากของท่านเป็นของบริษัท ณ สถานที่ และเวลาที่มีการส่งมอบสินค้านั้น</li>
+                                                <li>บริษัทฯ จะไม่รับผิดชอบในการชำระเงินใดๆ ทั้งสิ้นสำหรับสินค้าที่ผู้ขายส่งมอบเกินจำนวนที่ได้ระบุไว้ในใบสั่งซื้อ</li>
+                                            </ol>
+                                        </div>
+                                        <div class="col-6">
+                                            <strong style="font-size: 16px;">***REMARK*** CONDITION:</strong>
+                                            <ol style="font-size: 16px; margin-bottom: 0px;">
+                                                <li>ALL SUPPLIES ARE TO BE MADE STRICTLY IN ACCORDANCE WITH OUR SPECIFICATION</li>
+                                                <li>THIS ORDER SHALL BE CANCELLED IF DELIVERY IS NOT MADE WITH TIME STATED</li>
+                                                <li>ALL SUPPLIES SHOULD BE COVERED BY YOUR INVOICE IN TRIPLICATION</li>
+                                                <li>TITLE AND RISK OF THE GOODS STATED ABOVE SHALL PASS FROM YOU TO US AT THE PLACE AND TIME OF DELIVERY</li>
+                                                <li>INVOICE/DELIVERY NOTE MUST BE STATED THE NUMBER OF THIS ORDER AND OUR PART NUMBER OF MERCHANDISES WE ARE NOT LIABLE TO PAY FOR GOODS DELIVERY IN EXCESS OF THIS ORDER</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                         
+                    </div>     
+                  </t>   
                 </t></t>
-                </t>
-            </template>   
+              </template>   
     <!-- Report Action -->
     <record id="action_report_purchase_order_custom" model="ir.actions.report">
         <field name="name">Custom Purchase Order</field>

@@ -1,8 +1,31 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+from num2words import num2words
+
 
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
+
+    amount_total_text = fields.Char(
+        string='Amount Total (Text)',
+        compute='_compute_amount_total_text',
+        store=False
+    )
+
+    @api.depends('amount_total')
+    def _compute_amount_total_text(self):
+        for rec in self:
+            amount = rec.amount_total or 0.0
+            baht = int(amount)
+            satang = int(round((amount - baht) * 100))
+
+            baht_text = num2words(baht, lang='th') + 'บาท' if baht > 0 else ''
+            if satang > 0:
+                satang_text = num2words(satang, lang='th') + 'สตางค์'
+            else:
+                satang_text = 'ถ้วน' if baht > 0 else 'ศูนย์บาทถ้วน'
+
+            rec.amount_total_text = baht_text + satang_text
 
     state = fields.Selection(selection_add=[
         ('waiting_l1', 'Waiting L1 Approval'),
