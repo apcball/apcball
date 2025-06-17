@@ -8,6 +8,7 @@
             <!-- เพิ่มฟิลด์ SKU ใต้ Purchase UoM -->
             <xpath expr="//field[@name='uom_po_id']" position="after">
                 <field name="sku"/>
+                
             </xpath>
         </field>
     </record>
