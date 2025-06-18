@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="stock_valuation_layer_tree_inherit" model="ir.ui.view">
+        <field name="name">stock.valuation.layer.tree.inherit</field>
+        <field name="inherit_id" ref="stock_account.stock_valuation_layer_tree" />
+        <field name="model">stock.valuation.layer</field>
+        <field name="arch" type="xml">
+            <field name="company_id" position="after">
+                <field name="location_id" />
+            </field>
+        </field>
+    </record>
+    <record
+    id="stock_valuation_layer_valuation_at_date_tree_inherited_inherit"
+    model="ir.ui.view"
+  >
+        <field name="name">inventory.aging.tree.inherit</field>
+        <field name="model">stock.valuation.layer</field>
+        <field
+      name="inherit_id"
+      ref="stock_account.stock_valuation_layer_valuation_at_date_tree_inherited"
+    />
+        <field name="arch" type="xml">
+            <field name="product_id" position="before">
+                <field name="location_id" />
+            </field>
+        </field>
+    </record>
+</odoo>

@@ -51,6 +51,7 @@
                             width: 100%;
                         }
                         
+                        
                         .table td,
                         .table th {
                             border-width: 0.5px !important;
@@ -101,12 +102,68 @@
                             margin-right: 6px;
                         }
                         
+                        body {
+                          font-family: 'TH SarabunPSK', Tahoma, sans-serif;
+                          font-size: 18px;
+                          padding: 40px;
+                        }
+                    
+                        .signature-grid {
+                          display: table;
+                          width: 100%;
+                          table-layout: fixed;
+                          margin-top: 20px;
+                        }
+                    
+                        .signature-row {
+                          display: table-row;
+                          align-items: flex-end;
+                        }
+                    
+                        .signature-cell {
+                          display: table-cell;
+                          padding: 20px;
+                          vertical-align: top;
+                          width: 50%;
+                          line-height: 1.2;
+                        }
+                    
+                        .sign-line {
+                          display: inline-block;
+                          border-bottom: 1px solid black;
+                          width: 240px;
+                          height: 20px;
+                          margin-left: 10px;
+                        }
+                    
+                        .name-date-group {
+                          margin-top: 10px;
+                        }
+                    
+                        .name-line {
+                          display: inline-block;
+                          border-bottom: 1px solid black;
+                          width: 180px;
+                          height: 20px;
+                        }
+                    
+                        .date-line {
+                          display: inline-block;
+                          border-bottom: 1px solid black;
+                          width: 130px;
+                          height: 20px;
+                        }
+                    
+                        .role {
+                          text-align: center;
+                          margin-top: 10px;
+                        }
                     </style>
 
                 <!-- Company Info Section -->
                 <div class="row mb-1">
                     <div class="col-8">
-                        <div class="company-header mb-1" style="font-size: 24px; font-weight: bold;">
+                        <div class="company-header mb-1" style="font-size: 24px; font-weight: bold;margin-bottom: -100px;">
                             บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
                         </div>
                         <div class="company-info" style="font-size: 20px;">
@@ -125,87 +182,79 @@
                
                  <!-- Document Title -->
 
-                 <div class="row mb-3" style="margin-top: 0 !important;">
+                 <div class="row mb-3" style="margin-top: -10px !important; padding-left: 10mm;margin-bottom: -80px;">
                     <div class="col-4 offset-4 text-center">
-                        <div class="doc-title" style="padding: 14px; margin-bottom: -10px;font-size: 24px; font-family: 'TH SarabunPSK', 'THSarabunNew', Tahoma, Arial, sans-serif;">
+                        <div class="doc-title" style="padding: 8px; margin-bottom: -15px;font-size: 24px; font-family: 'TH SarabunPSK', 'THSarabunNew', Tahoma, Arial, sans-serif;">
                             ใบรับบริการ
                         </div>
                     </div>
                 </div>
 
-                <div class="row" style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 20px; margin-top: -40px;">
+                <div style="font-family: 'TH SarabunPSK', sans-serif; font-size: 20px;margin-bottom: 0px; padding: 5mm 10mm 4mm 10mm; width: 100%;margin-top: -30px">
 
-                    <!-- ซ้าย -->
-                    <div style="flex: 1; line-height: 1.2;">
-                        <div style="margin-bottom: 5px;">
-                            <strong style="width: 130px; display: inline-block;">ผู้แจ้ง:</strong>
-                            <span>-</span>
-                        </div>
-                        <div style="margin-bottom: 5px;">
-                            <strong style="width: 130px; display: inline-block;">ชื่อผู้ขอรับบริการ:</strong>
-                            <span>-</span>
-                        </div>
-                        <div style="margin-bottom: 5px;">
-                            <strong style="width: 130px; display: inline-block;">ซื้อผ่านร้าน:</strong>
-                            <span>-</span>
-                        </div>
-                        <div style="margin-bottom: 5px;">
-                            <strong style="width: 130px; display: inline-block;">ที่อยู่:</strong>
-                            <span>-</span>
-                        </div>
-                    </div>
+                  <div style="text-align: right; padding-left: 0;">
+                   <div style="margin-bottom: -8px;">
+  <strong>เลขที่เอกสาร:</strong> <t t-esc="o.name or '-'"/>
+</div>
+                  </div>
+
+                  <!--  แถวหลัก -->
+                  <div style="display: flex; width: 100%; margin-bottom: -4px;">
+                      <!-- ส่วนซ้าย: 80% -->
+                      <div style="width: 80%;">
+                          <!-- แถว 1: ผู้แจ้ง / มือถือ -->
+                          <div style="display: flex; margin-bottom: -4px;">
+                              <div style="width: 65%;"><strong>ผู้แจ้ง:</strong> -</div>
+                              <div style="width: 35%;">
+                                <strong>มือถือ:</strong> <t t-esc="o.mobile or '-'"/>
+                              </div>
+                          </div>
+
+                          <!-- แถว 2: ชื่อผู้ขอรับบริการ / โทรศัพท์ -->
+                          <div style="display: flex; margin-bottom: -4px;">
+                              <div style="width: 65%;"><strong>ชื่อผู้ขอรับบริการ:</strong> -</div>
+                              <div style="width: 35%;"><strong>โทรศัพท์:</strong> <t t-esc="o.phone or '-'"/></div>
+                          </div>
+
+                          <!-- แถว 3: ซื้อผ่านร้าน / ข้อมูลนัดหมาย -->
+                          <div style="display: flex; margin-bottom: -4px;">
+                              <div style="width: 65%;"><strong>ซื้อผ่านร้าน:</strong> -</div>
+                              <div style="width: 35%;"><strong>ข้อมูลนัดหมาย:</strong> -</div>
+                          </div>
+
+                          <!-- แถว 4: ที่อยู่ -->
+                          <div style="margin-bottom: -4px;">
+                            <strong>ที่อยู่:</strong>
+                            <t t-esc="o.partner_id.contact_address or '-'"/>
+                          </div>
+                      </div>
+
+                      <!--  ส่วนขวา: 20% -->
+                      <div style="width: 20%; text-align: right; padding-left: 0;margin-bottom: -4px;">
+                          <div style="margin-bottom: -4px;"><strong>เลขที่ใบรับประกัน:</strong> <t t-esc="o.warranty_number or '-'"/></div>
+                          <div style="margin-bottom: -4px;"><strong>วันที่แจ้ง:</strong> <t t-esc="o.date_notice"/></div>
+                          <div style="margin-bottom: -4px;"><strong>วันที่เข้ารับบริการ:</strong> -</div>
+                      </div>
+
+                  </div>
+              </div>
+              
+              
+              
                 
-                    <!-- กลาง -->
-                    <div style="flex: 1; line-height: 1.2;">
-                        <div style="margin-bottom: 5px;">
-                            <strong style="width: 130px; display: inline-block;">โทรศัพท์ :</strong>
-                            <span>-</span>
-                        </div>
-                        <div style="margin-bottom: 5px;">
-                            <strong style="width: 130px; display: inline-block;">วันที่เข้าบริการ:</strong>
-                            <span>-</span>
-                        </div>
-                        <div style="margin-bottom: 5px;">
-                            <strong style="width: 130px; display: inline-block;">ข้อมูลนัดหาย:</strong>
-                            <span>-</span>
-                        </div>
-                    </div>
-                
-                    <!-- ขวา -->
-                    <div style="flex: 1; text-align: right; line-height: 1.2;">
-                        <div style="margin-bottom: 5px;">
-                            <strong>เลขที่เอกสาร:</strong>
-                            <span>-</span>
-                        </div>
-                        <div style="margin-bottom: 5px;">
-                            <strong>วันที่แจ้ง:</strong>
-                            <span>-</span>
-                        </div>
-                        <div style="margin-bottom: 5px;">
-                            <strong>เลขที่ใบรับประกัน:</strong>
-                            <span>-</span>
-                        </div>
-                        <div style="margin-bottom: 5px;">
-                            <strong>เวลา:</strong>
-                            <span>_____________________</span>
-                        </div>
-                    </div>
-                
-                </div>
-                
-                <table class="table table-sm mt-4 order-line-table" style="border-collapse: collapse; width: 100%;">
+                <table class="table table-sm   order-line-table" style="border-collapse: collapse; width: 100%; ">
                     <thead>
                       <tr>
                         <th style="width: 6%; padding: 1px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
                           ลำดับ
                         </th>
-                        <th style="width: 12%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                        <th style="width: 22%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
                           สินค้า
                         </th>
-                        <th style="padding: 22px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                        <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
                           จำนวน
                         </th>
-                        <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                        <th style="padding: 20px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
                           ปัญหาที่แจ้ง
                         </th>
                         <th style="width: 14%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
@@ -239,14 +288,14 @@
                   </table>
 
                   <!-- งานบริการ -->
-            <div style="font-size: 18px; line-height: 1.8; margin-bottom: 6px;">
-              <div style="margin-bottom: 4px;">
+            <div style="font-size: 18px; line-height: 1.8; margin-bottom: -10px;">
+              <div style="margin-bottom: -4px;">
                 <strong>งานบริการ</strong>
               </div>
             
-              <div style="font-size: 18px; line-height: 1.8; margin-bottom: 8px;">
+              <div style="font-size: 18px; line-height: 1.8; margin-bottom: -10px;">
                 <!-- บรรทัดที่ 1 -->
-                <div style="display: flex; margin-bottom: 5px;">
+                <div style="display: flex; margin-bottom: 2px;">
                   <label style="width: 33.33%; display: flex; align-items: center; justify-content: flex-start;">
                     <span class="checkbox-box"></span>ตรวจสอบ
                   </label>
@@ -259,7 +308,7 @@
                 </div>
             
                 <!-- บรรทัดที่ 2 -->
-                <div style="display: flex;">
+                <div style="display: flex;margin-bottom: -10px;">
                   <label style="width: 33.33%; display: flex; align-items: center; justify-content: flex-start;">
                     <span class="checkbox-box"></span>ประกอบชิ้นส่วน
                   </label>
@@ -274,13 +323,13 @@
             </div>
 
              <!-- สรุปปัญหา -->
-             <div style="font-size: 18px; line-height: 1.8; margin-top: 10px; margin-bottom: 6px;">
-              <div style="margin-bottom: 4px;">
+             <div style="font-size: 18px; line-height: 1.8; margin-top: 10px; margin-bottom: -10px;">
+              <div style="margin-bottom: -10px;">
                 <strong>สรุปปัญหา</strong>
               </div>
             
               <!-- บรรทัดที่ 1 -->
-              <div style="display: flex; margin-bottom: 4px;">
+              <div style="display: flex; margin-bottom: -6px;">
                 <label style="width: 25%; display: flex; align-items: center;">
                   <span class="checkbox-box"></span> การติดตั้ง
                 </label>
@@ -296,7 +345,7 @@
               </div>
             
               <!-- บรรทัดที่ 2 -->
-              <div style="display: flex;">
+              <div style="display: flex;margin-bottom: -6px;">
                 <label style="width: 25%; display: flex; align-items: center;">
                   <span class="checkbox-box"></span> คุณภาพสินค้า
                 </label>
@@ -315,7 +364,7 @@
 
              
               <!-- ขั้นตอนการบริการ -->
-              <div style="font-size: 18px; line-height: 1.2; margin-top: 6px; margin-bottom: 2px;">
+              <div style="font-size: 18px; line-height: 1.2; margin-top: 6px; margin-bottom: -6px;">
                 <div style="margin-bottom: 2px;">
                   <strong>ขั้นตอนการบริการ</strong>
                 </div>
@@ -335,7 +384,7 @@
 
               
               <!-- รายละเอียดการแก้ไข -->
-              <div style="font-size: 18px; line-height: 1.2; margin-top: 6px; margin-bottom: 2px;">
+              <div style="font-size: 18px; line-height: 1.2; margin-top: 6px; margin-bottom: 0px;">
                 <div style="margin-bottom: 2px;">
                   <strong>รายละเอียดการแก้ไข</strong>
                 </div>
@@ -345,7 +394,7 @@
                </div>
 
                <!-- หมายเหตุข -->
-              <div style="font-size: 18px; line-height: 1.2; margin-top: 6px; margin-bottom: 2px;">
+              <div style="font-size: 18px; line-height: 1.2; margin-top: 6px; margin-bottom: 0px;">
                 <div style="margin-bottom: 2px;">
                   <strong>หมายเหตุ</strong>
                 </div>
@@ -381,50 +430,79 @@
             </div>
 
             
-
-              <!-- ประเภทที่พักอาศัย -->
-              <div style="font-size: 18px; line-height: 1.2; margin-bottom: 2px;">
-                <div style="margin-bottom: 2px;">
-                  <strong>ประเภทที่พักอาศัย</strong>
-                </div>
-
-                <div style="font-size: 18px; line-height: 1.2; margin-bottom: 4px;">
-                  <!-- บรรทัดที่ 1 -->
-                  <div style="display: flex; margin-bottom: 2px;">
-                    <label style="width: 25%; display: flex; align-items: center; justify-content: flex-start;">
-                      <span class="checkbox-box"></span>บ้านเดี่ยว
-                    </label>
-                    <label style="width: 25%; display: flex; align-items: center; justify-content: flex-start;">
-                      <span class="checkbox-box"></span>ทาวโฮม/ทาวเฮ้าท์
-                    </label>
-                    <label style="width: 25%; display: flex; align-items: center; justify-content: flex-start;">
-                      <span class="checkbox-box"></span>คอนโด/อพาร์ทเม้นท์
-                    </label>
-                    <label style="width: 25%; display: flex; align-items: center; justify-content: flex-start;">
-                      <span class="checkbox-box"></span>ตึกแถวอาคารพานิชย์
-                    </label>
+              <div class="signature-grid">
+                <!-- แถว 1 -->
+                <div class="signature-row">
+                  <!-- ช่อง 1: ผู้ให้บริการ -->
+                  <div class="signature-cell">
+                    <div style="margin-bottom: -35px;">
+                    ลงชื่อ <span class="sign-line"></span>
+                    <div class="name-date-group">
+                      (<span class="name-line"></span>) 
+                      <span style="margin-left: 20px;">วันที่ <span class="date-line"></span></span>
+                    </div>
+                    <div class="role">ผู้ให้บริการ</div>
                   </div>
-
-                  <!-- บรรทัดที่ 2 -->
-                  <div style="display: flex;">
-                    <label style="width: 25%; display: flex; align-items: center; justify-content: flex-start;">
-                      <span class="checkbox-box"></span>โรงแรม/รีสอร์ท
-                    </label>
-                    <label style="width: 25%; display: flex; align-items: center; justify-content: flex-start;">
-                      <span class="checkbox-box"></span>หน่วยงานราชการ
-                    </label>
-                    <label style="width: 25%; display: flex; align-items: center; justify-content: flex-start;">
-                      <span class="checkbox-box"></span>หน่วยงานเอกชน
-                    </label>
-                    <label style="width: 25%; display: flex; align-items: center; justify-content: flex-start;">
-                      <span class="checkbox-box"></span>อื่นๆ ............................
-                    </label>
+                  </div>
+            
+                  <!-- ช่อง 2: ผู้รับบริการ -->
+                  <div class="signature-cell">
+                    <div style="margin-bottom: -35px;">
+                    ลงชื่อ <span class="sign-line"></span>
+                    <div class="name-date-group">
+                      (<span class="name-line"></span>) 
+                      <span style="margin-left: 20px;">วันที่ <span class="date-line"></span></span>
+                    </div>
+                    <div class="role">ผู้รับบริการ</div>
+                  </div>
+                  </div>
+                </div>
+            
+                <!-- แถว 2 -->
+                <div class="signature-row" >
+                  <!-- ช่อง 3: ผู้อนุมัติให้เข้ารับบริการ -->
+                  <div class="signature-cell">
+                    ลงชื่อ <span class="sign-line"></span>
+                    <div class="name-date-group">
+                      (<span class="name-line"></span>) 
+                      <span style="margin-left: 20px;">วันที่ <span class="date-line"></span></span>
+                    </div>
+                    <div class="role">ผู้อนุมัติให้เข้ารับบริการ</div>
+                    
+                  </div>
+            
+                  <!-- ช่อง 4: ผู้ตรวจสอบ -->
+                  <div class="signature-cell">
+                    ลงชื่อ <span class="sign-line"></span>
+                    <div class="name-date-group">
+                      (<span class="name-line"></span>) 
+                      <span style="margin-left: 20px;">วันที่ <span class="date-line"></span></span>
+                    </div>
+                    <div class="role">ผู้ตรวจสอบ</div>
+                   
                   </div>
                 </div>
               </div>
 
-              
-             
+
+              <div style="position: relative; min-height: 25mm; padding-bottom: -10mm;">
+                <div style="
+                position: absolute;
+                bottom: 0; left: 0; width: 100%;
+                display: flex; justify-content: space-between;
+                font-size: 6px;
+                padding-left: 4mm; padding-right: 4mm;
+                line-height: 1.2;
+                page-break-inside: avoid;
+                ">
+                <div>
+                  <p style="margin: 0;">อนุมัติใช้วันที่ 14/09/2563</p>
+                </div>
+                <div>
+                  <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
+                </div>
+              </div>
+            </div>
 
              </div>
            </t>

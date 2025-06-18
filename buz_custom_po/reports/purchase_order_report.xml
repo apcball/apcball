@@ -566,7 +566,7 @@
                             position: absolute;
                             bottom: 0; left: 0; width: 100%;
                             display: flex; justify-content: space-between;
-                            font-size: 10px;
+                            font-size: px;
                             padding-left: 4mm; padding-right: 4mm;
                             line-height: 1.2;
                             page-break-inside: avoid;

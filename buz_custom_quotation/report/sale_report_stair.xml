@@ -56,7 +56,7 @@
             
             <div style="margin-bottom: -3px;">
                 <span style="font-size: 26px; color: black; font-weight: bold;">Customer&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;: </span>
-                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.customer_name"/>
+                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.partner_id.name"/>
             </div>
             
             <div style="margin-bottom: -3px;">
@@ -65,7 +65,7 @@
             </div>
 
             <div style="margin-bottom: -3px;">
-                <span style="font-size: 26px; color: black; font-weight: bold;">Proposal No.&#160;&#160;&#160;&#160;: </span>
+                <span style="font-size: 26px; color: black; font-weight: bold;">Quotation No.&#160;&#160;&#160;&#160;: </span>
                 <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.proposal_no"/>
             </div>
 
@@ -162,8 +162,7 @@
         <thead style="border: none;">
             <tr style="border: none;">
                 <th style="width: 1%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;"></th>
-                <th style="width: 30%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Product Description</th>
-                <th style="width: 15%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Image</th>
+                <th style="width: 45%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Product Description</th>
                 <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Quantity</th>
                 <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">List Price</th>
                 <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Discount</th>
@@ -178,21 +177,36 @@
                     <div><span t-field="line.name"/></div>
                 </td>
                 <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <img t-if="line.product_id.image_1920" t-att-src="image_data_uri(line.product_id.image_1920)" style="max-height: 100px;"/>
-                </td>
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom.name"/>
                 </td>
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <span t-field="line.price_unit"
-                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+               <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                    <t t-if="line.normal_price and line.normal_price != 0">
+                        <span t-field="line.normal_price"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </t>
+                    <t t-else="">
+                        <span t-field="line.price_unit"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </t>
                 </td>
                 <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <span t-field="line.discount"/>%
+                    <t t-if="line.normal_price and line.normal_price > 0">
+                        <t t-set="discount_percent" t-value="round((1 - (line.price_unit / line.normal_price)) * 100, 2)"/>
+                        <span t-esc="discount_percent"/>%
+                    </t>
+                    <t t-else="">
+                        <span t-esc="line.discount_percent"/>%
+                    </t>
                 </td>
                 <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <span t-esc="line.price_unit * (1 - (line.discount or 0.0) / 100.0)"
-                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    <t t-if="line.normal_price and line.normal_price != 0">
+                        <span t-esc="line.net_price"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </t>
+                    <t t-else="">
+                        <span t-esc="line.price_unit * (1 - (line.discount_percent or 0) / 100.0)"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </t>
                 </td>
                 <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <span t-field="line.price_subtotal"
@@ -250,7 +264,7 @@
                         <td style="padding: 5px; border: none;"><span t-field="doc.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></td>
                     </tr>
                     <tr style="border: none;">
-                        <td style="padding: 5px; border: none;"><strong>Proposal No:</strong></td>
+                        <td style="padding: 5px; border: none;"><strong>Quotation No:</strong></td>
                         <td style="padding: 5px; border: none;"><span t-field="doc.proposal_no"/></td>
                     </tr>
                     <tr style="border: none;">

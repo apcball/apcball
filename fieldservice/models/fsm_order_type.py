@@ -9,8 +9,20 @@ class FSMOrderType(models.Model):
     _description = "Field Service Order Type"
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
-    name = fields.Char(string="ชื่อประเภทงาน", required=True, tracking=True)
-    service_date = fields.Date(string="วันที่เข้าบริการ")
+    name = fields.Char(string='Document Number', required=True, readonly=True, copy=False, default='New')
+    date_notice = fields.Date(string='Date Notified')
+    warranty_number = fields.Char(string='Warranty Number')
+    date_service = fields.Date(string='Date of Service')
+    informant_name = fields.Char(string='Informant')
+    informant_mobile = fields.Char(string='Mobile')
+    requester_name = fields.Char(string='Requester')
+    requester_phone = fields.Char(string='Phone')
+    shop_name = fields.Char(string='Shop Name')
+    appointment_info = fields.Char(string='Appointment Info')
+    address = fields.Text(string='Address')
+    mobile = fields.Char(string="Mobile")
+
+    date_service = fields.Datetime(string='วันที่เข้ารับบริการ')
     planned_date = fields.Date(string="Planned Date")    # ตัวอย่างชื่อที่ต่างกัน
     scheduled_date = fields.Datetime(string="Scheduled Date")
     internal_type = fields.Selection(

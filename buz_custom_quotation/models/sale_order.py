@@ -6,6 +6,25 @@ class SaleOrderLine(models.Model):
 
     purchase_price = fields.Float(string='Purchase Price', digits='Product Price')
 
+    discount_percent = fields.Float(string='Discount Percent', compute='_compute_discount_percent', store=True)
+    net_price = fields.Float(string='Net Price', compute='_compute_net_price', store=True)
+
+    @api.depends('price_unit', 'normal_price')
+    def _compute_discount_percent(self):
+        for line in self:
+            if hasattr(line, 'normal_price') and line.normal_price and line.normal_price > 0:
+                line.discount_percent = round((1 - (line.price_unit / line.normal_price)) * 100, 2)
+            else:
+                line.discount_percent = line.discount
+
+    @api.depends('normal_price', 'discount_percent')
+    def _compute_net_price(self):
+        for line in self:
+            if hasattr(line, 'normal_price') and line.normal_price:
+                line.net_price = line.normal_price - (line.normal_price * line.discount_percent / 100)
+            else:
+                line.net_price = 0.0
+
     @api.onchange('product_id')
     def _onchange_product_id_set_purchase_price(self):
         if self.product_id:
