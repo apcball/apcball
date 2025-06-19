@@ -82,3 +82,8 @@ class SaleOrder(models.Model):
         if 'project_name' in vals:
             self.terms_conditions = self._get_terms_conditions()
         return result
+
+    @property
+    def terms_and_conditions_report(self):
+        self.ensure_one()
+        return self.payment_term_id.note or self.terms_conditions or ''

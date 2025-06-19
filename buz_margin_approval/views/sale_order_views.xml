@@ -25,7 +25,7 @@
                         type="object" 
                         string="Request Margin Approval" 
                         class="btn-primary"
-                        invisible="state not in ('draft', 'sent') or not requires_margin_approval or margin_approval_state not in (False, 'rejected')"/>
+                        invisible="state not in ('draft', 'sent') or not requires_margin_approval or margin_approval_state not in (False, 'rejected', 'pending')"/>
                 <button name="action_approve_margin" 
                         type="object" 
                         string="Approve Margin" 

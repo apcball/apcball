@@ -101,9 +101,10 @@ class SaleOrder(models.Model):
         body = _(f"Margin Approved by {self.env.user.name}")
         self.message_post(body=body)
         
-        # เมื่ออนุมัติแล้ว ให้ confirm ทันที
-        return self.action_confirm()
-        
+        # เดิม: เมื่ออนุมัติแล้ว ให้ confirm ทันที (return self.action_confirm())
+        # ใหม่: แค่อนุมัติ ไม่ confirm อัตโนมัติ ให้ user กดปุ่ม Confirm เอง
+        return True
+    
     def action_view_order(self):
         """Open the sale order form view when clicking on the 'View Order' button in kanban view"""
         self.ensure_one()
@@ -182,3 +183,23 @@ class SaleOrder(models.Model):
             ],
             'context': {'search_default_pending_margin_approval': 1},
         }
+    
+    def write(self, vals):
+        # ตรวจสอบการแก้ไข order line ที่เกี่ยวกับราคา/ส่วนลด
+        reset_approval = False
+        if 'order_line' in vals:
+            for command in vals['order_line']:
+                # command[0] == 0: create, 1: update, 2: delete
+                if command[0] in (0, 1):
+                    line_vals = command[2] if len(command) > 2 else {}
+                    if any(field in line_vals for field in ['price_unit', 'discount']):
+                        reset_approval = True
+                elif command[0] == 2:
+                    reset_approval = True
+        # ตรวจสอบการแก้ไข field อื่นๆ ที่เกี่ยวกับราคา/ส่วนลดใน order
+        if any(f in vals for f in ['amount_untaxed', 'margin']):
+            reset_approval = True
+        # ถ้าเคย approved แล้ว และมีการแก้ไข ให้กลับไป pending
+        if reset_approval and self.margin_approval_state == 'approved':
+            vals['margin_approval_state'] = 'pending'
+        return super(SaleOrder, self).write(vals)

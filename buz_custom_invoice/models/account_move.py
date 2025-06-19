@@ -18,6 +18,7 @@ class AccountMove(models.Model):
     amount_total_words = fields.Text(string='จำนวนเงินรวมทั้งสิ้นในคำอ่าน', compute='_compute_amount_total_words', store=True)
     purchase_order_number = fields.Char(string='เลขที่ใบสั่งซื้อ', related='purchase_id.name', store=True)
     picking_ids = fields.Many2many('stock.picking', string='Delivery Orders', compute='_compute_picking_ids', store=True)
+    delivery_document_number = fields.Char(string="Delivery Document Number")
 
     @api.depends('invoice_origin', 'purchase_id')
     def _compute_picking_ids(self):
