@@ -47,34 +47,40 @@
                              style="width: 50%;"/>
                     </div>
 
-    <div style="position: absolute; bottom: -38%; left: 0; right: 0; z-index: 2;">
-        <div style="line-height: 2.5; margin-bottom: 20px; padding: 0 5%;">
-            <div style="margin-bottom: -3px;">
-                <span style="font-size: 26px; color: black; font-weight: bold;">Project Name&#160;&#160;&#160;: </span>
-                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.project_name"/>
-            </div>
+                <!-- Project name saction -->
+                    <div style="position: absolute; bottom: -38%; left: 0; right: 0; z-index: 2;">
+                        <div style="line-height: 2.5; margin-bottom: 20px; padding: 0 5%;">
+                            <div style="margin-bottom: -3px;">
+                                <span style="font-size: 35px; color: black; font-weight: bold;">Project Name :</span>
+                                <span style="display: inline-block; width: 32px;"/>
+                                <span style="font-size: 35px; color: black; font-weight: bold;" t-field="doc.project_name"/>
+                            </div>
             
-            <div style="margin-bottom: -3px;">
-                <span style="font-size: 26px; color: black; font-weight: bold;">Customer&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;: </span>
-                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.partner_id.name"/>
-            </div>
+                            <div style="margin-bottom: -3px;">
+                                <span style="font-size: 26px; color: black; font-weight: bold;">Customer : </span>
+                                <span style="display: inline-block; width: 103px;"/>
+                                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.partner_id.name"/>
+                            </div>
             
-            <div style="margin-bottom: -3px;">
-                <span style="font-size: 26px; color: black; font-weight: bold;">Address&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;: </span>
-                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.partner_id.street"/>
-            </div>
+                            <div style="margin-bottom: -3px;">
+                                <span style="font-size: 26px; color: black; font-weight: bold;">Address : </span>
+                                <span style="display: inline-block; width: 113px;"/>
+                                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.partner_id.street"/>
+                            </div>
 
-            <div style="margin-bottom: -3px;">
-                <span style="font-size: 26px; color: black; font-weight: bold;">Quotation No.&#160;&#160;&#160;&#160;: </span>
-                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.proposal_no"/>
-            </div>
+                            <div style="margin-bottom: -3px;">
+                                <span style="font-size: 26px; color: black; font-weight: bold;">Quotation No. : </span>
+                                <span style="display: inline-block; width: 64px;"/>
+                                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.proposal_no"/>
+                            </div>
 
-            <div style="margin-bottom: -3px;">
-                <span style="font-size: 26px; color: black; font-weight: bold;">Date&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;: </span>
-                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
-            </div>
-        </div>
-
+                            <div style="margin-bottom: -3px;">
+                                <span style="font-size: 26px; color: black; font-weight: bold;">Date : </span>
+                                <span style="display: inline-block; width: 140px;"/>
+                                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.date_order" t-options="{&quot;widget&quot;: &quot;date&quot;, &quot;format&quot;: &quot;dd/MM/yyyy&quot;}"/>
+                            </div>
+                        </div>
+                        
         <!-- Company Info Section -->
         <div style="margin: 11px 0 0 0; border: 2px solid #1E3A78; background-color: #1E3A78; padding: 10px; width: 100%;">
             <div style="text-align: left; padding: 0 5%;">
@@ -231,68 +237,6 @@
         <div style="text-align: left; margin-top: 0; margin-left: 0mm; margin-right: 0mm;">
             <img t-att-src="'/buz_custom_quotation/static/img/cover/haeder_1.jpg'" style="width: calc(100% + 12mm); max-width: none; margin-bottom: 10px; margin-left: -5mm;"/>
         </div>
-
-        <!-- Header Section -->
-        <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
-            <!-- Left Column -->
-            <div class="col-6" style="text-align: left;">
-                <table style="width: 95%; border: none; margin: 10px;">
-                    <tr style="border: none;">
-                        <td style="padding: 5px; border: none;"><strong>To:</strong></td>
-                        <td style="padding: 5px; border: none;"><span t-field="doc.customer_name"/></td>
-                    </tr>
-                    <tr style="border: none;">
-                        <td style="padding: 5px; border: none;"><strong>Company:</strong></td>
-                        <td style="padding: 5px; border: none;"><span t-field="doc.partner_id.name"/></td>
-                    </tr>
-                    <tr style="border: none;">
-                        <td style="padding: 5px; vertical-align: top; border: none;"><strong>Address:</strong></td>
-                        <td style="padding: 5px; border: none;">
-                            <span t-field="doc.partner_id.street"/>
-                            <span t-if="doc.partner_id.street2"><br/><span t-field="doc.partner_id.street2"/></span>
-                            <span t-if="doc.partner_id.city"><br/><span t-field="doc.partner_id.city"/></span>
-                        </td>
-                    </tr>
-                    <tr style="border: none;">
-                        <td style="padding: 5px; border: none;"><strong>Tel:</strong></td>
-                        <td style="padding: 5px; border: none;"><span t-field="doc.partner_id.phone"/></td>
-                    </tr>
-                    <tr style="border: none;">
-                        <td style="padding: 5px; border: none;"><strong>Email:</strong></td>
-                        <td style="padding: 5px; border: none;"><span t-field="doc.partner_id.email"/></td>
-                    </tr>
-                </table>
-            </div>
-            <!-- Right Column -->
-            <div class="col-6" style="text-align: left;">
-                <table style="width: 95%; border: none; margin: 10px;">
-                    <tr style="border: none;">
-                        <td style="padding: 5px; border: none;"><strong>Date:</strong></td>
-                        <td style="padding: 5px; border: none;"><span t-field="doc.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></td>
-                    </tr>
-                    <tr style="border: none;">
-                        <td style="padding: 5px; border: none;"><strong>Quotation No:</strong></td>
-                        <td style="padding: 5px; border: none;"><span t-field="doc.proposal_no"/></td>
-                    </tr>
-                    <tr style="border: none;">
-                        <td style="padding: 5px; border: none;"><strong>Project:</strong></td>
-                        <td style="padding: 5px; border: none;"><span t-field="doc.project_name"/></td>
-                    </tr>
-                    <tr style="border: none;">
-                        <td style="padding: 5px; border: none;"><strong>Sale Condition:</strong></td>
-                        <td style="padding: 5px; border: none;"><span t-field="doc.payment_term_id.name"/></td>
-                    </tr>
-                    <tr style="border: none;">
-                        <td style="padding: 5px; border: none;"><strong>Ordered By:</strong></td>
-                        <td style="padding: 5px; border: none;"><span t-field="doc.user_id.name"/></td>
-                    </tr>
-                    <tr style="border: none;">
-                        <td style="padding: 5px; border: none;"><strong>Phone:</strong></td>
-                        <td style="padding: 5px; border: none;"><span t-field="doc.user_id.phone"/></td>
-                    </tr>
-                </table>
-            </div>
-        </div>
         
          <!-- Totals Section -->
     <div class="row justify-content-end" style="margin-top: 20px; font-size: 20px;">
@@ -328,6 +272,30 @@
             </table>
         </div>
     </div>
+
+<!-- Signature Section -->
+        <div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
+            <div style="width: 200px; display: inline-block; text-align: center;">
+            <p style="margin-bottom: 40px;">ผู้อนุมัติซื้อ</p>
+            <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
+            <div style="margin-top: 10px; font-size: 16px;">
+                (____________________)
+            </div>
+            <div style="margin-top: 5px; font-size: 16px;">
+                วันที่ .................................
+            </div>
+            </div>
+            <div style="width: 200px; display: inline-block; text-align: center; margin-left: 600px;">
+            <p style="margin-bottom: 40px;">ผู้อนุมัติราคา</p>
+            <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
+            <div style="margin-top: 10px; font-size: 16px;">
+                ( เพชรรัตน์ บัวงาม )
+            </div>
+            <div style="margin-top: 5px; font-size: 16px;">
+                วันที่ ...................................
+            </div>
+            </div>
+        </div>
 
        <!-- Replace the existing Terms and Conditions section with: -->
 <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
