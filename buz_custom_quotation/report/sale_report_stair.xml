@@ -170,7 +170,7 @@
                 <th style="width: 1%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;"></th>
                 <th style="width: 45%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Product Description</th>
                 <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Quantity</th>
-                <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">List Price</th>
+                <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Unit Price</th>
                 <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Discount</th>
                 <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Price</th>
                 <th style="width: 19%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Amount</th>
