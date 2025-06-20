@@ -20,6 +20,7 @@
         'report/distributor_delivery_note.xml',
         'report/distributor_delivery_export.xml',
         'report/delivery_note_report.xml',
+        'report/dispatch_report.xml',
 
     ],
     'installable': True,

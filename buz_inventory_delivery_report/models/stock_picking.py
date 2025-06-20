@@ -20,8 +20,18 @@ class StockPicking(models.Model):
     project_plot_number = fields.Char(string='เฉพาะโครงการ: เลขที่แปลง')
     house_model = fields.Char(string='แบบบ้าน')
     is_garage = fields.Boolean(string='โรงรถ')
-  
 
+    ship_from_partner_id = fields.Many2one(
+        'res.partner', 
+        string='Ship From Partner',
+        help='Partner representing the place where goods are shipped from'
+    )
+    
+    sale_id = fields.Many2one(
+        'sale.order',
+        string='Sale Order',
+        help='ใบสั่งขายที่เกี่ยวข้อง'
+    )
 
     @api.depends('move_ids.product_uom_qty', 'price_unit')
 

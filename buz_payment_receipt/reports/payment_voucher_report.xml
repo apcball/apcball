@@ -173,70 +173,71 @@
                         
 
                         <!--เลขที่บัญชี -->
-                        <table class="table" style="width: 100%; table-layout: fixed; text-align: center; margin-top:60px; border-collapse: collapse; border: 1px solid black;">
-                            <thead>
-                                <tr>
-                                    <th style="font-size: 20px; width: 14%; border: 1px solid black; padding: 6px;">เลขที่บัญชี</th>
-                                    <th style="font-size: 20px; width: 16%; border: 1px solid black; padding: 8px;">ชื่อบัญชี</th>
-                                    <th style="font-size: 20px; width: 12%; border: 1px solid black; padding: 8px;">เลขที่เอกสาร</th>
-                                    <th style="font-size: 20px; width: 12%; border: 1px solid black; padding: 6px;">วันที่</th>
-                                    <th style="font-size: 20px; width: 12%; border: 1px solid black; padding: 6px;">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-foreach="o.line_ids" t-as="line">
-                                    <tr>
-                                        <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.account_id.code or '-'"/>
-                                        <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.account_id.name or '-'"/>
-                                        <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.move_id.name or '-'"/>
-                                        <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.date or '-'"/>
-                                        
-                                        <!-- ช่องข้อมูล -->
-                                        <td style="font-size: 20px; border: 1px solid black; padding: 0;">
-                                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid black; padding: 4px 6px;">
-                                                <span style="width: 50%; text-align: center; font-weight: bold;">Dr.</span>
-                                                <span style="width: 50%; text-align: center; font-weight: bold;">Cr.</span>
-                                            </div>
-                                            <div style="display: flex; height: 100%;">
-                                                <div style="width: 50%; border-right: 1px solid black; padding: 6px; text-align: right;">
-                                                    <t t-if="line.debit > 0">
-                                                        <span t-esc="'{:,.2f}'.format(line.debit)"/>
-                                                    </t>
-                                                    <t t-else="">
-                                                        -
-                                                    </t>
-                                                </div>
-                                                <div style="width: 50%; padding: 6px; text-align: right;">
-                                                    <t t-if="line.credit > 0">
-                                                        <span t-esc="'{:,.2f}'.format(line.credit)"/>
-                                                    </t>
-                                                    <t t-else="">
-                                                        -
-                                                    </t>
-                                                </div>
-                                            </div>
-                                        </td>   
+                         <t t-set="total_debit" t-value="sum(o.line_ids.mapped('debit'))"/>
+                         <t t-set="total_credit" t-value="sum(o.line_ids.mapped('credit'))"/>
+
+                         <table class="table" style="width: 100%; table-layout: fixed; text-align: center; margin-top:60px; border-collapse: collapse; border: 1px solid black;">
+                             <thead>
+                                 <tr>
+                                     <th style="font-size: 20px; width: 14%; border: 1px solid black; padding: 6px;">เลขที่บัญชี</th>
+                                     <th style="font-size: 20px; width: 16%; border: 1px solid black; padding: 6px;">ชื่อบัญชี</th>
+                                     <th style="font-size: 20px; width: 12%; border: 1px solid black; padding: 6px;">เลขที่เอกสาร</th>
+                                     <th style="font-size: 20px; width: 12%; border: 1px solid black; padding: 6px;">วันที่</th>
+                                     <th style="font-size: 20px; width: 24%; border: 1px solid black; padding: 0;">
+                                         <div style="padding: 6px;">Amount</div>
+                                         <div style="display: flex; font-size: 18px; font-weight: bold; border-top: 1px solid black;">
+                                             <div style="width: 50%; border-right: 1px solid black;">Dr.</div>
+                                             <div style="width: 50%;">Cr.</div>
+                                         </div>
+                                     </th>
                                  </tr>
-                                </t>
-                                <!-- Total Row -->
+                             </thead>
+
+                             <tbody>
+                                 <t t-foreach="o.line_ids" t-as="line">
+                                     <tr>
+                                         <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.account_id.code or '-'"/>
+                                         <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.account_id.name or '-'"/>
+                                         <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.move_id.name or '-'"/>
+                                         <td style="font-size: 20px; border: 1px solid black; padding: 6px;" t-esc="line.date or '-'"/>
+                                         <td style="font-size: 20px; border: 1px solid black; padding: 0;">
+                                             <div style="display: flex; height: 100%;">
+                                                 <div style="width: 50%; border-right: 1px solid black; padding: 6px; text-align: right;">
+                                                    <t t-if="line.debit > 0">
+                                                         <span t-esc="'{:,.2f}'.format(line.debit)"/>
+                                                     </t>
+                                                     <t t-else="">-</t>
+                                                 </div>
+                                                 <div style="width: 50%; padding: 6px; text-align: right;">
+                                                    <t t-if="line.credit > 0">
+                                                         <span t-esc="'{:,.2f}'.format(line.credit)"/>
+                                                     </t>
+                                                     <t t-else="">-</t>
+                                                 </div>
+                                             </div>
+                                         </td>
+                                     </tr>
+                                 </t>
+
+                                 <!-- Total row -->
                                 <tr>
-                                    <td colspan="4" style="font-size: 20px; border: 1px solid black; padding: 6px; text-align: right; font-weight: bold;">
-                                        Total:
-                                    </td>
-                                    <td style="font-size: 20px; border: 1px solid black; padding: 0;">
-                                        
-                                        <div style="display: flex; height: 100%;">
-                                            <div style="width: 50%; border-right: 1px solid black; padding: 6px; text-align: right; font-weight: bold;">
-                                                <span t-esc="'{:,.2f}'.format(sum(o.line_ids.mapped('debit')))"/>
-                                            </div>
-                                            <div style="width: 50%; padding: 6px; text-align: right; font-weight: bold;">
-                                                <span t-esc="'{:,.2f}'.format(sum(o.line_ids.mapped('credit')))"/>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
+                                     <td colspan="4" style="font-size: 20px; border: 1px solid black; padding: 6px; text-align: right; font-weight: bold;">
+                                         รวมยอด:
+                                     </td>
+                                     <td style="font-size: 20px; border: 1px solid black; padding: 0;">
+                                         <div style="display: flex; height: 100%;">
+                                             <div style="width: 50%; border-right: 1px solid black; padding: 6px; text-align: right; font-weight: bold;">
+                                                 <span t-esc="'{:,.2f}'.format(total_debit)"/>
+                                             </div>
+                                             <div style="width: 50%; padding: 6px; text-align: right; font-weight: bold;">
+                                                 <span t-esc="'{:,.2f}'.format(total_credit)"/>
+                                             </div>
+                                         </div>
+                                     </td>
+                                 </tr>
                              </tbody>
-                          </table>
+                         </table>
+
 
                           <!-- หมายเหตุ -->
                           <div style="padding: 20px; min-height: 60px; font-size: 22px;">
@@ -244,41 +245,41 @@
                          </div>
 
                          <!-- ส่วนของลายเซ็น -->
-<table style="width: 100%; text-align: center; margin-top: 30px; border: 1px solid #000;">
-    <thead>
-        <tr>
-            <th style="font-size: 20px; border: 1px solid #000;">Prepare By:</th>
-            <th style="font-size: 20px; border: 1px solid #000;">Checked(1):</th>
-            <th style="font-size: 20px; border: 1px solid #000;">Checked(2):</th>
-            <th style="font-size: 20px; border: 1px solid #000;">Approved By:</th>
-            <th style="font-size: 20px; border: 1px solid #000;">Received By:</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td style="border: 1px solid #000;">
-                <div style="height: 2em; border-bottom: 2px solid #000;"></div>
-                <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
-            </td>
-            <td style="border: 1px solid #000;">
-                <div style="height: 2em; border-bottom: 2px solid #000;"></div>
-                <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
-            </td>
-            <td style="border: 1px solid #000;">
-                <div style="height: 2em; border-bottom: 2px solid #000;"></div>
-                <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
-            </td>
-            <td style="border: 1px solid #000;">
-                <div style="height: 2em; border-bottom: 2px solid #000;"></div>
-                <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
-            </td>
-            <td style="border: 1px solid #000;">
-                <div style="height: 2em; border-bottom: 2px solid #000;"></div>
-                <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
-            </td>
-        </tr>
-    </tbody>
-</table>
+                         <table style="width: 100%; text-align: center; margin-top: 30px; border: 1px solid #000;">
+                             <thead>
+                                 <tr>
+                                     <th style="font-size: 20px; border: 1px solid #000;">Prepare By:</th>
+                                     <th style="font-size: 20px; border: 1px solid #000;">Checked(1):</th>
+                                     <th style="font-size: 20px; border: 1px solid #000;">Checked(2):</th>
+                                     <th style="font-size: 20px; border: 1px solid #000;">Approved By:</th>
+                                     <th style="font-size: 20px; border: 1px solid #000;">Received By:</th>
+                                 </tr>
+                            </thead>
+                             <tbody>
+                                 <tr>
+                                    <td style="border: 1px solid #000;">
+                                         <div style="height: 2em; border-bottom: 2px solid #000;"></div>
+                                         <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
+                                     </td>
+                                     <td style="border: 1px solid #000;">
+                                         <div style="height: 2em; border-bottom: 2px solid #000;"></div>
+                                         <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
+                                     </td>
+                                     <td style="border: 1px solid #000;">
+                                         <div style="height: 2em; border-bottom: 2px solid #000;"></div>
+                                         <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
+                                     </td>
+                                     <td style="border: 1px solid #000;">
+                                         <div style="height: 2em; border-bottom: 2px solid #000;"></div>
+                                         <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
+                                     </td>
+                                     <td style="border: 1px solid #000;">
+                                         <div style="height: 2em; border-bottom: 2px solid #000;"></div>
+                                         <div style="font-size: 16px; margin-top: 2px; text-align: left;">Data</div>
+                                     </td>
+                                 </tr>
+                             </tbody>
+                         </table>
 
                          
                            </div>

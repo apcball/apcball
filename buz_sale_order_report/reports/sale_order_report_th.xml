@@ -38,6 +38,15 @@
                                 padding: 10px;
                             }
                         </style>
+                        <t t-set="items_per_page" t-value="15"/>
+                        <t t-set="total_items" t-value="len(doc.order_line)"/>
+                        <t t-set="total_pages" t-value="(total_items + items_per_page - 1) // items_per_page"/>
+
+
+                        <t t-set="groups_of_10" t-value="[doc.order_line[i:i+10] for i in range(0, len(doc.order_line), 10)]"/>
+                        <t t-set="page_num" t-value="0"/>
+                        <t t-foreach="groups_of_10" t-as="group">
+                           <div t-attf-style="#{page_num != 0 and 'page-break-before: always;' or ''}">
 
                         <!-- Company Info Section -->
                         <div class="row mb-2">
@@ -109,9 +118,11 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr t-foreach="doc.order_line" t-as="line">
+                                <t t-set="start_index" t-value="page_num * 10"/>
+                                <t t-foreach="group" t-as="line" t-index="line_index">
+                                <tr style="border-bottom: 1px solid #8B9B7C;">
                                     <td class="text-center">
-                                        <span t-esc="line_index + 1"/>
+                                        <span t-esc="start_index + line_index + 1"/>
                                     </td>
                                     <td><span t-field="line.product_id.name"/></td>
                                     <td class="text-right">
@@ -128,8 +139,14 @@
                                         <span t-field="line.price_subtotal"/>
                                     </td>
                                 </tr>
+                            </t>
                             </tbody>
                         </table>
+                    </div>
+                    <t t-set="page_num" t-value="page_num + 1"/>
+                          
+                     
+                    </t>
 
                         <!-- Summary Section -->
                         <div class="row">

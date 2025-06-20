@@ -1,0 +1,14 @@
+# Translation template for stock_inventory_ajustement module
+# English (en) translation
+msgid ""
+msgstr ""
+"Project-Id-Version: stock_inventory_ajustement\n"
+"POT-Creation-Date: 2024-06-20\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Add your translations below. Example:
+# msgid "French text here"
+# msgstr "English translation here"
