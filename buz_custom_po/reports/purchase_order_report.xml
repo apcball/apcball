@@ -174,11 +174,11 @@
                         <!-- ฝั่งซ้าย: 40% -->
                         <div style="width: 45%; padding: 0; box-sizing: border-box; border-right: 1px solid #000;">
                             <div class="mb-1" style="margin-bottom:0; padding:0 1px;">
-                                <strong style="display: inline-block; width:21%;">ผู้ขาย/VENDOR:</strong>
+                                <strong style="display: inline-block; width:25%;">ผู้ขาย/VENDOR:</strong>
                                 <span t-field="o.partner_id.name"/>
                             </div>
                             <div class="mb-1" style="margin-bottom:0; padding: 0.5px 2px;">
-                                <strong style="display: inline-block; width: 21%;">ที่อยู่/ADDRESS:</strong>
+                                <strong style="display: inline-block; width: 25%;">ที่อยู่/ADDRESS:</strong>
                                 <span t-field="o.partner_id.street"/>
                                 <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
                                 <span t-if="o.partner_id.city"> <t t-esc="o.partner_id.city"/></span>
@@ -186,7 +186,7 @@
                                 <span t-if="o.partner_id.zip"> <t t-esc="o.partner_id.zip"/></span>
                             </div>
                             <div class="mb-1" style="margin-bottom:0; padding: 0.5px 2px;">
-                                <strong style="display: inline-block; width: 30%;">เลขประจำตัวผู้เสียภาษี:</strong>
+                                <strong style="display: inline-block; width: 40%;">เลขประจำตัวผู้เสียภาษี:</strong>
                                 <span t-field="o.partner_id.vat"/>
                             </div>
                             <div style="display: flex; justify-content: space-between; padding: 0.5px 2px; margin-bottom: 0;">
@@ -234,33 +234,34 @@
                                     <tr>
                                         <td style="width: 100%; border-bottom: 1px solid #000; padding: 2px; line-height: 1.1;" colspan="4">
                                             <strong>แผนกที่ขอซื้อ:</strong>
-                                            <t t-if="o.dept_id.name">
-                                                <span t-esc="o.requested_id.name"/>
+                                            <t t-if="o.dept_id">
+                                                <span t-esc="o.dept_id.name"/>
                                             </t>
                                         </td>
                                     </tr>
-
 
                                     <!--  บรรทัดที่ 3: ผู้ติดต่อ / ใบขอซื้อเลขที่ / Credit -->
                                     <tr>
                                         <td style="width: 35%; border-bottom: 1px solid #000; padding: 2px; line-height: 1.1;">
                                             <strong>ผู้ติดต่อ:</strong>
-                                            <t t-if="o.partner_contact_id">
-                                                <span t-esc="o.partner_contact_id.name"/>
+                                            <t t-if="o.partner_id.child_ids">
+                                                <span t-esc="o.partner_id.child_ids[0].name"/>
+                                            </t>
+                                            <t t-elif="o.partner_id.name">
+                                                <span t-esc="o.partner_id.name"/>
                                             </t>
                                         </td>
-                                        
                                         <td style="width: 35%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 2px; line-height: 1.1;">
                                             <strong>ใบขอซื้อเลขที่:</strong>
-                                            <t t-if="o.buz_purchase_request_id">
-                                                <span t-esc="o.buz_purchase_request_id.name"/>
+                                            <t t-if="o.pr_number">
+                                                <span t-esc="o.pr_number"/>
                                             </t>
                                         </td>
                                         
                                         <td style="width: 30%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 2px; line-height: 1.1;" colspan="2">
                                             <strong>Credit:</strong>
-                                            <t t-if="o.partner_id.property_payment_term_id">
-                                                <span t-esc="o.partner_id.property_payment_term_id.name"/>
+                                            <t t-if="o.partner_id.property_supplier_payment_term_id">
+                                                <span t-esc="o.partner_id.property_supplier_payment_term_id.name"/>
                                             </t>
                                         </td>
                                         

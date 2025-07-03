@@ -268,6 +268,9 @@ class PurchaseRequisition(models.Model):
             self.env['purchase.order'].create({
                 'partner_id': vendor_id,
                 'requisition_order': self.name,
+                'employee_id': self.employee_id.id,
+                'dept_id': self.dept_id.id,
+                'pr_number': self.name,
                 'date_order': fields.Date.today(),
                 'order_line': order_lines,
             })
