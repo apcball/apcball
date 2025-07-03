@@ -8,7 +8,7 @@
             <xpath expr="//field[@name='payment_term_id']" position="after">
                 <field name="customer_name" placeholder="Customer Name"/>
                 <field name="project_name" placeholder="Project Name"/>
-                <field name="proposal_no" readonly="0"/>
+                <field name="quotation_no" readonly="0"/>
             </xpath>
         </field>
     </record>

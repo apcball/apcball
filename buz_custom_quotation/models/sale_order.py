@@ -34,6 +34,7 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     proposal_no = fields.Char(string='Proposal Number', readonly=True, copy=False)
+    quotation_no = fields.Char(string='Quotation Number', copy=False)
     project_name = fields.Char(string='Project Name')
     customer_name = fields.Char(string='Customer Name')
     terms_conditions = fields.Text(string='Terms and Conditions')
@@ -62,22 +63,14 @@ class SaleOrder(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if not vals.get('proposal_no'):
-                sequence = self.env['ir.sequence'].next_by_code('sale.proposal')
+            if not vals.get('quotation_no') or vals.get('quotation_no') == '':
+                sequence = self.env['ir.sequence'].next_by_code('sale.quotation')
                 if sequence:
-                    vals['proposal_no'] = sequence
-                elif vals.get('name'):
-                    vals['proposal_no'] = vals['name'].replace('SO', 'PS')
+                    vals['quotation_no'] = sequence
         records = super().create(vals_list)
         return records
 
     def write(self, vals):
-        if 'name' in vals and not self.proposal_no:
-            sequence = self.env['ir.sequence'].next_by_code('sale.proposal')
-            if sequence:
-                vals['proposal_no'] = sequence
-            else:
-                vals['proposal_no'] = vals['name'].replace('SO', 'PS')
         result = super().write(vals)
         if 'project_name' in vals:
             self.terms_conditions = self._get_terms_conditions()

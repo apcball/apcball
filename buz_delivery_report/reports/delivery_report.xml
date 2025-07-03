@@ -33,232 +33,249 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
-                    <div class="page">
-            <style>
-              @font-face {
-                font-family: 'Sarabun';
-                src: url('/buz_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
-              }
-              .page {
-                font-family: 'Sarabun', sans-serif;
-                font-size: 20px;
-                padding: 0;
-                width: 100%;
-                height: 100%;
-                margin: 0;
-                color: #000000;
-              }
-              .company-header {
-                font-size: 20px;
-                font-weight: bold;
-                color: #000000;
-              }
-              .company-info {
-                font-size: 18px;
-                color: #000000;
-              }
-              .doc-title {
-                font-size: 25px;
-                font-weight: bold;
-                color: #000000;
-              }
-              .table-header {
-                font-size: 18px;
-                font-weight: bold;
-                background-color: #f8f9fa;
-                color: #000000;
-              }
-              .info-box {
-                background-color: #f8f9fa !important;
-                color: black !important;
-                font-size: 20px !important;
-                border: 1px solid #000 !important;
-                padding: 10px;
-              }
-              .table-content {
-                font-size: 18px;
-                color: #000000;
-              }
-              .table-product {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 20px !important;
-              }
-              .table-product th {
-                border: 1px solid #000;
-                padding: 8px 10px;
-                background-color: #f8f9fa;
-                font-weight: bold;
-                font-size: 18px !important;
-                vertical-align: middle;
-              }
-              .table-product td {
-                border: 1px solid #000;
-                padding: 8px 10px;
-                font-size: 20px !important;
-                vertical-align: middle;
-              }
-              .table-product .product-code {
-                font-weight: bold;
-              }
-              .table-product .quantity {
-                text-align: right;
-              }
-            </style>
-
-            <!-- Company Info Section -->
-            <div class="row mb-2">
-                <div class="col-4 text-start">
-                    <img src="/buz_delivery_report/static/img/LOGO MOGEN.png"
-                         style="width: 150px; height: auto; object-fit: contain;"
-                         alt="Company Logo"/>
-                </div>
-                <div class="col-8">
-                    <div class="company-header mb-1 text-end">
-                        <strong>เลขที่เอกสาร:</strong>
-                        <span t-field="doc.name"/>
-                    </div>
-                    <div class="company-info text-end">
-                        <strong>วันที่เอกสาร:</strong>
-                        <span t-field="doc.date" t-options='{"widget": "date"}'/>
-                    </div>
-                </div>
-            </div>
-            
-                        <!-- Document Title and Number -->
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <div class="row">
-                                    <div class="col-12 text-center">
-                                        <div class="doc-title">
-                                            ใบโอนสินค้า / Transfer Slip
+                <div class="page">
+                    <style>
+                      @font-face {
+                        font-family: 'Sarabun';
+                        src: url('/buz_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                      }
+                      .page {
+                        font-family: 'Sarabun', sans-serif;
+                        font-size: 20px;
+                        padding: 0;
+                        width: 100%;
+                        height: 100%;
+                        margin: 0;
+                        color: #000000;
+                      }
+                      .company-header {
+                        font-size: 20px;
+                        font-weight: bold;
+                        color: #000000;
+                      }
+                      .company-info {
+                        font-size: 18px;
+                        color: #000000;
+                      }
+                      .doc-title {
+                        font-size: 25px;
+                        font-weight: bold;
+                        color: #000000;
+                      }
+                      .table-header {
+                        font-size: 18px;
+                        font-weight: bold;
+                        background-color: #f8f9fa;
+                        color: #000000;
+                      }
+                      .info-box {
+                        background-color: #f8f9fa !important;
+                        color: black !important;
+                        font-size: 20px !important;
+                        border: 1px solid #000 !important;
+                        padding: 10px;
+                      }
+                      .table-content {
+                        font-size: 18px;
+                        color: #000000;
+                      }
+                      .table-product {
+                        width: 100%;
+                        border-collapse: collapse;
+                        font-size: 20px !important;
+                      }
+                      .table-product th {
+                        border: 1px solid #000;
+                        padding: 8px 10px;
+                        background-color: #f8f9fa;
+                        font-weight: bold;
+                        font-size: 18px !important;
+                        vertical-align: middle;
+                      }
+                      .table-product td {
+                        border: 1px solid #000;
+                        padding: 8px 10px;
+                        font-size: 20px !important;
+                        vertical-align: middle;
+                      }
+                      .table-product .product-code {
+                        font-weight: bold;
+                      }
+                      .table-product .quantity {
+                        text-align: right;
+                      }
+                    </style>
+                    <t t-set="move_list" t-value="doc.move_ids"/>
+                    <t t-set="groups_of_16" t-value="[move_list[i:i+16] for i in range(0, len(move_list), 16)]"/>
+                    <t t-set="total_pages" t-value="len(groups_of_16)"/>
+                    <t t-set="page_number" t-value="1"/>
+                    <t t-set="line_number" t-value="1"/>
+                    <t t-set="total_delivered_total" t-value="0"/>
+                    <t t-foreach="groups_of_16" t-as="group">
+                        <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                            <t t-if="groups_of_16">
+                                <div>
+                                    <!-- Page header if more than 1 page -->
+                                    <t t-if="total_pages &gt; 1">
+                                        <div style="text-align: right; font-weight: bold; font-size: 18px; margin-bottom: 5px;">
+                                            หน้า <t t-esc="page_number"/> / <t t-esc="total_pages"/>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Document Info Section (Internal Transfer Only) -->
-                        <div class="row mb-3">
-                            <div class="col-6">
-                                <div class="info-box" style="height: 180px;">
-                                    <div class="mb-2">
-                                        <strong style="width: 20%; display: inline-block;">ต้นทาง:</strong>
-                                        <span t-esc="doc.location_id.complete_name"/>
-                                    </div>
-                                    <div class="mb-2">
-                                        <strong style="width: 20%; display: inline-block;">ผู้รับผิดชอบ:</strong>
-                                        <span t-esc="doc.user_id.employee_id.name"/>
-                                    </div>
-                                    <div class="mb-2">
-                                        <strong style="width: 20%; display: inline-block;">เอกสารอ้างอิง:</strong>
-                                        <span t-esc="doc.origin"/>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="info-box" style="height: 180px;">
-                                    <div class="mb-2">
-                                        <strong style="width: 20%; display: inline-block;">ปลายทาง:</strong>
-                                        <span t-field="doc.location_dest_id.name"/>
-                                    </div>
-                                    <div class="mb-2">
-                                        <strong style="width: 30%; display: inline-block;">วันที่ต้องการสินค้า:</strong>
-                                        <span t-field="doc.scheduled_date" t-options='{"widget": "date"}'/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Transfer/Delivery Products Table without Amount -->
-                        <table class="table table-sm table-product" style="border: 1px solid #000;">
-                            <thead>
-                                <tr class="table-header">
-                                    <th style="width: 5%; text-align: center; padding-top: 4px; padding-bottom: 4px;">ลำดับ</th>
-                                    <th style="width: 65%; text-align: center; padding-top: 4px; padding-bottom: 4px;">สินค้า</th>
-                                    <th style="width: 15%; text-align: center; padding-top: 4px; padding-bottom: 4px;">จำนวนสั่ง</th>
-                                    <th style="width: 15%; text-align: center; padding-top: 4px; padding-bottom: 4px;">จำนวนส่ง</th>
-                                </tr>
-                            </thead>
-                            <tbody class="table-content">
-                                <t t-set="line_number" t-value="1"/>
-                                <t t-foreach="doc.move_ids_without_package.sorted(key=lambda m: m.id)" t-as="move">
-                                    <tr>
-                                        <td class="text-center" style="padding-top: 2px; padding-bottom: 2px;">
-                                            <span t-esc="line_number"/>
-                                            <t t-set="line_number" t-value="line_number + 1"/>
-                                        </td>
-                                        <td style="padding-top: 2px; padding-bottom: 2px;">
-                                            <span class="product-code">[<span t-field="move.product_id.default_code"/>]</span>
-                                            <span t-field="move.product_id.name"/>
-                                        </td>
-                                        <td class="quantity" style="padding-top: 2px; padding-bottom: 2px;">
-                                            <span t-field="move.product_uom_qty"/>
-                                            <span t-field="move.product_uom.name"/>
-                                        </td>
-                                        <td class="quantity" style="padding-top: 2px; padding-bottom: 2px;">
-                                            <t t-set="delivered_qty" t-value="sum(ml.quantity for ml in move.move_line_ids)"/>
-                                            <span t-esc="delivered_qty"/>
-                                            <span t-field="move.product_uom.name"/>
-                                        </td>
-                                    </tr>
-                                </t>
-                            </tbody>
-                        </table>
-
-                        <!-- Total Section -->
-                            <div class="row mt-3">
-                                <div class="col-12">
-                                    <div class="info-box">
-                                        <div class="row">
-                                            <div class="col-12 text-end">
-                                                <strong>จำนวนชิ้นรวม: </strong>
-                                                <t t-set="total_delivered" t-value="sum(sum(ml.quantity for ml in move.move_line_ids) for move in doc.move_ids_without_package)"/>
-                                                <span t-esc="'%.0f' % total_delivered"/> Items
+                                    </t>
+                                    <!-- Company Info Section -->
+                                    <div class="row mb-2">
+                                        <div class="col-4 text-start">
+                                            <img src="/buz_delivery_report/static/img/LOGO MOGEN.png"
+                                                 style="width: 150px; height: auto; object-fit: contain;margin-bottom: -30px;"
+                                                 alt="Company Logo"/>
+                                        </div>
+                                        <div class="col-8">
+                                            <div class="company-header mb-1 text-end">
+                                                <strong>เลขที่เอกสาร:</strong>
+                                                <span t-field="doc.name"/>
+                                            </div>
+                                            <div class="company-info text-end">
+                                                <strong>วันที่เอกสาร:</strong>
+                                                <span t-field="doc.date" t-options='{"widget": "date"}'/>
                                             </div>
                                         </div>
                                     </div>
+                                    <!-- Document Title -->
+                                    <div class="row mb-3">
+                                        <div class="col-12">
+                                            <div class="row">
+                                                <div class="col-12 text-center" style="margin-bottom: -10px;">
+                                                    <div class="doc-title">
+                                                        ใบโอนสินค้า / Transfer Slip
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Document Info -->
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <div class="info-box" style="height: 180px;">
+                                                <div class="mb-2">
+                                                    <strong style="width: 20%; display: inline-block;">ต้นทาง:</strong>
+                                                    <span t-esc="doc.location_id.complete_name"/>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <strong style="width: 20%; display: inline-block;">ผู้รับผิดชอบ:</strong>
+                                                    <span t-esc="doc.user_id.employee_id.name"/>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <strong style="width: 20%; display: inline-block;">เอกสารอ้างอิง:</strong>
+                                                    <span t-esc="doc.origin"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="info-box" style="height: 180px;">
+                                                <div class="mb-2">
+                                                    <strong style="width: 20%; display: inline-block;">ปลายทาง:</strong>
+                                                    <span t-field="doc.location_dest_id.name"/>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <strong style="width: 30%; display: inline-block;">วันที่ต้องการสินค้า:</strong>
+                                                    <span t-field="doc.scheduled_date" t-options='{"widget": "date"}'/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Table section -->
+                                    <table class="table table-sm table-product" style="border: 1px solid #000;">
+                                        <thead>
+                                            <tr class="table-header">
+                                                <th style="width: 5%; text-align: center; padding-top: 4px; padding-bottom: 4px;">ลำดับ</th>
+                                                <th style="width: 65%; text-align: center; padding-top: 4px; padding-bottom: 4px;">สินค้า</th>
+                                                <th style="width: 15%; text-align: center; padding-top: 4px; padding-bottom: 4px;">จำนวนสั่ง</th>
+                                                <th style="width: 15%; text-align: center; padding-top: 4px; padding-bottom: 4px;">จำนวนส่ง</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="table-content">
+                                            <t t-set="total_delivered" t-value="0"/>
+                                            <t t-foreach="group" t-as="move">
+                                                <tr>
+                                                    <td class="text-center" style="padding-top: 2px; padding-bottom: 2px;">
+                                                        <span t-esc="line_number"/>
+                                                        <t t-set="line_number" t-value="line_number + 1"/>
+                                                    </td>
+                                                    <td style="padding-top: 2px; padding-bottom: 2px;">
+                                                        <span class="product-code">[<span t-field="move.product_id.default_code"/>]</span>
+                                                        <span t-field="move.product_id.name"/>
+                                                    </td>
+                                                    <td class="quantity" style="padding-top: 2px; padding-bottom: 2px;">
+                                                        <span t-field="move.product_uom_qty"/>
+                                                        <span t-field="move.product_uom.name"/>
+                                                    </td>
+                                                    <td class="quantity" style="padding-top: 2px; padding-bottom: 2px;">
+                                                        <t t-set="delivered_qty" t-value="sum((ml.quantity or 0) for ml in move.move_line_ids)"/>
+                                                        <t t-set="total_delivered" t-value="total_delivered + delivered_qty"/>
+                                                        <span t-esc="delivered_qty"/>
+                                                        <span t-field="move.product_uom.name"/>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                            <t t-set="total_delivered_total" t-value="total_delivered_total + total_delivered"/>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </t>
+                            <t t-set="page_number" t-value="page_number + 1"/>
+                        </div>
+                    </t>
+                    <t t-if="page_number > total_pages">
+                        <!-- Total Section -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="info-box">
+                                    <div class="row">
+                                        <div class="col-12 text-end">
+                                            <strong>จำนวนชิ้นรวม: </strong>
+                                            <span t-esc="'%.0f' % total_delivered_total"/> Items
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
                         <!-- เพิ่มหมายเหตุ -->
                         <t t-if="doc.note">
                             <div class="row mt-3">
                                 <div class="col-12">
-                                        <strong>หมายเหตุ:</strong>
-                                        <span t-field="doc.note"/>
+                                    <strong>หมายเหตุ:</strong>
+                                    <span t-field="doc.note"/>
                                 </div>
                             </div>
                         </t>
                         <!-- Signatures (Internal Transfer Only) -->
-                        
-                            <div class="row mt-4">
-                                <div class="col-4">
-                                    <div class="text-center signature-section">
-                                        <br/><br/><br/>
-                                        <p>________________________</p>
-                                        <p>ผู้โอน / Transferred By</p>
-                                        <p>วันที่ / Date: ___________</p>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="text-center signature-section">
-                                        <br/><br/><br/>
-                                        <p>________________________</p>
-                                        <p>ผู้ตรวจสอบ / Checked By</p>
-                                        <p>วันที่ / Date: ___________</p>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="text-center signature-section">
-                                        <br/><br/><br/>
-                                        <p>________________________</p>
-                                        <p>ผู้รับ / Received By</p>
-                                        <p>วันที่ / Date: ___________</p>
-                                    </div>
+                        <div class="row mt-4">
+                            <div class="col-4">
+                                <div class="text-center signature-section">
+                                    <br/><br/><br/>
+                                    <p>________________________</p>
+                                    <p>ผู้โอน / Transferred By</p>
+                                    <p>วันที่ / Date: ___________</p>
                                 </div>
                             </div>
-                       
-                    </div>
+                            <div class="col-4">
+                                <div class="text-center signature-section">
+                                    <br/><br/><br/>
+                                    <p>________________________</p>
+                                    <p>ผู้ตรวจสอบ / Checked By</p>
+                                    <p>วันที่ / Date: ___________</p>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center signature-section">
+                                    <br/><br/><br/>
+                                    <p>________________________</p>
+                                    <p>ผู้รับ / Received By</p>
+                                    <p>วันที่ / Date: ___________</p>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
                 </t>
             </t>
         </t>
