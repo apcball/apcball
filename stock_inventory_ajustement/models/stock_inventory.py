@@ -880,3 +880,12 @@ class InventoryAdjustmentsLine(models.Model):
         lines = self.search([('inventory_id', '=', self.env.context.get('default_inventory_id'))])
         line_ids = lines.filtered(lambda line: float_is_zero(line.difference_qty, line.product_id.uom_id.rounding) == result).ids
         return [('id', 'in', line_ids)]
+
+    def action_recompute_inventory(self):
+        """
+        Placeholder for recompute logic. Add your recompute code here.
+        """
+        for record in self:
+            # Example: log recompute action
+            _logger.info(f"Recompute triggered for inventory: {record.name}")
+        return True

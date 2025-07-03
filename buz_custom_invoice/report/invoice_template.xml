@@ -153,7 +153,7 @@
                             </t>
                             <t t-elif="doc.move_type == 'in_refund'">
                                 <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">ใบเพิ่มหนี้/ใบกำกับภาษี</h2>
-                                <p style="margin: 0; padding: 0; font-size: 18px; font-weight: bold;">Vendor Credit Note / Tax Invoice</p>
+                                <p style="margin: 0; padding: 0; font-size: 18px; font-weight: bold;">Vendor Debit Note / Tax Invoice</p>
                             </t>
                             <t t-else="">
                                 <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">ใบแจ้งหนี้/ใบกำกับภาษี</h2>
@@ -330,7 +330,7 @@
                                             <br/>
                                             <span style="font-weight: bold;">ภาษีมูลค่าเพิ่ม/Vat 7%</span>
                                             <br/>
-                                            <span style="font-weight: bold;">จำนวนเงินรวมทั้งสิ้น/Grand Total</span>
+                                            <span style="font-weight: bold; float:right; display:block; text-align:right;">จำนวนเงินรวมทั้งสิ้น/Grand Total</span>
                                         </div>
                                     </td>
                                    <td style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 18px; vertical-align: top;">

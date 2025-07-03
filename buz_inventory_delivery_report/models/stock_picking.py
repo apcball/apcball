@@ -20,6 +20,12 @@ class StockPicking(models.Model):
     project_plot_number = fields.Char(string='เฉพาะโครงการ: เลขที่แปลง')
     house_model = fields.Char(string='แบบบ้าน')
     is_garage = fields.Boolean(string='โรงรถ')
+    job_no = fields.Char(string="Job Number")
+    sub_district = fields.Char(string='ตำบล')
+    employee_contact_id = fields.Many2one('res.partner', string="Employee Contact")
+    return_location = fields.Char(string="Return Location")
+    request_type = fields.Char(string="ประเภทที่เบิก")
+    date_start = fields.Date(string="วันที่เริ่มงาน")
 
     ship_from_partner_id = fields.Many2one(
         'res.partner', 

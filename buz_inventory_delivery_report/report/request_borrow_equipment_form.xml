@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Paper Format for delivery document Reports -->
+    <record id="paperformat_request_borrow_equipment_form" model="report.paperformat">
+        <field name="name">Request Borrow Equipment Form A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">6</field>
+        <field name="margin_right">6</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+    
+    <template id="request_borrow_equipment_form_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+
+                        <style>
+                            @page {
+                                margin-top: 0mm;
+                                margin-bottom: 10mm;
+                                margin-left: 10mm;
+                                margin-right: 10mm;
+                            }
+
+                            .footer-fixed {
+                                position: absolute;
+                                bottom: 0;
+                                width: 100%;
+                            }
+                            
+                            body, .page, .row {
+                                margin-top: 0 !important;
+                                padding-top: 0 !important;
+                            }
+                            html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+                                font-family: 'Sarabun', sans-serif !important;
+                                font-size: 20px;
+                            }
+                            table {
+                                border-collapse: collapse !important;
+                                width: 100%;
+                            }
+
+                            th, td {
+                                border: 1px solid  #fff; !important;
+                                padding: 4px 6px;
+                                font-size: 16px;
+                                background-color: #fff;
+                            }
+
+                            thead th {
+                                font-size: 18px;
+                                font-weight: bold;
+                                background-color: #fff;
+                                text-align: center;
+                            }
+
+                            .vendor-info, .delivery-info {
+                                font-size: 16px;
+                            }
+                            .checkbox-option {
+                                display: flex;
+                                align-items: center;
+                                cursor: pointer;
+                                margin-bottom: 3px; /* ถ้าต้องการให้มีระยะห่างบรรทัด */
+                            }
+                            .checkbox-box {
+                                border: 1px solid black;
+                                display: inline-block;
+                                width: 15px;
+                                height: 15px;
+                                line-height: 15px;
+                                text-align: center;
+                                vertical-align: middle;
+                                margin: 0 10px 0 15px;
+                            }
+                        </style>
+
+
+                       <!-- Company Info Section -->
+                       <div class="row mb-1">
+                        <div class="col-8">
+                            <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;  line-height: 1; ">
+                                บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
+                            </div>
+                            <div class="company-info" style="font-size: 18px; line-height: 1;">
+                                9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150
+                            </div>
+                            <div class="company-info" style="font-size: 18px; line-height: 1;">
+                                โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th
+                            </div>
+                            
+                        </div>
+                        <div class="col-4 text-end">
+                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                 style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                        </div>
+                    </div>
+
+                     <!-- Document Title -->
+                     <div class="row mb-3">
+                        <div class="col-4 offset-4 text-center">
+                            <div class="doc-title" style=" padding: 10px; font-size: 24px;  line-height: 1; ">
+                                แบบฟอร์มยืมสินค้าโชว์
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer and Document Info -->
+                <div class="row" style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 20px; margin-top: -40px; ">
+
+                    <!--  เรียน, ผู้แจ้งงาน, ผู้ Confirm -->
+                    <div style="flex: 1;margin-top: -40px;line-height: -5; ">
+                        <div style="margin-bottom: 5px;">
+                            <strong style="width: 60%;margin-top: -10px;display: inline-block;line-height: -5;">เรียน  กรรมการผู้จัดการ</strong>
+                            
+                        </div>
+                        <div style="margin-bottom: 5px;line-height: 0.5;">
+                            <strong style="width: 60%;display: inline-block;margin-top: -10px;line-height: -5;">จาก บริษัท โมเก้น (ประเทศไทย) จำกัด</strong>
+                        </div>
+                     
+                       <div style="margin-bottom: 5px;line-height: 0.5;">
+                            <strong style="wwidth: 60%; display: inline-block;margin-top: -10px;line-height: -5;">เรื่อง การนำสินค้าเข้าโชว์</strong>
+                        </div>
+                    </div>
+
+                    <!-- เลขที่เอกสาร + วันที่แจ้ง + วันที่ Confirm -->
+                    <div style="flex: 1; text-align: right;margin-top: -40px;line-height: -5; ">
+                        <div style="margin-bottom: 5px;line-height: -5;">
+                            <strong>
+                                เลขที่เอกสาร:
+                            </strong>
+                            <span t-field="o.name" />
+                        </div>
+                        <div style="margin-bottom: 5px;margin-top: -10px;line-height: -5;">
+                            <strong>
+                                Job No:
+                                <span t-field="o.job_no"/>
+                            </strong>
+                            <span t-field="o.date_notice" t-options='{"widget": "datetime"}'/>
+                        </div>
+                        <div style="margin-bottom: 5px;margin-top: -10px;line-height: -5;">
+                            <strong>
+                                วันที่
+                            </strong>
+                            <span t-field="o.date_confirmed" t-options='{"widget": "datetime"}'/>
+                        </div>
+                    </div>
+                 </div>
+
+
+                  <!-- Document Title -->
+                  <div class="row mb ">
+                    <div class="text-center">
+                        <div class="doc-title" style=" padding: 10px; font-size: 20px;  line-height: 1; ">
+                            ตามที่ บริษัท โมเก้น (ประเทศไทย) จำกัด มีความประสงค์จะนำสินค้าให้ยืมโชว์ตามสถานที่ดังนี้ คือ
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; width: 100%; margin-top: 10px; font-size: 20px; line-height: 1;margin-bottom: 5px;">
+                    <!-- ฝั่งซ้าย 10% -->
+                    <div style="width: 10%; text-align: left;margin-bottom: -5px;">
+                        เข้าโชว์ที่
+                    </div>
+                    <!-- ฝั่งขวา 90% -->
+                    <div style="width: 90%;margin-bottom: -5px;">
+                        <!-- บรรทัดที่ 1 -->
+                        <div style="display: flex; align-items: center; height: 32px;margin-bottom: -5px;">
+                            <div style="border: 1px solid black; width: 4mm; height: 4mm; margin-right: 10px;margin-bottom: 5px;"></div>
+                            <span>ร้านผู้แทนจำหน่าย.....................................</span>
+                        </div>
+                        <!-- บรรทัดที่ 2 -->
+                        <div style="display: flex; align-items: center; height: 32px;margin-bottom: -5px;">
+                            <div style="width: 4mm; margin-right: 10px;margin-bottom: -5px;"></div>
+                            <span>สาขา ...........................................................</span>
+                        </div>
+                        <!-- บรรทัดที่ 3 -->
+                        <div style="display: flex; align-items: center; height: 32px;margin-bottom: -5px;">
+                            <div style="border: 1px solid black; width: 4mm; height: 4mm; margin-right: 10px;margin-bottom: -5px;"></div>
+                            <span>สำนักงานบริษัท.........................................</span>
+                        </div>
+                    </div>
+                </div>
+
+                  
+
+                <div style="font-size: 20px; line-height: 1; margin-top: 10px;margin-bottom: -5px;">
+                    <span style="padding-right:40x;">ติดต่อ</span><span t-esc="o.partner_id.name"/> กำหนดส่ง ..................................................
+                </div>
+
+                
+
+                 <!-- สรุปการเข้าบริการ -->
+                 <div style="display: flex; font-size: 18px; line-height: 1.2; margin-bottom: 4px;">
+
+                    <!-- ส่วนหัว 10% -->
+                    <div style="width: 18%; padding-top: 4px;margin-bottom: 5px;">
+                        <strong>สรุปการเข้าบริการ</strong>
+                    </div>
+                
+                    <!-- ส่วนเนื้อหา checkbox 90% -->
+                    <div style="width: 90%;">
+                        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 4px;">
+                            <label style="display: flex; align-items: center;">
+                                <span class="checkbox-box"></span>KIOS T170 X 120 ชม. ชุดดำ 
+                            </label>
+                            <label style="display: flex; align-items: center; margin-left: 100px;">
+                                จำนวน..............................ชุด  ราคา..............................บาท
+                            </label>
+                        </div>
+                
+                        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 4px;">
+                            <label style="display: flex; align-items: center;">
+                                <span class="checkbox-box"></span>KIOS L170 X 120 ชม. ชุดดำ 
+                            </label>
+                            <label style="display: flex; align-items: center; margin-left: 100px;">
+                                จำนวน..............................ชุด  ราคา..............................บาท
+                            </label>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 4px;">
+                            <label style="display: flex; align-items: center;">
+                                <span class="checkbox-box"></span>KIOS T120 X 120 ชม. ชุดดำ 
+                            </label>
+                            <label style="display: flex; align-items: center; margin-left: 100px;">
+                                จำนวน..............................ชุด  ราคา..............................บาท
+                            </label>
+                        </div>
+                
+                        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 4px;">
+                            <label style="display: flex; align-items: center;">
+                                <span class="checkbox-box"></span>KIOS L120 X 120 ชม. ชุดดำ 
+                            </label>
+                            <label style="display: flex; align-items: center; margin-left: 100px;">
+                                จำนวน..............................ชุด  ราคา..............................บาท
+                            </label>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 4px;">
+                            <label style="display: flex; align-items: center;">
+                                <span class="checkbox-box"></span>KIOS BATHTUB
+                            </label>
+                            <label style="display: flex; align-items: center; margin-left: 160px;">
+                                จำนวน..............................ชุด  ราคา..............................บาท
+                            </label>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 4px;">
+                            <label style="display: flex; align-items: center;">
+                                <span class="checkbox-box"></span>KIOS BATH STANDALONE
+                            </label>
+                            <label style="display: flex; align-items: center; margin-left: 105px;">
+                                จำนวน..............................ชุด  ราคา..............................บาท
+                            </label>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 4px;">
+                            <label style="display: flex; align-items: center;">
+                                <span class="checkbox-box"></span>MODEL ROOM
+                            </label>
+                            <label style="display: flex; align-items: center; margin-left: 160px;">
+                                ขนาด..............................ตารางเมตร  ราคา..............................บาท
+                            </label>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 4px;">
+                            <label style="display: flex; align-items: center;">
+                                <span class="checkbox-box"></span>EXHIBITION     
+                            </label>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 4px;">
+                            <label style="display: flex; align-items: center;">
+                                <span class="checkbox-box"></span>OTHER............................................................
+                            </label>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 2px;">
+                            <label style="display: flex; align-items: center;">
+                                <span class="checkbox-box"></span>โชว์ Only 
+                            </label>
+                            <label style="display: flex; align-items: center;margin-left: 150px;">
+                                <span class="checkbox-box"></span>ติดตั้งใช้งานจริง
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Order Lines -->
+                <div style="min-height:920px; position:relative; box-sizing:border-box; display: flex; flex-direction: column;">
+                    <!-- กำหนด min-height เพื่อให้ตารางไม่สูงเกินเฟรม A4 ประมาณ 297mm แต่เหลือที่ให้ footer -->
+                    <table style="margin-top: 6px;">
+                      <thead>
+                        <tr>
+                          <th style="width: 5%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">ลำดับ</th>
+                          <th style="width: 40%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">ชื่อสินค้า</th>
+                          <th style="width: 15%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">จำนวน</th>
+                          <th style="width: 10%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">หน่วย</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <t t-set="line_number" t-value="1"/>
+                        <t t-set="total_qty" t-value="0.0"/>
+                        <t t-foreach="o.move_ids_without_package" t-as="move">
+                          <tr>
+                            <td style="text-align: center; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-esc="line_number"/></td>
+                            <td style="vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_id.display_name"/></td>
+                            <td style="text-align: right; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_uom_qty"/></td>
+                            <td style="text-align: center; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_uom"/></td>
+                          </tr>
+                          <t t-set="line_number" t-value="line_number + 1"/>
+                          <t t-set="total_qty" t-value="total_qty + move.product_uom_qty"/>
+                        </t>
+                      </tbody>
+                    </table>
+                </div>
+
+                    <!-- หมายเหตุ -->
+                    <div style="padding: 20px; min-height: 60px; font-size: 22px;">
+                        <strong style="font-size: 20px;">หมายเหตุ:</strong>
+                       <span t-field="o.note" style="font-size: 22px;"/>
+                    </div>
+
+                    <!-- ช่องลายเซ็น 3 ส่วน -->
+                    <div style="display: flex; justify-content: space-between; font-size: 18px; margin-top: 40px;">
+
+                        <!-- ส่วนที่ 1: S/R -->
+                        <div style="width: 32%; line-height: 1.8; text-align: center;">
+                            ลงชื่อ S/R ที่รับผิดชอบ ____________________<br/>
+                            (____________________)<br/>
+                            ..................................................<br/>
+                            เบอร์ติดต่อ ________________________
+                        </div>
+                    
+                        <!-- ส่วนที่ 2: ผู้ตรวจสอบ -->
+                        <div style="width: 32%; line-height: 1.8; text-align: center;">
+                            ผู้ตรวจสอบ ____________________<br/>
+                            (____________________)<br/>
+                            ผู้จัดการ<br/>
+                            วันที่ .......... เดือน ............. ปี ..........
+                        </div>
+                    
+                        <!-- ส่วนที่ 3: ลงนามอนุมัติ -->
+                        <div style="width: 32%; line-height: 1.8; text-align: center;">
+                            ลงนามอนุมัติ ____________________<br/>
+                            (____________________)<br/>
+                            กรรมการผู้จัดการ<br/>
+                            วันที่ .......... เดือน ............. ปี ..........
+                        </div>
+                    
+                    </div>
+
+                    <div style="position: relative; min-height: 25mm; padding-bottom: 20mm;">
+                        <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
+
+                        <!-- Footer fixed bottom -->
+                        <div style="
+                          position: absolute;
+                          bottom: 0; left: 0; width: 100%;
+                          display: flex; justify-content: space-between;
+                          font-size: 10px;
+                          padding-left: 4mm; padding-right: 4mm;
+                          line-height: 1.2;
+                          page-break-inside: avoid;
+                          ">
+                          <div>
+                            <p style="margin: 0;">อนุมัติใช้วันที่ 14/09/2563</p>
+                          </div>
+                          <div>
+                            <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
+                         </div>
+                        </div>
+                      </div>
+
+
+           
+    
+                    </div>
+                </t>        
+             </t>     
+           </t>                 
+      </template>
+  
+  
+      <record id="action_request_borrow_equipment_form" model="ir.actions.report">
+          <field name="name">แบบฟอร์มยืมสินค้าโชว์</field>
+          <field name="model">stock.picking</field>
+          <field name="report_type">qweb-pdf</field>
+          <field name="report_name">buz_inventory_delivery_report.request_borrow_equipment_form_document</field>
+          <field name="report_file">buz_inventory_delivery_report.request_borrow_equipment_form_document</field>
+          <field name="print_report_name">'Delivery Report - %s' % object.name</field>
+          <field name="binding_model_id" ref="stock.model_stock_picking"/>
+          <field name="binding_type">report</field>
+          <field name="paperformat_id" ref="paperformat_request_borrow_equipment_form"/>
+      </record>
+  </odoo>
+  

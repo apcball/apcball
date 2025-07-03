@@ -11,7 +11,7 @@
     "summary": "Allows to do an easier follow up of the Inventory Adjustments",
     "author": "feddad.imad@gmail.com",
     "website": "",
-    "depends": ["stock","base"],
+    "depends": ["stock","base","buz_inventory_delivery_report"],
     "data": [
         "security/ir.model.access.csv",
         "security/security.xml",

@@ -12,8 +12,21 @@ class PurchaseOrder(models.Model):
         store=True,
         copy=True
     )
-    # เพิ่มฟิลด์ analytic_precision
     analytic_precision = fields.Integer(
         string="Analytic Precision",
         default=lambda self: self.env['decimal.precision'].precision_get('Percentage Analytic')
+    )
+    employee_id = fields.Many2one(
+        'hr.employee',
+        string='Employee',
+        help='Employee who requested the PR',
+    )
+    dept_id = fields.Many2one(
+        'hr.department',
+        string='Department',
+        help='Department of the employee',
+    )
+    pr_number = fields.Char(
+        string='PR Number',
+        help='Reference number of the PR',
     )

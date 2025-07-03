@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_report_fsm_order" model="ir.actions.report">
-        <field name="name">Field Service Order</field>
+        <field name="name">ใบรับบริการ</field>
         <field name="model">fsm.order</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">fieldservice.report_fsm_order</field>

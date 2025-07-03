@@ -78,7 +78,7 @@
                     <div class="col-6">
                         <div class="info-box" style="height: 180px;">
                                     <div class="mb-2">
-                                        <strong style="width: 15%; display: inline-block;">ชื่อลูกค้า:</strong>
+                                        <strong style="width: 15%; display: inline-block;">นามผู้ซื้อ:</strong>
                                         <span t-field="doc.partner_id.name"/>
                                     </div>                                  
                                     <div class="mb-2">
@@ -89,9 +89,20 @@
                                             <span t-field="doc.partner_id.zip"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">เลขประจำตัวผู้เสียภาษี: </strong>
-                                        <span t-field="doc.partner_id.vat"/>
+                                        <strong style="width: 35%; display: inline-block;">ชื่อผู้ติดต่อ:</strong>
+                                        <span t-esc="doc.partner_id.child_ids.filtered(lambda r: r.type == 'contact')[:1].name or ''"/>
                                     </div>
+                                    <div class="mb-2">
+                                        <div style="width: 60%;">
+                                            <strong style="width: 14%; display: inline-block;">โทร:</strong>
+                                            <span t-esc="doc.partner_id.phone or ''"/>
+                                        </div>
+                                        <div style="width: 40%;">
+                                            <strong style="width: 14%; display: inline-block;">แฟกซ์:</strong>
+                                            <span t-esc="doc.partner_id.fax or ''"/>
+                                        </div>
+                                    </div>
+                                    
                         </div>
                     </div>
                     <div class="col-6">
@@ -107,6 +118,14 @@
                                      <div class="mb-2">
                                         <strong style="width: 35%; display: inline-block;">วันครบกำหนดชำระเงิน:</strong>
                                             <span t-field="doc.due_date" t-options='{"format": "dd/MM/yyyy"}'/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">เงื่อนไขการชำระเงิน:</strong>
+                                      
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">เงื่อนไขการชำระเงิน:</strong>
+                                           <span t-field="doc.invoice_payment_term_id.name"/>
                                     </div>
                         </div>
                     </div>

@@ -21,6 +21,10 @@
         'report/distributor_delivery_export.xml',
         'report/delivery_note_report.xml',
         'report/dispatch_report.xml',
+        'report/borrow_equipment_form.xml',
+        'report/request_borrow_equipment_form.xml',
+        'report/request_change_products.xml',
+        'report/request_job_order.xml',
 
     ],
     'installable': True,

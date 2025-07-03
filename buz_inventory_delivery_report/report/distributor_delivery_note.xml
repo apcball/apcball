@@ -132,7 +132,7 @@
                                     <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
                                          style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                                 </div>
-                            </div>
+                            </div>   
 
                             <!-- Document Title -->
                             <div class="row mb-3">

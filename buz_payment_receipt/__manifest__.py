@@ -11,7 +11,6 @@
     'depends': ['account'],
     'data': [
         'security/ir.model.access.csv',
-        'reports/payment_receipt_template.xml',
         'reports/payment_receipt_report.xml',
         'reports/payment_voucher_report.xml',
     ],
@@ -19,4 +18,5 @@
     'application': False,
     'auto_install': False,
     'license': 'LGPL-3',
+    
 }

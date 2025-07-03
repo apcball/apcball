@@ -6,26 +6,11 @@ from num2words import num2words
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
 
-    amount_total_text = fields.Char(
-        string='Amount Total (Text)',
-        compute='_compute_amount_total_text',
-        store=False
-    )
-
-    @api.depends('amount_total')
-    def _compute_amount_total_text(self):
-        for rec in self:
-            amount = rec.amount_total or 0.0
-            baht = int(amount)
-            satang = int(round((amount - baht) * 100))
-
-            baht_text = num2words(baht, lang='th') + 'บาท' if baht > 0 else ''
-            if satang > 0:
-                satang_text = num2words(satang, lang='th') + 'สตางค์'
-            else:
-                satang_text = 'ถ้วน' if baht > 0 else 'ศูนย์บาทถ้วน'
-
-            rec.amount_total_text = baht_text + satang_text
+    requested_by_id = fields.Many2one('res.users', string='Requested By')
+    buz_purchase_request_id = fields.Many2one('buz.purchase.request', string="Purchase Request")
+    partner_contact_id = fields.Many2one('res.partner', string="Contact Person")
+    name = fields.Char(string="Purchase Request Number")
+    has_vat = fields.Boolean(string='Has VAT', compute='_compute_has_vat', store=False)
 
     state = fields.Selection(selection_add=[
         ('waiting_l1', 'Waiting L1 Approval'),
@@ -41,23 +26,113 @@ class PurchaseOrder(models.Model):
     rejection_reason = fields.Text(string='Rejection Reason')
     rejection_date = fields.Datetime(string='Rejection Date')
     rejected_by = fields.Many2one('res.users', string='Rejected By')
-    
+
     l1_approved_by = fields.Many2one('res.users', string='L1 Approved By', readonly=True)
     l1_approved_date = fields.Datetime(string='L1 Approved Date', readonly=True)
     l2_approved_by = fields.Many2one('res.users', string='L2 Approved By', readonly=True)
     l2_approved_date = fields.Datetime(string='L2 Approved Date', readonly=True)
 
-    department_id = fields.Many2one(
-        'hr.department', 
-        string='Department'
-    )
-
-    # ถ้าอยากได้ชื่อ department แบบ string ตรง ๆ ก็สามารถสร้าง computed field ได้ เช่น
+    department_id = fields.Many2one('hr.department', string='Department')
+    
     department_name = fields.Char(
-        string='Department Name', 
-        compute='_compute_department_name', 
+        string='Department Name',
+        compute='_compute_department_name',
         store=False
     )
+
+    amount_total_text_th = fields.Char(
+        string='Amount Total (Thai Text)',
+        compute='_compute_amount_total_text_th',
+        store=False
+    )
+
+    has_vat = fields.Boolean(
+        string='Has VAT',
+        compute='_compute_has_vat',
+        store=False
+    )
+
+    @api.depends('order_line.taxes_id')
+    def _compute_has_vat(self):
+        for order in self:
+            order.has_vat = any(
+                tax.amount > 0 and 'vat' in (tax.tax_group_id.name or '').lower()
+                for line in order.order_line
+                for tax in line.taxes_id
+            )
+
+
+    @api.depends('order_line.taxes_id')
+    def _compute_has_vat(self):
+        for order in self:
+            order.has_vat = any(
+                line.taxes_id.filtered(lambda tax: tax.amount > 0.0 and tax.tax_group_id.name == 'VAT')
+                for line in order.order_line
+            )
+            
+    @api.depends('order_line.taxes_id')
+    def _compute_has_vat(self):
+        for order in self:
+            order.has_vat = any(
+                line.taxes_id.filtered(lambda tax: tax.amount > 0.0 and 'vat' in (tax.tax_group_id.name or '').lower())
+                for line in order.order_line
+            )        
+
+    @api.depends('amount_total')
+    def _compute_amount_total_text_th(self):
+        for rec in self:
+            if rec.currency_id and rec.amount_total is not None:
+               rec.amount_total_text_th = rec._baht_text_th(rec.amount_total)
+            else:
+                rec.amount_total_text_th = "-"                 
+
+    def _baht_text_th(self, amount):
+        t1 = ["ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"]
+        t2 = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"]
+
+        def num2thai(number):
+            number = int(number)
+            if number == 0:
+                return t1[0]
+
+            result = ""
+            digits = list(str(number))
+            length = len(digits)
+
+            for i in range(length):
+                n = int(digits[i])
+                pos = length - i - 1
+
+                if n == 0:
+                    continue
+
+                # ตำแหน่งหลักสิบ
+                if pos == 1:
+                    if n == 1:
+                        result += t2[1]
+                    elif n == 2:
+                        result += "ยี่" + t2[1]
+                    else:
+                        result += t1[n] + t2[1]
+                # ตำแหน่งหลักหน่วย
+                elif pos == 0:
+                    result += t1[n]
+                # ตำแหน่งอื่น ๆ
+                else:
+                    result += t1[n] + t2[pos]
+
+            return result
+
+        amount = round(amount, 2)
+        baht = int(amount)
+        satang = int(round((amount - baht) * 100))
+
+        result = num2thai(baht) + "บาท"
+        if satang > 0:
+            result += num2thai(satang) + "สตางค์"
+        else:
+            result += "ถ้วน"
+        return result
 
     def _compute_department_name(self):
         for rec in self:
@@ -75,13 +150,10 @@ class PurchaseOrder(models.Model):
 
     def button_confirm(self):
         for order in self:
-            # เปลี่ยนสถานะเป็น waiting_l1 เพื่อรอการอนุมัติจาก L1
             order.write({
                 'state': 'waiting_l1',
                 'approval_state': 'pending'
             })
-            
-            # ส่งการแจ้งเตือนไปยังผู้อนุมัติ L1
             l1_users = self.env.ref('buz_custom_po.group_purchase_approval_l1').users
             for user in l1_users:
                 order.sudo()._create_approval_activity(
@@ -89,8 +161,6 @@ class PurchaseOrder(models.Model):
                     'L1 Approval Required',
                     f'Please review and approve Purchase Order: {order.name}'
                 )
-            
-            # ส่งอีเมลแจ้งเตือนผู้อนุมัติ L1
             template = self.env.ref('buz_custom_po.email_template_po_approval_l1')
             if template:
                 template.send_mail(order.id, force_send=True)
@@ -99,24 +169,21 @@ class PurchaseOrder(models.Model):
     def approve_l1(self):
         if not self.env.user.has_group('buz_custom_po.group_purchase_approval_l1'):
             raise UserError(_('You do not have permission to approve this PO.'))
-            
+
         for order in self:
             if order.state == 'waiting_l1':
-                # ลบกิจกรรมแจ้งเตือน L1
                 self.env['mail.activity'].search([
                     ('res_id', '=', order.id),
                     ('res_model', '=', 'purchase.order'),
                     ('user_id', 'in', self.env.ref('buz_custom_po.group_purchase_approval_l1').users.ids)
                 ]).sudo().unlink()
 
-                # บันทึกข้อมูลการอนุมัติ L1
                 order.write({
                     'state': 'waiting_l2',
                     'l1_approved_by': self.env.user.id,
                     'l1_approved_date': fields.Datetime.now()
                 })
 
-                # ส่งการแจ้งเตือนไปยังผู้อนุมัติ L2
                 l2_users = self.env.ref('buz_custom_po.group_purchase_approval_l2').users
                 for user in l2_users:
                     order.sudo()._create_approval_activity(
@@ -125,62 +192,32 @@ class PurchaseOrder(models.Model):
                         f'Please review and approve Purchase Order: {order.name}'
                     )
 
-                # ส่งอีเมลแจ้งเตือนผู้อนุมัติ L2
                 template = self.env.ref('buz_custom_po.email_template_po_approval_l2')
                 if template:
                     template.send_mail(order.id, force_send=True)
         return True
 
-    def _get_report_values(self, docids, data=None):
-       docs = self.env['purchase.order'].browse(docids)
-       for doc in docs:
-        doc.amount_total_text = num2words(doc.amount_total, lang='th')
-       return {
-        'docs': docs,
-        # ... other context ...
-    }
-
-    def get_report_values(self, docids, data=None):
-       ...
-       return {
-        'doc_ids': docids,
-        'doc_model': 'purchase.order',
-        'docs': docs,
-        'amount_total_text': self.get_text_amount(docs.amount_total),
-    }
-
-    def get_text_amount(self, amount_total):
-    # ตัวอย่างฟังก์ชันที่แปลงตัวเลขเป็นข้อความภาษาไทย
-      return baht_text(amount_total) 
-
-
     def approve_l2(self):
         if not self.env.user.has_group('buz_custom_po.group_purchase_approval_l2'):
             raise UserError(_('You do not have permission to approve this PO.'))
-            
+
         for order in self:
             if order.state == 'waiting_l2':
-                # ลบกิจกรรมแจ้งเตือน L2
                 self.env['mail.activity'].search([
                     ('res_id', '=', order.id),
                     ('res_model', '=', 'purchase.order'),
                     ('user_id', 'in', self.env.ref('buz_custom_po.group_purchase_approval_l2').users.ids)
                 ]).sudo().unlink()
 
-                # บันทึกข้อมูลการอนุมัติ L2
                 order.write({
-                    'state': 'draft',  # เปลี่ยนกลับเป็น draft ชั่วคราวเพื่อให้ workflow มาตรฐานทำงาน
+                    'state': 'draft',
                     'l2_approved_by': self.env.user.id,
                     'l2_approved_date': fields.Datetime.now()
                 })
 
-                # เรียก method มาตรฐานเพื่อยืนยัน PO
                 super(PurchaseOrder, order).button_confirm()
-                
-                # อัพเดทสถานะการอนุมัติ
                 order.write({'approval_state': 'approved'})
 
-                # ส่งอีเมลแจ้งผู้สร้าง PO ว่าได้รับการอนุมัติแล้ว
                 template = self.env.ref('buz_custom_po.email_template_po_approved')
                 if template:
                     template.send_mail(order.id, force_send=True)
@@ -197,13 +234,11 @@ class PurchaseOrder(models.Model):
         }
 
     def reject_approval(self, reason):
-        # ลบกิจกรรมแจ้งเตือนทั้งหมด
         self.env['mail.activity'].search([
             ('res_id', '=', self.id),
             ('res_model', '=', 'purchase.order')
         ]).sudo().unlink()
 
-        # บันทึกข้อมูลการปฏิเสธ
         self.write({
             'state': 'draft',
             'approval_state': 'rejected',
@@ -212,14 +247,12 @@ class PurchaseOrder(models.Model):
             'rejected_by': self.env.user.id,
         })
 
-        # สร้างกิจกรรมแจ้งเตือนผู้สร้าง PO
         self.sudo()._create_approval_activity(
             self.create_uid,
             'PO Rejected',
             f'Purchase Order {self.name} has been rejected.\nReason: {reason}'
         )
 
-        # ส่งอีเมลแจ้งผู้สร้าง PO
         template = self.env.ref('buz_custom_po.email_template_po_rejected')
         if template:
             template.send_mail(self.id, force_send=True)

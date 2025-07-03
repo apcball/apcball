@@ -42,6 +42,13 @@
                         invisible="state not in ('in_progress')"
                         string="Set to Done"
                     />
+                    <button
+                        type="object"
+                        name="action_recompute_inventory"
+                        string="Recompute"
+                        class="btn-primary"
+                        attrs="{'invisible': [('state', '=', 'done'), ('state', '=', 'cancel')]}"
+                    />
                     <field
                         name="state"
                         widget="statusbar"

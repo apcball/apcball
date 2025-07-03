@@ -145,21 +145,21 @@
                               <!-- Left side: Customer name -->
                                <div class="col-6" style="text-align: left; padding-right: 0;">
                                    <div>
-                                       <strong style="display: inline-block; width: 35%; font-size: 20px;">ชื่อลูกค้า </strong>
+                                       <strong style="display: inline-block; width: 15%; font-size: 20px;">ชื่อลูกค้า </strong>
                                        <span t-field="o.partner_id.name" style="font-size: 20px;"/>
                                    </div>
                                    <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
                                        (Customer Name)
                                    </div>
                                    <div style="margin-top: 10px;">
-                                       <strong style="display: inline-block; width: 35%; font-size: 20px;">สถานที่ส่งสินค้า</strong>
+                                       <strong style="display: inline-block; width: 20%; font-size: 20px;">สถานที่ส่งสินค้า</strong>
                                        <span t-field="o.partner_id.street" style="font-size: 20px;"/>
                                    </div>
                                    <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
                                        (Ship To)
                                    </div>
                                    <div style="margin-top: 10px;">
-                                     <strong style="display: inline-block; width: 35%; font-size: 20px;">สถานที่จ่ายสินค้า</strong>
+                                     <strong style="display: inline-block; width: 20%; font-size: 20px;">สถานที่จ่ายสินค้า</strong>
                                      <span t-field="o.ship_from_partner_id.name" style="font-size: 20px;"/>
                                    </div>
                                      <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">

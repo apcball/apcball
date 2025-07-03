@@ -6,7 +6,17 @@ class AccountPayment(models.Model):
 
     check_date = fields.Date(string="Check Date")
     check_pay_to = fields.Char(string="Pay To", help="Name of the person or entity to whom the check is payable")
+    tax_invoice_number = fields.Char(string="Tax Invoice Number", compute='_compute_tax_invoice_number')
+    delivery_price = fields.Monetary(string="ค่าขนส่ง", currency_field="currency_id")
+    acc_holder = fields.Char(string="Account Holder")
+   
 
+    tax_invoice_number = fields.Char(
+        string='Tax Invoice Number',
+        related='move_id.name',  # move_id คือใบกำกับภาษี (account.move)
+        store=True,
+        readonly=True,
+    )
 
     def amount_in_words(self):
         def thai_number_to_text(number):

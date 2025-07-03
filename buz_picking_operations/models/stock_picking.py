@@ -6,6 +6,7 @@ class StockPicking(models.Model):
     custom_note = fields.Text(string='Custom Note')
     operation_date = fields.Datetime(string='Operation Date', default=fields.Datetime.now)
     supervisor_id = fields.Many2one('res.users', string='Supervisor')
+    narration = fields.Text(string='Narration')
 
     def get_report_data(self):
         self.ensure_one()

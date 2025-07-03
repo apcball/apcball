@@ -26,7 +26,10 @@
     "website": "http://www.bemade.org",
     "license": "LGPL-3",
     "depends": ["stock_account"],
-    "data": ["views/stock_valuation_layer_views.xml"],
+    "data": [
+        "views/stock_valuation_layer_views.xml",
+        "data/stock_valuation_recompute_action.xml"
+    ],
     "assets": {},
     "installable": True,
     "auto_install": False,
