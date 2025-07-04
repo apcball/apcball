@@ -30,6 +30,7 @@
         'views/account_move_views.xml',
         'report/billing_note_report.xml',
         'report/billing_note_report_template.xml',
+        'report/payment_receipt_modern.xml',
     ],
     'installable': True,
     'application': True,

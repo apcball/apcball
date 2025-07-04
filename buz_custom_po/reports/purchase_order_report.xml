@@ -172,7 +172,7 @@
                   <div style="display: flex; gap: 0;">
     
                         <!-- ฝั่งซ้าย: 40% -->
-                        <div style="width: 45%; padding: 0; box-sizing: border-box; border-right: 1px solid #000;">
+                        <div style="width: 50%; padding: 0; box-sizing: border-box; border-right: 1px solid #000;">
                             <div class="mb-1" style="margin-bottom:0; padding:0 1px;">
                                 <strong style="display: inline-block; width:25%;">ผู้ขาย/VENDOR:</strong>
                                 <span t-field="o.partner_id.name"/>
@@ -190,24 +190,23 @@
                                 <span t-field="o.partner_id.vat"/>
                             </div>
                             <div style="display: flex; justify-content: space-between; padding: 0.5px 2px; margin-bottom: 0;">
-                                <div style="width: 50%;">
+                                <div style="width: 45%;">
                                     <strong style="display: inline-block; width: 38%;">โทรศัพท์/TEL:</strong>
                                     <span t-field="o.partner_id.phone"/>
                                 </div>
-                                <div style="width: 50%;">
+                                <div style="width: 55%;">
                                     <strong style="display: inline-block; width: 36%;">อีเมล/EMAIL:</strong>
                                     <span t-field="o.partner_id.email"/>
                                 </div>
                             </div>
                         </div>
-    
-                        <!-- ฝั่งขวา: 60% -->
-                        <div style="width: 55%; padding: 1; box-sizing: border-box;">
-                            <table style="width: 100%; border-collapse: collapse; margin: 0;">
-                                <tbody>
 
+                        <!-- ฝั่งขวา: 60% (Dynamic min-height to match left if two lines; adjust as appropriate) -->
+                        <div style="width: 50%; padding: 1; box-sizing: border-box; min-height: 46px;">
+                            <table style="width: 100%; border-collapse: collapse; margin: 0; height: 100%;">
+                                <tbody>
                                     <!--  บรรทัดที่ 1: สถานที่ส่ง + ผู้ขายยืนยัน + วันที่ (ลบเส้นบน, ชิดกรอบ) -->
-                                    <tr>
+                                    <tr style="height: 28px;">
                                         <!-- สถานที่ส่ง -->
                                         <td style="width: 40%; border-bottom: 1px solid #000; padding: 0px 3px 0px 3px; line-height: 1.1;" colspan="2">
                                             <strong>สถานที่ส่ง:</strong>
@@ -215,13 +214,12 @@
                                             <span t-field="o.picking_type_id.warehouse_id.partner_id.street"/>
                                             <span t-field="o.picking_type_id.warehouse_id.partner_id.street2"/>
                                         </td>
-
                                         <!-- ผู้ขายยืนยัน + วันที่ -->
                                         <td style="width: 60%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 0px 3px 0px 3px; line-height: 1.1;" colspan="2">
                                             <div style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
                                                 <div style="flex: 1;">
                                                     <strong>ผู้ขายยืนยันรับ:</strong>
-                                                    <br style="line-height:1.1;" /><br style="line-height:1.1;" />
+                                                    <br style="line-height:1.1;" /><br style="line-height:2;" />
                                                 </div>
                                                 <div style="padding-top: 0px;">
                                                     <strong>วันที่:</strong>
@@ -229,7 +227,6 @@
                                             </div>
                                         </td>
                                     </tr>
-
                                     <!--  บรรทัดที่ 2: แผนกที่ขอซื้อ (เต็มบรรทัด) -->
                                     <tr>
                                         <td style="width: 100%; border-bottom: 1px solid #000; padding: 2px; line-height: 1.1;" colspan="4">
@@ -239,7 +236,6 @@
                                             </t>
                                         </td>
                                     </tr>
-
                                     <!--  บรรทัดที่ 3: ผู้ติดต่อ / ใบขอซื้อเลขที่ / Credit -->
                                     <tr>
                                         <td style="width: 35%; border-bottom: 1px solid #000; padding: 2px; line-height: 1.1;">
@@ -257,14 +253,12 @@
                                                 <span t-esc="o.pr_number"/>
                                             </t>
                                         </td>
-                                        
                                         <td style="width: 30%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 2px; line-height: 1.1;" colspan="2">
                                             <strong>Credit:</strong>
                                             <t t-if="o.partner_id.property_supplier_payment_term_id">
                                                 <span t-esc="o.partner_id.property_supplier_payment_term_id.name"/>
                                             </t>
                                         </td>
-                                        
                                     </tr>
 
 
@@ -284,7 +278,7 @@
                      <th style="width: 14%; text-align: center; border: 1px solid black; padding: 4px;">รหัสสินค้า<br/><span style="font-size: 12px;">(Item No)</span></th>
                      <th style="width: 34%; text-align: center; border: 1px solid black; padding: 4px;">รายการสินค้า<br/><span style="font-size: 12px;">(Description)</span></th>
                      <th style="width: 9%; text-align: center; border: 1px solid black; padding: 4px;">วันที่ส่ง<br/><span style="font-size: 12px;">(Delivery Date)</span></th>
-                     <th style="width: 5%; text-align: center; border: 1px solid black; padding: 4px;">จำนวน<br/><span style="font-size: 12px;">(Qty)</span></th>
+                     <th style="width: 7%; text-align: center; border: 1px solid black; padding: 4px;">จำนวน<br/><span style="font-size: 12px;">(Qty)</span></th>
                      <th style="width: 5%; text-align: center; border: 1px solid black; padding: 4px;">หน่วย<br/><span style="font-size: 12px;">(Unit)</span></th>
                      <th style="width: 8%; text-align: center; border: 1px solid black; padding: 4px;">ราคา/หน่วย<br/><span style="font-size: 12px;">(Unit Price)</span></th>
                      <th style="width: 6%; text-align: center; border: 1px solid black; padding: 4px;">ส่วนลด<br/><span style="font-size: 12px;">(Discount)</span></th>

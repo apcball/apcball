@@ -136,6 +136,52 @@ class BillingNote(models.Model):
     expected_payment_date = fields.Date(string='วันที่คาดว่าจะได้รับเงิน', tracking=True)
     note = fields.Text(string='หมายเหตุ', tracking=True)
 
+    # Related fields for partner information
+    partner_vat = fields.Char(string='Tax ID', related='partner_id.vat', store=True, readonly=True)
+    partner_address = fields.Char(string='Full Address', compute='_compute_partner_address', store=True, readonly=True)
+    partner_phone = fields.Char(string='Phone', related='partner_id.phone', store=True, readonly=True)
+    partner_mobile = fields.Char(string='Mobile', related='partner_id.mobile', store=True, readonly=True)
+    partner_contact_name = fields.Char(string='Contact Name', compute='_compute_partner_contact_name', store=True, readonly=True)
+    partner_delivery_address = fields.Char(string='Delivery Address', compute='_compute_partner_delivery_address', store=True, readonly=True)
+
+    # Related fields for sale order, salesperson, payment term, due date
+    sale_order_number = fields.Char(string='Sale Order Number', compute='_compute_sale_order_number', store=True, readonly=True)
+    salesperson_id = fields.Many2one('res.users', string='Salesperson', compute='_compute_salesperson', store=True, readonly=True)
+    salesperson_name = fields.Char(
+        string='Salesperson Name',
+        compute='_compute_salesperson_name',
+        store=True,
+        readonly=True
+    )
+
+    @api.depends('salesperson_id')
+    def _compute_salesperson_name(self):
+        for rec in self:
+            # Show employee name if linked, otherwise user name
+            employee = self.env['hr.employee'].search([('user_id', '=', rec.salesperson_id.id)], limit=1)
+            rec.salesperson_name = employee.name if employee else (rec.salesperson_id.name or '')
+            
+    payment_term_id = fields.Many2one('account.payment.term', string='Payment Term', compute='_compute_payment_term', store=True, readonly=True)
+    invoice_due_date = fields.Date(string='Invoice Due Date', compute='_compute_invoice_due_date', store=True, readonly=True)
+
+    @api.depends('partner_id')
+    def _compute_partner_address(self):
+        for rec in self:
+            rec.partner_address = rec.partner_id and rec.partner_id.contact_address or ''
+
+    @api.depends('partner_id')
+    def _compute_partner_contact_name(self):
+        for rec in self:
+            # ถ้ามี contact แยก (type=contact) ให้แสดงชื่อแรกสุด ถ้าไม่มีให้ใช้ชื่อ partner หลัก
+            contact = rec.partner_id.child_ids.filtered(lambda c: c.type == 'contact')
+            rec.partner_contact_name = contact[0].name if contact else (rec.partner_id.name if rec.partner_id else '')
+
+    @api.depends('partner_id')
+    def _compute_partner_delivery_address(self):
+        for rec in self:
+            delivery = rec.partner_id.child_ids.filtered(lambda c: c.type == 'delivery')
+            rec.partner_delivery_address = delivery[0].contact_address if delivery else ''
+
     @api.depends('partner_id', 'note_type')
     def _compute_available_invoices(self):
         """Compute available invoices for selection"""
@@ -348,3 +394,32 @@ class BillingNote(models.Model):
             'target': 'new',
             'type': 'ir.actions.act_window',
         }
+
+    @api.depends('invoice_ids')
+    def _compute_sale_order_number(self):
+        for rec in self:
+            # ดึงเลขที่ Sale Order จาก invoice แรกที่มี sale_id
+            sale_order = False
+            for inv in rec.invoice_ids:
+                if hasattr(inv, 'invoice_origin') and inv.invoice_origin:
+                    sale_order = inv.invoice_origin
+                    break
+            rec.sale_order_number = sale_order or ''
+
+    @api.depends('invoice_ids')
+    def _compute_salesperson(self):
+        for rec in self:
+            # ดึง Salesperson จาก invoice แรก
+            rec.salesperson_id = rec.invoice_ids and rec.invoice_ids[0].user_id.id or False
+
+    @api.depends('invoice_ids')
+    def _compute_payment_term(self):
+        for rec in self:
+            # ดึง Payment Term จาก invoice แรก
+            rec.payment_term_id = rec.invoice_ids and rec.invoice_ids[0].invoice_payment_term_id.id or False
+
+    @api.depends('invoice_ids')
+    def _compute_invoice_due_date(self):
+        for rec in self:
+            # ดึง Due Date จาก invoice แรก
+            rec.invoice_due_date = rec.invoice_ids and rec.invoice_ids[0].invoice_date_due or False

@@ -47,12 +47,23 @@
                             <field name="name" readonly="1"/>
                         </h1>
                     </div>
+                    <group col="2">
+                        <group string="Customer Information">
+                            <field name="partner_id" readonly="state != 'draft'"/>
+                            <field name="partner_delivery_address" readonly="0"/>
+                            <field name="date"/>
+                            <field name="due_date"/>
+                        </group>
+                        <group string="Sale &amp; Payment Info" col="2">
+                            <field name="sale_order_number" readonly="1"/>
+                            <field name="invoice_due_date" readonly="1"/>
+                            <field name="salesperson_name" readonly="1"/>
+                            <field name="payment_term_id" readonly="1"/>
+                        </group>
+                    </group>
                     <field name="available_invoice_ids" invisible="1"/>
                     <group>
                         <group>
-                            <field name="partner_id" readonly="state != 'draft'"/>
-                            <field name="date"/>
-                            <field name="due_date"/>
                             <field name="note_type" readonly="state != 'draft'"/>
                         </group>
                         <group>

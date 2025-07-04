@@ -25,6 +25,7 @@
         'report/request_borrow_equipment_form.xml',
         'report/request_change_products.xml',
         'report/request_job_order.xml',
+        'report/delivery_report_tem.xml',
 
     ],
     'installable': True,
