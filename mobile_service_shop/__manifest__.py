@@ -39,10 +39,13 @@
              'views/brand_models_views.xml',
              'views/mobile_brand_views.xml',
              'wizard/mobile_create_invoice_views.xml',
+             'wizard/post_stock_move_wizard_views.xml',
              'reports/mobile_service_email_template.xml',
              'reports/mobile_service_ticket.xml',
              'data/mobile_service_data.xml',
-             'data/mobile_service_email_template.xml'],
+             'data/mobile_service_email_template.xml',
+             'data/sequence_data.xml',
+             'data/picking_sequence.xml'],
     'images': ['static/description/banner.jpg'],
     'assets': {
         'web.assets_backend': [

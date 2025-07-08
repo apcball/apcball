@@ -16,7 +16,7 @@
     </record>
 
      <!-- Main Template -->
-     <template id="payment_receipt_modern_document">
+     <template id="report_payment_receipt_modern_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
@@ -437,6 +437,10 @@
     </template>
 
     
+     <template id="report_payment_receipt_modern">
+         <t t-call="buz_custom_billing_note.report_payment_receipt_modern_document"/>
+     </template>
+
      <record id="action_report_payment_receipt_modern" model="ir.actions.report">
          <field name="name">ใบเสร็จรับเงิน / RECEIPT</field>
          <field name="model">billing.note</field>

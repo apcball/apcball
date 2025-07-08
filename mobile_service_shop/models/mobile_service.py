@@ -241,12 +241,22 @@ class MobileService(models.Model):
     def create(self, vals):
         """Creating sequence"""
         if 'company_id' in vals:
-            vals['name'] = self.env['ir.sequence'].with_context(
-                force_company=self.env.user.company_id.id).next_by_code(
-                'mobile.service') or _('New')
+            company_id = vals['company_id']
         else:
-            vals['name'] = self.env['ir.sequence'].next_by_code(
-                'mobile.service') or _('New')
+            company_id = self.env.company.id
+        
+        # Ensure we have a unique reference per company
+        company = self.env['res.company'].browse(company_id)
+        sequence = self.env['ir.sequence'].sudo().search([
+            ('code', '=', 'mobile.service'),
+            '|', ('company_id', '=', company_id), ('company_id', '=', False)
+        ], limit=1)
+        
+        if sequence:
+            vals['name'] = sequence.with_context(ir_sequence_date=fields.Date.context_today(self)).next_by_id() or _('New')
+        else:
+            vals['name'] = self.env['ir.sequence'].sudo().next_by_code('mobile.service') or _('New')
+        
         vals['service_state'] = 'draft'
         return super(MobileService, self).create(vals)
 
@@ -268,32 +278,63 @@ class MobileService(models.Model):
             'target': 'new'}
 
     def action_post_stock(self):
-        """It will post the stock move"""
-        flag = 0
+        """Open wizard to create stock transfer"""
+        if not self.product_order_line:
+            raise UserError(_('No product lines found to post stock moves for.'))
+            
+        # Check if any product has quantity to post
+        products_to_move = False
         for order in self.product_order_line:
             if order.product_uom_qty > order.qty_stock_move:
-                flag = 1
-                pick = {
-                    'picking_type_id': self.picking_transfer_id.id,
-                    'partner_id': self.person_name.id,
-                    'origin': self.name,
-                    'location_dest_id': self.person_name.property_stock_customer.id,
-                    'location_id': int(self.picking_transfer_id.
-                                       default_location_src_id.id)}
-                picking = self.env['stock.picking'].create(pick)
-                self.stock_picking_id = picking.id
-                self.picking_count = len(picking)
-                moves = order.filtered(
-                    lambda r: r.product_id.type in ['product',
-                                                    'consu'])._create_stock_moves_transfer(
-                    picking)
-                move_ids = moves._action_confirm()
-                move_ids._action_assign()
-            if order.product_uom_qty < order.qty_stock_move:
-                raise UserError(
-                    _('Used quantity is less than quantity stock move posted.'))
-        if flag != 1:
-            raise UserError(_('Nothing to post stock move'))
+                products_to_move = True
+                break
+                
+        if not products_to_move:
+            raise UserError(_('All product quantities have already been posted as stock moves.'))
+        
+        # Make sure there are products to move before opening the wizard
+        products_to_move = []
+        for order in self.product_order_line:
+            if (order.product_id and 
+                order.product_uom_qty > order.qty_stock_move and 
+                order.product_id.type in ['product', 'consu']):
+                
+                # Get valid UOM
+                uom_id = order.product_id.uom_id.id
+                if not uom_id:
+                    continue
+                    
+                # Create line vals
+                line_vals = {
+                    'product_id': order.product_id.id,
+                    'product_uom_id': uom_id,
+                    'ordered_qty': order.product_uom_qty,
+                    'already_moved_qty': order.qty_stock_move,
+                    'remaining_qty': order.product_uom_qty - order.qty_stock_move,
+                    'qty_to_transfer': order.product_uom_qty - order.qty_stock_move,
+                    'order_line_id': order.id,
+                }
+                products_to_move.append((0, 0, line_vals))
+        
+        # Prepare context with products that need to be moved
+        context = {
+            'default_mobile_service_id': self.id,
+            'active_id': self.id,
+            'active_model': 'mobile.service',
+            'default_origin': self.name,
+            'force_create_lines': True,  # Flag to force creation of lines
+            'default_product_line_ids': products_to_move,  # Pre-populate product lines
+        }
+        
+        # Return wizard action
+        return {
+            'name': _('Create Stock Transfer'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'post.stock.move.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': context
+        }
 
     def action_view_invoice(self):
         """It will show the invoice for the customer"""
@@ -363,3 +404,207 @@ class MobileService(models.Model):
             'mobile_brand': self.brand_name.brand_name,
             'model_name': self.model_name.mobile_brand_models}
         return self.env.ref('mobile_service_shop.mobile_service_ticket').report_action(self, data=data)
+
+    def _get_invoiced(self):
+        """Get the invoices"""
+        for record in self:
+            invoices = self.env['account.move'].search([('invoice_origin', '=', record.name)])
+            record.invoice_ids = [(6, 0, invoices.ids)] if invoices else [(6, 0, [])]
+        
+    def action_view_picking(self):
+        """ดูใบส่งสินค้าที่เกี่ยวข้องกับงานบริการ"""
+        self.ensure_one()
+        action = {
+            'name': _("Stock Transfers"),
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.picking',
+            'target': 'current',
+            'context': {}}
+        
+        # ลำดับที่ 1: ใช้ picking ที่เชื่อมโยงโดยตรงถ้ามี
+        if self.stock_picking_id and self.stock_picking_id.exists():
+            action['res_id'] = self.stock_picking_id.id
+            action['view_mode'] = 'form'
+            
+            # ใช้ try-except เพื่อป้องกันกรณีที่ไม่มี view_id
+            try:
+                form_view = self.env.ref('stock.view_picking_form')
+                action['views'] = [(form_view.id, 'form')]
+            except:
+                action['view_mode'] = 'form'
+                
+            return action
+        
+        # ลำดับที่ 2: ค้นหา picking ที่เกี่ยวข้องกับชื่องานบริการ
+        domain = [
+            '|', '|',
+            ('origin', '=like', f"{self.name}/%"),       # รูปแบบใหม่ที่มี timestamp
+            ('origin', '=like', f"{self.name}-%"),       # รูปแบบเดิมที่มีเครื่องหมาย -
+            ('origin', '=', self.name)                   # รูปแบบดั้งเดิม
+        ]
+        
+        picking_ids = self.env['stock.picking'].search(domain)
+        pick_ids = picking_ids.ids
+            
+        if len(pick_ids) == 1:
+            action['res_id'] = pick_ids[0]
+            action['view_mode'] = 'form'
+            
+            # ใช้ try-except เพื่อป้องกันกรณีที่ไม่มี view_id
+            try:
+                form_view = self.env.ref('stock.view_picking_form')
+                action['views'] = [(form_view.id, 'form')]
+            except:
+                action['view_mode'] = 'form'
+        else:
+            action['view_mode'] = 'tree,form'
+            action['domain'] = [('id', 'in', pick_ids)]
+            
+        return action
+
+    @api.model
+    def _clear_duplicate_sequences(self):
+        """จัดการลำดับและความซ้ำซ้อนของลำดับระหว่างการติดตั้ง/อัพเกรดโมดูล"""
+        # วิธีนี้จะถูกเรียกจากไฟล์ sequence_data.xml
+        
+        # จัดการ sequence สำหรับ mobile.service
+        service_sequences = self.env['ir.sequence'].sudo().search([
+            ('code', '=', 'mobile.service')
+        ])
+        
+        # ถ้ามีมากกว่า 1 sequence ให้เก็บแค่อันเดียว
+        if len(service_sequences) > 1:
+            # เก็บเฉพาะ sequence แรกและลบที่เหลือ
+            primary_seq = service_sequences[0]
+            for seq in service_sequences[1:]:
+                seq.sudo().unlink()
+            
+            # ตั้งค่า sequence ที่เหลือให้ถูกต้อง
+            primary_seq.sudo().write({
+                'prefix': 'SERV/%(year)s/%(month)s/',
+                'use_date_range': True,
+                'padding': 4,
+                'company_id': False,  # ทำให้ใช้ได้กับทุกบริษัท
+            })
+        elif len(service_sequences) == 1:
+            # ถ้ามีแค่ sequence เดียว ให้ตั้งค่าให้ถูกต้อง
+            service_sequences[0].sudo().write({
+                'prefix': 'SERV/%(year)s/%(month)s/',
+                'use_date_range': True,
+                'padding': 4,
+                'company_id': False,  # ทำให้ใช้ได้กับทุกบริษัท
+            })
+            
+        # ถ้าไม่มี sequence เลย ระบบจะสร้างให้อัตโนมัติจากข้อมูลในไฟล์ XML
+        
+        # จัดการ sequence สำหรับ mobile.service.picking ด้วย (ถ้ามี)
+        self._ensure_picking_sequence()
+        
+        return True
+        
+    @api.model
+    def _ensure_picking_sequence(self):
+        """สร้างหรืออัพเดต sequence สำหรับ mobile.service.picking"""
+        # ตรวจสอบว่ามี sequence สำหรับ mobile.service.picking หรือไม่
+        picking_seq = self.env['ir.sequence'].sudo().search([
+            ('code', '=', 'mobile.service.picking')
+        ], limit=1)
+        
+        if not picking_seq:
+            # สร้าง sequence ใหม่ถ้าไม่มี
+            self.env['ir.sequence'].sudo().create({
+                'name': 'Mobile Service Stock Picking',
+                'code': 'mobile.service.picking',
+                'prefix': 'MS/PICK/%(year)s/%(month)s/',
+                'padding': 4,
+                'company_id': False,  # ทำให้ใช้ได้กับทุกบริษัท
+                'use_date_range': True,
+            })
+        else:
+            # อัพเดต sequence ที่มีอยู่
+            picking_seq.sudo().write({
+                'prefix': 'MS/PICK/%(year)s/%(month)s/',
+                'padding': 4,
+                'company_id': False,
+                'use_date_range': True,
+            })
+    
+    @api.model
+    def _reset_sequences(self):
+        """รีเซ็ตหมายเลข sequence ในกรณีที่พบปัญหา Reference ซ้ำ
+        
+        วิธีนี้ใช้สำหรับตั้งค่าหมายเลขลำดับใหม่ เมื่อมีปัญหาเรื่อง reference ซ้ำในระบบ
+        สามารถเรียกใช้ได้จาก Developer mode > Technical > Sequences > Run scheduler
+        """
+        # ค้นหาเลขลำดับล่าสุดของ stock.picking จากฐานข้อมูล
+        self.env.cr.execute("""
+            SELECT MAX(CAST(
+                CASE WHEN name ~ '^\\d+$' 
+                THEN name 
+                ELSE COALESCE(NULLIF(REGEXP_REPLACE(name, '\\D', '', 'g'), ''), '0') 
+                END AS INTEGER)) as max_number 
+            FROM stock_picking
+        """)
+        result = self.env.cr.fetchone()
+        max_number = result[0] or 0
+        
+        # ค้นหา sequence ทั้งหมดที่ใช้สำหรับ picking
+        pick_sequences = self.env['ir.sequence'].sudo().search([
+            ('code', 'in', ['stock.picking', 'mobile.service.picking'])
+        ])
+        
+        # ตั้งค่า sequence ใหม่ให้สูงกว่าเลขที่มีในฐานข้อมูล
+        for seq in pick_sequences:
+            new_number = max_number + 10  # เพิ่มอีก 10 เพื่อให้แน่ใจว่าไม่ซ้ำ
+            seq.sudo().write({
+                'number_next': new_number,
+            })
+            
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Sequences Reset'),
+                'message': _('All stock picking sequences have been reset to avoid reference conflicts.'),
+                'type': 'success',
+                'sticky': False,
+            }
+        }
+    
+    @api.model
+    def _force_reset_picking_sequence(self):
+        """บังคับรีเซ็ต sequence ของ stock.picking เพื่อป้องกันการซ้ำ"""
+        # ค้นหาหมายเลขลำดับสูงสุดจาก stock.picking ที่มีอยู่
+        self.env.cr.execute("""
+            SELECT MAX(CAST(
+                CASE 
+                    WHEN name ~ '^[A-Z]+/[0-9]+/[0-9]+/[0-9]+$' THEN 
+                        SPLIT_PART(name, '/', 4)
+                    WHEN name ~ '^[A-Z]+/[0-9]+$' THEN 
+                        SPLIT_PART(name, '/', 2)
+                    WHEN name ~ '^[0-9]+$' THEN 
+                        name
+                    ELSE 
+                        COALESCE(NULLIF(REGEXP_REPLACE(name, '[^0-9]', '', 'g'), ''), '0')
+                END AS INTEGER
+            )) as max_seq_number 
+            FROM stock_picking 
+            WHERE company_id = %s OR company_id IS NULL
+        """, (self.company_id.id,))
+        
+        result = self.env.cr.fetchone()
+        max_number = (result[0] or 0) + 1
+        
+        # อัพเดตทุก sequence ที่เกี่ยวข้องกับ stock.picking
+        picking_sequences = self.env['ir.sequence'].sudo().search([
+            '|', 
+            ('code', '=', 'stock.picking'),
+            ('model', '=', 'stock.picking')
+        ])
+        
+        # รีเซ็ต sequence ให้สูงกว่าเลขที่มีอยู่
+        for seq in picking_sequences:
+            if seq.company_id == self.company_id or not seq.company_id:
+                seq.sudo().write({'number_next': max_number + 10})
+                
+        return max_number

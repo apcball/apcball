@@ -56,7 +56,7 @@
                             <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
                             <div style="font-size: 18px;">9 หมู่ 12 ตําบลบึงคําพรอย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
                             <div style="font-size: 18px;">เลขที่ประจําตัวผูเสียภาษี 0105547076103</div>
-                            <div style="font-size: 18px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                            <div style="font-size: 18px;">โทร 02 1509710 E-mail: contact@mogen.co.th</div>
                         </div>
                     </div>
                     <div class="col-4 text-end">
@@ -85,21 +85,17 @@
                                         <strong style="width: 10%; display: inline-block;">ที่อยู่:</strong>
                                             <span t-field="doc.partner_id.street"/> <span t-field="doc.partner_id.street2"/>
                                             <br/>
-                                            <span t-field="doc.partner_id.city"/> <span t-field="doc.partner_id.state_id.name"/>
+                                            <span t-field="doc.partner_id.city"/> 
                                             <span t-field="doc.partner_id.zip"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">ชื่อผู้ติดต่อ:</strong>
+                                        <strong style="width: 15%; display: inline-block;">ชื่อผู้ติดต่อ:</strong>
                                         <span t-esc="doc.partner_id.child_ids.filtered(lambda r: r.type == 'contact')[:1].name or ''"/>
                                     </div>
                                     <div class="mb-2">
                                         <div style="width: 60%;">
                                             <strong style="width: 14%; display: inline-block;">โทร:</strong>
-                                            <span t-esc="doc.partner_id.phone or ''"/>
-                                        </div>
-                                        <div style="width: 40%;">
-                                            <strong style="width: 14%; display: inline-block;">แฟกซ์:</strong>
-                                            <span t-esc="doc.partner_id.fax or ''"/>
+                                            <span t-esc="doc.partner_id.phone or doc.partner_id.mobile or ''"/>
                                         </div>
                                     </div>
                                     
@@ -121,11 +117,7 @@
                                     </div>
                                     <div class="mb-2">
                                         <strong style="width: 35%; display: inline-block;">เงื่อนไขการชำระเงิน:</strong>
-                                      
-                                    </div>
-                                    <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">เงื่อนไขการชำระเงิน:</strong>
-                                           <span t-field="doc.invoice_payment_term_id.name"/>
+                                           <span t-field="doc.invoice_ids[0].invoice_payment_term_id.name" t-if="doc.invoice_ids"/>
                                     </div>
                         </div>
                     </div>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Post Stock Move Wizard Form View -->
+        <record id="view_post_stock_move_wizard_form" model="ir.ui.view">
+            <field name="name">post.stock.move.wizard.form</field>
+            <field name="model">post.stock.move.wizard</field>
+            <field name="arch" type="xml">
+                <form>
+                    <div class="oe_title">
+                        <h1>Create Stock Transfer</h1>
+                    </div>
+                    <sheet>
+                        <group>
+                            <group string="Transfer Information">
+                                <field name="mobile_service_id" readonly="1" options="{'no_open': True}"/>
+                                <field name="partner_id" readonly="1"/>
+                                <field name="picking_type_id" readonly="0"/>
+                                <field name="origin" readonly="1"/>
+                                <field name="scheduled_date"/>
+                            </group>
+                            <group string="Transfer Options">
+                                <field name="immediate_transfer"/>
+                                <field name="auto_assign"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Additional Notes">
+                            <field name="notes" nolabel="1" placeholder="Enter any additional notes for this transfer..."/>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Products to Transfer">
+                                <p class="text-muted alert alert-warning" invisible="product_line_ids">
+                                    <strong>Warning:</strong> No products available for transfer. All products may have been transferred already.
+                                </p>
+                                <field name="product_line_ids" nolabel="1" required="id != False">
+                                    <tree editable="bottom" create="false" delete="false">
+                                        <field name="product_id" readonly="1" required="1" force_save="1" options="{'no_open': True}"/>
+                                        <field name="product_uom_id" readonly="1" required="1" force_save="1" options="{'no_open': True}"/>
+                                        <field name="ordered_qty" readonly="1"/>
+                                        <field name="already_moved_qty" readonly="1"/>
+                                        <field name="remaining_qty" readonly="1"/>
+                                        <field name="qty_to_transfer" required="1" sum="Total Qty" decoration-danger="qty_to_transfer == 0"/>
+                                        <field name="order_line_id" invisible="1" force_save="1"/>
+                                    </tree>
+                                </field>
+                                <div class="alert alert-info text-center" role="alert" invisible="not product_line_ids">
+                                    <strong>Note:</strong> These products are ready for transfer to customer.
+                                    <br/>Set the quantity you want to transfer for each product.
+                                    <br/>Click "Create Transfer" to generate the delivery order.
+                                </div>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <footer>
+                        <button name="action_create_transfer" string="Create Transfer" 
+                                type="object" class="btn-primary" data-hotkey="c"/>
+                        <button name="action_cancel" string="Cancel" 
+                                type="object" class="btn-secondary" data-hotkey="x"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Post Stock Move Wizard Action -->
+        <record id="action_post_stock_move_wizard" model="ir.actions.act_window">
+            <field name="name">Create Stock Transfer</field>
+            <field name="res_model">post.stock.move.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="view_post_stock_move_wizard_form"/>
+        </record>
+
+    </data>
+</odoo>

@@ -130,7 +130,7 @@
                             <div class="row mb-3">
                                <div class="col-4 offset-4 text-center">
                                    <div class="doc-title" style="padding: 14px; margin-bottom: -85px;font-size: 26px; font-family: 'TH SarabunPSK', 'THSarabunNew', Tahoma, Arial, sans-serif;">
-                                    ใบจ่ายสินค้ายืมโชว์(BG)
+                                    ใบคืนสินค้ายืมโชว์
                                    </div>
                                </div>
                                <div class="col-4 text-end" style="margin-bottom: -340px;">
@@ -212,7 +212,7 @@
                                 <div>วันที่ดำเนินการ: <t t-esc="o.date_done.strftime('%d/%m/%Y') if o.date_done else ''"/></div>
                                 <div>ผู้ติดต่อพนักงาน: <t t-esc="o.employee_contact_id.name or ''"/></div>
                                 <div>Sale ผู้ดูแล: <t t-esc="o.employee_contact_id.name or ''"/></div>
-                                <div>สถานที่รับกลับ: <t t-esc="o.return_location or ''"/></div>
+                                <div>สถานที่รับกลับ: <t t-esc="o.note or ''"/></div>
                             </div>
                         </div>
 
@@ -323,6 +323,8 @@
                                     <!-- ช่องที่ 2: ผู้ออกเอกสาร -->
                                     <div style="width: 14.5%; border: 1px solid black; padding: 4px;">
                                         <div>ผู้ออกเอกสาร</div>
+                                        <br/>
+                                        <br/>
                                         <div style="margin-top: 20px;">วันที่ <span style="display: inline-block; border-bottom: 1px solid black; width: 80px;"></span></div>
                                     </div>
                                 
@@ -363,12 +365,14 @@
                                     <div style="width: 14.5%; border: 1px solid black; padding: 4px;">
                                         <div>ผู้รับสินค้า</div>
                                         <div style="margin-top: 5px;">(ตัวบรรจง)</div>
+                                        <br/>
                                         <div style="margin-top: 20px;">วันที่ <span style="display: inline-block; border-bottom: 1px solid black; width: 80px;"></span></div>
                                     </div>
                                 
                                     <!-- ช่องที่ 7: ผู้ตรวจนับ -->
                                     <div style="width: 14.5%; border: 1px solid black; padding: 4px;">
                                         <div>ผู้ตรวจนับ<br/>(คลังสินค้า)</div>
+                                        <br/>
                                         <div style="margin-top: 25px;">วันที่ <span style="display: inline-block; border-bottom: 1px solid black; width: 80px;"></span></div>
                                     </div>
                                 
@@ -424,7 +428,7 @@
   
   
       <record id="action_request_change_products" model="ir.actions.report">
-          <field name="name">ใบขออนุมัติเปลี่ยนสินค้า</field>
+          <field name="name">ใบคืนสินค้ายืมโชว์</field>
           <field name="model">stock.picking</field>
           <field name="report_type">qweb-pdf</field>
           <field name="report_name">buz_inventory_delivery_report.request_change_products_document</field>

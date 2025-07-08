@@ -63,30 +63,7 @@ class ProductOrderLine(models.Model):
             line.update({'part_price': price})
 
     def _create_stock_moves_transfer(self, picking):
-        """It will return the stock moves"""
-        done = self.env['stock.move'].browse()
-        if self.product_id.product_tmpl_id.type != 'service':
-            price_unit = self.price_unit
-            template = {
-                'name': self.product_id.product_tmpl_id.name or '',
-                'product_id': self.product_id.id,
-                'product_uom': self.product_id.product_tmpl_id.uom_id.id,
-                'location_id': picking.picking_type_id.default_location_src_id.id,
-                'location_dest_id': self.product_order_id.person_name.property_stock_customer.id,
-                'picking_id': picking.id,
-                'move_dest_ids': False,
-                'state': 'draft',
-                'company_id': self.product_order_id.company_id.id,
-                'price_unit': price_unit,
-                'picking_type_id': picking.picking_type_id.id,
-                'route_ids': 1 and [
-                    (6, 0, [x.id for x in self.env['stock.route'].search(
-                        [('id', 'in', (2, 3))])])] or [],
-                'warehouse_id': picking.picking_type_id.warehouse_id.id}
-            diff_quantity = self.product_uom_qty - self.qty_stock_move
-            tmp = template.copy()
-            tmp.update({'product_uom_qty': diff_quantity})
-            template['product_uom_qty'] = diff_quantity
-            done += self.env['stock.move'].create(template)
-            self.qty_stock_move = self.qty_stock_move + diff_quantity
-        return done
+        """Creates and returns stock moves for products used in mobile service"""
+        # This method is kept for backward compatibility but is no longer used in the main flow
+        # The stock moves are created directly in action_post_stock
+        return self.env['stock.move'].browse()

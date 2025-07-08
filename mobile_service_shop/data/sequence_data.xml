@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Sequence for mobile service with company support -->
+        <record id="seq_mobile_service_company" model="ir.sequence">
+            <field name="name">Mobile Service Sequence (Company Specific)</field>
+            <field name="code">mobile.service</field>
+            <field name="prefix">SERV/%(year)s/%(month)s/</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/> <!-- Make it available to all companies -->
+            <field name="use_date_range" eval="True"/>
+        </record>
+        
+        <!-- Clear any existing mobile.service sequences to prevent conflicts -->
+        <function model="mobile.service" name="_clear_duplicate_sequences"/>
+    </data>
+</odoo>

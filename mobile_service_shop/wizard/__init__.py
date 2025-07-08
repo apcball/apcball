@@ -20,3 +20,4 @@
 #
 ###############################################################################
 from . import mobile_create_invoice
+from . import post_stock_move_wizard

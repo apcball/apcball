@@ -23,7 +23,9 @@
         'report/report_action.xml',
         'report/ecommerce_receipt_report.xml',
         'report/payment_receipt_modern.xml',
-
+        'report/cerdit_note.xml',
+        'report/invoice_tax.xml',
+        
      ],  
      'assets': {
         'web.report_assets_common': [

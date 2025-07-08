@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Define Paper Format -->
+    <record id="paperformat_purchase_agreement_document" model="report.paperformat">
+        <field name="name">Purchase agreement A4 </field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">8</field>
+        <field name="dpi">90</field>
+    </record>
+    <template id="report_purchase_agreement_document">
+        <t t-name="buz_custom_po.report_purchase_agreement_document">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="doc">
+                    <t t-call="web.external_layout">
+                        <div class="page">
+                            <!-- Define currency variable based on availability -->
+                            <t t-set="currency" t-value="doc.currency_id"/>
+                            
+                            <h2 class="mt-4 text-center">Purchase Agreement</h2>
+                            
+                            <!-- Header information -->
+                            <div class="row mt-4">
+                                <div class="col-6">
+                                    <strong>Agreement Reference:</strong> <span t-field="doc.name"/><br/>
+                                    <strong>Vendor:</strong> <span t-field="doc.vendor_id.name"/><br/>
+                                    <strong>End Date:</strong> <span t-field="doc.date_end"/><br/>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Ordering Date:</strong> <span t-field="doc.ordering_date"/><br/>
+                                    <strong>Type:</strong> <span t-field="doc.type_id.name"/><br/>
+                                    <strong>Status:</strong> <span t-field="doc.state"/><br/>
+                                </div>
+                            </div>
+                            
+                            <!-- Products table -->
+                            <h4 class="mt-4">Products</h4>
+                            <table class="table table-bordered mt-4">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Description</th>
+                                        <th class="text-right">Quantity</th>
+                                        <th class="text-right">Unit Price</th>
+                                        <th class="text-right">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="doc.line_ids" t-as="line">
+                                        <td><span t-field="line.product_id.name"/></td>
+                                        <!-- <td><span t-field="line.name"/></td> -->
+                                        <td></td>
+                                        <td class="text-right">
+                                            <span t-field="line.product_qty"/>
+                                            <span t-field="line.product_uom_id"/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": currency}'/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-esc="line.product_qty * line.price_unit" t-options='{"widget": "monetary", "display_currency": currency}'/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <!-- Notes section -->
+                            <!-- <div class="row mt-4" t-if="doc.notes">
+                                <div class="col-12">
+                                    <strong>Terms and Conditions:</strong>
+                                    <p t-field="doc.notes"/>
+                                </div>
+                            </div> -->
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </t>
+    </template>
+    <record id="action_report_purchase_agreement_document" model="ir.actions.report">
+        <field name="name">Purchase Agreement Test</field>
+        <field name="model">purchase.requisition</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_custom_po.report_purchase_agreement_document</field>
+        <field name="report_file">buz_custom_po.report_purchase_agreement_document</field>
+        <field name="print_report_name">'Purchase Agreement - %s' % object.name</field>
+        <field name="binding_model_id" ref="purchase_requisition.model_purchase_requisition"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_purchase_agreement_document"/>
+    </record>
+</odoo>

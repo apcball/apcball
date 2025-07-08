@@ -5,7 +5,8 @@ class AccountMove(models.Model):
 
     partner_code = fields.Char(
         string='Partner Code',
-        help='Enter partner code to auto-fill partner details'
+        help='Enter partner code to auto-fill partner details',
+        store=True
     )
 
     @api.onchange('partner_code')
@@ -24,6 +25,7 @@ class AccountMove(models.Model):
             partner = self.env['res.partner'].search(domain, limit=1)
             if partner:
                 self.partner_id = partner.id
+                return {}
             else:
                 message = 'No customer found with this partner code.' if self.move_type in ('out_invoice', 'out_refund', 'out_receipt') else 'No vendor found with this partner code.'
                 return {
@@ -35,5 +37,5 @@ class AccountMove(models.Model):
 
     @api.onchange('partner_id')
     def _onchange_partner_id_code(self):
-        if self.partner_id and self.partner_id.partner_code:
+        if self.partner_id and hasattr(self.partner_id, 'partner_code') and self.partner_id.partner_code:
             self.partner_code = self.partner_id.partner_code

@@ -304,8 +304,13 @@
                             </t>
 
 
-                       <!-- เติมแถวเปล่าให้ครบ 14 แถวต่อหน้า -->
-                       <t t-set="empty_rows" t-value="14 - len(group)"/>
+                       <!-- เติมแถวเปล่าให้ครบ 14 แถวต่อหน้า (เว้นหน้าสุดท้ายให้เหลือแถวเปล่าแค่ 11) -->
+                       <t t-if="page_number != total_pages">
+                           <t t-set="empty_rows" t-value="14 - len(group)"/>
+                       </t>
+                       <t t-if="page_number == total_pages">
+                           <t t-set="empty_rows" t-value="max(0, 11 - len(group))"/>
+                       </t>
                        <t t-foreach="range(empty_rows)" t-as="i">
                            <tr class="data-row" style="font-size: 20px; height: 50px; line-height: 50px;">
                            </tr>

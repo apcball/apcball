@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_post_stock_move_wizard_executer,access.post.stock.move.wizard.executer,model_post_stock_move_wizard,mobile_service_shop.mobile_service_group_executer,1,1,1,1
+access_post_stock_move_wizard_manager,access.post.stock.move.wizard.manager,model_post_stock_move_wizard,mobile_service_shop.mobile_service_group_manager,1,1,1,1
+access_post_stock_move_wizard_line_executer,access.post.stock.move.wizard.line.executer,model_post_stock_move_wizard_line,mobile_service_shop.mobile_service_group_executer,1,1,1,1
+access_post_stock_move_wizard_line_manager,access.post.stock.move.wizard.line.manager,model_post_stock_move_wizard_line,mobile_service_shop.mobile_service_group_manager,1,1,1,1

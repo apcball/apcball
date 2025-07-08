@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_purchase_requisition_form_kyld_custom" model="ir.ui.view">
+        <field name="name">purchase.requisition.form.kyld.custom</field>
+        <field name="model">purchase.requisition</field>
+        <field name="inherit_id" ref="purchase_requisition.view_purchase_requisition_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group[1]" position="before">
+                <group>
+                    <group>
+                        <field name="kyld_project_name"/>
+                        <field name="plot_number"/>
+                    </group>
+                    <group>
+                        <field name="pa_type"/>
+                        <field name="date_of_accepting_work"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -16,6 +16,8 @@
         'base',
         'mail',
         'account',
+        'account_payment',
+        'account_payment_term',
         'account_payment_batch_process',
     ],
     'data': [

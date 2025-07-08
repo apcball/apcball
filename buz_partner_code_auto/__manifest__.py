@@ -7,8 +7,10 @@
         This module adds partner code field in SO and PO forms.
         When user enters partner code, it automatically fills the partner details.
     """,
-    'depends': ['sale_management', 'purchase', 'account'],
+    'depends': ['base', 'sale_management', 'purchase', 'account'],
     'data': [
+        'security/ir.model.access.csv',
+        'views/res_partner_views.xml',
         'views/sale_order_views.xml',
         'views/purchase_order_views.xml',
         'views/account_move_views.xml',

@@ -4,9 +4,10 @@
         <record id="mobile_service_sequence" model="ir.sequence">
             <field name="name">Service Code</field>
             <field name="code">mobile.service</field>
-            <field name="prefix">SERV/</field>
+            <field name="prefix">SERV/%(year)s/</field>
             <field eval="4" name="padding"/>
             <field name="company_id" eval="False"/>
+            <field name="use_date_range" eval="True"/>
         </record>
 <!--Mobile service model search view-->
         <record id="mobile_service_view_search" model="ir.ui.view">
@@ -78,6 +79,12 @@
                                     invisible="service_state in ('draft')">
                                 <field string="Invoice" name="invoice_count" widget="statinfo"/>
                             </button>
+                            <!-- Button temporarily removed during upgrade
+                            <button name='action_view_picking' class="oe_stat_button" type="object" icon="fa-truck"
+                                    invisible="picking_count == 0">
+                                <field string="Transfers" name="picking_count" widget="statinfo"/>
+                            </button>
+                            -->
                         </div>
                         <div class="oe_title">
                             <h1>
@@ -127,7 +134,7 @@
                                        readonly="service_state in ('returned','not_solved')"/>
                                 <field name="technician_name" style="width:50%;"
                                        readonly="service_state not in 'draft'"/>
-                                <field name="picking_count" invisible="1"/>
+                                <field name="picking_count"/>
                             </group>
                         </group>
                         <notebook>

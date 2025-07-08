@@ -21,8 +21,86 @@ class AccountMove(models.Model):
     delivery_document_number = fields.Char(string="Delivery Document Number")
     delivery_price = fields.Monetary(string='Delivery Price')
     delivery_price = fields.Monetary(string="ค่าขนส่ง", currency_field='currency_id')
-   
+    return_invoice_id = fields.Many2one('account.move', string='ใบคืนสินค้าอ้างอิง')
+    notes = fields.Text(string='หมายเหตุ')
+    amount_total_text_th = fields.Char(string="จำนวนเงิน (ตัวอักษร)", compute="_compute_amount_total_text_th", store=True)
+    has_vat = fields.Boolean(string='มี VAT', compute='_compute_has_vat')
+    original_tax_invoice_amount = fields.Monetary(string='มูลค่าสินค้าตามใบกำกับภาษีเดิม')
+    correct_product_value = fields.Monetary(string='มูลค่าของสินค้าที่ถูกต้อง')
+    invoice = fields.Char(string="Invoice Ref")  
+    picking_id = fields.Many2one('stock.picking', string="ใบรับคืนสินค้า")
+    invoice_partner_ref = fields.Char(string="Customer Reference")
 
+    @api.depends('invoice_line_ids.tax_line_id')
+    def _compute_has_vat(self):
+        for rec in self:
+            rec.has_vat = any(tax.name == 'VAT 7%' for line in rec.invoice_line_ids for tax in line.tax_ids)
+    
+    @api.depends('amount_total')
+    def _compute_amount_total_text_th(self):
+        for rec in self:
+            rec.amount_total_text_th = rec._baht_text_th(rec.amount_total)
+            
+
+    def _baht_text_th(self, amount):
+        if amount is None:
+            return ''
+
+        negative = amount < 0
+        amount = abs(float(amount))
+        integer_part = int(amount)
+        decimal_part = int(round((amount - integer_part) * 100))
+
+        baht_text = self._num2words_th(integer_part)
+        if not baht_text:
+            baht_text = 'ศูนย์'
+
+        result = ('ลบ' if negative else '') + baht_text + 'บาท'
+        if decimal_part > 0:
+            result += self._num2words_th(decimal_part) + 'สตางค์'
+        else:
+            result += 'ถ้วน'
+        return result
+
+    def _num2words_th(self, number):
+        units = ['', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า']
+        positions = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน']
+
+        def convert_group(number_str):
+            words = ''
+            length = len(number_str)
+            for i in range(length):
+                digit = int(number_str[i])
+                pos = length - i - 1
+                if digit != 0:
+                    if pos == 1 and digit == 1:
+                        words += 'สิบ'
+                    elif pos == 1 and digit == 2:
+                        words += 'ยี่สิบ'
+                    elif pos == 1:
+                        words += units[digit] + 'สิบ'
+                    elif pos == 0 and digit == 1 and length > 1:
+                        words += 'เอ็ด'
+                    else:
+                        words += units[digit] + positions[pos]
+            return words
+
+        number_str = str(int(number))
+        result = ''
+        group_count = 0
+
+        while number_str:
+            group = number_str[-6:]
+            number_str = number_str[:-6]
+            group_words = convert_group(group.zfill(6))  # pad 0s if needed
+            if group_words:
+                if group_count == 0:
+                    result = group_words + result
+                else:
+                    result = group_words + 'ล้าน' * group_count + result
+            group_count += 1
+
+        return result
 
     @api.depends('invoice_origin', 'purchase_id')
     def _compute_picking_ids(self):
@@ -117,6 +195,7 @@ class AccountMove(models.Model):
             grand_total = record.amount_after_discount + record.vat_7_percent
             record.grand_total = round(grand_total, 2)
             record.stored_grand_total = record.grand_total
+            
 
     def baht_text(self, amount):
         """
