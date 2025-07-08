@@ -23,10 +23,18 @@
                     padding: 10px;
                 }
                 .table td, .table th {
-                    border-width: 0.5px !important;
-                    border-style: solid !important;
-                    border-color: #000 !important;
+                    border-left: 0.5px solid #000 !important;
+                    border-right: 0.5px solid #000 !important;
+                    border-top: none !important;
+                    border-bottom: none !important;
                     padding: 4px;
+                }
+                .table thead th {
+                    border-top: 0.5px solid #000 !important;
+                    border-bottom: 0.5px solid #000 !important;
+                }
+                .table tfoot td {
+                    border-top: 0.5px solid #000 !important;
                 }
                 .bordered {
                     border: 1px solid #000;
@@ -148,31 +156,28 @@
                             </td>
                             <td><span t-field="inv.invoice_date"/></td>
                             <td><span t-field="inv.invoice_date_due"/></td>
-                            <td class="text-right"><span t-field="inv.amount_untaxed"/></td>
-                            <td class="text-right"><span t-field="inv.amount_tax"/></td>
-                            <td class="text-right"><span t-field="inv.amount_total"/></td>
+                            <td class="text-right"><span t-field="inv.amount_untaxed" t-options='{"widget": "float", "precision": 2}'/></td>
+                            <td class="text-right"><span t-field="inv.amount_tax" t-options='{"widget": "float", "precision": 2}'/></td>
+                            <td class="text-right"><span t-field="inv.amount_total" t-options='{"widget": "float", "precision": 2}'/></td>
                         </tr>
-                        <tr>
-                            <td colspan="4"></td>
-                            <td class="text-right" style="border-bottom: 1px solid #dee2e6; height: 16cm;"></td>
-                            <td class="text-right" style="border-bottom: 1px solid #dee2e6; height: 16cm;"></td>
-                            <td class="text-right" style="border-bottom: 1px solid #dee2e6; height: 16cm;"></td>
+                        <tr style="height: 1cm;">
+                            <td colspan="4" style="border-bottom: none !important; border-left: 0.5px solid #000 !important; border-right: 0.5px solid #000 !important;"></td>
+                            <td class="text-right" style="border-bottom: none !important; border-left: 0.5px solid #000 !important; border-right: 0.5px solid #000 !important;"></td>
+                            <td class="text-right" style="border-bottom: none !important; border-left: 0.5px solid #000 !important; border-right: 0.5px solid #000 !important;"></td>
+                            <td class="text-right" style="border-bottom: none !important; border-left: 0.5px solid #000 !important; border-right: 0.5px solid #000 !important;"></td>
                         </tr>
                     </tbody>
                     <tfoot>
                         <tr>
                             <td colspan="4" class="text-right"><strong>รวมทั้งสิ้น</strong></td>
                             <td class="text-right">
-                                <strong t-esc="sum(doc.invoice_ids.mapped('amount_untaxed'))"
-                                        t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                <strong t-esc="sum(doc.invoice_ids.mapped('amount_untaxed'))" t-options='{"widget": "float", "precision": 2}'/>
                             </td>
                             <td class="text-right">
-                                <strong t-esc="sum(doc.invoice_ids.mapped('amount_tax'))"
-                                        t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                <strong t-esc="sum(doc.invoice_ids.mapped('amount_tax'))" t-options='{"widget": "float", "precision": 2}'/>
                             </td>
                             <td class="text-right">
-                                <strong t-esc="sum(doc.invoice_ids.mapped('amount_total'))"
-                                        t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                <strong t-esc="sum(doc.invoice_ids.mapped('amount_total'))" t-options='{"widget": "float", "precision": 2}'/>
                             </td>
                         </tr>
                     </tfoot>

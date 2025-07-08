@@ -200,7 +200,7 @@
                             <div style="display: table-row;">
                                 <!-- ซ้าย -->
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-right: 5px;">
-                                    <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; box-sizing: border-box;">
+                                    <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 192px; box-sizing: border-box;">
                                         <div><strong>ชื่อลูกค้า:</strong> <span t-field="doc.partner_id.name"/></div>
                                         <div><strong>เลขประจำตัวผู้เสียภาษี:</strong> <span t-field="doc.partner_id.vat"/></div>
                                         <div>
@@ -214,43 +214,38 @@
                                         <div><strong>โทรศัพท์:</strong> <span t-field="doc.partner_id.phone"/></div>
                                     </div>
                                 </div>
-                        
+
                                 <!-- ขวา -->
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-left: 5px;">
-                                    <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 180px; box-sizing: border-box;">
-                                        <div>สถานที่ส่งของ: <span t-field="doc.partner_shipping_id.street"/></div>
-                                        <div>
+                                    <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 192px; box-sizing: border-box;">
+                                        <div style="margin-bottom:2px;"><strong>สถานที่ส่งของ:</strong></div>
+                                        <div style="margin-bottom:2px;"><span t-field="doc.partner_shipping_id.name"/></div>
+                                        <div style="margin-bottom:2px;"><span t-field="doc.partner_shipping_id.street"/></div>
+                                        <div style="margin-bottom:2px;">
                                             <t t-if="doc.partner_shipping_id.city">ตำบล<span t-field="doc.partner_shipping_id.city"/></t>
                                             <t t-if="doc.partner_shipping_id.state_id">อำเภอ<span t-field="doc.partner_shipping_id.state_id.name"/></t>
                                         </div>
-                                        <div>
+                                        <div style="margin-bottom:2px;">
                                             <t t-if="doc.partner_shipping_id.state_id">จังหวัด<span t-field="doc.partner_shipping_id.state_id.name"/></t>
                                             <span t-field="doc.partner_shipping_id.zip"/>
                                         </div>
-                                        <div><strong>ชื่อผู้ติดต่อ:</strong> <span t-esc="doc.invoice_line_ids[0].sale_line_ids[0].order_id.partner_shipping_id.name if doc.invoice_line_ids and doc.invoice_line_ids[0].sale_line_ids else ''"/></div>
-
-
-                                        <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                                        <div style="margin-bottom:2px;"><strong>ผู้ติดต่อ:</strong> <span t-esc="doc.partner_id.child_ids.filtered(lambda r: r.type == 'contact')[:1].name or ''"/></div>
+                                        <div style="display: flex; justify-content: space-between; margin-top: 2px; margin-bottom:2px;">
                                             <div style="width: 65%;">
                                                 <strong>เลขที่ใบสั่งขาย:</strong>
                                                 <span t-esc="doc.invoice_line_ids[0].sale_line_ids[0].order_id.client_order_ref"/>
                                             </div>
-                                        </div>   
-                                        
-                                
-                                        <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; margin-top: 2px; margin-bottom:2px;">
                                             <div style="width: 65%;">
                                                 <strong>พนักงานขาย Sale:</strong>
-                                                <span t-esc="doc.invoice_user_id.name"/>
+                                                <span t-field="doc.invoice_user_id.employee_id.name"/>
                                             </div>
                                             <div style="width: 35%;">
                                                 <strong>เงื่อนไข:</strong>
-                                                
                                             </div>
                                         </div>
-                                        
-                                        
-                                        <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                                        <div style="display: flex; justify-content: space-between; margin-top: 2px; margin-bottom:2px;">
                                             <div style="width: 65%;">
                                                 <strong>วันครบกำหนด:</strong>
                                                 <span t-field="doc.invoice_date_due" t-options='{"format": "dd/MM/yyyy"}'/>
@@ -262,7 +257,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                             </div>
                         </div>
     
@@ -333,21 +328,16 @@
                                     <tr>
                                         <td colspan="4" style="text-align: left; border-top: 1px solid #000; line-height: 1;  vertical-align: top; padding: 0;">
                                             <!-- ส่วนบน -->
-                                            <div style="min-height: 135px; max-height: 120px; height: 135px; padding: 10px; box-sizing: border-box; border-bottom: 1.5px solid #000;">
-                                                <strong>หมายเหตุ:</strong>
-                                                <br/>
-                                                <span style="margin-left: 4px;">* หากพ้นกำหนด 7 วัน นับจากวันที่ในเอกสารใบนี้ ทางบริษัทขอสงวนสิทธิ์ในการเปลี่ยนแปลงหรือแก้ไข</span>
-                                                <br/>
-                                                <span style="margin-left: 4px;">* กรุณาตรวจสอบสินค้าอยู่ในสภาพเรียบร้อย และมีจำนวนถูกต้องตามรายการข้างต้น ก่อนลงลายมือชื่อ เพื่อรับสินค้า</span>
-                                                <br/>
-                                                <span style="margin-left: 4px;">* หากสินค้าเสียหายหรือมีความผิดผลาด โปรดแจ้งบริษัทฯ ภายใน 7 วัน มิฉะนั้น บริษัทจะไม่รับผิดชอบความเสียหายที่เกิดขึ้น</span>
-                                                <br/>
-                                                <span style="margin-left: 4px;">* หากชำระเงินแล้ว ต้องมีลายเซนต์ผู้รับเงินจึงจะถูกต้องสมบูรณ์</span>
-                                                <br/>
-                                                <span style="margin-left: 4px;">* กรณีชำระด้วยเช็ค ใบเสร็จรับเงินจะถือว่าถูกต้องสมบูรณ์ก็ต่อเมื่อบริษัทฯ ได้เรียกเก็บตามเช็คเรียบร้อยแล้ว</span>
-                                                <br/>
-                                                <span style="margin-left: 4px;">* กรณีที่ผิดนัดขำระหนี้ ทางบริษัทฯ จะคิดดอกเบี้ย ในอัตราร้อยล่ะ 1.25 ต่อเดือน ของยอดหนี้สินค้า</span>
-                                                <br/>
+                                            <div style="min-height: 135px; line-height: 0.8; margin-top: 10px; max-height: 120px; height: 135px; padding: 10px; box-sizing: border-box; border-bottom: 1.5px solid #000;">
+                                                <div style="line-height: 1; font-size: 15px;">
+                                                    <strong>หมายเหตุ:</strong>
+                                                    <div style="margin-bottom: 1.8px;">* หากพ้นกำหนด 7 วัน นับจากวันที่ในเอกสารใบนี้ ทางบริษัทขอสงวนสิทธิ์ในการเปลี่ยนแปลงหรือแก้ไข</div>
+                                                    <div style="margin-bottom: 1.8px;">* กรุณาตรวจสอบสินค้าอยู่ในสภาพเรียบร้อย และมีจำนวนถูกต้องตามรายการข้างต้น ก่อนลงลายมือชื่อ เพื่อรับสินค้า</div>
+                                                    <div style="margin-bottom: 1.8px;">* หากสินค้าเสียหายหรือมีความผิดผลาด โปรดแจ้งบริษัทฯ ภายใน 7 วัน มิฉะนั้น บริษัทจะไม่รับผิดชอบความเสียหายที่เกิดขึ้น</div>
+                                                    <div style="margin-bottom: 1.8px;">* หากชำระเงินแล้ว ต้องมีลายเซนต์ผู้รับเงินจึงจะถูกต้องสมบูรณ์</div>
+                                                    <div style="margin-bottom: 1.8px;">* กรณีชำระด้วยเช็ค ใบเสร็จรับเงินจะถือว่าถูกต้องสมบูรณ์ก็ต่อเมื่อบริษัทฯ ได้เรียกเก็บตามเช็คเรียบร้อยแล้ว</div>
+                                                    <div style="margin-bottom: 1.8px;">* กรณีที่ผิดนัดชำระหนี้ ทางบริษัทฯ จะคิดดอกเบี้ย ในอัตราร้อยละ 1.25 ต่อเดือน ของยอดหนี้สินค้า</div>
+                                                </div>
                                             </div>
                                             <!-- ส่วนล่าง -->
                                             <div style="min-height: 35px; height: 45px; padding: 10px; box-sizing: border-box;font-size: 20px;">
@@ -386,6 +376,7 @@
                                                 <div><span t-esc="'{:,.2f}'.format(grand_total)"/></div>
                                             </div>
                                         </td>
+                                        
                                         
                                     </tr>
                                 </tfoot>

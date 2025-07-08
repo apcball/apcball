@@ -25,6 +25,8 @@
         'report/payment_receipt_modern.xml',
         'report/cerdit_note.xml',
         'report/invoice_tax.xml',
+        'report/vendor_credit_note.xml',
+    
         
      ],  
      'assets': {

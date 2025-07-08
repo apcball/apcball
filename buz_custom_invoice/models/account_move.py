@@ -40,6 +40,22 @@ class AccountMove(models.Model):
     def _compute_amount_total_text_th(self):
         for rec in self:
             rec.amount_total_text_th = rec._baht_text_th(rec.amount_total)
+
+    deposit_amount = fields.Monetary(
+        string="Deposit",
+        compute='_compute_deposit_amount',
+        store=True,
+        currency_field='currency_id'
+    )
+
+    @api.depends('invoice_line_ids')
+    def _compute_deposit_amount(self):
+        for move in self:
+            deposit_total = sum(
+                line.price_subtotal for line in move.invoice_line_ids
+                if 'มัดจำ' in (line.name or '').lower()
+            )
+            move.deposit_amount = deposit_total        
             
 
     def _baht_text_th(self, amount):

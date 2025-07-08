@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <data>
-    <record id="paperformat_cerdit_note" model="report.paperformat">
-        <field name="name">Cerdit Note A4</field>
+    <record id="paperformat_vendor_credit_note" model="report.paperformat">
+        <field name="name">Vendor Credit Note A4</field>
         <field name="default" eval="True"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
@@ -17,7 +17,7 @@
 
     
     <!-- Main Template -->
-    <template id="report_cerdit_note">
+    <template id="report_vendor_credit_note">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
@@ -165,10 +165,9 @@
                          <!-- Document Title -->
                          <div class="row mb-2">
                             <div class="col-12 text-center">
-                                    <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">ใบลดหนี้/ใบกำกับภาษี</h2>
-                                    <p style="margin: 0; padding: 0; font-size: 18px; font-weight: bold;">Credit Note / Tax Invoice</p>
-                               
-                            </div>
+                                        <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">ใบแจ้งหนี้/ใบกำกับภาษี</h2>
+                                        <p style="margin: 0; padding: 0; font-size: 18px; font-weight: bold;">Invoice / Tax Invoice</p>
+                             </div>
                         </div> 
 
 
@@ -179,19 +178,6 @@
                                 <span t-field="doc.partner_id.ref"/>
                             </div>
                         
-                            <!-- ฝั่งขวา: เลขที่เอกสาร + วันที่ -->
-                            <div style="width: 50%; text-align: right;">
-                                <div class="info-box">
-                                    <div class="mb-2">
-                                        <strong style="width: auto; display: inline-block;">เลขที่เอกสาร/No:</strong>
-                                        <span t-field="doc.name"/>
-                                    </div>
-                                    <div class="mb-2">
-                                        <strong style="width: auto; display: inline-block;">วันที่ :</strong>
-                                        <span t-field="doc.invoice_date" t-options='{"widget": "date"}'/>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                         
 
@@ -220,6 +206,19 @@
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-left: 5px;">
                                     <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 100%; box-sizing: border-box;">
 
+                                      
+                                            <div class="info-box">
+                                                <div class="mb-2">
+                                                    <strong style="width: auto; display: inline-block;">เลขที่เอกสาร/No:</strong>
+                                                    <span t-field="doc.name"/>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <strong style="width: auto; display: inline-block;">วันที่ :</strong>
+                                                    <span t-field="doc.invoice_date" t-options='{"widget": "date"}'/>
+                                                </div>
+                                            </div>
+                                      
+
                                         <!-- แก้ไขตรงนี้ -->
                                         <div style="display: flex; justify-content: space-between; margin-top: 10px;">
                                             <div style="width: 65%;">
@@ -238,23 +237,7 @@
                                             </div>
                                         </div>
 
-                                        <!-- แก้ไขตรงนี้ -->
-                                        <div style="display: flex; justify-content: space-between; margin-top: 10px;">
-                                            <div style="width: 65%;">
-                                                <strong>เลขที่ใบส่งคืนสินค้า:</strong>
-                                                <t t-if="doc.picking_ids">
-                                                    <t t-set="picking_size" t-value="len(doc.picking_ids)"/>
-                                                    <t t-foreach="doc.picking_ids" t-as="picking">
-                                                        <span t-field="picking.name"/>
-                                                        <t t-if="picking_index + 1 &lt; picking_size">, </t>
-                                                    </t>
-                                                </t>
-                                            </div>
-                                            <div style="width: 35%;">
-                                                <strong>ลงวันที่:</strong>
-                                                <span t-if="doc.picking_ids" t-field="doc.picking_ids[0].date_done" t-options='{"format": "dd/MM/yyyy"}'/>
-                                            </div>
-                                        </div>
+                                        
                                     </div>
                                 </div>
 
@@ -428,13 +411,13 @@
         </template>
 
 
-    <record id="action_report_cerdit_note" model="ir.actions.report">
-        <field name="name">ใบลดหนี้ / ใบกำกับภาษี</field>
+    <record id="action_report_cerdit_notevendor_credit_note" model="ir.actions.report">
+        <field name="name">ใบเพิ่มหนี้ / ใบกำกับภาษี</field>
         <field name="model">account.move</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">buz_custom_invoice.report_cerdit_note</field>
-        <field name="report_file">buz_custom_invoice.report_cerdit_note</field>
-        <field name="paperformat_id" ref="paperformat_cerdit_note"/>
+        <field name="report_name">buz_custom_invoice.report_vendor_credit_note</field>
+        <field name="report_file">buz_custom_invoice.report_vendor_credit_note</field>
+        <field name="paperformat_id" ref="paperformat_vendor_credit_note"/>
         <field name="binding_model_id" ref="account.model_account_move"/>
         <field name="binding_type">report</field>
     </record>
