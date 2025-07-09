@@ -63,12 +63,6 @@
                             </div>
             
                             <div style="margin-bottom: -3px;">
-                                <span style="font-size: 26px; color: black; font-weight: bold;">Address : </span>
-                                <span style="display: inline-block; width: 113px;"/>
-                                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.partner_id.street"/>
-                            </div>
-
-                            <div style="margin-bottom: -3px;">
                                 <span style="font-size: 26px; color: black; font-weight: bold;">Quotation No. : </span>
                                 <span style="display: inline-block; width: 64px;"/>
                                 <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.proposal_no"/>
@@ -182,8 +176,6 @@
                 <th style="width: 30%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Product Description</th>
                 <th style="width: 15%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Image</th>
                 <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Quantity</th>
-                <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Unit Price</th>
-                <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Discount</th>
                 <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Price</th>
                 <th style="width: 19%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Amount</th>
             </tr>
@@ -201,25 +193,6 @@
                 </td>
                 <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom.name"/>
-                </td>
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <t t-if="line.normal_price and line.normal_price != 0">
-                        <span t-field="line.normal_price"
-                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                    </t>
-                    <t t-else="">
-                        <span t-field="line.price_unit"
-                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                    </t>
-                </td>
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <t t-if="line.normal_price and line.normal_price > 0">
-                        <t t-set="discount_percent" t-value="round((1 - (line.price_unit / line.normal_price)) * 100, 2)"/>
-                        <span t-esc="discount_percent"/>%
-                    </t>
-                    <t t-else="">
-                        <span t-esc="line.discount_percent"/>%
-                    </t>
                 </td>
                 <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <t t-if="line.normal_price and line.normal_price != 0">
@@ -294,28 +267,18 @@
     </div>
 
 <!-- Signature Section -->
-        <div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
-            <div style="width: 200px; display: inline-block; text-align: center;">
-            <p style="margin-bottom: 40px;">ผู้อนุมัติซื้อ</p>
-            <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
-            <div style="margin-top: 10px; font-size: 16px;">
-                (____________________)
-            </div>
-            <div style="margin-top: 5px; font-size: 16px;">
-                วันที่ .................................
-            </div>
-            </div>
-            <div style="width: 200px; display: inline-block; text-align: center; margin-left: 600px;">
-            <p style="margin-bottom: 40px;">ผู้อนุมัติราคา</p>
-            <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
-            <div style="margin-top: 10px; font-size: 16px;">
-                ( เพชรรัตน์ บัวงาม )
-            </div>
-            <div style="margin-top: 5px; font-size: 16px;">
-                วันที่ ...................................
-            </div>
-            </div>
+<div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
+    <div style="width: 200px; display: inline-block; text-align: center; margin-left: 600px;">
+        <p style="margin-bottom: 40px;">ผู้อนุมัติซื้อ</p>
+        <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
+        <div style="margin-top: 10px; font-size: 16px;">
+            (____________________)
         </div>
+        <div style="margin-top: 5px; font-size: 16px;">
+            วันที่ .................................
+        </div>
+    </div>
+</div>
 
        <!-- Replace the existing Terms and Conditions section with: -->
 <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">

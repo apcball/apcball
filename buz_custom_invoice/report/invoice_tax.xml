@@ -135,6 +135,9 @@
                             }
                         </style>
 
+                        <t t-foreach="['original', 'copy']" t-as="doc_type">
+                            <div t-attf-style="#{doc_type == 'copy' and 'page-break-before: always;' or ''}; font-size: 94%;">    
+
                         
                         <t t-set="line_list" t-value="doc.invoice_line_ids"/>
                         <t t-set="groups_of_7" t-value="[line_list[i:i+7] for i in range(0, len(line_list), 7)]"/>
@@ -161,6 +164,22 @@
                                      style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
+
+
+                        <!-- Title Section -->
+                        <div class="row mb-2 justify-content-end" style="padding-right: 9.4px;">
+                            <div class="col-2 "
+                            style="border-radius: 3.76px; border: 0.94px solid #888; padding: 1.88px 3.76px; font-size: 16.92px; text-align:center; margin-top: -56.4px; ">
+                            <t t-if="doc_type == 'original'">
+                                <strong>ต้นฉบับ / ORIGINAL</strong><br/>
+                                ลูกค้า
+                            </t>
+                            <t t-if="doc_type == 'copy'">
+                                <strong>สำเนา / COPY</strong><br/>
+                                บัญชี
+                            </t>
+                        </div>
+                    </div>
                        
                          <!-- Document Title -->
                          <div class="row mb-2">
@@ -218,7 +237,7 @@
                                 <!-- ขวา -->
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-left: 5px;">
                                     <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 192px; box-sizing: border-box;">
-                                        <div style="margin-bottom:2px;"><strong>สถานที่ส่งของ:</strong></div>
+                                        <div style="margin-bottom:2px;">สถานที่ส่ง </div>
                                         <div style="margin-bottom:2px;"><span t-field="doc.partner_shipping_id.name"/></div>
                                         <div style="margin-bottom:2px;"><span t-field="doc.partner_shipping_id.street"/></div>
                                         <div style="margin-bottom:2px;">
@@ -349,33 +368,22 @@
                                         <td colspan="3" style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 19px; vertical-align: top;">
                                             <div style="font-weight: bold; text-align: left;">
                                                 รวมเป็นเงิน / Total Amount<br/>
-                                                หัก เงินมัดจำ / Deposit<br/>
-                                                จำนวนเงินหลังหักเงินมัดจำ / Sub Total<br/>
-                                                จำนวนเงินก่อนภาษี / Before VAT<br/>
                                                 ภาษีมูลค่าเพิ่ม 7% / VAT 7%<br/>
                                                 จำนวนเงินรวมทั้งสิ้น / Grand Total
                                             </div>
                                         </td>
                                         <td style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 18px; vertical-align: top;">
                                             <div>
-                                                <!-- ดึงข้อมูลที่ถูกต้อง -->
-                                                <t t-set="origin_invoice" t-value="doc.reversed_entry_id"/>
                                                 <t t-set="amount_total" t-value="doc.amount_total or 0.0"/>
-                                                <t t-set="deposit" t-value="doc.deposit_amount or 0.0"/> <!-- ต้องมี field deposit_amount ใน model -->
-                                                <t t-set="sub_total" t-value="amount_total - deposit"/>
-                                                <t t-set="amount_untaxed" t-value="doc.amount_untaxed or 0.0"/>
                                                 <t t-set="amount_tax" t-value="doc.amount_tax or 0.0"/>
-                                                <t t-set="grand_total" t-value="sub_total"/>
+                                                <t t-set="grand_total" t-value="doc.amount_total or 0.0"/>
                                         
-                                                <!-- แสดงผลเรียงตามหัวข้อ -->
                                                 <div><span t-esc="'{:,.2f}'.format(amount_total)"/></div>
-                                                <div><span t-esc="'{:,.2f}'.format(deposit)"/></div>
-                                                <div><span t-esc="'{:,.2f}'.format(sub_total)"/></div>
-                                                <div><span t-esc="'{:,.2f}'.format(amount_untaxed)"/></div>
                                                 <div><span t-esc="'{:,.2f}'.format(amount_tax)"/></div>
                                                 <div><span t-esc="'{:,.2f}'.format(grand_total)"/></div>
                                             </div>
                                         </td>
+                                        
                                         
                                         
                                     </tr>
@@ -438,8 +446,10 @@
 
 
                    </div>         
-               </t>           
+               </t>
+                    </div>           
             </t></t>
+        </t>
         </template>
 
 

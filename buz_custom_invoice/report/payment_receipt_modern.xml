@@ -18,9 +18,18 @@
      <!-- Main Template -->
      <template id="report_payment_receipt_modern">
         <t t-call="web.html_container">
+            <t t-set="docs" t-value="doc_ids and env['account.move'].browse(doc_ids) or docs"/>
             <t t-foreach="docs" t-as="doc">
-                <t t-call="web.external_layout">
-                    <div class="page">
+                <t t-set="line_list" t-value="doc.invoice_line_ids"/>
+                <t t-set="groups_of_15" t-value="[line_list[i:i+15] for i in range(0, len(line_list), 15)]"/>
+                <t t-set="total_pages" t-value="groups_of_15 and len(groups_of_15) or 0"/>
+                <t t-set="doc_lines" t-value="doc.invoice_line_ids"/>
+
+                <t t-foreach="['original', 'copy']" t-as="doc_type">
+                    <t t-set="page_number" t-value="1"/>
+                    <t t-foreach="groups_of_15" t-as="group">
+                        <t t-call="web.external_layout">
+                            <div class="page">
                         <style>
                             @font-face {
                                 font-family: 'Sarabun';
@@ -252,10 +261,10 @@
                                     <div><strong>เลขที่ใบสั่งขาย / Sale Order No:</strong> <span t-field="doc.invoice_origin"/></div>-->
                                     <div style="display: flex; justify-content: space-between;">
                                         <div style="width: 49%;">
-                                            <strong>พนักงานขาย / Sales:</strong> <span t-field="doc.invoice_user_id.name"/>
+                                            <strong>พนักงานขาย / Sales:</strong> <span t-esc="doc.salesperson_name"/>
                                         </div>
                                         <div style="width: 49%;">
-                                            <strong>เงื่อนไข / Condition:</strong> <span t-field="doc.invoice_payment_term_id.name"/>
+                                            <strong>เงื่อนไข / Condition:</strong> <span t-field="doc.payment_term_id.name"/>
                                         </div>
                                     </div>
                                     <strong>วันครบกำหนด / Due Date:</strong>
@@ -339,7 +348,7 @@
 
                                 <!-- ขวา: ผลลัพธ์ตัวเลขรวม -->
                                 <td colspan="3" style="text-align: right; border-top: 0.94px solid #000; line-height: 1.5; font-size: 17.86px; vertical-align: top; padding: 5.64px;">
-                                  <span t-field="doc.grand_total" t-options='{"widget": "float", "precision": 2}'/>
+                                  <span t-field="doc.amount_total" t-options='{"widget": "float", "precision": 2}'/>
                                 </td>
                               </tr>
                         </tfoot>
@@ -428,12 +437,9 @@
 
                     </div>
                  </t>
-
-                   
-                </t>
-                    
+                </t> 
             </t>
-        
+        </t></t>
     </template>
 
     

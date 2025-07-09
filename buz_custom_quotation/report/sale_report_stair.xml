@@ -62,11 +62,6 @@
                                 <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.partner_id.name"/>
                             </div>
             
-                            <div style="margin-bottom: -3px;">
-                                <span style="font-size: 26px; color: black; font-weight: bold;">Address : </span>
-                                <span style="display: inline-block; width: 113px;"/>
-                                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.partner_id.street"/>
-                            </div>
 
                             <div style="margin-bottom: -3px;">
                                 <span style="font-size: 26px; color: black; font-weight: bold;">Quotation No. : </span>
@@ -94,26 +89,14 @@
 
 
 <!-- Page 2:Page -->
-<t t-set="items_per_page" t-value="15"/>
-<t t-set="total_items" t-value="len(doc.order_line)"/>
-<t t-set="total_pages" t-value="(total_items + items_per_page - 1) // items_per_page"/>
-
-
-<t t-set="groups_of_10" t-value="[doc.order_line[i:i+10] for i in range(0, len(doc.order_line), 10)]"/>
-<t t-set="page_num" t-value="0"/>
-<t t-foreach="groups_of_10" t-as="group">
-   <div t-attf-style="#{page_num != 0 and 'page-break-before: always;' or ''}">
-
-
-
 <div style="margin-top: 0;">
     <div style="text-align: left; margin-right: -10mm; margin-left: -10mm; background-color: #1E3A78; padding-left: 10mm; padding-right: 10mm;">
-    <img t-att-src="'/buz_custom_quotation/static/img/cover/logo-ci-mogen.png'" style="width: 400px; margin-left: -5mm;"/>
-</div>
+        <img t-att-src="'/buz_custom_quotation/static/img/cover/logo-ci-mogen.png'" style="width: 400px; margin-left: -5mm;"/>
+    </div>
     <div style="text-align: left; margin-top: 0; margin-left: 0mm; margin-right: 0mm;">
         <img t-att-src="'/buz_custom_quotation/static/img/cover/haeder_2.jpg'" style="width: calc(100% + 12mm); max-width: none; margin-bottom: 10px; margin-left: -5mm;"/>
     </div>
-<!-- Header Section -->
+    <!-- Header Section -->
     <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
         <!-- Left Column -->
         <div class="col-6" style="text-align: left;">
@@ -174,7 +157,6 @@
             </table>
         </div>
     </div>
-
     <!-- Order Lines Table -->
     <table class="table table-sm" style="margin-top: 20px; font-size: 20px; border: none; border-collapse: separate; border-spacing: 0 5px;">
         <thead style="border: none;">
@@ -189,57 +171,55 @@
             </tr>
         </thead>
         <tbody>
-            <t t-set="start_index" t-value="page_num * 10"/>
-            <t t-foreach="group" t-as="line" t-index="line_index">
-            <tr style="border-bottom: 1px solid #8B9B7C;">
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;"><span style="background-color: #1E3A78; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="start_index + line_index + 1"/></span></td>
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <div><span t-field="line.name"/></div>
-                </td>
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom.name"/>
-                </td>
-               <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <t t-if="line.normal_price and line.normal_price != 0">
-                        <span t-field="line.normal_price"
+            <t t-foreach="doc.order_line" t-as="line" t-index="line_index">
+                <tr style="border-bottom: 1px solid #8B9B7C;">
+                    <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <span style="background-color: #1E3A78; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span>
+                    </td>
+                    <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <div><span t-field="line.name"/></div>
+                    </td>
+                    <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom.name"/>
+                    </td>
+                    <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <t t-if="line.normal_price and line.normal_price != 0">
+                            <span t-field="line.normal_price"
+                                  t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                        </t>
+                        <t t-else="">
+                            <span t-field="line.price_unit"
+                                  t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                        </t>
+                    </td>
+                    <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <t t-if="line.normal_price and line.normal_price > 0">
+                            <t t-set="discount_percent" t-value="round((1 - (line.price_unit / line.normal_price)) * 100, 2)"/>
+                            <span t-esc="discount_percent"/>%
+                        </t>
+                        <t t-else="">
+                            <span t-esc="line.discount_percent"/>%
+                        </t>
+                    </td>
+                    <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <t t-if="line.normal_price and line.normal_price != 0">
+                            <span t-esc="line.net_price"
+                                  t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                        </t>
+                        <t t-else="">
+                            <span t-esc="line.price_unit * (1 - (line.discount_percent or 0) / 100.0)"
+                                  t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                        </t>
+                    </td>
+                    <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <span t-field="line.price_subtotal"
                               t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                    </t>
-                    <t t-else="">
-                        <span t-field="line.price_unit"
-                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                    </t>
-                </td>
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <t t-if="line.normal_price and line.normal_price > 0">
-                        <t t-set="discount_percent" t-value="round((1 - (line.price_unit / line.normal_price)) * 100, 2)"/>
-                        <span t-esc="discount_percent"/>%
-                    </t>
-                    <t t-else="">
-                        <span t-esc="line.discount_percent"/>%
-                    </t>
-                </td>
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <t t-if="line.normal_price and line.normal_price != 0">
-                        <span t-esc="line.net_price"
-                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                    </t>
-                    <t t-else="">
-                        <span t-esc="line.price_unit * (1 - (line.discount_percent or 0) / 100.0)"
-                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                    </t>
-                </td>
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <span t-field="line.price_subtotal"
-                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                </td>
-            </tr>
-          </t>
+                    </td>
+                </tr>
+            </t>
         </tbody>
     </table>
 </div>
-<t t-set="page_num" t-value="page_num + 1"/>
-   </div>
-</t>
 
 
     <!-- Page 3: Conditions Page -->
@@ -289,25 +269,15 @@
 
     <!-- Signature Section -->
         <div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
-            <div style="width: 200px; display: inline-block; text-align: center;">
-            <p style="margin-bottom: 40px;">ผู้อนุมัติซื้อ</p>
-            <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
-            <div style="margin-top: 10px; font-size: 16px;">
-                (____________________)
-            </div>
-            <div style="margin-top: 5px; font-size: 16px;">
-                วันที่ .................................
-            </div>
-            </div>
             <div style="width: 200px; display: inline-block; text-align: center; margin-left: 600px;">
-            <p style="margin-bottom: 40px;">ผู้อนุมัติราคา</p>
-            <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
-            <div style="margin-top: 10px; font-size: 16px;">
-                ( เพชรรัตน์ บัวงาม )
-            </div>
-            <div style="margin-top: 5px; font-size: 16px;">
-                วันที่ ...................................
-            </div>
+                <p style="margin-bottom: 40px;">ผู้อนุมัติซื้อ</p>
+                <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
+                <div style="margin-top: 10px; font-size: 16px;">
+                    (____________________)
+                </div>
+                <div style="margin-top: 5px; font-size: 16px;">
+                    วันที่ .................................
+                </div>
             </div>
         </div>
         

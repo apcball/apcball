@@ -2,6 +2,7 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_is_zero, float_compare
 from dateutil.relativedelta import relativedelta
+from num2words import num2words
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ class BillingNotePayment(models.Model):
     payment_date = fields.Date(string='Payment Date', required=True, default=fields.Date.context_today)
     date = fields.Date(string='Date', required=True, default=fields.Date.context_today)
     amount = fields.Monetary(string='Amount', required=True)
+    invoice_line_ids = fields.One2many('account.move.line', 'billing_note_id', string="Invoice Lines")
     currency_id = fields.Many2one('res.currency', string='Currency', 
         related='billing_note_id.currency_id', store=True, readonly=True)
     company_id = fields.Many2one('res.company', string='Company',
@@ -163,6 +165,62 @@ class BillingNote(models.Model):
             
     payment_term_id = fields.Many2one('account.payment.term', string='Payment Term', compute='_compute_payment_term', store=True, readonly=True)
     invoice_due_date = fields.Date(string='Invoice Due Date', compute='_compute_invoice_due_date', store=True, readonly=True)
+
+    amount_total_words = fields.Char(
+        string="จำนวนเงินตัวอักษร",
+        compute="_compute_amount_total_words",
+        store=True,
+        readonly=True,
+    )
+
+    @api.depends('amount_total', 'currency_id')
+    def _compute_amount_total_words(self):
+        for rec in self:
+            if rec.amount_total is not None and rec.currency_id:
+                amount = "%.2f" % rec.amount_total
+                int_part, dec_part = amount.split('.')
+                baht = int(int_part)
+                satang = int(dec_part)
+                # Only use Thai for THB, fallback to English otherwise
+                if rec.currency_id.name == 'THB':
+                    baht_text = num2words(baht, lang='th').replace('เอ็ดบาท', 'หนึ่งบาท')
+                    if satang > 0:
+                        satang_text = num2words(satang, lang='th').replace('เอ็ด', 'หนึ่ง')
+                        rec.amount_total_words = f"{baht_text}บาท {satang_text}สตางค์"
+                    else:
+                        rec.amount_total_words = f"{baht_text}บาทถ้วน"
+                else:
+                    rec.amount_total_words = num2words(rec.amount_total, lang='en').title()
+            else:
+                rec.amount_total_words = ''
+
+    amount_total_words = fields.Char(
+        string="จำนวนเงินตัวอักษร",
+        compute="_compute_amount_total_words",
+        store=True,
+        readonly=True,
+    )
+
+    @api.depends('amount_total', 'currency_id')
+    def _compute_amount_total_words(self):
+        for rec in self:
+            if rec.amount_total is not None and rec.currency_id:
+                amount = "%.2f" % rec.amount_total
+                int_part, dec_part = amount.split('.')
+                baht = int(int_part)
+                satang = int(dec_part)
+                # Only use Thai for THB, fallback to English otherwise
+                if rec.currency_id.name == 'THB':
+                    baht_text = num2words(baht, lang='th').replace('เอ็ดบาท', 'หนึ่งบาท')
+                    if satang > 0:
+                        satang_text = num2words(satang, lang='th').replace('เอ็ด', 'หนึ่ง')
+                        rec.amount_total_words = f"{baht_text}บาท {satang_text}สตางค์"
+                    else:
+                        rec.amount_total_words = f"{baht_text}บาทถ้วน"
+                else:
+                    rec.amount_total_words = num2words(rec.amount_total, lang='en').title()
+            else:
+                rec.amount_total_words = ''
 
     @api.depends('partner_id')
     def _compute_partner_address(self):

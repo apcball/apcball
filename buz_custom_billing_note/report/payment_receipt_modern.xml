@@ -255,7 +255,7 @@
                                             <strong>พนักงานขาย / Sales:</strong> <span t-field="doc.invoice_user_id.name"/>
                                         </div>
                                         <div style="width: 49%;">
-                                            <strong>เงื่อนไข / Condition:</strong> <span t-field="doc.invoice_payment_term_id.name"/>
+                                            <strong>เงื่อนไข / Condition:</strong> <span t-field="doc.payment_term_id.name"/>
                                         </div>
                                     </div>
                                     <strong>วันครบกำหนด / Due Date:</strong>
@@ -327,7 +327,7 @@
                                       <!-- ฝั่งซ้าย -->
                                       <div style="text-align: left;">
                                         <span style="font-weight: bold; font-size: 18.8px;">ตัวอักษร / Alphabet :</span>
-                                        <span style="font-size: 18.8px; font-weight: bold;" t-esc="doc.amount_total_words"/>
+                                        <span style="font-size: 18.8px; font-weight: bold;" t-esc="doc.amount_total"/>
                                       </div>
                                       <!-- ฝั่งขวา -->
                                       <div style="text-align: right;">
@@ -339,7 +339,7 @@
 
                                 <!-- ขวา: ผลลัพธ์ตัวเลขรวม -->
                                 <td colspan="3" style="text-align: right; border-top: 0.94px solid #000; line-height: 1.5; font-size: 17.86px; vertical-align: top; padding: 5.64px;">
-                                  <span t-field="doc.grand_total" t-options='{"widget": "float", "precision": 2}'/>
+                                  <span t-field="doc.amount_total" t-options='{"widget": "float", "precision": 2}'/>
                                 </td>
                               </tr>
                         </tfoot>
@@ -435,12 +435,7 @@
             </t>
         
     </template>
-
     
-     <template id="report_payment_receipt_modern">
-         <t t-call="buz_custom_billing_note.report_payment_receipt_modern_document"/>
-     </template>
-
      <record id="action_report_payment_receipt_modern" model="ir.actions.report">
          <field name="name">ใบเสร็จรับเงิน / RECEIPT</field>
          <field name="model">billing.note</field>
