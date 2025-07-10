@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Job Order Kanban View -->
+        <record id="view_job_order_kanban" model="ir.ui.view">
+            <field name="name">job.order.kanban</field>
+            <field name="model">job.order</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="stage_id" class="o_kanban_small_column">
+                    <field name="stage_id"/>
+                    <field name="name"/>
+                    <field name="project_id"/>
+                    <field name="user_id"/>
+                    <field name="priority"/>
+                    <field name="progress"/>
+                    <field name="kanban_state"/>
+                    <field name="color"/>
+                    <progressbar field="kanban_state" colors='{"done": "success", "blocked": "danger"}'/>
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div t-attf-class="oe_kanban_color_#{kanban_getcolor(record.color.raw_value)} oe_kanban_card oe_kanban_global_click">
+                                <div class="oe_kanban_content">
+                                    <div class="oe_kanban_details">
+                                        <strong><field name="name"/></strong>
+                                        <div>Project: <field name="project_id"/></div>
+                                        <div>Assigned to: <field name="user_id"/></div>
+                                        <div class="oe_kanban_bottom_right">
+                                            <field name="priority" widget="priority"/>
+                                        </div>
+                                        <div class="oe_kanban_bottom_left">
+                                            <field name="progress" widget="progressbar"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- Job Order Action -->
+        <record id="action_job_order" model="ir.actions.act_window">
+            <field name="name">Job Orders</field>
+            <field name="res_model">job.order</field>
+            <field name="view_mode">kanban,tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first job order!
+                </p>
+                <p>
+                    Job orders help you manage work tasks within your construction projects.
+                </p>
+            </field>
+        </record>
+
+        <!-- Job Order Material Requisition Action -->
+        <record id="action_job_order_material_requisition" model="ir.actions.act_window">
+            <field name="name">Material Requisitions</field>
+            <field name="res_model">material.requisition</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first material requisition!
+                </p>
+                <p>
+                    Material requisitions help you request materials for your projects.
+                </p>
+            </field>
+        </record>
+
+        <!-- Subcontractor Action -->
+        <record id="action_subcontractor" model="ir.actions.act_window">
+            <field name="name">Subcontractors</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('is_subcontractor', '=', True)]</field>
+            <field name="context">{
+                'default_is_subcontractor': True, 
+                'default_supplier_rank': 1,
+                'default_is_company': True,
+                'res_model': 'res.partner'
+            }</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Add your first subcontractor!
+                </p>
+                <p>
+                    Manage your subcontractors and their specializations.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

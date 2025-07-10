@@ -14,7 +14,7 @@
             <field name="name">Quotation Number</field>
             <field name="code">sale.quotation</field>
             <field name="prefix">QT</field>
-            <field name="padding">8</field>
+            <field name="padding">7</field>
             <field name="company_id" eval="False"/>
         </record>
     </data>

@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Job Cost Sheet Tree View -->
+        <record id="view_job_cost_sheet_tree" model="ir.ui.view">
+            <field name="name">job.cost.sheet.tree</field>
+            <field name="model">job.cost.sheet</field>
+            <field name="arch" type="xml">
+                <tree string="Job Cost Sheets" decoration-success="state=='approved'" 
+                      decoration-primary="state=='done'" decoration-muted="state=='cancelled'">
+                    <field name="name"/>
+                    <field name="project_id"/>
+                    <field name="job_order_id"/>
+                    <field name="date_start"/>
+                    <field name="total_cost" widget="monetary"/>
+                    <field name="actual_total_cost" widget="monetary"/>
+                    <field name="total_variance" widget="monetary"/>
+                    <field name="state" widget="badge" 
+                           decoration-success="state == 'approved'"
+                           decoration-primary="state == 'done'"
+                           decoration-warning="state == 'draft'"
+                           decoration-danger="state == 'cancelled'"/>
+                    <field name="currency_id" column_invisible="1"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Job Cost Sheet Form View -->
+        <record id="view_job_cost_sheet_form" model="ir.ui.view">
+            <field name="name">job.cost.sheet.form</field>
+            <field name="model">job.cost.sheet</field>
+            <field name="arch" type="xml">
+                <form string="Job Cost Sheet">
+                    <header>
+                        <button name="action_approve" string="Approve" type="object" 
+                                class="btn-primary" invisible="state != 'draft'"/>
+                        <button name="action_done" string="Mark as Done" type="object" 
+                                class="btn-primary" invisible="state != 'approved'"/>
+                        <button name="action_cancel" string="Cancel" type="object" 
+                                invisible="state in ['done', 'cancelled']"/>
+                        <button name="action_draft" string="Reset to Draft" type="object" 
+                                invisible="state != 'cancelled'"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,approved,done"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_purchase_orders" type="object"
+                                    class="oe_stat_button" icon="fa-shopping-cart">
+                                <field name="purchase_order_count" widget="statinfo" string="Purchase Orders"/>
+                            </button>
+                            <button name="action_view_timesheets" type="object"
+                                    class="oe_stat_button" icon="fa-clock-o">
+                                <field name="timesheet_count" widget="statinfo" string="Timesheets"/>
+                            </button>
+                            <button name="action_view_invoices" type="object"
+                                    class="oe_stat_button" icon="fa-file-text-o">
+                                <field name="invoice_count" widget="statinfo" string="Invoices"/>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="project_id" required="1"/>
+                                <field name="job_order_id" domain="[('project_id', '=', project_id)]"/>
+                                <field name="analytic_account_id"/>
+                                <field name="sequence"/>
+                            </group>
+                            <group>
+                                <field name="date_start"/>
+                                <field name="date_end"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="currency_id" column_invisible="1"/>
+                            </group>
+                        </group>
+                        
+                        <!-- Cost Summary -->
+                        <group string="Cost Summary">
+                            <group string="Planned Costs">
+                                <field name="total_material_cost" widget="monetary"/>
+                                <field name="total_labour_cost" widget="monetary"/>
+                                <field name="total_overhead_cost" widget="monetary"/>
+                                <field name="total_cost" widget="monetary" class="oe_subtotal_footer_separator"/>
+                            </group>
+                            <group string="Actual Costs">
+                                <field name="actual_material_cost" widget="monetary"/>
+                                <field name="actual_labour_cost" widget="monetary"/>
+                                <field name="actual_overhead_cost" widget="monetary"/>
+                                <field name="actual_total_cost" widget="monetary" class="oe_subtotal_footer_separator"/>
+                            </group>
+                            <group string="Variance">
+                                <field name="material_variance" widget="monetary"/>
+                                <field name="labour_variance" widget="monetary"/>
+                                <field name="overhead_variance" widget="monetary"/>
+                                <field name="total_variance" widget="monetary" class="oe_subtotal_footer_separator"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <!-- Material Costs Tab -->
+                            <page string="Material Costs" name="material_costs">
+                                <field name="material_cost_ids" context="{'default_cost_type': 'material', 'default_analytic_account_id': analytic_account_id}">
+                                    <tree editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="product_id" domain="[('detailed_type', '!=', 'service')]"/>
+                                        <field name="name" required="1"/>
+                                        <field name="planned_qty"/>
+                                        <field name="actual_qty" readonly="1"/>
+                                        <field name="uom_id"/>
+                                        <field name="unit_cost"/>
+                                        <field name="actual_unit_cost" readonly="1"/>
+                                        <field name="total_cost" widget="monetary" readonly="1"/>
+                                        <field name="actual_cost" widget="monetary" readonly="1"/>
+                                        <field name="cost_variance" widget="monetary" readonly="1"/>
+                                        <field name="cost_type" column_invisible="1"/>
+                                    </tree>
+                                </field>
+                            </page>
+
+                            <!-- Labour Costs Tab -->
+                            <page string="Labour Costs" name="labour_costs">
+                                <field name="labour_cost_ids" context="{'default_cost_type': 'labour', 'default_analytic_account_id': analytic_account_id}">
+                                    <tree editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="product_id" domain="[('detailed_type', '=', 'service')]"/>
+                                        <field name="name" required="1"/>
+                                        <field name="planned_qty"/>
+                                        <field name="actual_qty" readonly="1"/>
+                                        <field name="uom_id"/>
+                                        <field name="unit_cost"/>
+                                        <field name="actual_unit_cost" readonly="1"/>
+                                        <field name="total_cost" widget="monetary" readonly="1"/>
+                                        <field name="actual_cost" widget="monetary" readonly="1"/>
+                                        <field name="cost_variance" widget="monetary" readonly="1"/>
+                                        <field name="cost_type" column_invisible="1"/>
+                                    </tree>
+                                </field>
+                            </page>
+
+                            <!-- Overhead Costs Tab -->
+                            <page string="Overhead Costs" name="overhead_costs">
+                                <field name="overhead_cost_ids" context="{'default_cost_type': 'overhead', 'default_analytic_account_id': analytic_account_id}">
+                                    <tree editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="product_id"/>
+                                        <field name="name" required="1"/>
+                                        <field name="planned_qty"/>
+                                        <field name="actual_qty" readonly="1"/>
+                                        <field name="uom_id"/>
+                                        <field name="unit_cost"/>
+                                        <field name="actual_unit_cost" readonly="1"/>
+                                        <field name="total_cost" widget="monetary" readonly="1"/>
+                                        <field name="actual_cost" widget="monetary" readonly="1"/>
+                                        <field name="cost_variance" widget="monetary" readonly="1"/>
+                                        <field name="cost_type" column_invisible="1"/>
+                                    </tree>
+                                </field>
+                            </page>
+
+                            <!-- Notes Tab -->
+                            <page string="Notes" name="notes">
+                                <field name="notes" placeholder="Add any additional notes or comments about this job cost sheet..."/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <!-- Job Cost Sheet Kanban View -->
+        <record id="view_job_cost_sheet_kanban" model="ir.ui.view">
+            <field name="name">job.cost.sheet.kanban</field>
+            <field name="model">job.cost.sheet</field>
+            <field name="arch" type="xml">
+                <kanban>
+                    <field name="name"/>
+                    <field name="project_id"/>
+                    <field name="total_cost"/>
+                    <field name="actual_total_cost"/>
+                    <field name="state"/>
+                    <field name="currency_id"/>
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div class="oe_kanban_card oe_kanban_global_click">
+                                <div class="oe_kanban_content">
+                                    <div class="oe_kanban_details">
+                                        <strong><field name="name"/></strong>
+                                        <div>Project: <field name="project_id"/></div>
+                                        <div class="oe_kanban_bottom_right">
+                                            <span class="oe_kanban_bottom_left">
+                                                Planned: <field name="total_cost" widget="monetary"/>
+                                            </span>
+                                            <span class="oe_kanban_bottom_left">
+                                                Actual: <field name="actual_total_cost" widget="monetary"/>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="oe_kanban_footer">
+                                    <div class="oe_kanban_footer_left">
+                                        <span class="badge" t-attf-class="badge-#{record.state.raw_value == 'approved' ? 'success' : record.state.raw_value == 'done' ? 'primary' : record.state.raw_value == 'cancelled' ? 'danger' : 'warning'}">
+                                            <field name="state"/>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- Job Cost Sheet Search View -->
+        <record id="view_job_cost_sheet_search" model="ir.ui.view">
+            <field name="name">job.cost.sheet.search</field>
+            <field name="model">job.cost.sheet</field>
+            <field name="arch" type="xml">
+                <search string="Job Cost Sheets">
+                    <field name="name"/>
+                    <field name="project_id"/>
+                    <field name="job_order_id"/>
+                    <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                    <filter string="Approved" name="approved" domain="[('state', '=', 'approved')]"/>
+                    <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                    <separator/>
+                    <filter string="Over Budget" name="over_budget" domain="[('total_variance', '>', 0)]"/>
+                    <filter string="Under Budget" name="under_budget" domain="[('total_variance', '&lt;', 0)]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Project" name="group_project" context="{'group_by': 'project_id'}"/>
+                        <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                        <filter string="Start Date" name="group_date" context="{'group_by': 'date_start'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Job Cost Sheet Action -->
+        <record id="action_job_cost_sheet" model="ir.actions.act_window">
+            <field name="name">Job Cost Sheets</field>
+            <field name="res_model">job.cost.sheet</field>
+            <field name="view_mode">tree,form,kanban</field>
+            <field name="search_view_id" ref="view_job_cost_sheet_search"/>
+            <field name="context">{'res_model': 'job.cost.sheet'}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first job cost sheet!
+                </p>
+                <p>
+                    Job cost sheets help you plan and track material, labour, and overhead costs 
+                    for your construction projects and compare planned vs actual costs.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

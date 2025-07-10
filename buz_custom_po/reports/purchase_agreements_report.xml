@@ -17,67 +17,162 @@
     <template id="report_purchase_agreement_document">
         <t t-name="buz_custom_po.report_purchase_agreement_document">
             <t t-call="web.html_container">
-                <t t-foreach="docs" t-as="doc">
+                <t t-foreach="docs" t-as="o">
                     <t t-call="web.external_layout">
                         <div class="page">
-                            <!-- Define currency variable based on availability -->
-                            <t t-set="currency" t-value="doc.currency_id"/>
+
+                          <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_custom_po/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                font-weight: bold;
+                                font-style: normal;
+                            }
+                        
+                            html, body {
+                                font-family: 'Sarabun', sans-serif !important;
+                            }
+                        
+                            .page {
+                                font-family: 'Sarabun', sans-serif !important;
+                                font-size: 14px;
+                                padding: 0;
+                                width: 100%;
+                                height: 100%;
+                                margin: 0;
+                            }
+                        
+                            table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+                                font-family: 'Sarabun', sans-serif !important;
+                            }
+                            .table {
+                                border-collapse: collapse !important;
+                                width: 100%;
+                            }
                             
-                            <h2 class="mt-4 text-center">Purchase Agreement</h2>
+                            .table td, 
+                            .table th {
+                                border-width: 0.5px !important;
+                                border-style: solid !important;
+                                border-color: #000 !important;
+                                padding: 4px;
+                            }
                             
-                            <!-- Header information -->
-                            <div class="row mt-4">
-                                <div class="col-6">
-                                    <strong>Agreement Reference:</strong> <span t-field="doc.name"/><br/>
-                                    <strong>Vendor:</strong> <span t-field="doc.vendor_id.name"/><br/>
-                                    <strong>End Date:</strong> <span t-field="doc.date_end"/><br/>
-                                </div>
-                                <div class="col-6">
-                                    <strong>Ordering Date:</strong> <span t-field="doc.ordering_date"/><br/>
-                                    <strong>Type:</strong> <span t-field="doc.type_id.name"/><br/>
-                                    <strong>Status:</strong> <span t-field="doc.state"/><br/>
-                                </div>
-                            </div>
-                            
-                            <!-- Products table -->
-                            <h4 class="mt-4">Products</h4>
-                            <table class="table table-bordered mt-4">
-                                <thead>
-                                    <tr>
-                                        <th>Product</th>
-                                        <th>Description</th>
-                                        <th class="text-right">Quantity</th>
-                                        <th class="text-right">Unit Price</th>
-                                        <th class="text-right">Subtotal</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="doc.line_ids" t-as="line">
-                                        <td><span t-field="line.product_id.name"/></td>
-                                        <!-- <td><span t-field="line.name"/></td> -->
-                                        <td></td>
-                                        <td class="text-right">
-                                            <span t-field="line.product_qty"/>
-                                            <span t-field="line.product_uom_id"/>
-                                        </td>
-                                        <td class="text-right">
-                                            <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": currency}'/>
-                                        </td>
-                                        <td class="text-right">
-                                            <span t-esc="line.product_qty * line.price_unit" t-options='{"widget": "monetary", "display_currency": currency}'/>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            
-                            <!-- Notes section -->
-                            <!-- <div class="row mt-4" t-if="doc.notes">
-                                <div class="col-12">
-                                    <strong>Terms and Conditions:</strong>
-                                    <p t-field="doc.notes"/>
-                                </div>
-                            </div> -->
+                            .table-bordered,
+                            .table-bordered td,
+                            .table-bordered th {
+                                border: none !important;
+                            }
+                            .vendor-info, .delivery-info {
+                                font-size: 14px;
+                            }
+                        </style>
+
+                        <!-- Header -->
+                        <div class="row mb-2">
+                          <div class="col-8">
+                              <div style="font-size: 16px;">
+                                  <div class="mb-1"><strong>MOGEN CO., LTD. (HEAD OFFICE)</strong></div>
+                                  <div style="font-size: 14px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+                                  <div style="font-size: 14px;">Tax ID: 0105547076103</div>
+                                  <div style="font-size: 14px;">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
+                              </div>
+                          </div>
+                          <div class="col-4 text-end">
+                              <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
+                                   style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                          </div>
+                      </div>
+
+                      <!-- Document Title -->
+                      <div class="row mb-2">
+                         <div class="col-12 text-center">
+                              <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 20px; margin-top: 10px;">PURCHASE ORDER</h2>
+                         </div>
+                      </div>
+
+                      <!-- Document Info -->
+                      <div class="row mb-2">
+                        <div class="col-8">
+                            <p style="margin-bottom: 0; margin-top: 20px; font-size: 14px;">Please attach this purchase order when delivering goods and billing</p>
                         </div>
+                        <div class="col-4">
+                            <div class="text-end" style="font-size: 14px;">
+                                <div>NO.: <strong><span t-field="o.name"/></strong></div>
+                                <div>DATE: <strong><span t-field="o.ordering_date" t-options="{'widget': 'date', 'format': 'dd/MM/yyyy'}"/></strong></div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div style="border: 1px solid #000; padding: 10px; font-size: 16px;">
+                        <div style="display: flex;">
+                          <!-- ซ้าย 50% -->
+                          <div style="width: 50%; padding-right: 10px; border-right: 1px solid #000;">
+                            <!-- Vendor -->
+                            <div style="margin-bottom: 5px;">
+                              <strong>Vendor:</strong>
+                              <span t-field="o.partner_id.name"/>
+                            </div>
+                            <!-- Address -->
+                            <div>
+                              <strong>Address:</strong>
+                              <span t-field="o.partner_id.contact_address" style="white-space: pre-line;"/>
+                            </div>
+                          </div>
+                      
+                          <!-- ขวา 50% -->
+                          <div style="width: 50%; padding-left: 10px;">
+                            <!-- บรรทัดแรกของฝั่งขวา -->
+                            <div style="display: flex; margin-bottom: 5px;">
+                              <!-- 60% -->
+                              <div style="width: 60%; border-right: 1px solid #000; padding-right: 10px;">
+                                <strong>Place of delivery:</strong><br/>
+                                Mogen (Thailand) Co. Ltd<br/>
+                                9 Moo 12, Bueng Khum Proi, A. Lumlukka,<br/>
+                                Pathum Thani 12150
+                              </div>
+                              <!-- 40% -->
+                              <div style="width: 40%; padding-left: 10px;">
+                                <strong>Confirm order from supplier</strong><br/>
+                                Date of:
+                                <span t-field="o.date_order"/>
+                              </div>
+                            </div>
+                      
+                            <!-- บรรทัดที่สองของฝั่งขวา -->
+                            <div style="display: flex; border-top: 1px solid #000; padding-top: 5px;">
+                              <!-- Contact Person -->
+                              <div style="width: 25%; border-right: 1px solid #000; padding-right: 5px;">
+                                <strong>Contact Person:</strong><br/>
+                                <span t-field="o.employee_contact_id.name" t-options="{'default': '-'}"/>
+                              </div>
+                              <!-- Payment Term -->
+                              <div style="width: 25%; border-right: 1px solid #000; padding-left: 5px; padding-right: 5px;">
+                                <strong>Payment Term:</strong><br/>
+                                <span t-field="o.payment_term_id.name" t-options="{'default': '-'}"/>
+                              </div>
+                              <!-- Criteria -->
+                              <div style="width: 15%; border-right: 1px solid #000; padding-left: 5px; padding-right: 5px;">
+                                <strong>Criteria:</strong><br/>
+                                <span t-field="o.criteria" t-options="{'default': '-'}"/>
+                              </div>
+                              <!-- Ref. Number -->
+                              <div style="width: 25%; padding-left: 5px;">
+                                <strong>Ref. Number:</strong><br/>
+                                <span t-field="o.client_order_ref" t-options="{'default': '-'}"/>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+
+                  
+             
+
+
+
+                      </div>
                     </t>
                 </t>
             </t>

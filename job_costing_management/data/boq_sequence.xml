@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- BOQ Sequence -->
+        <record id="seq_boq" model="ir.sequence">
+            <field name="name">BOQ Sequence</field>
+            <field name="code">boq.boq</field>
+            <field name="prefix">BOQ</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

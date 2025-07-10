@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- BOQ Demo Data -->
+        <record id="boq_demo_1" model="boq.boq">
+            <field name="name">BOQ00001</field>
+            <field name="title">Construction BOQ for Office Building</field>
+            <field name="description">Bill of Quantities for the construction of a 5-story office building including all materials, labor, and equipment requirements.</field>
+            <field name="boq_date" eval="(DateTime.now() - relativedelta(days=30)).strftime('%Y-%m-%d')"/>
+            <field name="revision">1.0</field>
+            <field name="state">draft</field>
+        </record>
+
+        <!-- BOQ Categories -->
+        <record id="boq_category_foundation" model="boq.category">
+            <field name="name">Foundation Work</field>
+            <field name="description">All foundation related work including excavation, concrete, and reinforcement</field>
+            <field name="sequence">10</field>
+            <field name="boq_id" ref="boq_demo_1"/>
+        </record>
+
+        <record id="boq_category_structure" model="boq.category">
+            <field name="name">Structural Work</field>
+            <field name="description">All structural elements including columns, beams, and slabs</field>
+            <field name="sequence">20</field>
+            <field name="boq_id" ref="boq_demo_1"/>
+        </record>
+
+        <record id="boq_category_finishing" model="boq.category">
+            <field name="name">Finishing Work</field>
+            <field name="description">All finishing work including flooring, painting, and fixtures</field>
+            <field name="sequence">30</field>
+            <field name="boq_id" ref="boq_demo_1"/>
+        </record>
+
+        <!-- BOQ Template -->
+        <record id="boq_template_residential" model="boq.template">
+            <field name="name">Residential Construction Template</field>
+            <field name="description">Standard BOQ template for residential construction projects</field>
+        </record>
+
+    </data>
+</odoo>

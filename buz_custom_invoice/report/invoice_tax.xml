@@ -237,27 +237,29 @@
                                 <!-- ขวา -->
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-left: 5px;">
                                     <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 192px; box-sizing: border-box;">
-                                        <div style="margin-bottom:2px;">สถานที่ส่ง </div>
-                                        <div style="margin-bottom:2px;"><span t-field="doc.partner_shipping_id.name"/></div>
-                                        <div style="margin-bottom:2px;"><span t-field="doc.partner_shipping_id.street"/></div>
-                                        <div style="margin-bottom:2px;">
+                                        <div style="margin-bottom:2px;">สถานที่ส่ง: 
+                                            <span t-field="doc.partner_shipping_id.name"/>
+                                            <span t-field="doc.partner_shipping_id.street"/>
                                             <t t-if="doc.partner_shipping_id.city">ตำบล<span t-field="doc.partner_shipping_id.city"/></t>
                                             <t t-if="doc.partner_shipping_id.state_id">อำเภอ<span t-field="doc.partner_shipping_id.state_id.name"/></t>
-                                        </div>
-                                        <div style="margin-bottom:2px;">
                                             <t t-if="doc.partner_shipping_id.state_id">จังหวัด<span t-field="doc.partner_shipping_id.state_id.name"/></t>
                                             <span t-field="doc.partner_shipping_id.zip"/>
                                         </div>
-                                        <div style="margin-bottom:2px;"><strong>ผู้ติดต่อ:</strong> <span t-esc="doc.partner_id.child_ids.filtered(lambda r: r.type == 'contact')[:1].name or ''"/></div>
-                                        <div style="display: flex; justify-content: space-between; margin-top: 2px; margin-bottom:2px;">
-                                            <div style="width: 65%;">
-                                                <strong>เลขที่ใบสั่งขาย:</strong>
-                                                <span t-esc="doc.invoice_line_ids[0].sale_line_ids[0].order_id.client_order_ref"/>
+
+                                        <div style="display: flex; margin-bottom: 2px;">
+                                            <div style="width: 50%;">
+                                              <strong>ผู้ติดต่อ:</strong>
+                                              <span t-esc="doc.partner_id.child_ids.filtered(lambda r: r.type == 'contact')[:1].name or ''"/>
                                             </div>
-                                        </div>
+                                            <div style="width: 50%;">
+                                              <strong>เลขที่ใบสั่งขาย:</strong>
+                                              <span t-esc="doc.invoice_line_ids[0].sale_line_ids[0].order_id.client_order_ref or ''"/>
+                                            </div>
+                                          </div>
+                                          
                                         <div style="display: flex; justify-content: space-between; margin-top: 2px; margin-bottom:2px;">
                                             <div style="width: 65%;">
-                                                <strong>พนักงานขาย Sale:</strong>
+                                                <strong>พนักงานขาย:</strong>
                                                 <span t-field="doc.invoice_user_id.employee_id.name"/>
                                             </div>
                                             <div style="width: 35%;">

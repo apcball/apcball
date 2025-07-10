@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Main Menu -->
+        <menuitem id="menu_job_costing_main" name="Job Costing" sequence="75" web_icon="job_costing_management,static/description/icon.png"/>
+
+        <!-- Job Costs Menu -->
+        <menuitem id="menu_job_costs" name="Job Costs" parent="menu_job_costing_main" sequence="10"/>
+        
+        <menuitem id="menu_job_cost_sheets" name="Job Cost Sheets" 
+                  parent="menu_job_costs" 
+                  action="action_job_cost_sheet" 
+                  sequence="10"/>
+
+        <!-- Projects Menu -->
+        <menuitem id="menu_job_projects" name="Projects" parent="menu_job_costing_main" sequence="20"/>
+        
+        <menuitem id="menu_projects" name="Projects" 
+                  parent="menu_job_projects" 
+                  action="project.open_view_project_all" 
+                  sequence="10"/>
+
+        <!-- Job Orders Menu -->
+        <menuitem id="menu_job_orders" name="Job Orders" parent="menu_job_costing_main" sequence="30"/>
+        
+        <menuitem id="menu_job_order_list" name="Job Orders" 
+                  parent="menu_job_orders" 
+                  action="action_job_order" 
+                  sequence="10"/>
+
+        <!-- Materials / BOQ Menu -->
+        <menuitem id="menu_materials_boq" name="Materials / BOQ" parent="menu_job_costing_main" sequence="40"/>
+        
+        <menuitem id="menu_boq_list" name="Bill of Quantities" 
+                  parent="menu_materials_boq" 
+                  action="action_boq" 
+                  sequence="05"/>
+        
+        <menuitem id="menu_boq_templates" name="BOQ Templates" 
+                  parent="menu_materials_boq" 
+                  action="action_boq_template" 
+                  sequence="07"/>
+        
+        <menuitem id="menu_material_requisitions" name="Material Requisitions" 
+                  parent="menu_materials_boq" 
+                  action="action_material_requisition" 
+                  sequence="10"/>
+
+        <!-- Subcontractors Menu -->
+        <menuitem id="menu_subcontractors" name="Subcontractors" parent="menu_job_costing_main" sequence="50"/>
+        
+        <menuitem id="menu_subcontractor_list" name="Subcontractors" 
+                  parent="menu_subcontractors" 
+                  action="action_subcontractor" 
+                  sequence="10"/>
+
+        <!-- Configuration Menu -->
+        <menuitem id="menu_job_configuration" name="Configuration" parent="menu_job_costing_main" sequence="90"/>
+        
+        <menuitem id="menu_job_types" name="Job Types" 
+                  parent="menu_job_configuration" 
+                  action="action_job_type" 
+                  sequence="10"/>
+        
+        <menuitem id="menu_job_stages" name="Job Stages" 
+                  parent="menu_job_configuration" 
+                  action="action_job_stage" 
+                  sequence="20"/>
+
+        <!-- Reporting Menu -->
+        <menuitem id="menu_job_reports" name="Reports" parent="menu_job_costing_main" sequence="80"/>
+
+    </data>
+</odoo>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Inherit project form view -->
+        <record id="view_project_form_inherit" model="ir.ui.view">
+            <field name="name">project.project.form.inherit</field>
+            <field name="model">project.project</field>
+            <field name="inherit_id" ref="project.edit_project"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='user_id']" position="after">
+                    <field name="is_job_project"/>
+                    <field name="job_type_id" invisible="not is_job_project"/>
+                    <field name="project_manager_id" invisible="not is_job_project"/>
+                </xpath>
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="client_id" invisible="not is_job_project"/>
+                    <field name="contract_amount" invisible="not is_job_project"/>
+                    <field name="contract_date" invisible="not is_job_project"/>
+                </xpath>
+                <xpath expr="//div[@name='button_box']" position="inside">
+                    <button name="action_view_job_cost_sheets" type="object"
+                            class="oe_stat_button" icon="fa-calculator"
+                            invisible="not is_job_project">
+                        <field name="job_cost_sheet_count" widget="statinfo" string="Cost Sheets"/>
+                    </button>
+                    <button name="action_view_job_orders" type="object"
+                            class="oe_stat_button" icon="fa-tasks"
+                            invisible="not is_job_project">
+                        <field name="job_order_count" widget="statinfo" string="Job Orders"/>
+                    </button>
+                    <button name="action_view_material_requisitions" type="object"
+                            class="oe_stat_button" icon="fa-shopping-cart"
+                            invisible="not is_job_project">
+                        <field name="material_requisition_count" widget="statinfo" string="Material Requisitions"/>
+                    </button>
+                    <button name="action_view_boq" type="object"
+                            class="oe_stat_button" icon="fa-list-alt"
+                            invisible="not is_job_project">
+                        <field name="boq_count" widget="statinfo" string="BOQ"/>
+                    </button>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Cost summary in project form -->
+        <record id="view_project_cost_summary" model="ir.ui.view">
+            <field name="name">project.project.cost.summary</field>
+            <field name="model">project.project</field>
+            <field name="inherit_id" ref="project.edit_project"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="Cost Summary" name="cost_summary" invisible="not is_job_project">
+                        <group>
+                            <group string="Cost Information">
+                                <field name="total_planned_cost" widget="monetary"/>
+                                <field name="total_actual_cost" widget="monetary"/>
+                                <field name="cost_variance" widget="monetary"/>
+                                <field name="cost_progress" widget="progressbar"/>
+                            </group>
+                        </group>
+                    </page>
+                    <page string="Subcontractors" name="subcontractors" invisible="not is_job_project">
+                        <field name="subcontractor_ids" widget="many2many_tags"/>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

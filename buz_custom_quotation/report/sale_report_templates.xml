@@ -65,7 +65,7 @@
                             <div style="margin-bottom: -3px;">
                                 <span style="font-size: 26px; color: black; font-weight: bold;">Quotation No. : </span>
                                 <span style="display: inline-block; width: 64px;"/>
-                                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.proposal_no"/>
+                                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.quotation_no"/>
                             </div>
 
                             <div style="margin-bottom: -3px;">
@@ -125,6 +125,7 @@
                         <span t-field="doc.partner_id.street"/>
                         <span t-if="doc.partner_id.street2"><br/><span t-field="doc.partner_id.street2"/></span>
                         <span t-if="doc.partner_id.city"><br/><span t-field="doc.partner_id.city"/></span>
+                        <span t-if="doc.partner_id.zip"><span t-field="doc.partner_id.zip"/></span>
                     </td>
                 </tr>
                 <tr style="border: none;">
@@ -145,8 +146,8 @@
                     <td style="padding: 5px; border: none;"><span t-field="doc.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></td>
                 </tr>
                 <tr style="border: none;">
-                    <td style="padding: 5px; border: none;"><strong>Proposal No:</strong></td>
-                    <td style="padding: 5px; border: none;"><span t-field="doc.proposal_no"/></td>
+                    <td style="padding: 5px; border: none;"><strong>Quotation No:</strong></td>
+                    <td style="padding: 5px; border: none;"><span t-field="doc.quotation_no"/></td>
                 </tr>
                 <tr style="border: none;">
                     <td style="padding: 5px; border: none;"><strong>Project:</strong></td>
@@ -158,7 +159,10 @@
                 </tr>
                 <tr style="border: none;">
                     <td style="padding: 5px; border: none;"><strong>Ordered By:</strong></td>
-                    <td style="padding: 5px; border: none;"><span t-field="doc.user_id.name"/></td>
+                    <td style="padding: 5px; border: none;">
+                        <span t-if="doc.user_id.employee_ids" t-esc="doc.user_id.employee_ids[0].name"/>
+                        <span t-if="not doc.user_id.employee_ids" t-field="doc.user_id.partner_id.name"/>
+                    </td>
                 </tr>
                 <tr style="border: none;">
                     <td style="padding: 5px; border: none;"><strong>Phone:</strong></td>
@@ -177,6 +181,8 @@
                 <th style="width: 15%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Image</th>
                 <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Quantity</th>
                 <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Price</th>
+                <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Discount</th>
+                <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Price</th>
                 <th style="width: 19%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Amount</th>
             </tr>
         </thead>
@@ -193,6 +199,25 @@
                 </td>
                 <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom.name"/>
+                </td>
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                    <t t-if="line.normal_price and line.normal_price != 0">
+                        <span t-esc="line.net_price"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </t>
+                    <t t-else="">
+                        <span t-esc="line.price_unit * (1 - (line.discount_percent or 0) / 100.0)"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </t>
+                </td>
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                    <t t-if="line.normal_price and line.normal_price > 0">
+                        <t t-set="discount_percent" t-value="round((1 - (line.price_unit / line.normal_price)) * 100, 2)"/>
+                        <span t-esc="discount_percent"/>%
+                    </t>
+                    <t t-else="">
+                        <span t-esc="line.discount_percent"/>%
+                    </t>
                 </td>
                 <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <t t-if="line.normal_price and line.normal_price != 0">
@@ -296,12 +321,12 @@
 </template>
 
     <record id="action_report_saleorder_buz" model="ir.actions.report">
-        <field name="name">List Price BATHROOM</field>
+        <field name="name">Quotation / BATHROOM</field>
         <field name="model">sale.order</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_custom_quotation.report_saleorder_buz</field>
         <field name="report_file">buz_custom_quotation.report_saleorder_buz</field>
-        <field name="print_report_name">'List Price - %s' % (object.name)</field>
+        <field name="print_report_name">'Quotation - %s' % (object.name)</field>
         <field name="binding_model_id" ref="sale.model_sale_order"/>
         <field name="binding_type">report</field>
         <field name="paperformat_id" ref="buz_custom_quotation.paperformat_invoice"/>

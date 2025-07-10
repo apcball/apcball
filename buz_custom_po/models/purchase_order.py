@@ -1,3 +1,11 @@
+from odoo import models, fields
+
+class PurchaseRequisition(models.Model):
+    _inherit = 'purchase.requisition'
+
+    partner_id = fields.Many2one('res.partner', string='Vendor')
+    date_planned = fields.Date(string='Planned Date')
+
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from num2words import num2words
@@ -11,6 +19,22 @@ class PurchaseOrder(models.Model):
     partner_contact_id = fields.Many2one('res.partner', string="Contact Person")
     name = fields.Char(string="Purchase Request Number")
     has_vat = fields.Boolean(string='Has VAT', compute='_compute_has_vat', store=False)
+    criteria = fields.Char(string="Criteria")
+    client_order_ref = fields.Char(string='Customer Reference')
+    partner_id = fields.Many2one('res.partner', string="Vendor")
+    employee_contact_id = fields.Many2one('res.partner', string="Contact Person")
+    partner_id = fields.Many2one('res.partner', string="Vendor")
+    employee_contact_id = fields.Many2one('res.partner', string="Contact Person")
+    payment_term_id = fields.Many2one('account.payment.term', string="Payment Term")
+    criteria = fields.Char(string="Criteria")
+    client_order_ref = fields.Char(string="Customer Reference")
+    date_order = fields.Datetime(string="Order Date")
+    employee_contact_id = fields.Many2one('res.partner', string='Contact Person')
+    criteria = fields.Char(string='Criteria')
+    date_planned = fields.Date(string='Planned Date', default=fields.Date.context_today)
+    date_planned = fields.Date(string='Planned Date')
+    
+    
 
     state = fields.Selection(selection_add=[
         ('waiting_l1', 'Waiting L1 Approval'),
@@ -257,3 +281,5 @@ class PurchaseOrder(models.Model):
         if template:
             template.send_mail(self.id, force_send=True)
         return True
+
+    self.env['purchase.requisition'].fields_get().keys()   

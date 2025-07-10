@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Simple Purchase Order Tree View for Job Costing -->
+        <record id="view_purchase_order_tree_job_costing" model="ir.ui.view">
+            <field name="name">purchase.order.tree.job.costing</field>
+            <field name="model">purchase.order</field>
+            <field name="arch" type="xml">
+                <tree string="Purchase Orders" create="false" delete="false" edit="false">
+                    <field name="name"/>
+                    <field name="partner_id"/>
+                    <field name="date_order"/>
+                    <field name="amount_total"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="state"/>
+                    <field name="material_requisition_id"/>
+                    <field name="project_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Purchase Order Action for Job Costing -->
+        <record id="action_purchase_order_job_costing" model="ir.actions.act_window">
+            <field name="name">Purchase Orders</field>
+            <field name="res_model">purchase.order</field>
+            <field name="view_mode">tree</field>
+            <field name="view_id" ref="view_purchase_order_tree_job_costing"/>
+            <field name="context">{'res_model': 'purchase.order'}</field>
+        </record>
+
+    </data>
+</odoo>

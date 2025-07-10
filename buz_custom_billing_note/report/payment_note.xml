@@ -131,6 +131,10 @@
                                 }
                             </style>
 
+                            <t t-foreach="['original', 'copy']" t-as="doc_type">
+                                <div t-attf-style="#{doc_type == 'copy' and 'page-break-before: always;' or ''}; font-size: 94%">
+               
+
                             <t t-set="line_list" t-value="sum([list(inv.invoice_line_ids) for inv in doc.invoice_ids], [])"/>
                             <t t-set="groups_of_15" t-value="[line_list[i:i+15] for i in range(0, len(line_list), 15)]"/>
                             <t t-set="page_number" t-value="1"/>
@@ -154,6 +158,21 @@
                                      style="width: 169.2px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
+
+                         <!-- Title Section -->
+                         <div class="row mb-2 justify-content-end" style="padding-right: 9.4px;">
+                            <div class="col-2 "
+                            style="border-radius: 3.76px; border: 0.94px solid #888; padding: 1.88px 3.76px; font-size: 16.92px; text-align:center; margin-top: -56.4px; ">
+                            <t t-if="doc_type == 'original'">
+                                <strong>ต้นฉบับ / ORIGINAL</strong><br/>
+                                ลูกค้า
+                            </t>
+                            <t t-if="doc_type == 'copy'">
+                                <strong>สำเนา / COPY</strong><br/>
+                                บัญชี
+                            </t>
+                        </div>
+                    </div>
 
                         <!-- Title Section -->
                         <div class="row mb-3">
@@ -401,12 +420,13 @@
                               <t t-set="page_number" t-value="page_number + 1"/>
                             </div>
                         </t>
+                        </div>
                             
 
 
                     </t>
                        
-                </t>
+                </t> </t>
             
         </template>
 

@@ -23,6 +23,10 @@
                         <div class="page" style="padding: 10px;">
                             
                             <style>
+                                 @font-face {
+                                    font-family: 'Sarabun';
+                                    src: url('/buz_manufacturing_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                }
                                 @page {
                                     margin-top: 0mm;
                                     margin-bottom: 10mm;

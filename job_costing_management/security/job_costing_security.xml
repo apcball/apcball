@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Job Costing Management Groups -->
+        <record id="group_job_costing_user" model="res.groups">
+            <field name="name">Job Costing User</field>
+            <field name="category_id" ref="base.module_category_project"/>
+            <field name="implied_ids" eval="[(4, ref('project.group_project_user'))]"/>
+        </record>
+
+        <record id="group_job_costing_manager" model="res.groups">
+            <field name="name">Job Costing Manager</field>
+            <field name="category_id" ref="base.module_category_project"/>
+            <field name="implied_ids" eval="[(4, ref('group_job_costing_user')), (4, ref('project.group_project_manager'))]"/>
+        </record>
+
+        <record id="group_material_requisition_user" model="res.groups">
+            <field name="name">Material Requisition User</field>
+            <field name="category_id" ref="base.module_category_project"/>
+        </record>
+
+        <record id="group_material_requisition_manager" model="res.groups">
+            <field name="name">Material Requisition Manager</field>
+            <field name="category_id" ref="base.module_category_project"/>
+            <field name="implied_ids" eval="[(4, ref('group_material_requisition_user'))]"/>
+        </record>
+
+        <record id="group_department_manager" model="res.groups">
+            <field name="name">Department Manager</field>
+            <field name="category_id" ref="base.module_category_project"/>
+        </record>
+
+        <!-- Job Cost Sheet Rules -->
+        <record id="rule_job_cost_sheet_user" model="ir.rule">
+            <field name="name">Job Cost Sheet: User Access</field>
+            <field name="model_id" ref="model_job_cost_sheet"/>
+            <field name="groups" eval="[(4, ref('group_job_costing_user'))]"/>
+            <field name="domain_force">['|', ('create_uid', '=', user.id), ('project_id.user_id', '=', user.id)]</field>
+        </record>
+
+        <record id="rule_job_cost_sheet_manager" model="ir.rule">
+            <field name="name">Job Cost Sheet: Manager Access</field>
+            <field name="model_id" ref="model_job_cost_sheet"/>
+            <field name="groups" eval="[(4, ref('group_job_costing_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <!-- Job Order Rules -->
+        <record id="rule_job_order_user" model="ir.rule">
+            <field name="name">Job Order: User Access</field>
+            <field name="model_id" ref="model_job_order"/>
+            <field name="groups" eval="[(4, ref('group_job_costing_user'))]"/>
+            <field name="domain_force">['|', ('user_id', '=', user.id), ('project_id.user_id', '=', user.id)]</field>
+        </record>
+
+        <record id="rule_job_order_manager" model="ir.rule">
+            <field name="name">Job Order: Manager Access</field>
+            <field name="model_id" ref="model_job_order"/>
+            <field name="groups" eval="[(4, ref('group_job_costing_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <!-- Material Requisition Rules -->
+        <record id="rule_material_requisition_user" model="ir.rule">
+            <field name="name">Material Requisition: User Access</field>
+            <field name="model_id" ref="model_material_requisition"/>
+            <field name="groups" eval="[(4, ref('group_material_requisition_user'))]"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+        </record>
+
+        <record id="rule_material_requisition_dept_manager" model="ir.rule">
+            <field name="name">Material Requisition: Department Manager Access</field>
+            <field name="model_id" ref="model_material_requisition"/>
+            <field name="groups" eval="[(4, ref('group_department_manager'))]"/>
+            <field name="domain_force">[('department_id.manager_id.user_id', '=', user.id)]</field>
+        </record>
+
+        <record id="rule_material_requisition_manager" model="ir.rule">
+            <field name="name">Material Requisition: Manager Access</field>
+            <field name="model_id" ref="model_material_requisition"/>
+            <field name="groups" eval="[(4, ref('group_material_requisition_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <!-- Job Note Rules -->
+        <record id="rule_job_note_user" model="ir.rule">
+            <field name="name">Job Note: User Access</field>
+            <field name="model_id" ref="model_job_note"/>
+            <field name="groups" eval="[(4, ref('group_job_costing_user'))]"/>
+            <field name="domain_force">['|', ('user_id', '=', user.id), ('assigned_to_ids', 'in', [user.id])]</field>
+        </record>
+
+        <record id="rule_job_note_manager" model="ir.rule">
+            <field name="name">Job Note: Manager Access</field>
+            <field name="model_id" ref="model_job_note"/>
+            <field name="groups" eval="[(4, ref('group_job_costing_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+    </data>
+</odoo>

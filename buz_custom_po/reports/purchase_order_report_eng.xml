@@ -65,100 +65,92 @@
 </style>
         <t t-call="web.basic_layout">
             <t t-foreach="docs" t-as="o">
-                <t t-set="items_per_page" t-value="15"/>
-                <t t-set="total_items" t-value="len(o.order_line)"/>
-                <t t-set="total_pages" t-value="(total_items + items_per_page - 1) // items_per_page"/>
-
-                <t t-foreach="range(total_pages)" t-as="page_num">
-                    <div class="page">
-                        <!-- Header -->
-                        <div class="row mb-2">
-                            <div class="col-8">
-                                <div style="font-size: 16px;">
-                                    <div class="mb-1"><strong>MOGEN CO., LTD. (HEAD OFFICE)</strong></div>
-                                    <div style="font-size: 14px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
-                                    <div style="font-size: 14px;">Tax ID: 0105547076103</div>
-                                    <div style="font-size: 14px;">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
-                                </div>
-                            </div>
-                            <div class="col-4 text-end">
-                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
-                                     style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                <div class="page">
+                    <!-- Header -->
+                    <div class="row mb-2">
+                        <div class="col-8">
+                            <div style="font-size: 16px;">
+                                <div class="mb-1"><strong>MOGEN CO., LTD. (HEAD OFFICE)</strong></div>
+                                <div style="font-size: 14px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+                                <div style="font-size: 14px;">Tax ID: 0105547076103</div>
+                                <div style="font-size: 14px;">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
                             </div>
                         </div>
-
-                        <!-- Document Title -->
-                        <div class="row mb-2">
-                           <div class="col-12 text-center">
-                                <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 20px; margin-top: 10px;">PURCHASE ORDER</h2>
-                           </div>
+                        <div class="col-4 text-end">
+                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                 style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                         </div>
+                    </div>
 
-                        <!-- Document Info -->
-                        <div class="row mb-2">
-                            <div class="col-8">
-                                <p style="margin-bottom: 0; margin-top: 20px; font-size: 14px;">Please attach this purchase order when delivering goods and billing</p>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-end" style="font-size: 14px;">
-                                    <div>NO.: <strong><span t-field="o.name"/></strong></div>
-                                    <div>DATE: <strong><span t-field="o.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></strong></div>
-                                    <div>PAGE: <t t-esc="page_num + 1"/> / <t t-esc="total_pages"/></div>
-                                </div>
+                    <!-- Document Title -->
+                    <div class="row mb-2">
+                       <div class="col-12 text-center">
+                            <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 20px; margin-top: 10px;">PURCHASE ORDER</h2>
+                       </div>
+                    </div>
+
+                    <!-- Document Info -->
+                    <div class="row mb-2">
+                        <div class="col-8">
+                            <p style="margin-bottom: 0; margin-top: 20px; font-size: 14px;">Please attach this purchase order when delivering goods and billing</p>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-end" style="font-size: 14px;">
+                                <div>NO.: <strong><span t-field="o.name"/></strong></div>
+                                <div>DATE: <strong><span t-field="o.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></strong></div>
+                                <div>PAGE: 1 / 1</div>
                             </div>
                         </div>
+                    </div>
 
-    <!-- Vendor and Delivery Info -->
-<t t-if="page_num == 0">
-    <div class="row mb-3">
-        <div class="col-6">
-            <div style="border: 1px solid #000; padding: 8px; height: 180px; font-size: 14px;">
-                <table>
-                    <tr>
-                        <td style="width: 25%; padding: 2px; font-size: 14px;"><strong>VENDOR:</strong></td>
-                        <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.name"/></td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 2px; font-size: 14px;"><strong>ADDRESS:</strong></td>
-                        <td style="padding: 2px; font-size: 14px;">
-                            <span t-field="o.partner_id.street"/>
-                            <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
-                        </td>
-                    </tr>
-                    <tr t-if="o.partner_id.vat">
-                        <td style="padding: 2px; font-size: 14px;"><strong>TAX ID:</strong></td>
-                        <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.vat"/></td>
-                    </tr>
-                    <tr t-if="o.partner_id.phone">
-                        <td style="padding: 2px; font-size: 14px;"><strong>TEL:</strong></td>
-                        <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.phone"/></td>
-                    </tr>
-                    <tr t-if="o.partner_id.email">
-                        <td style="padding: 2px; font-size: 14px;"><strong>EMAIL:</strong></td>
-                        <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.email"/></td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-        <div class="col-6">
-            <div style="border: 1px solid #000; padding: 8px; height: 180px; font-size: 14px;">
-                <table>
-                    <tr>
-                        <td colspan="2" style="padding: 2px; font-size: 14px;"><strong>SHIP TO:</strong></td>
-                    </tr>
-                    <tr>
-                        <td colspan="2" style="padding: 2px; font-size: 14px;">
-                            <div><span t-field="o.picking_type_id.warehouse_id.partner_id.name"/></div>
-                            <div><span t-field="o.picking_type_id.warehouse_id.partner_id.street2"/></div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
+<!-- Vendor and Delivery Info -->
+<div class="row mb-3">
+    <div class="col-6">
+        <div style="border: 1px solid #000; padding: 8px; height: 180px; font-size: 14px;">
+            <table>
+                <tr>
+                    <td style="width: 25%; padding: 2px; font-size: 14px;"><strong>VENDOR:</strong></td>
+                    <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.name"/></td>
+                </tr>
+                <tr>
+                    <td style="padding: 2px; font-size: 14px;"><strong>ADDRESS:</strong></td>
+                    <td style="padding: 2px; font-size: 14px;">
+                        <span t-field="o.partner_id.street"/>
+                        <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
+                    </td>
+                </tr>
+                <tr t-if="o.partner_id.vat">
+                    <td style="padding: 2px; font-size: 14px;"><strong>TAX ID:</strong></td>
+                    <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.vat"/></td>
+                </tr>
+                <tr t-if="o.partner_id.phone">
+                    <td style="padding: 2px; font-size: 14px;"><strong>TEL:</strong></td>
+                    <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.phone"/></td>
+                </tr>
+                <tr t-if="o.partner_id.email">
+                    <td style="padding: 2px; font-size: 14px;"><strong>EMAIL:</strong></td>
+                    <td style="padding: 2px; font-size: 14px;"><span t-field="o.partner_id.email"/></td>
+                </tr>
+            </table>
         </div>
     </div>
-</t>
+    <div class="col-6">
+        <div style="border: 1px solid #000; padding: 8px; height: 180px; font-size: 14px;">
+            <table>
+                <tr>
+                    <td colspan="2" style="padding: 2px; font-size: 14px;"><strong>SHIP TO:</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="padding: 2px; font-size: 14px;">
+                        <div><span t-field="o.picking_type_id.warehouse_id.partner_id.name"/></div>
+                        <div><span t-field="o.picking_type_id.warehouse_id.partner_id.street2"/></div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
 
-<t t-set="line_number" t-value="page_num * items_per_page + 1"/>
 <!-- Order Lines -->
 <div class="row">
     <div class="col-12">
@@ -176,12 +168,12 @@
                 </tr>
             </thead>
             <tbody>
-                <tr t-foreach="o.order_line" t-as="line">
+                <tr t-foreach="o.order_line" t-as="line" t-foreach-index="line_index">
                     <td style="text-align: center; padding: 4px; border: 0.5px solid #dee2e6;">
                         <span t-esc="line_index + 1"/>
                     </td>
                     <td>
-                        <img t-if="line.product_id.image_128" 
+                        <img t-if="line.product_id.image_128"
                             t-att-src="image_data_uri(line.product_id.image_128)"
                             style="width: 64px; height: 64px; object-fit: contain;"/>
                     </td>
@@ -201,15 +193,15 @@
                         <span t-field="line.discount" t-options='{"widget": "float", "precision": 2}'/>
                     </td>
                     <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                        <span t-field="line.price_subtotal" t-options='{"widget": "float", "precision": 2}'/> 
+                        <span t-field="line.price_subtotal" t-options='{"widget": "float", "precision": 2}'/>
                     </td>
                 </tr>
             </tbody>
         </table>
     </div>
 </div>
-                        <t t-if="page_num == total_pages - 1">
-                      <!-- Summary Section -->
+
+<!-- Summary Section -->
 <div class="row" style="margin-top: 5px;">
     <div class="col-7">
         <!-- Notes Section -->
@@ -231,7 +223,7 @@
                     <span>Total:</span>
                 </td>
                 <td style="width: 40%; text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                    <span t-esc="'{:,.2f}'.format(amount_untaxed)"/> 
+                    <span t-esc="'{:,.2f}'.format(amount_untaxed)"/>
                 </td>
             </tr>
             <tr>
@@ -239,7 +231,7 @@
                     <span>Discount:</span>
                 </td>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                    <span t-esc="'{:,.2f}'.format(total_discount)"/> 
+                    <span t-esc="'{:,.2f}'.format(total_discount)"/>
                 </td>
             </tr>
             <tr>
@@ -247,7 +239,7 @@
                     <span>Net:</span>
                 </td>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                    <span t-esc="'{:,.2f}'.format(amount_after_discount)"/> 
+                    <span t-esc="'{:,.2f}'.format(amount_after_discount)"/>
                 </td>
             </tr>
             <tr>
@@ -255,7 +247,7 @@
                     <span>VAT 7%:</span>
                 </td>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                    <span t-esc="'{:,.2f}'.format(amount_tax)"/> 
+                    <span t-esc="'{:,.2f}'.format(amount_tax)"/>
                 </td>
             </tr>
             <tr>
@@ -263,16 +255,12 @@
                     <span>Grand Total:</span>
                 </td>
                 <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
-                    <span t-esc="'{:,.2f}'.format(amount_total)"/> 
+                    <span t-esc="'{:,.2f}'.format(amount_total)"/>
                 </td>
             </tr>
         </table>
     </div>
 </div>
-<!-- Conditional page break based on number of items -->
-                     <t t-if="len(o.order_line) > 8">
-                         <div style="page-break-before: always;"></div>
-                     </t>
 
 <!-- Signature Section -->
 <div class="row mt-5" style="margin-top: calc(4rem - 80px) !important;">
@@ -347,7 +335,7 @@
             </div>
             <div class="signature-line">
                 <p class="signature-title">Checked by</p>
-                <p class="signature-date">Date: 
+                <p class="signature-date">Date:
                     <t t-if="o.l1_approved_date">
                         <span t-field="o.l1_approved_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
                     </t>
@@ -372,7 +360,7 @@
             </div>
             <div class="signature-line">
                 <p class="signature-title">Approved by</p>
-                <p class="signature-date">Date: 
+                <p class="signature-date">Date:
                     <t t-if="o.l2_approved_date">
                         <span t-field="o.l2_approved_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
                     </t>
@@ -382,12 +370,8 @@
         </div>
     </div>
 </div>
-<!-- Conditional page break based on number of items -->
-                     <t t-if="len(o.order_line) > 4">
-                         <div style="page-break-before: always;"></div>
-                     </t>
 
-    <!-- Footer Section -->
+<!-- Footer Section -->
 <div class="row mt-3" style="margin-top: 4rem !important; font-size: 12px;">
     <div class="col-12">
         <div style="border: 1px solid #000; padding: 8px;">
@@ -406,9 +390,7 @@
         </div>
     </div>
 </div>
-                        </t>
-                    </div>
-                </t>
+                </div>
             </t>
         </t>
     </template>

@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- BOQ Tree View -->
+        <record id="view_boq_tree" model="ir.ui.view">
+            <field name="name">boq.boq.tree</field>
+            <field name="model">boq.boq</field>
+            <field name="arch" type="xml">
+                <tree string="Bill of Quantities">
+                    <field name="name"/>
+                    <field name="title"/>
+                    <field name="project_id"/>
+                    <field name="boq_date"/>
+                    <field name="total_cost" sum="Total Cost"/>
+                    <field name="state" decoration-success="state=='approved'" decoration-danger="state=='cancelled'"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- BOQ Form View -->
+        <record id="view_boq_form" model="ir.ui.view">
+            <field name="name">boq.boq.form</field>
+            <field name="model">boq.boq</field>
+            <field name="arch" type="xml">
+                <form string="Bill of Quantities">
+                    <header>
+                        <button name="action_approve" string="Approve" type="object" 
+                                class="oe_highlight" invisible="state != 'draft'"/>
+                        <button name="action_lock" string="Lock" type="object" 
+                                class="oe_highlight" invisible="state != 'approved'"/>
+                        <button name="action_cancel" string="Cancel" type="object" 
+                                invisible="state not in ('draft', 'approved')"/>
+                        <button name="action_reset_to_draft" string="Reset to Draft" type="object" 
+                                invisible="state != 'cancelled'"/>
+                        <button name="action_create_material_requisition" string="Create Material Requisition" 
+                                type="object" class="oe_highlight" invisible="state not in ('approved', 'locked')"/>
+                        <button name="action_create_job_cost_lines" string="Create Job Cost Lines" 
+                                type="object" invisible="state not in ('approved', 'locked')"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,approved,locked"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_requisitions" type="object"
+                                    class="oe_stat_button" icon="fa-shopping-cart">
+                                <field name="requisition_count" widget="statinfo" string="Requisitions"/>
+                            </button>
+                        </div>
+                        <widget name="web_ribbon" title="Cancelled" bg_color="text-bg-danger" 
+                                invisible="state != 'cancelled'"/>
+                        <widget name="web_ribbon" title="Locked" bg_color="text-bg-warning" 
+                                invisible="state != 'locked'"/>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="title"/>
+                                <field name="project_id"/>
+                                <field name="job_order_id"/>
+                                <field name="job_cost_sheet_id"/>
+                                <field name="template_id" readonly="1" invisible="not template_id"/>
+                            </group>
+                            <group>
+                                <field name="boq_date"/>
+                                <field name="revision"/>
+                                <field name="prepared_by"/>
+                                <field name="approved_by" readonly="1"/>
+                                <field name="approved_date" readonly="1"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="description"/>
+                        </group>
+                        <notebook>
+                            <page string="BOQ Lines">
+                                <field name="line_ids" nolabel="1">
+                                    <tree editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="category_id"/>
+                                        <field name="item_code"/>
+                                        <field name="product_id"/>
+                                        <field name="description"/>
+                                        <field name="quantity"/>
+                                        <field name="uom_id"/>
+                                        <field name="unit_cost"/>
+                                        <field name="total_cost"/>
+                                        <field name="waste_percentage"/>
+                                        <field name="contingency_percentage"/>
+                                        <field name="adjusted_quantity"/>
+                                        <field name="adjusted_total_cost"/>
+                                        <field name="status"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="Categories">
+                                <field name="category_ids" nolabel="1">
+                                    <tree editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="name"/>
+                                        <field name="description"/>
+                                        <field name="total_cost"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                        <group class="oe_subtotal_footer oe_right">
+                            <field name="total_quantity"/>
+                            <field name="total_cost" class="oe_subtotal_footer_separator"/>
+                        </group>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <!-- BOQ Kanban View -->
+        <record id="view_boq_kanban" model="ir.ui.view">
+            <field name="name">boq.boq.kanban</field>
+            <field name="model">boq.boq</field>
+            <field name="arch" type="xml">
+                <kanban>
+                    <field name="name"/>
+                    <field name="title"/>
+                    <field name="project_id"/>
+                    <field name="total_cost"/>
+                    <field name="state"/>
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div class="oe_kanban_card oe_kanban_global_click">
+                                <div class="oe_kanban_content">
+                                    <div class="oe_kanban_details">
+                                        <strong><field name="name"/></strong>
+                                        <div><field name="title"/></div>
+                                        <div>Project: <field name="project_id"/></div>
+                                        <div class="oe_kanban_bottom_right">
+                                            <span class="badge badge-secondary">
+                                                <field name="total_cost"/> <field name="currency_id"/>
+                                            </span>
+                                        </div>
+                                        <div class="oe_kanban_bottom_left">
+                                            <field name="state" widget="label_selection"
+                                                   options="{'classes': {'draft': 'secondary', 'approved': 'success', 'locked': 'warning', 'cancelled': 'danger'}}"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- BOQ Action -->
+        <record id="action_boq" model="ir.actions.act_window">
+            <field name="name">Bill of Quantities</field>
+            <field name="res_model">boq.boq</field>
+            <field name="view_mode">tree,form,kanban</field>
+            <field name="context">{'res_model': 'boq.boq'}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first BOQ!
+                </p>
+                <p>
+                    Bill of Quantities (BOQ) helps you plan and estimate materials
+                    required for construction projects.
+                </p>
+            </field>
+        </record>
+
+        <!-- BOQ Line Tree View -->
+        <record id="view_boq_line_tree" model="ir.ui.view">
+            <field name="name">boq.line.tree</field>
+            <field name="model">boq.line</field>
+            <field name="arch" type="xml">
+                <tree string="BOQ Lines">
+                    <field name="boq_id"/>
+                    <field name="item_code"/>
+                    <field name="product_id"/>
+                    <field name="description"/>
+                    <field name="quantity"/>
+                    <field name="uom_id"/>
+                    <field name="unit_cost"/>
+                    <field name="total_cost"/>
+                    <field name="status"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- BOQ Line Form View -->
+        <record id="view_boq_line_form" model="ir.ui.view">
+            <field name="name">boq.line.form</field>
+            <field name="model">boq.line</field>
+            <field name="arch" type="xml">
+                <form string="BOQ Line">
+                    <header>
+                        <button name="action_create_requisition" string="Create Requisition" 
+                                type="object" class="oe_highlight"/>
+                        <field name="status" widget="statusbar"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="boq_id"/>
+                                <field name="category_id"/>
+                                <field name="item_code"/>
+                                <field name="product_id"/>
+                                <field name="description"/>
+                                <field name="specification"/>
+                            </group>
+                            <group>
+                                <field name="quantity"/>
+                                <field name="uom_id"/>
+                                <field name="unit_cost"/>
+                                <field name="total_cost"/>
+                                <field name="waste_percentage"/>
+                                <field name="contingency_percentage"/>
+                                <field name="adjusted_quantity"/>
+                                <field name="adjusted_total_cost"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="notes"/>
+                        </group>
+                        <notebook>
+                            <page string="Requisitions">
+                                <field name="requisition_line_ids" nolabel="1">
+                                    <tree>
+                                        <field name="requisition_id"/>
+                                        <field name="product_id"/>
+                                        <field name="description"/>
+                                        <field name="quantity"/>
+                                        <field name="uom_id"/>
+                                        <field name="estimated_cost"/>
+                                        <field name="requisition_state"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="Cost Lines">
+                                <field name="cost_line_ids" nolabel="1">
+                                    <tree>
+                                        <field name="cost_sheet_id"/>
+                                        <field name="cost_type"/>
+                                        <field name="product_id"/>
+                                        <field name="name"/>
+                                        <field name="planned_qty"/>
+                                        <field name="unit_cost"/>
+                                        <field name="total_cost"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- BOQ Template Tree View -->
+        <record id="view_boq_template_tree" model="ir.ui.view">
+            <field name="name">boq.template.tree</field>
+            <field name="model">boq.template</field>
+            <field name="arch" type="xml">
+                <tree string="BOQ Templates">
+                    <field name="name"/>
+                    <field name="job_type_id"/>
+                    <field name="total_cost"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- BOQ Template Form View -->
+        <record id="view_boq_template_form" model="ir.ui.view">
+            <field name="name">boq.template.form</field>
+            <field name="model">boq.template</field>
+            <field name="arch" type="xml">
+                <form string="BOQ Template">
+                    <header>
+                        <button name="action_create_boq" string="Create BOQ from Template" 
+                                type="object" class="oe_highlight"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="job_type_id"/>
+                            </group>
+                            <group>
+                                <field name="total_cost"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="description"/>
+                        </group>
+                        <notebook>
+                            <page string="Template Lines">
+                                <field name="line_ids" nolabel="1">
+                                    <tree editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="item_code"/>
+                                        <field name="product_id"/>
+                                        <field name="description"/>
+                                        <field name="quantity"/>
+                                        <field name="uom_id"/>
+                                        <field name="unit_cost"/>
+                                        <field name="total_cost"/>
+                                        <field name="waste_percentage"/>
+                                        <field name="contingency_percentage"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- BOQ Template Action -->
+        <record id="action_boq_template" model="ir.actions.act_window">
+            <field name="name">BOQ Templates</field>
+            <field name="res_model">boq.template</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first BOQ template!
+                </p>
+                <p>
+                    BOQ templates help you quickly create Bill of Quantities for similar projects.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>
