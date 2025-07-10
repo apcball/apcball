@@ -1,6 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Account Move inherited views -->
+        
+        <!-- Vendor Bill Form View Extension -->
+        <record id="view_move_form_supplier_invoice_job_costing" model="ir.ui.view">
+            <field name="name">account.move.form.supplier.invoice.job.costing</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='invoice_origin']" position="after">
+                    <field name="job_cost_sheet_id" readonly="1" invisible="move_type not in ['in_invoice', 'in_refund']"/>
+                    <field name="project_id" readonly="1" invisible="move_type not in ['in_invoice', 'in_refund']"/>
+                    <field name="job_order_id" readonly="1" invisible="move_type not in ['in_invoice', 'in_refund']"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Invoice Line Tree View Extension -->
+        <record id="view_move_line_tree_job_costing" model="ir.ui.view">
+            <field name="name">account.move.line.tree.job.costing</field>
+            <field name="model">account.move.line</field>
+            <field name="inherit_id" ref="account.view_move_line_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='analytic_distribution']" position="after">
+                    <field name="job_cost_line_id" optional="hide"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Invoice Line Form View Extension -->
+        <record id="view_move_line_form_job_costing" model="ir.ui.view">
+            <field name="name">account.move.line.form.job.costing</field>
+            <field name="model">account.move.line</field>
+            <field name="inherit_id" ref="account.view_move_line_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='analytic_distribution']" position="after">
+                    <field name="job_cost_line_id" readonly="1"/>
+                </xpath>
+            </field>
+        </record>
+
     </data>
 </odoo>
