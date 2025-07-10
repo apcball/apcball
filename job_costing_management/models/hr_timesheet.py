@@ -33,3 +33,17 @@ class AccountAnalyticLine(models.Model):
             
             if job_order:
                 self.job_order_id = job_order.id
+
+
+class HrEmployee(models.Model):
+    _inherit = 'hr.employee'
+    
+    dest_location_id = fields.Many2one('stock.location', string='Destination Location',
+                                      help='Default destination location for material requisitions')
+
+
+class HrDepartment(models.Model):
+    _inherit = 'hr.department'
+    
+    dest_location_id = fields.Many2one('stock.location', string='Destination Location',
+                                      help='Default destination location for material requisitions')

@@ -80,6 +80,14 @@ class BOQ(models.Model):
         if template_id:
             template = self.env['boq.template'].browse(template_id)
             if template.exists():
+                # Validate template has lines with products
+                if not template.line_ids:
+                    raise ValidationError(_('Template has no lines to copy.'))
+                
+                lines_without_products = template.line_ids.filtered(lambda l: not l.product_id)
+                if lines_without_products:
+                    raise ValidationError(_('Template has lines without products. Please ensure all template lines have products assigned.'))
+                
                 result._create_lines_from_template(template)
         
         return result
@@ -111,8 +119,22 @@ class BOQ(models.Model):
                 'contingency_percentage': template_line.contingency_percentage,
                 'notes': template_line.notes,
             }
+            
+            # Validate that essential fields are present
+            if not line_vals['description']:
+                _logger.warning(f"Template line {template_line.id} has no description")
+                continue
+                
+            if not line_vals['uom_id']:
+                _logger.warning(f"Template line {template_line.id} has no UOM")
+                continue
+            
             new_line = BOQLine.create(line_vals)
             _logger.info(f"Created BOQ line: {new_line.id}, Product: {new_line.product_id.name if new_line.product_id else 'None'}")
+            
+            # Additional check: if the created line has no product, log it
+            if not new_line.product_id:
+                _logger.warning(f"Created BOQ line {new_line.id} has no product assigned")
     
     @api.depends('line_ids.quantity', 'line_ids.total_cost')
     def _compute_totals(self):
@@ -140,21 +162,40 @@ class BOQ(models.Model):
     def action_reset_to_draft(self):
         self.write({'state': 'draft'})
     
+    def action_duplicate(self):
+        """Create a duplicate of this BOQ"""
+        new_boq = self.copy()
+        
+        return {
+            'name': 'Duplicate BOQ',
+            'type': 'ir.actions.act_window',
+            'res_model': 'boq.boq',
+            'view_mode': 'form',
+            'res_id': new_boq.id,
+            'target': 'current',
+        }
+    
     def action_create_material_requisition(self):
         """Create material requisition from BOQ lines"""
         if not self.line_ids:
             raise ValidationError(_('No BOQ lines to create requisition from.'))
         
+        # Filter lines that have products
+        lines_with_products = self.line_ids.filtered(lambda l: l.product_id)
+        if not lines_with_products:
+            raise ValidationError(_('No BOQ lines with products found to create requisition from.'))
+        
         # Group lines by category or create single requisition
         requisition_vals = {
             'project_id': self.project_id.id,
-            'job_order_id': self.job_order_id.id,
+            'job_order_id': self.job_order_id.id if self.job_order_id else False,
             'boq_id': self.id,
             'purpose': f'Material requisition from BOQ: {self.name}',
+            'required_date': fields.Date.today(),  # Add required date
             'line_ids': []
         }
         
-        for line in self.line_ids.filtered(lambda l: l.product_id):
+        for line in lines_with_products:
             req_line_vals = {
                 'product_id': line.product_id.id,
                 'description': line.description,
@@ -177,22 +218,78 @@ class BOQ(models.Model):
     
     def action_create_job_cost_lines(self):
         """Create job cost lines from BOQ"""
+        # Debug logging
+        import logging
+        _logger = logging.getLogger(__name__)
+        _logger.info(f"Creating job cost lines from BOQ: {self.name}")
+        
         if not self.job_cost_sheet_id:
             raise ValidationError(_('Please specify a job cost sheet.'))
         
-        for line in self.line_ids.filtered(lambda l: l.product_id):
+        _logger.info(f"Job cost sheet: {self.job_cost_sheet_id.name}")
+        
+        # Check if there are any BOQ lines with products
+        lines_with_products = self.line_ids.filtered(lambda l: l.product_id)
+        if not lines_with_products:
+            raise ValidationError(_('No BOQ lines with products found to create job cost lines from.'))
+        
+        _logger.info(f"Found {len(lines_with_products)} BOQ lines with products")
+        
+        created_lines = []
+        skipped_lines = []
+        
+        for line in lines_with_products:
+            _logger.info(f"Processing BOQ line: {line.description}, Product: {line.product_id.name}")
+            
+            # Check if job cost line already exists for this BOQ line
+            existing_line = self.env['job.cost.line'].search([
+                ('cost_sheet_id', '=', self.job_cost_sheet_id.id),
+                ('boq_line_id', '=', line.id)
+            ], limit=1)
+            
+            if existing_line:
+                _logger.info(f"Skipping BOQ line {line.id} - job cost line already exists: {existing_line.id}")
+                skipped_lines.append(line.description)
+                continue  # Skip if already exists
+            
             cost_line_vals = {
                 'cost_sheet_id': self.job_cost_sheet_id.id,
                 'cost_type': 'material',
                 'product_id': line.product_id.id,
-                'description': line.description,
-                'quantity': line.quantity,
+                'name': line.description,
+                'planned_qty': line.quantity,
                 'uom_id': line.uom_id.id,
                 'unit_cost': line.unit_cost,
-                'total_cost': line.total_cost,
-                'boq_line_id': line.id,
+                'boq_line_id': line.id,  # Link to BOQ line
             }
-            self.env['job.cost.line'].create(cost_line_vals)
+            
+            _logger.info(f"Creating job cost line with values: {cost_line_vals}")
+            
+            try:
+                cost_line = self.env['job.cost.line'].create(cost_line_vals)
+                created_lines.append(cost_line.id)
+                _logger.info(f"Created job cost line: {cost_line.id}")
+            except Exception as e:
+                _logger.error(f"Error creating job cost line for {line.description}: {str(e)}")
+                raise ValidationError(_('Error creating job cost line for %s: %s') % (line.description, str(e)))
+        
+        if not created_lines:
+            if skipped_lines:
+                raise ValidationError(_('No new job cost lines were created. The following lines already exist: %s') % ', '.join(skipped_lines))
+            else:
+                raise ValidationError(_('No new job cost lines were created. They may already exist.'))
+        
+        _logger.info(f"Successfully created {len(created_lines)} job cost lines")
+        
+        # Return action to show the created job cost lines
+        return {
+            'name': _('Job Cost Lines'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'job.cost.line',
+            'view_mode': 'tree,form',
+            'domain': [('id', 'in', created_lines)],
+            'context': {'res_model': 'job.cost.line'},
+        }
     
     def action_view_requisitions(self):
         requisition_ids = self.line_ids.mapped('requisition_line_ids.requisition_id.id')
@@ -204,6 +301,83 @@ class BOQ(models.Model):
             'view_mode': 'tree,form',
             'domain': [('id', 'in', requisition_ids)],
         }
+    
+    def copy(self, default=None):
+        """Override copy method to handle proper duplication of BOQ"""
+        if default is None:
+            default = {}
+        
+        # Generate new name for the copy
+        if 'name' not in default:
+            default['name'] = _('New')
+        
+        # Update title to indicate it's a copy
+        if 'title' not in default:
+            default['title'] = _("%s (Copy)") % self.title
+        
+        # Reset state and approval fields
+        default.update({
+            'state': 'draft',
+            'approved_by': False,
+            'approved_date': False,
+            'template_id': False,  # Don't copy template reference
+        })
+        
+        # Store original lines and categories
+        original_lines = self.line_ids
+        original_categories = self.category_ids
+        
+        # Debug logging
+        import logging
+        _logger = logging.getLogger(__name__)
+        _logger.info(f"Copying BOQ: {self.name}")
+        _logger.info(f"Original BOQ has {len(original_lines)} lines")
+        
+        # Copy the BOQ record using standard copy
+        new_boq = super(BOQ, self).copy(default)
+        
+        # Clear any automatically copied lines that may not have copied properly
+        if new_boq.line_ids:
+            new_boq.line_ids.unlink()
+        if new_boq.category_ids:
+            new_boq.category_ids.unlink()
+        
+        # Copy categories first
+        category_mapping = {}
+        for category in original_categories:
+            category_vals = {
+                'boq_id': new_boq.id,
+                'sequence': category.sequence,
+                'name': category.name,
+                'description': category.description,
+            }
+            new_category = self.env['boq.category'].create(category_vals)
+            category_mapping[category.id] = new_category.id
+        
+        # Manually copy BOQ lines with proper field copying
+        for line in original_lines:
+            line_vals = {
+                'boq_id': new_boq.id,
+                'sequence': line.sequence,
+                'category_id': category_mapping.get(line.category_id.id) if line.category_id else False,
+                'item_code': line.item_code,
+                'product_id': line.product_id.id if line.product_id else False,
+                'description': line.description,
+                'specification': line.specification,
+                'quantity': line.quantity,
+                'uom_id': line.uom_id.id if line.uom_id else False,
+                'unit_cost': line.unit_cost,
+                'waste_percentage': line.waste_percentage,
+                'contingency_percentage': line.contingency_percentage,
+                'notes': line.notes,
+                # Reset status and don't copy relations
+                'status': 'pending',
+            }
+            new_line = self.env['boq.line'].create(line_vals)
+            _logger.info(f"Created BOQ line copy: {new_line.id}, Product: {new_line.product_id.name if new_line.product_id else 'None'}")
+        
+        _logger.info(f"BOQ copy completed. New BOQ has {len(new_boq.line_ids)} lines")
+        return new_boq
 
 
 class BOQCategory(models.Model):
@@ -237,7 +411,7 @@ class BOQLine(models.Model):
     
     # Item information
     item_code = fields.Char(string='Item Code')
-    product_id = fields.Many2one('product.product', string='Product')
+    product_id = fields.Many2one('product.product', string='Product', required=True)
     description = fields.Text(string='Description', required=True)
     specification = fields.Text(string='Specification')
     
@@ -313,11 +487,15 @@ class BOQLine(models.Model):
     
     def action_create_requisition(self):
         """Create material requisition from this BOQ line"""
+        if not self.product_id:
+            raise ValidationError(_('Please specify a product for this BOQ line before creating a requisition.'))
+        
         requisition_vals = {
             'project_id': self.boq_id.project_id.id,
-            'job_order_id': self.boq_id.job_order_id.id,
+            'job_order_id': self.boq_id.job_order_id.id if self.boq_id.job_order_id else False,
             'boq_id': self.boq_id.id,
             'purpose': f'Material requisition for BOQ line: {self.description}',
+            'required_date': fields.Date.today(),  # Add required date
             'line_ids': [(0, 0, {
                 'product_id': self.product_id.id,
                 'description': self.description,
@@ -336,6 +514,20 @@ class BOQLine(models.Model):
             'view_mode': 'form',
             'res_id': requisition.id,
         }
+    
+    def copy(self, default=None):
+        """Override copy method to ensure proper copying of BOQ lines"""
+        if default is None:
+            default = {}
+        
+        # Ensure all relational fields are properly copied
+        default.update({
+            'requisition_line_ids': [],  # Don't copy requisition relations
+            'cost_line_ids': [],  # Don't copy cost line relations
+            'status': 'pending',  # Reset status
+        })
+        
+        return super(BOQLine, self).copy(default)
 
 
 class BOQTemplate(models.Model):
@@ -374,6 +566,42 @@ class BOQTemplate(models.Model):
             'view_mode': 'form',
             'context': ctx,
         }
+    
+    def copy(self, default=None):
+        """Override copy method to handle proper duplication of BOQ Template"""
+        if default is None:
+            default = {}
+        
+        # Update name to indicate it's a copy
+        if 'name' not in default:
+            default['name'] = _("%s (Copy)") % self.name
+        
+        # Copy the template record
+        new_template = super(BOQTemplate, self).copy(default)
+        
+        # Clear any automatically copied lines that may not have copied properly
+        if new_template.line_ids:
+            new_template.line_ids.unlink()
+        
+        # Manually copy template lines with proper field copying
+        for line in self.line_ids:
+            line_vals = {
+                'template_id': new_template.id,
+                'sequence': line.sequence,
+                'item_code': line.item_code,
+                'product_id': line.product_id.id if line.product_id else False,
+                'description': line.description,
+                'specification': line.specification,
+                'quantity': line.quantity,
+                'uom_id': line.uom_id.id if line.uom_id else False,
+                'unit_cost': line.unit_cost,
+                'waste_percentage': line.waste_percentage,
+                'contingency_percentage': line.contingency_percentage,
+                'notes': line.notes,
+            }
+            self.env['boq.template.line'].create(line_vals)
+        
+        return new_template
 
 
 class BOQTemplateLine(models.Model):
@@ -386,7 +614,7 @@ class BOQTemplateLine(models.Model):
     
     # Item information
     item_code = fields.Char(string='Item Code')
-    product_id = fields.Many2one('product.product', string='Product')
+    product_id = fields.Many2one('product.product', string='Product', required=True)
     description = fields.Text(string='Description', required=True)
     specification = fields.Text(string='Specification')
     
@@ -417,3 +645,11 @@ class BOQTemplateLine(models.Model):
             self.uom_id = self.product_id.uom_id
             self.unit_cost = self.product_id.standard_price
             self.item_code = self.product_id.default_code or ''
+    
+    def copy(self, default=None):
+        """Override copy method to ensure proper copying of BOQ template lines"""
+        if default is None:
+            default = {}
+        
+        # Ensure all fields are properly copied
+        return super(BOQTemplateLine, self).copy(default)

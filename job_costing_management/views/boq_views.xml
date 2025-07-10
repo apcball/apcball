@@ -15,6 +15,9 @@
                     <field name="total_cost" sum="Total Cost"/>
                     <field name="state" decoration-success="state=='approved'" decoration-danger="state=='cancelled'"/>
                     <field name="company_id" groups="base.group_multi_company"/>
+                    <button name="action_duplicate" string="Duplicate" type="object" 
+                            icon="fa-copy" class="btn-secondary" 
+                            title="Create a copy of this BOQ"/>
                 </tree>
             </field>
         </record>
@@ -34,6 +37,8 @@
                                 invisible="state not in ('draft', 'approved')"/>
                         <button name="action_reset_to_draft" string="Reset to Draft" type="object" 
                                 invisible="state != 'cancelled'"/>
+                        <button name="action_duplicate" string="Duplicate" type="object" 
+                                class="btn-secondary"/>
                         <button name="action_create_material_requisition" string="Create Material Requisition" 
                                 type="object" class="oe_highlight" invisible="state not in ('approved', 'locked')"/>
                         <button name="action_create_job_cost_lines" string="Create Job Cost Lines" 
@@ -169,6 +174,14 @@
                     required for construction projects.
                 </p>
             </field>
+        </record>
+
+        <!-- BOQ Duplicate Action -->
+        <record id="action_boq_duplicate" model="ir.actions.act_window">
+            <field name="name">Duplicate BOQ</field>
+            <field name="res_model">boq.boq</field>
+            <field name="view_mode">form</field>
+            <field name="target">current</field>
         </record>
 
         <!-- BOQ Line Tree View -->

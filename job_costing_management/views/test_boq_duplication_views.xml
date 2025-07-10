@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Test BOQ Duplication Wizard Form -->
+        <record id="view_test_boq_duplication_form" model="ir.ui.view">
+            <field name="name">test.boq.duplication.form</field>
+            <field name="model">test.boq.duplication</field>
+            <field name="arch" type="xml">
+                <form string="Test BOQ Duplication">
+                    <group>
+                        <field name="name"/>
+                    </group>
+                    <footer>
+                        <button name="test_duplication" string="Test Duplication" type="object" class="oe_highlight"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Test BOQ Duplication Action -->
+        <record id="action_test_boq_duplication" model="ir.actions.act_window">
+            <field name="name">Test BOQ Duplication</field>
+            <field name="res_model">test.boq.duplication</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <!-- Add test menu item to Materials/BOQ menu -->
+        <menuitem id="menu_test_boq_duplication"
+                  name="Test BOQ Duplication"
+                  parent="menu_materials_boq"
+                  action="action_test_boq_duplication"
+                  sequence="99"/>
+
+    </data>
+</odoo>

@@ -102,9 +102,18 @@ class JobCostSheet(models.Model):
     
     def _compute_purchase_order_count(self):
         for record in self:
-            record.purchase_order_count = self.env['purchase.order.line'].search_count([
+            # Count purchase orders linked through job cost lines
+            po_count_via_lines = self.env['purchase.order.line'].search_count([
                 ('job_cost_line_id', 'in', record.material_cost_ids.ids + record.overhead_cost_ids.ids)
             ])
+            
+            # Count purchase orders linked directly to this job cost sheet
+            po_count_direct = self.env['purchase.order'].search_count([
+                ('job_cost_sheet_id', '=', record.id)
+            ])
+            
+            # Use the higher count (in case some POs are linked both ways)
+            record.purchase_order_count = max(po_count_via_lines, po_count_direct)
     
     def _compute_timesheet_count(self):
         for record in self:
@@ -131,10 +140,19 @@ class JobCostSheet(models.Model):
         self.write({'state': 'draft'})
         
     def action_view_purchase_orders(self):
+        # Get purchase orders linked through job cost lines
         po_line_ids = self.env['purchase.order.line'].search([
             ('job_cost_line_id', 'in', self.material_cost_ids.ids + self.overhead_cost_ids.ids)
         ])
-        po_ids = po_line_ids.mapped('order_id.id')
+        po_ids_via_lines = po_line_ids.mapped('order_id.id')
+        
+        # Get purchase orders linked directly to this job cost sheet
+        po_ids_direct = self.env['purchase.order'].search([
+            ('job_cost_sheet_id', '=', self.id)
+        ]).ids
+        
+        # Combine both sets of IDs
+        all_po_ids = list(set(po_ids_via_lines + po_ids_direct))
         
         # Use our custom purchase order view to avoid approval_state errors
         tree_view = self.env.ref('job_costing_management.view_purchase_order_tree_job_costing', False)
@@ -145,7 +163,7 @@ class JobCostSheet(models.Model):
             'res_model': 'purchase.order',
             'view_mode': 'tree,form',
             'views': [(tree_view.id if tree_view else False, 'tree'), (False, 'form')],
-            'domain': [('id', 'in', po_ids)],
+            'domain': [('id', 'in', all_po_ids)],
             'context': {'res_model': 'purchase.order'},
         }
     

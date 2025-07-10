@@ -72,12 +72,26 @@ class MaterialRequisition(models.Model):
     
     def _compute_purchase_order_count(self):
         for record in self:
-            po_lines = record.line_ids.mapped('purchase_order_line_ids')
-            record.purchase_order_count = len(po_lines.mapped('order_id'))
+            # Since we don't have direct linking, we can search for POs by origin
+            purchase_orders = self.env['purchase.order'].search([('origin', '=', record.name)])
+            record.purchase_order_count = len(purchase_orders)
     
     def _compute_picking_count(self):
         for record in self:
-            record.picking_count = len(record.line_ids.mapped('picking_ids'))
+            # Get all picking IDs from requisition lines
+            picking_ids = record.line_ids.mapped('picking_ids.id')
+            # Also search for pickings by origin
+            pickings_by_origin = self.env['stock.picking'].search([('origin', '=', record.name)])
+            picking_ids.extend(pickings_by_origin.ids)
+            # Remove duplicates
+            picking_ids = list(set(picking_ids))
+            
+            # Debug: Log the picking count
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.info(f"Material Requisition {record.name}: Computed {len(picking_ids)} pickings")
+            
+            record.picking_count = len(picking_ids)
     
     def action_submit(self):
         if not self.line_ids:
@@ -108,9 +122,14 @@ class MaterialRequisition(models.Model):
         self.write({'state': 'draft'})
     
     def action_create_purchase_order(self):
+        # Check if there are any purchase lines
+        purchase_lines = self.line_ids.filtered(lambda l: l.requisition_action == 'purchase' and l.vendor_id)
+        if not purchase_lines:
+            raise ValidationError(_('No purchase lines found with vendors assigned.'))
+        
         # Group lines by vendor
         vendor_lines = {}
-        for line in self.line_ids.filtered(lambda l: l.requisition_action == 'purchase' and l.vendor_id):
+        for line in purchase_lines:
             if line.vendor_id not in vendor_lines:
                 vendor_lines[line.vendor_id] = []
             vendor_lines[line.vendor_id].append(line)
@@ -120,7 +139,7 @@ class MaterialRequisition(models.Model):
             po_vals = {
                 'partner_id': vendor.id,
                 'origin': self.name,
-                'material_requisition_id': self.id,
+                'material_requisition_id': self.id,  # Link to material requisition
                 'order_line': []
             }
             
@@ -131,13 +150,16 @@ class MaterialRequisition(models.Model):
                     'product_qty': line.quantity,
                     'product_uom': line.uom_id.id,
                     'price_unit': line.estimated_cost,
-                    'material_requisition_line_id': line.id,
+                    'material_requisition_line_id': line.id,  # Link to requisition line
                 }
                 po_vals['order_line'].append((0, 0, po_line_vals))
             
             if po_vals['order_line']:
-                po = self.env['purchase.order'].create(po_vals)
-                purchase_orders.append(po.id)
+                try:
+                    po = self.env['purchase.order'].create(po_vals)
+                    purchase_orders.append(po.id)
+                except Exception as e:
+                    raise ValidationError(_('Error creating purchase order for vendor %s: %s') % (vendor.name, str(e)))
         
         if purchase_orders:
             self.write({'state': 'ordered'})
@@ -158,15 +180,54 @@ class MaterialRequisition(models.Model):
     def action_create_picking(self):
         internal_lines = self.line_ids.filtered(lambda l: l.requisition_action == 'internal')
         if not internal_lines:
-            return
+            raise ValidationError(_('No internal transfer lines found.'))
+        
+        # Get destination location
+        dest_location = None
+        if hasattr(self.employee_id, 'dest_location_id') and self.employee_id.dest_location_id:
+            dest_location = self.employee_id.dest_location_id.id
+        elif hasattr(self.department_id, 'dest_location_id') and self.department_id.dest_location_id:
+            dest_location = self.department_id.dest_location_id.id
+        else:
+            # Default to stock location if no specific destination is set
+            try:
+                dest_location = self.env.ref('stock.stock_location_stock').id
+            except ValueError:
+                # If stock location doesn't exist, find the first available location
+                locations = self.env['stock.location'].search([('usage', '=', 'internal')], limit=1)
+                if locations:
+                    dest_location = locations[0].id
+                else:
+                    raise ValidationError(_('No destination location found. Please configure a destination location for the employee or department.'))
+        
+        # Get source location
+        try:
+            source_location = self.env.ref('stock.stock_location_stock').id
+        except ValueError:
+            # If stock location doesn't exist, find the first available location
+            locations = self.env['stock.location'].search([('usage', '=', 'internal')], limit=1)
+            if locations:
+                source_location = locations[0].id
+            else:
+                raise ValidationError(_('No source location found.'))
+        
+        # Get internal picking type
+        try:
+            picking_type = self.env.ref('stock.picking_type_internal').id
+        except ValueError:
+            # If default internal picking type doesn't exist, find one
+            picking_types = self.env['stock.picking.type'].search([('code', '=', 'internal')], limit=1)
+            if picking_types:
+                picking_type = picking_types[0].id
+            else:
+                raise ValidationError(_('No internal picking type found.'))
         
         # Create internal transfer
         picking_vals = {
-            'picking_type_id': self.env.ref('stock.picking_type_internal').id,
-            'location_id': self.env.ref('stock.stock_location_stock').id,
-            'location_dest_id': self.employee_id.dest_location_id.id or self.department_id.dest_location_id.id,
+            'picking_type_id': picking_type,
+            'location_id': source_location,
+            'location_dest_id': dest_location,
             'origin': self.name,
-            'material_requisition_id': self.id,
             'move_ids': []
         }
         
@@ -176,39 +237,65 @@ class MaterialRequisition(models.Model):
                 'product_id': line.product_id.id,
                 'product_uom_qty': line.quantity,
                 'product_uom': line.uom_id.id,
-                'location_id': picking_vals['location_id'],
-                'location_dest_id': picking_vals['location_dest_id'],
-                'material_requisition_line_id': line.id,
+                'location_id': source_location,
+                'location_dest_id': dest_location,
+                # Don't set material_requisition_line_id as it doesn't exist in stock.move
             }
             picking_vals['move_ids'].append((0, 0, move_vals))
         
         if picking_vals['move_ids']:
             picking = self.env['stock.picking'].create(picking_vals)
+            
+            # Link the picking to the requisition lines
+            for line in internal_lines:
+                line.picking_ids = [(4, picking.id)]
+            
             picking.action_confirm()
             picking.action_assign()
+            
+            # Return action to show the created picking
+            return {
+                'name': _('Internal Transfer'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'stock.picking',
+                'res_id': picking.id,
+                'view_mode': 'form',
+                'target': 'current',
+            }
+        else:
+            raise ValidationError(_('No move lines created for internal transfer.'))
     
     def action_received(self):
         self.write({'state': 'received'})
     
     def action_view_purchase_orders(self):
-        po_lines = self.line_ids.mapped('purchase_order_line_ids')
-        po_ids = po_lines.mapped('order_id.id')
+        # Search for purchase orders by origin since we don't have direct linking
+        purchase_orders = self.env['purchase.order'].search([('origin', '=', self.name)])
+        po_ids = purchase_orders.ids
         
-        # Use our custom purchase order view to avoid approval_state errors
-        tree_view = self.env.ref('job_costing_management.view_purchase_order_tree_job_costing', False)
-        
+        # Use standard purchase order views
         return {
             'name': 'Purchase Orders',
             'type': 'ir.actions.act_window',
             'res_model': 'purchase.order',
             'view_mode': 'tree,form',
-            'views': [(tree_view.id if tree_view else False, 'tree'), (False, 'form')],
             'domain': [('id', 'in', po_ids)],
             'context': {'res_model': 'purchase.order'},
         }
     
     def action_view_pickings(self):
+        # Get all picking IDs from requisition lines
         picking_ids = self.line_ids.mapped('picking_ids.id')
+        # Also search for pickings by origin
+        pickings_by_origin = self.env['stock.picking'].search([('origin', '=', self.name)])
+        picking_ids.extend(pickings_by_origin.ids)
+        # Remove duplicates
+        picking_ids = list(set(picking_ids))
+        
+        # Debug: Log the picking IDs
+        import logging
+        _logger = logging.getLogger(__name__)
+        _logger.info(f"Material Requisition {self.name}: Found {len(picking_ids)} pickings: {picking_ids}")
         
         return {
             'name': 'Internal Transfers',
@@ -216,6 +303,7 @@ class MaterialRequisition(models.Model):
             'res_model': 'stock.picking',
             'view_mode': 'tree,form',
             'domain': [('id', 'in', picking_ids)],
+            'context': {'default_picking_type_code': 'internal'},
         }
 
 
@@ -248,8 +336,8 @@ class MaterialRequisitionLine(models.Model):
                                domain=[('is_company', '=', True), ('supplier_rank', '>', 0)])
     
     # Relations
-    purchase_order_line_ids = fields.One2many('purchase.order.line', 'material_requisition_line_id', 
-                                             string='Purchase Order Lines')
+    # purchase_order_line_ids = fields.One2many('purchase.order.line', 'material_requisition_line_id', 
+    #                                          string='Purchase Order Lines')
     picking_ids = fields.Many2many('stock.picking', string='Pickings')
     boq_line_id = fields.Many2one('boq.line', string='BOQ Line')
     

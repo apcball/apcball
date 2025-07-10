@@ -15,8 +15,24 @@
                     <field name="currency_id" invisible="1"/>
                     <field name="state"/>
                     <field name="material_requisition_id"/>
+                    <field name="job_cost_sheet_id"/>
                     <field name="project_id"/>
                 </tree>
+            </field>
+        </record>
+
+        <!-- Purchase Order Form View Extension -->
+        <record id="view_purchase_order_form_job_costing" model="ir.ui.view">
+            <field name="name">purchase.order.form.job.costing</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase.purchase_order_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_ref']" position="after">
+                    <field name="material_requisition_id" readonly="1"/>
+                    <field name="job_cost_sheet_id" readonly="1"/>
+                    <field name="project_id" readonly="1"/>
+                    <field name="job_order_id" readonly="1"/>
+                </xpath>
             </field>
         </record>
 
