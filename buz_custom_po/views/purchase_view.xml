@@ -6,62 +6,17 @@
         <field name="model">purchase.order</field>
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
-            <!-- ปุ่มสำหรับการอนุมัติ -->
-            <button name="button_confirm" position="after">
-                <button name="approve_l1" 
-                        string="Approve (L1)" 
-                        type="object" 
-                        groups="buz_custom_po.group_purchase_approval_l1"
-                        invisible="state != 'waiting_l1'"
-                        data-hotkey="l"
-                        class="oe_highlight"/>
-                <button name="approve_l2" 
-                        string="Approve (L2)" 
-                        type="object" 
-                        groups="buz_custom_po.group_purchase_approval_l2"
-                        invisible="state != 'waiting_l2'"
-                        data-hotkey="k"
-                        class="oe_highlight"/>
-                <button name="action_reject" 
-                        string="Reject" 
-                        type="object" 
-                        groups="buz_custom_po.group_purchase_approval_l1,buz_custom_po.group_purchase_approval_l2"
-                        invisible="state not in ('waiting_l1', 'waiting_l2')"
-                        data-hotkey="x"
-                        class="btn btn-secondary"/>
-            </button>
-
-            <!-- แสดงสถานะการอนุมัติ -->
-            <field name="state" position="after">
-                <field name="approval_state" 
-                       widget="badge"
-                       decoration-success="approval_state == 'approved'"
-                       decoration-danger="approval_state == 'rejected'"
-                       decoration-info="approval_state == 'pending'"/>
+            <!-- เพิ่มฟิลด์ข้อมูลเพิ่มเติม -->
+            <field name="partner_id" position="after">
+                <field name="partner_contact_id"/>
+                <field name="employee_contact_id"/>
             </field>
-
-            <!-- เพิ่มแท็บข้อมูลการอนุมัติ -->
-            <notebook position="inside">
-                <page string="Approval Information" name="approval_info">
-                    <group>
-                        <group string="Level 1 Approval">
-                            <field name="l1_approved_by" readonly="1"/>
-                            <field name="l1_approved_date" readonly="1"/>
-                        </group>
-                        <group string="Level 2 Approval">
-                            <field name="l2_approved_by" readonly="1"/>
-                            <field name="l2_approved_date" readonly="1"/>
-                        </group>
-                    </group>
-                    <group invisible="approval_state != 'rejected'" name="rejection_info">
-                        <group string="Rejection Information">
-                            <field name="rejection_reason" readonly="1"/>
-                            <field name="rejection_date" readonly="1"/>
-                            <field name="rejected_by" readonly="1"/>
-                        </group>
-                    </group>
-                </page>
-            </notebook>
+            
+            <field name="currency_id" position="after">
+                <field name="criteria"/>
+                <field name="department_id"/>
+                <field name="requested_by_id"/>
+            </field>
         </field>
     </record>
 
@@ -71,26 +26,11 @@
         <field name="model">purchase.order</field>
         <field name="inherit_id" ref="purchase.view_purchase_order_filter"/>
         <field name="arch" type="xml">
-            <xpath expr="//filter[@name='draft']" position="after">
-                <filter string="Waiting L1 Approval" 
-                        name="waiting_l1" 
-                        domain="[('state', '=', 'waiting_l1')]"/>
-                <filter string="Waiting L2 Approval" 
-                        name="waiting_l2" 
-                        domain="[('state', '=', 'waiting_l2')]"/>
-                <separator/>
-                <filter string="Approved" 
-                        name="approved" 
-                        domain="[('approval_state', '=', 'approved')]"/>
-                <filter string="Rejected" 
-                        name="rejected" 
-                        domain="[('approval_state', '=', 'rejected')]"/>
-            </xpath>
-            <xpath expr="//group" position="inside">
-                <filter string="Approval Status" 
-                        name="group_by_approval_status" 
-                        context="{'group_by': 'approval_state'}"/>
-            </xpath>
+            <field name="partner_id" position="after">
+                <field name="criteria"/>
+                <field name="department_id"/>
+                <field name="requested_by_id"/>
+            </field>
         </field>
     </record>
 
@@ -100,12 +40,9 @@
         <field name="model">purchase.order</field>
         <field name="inherit_id" ref="purchase.purchase_order_tree"/>
         <field name="arch" type="xml">
-            <field name="state" position="after">
-                <field name="approval_state" 
-                       widget="badge"
-                       decoration-success="approval_state == 'approved'"
-                       decoration-danger="approval_state == 'rejected'"
-                       decoration-info="approval_state == 'pending'"/>
+            <field name="partner_id" position="after">
+                <field name="criteria"/>
+                <field name="department_id"/>
             </field>
         </field>
     </record>

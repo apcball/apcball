@@ -1,27 +1,25 @@
 {
     'name': 'BUZ Custom Purchase Order',
-    'version': '17.0.1.0.0',
+    'version': '17.0.3.0.0',
     'category': 'Purchase',
-    'summary': 'Custom Purchase Order with Approval Workflow and Reports',
+    'summary': 'Custom Purchase Order with Enhanced Features and Reports',
     'description': """
         Custom module for purchase order management:
-        - Two level approval process based on amount
-        - Level 1 approval for amount <= 50000
-        - Level 2 approval for amount > 50000
+        - Enhanced purchase order forms with additional fields
         - Custom PDF reports with discount calculation
         - Multi-language support (Thai/English)
+        - Thai text conversion for amounts
+        - VAT detection functionality
     """,
-    'depends': ['base', 'purchase', 'mail'],
+    'depends': ['base', 'purchase', 'mail', 'hr'],
     'data': [
-        'security/security.xml',
-        'security/ir.model.access.csv',
         'data/mail_template.xml',
         'views/purchase_view.xml',
-        'views/reject_wizard_view.xml',
         'reports/purchase_order_report.xml',
         'reports/purchase_order_report_eng.xml',
         'reports/purchase_order_test.xml',
         'reports/purchase_agreements_report.xml',
+        'reports/agreement_test.xml',
         'views/report_menu.xml',
     ],
     'assets': {

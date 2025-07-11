@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Define Paper Format -->
+    <record id="paperformat_agreement_test" model="report.paperformat">
+        <field name="name">Agreement Test A4 </field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">8</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <template id="report_agreement_test">
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs" t-as="o">
+                <div class="page">
+
+                    <!-- Header -->
+                    <div class="row mb-2">
+                        <div class="col-8">
+                            <div style="font-size: 16px;">
+                                <div class="mb-1"><strong>MOGEN CO., LTD. (HEAD OFFICE)</strong></div>
+                                <div style="font-size: 14px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+                                <div style="font-size: 14px;">Tax ID: 0105547076103</div>
+                                <div style="font-size: 14px;">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" 
+                                 style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                        </div>
+                    </div>
+
+                     <!-- Document Title -->
+                     <div class="row mb-2">
+                        <div class="col-12 text-center">
+                             <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 20px; margin-top: 10px;">PURCHASE ORDER</h2>
+                        </div>
+                     </div>
+
+                     <!-- Document Info -->
+                     <div class="row mb-2">
+                        <div class="col-8">
+                            <p style="margin-bottom: 0; margin-top: 20px; font-size: 14px;">Please attach this purchase order when delivering goods and billing</p>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-end" style="font-size: 14px;">
+                                <div>NO.: <strong><span t-field="o.name"/></strong></div>
+                                <div>DATE: <strong><span t-field="o.ordering_date" t-options="{'widget': 'date', 'format': 'dd/MM/yyyy'}"/></strong></div>
+                            </div>
+                        </div>
+                     </div>
+
+
+
+
+
+
+                </div>     
+            </t>
+        </t>
+    </template>
+                    
+
+    <record id="action_report_agreement_test" model="ir.actions.report">
+        <field name="name">Purchase Agreement </field>
+        <field name="model">purchase.requisition</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_custom_po.report_agreement_test</field>
+        <field name="report_file">buz_custom_po.report_agreement_test</field>
+        <field name="print_report_name">'Purchase Agreement - %s' % object.name</field>
+        <field name="binding_model_id" ref="purchase_requisition.model_purchase_requisition"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_agreement_test"/>
+    </record>
+</odoo>

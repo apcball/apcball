@@ -104,9 +104,9 @@
                         </div>
                     </div>
 
-                    <div style="border: 1px solid #000; padding: 10px; font-size: 16px;">
+                     <div style="border: 1px solid #000; padding: 10px; font-size: 16px;">
                         <div style="display: flex;">
-                          <!-- ซ้าย 50% -->
+                         <!-- ซ้าย 50% -->
                           <div style="width: 50%; padding-right: 10px; border-right: 1px solid #000;">
                             <!-- Vendor -->
                             <div style="margin-bottom: 5px;">
