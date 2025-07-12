@@ -140,6 +140,11 @@
                     <field name="phone"/>
                     <field name="email"/>
                     
+                    <!-- Default filters -->
+                    <filter string="Subcontractors" name="is_subcontractor" 
+                            domain="[('is_subcontractor', '=', True)]"/>
+                    
+                    <separator/>
                     <filter string="Companies" name="companies" 
                             domain="[('subcontractor_type', '=', 'company')]"/>
                     <filter string="Individuals" name="individuals" 
@@ -178,7 +183,7 @@
         <record id="action_subcontractor" model="ir.actions.act_window">
             <field name="name">Subcontractors</field>
             <field name="res_model">res.partner</field>
-            <field name="view_mode">tree,form,search</field>
+            <field name="view_mode">tree,form</field>
             <field name="domain">[('is_subcontractor', '=', True)]</field>
             <field name="context">{
                 'default_is_subcontractor': True, 
@@ -190,16 +195,23 @@
                    eval="[(5, 0, 0),
                           (0, 0, {'view_mode': 'tree', 'view_id': ref('view_subcontractor_tree')}),
                           (0, 0, {'view_mode': 'form', 'view_id': ref('view_subcontractor_form')})]"/>
-            <field name="search_view_id" ref="view_subcontractor_search"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Add your first subcontractor!
                 </p>
                 <p>
-                    Create and manage subcontractors for your construction projects.
-                    Track their specializations, ratings, and project assignments.
+                    หากคุณเพิ่งรัน SQL Fix แล้วไม่เห็นข้อมูล ให้ลอง refresh หน้าเว็บ
                 </p>
             </field>
+        </record>
+
+        <!-- Simple Subcontractor Action (No specific views) -->
+        <record id="action_subcontractor_simple" model="ir.actions.act_window">
+            <field name="name">All Subcontractors (Simple)</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('is_subcontractor', '=', True)]</field>
+            <field name="context">{}</field>
         </record>
 
         <!-- Action to create new subcontractor -->
@@ -219,18 +231,175 @@
 
         <!-- Debug Action for Subcontractors -->
         <record id="action_debug_subcontractors" model="ir.actions.server">
-            <field name="name">Debug Subcontractors</field>
+            <field name="name">ตรวจสอบสถานะ Subcontractors</field>
             <field name="model_id" ref="base.model_res_partner"/>
             <field name="state">code</field>
-            <field name="code">action = model.action_debug_subcontractors()</field>
+            <field name="code">action = model.check_subcontractor_status()</field>
+        </record>
+
+        <!-- Action to create test subcontractors -->
+        <record id="action_create_test_subcontractors" model="ir.actions.server">
+            <field name="name">สร้าง Subcontractors ทดสอบ</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="state">code</field>
+            <field name="code">action = model.create_test_subcontractors()</field>
         </record>
 
         <!-- Action to fix subcontractor records -->
         <record id="action_fix_subcontractor_records" model="ir.actions.server">
-            <field name="name">Fix Subcontractor Records</field>
+            <field name="name">แก้ไขข้อมูล Subcontractor</field>
             <field name="model_id" ref="base.model_res_partner"/>
             <field name="state">code</field>
-            <field name="code">action = model.action_fix_subcontractor_records()</field>
+            <field name="code">action = model.fix_existing_subcontractor_data()</field>
+        </record>
+
+        <!-- Action to refresh subcontractor list -->
+        <record id="action_refresh_subcontractor_list" model="ir.actions.server">
+            <field name="name">รีเฟรช รายการ Subcontractor</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="state">code</field>
+            <field name="code">action = model.action_refresh_subcontractor_list()</field>
+        </record>
+
+        <!-- Emergency Action to fix all subcontractor flags -->
+        <record id="action_emergency_fix_subcontractors" model="ir.actions.server">
+            <field name="name">🚨 Emergency Fix - แก้ไขทั้งหมด</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="state">code</field>
+            <field name="code">
+# Emergency fix for all subcontractor data
+partners_with_data = env['res.partner'].search([
+    '|', '|', '|', '|', '|',
+    ('trade_license', '!=', False),
+    ('subcontractor_type', '!=', False),
+    ('contact_person', '!=', False),
+    ('name', 'ilike', 'subcontractor'),
+    ('name', 'ilike', 'contractor'),
+    ('name', 'ilike', 'construction')
+])
+
+fixed_count = 0
+for partner in partners_with_data:
+    if not partner.is_subcontractor:
+        partner.write({
+            'is_subcontractor': True,
+            'supplier_rank': max(partner.supplier_rank, 1),
+            'subcontractor_type': partner.subcontractor_type or ('company' if partner.is_company else 'individual')
+        })
+        fixed_count += 1
+
+# Also fix the specific ones we know about
+specific_names = [
+    'Bangkok Construction Co., Ltd.',
+    'Thai Electric Service', 
+    'Kittisak Plumbing Expert',
+    'Sub test1'
+]
+
+for name in specific_names:
+    partner = env['res.partner'].search([('name', '=', name)], limit=1)
+    if partner and not partner.is_subcontractor:
+        partner.write({
+            'is_subcontractor': True,
+            'supplier_rank': max(partner.supplier_rank, 1),
+            'subcontractor_type': 'company' if partner.is_company else 'individual'
+        })
+        fixed_count += 1
+
+total_subcontractors = env['res.partner'].search_count([('is_subcontractor', '=', True)])
+
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'title': '🚨 Emergency Fix Complete',
+        'message': f'Fixed {fixed_count} partners.\nTotal subcontractors now: {total_subcontractors}',
+        'type': 'success',
+        'sticky': True,
+    }
+}
+            </field>
+        </record>
+
+        <!-- Emergency SQL Fix Action -->
+        <record id="action_emergency_sql_fix" model="ir.actions.server">
+            <field name="name">🚨 Emergency SQL Fix</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="state">code</field>
+            <field name="code">action = model.emergency_sql_fix_subcontractors()</field>
+        </record>
+
+        <!-- Database Check Action -->
+        <record id="action_check_database_constraints" model="ir.actions.server">
+            <field name="name">🔍 ตรวจสอบ Database</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="state">code</field>
+            <field name="code">action = model.check_database_constraints()</field>
+        </record>
+
+        <!-- Debug Tree View to see all partners with subcontractor fields -->
+        <record id="view_debug_partner_tree" model="ir.ui.view">
+            <field name="name">debug.partner.tree</field>
+            <field name="model">res.partner</field>
+            <field name="arch" type="xml">
+                <tree string="All Partners (Debug)" create="1" edit="1" delete="1">
+                    <field name="name"/>
+                    <field name="is_subcontractor" string="Is Subcontractor?"/>
+                    <field name="supplier_rank" string="Supplier Rank"/>
+                    <field name="subcontractor_type"/>
+                    <field name="trade_license"/>
+                    <field name="phone"/>
+                    <field name="email"/>
+                    <button name="action_set_as_subcontractor" type="object"
+                            string="Make Subcontractor" 
+                            icon="fa-wrench"
+                            invisible="is_subcontractor == True"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Quick Action to Show All Partners with Subcontractor Context -->
+        <record id="action_all_partners_as_subcontractors" model="ir.actions.act_window">
+            <field name="name">All Partners (Debug View)</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[]</field>
+            <field name="context">{}</field>
+            <field name="view_ids" 
+                   eval="[(5, 0, 0),
+                          (0, 0, {'view_mode': 'tree', 'view_id': ref('view_debug_partner_tree')}),
+                          (0, 0, {'view_mode': 'form', 'view_id': ref('view_subcontractor_form')})]"/>
+        </record>
+
+        <!-- Simple Debug Action -->
+        <record id="action_simple_debug" model="ir.actions.act_window">
+            <field name="name">Simple Debug View</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('is_subcontractor', '=', True)]</field>
+            <field name="context">{
+                'create': True,
+                'edit': True,
+                'delete': True
+            }</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No subcontractors found!
+                </p>
+                <p>
+                    If you recently ran SQL Fix and see no data here,
+                    there might be a cache or view issue.
+                </p>
+            </field>
+        </record>
+
+        <!-- Emergency Reset Action -->
+        <record id="action_emergency_reset" model="ir.actions.act_window">
+            <field name="name">🚨 Emergency Reset Check</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">tree</field>
+            <field name="domain">[('supplier_rank', '>', 0)]</field>
+            <field name="context">{}</field>
         </record>
 
     </data>
