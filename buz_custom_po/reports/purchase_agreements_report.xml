@@ -104,72 +104,67 @@
                         </div>
                     </div>
 
-                     <div style="border: 1px solid #000; padding: 10px; font-size: 16px;">
-                        <div style="display: flex;">
-                         <!-- ซ้าย 50% -->
-                          <div style="width: 50%; padding-right: 10px; border-right: 1px solid #000;">
-                            <!-- Vendor -->
-                            <div style="margin-bottom: 5px;">
-                              <strong>Vendor:</strong>
-                              <span t-field="o.partner_id.name"/>
+                   
+                    <div style="border: 1px solid #000; font-size: 14px; margin-top: 15px;">
+                        <div style="display: flex; width: 100%;">
+                            <!-- ซ้าย 50% -->
+                            <div style="width: 50%; display: flex; flex-direction: column;">
+                                <!-- Vendor -->
+                                <div style="padding: 6px;">
+                                    <strong>Vendor:</strong><br/>
+                                    <span t-esc="o.partner_id.name"/>
+                                </div>
+                                <!-- Address -->
+                                <div style="padding: 6px;">
+                                    <strong>Address:</strong><br/>
+                                    <span></span>
+                                </div>
                             </div>
-                            <!-- Address -->
-                            <div>
-                              <strong>Address:</strong>
-                              <span t-field="o.partner_id.contact_address" style="white-space: pre-line;"/>
+                    
+                            <!-- ขวา 50% -->
+                            <div style="width: 50%; display: flex; flex-direction: column;">
+                                <!-- แถวบน: 60 / 40 -->
+                                <div style="display: flex;">
+                                    <!-- Place of Delivery -->
+                                    <div style="width: 60%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 6px;">
+                                        <strong>Place of Delivery:</strong>
+                                        Mogen (Thailand) Co. Ltd<br/>
+                                        9 Moo 12, Beungkhumproy,<br/>
+                                        Lumlukka, Pathum Thani 12150
+                                    </div>
+                                    <!-- Confirm Order -->
+                                    <div style="width: 40%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 6px;">
+                                        <strong>Confirm order from supplier</strong><br/>
+                                        Date:
+                                    </div>
+                                </div>
+                    
+                                <!-- แถวล่าง: 25 / 25 / 15 / 35 -->
+                                <div style="display: flex;">
+                                    <!-- Contact Person -->
+                                    <div style="width: 25%; border-left: 1px solid #000; padding: 6px; border-top: 1px solid #000;">
+                                        <strong>Contact Person:</strong><br/>
+                                        <span></span>
+                                    </div>
+                                    <!-- Payment Term -->
+                                    <div style="width: 25%; border-left: 1px solid #000; padding: 6px; border-top: 1px solid #000;">
+                                        <strong>Payment Term:</strong><br/>
+                                        <span></span>
+                                    </div>
+                                    <!-- Criteria -->
+                                    <div style="width: 15%; border-left: 1px solid #000; padding: 6px; border-top: 1px solid #000;">
+                                        <strong>Criteria:</strong><br/>
+                                        <span></span>
+                                    </div>
+                                    <!-- Ref. Number -->
+                                    <div style="width: 35%; border-left: 1px solid #000; padding: 6px; border-top: 1px solid #000;">
+                                        <strong>Ref. Number:</strong><br/>
+                                        <span></span>
+                                    </div>
+                                </div>
                             </div>
-                          </div>
-                      
-                          <!-- ขวา 50% -->
-                          <div style="width: 50%; padding-left: 10px;">
-                            <!-- บรรทัดแรกของฝั่งขวา -->
-                            <div style="display: flex; margin-bottom: 5px;">
-                              <!-- 60% -->
-                              <div style="width: 60%; border-right: 1px solid #000; padding-right: 10px;">
-                                <strong>Place of delivery:</strong><br/>
-                                Mogen (Thailand) Co. Ltd<br/>
-                                9 Moo 12, Bueng Khum Proi, A. Lumlukka,<br/>
-                                Pathum Thani 12150
-                              </div>
-                              <!-- 40% -->
-                              <div style="width: 40%; padding-left: 10px;">
-                                <strong>Confirm order from supplier</strong><br/>
-                                Date of:
-                                <span t-field="o.date_order"/>
-                              </div>
-                            </div>
-                      
-                            <!-- บรรทัดที่สองของฝั่งขวา -->
-                            <div style="display: flex; border-top: 1px solid #000; padding-top: 5px;">
-                              <!-- Contact Person -->
-                              <div style="width: 25%; border-right: 1px solid #000; padding-right: 5px;">
-                                <strong>Contact Person:</strong><br/>
-                                <span t-field="o.employee_contact_id.name" t-options="{'default': '-'}"/>
-                              </div>
-                              <!-- Payment Term -->
-                              <div style="width: 25%; border-right: 1px solid #000; padding-left: 5px; padding-right: 5px;">
-                                <strong>Payment Term:</strong><br/>
-                                <span t-field="o.payment_term_id.name" t-options="{'default': '-'}"/>
-                              </div>
-                              <!-- Criteria -->
-                              <div style="width: 15%; border-right: 1px solid #000; padding-left: 5px; padding-right: 5px;">
-                                <strong>Criteria:</strong><br/>
-                                <span t-field="o.criteria" t-options="{'default': '-'}"/>
-                              </div>
-                              <!-- Ref. Number -->
-                              <div style="width: 25%; padding-left: 5px;">
-                                <strong>Ref. Number:</strong><br/>
-                                <span t-field="o.client_order_ref" t-options="{'default': '-'}"/>
-                              </div>
-                            </div>
-                          </div>
                         </div>
-                      </div>
-                      
-
-                  
-             
-
+                    </div>
 
 
                       </div>

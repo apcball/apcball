@@ -19,7 +19,6 @@
         'reports/purchase_order_report_eng.xml',
         'reports/purchase_order_test.xml',
         'reports/purchase_agreements_report.xml',
-        'reports/agreement_test.xml',
         'views/report_menu.xml',
     ],
     'assets': {

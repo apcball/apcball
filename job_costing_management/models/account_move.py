@@ -67,22 +67,27 @@ class AccountMoveLine(models.Model):
             analytic_account_id = list(result.analytic_distribution.keys())[0] if result.analytic_distribution else False
             
             if analytic_account_id:
-                analytic_account = self.env['account.analytic.account'].browse(int(analytic_account_id))
-                
-                # Find related job cost sheet
-                cost_sheet = self.env['job.cost.sheet'].search([
-                    ('analytic_account_id', '=', analytic_account.id),
-                    ('state', '=', 'approved')
-                ], limit=1)
-                
-                if cost_sheet and result.product_id:
-                    # Find matching job cost line
-                    matching_cost_line = cost_sheet.material_cost_ids.filtered(
-                        lambda l: l.product_id == result.product_id
-                    )
-                    if matching_cost_line:
-                        _logger.info(f"Linking invoice line to job cost line via analytic account: {matching_cost_line[0].id}")
-                        result.job_cost_line_id = matching_cost_line[0].id
+                try:
+                    # Remove any commas and convert to integer
+                    clean_id = str(analytic_account_id).replace(',', '')
+                    analytic_account = self.env['account.analytic.account'].browse(int(clean_id))
+                    
+                    # Find related job cost sheet
+                    cost_sheet = self.env['job.cost.sheet'].search([
+                        ('analytic_account_id', '=', analytic_account.id),
+                        ('state', '=', 'approved')
+                    ], limit=1)
+                    
+                    if cost_sheet and result.product_id:
+                        # Find matching job cost line
+                        matching_cost_line = cost_sheet.material_cost_ids.filtered(
+                            lambda l: l.product_id == result.product_id
+                        )
+                        if matching_cost_line:
+                            _logger.info(f"Linking invoice line to job cost line via analytic account: {matching_cost_line[0].id}")
+                            result.job_cost_line_id = matching_cost_line[0].id
+                except Exception as e:
+                    _logger.error(f"Error linking invoice line to job cost line: {e}")
         
         return result
     

@@ -14,9 +14,12 @@ class PurchaseOrder(models.Model):
     payment_term_id = fields.Many2one('account.payment.term', string="Payment Term")
     date_order = fields.Datetime(string="Order Date")
     date_planned = fields.Date(string='Planned Date', default=fields.Date.context_today)
-    
+    vendor_id = fields.Many2one('res.partner', string='Vendor')  # กรณียังไม่มี vendor_id
+    partner_id = fields.Many2one('res.partner', string='Vendor', required=True)
+    purchase_ids = fields.One2many('purchase.order', 'requisition_id', string="Purchase Orders")
     department_id = fields.Many2one('hr.department', string='Department')
-    
+    requisition_id = fields.Many2one('purchase.requisition', string='Purchase Agreement')
+
     department_name = fields.Char(
         string='Department Name',
         compute='_compute_department_name',
