@@ -10,6 +10,12 @@ class AccountAnalyticLine(models.Model):
     job_order_id = fields.Many2one('job.order', string='Job Order')
     project_id = fields.Many2one('project.project', string='Project', related='task_id.project_id', store=True)
     
+    @api.onchange('job_order_id')
+    def _onchange_job_order_id(self):
+        """When job order changes, update project"""
+        if self.job_order_id and self.job_order_id.project_id:
+            self.project_id = self.job_order_id.project_id.id
+    
     @api.onchange('account_id')
     def _onchange_account_id(self):
         if self.account_id:

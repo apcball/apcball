@@ -110,18 +110,25 @@ class JobCostSheet(models.Model):
     
     def _compute_purchase_order_count(self):
         for record in self:
-            # Count purchase orders linked through job cost lines
-            po_count_via_lines = self.env['purchase.order.line'].search_count([
-                ('job_cost_line_id', 'in', record.material_cost_ids.ids + record.overhead_cost_ids.ids)
-            ])
+            # Get purchase orders linked through job cost lines
+            all_cost_line_ids = record.material_cost_ids.ids + record.overhead_cost_ids.ids
+            if all_cost_line_ids:
+                po_line_ids = self.env['purchase.order.line'].search([
+                    ('job_cost_line_id', 'in', all_cost_line_ids),
+                    ('job_cost_line_id', '!=', False)  # Filter out empty job_cost_line_id
+                ])
+                po_ids_via_lines = set(po_line_ids.mapped('order_id.id'))
+            else:
+                po_ids_via_lines = set()
             
-            # Count purchase orders linked directly to this job cost sheet
-            po_count_direct = self.env['purchase.order'].search_count([
+            # Get purchase orders linked directly to this job cost sheet
+            po_ids_direct = set(self.env['purchase.order'].search([
                 ('job_cost_sheet_id', '=', record.id)
-            ])
+            ]).ids)
             
-            # Use the higher count (in case some POs are linked both ways)
-            record.purchase_order_count = max(po_count_via_lines, po_count_direct)
+            # Combine both sets and get unique count
+            all_po_ids = po_ids_via_lines.union(po_ids_direct)
+            record.purchase_order_count = len(all_po_ids)
     
     def _compute_timesheet_count(self):
         for record in self:
@@ -131,9 +138,20 @@ class JobCostSheet(models.Model):
     
     def _compute_invoice_count(self):
         for record in self:
-            record.invoice_count = self.env['account.move.line'].search_count([
-                ('job_cost_line_id', 'in', record.material_cost_ids.ids + record.labour_cost_ids.ids + record.overhead_cost_ids.ids)
-            ])
+            # Get invoice lines linked to job cost lines
+            all_cost_line_ids = record.material_cost_ids.ids + record.labour_cost_ids.ids + record.overhead_cost_ids.ids
+            if all_cost_line_ids:
+                invoice_line_ids = self.env['account.move.line'].search([
+                    ('job_cost_line_id', 'in', all_cost_line_ids),
+                    ('job_cost_line_id', '!=', False)  # Filter out empty job_cost_line_id
+                ])
+                # Get unique invoice IDs using set instead of list
+                invoice_ids = set(invoice_line_ids.mapped('move_id.id'))
+                # Filter out None values and count
+                invoice_ids = {inv_id for inv_id in invoice_ids if inv_id}
+                record.invoice_count = len(invoice_ids)
+            else:
+                record.invoice_count = 0
     
     def action_approve(self):
         self.write({'state': 'approved'})
@@ -149,18 +167,24 @@ class JobCostSheet(models.Model):
         
     def action_view_purchase_orders(self):
         # Get purchase orders linked through job cost lines
-        po_line_ids = self.env['purchase.order.line'].search([
-            ('job_cost_line_id', 'in', self.material_cost_ids.ids + self.overhead_cost_ids.ids)
-        ])
-        po_ids_via_lines = po_line_ids.mapped('order_id.id')
+        all_cost_line_ids = self.material_cost_ids.ids + self.overhead_cost_ids.ids
+        if all_cost_line_ids:
+            po_line_ids = self.env['purchase.order.line'].search([
+                ('job_cost_line_id', 'in', all_cost_line_ids),
+                ('job_cost_line_id', '!=', False)  # Filter out empty job_cost_line_id
+            ])
+            po_ids_via_lines = set(po_line_ids.mapped('order_id.id'))
+        else:
+            po_ids_via_lines = set()
         
         # Get purchase orders linked directly to this job cost sheet
-        po_ids_direct = self.env['purchase.order'].search([
+        po_ids_direct = set(self.env['purchase.order'].search([
             ('job_cost_sheet_id', '=', self.id)
-        ]).ids
+        ]).ids)
         
         # Combine both sets of IDs
-        all_po_ids = list(set(po_ids_via_lines + po_ids_direct))
+        all_po_ids = po_ids_via_lines.union(po_ids_direct)
+        all_po_ids = list(all_po_ids)  # Convert set to list for domain
         
         # Use our custom purchase order view to avoid approval_state errors
         tree_view = self.env.ref('job_costing_management.view_purchase_order_tree_job_costing', False)
@@ -185,10 +209,18 @@ class JobCostSheet(models.Model):
         }
     
     def action_view_invoices(self):
-        invoice_line_ids = self.env['account.move.line'].search([
-            ('job_cost_line_id', 'in', self.material_cost_ids.ids + self.labour_cost_ids.ids + self.overhead_cost_ids.ids)
-        ])
-        invoice_ids = invoice_line_ids.mapped('move_id.id')
+        all_cost_line_ids = self.material_cost_ids.ids + self.labour_cost_ids.ids + self.overhead_cost_ids.ids
+        if all_cost_line_ids:
+            invoice_line_ids = self.env['account.move.line'].search([
+                ('job_cost_line_id', 'in', all_cost_line_ids),
+                ('job_cost_line_id', '!=', False)  # Filter out empty job_cost_line_id
+            ])
+            # Get unique invoice IDs using set instead of list
+            invoice_ids = set(invoice_line_ids.mapped('move_id.id'))
+            # Filter out None values and convert to list
+            invoice_ids = list({inv_id for inv_id in invoice_ids if inv_id})
+        else:
+            invoice_ids = []
         
         return {
             'name': 'Invoices',
@@ -196,6 +228,34 @@ class JobCostSheet(models.Model):
             'res_model': 'account.move',
             'view_mode': 'tree,form',
             'domain': [('id', 'in', invoice_ids)],
+        }
+    
+    def action_sync_actual_costs(self):
+        """Manually sync actual costs from all linked POs and Invoices"""
+        for cost_line in self.material_cost_ids + self.labour_cost_ids + self.overhead_cost_ids:
+            cost_line.update_actual_costs_from_purchases()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Success',
+                'message': 'Actual costs have been synchronized with purchase orders and invoices.',
+                'type': 'success',
+            }
+        }
+    
+    def action_view_cost_analysis(self):
+        """Open detailed cost analysis view"""
+        return {
+            'name': 'Cost Analysis',
+            'type': 'ir.actions.act_window',
+            'res_model': 'job.cost.line',
+            'view_mode': 'tree,form',
+            'domain': [('cost_sheet_id', '=', self.id)],
+            'context': {
+                'default_cost_sheet_id': self.id,
+                'search_default_group_cost_type': 1,
+            },
         }
 
 
@@ -254,34 +314,52 @@ class JobCostLine(models.Model):
         for record in self:
             record.total_cost = record.planned_qty * record.unit_cost
     
-    @api.depends('purchase_order_line_ids.product_qty', 'timesheet_ids.unit_amount')
+    @api.depends('purchase_order_line_ids.product_qty', 'purchase_order_line_ids.qty_received',
+                 'timesheet_ids.unit_amount', 'invoice_line_ids.quantity')
     def _compute_actual_qty(self):
         for record in self:
             if record.cost_type == 'material':
-                record.actual_qty = sum(record.purchase_order_line_ids.mapped('product_qty'))
+                # Use received quantity from confirmed purchase orders
+                po_lines = record.purchase_order_line_ids.filtered(lambda l: l.order_id.state in ['purchase', 'done'])
+                record.actual_qty = sum(po_lines.mapped('qty_received'))
             elif record.cost_type == 'labour':
                 record.actual_qty = sum(record.timesheet_ids.mapped('unit_amount'))
             else:  # overhead
-                record.actual_qty = sum(record.purchase_order_line_ids.mapped('product_qty'))
+                # Use invoice lines first, fallback to purchase orders
+                if record.invoice_line_ids:
+                    record.actual_qty = sum(record.invoice_line_ids.filtered(
+                        lambda l: l.move_id.state == 'posted').mapped('quantity'))
+                else:
+                    po_lines = record.purchase_order_line_ids.filtered(lambda l: l.order_id.state in ['purchase', 'done'])
+                    record.actual_qty = sum(po_lines.mapped('qty_received'))
     
-    @api.depends('purchase_order_line_ids.price_unit', 'timesheet_ids.amount', 'invoice_line_ids.price_unit')
+    @api.depends('purchase_order_line_ids.price_unit', 'purchase_order_line_ids.product_qty', 
+                 'timesheet_ids.amount', 'invoice_line_ids.price_unit', 'invoice_line_ids.quantity')
     def _compute_actual_unit_cost(self):
         for record in self:
             total_cost = 0
             total_qty = 0
             
             if record.cost_type == 'material':
-                for line in record.purchase_order_line_ids:
+                # Use confirmed/received purchase order lines
+                for line in record.purchase_order_line_ids.filtered(lambda l: l.order_id.state in ['purchase', 'done']):
                     total_cost += line.price_subtotal
                     total_qty += line.product_qty
             elif record.cost_type == 'labour':
+                # Use timesheets
                 for line in record.timesheet_ids:
                     total_cost += abs(line.amount)
                     total_qty += line.unit_amount
             else:  # overhead
-                for line in record.invoice_line_ids:
+                # Use invoice lines or purchase order lines
+                for line in record.invoice_line_ids.filtered(lambda l: l.move_id.state == 'posted'):
                     total_cost += line.price_subtotal
                     total_qty += line.quantity
+                # If no invoices, use purchase orders
+                if not total_cost:
+                    for line in record.purchase_order_line_ids.filtered(lambda l: l.order_id.state in ['purchase', 'done']):
+                        total_cost += line.price_subtotal
+                        total_qty += line.product_qty
             
             record.actual_unit_cost = total_cost / total_qty if total_qty else 0
     
@@ -302,3 +380,24 @@ class JobCostLine(models.Model):
             self.name = self.product_id.name
             self.unit_cost = self.product_id.standard_price
             self.uom_id = self.product_id.uom_id
+    
+    def update_actual_costs_from_purchases(self):
+        """Method to manually update actual costs from purchase orders"""
+        for record in self:
+            if record.cost_type == 'material':
+                # Get confirmed purchase order lines
+                po_lines = record.purchase_order_line_ids.filtered(
+                    lambda l: l.order_id.state in ['purchase', 'done']
+                )
+                if po_lines:
+                    total_cost = sum(po_lines.mapped('price_subtotal'))
+                    total_qty = sum(po_lines.mapped(lambda l: l.qty_received or l.product_qty))
+                    
+                    record.actual_qty = total_qty
+                    record.actual_unit_cost = total_cost / total_qty if total_qty else 0
+                    record.actual_cost = total_cost
+    
+    def button_update_actual_costs(self):
+        """Button action to update actual costs"""
+        self.update_actual_costs_from_purchases()
+        return True

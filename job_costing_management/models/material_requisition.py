@@ -36,6 +36,7 @@ class MaterialRequisition(models.Model):
     
     # Dates
     request_date = fields.Date(string='Request Date', default=fields.Date.today)
+    requisition_date = fields.Date(string='Requisition Date', default=fields.Date.today)
     required_date = fields.Date(string='Required Date', required=True)
     approved_date = fields.Date(string='Approved Date')
     
@@ -60,6 +61,9 @@ class MaterialRequisition(models.Model):
     # Smart buttons
     purchase_order_count = fields.Integer(string='Purchase Orders', compute='_compute_purchase_order_count')
     picking_count = fields.Integer(string='Pickings', compute='_compute_picking_count')
+    
+    # Total cost computation
+    total_cost = fields.Float(string='Total Cost', compute='_compute_total_amount', store=True)
     
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
     
@@ -92,6 +96,11 @@ class MaterialRequisition(models.Model):
             _logger.info(f"Material Requisition {record.name}: Computed {len(picking_ids)} pickings")
             
             record.picking_count = len(picking_ids)
+    
+    def _compute_total_amount(self):
+        """Compute total amount from requisition lines"""
+        for record in self:
+            record.total_cost = sum(record.line_ids.mapped('total_cost'))
     
     def action_submit(self):
         if not self.line_ids:

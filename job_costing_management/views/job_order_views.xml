@@ -2,12 +2,225 @@
 <odoo>
     <data>
 
+        <!-- Job Order Tree View -->
+        <record id="view_job_order_tree" model="ir.ui.view">
+            <field name="name">job.order.tree</field>
+            <field name="model">job.order</field>
+            <field name="arch" type="xml">
+                <tree string="Job Orders" decoration-info="state == 'draft'" decoration-muted="state == 'cancelled'" decoration-success="state == 'done'" decoration-warning="is_overdue">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="project_id"/>
+                    <field name="job_type_id"/>
+                    <field name="stage_id"/>
+                    <field name="state"/>
+                    <field name="user_id"/>
+                    <field name="date_start"/>
+                    <field name="date_deadline"/>
+                    <field name="days_to_deadline"/>
+                    <field name="priority" widget="priority"/>
+                    <field name="progress" widget="progressbar"/>
+                    <field name="planned_cost" sum="Total Planned"/>
+                    <field name="actual_cost" sum="Total Actual"/>
+                    <field name="cost_variance" sum="Total Variance"/>
+                    <field name="kanban_state"/>
+                    <field name="is_overdue" invisible="1"/>
+                    <field name="active" invisible="1"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Job Order Form View -->
+        <record id="view_job_order_form" model="ir.ui.view">
+            <field name="name">job.order.form</field>
+            <field name="model">job.order</field>
+            <field name="arch" type="xml">
+                <form string="Job Order">
+                    <header>
+                        <button name="action_start" string="Start" type="object" 
+                                class="oe_highlight" invisible="state != 'draft'"/>
+                        <button name="action_done" string="Mark as Done" type="object" 
+                                class="oe_highlight" invisible="state != 'in_progress'"/>
+                        <button name="action_cancel" string="Cancel" type="object" 
+                                invisible="state in ['done', 'cancelled']"/>
+                        <button name="action_reset_to_draft" string="Reset to Draft" type="object" 
+                                invisible="state == 'draft'"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,done"/>
+                        <field name="kanban_state" widget="state_selection"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_cost_sheets" type="object" 
+                                    class="oe_stat_button" icon="fa-money">
+                                <field name="cost_sheet_count" widget="statinfo" string="Cost Sheets"/>
+                            </button>
+                            <button name="action_view_timesheets" type="object" 
+                                    class="oe_stat_button" icon="fa-clock-o">
+                                <field name="timesheet_count" widget="statinfo" string="Timesheets"/>
+                            </button>
+                            <button name="action_view_material_requisitions" type="object" 
+                                    class="oe_stat_button" icon="fa-list">
+                                <field name="material_requisition_count" widget="statinfo" string="Material Req."/>
+                            </button>
+                            <button name="action_view_notes" type="object" 
+                                    class="oe_stat_button" icon="fa-sticky-note-o">
+                                <field name="note_count" widget="statinfo" string="Notes"/>
+                            </button>
+                            <button name="action_view_boqs" type="object" 
+                                    class="oe_stat_button" icon="fa-list-alt">
+                                <field name="boq_count" widget="statinfo" string="BOQs"/>
+                            </button>
+                            <button name="action_create_cost_sheet" type="object" 
+                                    class="oe_stat_button btn-primary" icon="fa-plus">
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_text">Create</span>
+                                    <span class="o_stat_text">Cost Sheet</span>
+                                </div>
+                            </button>
+                        </div>
+                        <widget name="web_ribbon" title="Archived" bg_color="bg-danger" 
+                                invisible="active == True"/>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Job Order Name" required="1"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="project_id" required="1"/>
+                                <field name="task_id" context="{'default_project_id': project_id}"/>
+                                <field name="stage_id"/>
+                                <field name="job_type_id"/>
+                                <field name="parent_job_order_id"/>
+                                <field name="sequence"/>
+                            </group>
+                            <group>
+                                <field name="user_id"/>
+                                <field name="priority" widget="priority"/>
+                                <field name="progress" widget="progressbar"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="active" invisible="1"/>
+                                <field name="color"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Dates">
+                                <field name="date_start"/>
+                                <field name="date_end"/>
+                                <field name="date_deadline"/>
+                                <field name="days_to_deadline" invisible="date_deadline == False"/>
+                                <field name="is_overdue" invisible="1"/>
+                            </group>
+                            <group string="Cost Summary">
+                                <field name="planned_cost"/>
+                                <field name="actual_cost"/>
+                                <field name="cost_variance" invisible="planned_cost == 0"/>
+                                <field name="cost_variance_percent" widget="percentage" invisible="planned_cost == 0"/>
+                            </group>
+                        </group>
+                        <field name="description" placeholder="Job Description..."/>
+                        
+                        <notebook>
+                            <page string="Team" name="team">
+                                <field name="team_ids">
+                                    <tree editable="bottom">
+                                        <field name="name"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            
+                            <page string="Timesheets" name="timesheets">
+                                <field name="timesheet_ids" context="{'default_job_order_id': active_id, 'default_project_id': project_id}">
+                                    <tree editable="bottom">
+                                        <field name="project_id"/>
+                                        <field name="job_cost_line_id"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            
+                            <page string="Material Planning" name="material_planning">
+                                <field name="material_planning_ids" context="{'default_job_order_id': active_id}">
+                                    <tree editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="description"/>
+                                        <field name="planned_qty"/>
+                                        <field name="uom_id"/>
+                                        <field name="planned_date"/>
+                                        <field name="notes"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            
+                            <page string="Material Consumption" name="material_consumption">
+                                <field name="material_consumption_ids" context="{'default_job_order_id': active_id}">
+                                    <tree editable="bottom">
+                                        <field name="product_id"/>
+                                        <field name="description"/>
+                                        <field name="consumed_qty"/>
+                                        <field name="uom_id"/>
+                                        <field name="consumption_date"/>
+                                        <field name="location_id"/>
+                                        <field name="notes"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            
+                            <page string="Material Requisitions" name="material_requisitions">
+                                <field name="material_requisition_ids" context="{'default_job_order_id': active_id, 'default_project_id': project_id}">
+                                    <tree>
+                                        <field name="name"/>
+                                        <field name="requisition_date"/>
+                                        <field name="employee_id"/>
+                                        <field name="state"/>
+                                        <field name="total_cost"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            
+                            <page string="Sub Job Orders" name="sub_jobs">
+                                <field name="child_job_order_ids" context="{'default_parent_job_order_id': active_id, 'default_project_id': project_id}">
+                                    <tree>
+                                        <field name="name"/>
+                                        <field name="user_id"/>
+                                        <field name="stage_id"/>
+                                        <field name="progress" widget="progressbar"/>
+                                        <field name="date_start"/>
+                                        <field name="date_deadline"/>
+                                        <field name="planned_cost"/>
+                                        <field name="actual_cost"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            
+                            <page string="BOQ" name="boq">
+                                <field name="boq_ids" context="{'default_job_order_id': active_id, 'default_project_id': project_id}">
+                                    <tree>
+                                        <field name="name"/>
+                                        <field name="title"/>
+                                        <field name="boq_date"/>
+                                        <field name="revision"/>
+                                        <field name="state"/>
+                                        <field name="total_cost"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
         <!-- Job Order Kanban View -->
         <record id="view_job_order_kanban" model="ir.ui.view">
             <field name="name">job.order.kanban</field>
             <field name="model">job.order</field>
             <field name="arch" type="xml">
-                <kanban default_group_by="stage_id" class="o_kanban_small_column">
+                <kanban default_group_by="stage_id" class="o_kanban_small_column" quick_create="false">
                     <field name="stage_id"/>
                     <field name="name"/>
                     <field name="project_id"/>
@@ -15,7 +228,12 @@
                     <field name="priority"/>
                     <field name="progress"/>
                     <field name="kanban_state"/>
+                    <field name="state"/>
                     <field name="color"/>
+                    <field name="date_deadline"/>
+                    <field name="planned_cost"/>
+                    <field name="actual_cost"/>
+                    <field name="job_type_id"/>
                     <progressbar field="kanban_state" colors='{"done": "success", "blocked": "danger"}'/>
                     <templates>
                         <t t-name="kanban-box">
@@ -23,13 +241,36 @@
                                 <div class="oe_kanban_content">
                                     <div class="oe_kanban_details">
                                         <strong><field name="name"/></strong>
+                                        <div t-if="record.job_type_id.raw_value">
+                                            Type: <field name="job_type_id"/>
+                                        </div>
                                         <div>Project: <field name="project_id"/></div>
                                         <div>Assigned to: <field name="user_id"/></div>
-                                        <div class="oe_kanban_bottom_right">
-                                            <field name="priority" widget="priority"/>
+                                        <div t-if="record.date_deadline.raw_value">
+                                            Deadline: <field name="date_deadline"/>
                                         </div>
-                                        <div class="oe_kanban_bottom_left">
-                                            <field name="progress" widget="progressbar"/>
+                                        <div class="oe_kanban_footer">
+                                            <div class="oe_kanban_footer_left">
+                                                <field name="progress" widget="progressbar"/>
+                                            </div>
+                                            <div class="oe_kanban_footer_right">
+                                                <field name="priority" widget="priority"/>
+                                            </div>
+                                        </div>
+                                        <div class="oe_kanban_footer" t-if="record.planned_cost.raw_value or record.actual_cost.raw_value">
+                                            <div class="oe_kanban_footer_left">
+                                                <span t-if="record.planned_cost.raw_value">
+                                                    Planned: <field name="planned_cost"/>
+                                                </span>
+                                            </div>
+                                            <div class="oe_kanban_footer_right">
+                                                <span t-if="record.actual_cost.raw_value">
+                                                    Actual: <field name="actual_cost"/>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="oe_kanban_bottom">
+                                            <field name="state" widget="label_selection" options="{'classes': {'draft': 'default', 'in_progress': 'info', 'done': 'success', 'cancelled': 'danger'}}"/>
                                         </div>
                                     </div>
                                 </div>
@@ -40,17 +281,57 @@
             </field>
         </record>
 
+        <!-- Job Order Search View -->
+        <record id="view_job_order_search" model="ir.ui.view">
+            <field name="name">job.order.search</field>
+            <field name="model">job.order</field>
+            <field name="arch" type="xml">
+                <search string="Job Orders">
+                    <field name="name" string="Job Order"/>
+                    <field name="project_id"/>
+                    <field name="user_id"/>
+                    <field name="stage_id"/>
+                    <field name="job_type_id"/>
+                    <filter string="My Job Orders" name="my_jobs" domain="[('user_id', '=', uid)]"/>
+                    <separator/>
+                    <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                    <filter string="In Progress" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
+                    <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                    <filter string="Cancelled" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
+                    <separator/>
+                    <filter string="Ready" name="ready" domain="[('kanban_state', '=', 'done')]"/>
+                    <filter string="Blocked" name="blocked" domain="[('kanban_state', '=', 'blocked')]"/>
+                    <separator/>
+                    <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Project" name="group_project" context="{'group_by': 'project_id'}"/>
+                        <filter string="Stage" name="group_stage" context="{'group_by': 'stage_id'}"/>
+                        <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                        <filter string="Job Type" name="group_job_type" context="{'group_by': 'job_type_id'}"/>
+                        <filter string="Assigned To" name="group_user" context="{'group_by': 'user_id'}"/>
+                        <filter string="Priority" name="group_priority" context="{'group_by': 'priority'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
         <!-- Job Order Action -->
         <record id="action_job_order" model="ir.actions.act_window">
             <field name="name">Job Orders</field>
             <field name="res_model">job.order</field>
             <field name="view_mode">kanban,tree,form</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+                (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_job_order_kanban')}),
+                (0, 0, {'view_mode': 'tree', 'view_id': ref('view_job_order_tree')}),
+                (0, 0, {'view_mode': 'form', 'view_id': ref('view_job_order_form')})]"/>
+            <field name="search_view_id" ref="view_job_order_search"/>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Create your first job order!
                 </p>
                 <p>
                     Job orders help you manage work tasks within your construction projects.
+                    Each job order can have its own cost sheet, material planning, and resource allocation.
                 </p>
             </field>
         </record>

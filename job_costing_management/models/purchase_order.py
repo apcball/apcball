@@ -46,6 +46,48 @@ class PurchaseOrder(models.Model):
             _logger.info("Purchase order has no material requisition or BOQ")
         
         return result
+    
+    def button_confirm(self):
+        """Override button_confirm to update job cost sheet actual costs"""
+        result = super(PurchaseOrder, self).button_confirm()
+        
+        # Update job cost sheet actual costs
+        if self.job_cost_sheet_id:
+            self._update_job_cost_sheet_actual_costs()
+            
+        return result
+    
+    def _update_job_cost_sheet_actual_costs(self):
+        """Update actual costs in job cost sheet from purchase order lines"""
+        if not self.job_cost_sheet_id:
+            return
+            
+        for po_line in self.order_line:
+            if po_line.job_cost_line_id:
+                # Update the specific job cost line
+                po_line.job_cost_line_id.update_actual_costs_from_purchases()
+            else:
+                # Try to find matching job cost line by product
+                cost_lines = self.job_cost_sheet_id.material_cost_ids.filtered(
+                    lambda l: l.product_id == po_line.product_id
+                )
+                if cost_lines:
+                    # Link the purchase order line to the first matching cost line
+                    po_line.job_cost_line_id = cost_lines[0].id
+                    cost_lines[0].update_actual_costs_from_purchases()
+    
+    def action_view_job_cost_sheet(self):
+        """Action to view the related job cost sheet"""
+        if self.job_cost_sheet_id:
+            return {
+                'name': 'Job Cost Sheet',
+                'type': 'ir.actions.act_window',
+                'res_model': 'job.cost.sheet',
+                'res_id': self.job_cost_sheet_id.id,
+                'view_mode': 'form',
+                'target': 'current',
+            }
+        return False
 
 
 class PurchaseOrderLine(models.Model):
