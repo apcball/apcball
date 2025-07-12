@@ -56,7 +56,68 @@
                         </div>
                      </div>
 
-
+<div style="border:1px solid #000; padding:16px; margin:16px 0;">
+    <div style="display:flex; flex-direction:row;">
+        <!-- Left 50% -->
+        <div style="flex:1; border-right:1px solid #000; padding-right:12px;">
+            <div>
+                <strong>Vendor:</strong>
+                <t t-if="hasattr(o, 'partner_id') and o.partner_id">
+                    <span t-field="o.partner_id.display_name"/>
+                  </t>
+            </div>
+            <div>
+                <strong>Address:</strong>
+                <t t-esc="o.partner_id.contact_address"/>
+            </div>
+        </div>
+        <!-- Right 50% -->
+        <div style="flex:1; padding-left:12px;">
+            <!-- First row (split 60/40) -->
+            <div style="display:flex; flex-direction:row; border-bottom:1px solid #000;">
+                <div style="flex:6; padding-right:8px; border-right:1px solid #000;">
+                    <div>
+                        <strong>Place of Delivery:</strong> Mogen (Thailand) Co. Ltd<br/>
+                        9 moo 12, Beungkhumproy, A. Lumlukka, Pathum Thani 12150
+                    </div>
+                </div>
+                <div style="flex:4; padding-left:8px;">
+                    <div>
+                        <strong>Confirm order from supplier</strong><br/>
+                        Date of: <span t-field="o.confirm_supplier_date" t-options="{'widget': 'date', 'format': 'dd/MM/yyyy'}"/>
+                    </div>
+                </div>
+            </div>
+            <!-- Second row (split 25/25/15/25) -->
+            <div style="display:flex; flex-direction:row;">
+                <div style="flex:25; padding:4px 8px; border-right:1px solid #000;">
+                    <div>
+                        <strong>Contact Person:</strong>
+                        <t t-esc="o.partner_id.name"/>
+                    </div>
+                </div>
+                <div style="flex:25; padding:4px 8px; border-right:1px solid #000;">
+                    <div>
+                        <strong>Payment Term:</strong>
+                        <t t-esc="o.payment_term_id.name"/>
+                    </div>
+                </div>
+                <div style="flex:15; padding:4px 8px; border-right:1px solid #000;">
+                    <div>
+                        <strong>Criteria:</strong>
+                        <t t-esc="o.criteria or ''"/>
+                    </div>
+                </div>
+                <div style="flex:25; padding:4px 8px;">
+                    <div>
+                        <strong>Ref. Number:</strong>
+                        <t t-esc="o.ref_number or ''"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>                        
 
 
 
