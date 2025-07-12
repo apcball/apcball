@@ -13,15 +13,15 @@
                     <field name="project_id"/>
                     <field name="job_order_id"/>
                     <field name="date_start"/>
-                    <field name="total_cost" widget="monetary"/>
-                    <field name="actual_total_cost" widget="monetary"/>
-                    <field name="total_variance" widget="monetary"/>
+                    <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    <field name="actual_total_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    <field name="total_variance" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                     <field name="state" widget="badge" 
                            decoration-success="state == 'approved'"
                            decoration-primary="state == 'done'"
                            decoration-warning="state == 'draft'"
                            decoration-danger="state == 'cancelled'"/>
-                    <field name="currency_id" column_invisible="1"/>
+                    <field name="currency_id" string="Currency" readonly="1" options="{'no_create': True}"/>
                 </tree>
             </field>
         </record>
@@ -74,29 +74,29 @@
                                 <field name="date_start"/>
                                 <field name="date_end"/>
                                 <field name="company_id" groups="base.group_multi_company"/>
-                                <field name="currency_id" column_invisible="1"/>
+                                <field name="currency_id" string="Currency" options="{'no_create': True}"/>
                             </group>
                         </group>
                         
                         <!-- Cost Summary -->
                         <group string="Cost Summary">
                             <group string="Planned Costs">
-                                <field name="total_material_cost" widget="monetary"/>
-                                <field name="total_labour_cost" widget="monetary"/>
-                                <field name="total_overhead_cost" widget="monetary"/>
-                                <field name="total_cost" widget="monetary" class="oe_subtotal_footer_separator"/>
+                                <field name="total_material_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="total_labour_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="total_overhead_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
                             </group>
                             <group string="Actual Costs">
-                                <field name="actual_material_cost" widget="monetary"/>
-                                <field name="actual_labour_cost" widget="monetary"/>
-                                <field name="actual_overhead_cost" widget="monetary"/>
-                                <field name="actual_total_cost" widget="monetary" class="oe_subtotal_footer_separator"/>
+                                <field name="actual_material_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="actual_labour_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="actual_overhead_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="actual_total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
                             </group>
                             <group string="Variance">
-                                <field name="material_variance" widget="monetary"/>
-                                <field name="labour_variance" widget="monetary"/>
-                                <field name="overhead_variance" widget="monetary"/>
-                                <field name="total_variance" widget="monetary" class="oe_subtotal_footer_separator"/>
+                                <field name="material_variance" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="labour_variance" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="overhead_variance" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="total_variance" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
                             </group>
                         </group>
 
@@ -113,10 +113,11 @@
                                         <field name="uom_id"/>
                                         <field name="unit_cost"/>
                                         <field name="actual_unit_cost" readonly="1"/>
-                                        <field name="total_cost" widget="monetary" readonly="1"/>
-                                        <field name="actual_cost" widget="monetary" readonly="1"/>
-                                        <field name="cost_variance" widget="monetary" readonly="1"/>
+                                        <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                        <field name="actual_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                        <field name="cost_variance" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
                                         <field name="cost_type" column_invisible="1"/>
+                                        <field name="currency_id" column_invisible="1"/>
                                     </tree>
                                 </field>
                             </page>
@@ -133,10 +134,11 @@
                                         <field name="uom_id"/>
                                         <field name="unit_cost"/>
                                         <field name="actual_unit_cost" readonly="1"/>
-                                        <field name="total_cost" widget="monetary" readonly="1"/>
-                                        <field name="actual_cost" widget="monetary" readonly="1"/>
-                                        <field name="cost_variance" widget="monetary" readonly="1"/>
+                                        <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                        <field name="actual_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                        <field name="cost_variance" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
                                         <field name="cost_type" column_invisible="1"/>
+                                        <field name="currency_id" column_invisible="1"/>
                                     </tree>
                                 </field>
                             </page>
@@ -153,10 +155,11 @@
                                         <field name="uom_id"/>
                                         <field name="unit_cost"/>
                                         <field name="actual_unit_cost" readonly="1"/>
-                                        <field name="total_cost" widget="monetary" readonly="1"/>
-                                        <field name="actual_cost" widget="monetary" readonly="1"/>
-                                        <field name="cost_variance" widget="monetary" readonly="1"/>
+                                        <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                        <field name="actual_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                        <field name="cost_variance" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
                                         <field name="cost_type" column_invisible="1"/>
+                                        <field name="currency_id" column_invisible="1"/>
                                     </tree>
                                 </field>
                             </page>

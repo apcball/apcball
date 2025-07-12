@@ -41,7 +41,7 @@ Key Benefits:
 * Detailed reporting and analytics
 * Multi-level approval workflows
     """,
-    'author': 'Your Company',
+    'author': 'Apichart Pangsalung',
     'website': 'https://www.yourcompany.com',
     'depends': [
         'base',

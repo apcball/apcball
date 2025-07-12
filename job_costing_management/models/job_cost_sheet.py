@@ -66,10 +66,18 @@ class JobCostSheet(models.Model):
     # Other fields
     notes = fields.Text(string='Notes')
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
-    currency_id = fields.Many2one('res.currency', related='company_id.currency_id', string='Currency')
-    
+    currency_id = fields.Many2one('res.currency', string='Currency')
+
     @api.model
     def create(self, vals):
+        # Set default currency if not provided
+        if not vals.get('currency_id'):
+            # Try to get THB currency first, fallback to company currency
+            thb_currency = self.env['res.currency'].search([('name', '=', 'THB')], limit=1)
+            if thb_currency:
+                vals['currency_id'] = thb_currency.id
+            else:
+                vals['currency_id'] = self.env.company.currency_id.id
         if vals.get('name', _('New')) == _('New'):
             vals['name'] = self.env['ir.sequence'].next_by_code('job.cost.sheet') or _('New')
         result = super(JobCostSheet, self).create(vals)
@@ -238,6 +246,9 @@ class JobCostLine(models.Model):
     invoice_line_ids = fields.One2many('account.move.line', 'job_cost_line_id', string='Invoice Lines')
     boq_line_id = fields.Many2one('boq.line', string='BOQ Line')
     
+    # Currency (inherits from cost sheet)
+    currency_id = fields.Many2one('res.currency', related='cost_sheet_id.currency_id', string='Currency', store=True, readonly=True)
+
     @api.depends('planned_qty', 'unit_cost')
     def _compute_total_cost(self):
         for record in self:
