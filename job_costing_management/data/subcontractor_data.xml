@@ -49,5 +49,58 @@ action = {
             </field>
         </record>
 
+        <!-- Sample Subcontractor Data for Testing -->
+        <record id="subcontractor_construction_co" model="res.partner">
+            <field name="name">Bangkok Construction Co., Ltd.</field>
+            <field name="is_company" eval="True"/>
+            <field name="is_subcontractor" eval="True"/>
+            <field name="supplier_rank">1</field>
+            <field name="subcontractor_type">company</field>
+            <field name="trade_license">TC-2024-001</field>
+            <field name="license_expiry">2025-12-31</field>
+            <field name="contact_person">Somchai Jaidee</field>
+            <field name="phone">02-123-4567</field>
+            <field name="email">info@bangkokconstruction.co.th</field>
+            <field name="street">123 Sukhumvit Road</field>
+            <field name="city">Bangkok</field>
+            <field name="zip">10110</field>
+            <field name="country_id" ref="base.th"/>
+            <field name="rating">4</field>
+        </record>
+
+        <record id="subcontractor_electric_service" model="res.partner">
+            <field name="name">Thai Electric Service</field>
+            <field name="is_company" eval="True"/>
+            <field name="is_subcontractor" eval="True"/>
+            <field name="supplier_rank">1</field>
+            <field name="subcontractor_type">company</field>
+            <field name="trade_license">TE-2024-002</field>
+            <field name="license_expiry">2025-11-15</field>
+            <field name="contact_person">Niran Thanakit</field>
+            <field name="phone">02-987-6543</field>
+            <field name="email">service@thaielectric.com</field>
+            <field name="street">456 Phahonyothin Road</field>
+            <field name="city">Bangkok</field>
+            <field name="zip">10400</field>
+            <field name="country_id" ref="base.th"/>
+            <field name="rating">5</field>
+        </record>
+
+        <record id="subcontractor_individual_plumber" model="res.partner">
+            <field name="name">Kittisak Plumbing Expert</field>
+            <field name="is_company" eval="False"/>
+            <field name="is_subcontractor" eval="True"/>
+            <field name="supplier_rank">1</field>
+            <field name="subcontractor_type">individual</field>
+            <field name="contact_person">Kittisak Samranrit</field>
+            <field name="phone">089-123-4567</field>
+            <field name="email">kittisak.plumber@gmail.com</field>
+            <field name="street">789 Ratchadapisek Road</field>
+            <field name="city">Bangkok</field>
+            <field name="zip">10310</field>
+            <field name="country_id" ref="base.th"/>
+            <field name="rating">3</field>
+        </record>
+
     </data>
 </odoo>
