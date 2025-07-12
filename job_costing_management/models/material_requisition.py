@@ -16,6 +16,7 @@ class MaterialRequisition(models.Model):
     # Relations
     project_id = fields.Many2one('project.project', string='Project', required=True)
     job_order_id = fields.Many2one('job.order', string='Job Order')
+    job_cost_sheet_id = fields.Many2one('job.cost.sheet', string='Job Cost Sheet')  # Add job cost sheet link
     boq_id = fields.Many2one('boq.boq', string='BOQ Reference')
     employee_id = fields.Many2one('hr.employee', string='Requested by', 
                                  default=lambda self: self.env.user.employee_id)
@@ -149,6 +150,7 @@ class MaterialRequisition(models.Model):
                 'partner_id': vendor.id,
                 'origin': self.name,
                 'material_requisition_id': self.id,  # Link to material requisition
+                'job_cost_sheet_id': self.job_cost_sheet_id.id if self.job_cost_sheet_id else False,  # Pass job cost sheet
                 'order_line': []
             }
             
@@ -160,6 +162,8 @@ class MaterialRequisition(models.Model):
                     'product_uom': line.uom_id.id,
                     'price_unit': line.estimated_cost,
                     'material_requisition_line_id': line.id,  # Link to requisition line
+                    'job_cost_sheet_id': self.job_cost_sheet_id.id if self.job_cost_sheet_id else False,  # Pass job cost sheet
+                    'job_cost_line_id': line.job_cost_line_id.id if line.job_cost_line_id else False,  # Pass job cost line
                 }
                 po_vals['order_line'].append((0, 0, po_line_vals))
             
@@ -349,6 +353,7 @@ class MaterialRequisitionLine(models.Model):
     #                                          string='Purchase Order Lines')
     picking_ids = fields.Many2many('stock.picking', string='Pickings')
     boq_line_id = fields.Many2one('boq.line', string='BOQ Line')
+    job_cost_line_id = fields.Many2one('job.cost.line', string='Job Cost Line')  # Add job cost line link
     
     # Related fields for easier access
     requisition_state = fields.Selection(related='requisition_id.state', string='Requisition State', readonly=True)

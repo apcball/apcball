@@ -13,7 +13,6 @@
             </field>
             
             <field name="currency_id" position="after">
-                <field name="criteria"/>
                 <field name="department_id"/>
                 <field name="requested_by_id"/>
             </field>
@@ -27,7 +26,6 @@
         <field name="inherit_id" ref="purchase.view_purchase_order_filter"/>
         <field name="arch" type="xml">
             <field name="partner_id" position="after">
-                <field name="criteria"/>
                 <field name="department_id"/>
                 <field name="requested_by_id"/>
             </field>
@@ -41,7 +39,6 @@
         <field name="inherit_id" ref="purchase.purchase_order_tree"/>
         <field name="arch" type="xml">
             <field name="partner_id" position="after">
-                <field name="criteria"/>
                 <field name="department_id"/>
             </field>
         </field>

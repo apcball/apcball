@@ -8,7 +8,6 @@ class PurchaseOrder(models.Model):
     requested_by_id = fields.Many2one('res.users', string='Requested By')
     buz_purchase_request_id = fields.Many2one('buz.purchase.request', string="Purchase Request")
     partner_contact_id = fields.Many2one('res.partner', string="Contact Person")
-    criteria = fields.Char(string="Criteria")
     client_order_ref = fields.Char(string='Customer Reference')
     employee_contact_id = fields.Many2one('res.partner', string="Contact Person")
     payment_term_id = fields.Many2one('account.payment.term', string="Payment Term")

@@ -1,6 +1,113 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Job Note views will be auto-generated -->
+        <!-- Job Note Tree View -->
+        <record id="view_job_note_tree" model="ir.ui.view">
+            <field name="name">job.note.tree</field>
+            <field name="model">job.note</field>
+            <field name="arch" type="xml">
+                <tree string="Job Notes" decoration-info="state=='draft'" 
+                      decoration-success="state=='active'" decoration-muted="state=='resolved'">
+                    <field name="name"/>
+                    <field name="note_type"/>
+                    <field name="project_id"/>
+                    <field name="job_order_id"/>
+                    <field name="user_id"/>
+                    <field name="date"/>
+                    <field name="priority"/>
+                    <field name="state"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Job Note Form View -->
+        <record id="view_job_note_form" model="ir.ui.view">
+            <field name="name">job.note.form</field>
+            <field name="model">job.note</field>
+            <field name="arch" type="xml">
+                <form string="Job Note">
+                    <header>
+                        <button name="action_activate" string="Activate" type="object" 
+                                class="btn-primary" invisible="state != 'draft'"/>
+                        <button name="action_resolve" string="Resolve" type="object" 
+                                class="btn-success" invisible="state != 'active'"/>
+                        <button name="action_archive" string="Archive" type="object" 
+                                invisible="state in ['archived']"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,active,resolved"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Note Subject..."/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="project_id"/>
+                                <field name="job_order_id" domain="[('project_id', '=', project_id)]"/>
+                                <field name="note_type"/>
+                                <field name="priority"/>
+                            </group>
+                            <group>
+                                <field name="user_id"/>
+                                <field name="assigned_to_ids" widget="many2many_tags"/>
+                                <field name="date"/>
+                                <field name="follow_up_date"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Content">
+                                <field name="description" widget="html"/>
+                            </page>
+                            <page string="Additional Information">
+                                <group>
+                                    <group>
+                                        <field name="reference"/>
+                                        <field name="tag_ids" widget="many2many_tags"/>
+                                    </group>
+                                    <group>
+                                        <field name="is_private"/>
+                                        <field name="parent_note_id"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Attachments">
+                                <field name="attachment_ids" widget="many2many_binary"/>
+                            </page>
+                            <page string="Follow-up Notes" invisible="not child_note_ids">
+                                <field name="child_note_ids">
+                                    <tree>
+                                        <field name="name"/>
+                                        <field name="user_id"/>
+                                        <field name="date"/>
+                                        <field name="state"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <!-- Only include activity chatter, no mail messages -->
+                    <div class="oe_chatter">
+                        <field name="activity_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <!-- Job Note Action -->
+        <record id="action_job_note" model="ir.actions.act_window">
+            <field name="name">Job Notes</field>
+            <field name="res_model">job.note</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <!-- Job Note Menu -->
+        <menuitem id="menu_job_note" 
+                  name="Job Notes" 
+                  parent="menu_job_orders" 
+                  action="action_job_note" 
+                  sequence="20"/>
+
     </data>
 </odoo>

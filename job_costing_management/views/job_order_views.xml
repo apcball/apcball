@@ -351,27 +351,7 @@
             </field>
         </record>
 
-        <!-- Subcontractor Action -->
-        <record id="action_subcontractor" model="ir.actions.act_window">
-            <field name="name">Subcontractors</field>
-            <field name="res_model">res.partner</field>
-            <field name="view_mode">tree,form</field>
-            <field name="domain">[('is_subcontractor', '=', True)]</field>
-            <field name="context">{
-                'default_is_subcontractor': True, 
-                'default_supplier_rank': 1,
-                'default_is_company': True,
-                'res_model': 'res.partner'
-            }</field>
-            <field name="help" type="html">
-                <p class="o_view_nocontent_smiling_face">
-                    Add your first subcontractor!
-                </p>
-                <p>
-                    Manage your subcontractors and their specializations.
-                </p>
-            </field>
-        </record>
+
 
     </data>
 </odoo>

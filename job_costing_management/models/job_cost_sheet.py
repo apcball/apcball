@@ -244,6 +244,19 @@ class JobCostSheet(models.Model):
             }
         }
     
+    def action_create_rfq(self):
+        """Open wizard to create RFQ from job cost sheet"""
+        return {
+            'name': 'Create RFQ from Job Cost Sheet',
+            'type': 'ir.actions.act_window',
+            'res_model': 'create.rfq.from.job.cost',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_job_cost_sheet_id': self.id,
+            }
+        }
+    
     def action_view_cost_analysis(self):
         """Open detailed cost analysis view"""
         return {

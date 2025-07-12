@@ -64,6 +64,8 @@ Key Benefits:
         'data/job_sequence.xml',
         'data/job_stages_data.xml',
         'data/boq_sequence.xml',
+        'data/subcontractor_data.xml',
+        'data/subcontractor_cron.xml',
         
         # Views
         'views/job_type_views.xml',
@@ -74,6 +76,7 @@ Key Benefits:
         'views/material_requisition_views.xml',
         'views/boq_views.xml',
         'views/subcontractor_views.xml',
+        'views/partner_views.xml',
         'views/job_note_views.xml',
         'views/purchase_order_views.xml',
         'views/account_move_views.xml',
@@ -86,10 +89,14 @@ Key Benefits:
         'reports/job_order_report.xml',
         'reports/material_requisition_report.xml',
         'reports/boq_report.xml',
+        
+        # Wizard
+        'wizard/create_rfq_from_job_cost_view.xml',
     ],
     'demo': [
         'demo/job_costing_demo.xml',
         'demo/boq_demo.xml',
+        'demo/job_cost_demo_rfq.xml',
     ],
     'qweb': [],
     'installable': True,

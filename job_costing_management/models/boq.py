@@ -189,6 +189,7 @@ class BOQ(models.Model):
         requisition_vals = {
             'project_id': self.project_id.id,
             'job_order_id': self.job_order_id.id if self.job_order_id else False,
+            'job_cost_sheet_id': self.job_cost_sheet_id.id if self.job_cost_sheet_id else False,  # Pass job cost sheet
             'boq_id': self.id,
             'purpose': f'Material requisition from BOQ: {self.name}',
             'required_date': fields.Date.today(),  # Add required date
@@ -196,6 +197,11 @@ class BOQ(models.Model):
         }
         
         for line in lines_with_products:
+            # Find the corresponding job cost line for this BOQ line
+            job_cost_line = False
+            if line.cost_line_ids:
+                job_cost_line = line.cost_line_ids[0]  # Take the first related cost line
+            
             req_line_vals = {
                 'product_id': line.product_id.id,
                 'description': line.description,
@@ -203,6 +209,7 @@ class BOQ(models.Model):
                 'uom_id': line.uom_id.id,
                 'estimated_cost': line.unit_cost,
                 'boq_line_id': line.id,
+                'job_cost_line_id': job_cost_line.id if job_cost_line else False,  # Link to job cost line
             }
             requisition_vals['line_ids'].append((0, 0, req_line_vals))
         

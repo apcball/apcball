@@ -57,6 +57,10 @@
                                     class="oe_stat_button" icon="fa-file-text-o">
                                 <field name="invoice_count" widget="statinfo" string="Invoices"/>
                             </button>
+                            <button name="action_create_rfq" type="object"
+                                    class="oe_stat_button" icon="fa-plus-square"
+                                    string="Create RFQ" 
+                                    invisible="state != 'approved'"/>
                         </div>
                         <div class="oe_title">
                             <h1>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Server Action: Set as Subcontractor -->
+        <record id="action_server_set_as_subcontractor" model="ir.actions.server">
+            <field name="name">Set as Subcontractor</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="state">code</field>
+            <field name="binding_model_id" ref="base.model_res_partner"/>
+            <field name="binding_type">action</field>
+            <field name="code">
+for record in records:
+    record.write({
+        'is_subcontractor': True,
+        'supplier_rank': 1
+    })
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'message': f'{len(records)} partner(s) set as subcontractor(s).',
+        'type': 'success',
+    }
+}
+            </field>
+        </record>
+
+        <!-- Server Action: Remove Subcontractor Status -->
+        <record id="action_server_remove_subcontractor" model="ir.actions.server">
+            <field name="name">Remove Subcontractor Status</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="state">code</field>
+            <field name="binding_model_id" ref="base.model_res_partner"/>
+            <field name="binding_type">action</field>
+            <field name="code">
+for record in records:
+    record.write({
+        'is_subcontractor': False
+    })
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'message': f'Subcontractor status removed from {len(records)} partner(s).',
+        'type': 'success',
+    }
+}
+            </field>
+        </record>
+
+    </data>
+</odoo>

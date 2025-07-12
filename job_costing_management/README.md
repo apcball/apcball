@@ -1,6 +1,15 @@
 # Job Costing Management for Construction
 
-A comprehensive Odoo 17 module for construction project job costing, material management, and subcontractor coordination.
+A comprehensive Odoo 17 module for construction project job costing, material management, and subcontractor coordination with enhanced RFQ integration.
+
+## 🆕 New Features in Latest Version
+
+### 🛒 RFQ Job Costing Integration
+- **Job Cost Center field** in Purchase Order lines
+- **Job Cost Line field** for precise cost tracking
+- **Automatic field population** when selecting job cost lines
+- **Smart RFQ Creation Wizard** from job cost sheets
+- **Real-time cost variance tracking** from purchase orders
 
 ## Features
 
@@ -10,6 +19,14 @@ A comprehensive Odoo 17 module for construction project job costing, material ma
 - **Variance analysis**: Identify cost overruns and savings
 - **Integration**: Purchase orders, timesheets, vendor bills
 - **BOQ Integration**: Create cost lines from Bill of Quantities
+- **RFQ Creation**: Direct RFQ generation from approved cost sheets
+
+### 🛒 Enhanced Purchase Management
+- **Job Cost Center linking**: Connect RFQs to specific job cost sheets
+- **Job Cost Line selection**: Link purchase items to specific cost line items
+- **Automatic cost updates**: Real-time actual cost tracking from confirmed POs
+- **Smart field population**: Auto-fill product, quantity, and price from cost lines
+- **Variance monitoring**: Track budget vs actual spending
 
 ### 📊 Bill of Quantities (BOQ)
 - **Comprehensive BOQ Management**: Create detailed material lists

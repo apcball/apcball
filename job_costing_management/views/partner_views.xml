@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Inherit Partner Form to add Subcontractor functionality -->
+        <record id="view_partner_form_subcontractor" model="ir.ui.view">
+            <field name="name">res.partner.form.subcontractor</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+                <!-- Add invisible fields needed for modifiers -->
+                <field name="is_company" position="after">
+                    <field name="is_subcontractor" invisible="1"/>
+                    <field name="supplier_rank" invisible="1"/>
+                    <field name="project_count" invisible="1"/>
+                    <field name="total_contract_value" invisible="1"/>
+                    <field name="completed_projects" invisible="1"/>
+                </field>
+                
+                <!-- Add subcontractor button to button box -->
+                <div name="button_box" position="inside">
+                    <button name="action_set_as_subcontractor" type="object"
+                            class="oe_stat_button" icon="fa-wrench"
+                            string="Set as Subcontractor"
+                            invisible="is_subcontractor == True or supplier_rank == 0">
+                        <div class="o_field_widget o_stat_info">
+                            <span class="o_stat_text">Make</span>
+                            <span class="o_stat_text">Subcontractor</span>
+                        </div>
+                    </button>
+                    <button name="action_view_projects" type="object"
+                            class="oe_stat_button" icon="fa-project-diagram"
+                            invisible="is_subcontractor == False">
+                        <field name="project_count" widget="statinfo" string="Projects"/>
+                    </button>
+                </div>
+                
+                <!-- Add subcontractor fields in a group -->
+                <page name="internal_notes" position="before">
+                    <page string="Subcontractor Info" invisible="is_subcontractor == False">
+                        <group>
+                            <group>
+                                <field name="subcontractor_type"/>
+                                <field name="trade_license"/>
+                                <field name="license_expiry"/>
+                                <field name="rating"/>
+                                <field name="specialization_ids" widget="many2many_tags"/>
+                            </group>
+                            <group>
+                                <field name="contact_person"/>
+                                <field name="emergency_contact"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Statistics" col="3">
+                            <field name="project_count"/>
+                            <field name="total_contract_value"/>
+                            <field name="completed_projects"/>
+                        </group>
+                        
+                        <group string="Assigned Projects">
+                            <field name="project_ids" nolabel="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="date_start"/>
+                                    <field name="date"/>
+                                    <field name="stage_id"/>
+                                    <field name="user_id"/>
+                                </tree>
+                            </field>
+                        </group>
+                    </page>
+                </page>
+            </field>
+        </record>
+
+        <!-- Inherit Partner Tree View to show subcontractor info -->
+        <record id="view_partner_tree_subcontractor" model="ir.ui.view">
+            <field name="name">res.partner.tree.subcontractor</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_tree"/>
+            <field name="arch" type="xml">
+                <field name="email" position="after">
+                    <field name="subcontractor_type" string="Sub. Type" 
+                           optional="hide" invisible="is_subcontractor == False"/>
+                    <field name="rating" optional="hide" 
+                           invisible="is_subcontractor == False"/>
+                    <field name="is_subcontractor" invisible="1"/>
+                </field>
+            </field>
+        </record>
+
+        <!-- Quick Action for Subcontractors in Contacts App -->
+        <record id="action_partners_subcontractors" model="ir.actions.act_window">
+            <field name="name">Subcontractors</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('is_subcontractor', '=', True)]</field>
+            <field name="context">{
+                'default_is_subcontractor': True, 
+                'default_supplier_rank': 1,
+                'default_is_company': True,
+                'default_subcontractor_type': 'company'
+            }</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No subcontractors found!
+                </p>
+                <p>
+                    Create subcontractors to manage your construction projects efficiently.
+                </p>
+            </field>
+        </record>
+
+        <!-- Add menu item in Contacts app -->
+        <menuitem id="menu_contacts_subcontractors" 
+                  name="Subcontractors" 
+                  parent="contacts.menu_contacts" 
+                  action="action_partners_subcontractors" 
+                  sequence="15"/>
+
+    </data>
+</odoo>

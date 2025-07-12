@@ -50,10 +50,15 @@
         <!-- Subcontractors Menu -->
         <menuitem id="menu_subcontractors" name="Subcontractors" parent="menu_job_costing_main" sequence="50"/>
         
-        <menuitem id="menu_subcontractor_list" name="Subcontractors" 
+        <menuitem id="menu_subcontractor_list" name="All Subcontractors" 
                   parent="menu_subcontractors" 
                   action="action_subcontractor" 
                   sequence="10"/>
+                  
+        <menuitem id="menu_subcontractor_create" name="Add Subcontractor" 
+                  parent="menu_subcontractors" 
+                  action="action_subcontractor_create" 
+                  sequence="20"/>
 
         <!-- Configuration Menu -->
         <menuitem id="menu_job_configuration" name="Configuration" parent="menu_job_costing_main" sequence="90"/>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Wizard View for Creating RFQ from Job Cost Sheet -->
+        <record id="view_create_rfq_from_job_cost_form" model="ir.ui.view">
+            <field name="name">create.rfq.from.job.cost.form</field>
+            <field name="model">create.rfq.from.job.cost</field>
+            <field name="arch" type="xml">
+                <form string="Create RFQ from Job Cost Sheet">
+                    <group>
+                        <group>
+                            <field name="job_cost_sheet_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                            <field name="partner_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                        </group>
+                    </group>
+                    <group string="Cost Lines to Include">
+                        <field name="cost_line_ids" nolabel="1">
+                            <tree string="Cost Lines" editable="false">
+                                <field name="name"/>
+                                <field name="cost_type"/>
+                                <field name="product_id"/>
+                                <field name="planned_qty"/>
+                                <field name="unit_cost"/>
+                                <field name="total_cost"/>
+                            </tree>
+                        </field>
+                    </group>
+                    <footer>
+                        <button name="action_create_rfq" string="Create RFQ" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+        
+        <!-- Action for the wizard -->
+        <record id="action_create_rfq_from_job_cost" model="ir.actions.act_window">
+            <field name="name">Create RFQ from Job Cost Sheet</field>
+            <field name="res_model">create.rfq.from.job.cost</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="context">{'default_job_cost_sheet_id': active_id}</field>
+        </record>
+        
+    </data>
+</odoo>

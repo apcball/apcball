@@ -151,13 +151,8 @@
                                         <strong>Payment Term:</strong><br/>
                                         <span></span>
                                     </div>
-                                    <!-- Criteria -->
-                                    <div style="width: 15%; border-left: 1px solid #000; padding: 6px; border-top: 1px solid #000;">
-                                        <strong>Criteria:</strong><br/>
-                                        <span></span>
-                                    </div>
                                     <!-- Ref. Number -->
-                                    <div style="width: 35%; border-left: 1px solid #000; padding: 6px; border-top: 1px solid #000;">
+                                    <div style="width: 50%; border-left: 1px solid #000; padding: 6px; border-top: 1px solid #000;">
                                         <strong>Ref. Number:</strong><br/>
                                         <span></span>
                                     </div>

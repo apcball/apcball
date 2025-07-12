@@ -7,7 +7,7 @@
             <field name="name">subcontractor.tree</field>
             <field name="model">res.partner</field>
             <field name="arch" type="xml">
-                <tree string="Subcontractors">
+                <tree string="Subcontractors" create="1" edit="1" delete="1">
                     <field name="name"/>
                     <field name="subcontractor_type"/>
                     <field name="phone"/>
@@ -27,63 +27,75 @@
             <field name="model">res.partner</field>
             <field name="arch" type="xml">
                 <form string="Subcontractor">
+                    <header>
+                        <button name="action_set_as_subcontractor" type="object"
+                                class="btn-primary" string="Set as Subcontractor"
+                                invisible="is_subcontractor == True"/>
+                    </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">
                             <button name="action_view_projects" type="object"
                                     class="oe_stat_button" icon="fa-project-diagram">
                                 <field name="project_count" widget="statinfo" string="Projects"/>
                             </button>
-                            <button name="action_set_as_subcontractor" type="object"
-                                    class="oe_stat_button" icon="fa-check"
-                                    string="Set as Subcontractor"
-                                    invisible="is_subcontractor == True"/>
+                            <button name="toggle_active" type="object"
+                                    class="oe_stat_button" icon="fa-archive">
+                                <field name="active" widget="boolean_button"
+                                       options='{"terminology": "archive"}'/>
+                            </button>
                         </div>
                         
                         <field name="image_1920" widget="image" class="oe_avatar"/>
                         
                         <div class="oe_title">
-                            <field name="name" placeholder="Subcontractor Name" required="1"/>
-                            <field name="category_id" widget="many2many_tags" placeholder="Tags"/>
+                            <h1><field name="name" placeholder="Subcontractor Name" required="1"/></h1>
+                            <div class="o_row">
+                                <field name="category_id" widget="many2many_tags" 
+                                       placeholder="Tags" 
+                                       options="{'color_field': 'color', 'no_create_edit': True}"/>
+                            </div>
                         </div>
                         
                         <group>
-                            <group>
+                            <group string="Subcontractor Details">
                                 <field name="is_subcontractor"/>
                                 <field name="subcontractor_type"/>
                                 <field name="trade_license"/>
                                 <field name="license_expiry"/>
-                                <field name="rating"/>
+                                <field name="rating" widget="priority"/>
                                 <field name="specialization_ids" widget="many2many_tags"/>
                             </group>
-                            <group>
+                            <group string="Contact Information">
                                 <field name="is_company" invisible="1"/>
                                 <field name="supplier_rank" invisible="1"/>
-                                <field name="phone"/>
-                                <field name="mobile"/>
-                                <field name="email"/>
-                                <field name="website"/>
+                                <field name="phone" widget="phone"/>
+                                <field name="mobile" widget="phone"/>
+                                <field name="email" widget="email"/>
+                                <field name="website" widget="url"/>
                                 <field name="contact_person"/>
-                                <field name="emergency_contact"/>
+                                <field name="emergency_contact" widget="phone"/>
                             </group>
                         </group>
                         
                         <group string="Address">
                             <field name="street" placeholder="Street..."/>
                             <field name="street2"/>
-                            <field name="city"/>
-                            <field name="state_id"/>
-                            <field name="zip"/>
-                            <field name="country_id"/>
+                            <div class="o_address_format">
+                                <field name="city" placeholder="City" class="o_address_city"/>
+                                <field name="state_id" class="o_address_state" placeholder="State"/>
+                                <field name="zip" placeholder="ZIP" class="o_address_zip"/>
+                            </div>
+                            <field name="country_id" placeholder="Country"/>
                         </group>
                         
                         <group string="Statistics" col="3">
                             <field name="project_count"/>
-                            <field name="total_contract_value"/>
+                            <field name="total_contract_value" widget="monetary"/>
                             <field name="completed_projects"/>
                         </group>
                         
                         <notebook>
-                            <page string="Projects">
+                            <page string="Projects" name="projects">
                                 <field name="project_ids">
                                     <tree>
                                         <field name="name"/>
@@ -94,10 +106,131 @@
                                     </tree>
                                 </field>
                             </page>
+                            <page string="Invoices" name="invoices">
+                                <field name="invoice_ids" readonly="1">
+                                    <tree>
+                                        <field name="name"/>
+                                        <field name="invoice_date"/>
+                                        <field name="amount_total"/>
+                                        <field name="state"/>
+                                    </tree>
+                                </field>
+                            </page>
                         </notebook>
                     </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
                 </form>
             </field>
+        </record>
+
+        <!-- Subcontractor Search View -->
+        <record id="view_subcontractor_search" model="ir.ui.view">
+            <field name="name">subcontractor.search</field>
+            <field name="model">res.partner</field>
+            <field name="arch" type="xml">
+                <search string="Search Subcontractors">
+                    <field name="name" string="Name"/>
+                    <field name="trade_license"/>
+                    <field name="contact_person"/>
+                    <field name="specialization_ids"/>
+                    <field name="phone"/>
+                    <field name="email"/>
+                    
+                    <filter string="Companies" name="companies" 
+                            domain="[('subcontractor_type', '=', 'company')]"/>
+                    <filter string="Individuals" name="individuals" 
+                            domain="[('subcontractor_type', '=', 'individual')]"/>
+                    
+                    <separator/>
+                    <filter string="⭐⭐⭐⭐⭐" name="rating_5" 
+                            domain="[('rating', '=', '5')]"/>
+                    <filter string="⭐⭐⭐⭐" name="rating_4" 
+                            domain="[('rating', '=', '4')]"/>
+                    <filter string="⭐⭐⭐" name="rating_3" 
+                            domain="[('rating', '=', '3')]"/>
+                    
+                    <separator/>
+                    <filter string="Has Projects" name="has_projects" 
+                            domain="[('project_count', '>', 0)]"/>
+                    <filter string="No Projects" name="no_projects" 
+                            domain="[('project_count', '=', 0)]"/>
+                    
+                    <separator/>
+                    <filter string="Has License" name="has_license" 
+                            domain="[('trade_license', '!=', False)]"/>
+                    <filter string="No License" name="no_license" 
+                            domain="[('trade_license', '=', False)]"/>
+                    
+                    <group expand="0" string="Group By">
+                        <filter string="Type" name="group_type" context="{'group_by': 'subcontractor_type'}"/>
+                        <filter string="Rating" name="group_rating" context="{'group_by': 'rating'}"/>
+                        <filter string="Specialization" name="group_specialization" context="{'group_by': 'specialization_ids'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Subcontractor Action -->
+        <record id="action_subcontractor" model="ir.actions.act_window">
+            <field name="name">Subcontractors</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">tree,form,search</field>
+            <field name="domain">[('is_subcontractor', '=', True)]</field>
+            <field name="context">{
+                'default_is_subcontractor': True, 
+                'default_supplier_rank': 1,
+                'default_is_company': True,
+                'default_subcontractor_type': 'company'
+            }</field>
+            <field name="view_ids" 
+                   eval="[(5, 0, 0),
+                          (0, 0, {'view_mode': 'tree', 'view_id': ref('view_subcontractor_tree')}),
+                          (0, 0, {'view_mode': 'form', 'view_id': ref('view_subcontractor_form')})]"/>
+            <field name="search_view_id" ref="view_subcontractor_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Add your first subcontractor!
+                </p>
+                <p>
+                    Create and manage subcontractors for your construction projects.
+                    Track their specializations, ratings, and project assignments.
+                </p>
+            </field>
+        </record>
+
+        <!-- Action to create new subcontractor -->
+        <record id="action_subcontractor_create" model="ir.actions.act_window">
+            <field name="name">New Subcontractor</field>
+            <field name="res_model">res.partner</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_subcontractor_form"/>
+            <field name="target">current</field>
+            <field name="context">{
+                'default_is_subcontractor': True, 
+                'default_supplier_rank': 1,
+                'default_is_company': True,
+                'default_subcontractor_type': 'company'
+            }</field>
+        </record>
+
+        <!-- Debug Action for Subcontractors -->
+        <record id="action_debug_subcontractors" model="ir.actions.server">
+            <field name="name">Debug Subcontractors</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="state">code</field>
+            <field name="code">action = model.action_debug_subcontractors()</field>
+        </record>
+
+        <!-- Action to fix subcontractor records -->
+        <record id="action_fix_subcontractor_records" model="ir.actions.server">
+            <field name="name">Fix Subcontractor Records</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="state">code</field>
+            <field name="code">action = model.action_fix_subcontractor_records()</field>
         </record>
 
     </data>
