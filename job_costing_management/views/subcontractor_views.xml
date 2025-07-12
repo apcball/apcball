@@ -367,39 +367,8 @@ action = {
             <field name="context">{}</field>
             <field name="view_ids" 
                    eval="[(5, 0, 0),
-                          (0, 0, {'view_mode': 'tree', 'view_id': ref('view_debug_partner_tree')}),
+                          (0, 0, {'view_mode': 'tree', 'view_id': ref('view_subcontractor_tree')}),
                           (0, 0, {'view_mode': 'form', 'view_id': ref('view_subcontractor_form')})]"/>
-        </record>
-
-        <!-- Simple Debug Action -->
-        <record id="action_simple_debug" model="ir.actions.act_window">
-            <field name="name">Simple Debug View</field>
-            <field name="res_model">res.partner</field>
-            <field name="view_mode">tree,form</field>
-            <field name="domain">[('is_subcontractor', '=', True)]</field>
-            <field name="context">{
-                'create': True,
-                'edit': True,
-                'delete': True
-            }</field>
-            <field name="help" type="html">
-                <p class="o_view_nocontent_smiling_face">
-                    No subcontractors found!
-                </p>
-                <p>
-                    If you recently ran SQL Fix and see no data here,
-                    there might be a cache or view issue.
-                </p>
-            </field>
-        </record>
-
-        <!-- Emergency Reset Action -->
-        <record id="action_emergency_reset" model="ir.actions.act_window">
-            <field name="name">🚨 Emergency Reset Check</field>
-            <field name="res_model">res.partner</field>
-            <field name="view_mode">tree</field>
-            <field name="domain">[('supplier_rank', '>', 0)]</field>
-            <field name="context">{}</field>
         </record>
 
     </data>
