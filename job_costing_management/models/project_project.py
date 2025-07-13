@@ -34,7 +34,7 @@ class ProjectProject(models.Model):
     subcontractor_ids = fields.Many2many('res.partner', 'project_subcontractor_rel', 
                                         'project_id', 'partner_id', 
                                         string='Subcontractors',
-                                        domain=[('is_subcontractor', '=', True)])
+                                        domain=[('supplier_rank', '>', 0)])
     
     # Project notes
     project_note_ids = fields.One2many('job.note', 'project_id', string='Project Notes')

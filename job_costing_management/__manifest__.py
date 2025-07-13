@@ -54,6 +54,7 @@ Key Benefits:
         'hr',
         'mail',
         'portal',
+        'contacts',  # Added dependency for contacts module
     ],
     'data': [
         # Security

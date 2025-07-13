@@ -10,7 +10,6 @@
             <field name="arch" type="xml">
                 <!-- Add invisible fields needed for modifiers -->
                 <field name="is_company" position="after">
-                    <field name="is_subcontractor" invisible="1"/>
                     <field name="supplier_rank" invisible="1"/>
                     <field name="project_count" invisible="1"/>
                     <field name="total_contract_value" invisible="1"/>
@@ -22,7 +21,7 @@
                     <button name="action_set_as_subcontractor" type="object"
                             class="oe_stat_button" icon="fa-wrench"
                             string="Set as Subcontractor"
-                            invisible="is_subcontractor == True or supplier_rank == 0">
+                            invisible="supplier_rank > 0">
                         <div class="o_field_widget o_stat_info">
                             <span class="o_stat_text">Make</span>
                             <span class="o_stat_text">Subcontractor</span>
@@ -30,14 +29,14 @@
                     </button>
                     <button name="action_view_projects" type="object"
                             class="oe_stat_button" icon="fa-project-diagram"
-                            invisible="is_subcontractor == False">
+                            invisible="supplier_rank == 0">
                         <field name="project_count" widget="statinfo" string="Projects"/>
                     </button>
                 </div>
                 
                 <!-- Add subcontractor fields in a group -->
                 <page name="internal_notes" position="before">
-                    <page string="Subcontractor Info" invisible="is_subcontractor == False">
+                    <page string="Subcontractor Info" invisible="supplier_rank == 0">
                         <group>
                             <group>
                                 <field name="subcontractor_type"/>
@@ -81,11 +80,11 @@
             <field name="inherit_id" ref="base.view_partner_tree"/>
             <field name="arch" type="xml">
                 <field name="email" position="after">
+                    <field name="supplier_rank" invisible="1"/>
                     <field name="subcontractor_type" string="Sub. Type" 
-                           optional="hide" invisible="is_subcontractor == False"/>
+                           optional="hide" invisible="supplier_rank == 0"/>
                     <field name="rating" optional="hide" 
-                           invisible="is_subcontractor == False"/>
-                    <field name="is_subcontractor" invisible="1"/>
+                           invisible="supplier_rank == 0"/>
                 </field>
             </field>
         </record>
@@ -95,7 +94,7 @@
             <field name="name">Subcontractors</field>
             <field name="res_model">res.partner</field>
             <field name="view_mode">tree,form</field>
-            <field name="domain">[('is_subcontractor', '=', True)]</field>
+            <field name="domain">[('supplier_rank', '>', 0)]</field>
             <field name="context">{
                 'default_is_subcontractor': True, 
                 'default_supplier_rank': 1,

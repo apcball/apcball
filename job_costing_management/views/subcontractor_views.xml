@@ -16,7 +16,7 @@
                     <field name="license_expiry"/>
                     <field name="rating"/>
                     <field name="project_count"/>
-                    <field name="is_subcontractor" invisible="1"/>
+                    <field name="supplier_rank" invisible="1"/>
                 </tree>
             </field>
         </record>
@@ -30,7 +30,7 @@
                     <header>
                         <button name="action_set_as_subcontractor" type="object"
                                 class="btn-primary" string="Set as Subcontractor"
-                                invisible="is_subcontractor == True"/>
+                                invisible="supplier_rank &lt;= 0"/>
                     </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">
@@ -58,7 +58,7 @@
                         
                         <group>
                             <group string="Subcontractor Details">
-                                <field name="is_subcontractor"/>
+                                <field name="supplier_rank"/>
                                 <field name="subcontractor_type"/>
                                 <field name="trade_license"/>
                                 <field name="license_expiry"/>
@@ -141,8 +141,8 @@
                     <field name="email"/>
                     
                     <!-- Default filters -->
-                    <filter string="Subcontractors" name="is_subcontractor" 
-                            domain="[('is_subcontractor', '=', True)]"/>
+                    <filter string="Subcontractors" name="supplier_rank" 
+                            domain="[('supplier_rank', '>', 0)]"/>
                     
                     <separator/>
                     <filter string="Companies" name="companies" 
@@ -184,9 +184,8 @@
             <field name="name">Subcontractors</field>
             <field name="res_model">res.partner</field>
             <field name="view_mode">tree,form</field>
-            <field name="domain">[('is_subcontractor', '=', True)]</field>
+            <field name="domain">[('supplier_rank', '>', 0)]</field>
             <field name="context">{
-                'default_is_subcontractor': True, 
                 'default_supplier_rank': 1,
                 'default_is_company': True,
                 'default_subcontractor_type': 'company'
@@ -210,7 +209,7 @@
             <field name="name">All Subcontractors (Simple)</field>
             <field name="res_model">res.partner</field>
             <field name="view_mode">tree,form</field>
-            <field name="domain">[('is_subcontractor', '=', True)]</field>
+            <field name="domain">[('supplier_rank', '>', 0)]</field>
             <field name="context">{}</field>
         </record>
 
@@ -280,10 +279,9 @@ partners_with_data = env['res.partner'].search([
 
 fixed_count = 0
 for partner in partners_with_data:
-    if not partner.is_subcontractor:
+    if partner.supplier_rank == 0:
         partner.write({
-            'is_subcontractor': True,
-            'supplier_rank': max(partner.supplier_rank, 1),
+            'supplier_rank': 1,
             'subcontractor_type': partner.subcontractor_type or ('company' if partner.is_company else 'individual')
         })
         fixed_count += 1
@@ -298,15 +296,14 @@ specific_names = [
 
 for name in specific_names:
     partner = env['res.partner'].search([('name', '=', name)], limit=1)
-    if partner and not partner.is_subcontractor:
+    if partner and partner.supplier_rank == 0:
         partner.write({
-            'is_subcontractor': True,
-            'supplier_rank': max(partner.supplier_rank, 1),
+            'supplier_rank': 1,
             'subcontractor_type': 'company' if partner.is_company else 'individual'
         })
         fixed_count += 1
 
-total_subcontractors = env['res.partner'].search_count([('is_subcontractor', '=', True)])
+total_subcontractors = env['res.partner'].search_count([('supplier_rank', '>', 0)])
 
 action = {
     'type': 'ir.actions.client',
@@ -344,7 +341,6 @@ action = {
             <field name="arch" type="xml">
                 <tree string="All Partners (Debug)" create="1" edit="1" delete="1">
                     <field name="name"/>
-                    <field name="is_subcontractor" string="Is Subcontractor?"/>
                     <field name="supplier_rank" string="Supplier Rank"/>
                     <field name="subcontractor_type"/>
                     <field name="trade_license"/>
@@ -353,7 +349,7 @@ action = {
                     <button name="action_set_as_subcontractor" type="object"
                             string="Make Subcontractor" 
                             icon="fa-wrench"
-                            invisible="is_subcontractor == True"/>
+                            invisible="supplier_rank &gt; 0"/>
                 </tree>
             </field>
         </record>

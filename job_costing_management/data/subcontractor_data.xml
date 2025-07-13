@@ -12,7 +12,6 @@
             <field name="code">
 for record in records:
     record.write({
-        'is_subcontractor': True,
         'supplier_rank': 1
     })
 action = {
@@ -36,7 +35,7 @@ action = {
             <field name="code">
 for record in records:
     record.write({
-        'is_subcontractor': False
+        'supplier_rank': 0
     })
 action = {
     'type': 'ir.actions.client',
@@ -53,7 +52,6 @@ action = {
         <record id="subcontractor_construction_co" model="res.partner">
             <field name="name">Bangkok Construction Co., Ltd.</field>
             <field name="is_company" eval="True"/>
-            <field name="is_subcontractor" eval="True"/>
             <field name="supplier_rank">1</field>
             <field name="subcontractor_type">company</field>
             <field name="trade_license">TC-2024-001</field>
@@ -71,7 +69,6 @@ action = {
         <record id="subcontractor_electric_service" model="res.partner">
             <field name="name">Thai Electric Service</field>
             <field name="is_company" eval="True"/>
-            <field name="is_subcontractor" eval="True"/>
             <field name="supplier_rank">1</field>
             <field name="subcontractor_type">company</field>
             <field name="trade_license">TE-2024-002</field>
@@ -89,7 +86,6 @@ action = {
         <record id="subcontractor_individual_plumber" model="res.partner">
             <field name="name">Kittisak Plumbing Expert</field>
             <field name="is_company" eval="False"/>
-            <field name="is_subcontractor" eval="True"/>
             <field name="supplier_rank">1</field>
             <field name="subcontractor_type">individual</field>
             <field name="contact_person">Kittisak Samranrit</field>
