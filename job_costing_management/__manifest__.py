@@ -68,7 +68,7 @@ Key Benefits:
         'data/subcontractor_data.xml',
         'data/subcontractor_cron.xml',
         
-        # Views
+        # Views (load first to define actions)
         'views/job_type_views.xml',
         'views/job_stage_views.xml',
         'views/job_cost_sheet_views.xml',
@@ -82,6 +82,8 @@ Key Benefits:
         'views/purchase_order_views.xml',
         'views/account_move_views.xml',
         'views/hr_timesheet_views.xml',
+        
+        # Menu (load after actions are defined)
         'views/job_costing_menu.xml',
         
         # Reports

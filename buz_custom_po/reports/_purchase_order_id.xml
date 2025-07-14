@@ -17,8 +17,8 @@
 
 
      <!-- Report Template -->
-     <template id="report__purchase_order_id_document_custom">
-        <t t-name="buz_custom_po.report__purchase_order_id_document_custom">
+     <template id="report_purchase_order_id_document_custom">
+        <t t-name="buz_custom_po.report_purchase_order_id_document_custom">
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="o">
                     <t t-call="web.external_layout">
@@ -122,19 +122,24 @@
                                 }
                         </style>
 
-                         
+               <!-- Order Lines - Refactored: Loop only once, paginated in one loop -->
+        <t t-set="line_count" t-value="len(o.order_line)"/>
+        <t t-set="lines_per_page" t-value="10"/>
+        <t t-set="total_pages" t-value="int((line_count + lines_per_page - 1) / lines_per_page)"/>
+        <t t-foreach="range(total_pages)" t-as="page_num">
+            <div t-attf-style="#{page_num &gt; 0 and 'page-break-before: always;' or ''}">
+    
+                           
     
                 <!-- ส่วนหัว (Header) -->
                 <div class="row mb-2">
                     <div class="col-12 text-center">
-                        <div style="font-size: 28px;">
+                        <div style="font-size: 24px;">
                             <strong>บริษัท ไอดอล ซิมเท่ม จำกัด (สำนักงานใหญ่)   เลขที่ 45 หมู่14 ตำบลบึงคำพร้อย อำเภอลำลูกกา จังหวัดปทุมธานี 12150 โทร: (02) 105-4600</strong>
                         </div>
                     </div>
                 </div>  
 
-                <!-- Document Title -->
-               <!-- Document Title -->
                <!-- Document Title -->
                <div class="row mb-2">
                 <div class="col-12 text-center">
@@ -143,9 +148,213 @@
             </div>
 
 
+            <table style="width: 100%; border-collapse: collapse; font-size: 16px;">
+                <tr>
+                  <!-- กรอบซ้าย -->
+                  <td style="width: 50%; border: 1px solid #000; vertical-align: top; padding: 5px;">
+                    <div>
+                      <p><strong>ชื่อผู้ขาย:</strong> <span t-field="o.partner_id.name"/></p>
+                      <p>
+                        <strong style="display: inline-block; width: 25%;">ที่อยู่/ADDRESS:</strong>
+                        <span t-field="o.partner_id.street"/>
+                        <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
+                        <span t-if="o.partner_id.city"> <t t-esc="o.partner_id.city"/></span>
+                        <span t-if="o.partner_id.state_id"> <t t-esc="o.partner_id.state_id.name"/></span>
+                        <span t-if="o.partner_id.zip"> <t t-esc="o.partner_id.zip"/></span>
+                    
+                      </p>
+                      <table style="width: 100%;">
+                        <tr>
+                          <td style="width: 50%; border: none;"><strong>โทร:</strong> <span t-field="o.partner_id.phone"/></td>
+                          <td style="width: 50%; border: none;"><strong>แฟ็กซ์:</strong> <span t-field="o.partner_id.fax"/></td>
+                        </tr>
+                      </table>
+                    </div>
+                  </td>
+
+                  <!-- กรอบขวา -->
+                  <td style="width: 50%; border: 1px solid #000; vertical-align: top; padding: 5px;">
+                    <table style="width: 100%;">
+                      <tr>
+                        <td style="width: 50%; border: none;"><strong>เลขที่ใบสั่งซื้อ:</strong> <span t-field="o.name"/></td>
+                        <td style="width: 50%; border: none;"><strong>วันที่ใบสั่งซื้อ:</strong> <span t-field="o.date_order" t-options='{"widget": "date"}'/></td>
+                      </tr>
+                    </table>
+                    <p><strong>วันที่กำหนดส่ง:</strong> <span t-field="o.date_planned" t-options='{"widget": "date"}'/></p>
+                    <p><strong>จำนวนวันเครดิต:</strong> <span t-field="o.payment_term_id.name"/></p>
+                    <p><strong>ชื่อผู้ติดต่อ:</strong> <span t-field="o.employee_contact_id.name"/></p>
+                  </td>
+                </tr>
+              </table>
 
 
+                 
+              <div style="height:16px;"></div>
+              <table class="table table-sm mt-4 order-line-table"
+          style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 0px; margin-top: -85px;">
+           <thead>
+               <tr>
+                   <th style="width: 5%; text-align: center; border: 1px solid black; padding: 4px;">ลำดับ<br/><span style="font-size: 12px;">(No)</span></th>
+                   <th style="width: 14%; text-align: center; border: 1px solid black; padding: 4px;">รหัสสินค้า<br/><span style="font-size: 12px;">(Item No)</span></th>
+                   <th style="width: 34%; text-align: center; border: 1px solid black; padding: 4px;">รายการสินค้า<br/><span style="font-size: 12px;">(Description)</span></th>
+                   <th style="width: 9%; text-align: center; border: 1px solid black; padding: 4px;">วันที่ส่ง<br/><span style="font-size: 12px;">(Delivery Date)</span></th>
+                   <th style="width: 7%; text-align: center; border: 1px solid black; padding: 4px;">จำนวน<br/><span style="font-size: 12px;">(Qty)</span></th>
+                   <th style="width: 5%; text-align: center; border: 1px solid black; padding: 4px;">หน่วย<br/><span style="font-size: 12px;">(Unit)</span></th>
+                   <th style="width: 8%; text-align: center; border: 1px solid black; padding: 4px;">ราคา/หน่วย<br/><span style="font-size: 12px;">(Unit Price)</span></th>
+                   <th style="width: 6%; text-align: center; border: 1px solid black; padding: 4px;">ส่วนลด<br/><span style="font-size: 12px;">(Discount)</span></th>
+                   <th style="width: 14%; text-align: center; border: 1px solid black; padding: 4px;">จำนวนเงิน<br/><span style="font-size: 12px;">(Amount)</span></th>
+               </tr>
+           </thead>
+           <tbody>
+               <t t-set="start_idx" t-value="page_num * lines_per_page"/>
+               <t t-set="end_idx" t-value="min((page_num + 1) * lines_per_page, line_count)"/>
+               <t t-set="current_line_number" t-value="start_idx + 1"/>
+               <t t-foreach="enumerate(o.order_line[start_idx:end_idx])" t-as="line_tuple">
+                   <tr style="font-size: 18px; height: 25px;">
+                       <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
+                           <span t-esc="current_line_number + line_tuple[0]"/>
+                       </td>
+                       <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
+                           <span t-field="line_tuple[1].product_id.default_code"/>
+                       </td>
+                       <td style="border: 1px solid black; vertical-align: middle; padding-left: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                           <span t-field="line_tuple[1].product_id.name"/>
+                       </td>
+                       <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
+                           <span t-esc="line_tuple[1].date_planned.strftime('%d/%m/%Y') if line_tuple[1].date_planned else ''"/>
+                       </td>
+                       <td style="border: 1px solid black; text-align: right; vertical-align: middle; padding-right: 2px;">
+                           <span t-esc="'%.0f' % line_tuple[1].product_uom_qty if line_tuple[1].product_uom_qty else '0'"/>
+                       </td>
+                       <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
+                           <span t-field="line_tuple[1].product_uom.name"/>
+                       </td>
+                       <td style="text-align: right; border: 1px solid black; padding: 1px 2px;
+                                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px;">
+                          <span t-esc="'{:,.2f}'.format(line_tuple[1].price_unit)"/>
+                      </td>
+                       <td style="border: 1px solid black; text-align: right; vertical-align: middle; padding-right: 2px;">
+                           <t t-if="line_tuple[1].discount">
+                               <span t-esc="'{:,.2f}'.format(line_tuple[1].discount)"/>%
+                           </t>
+                       </td>
+                       <td style="border: 1px solid black; text-align: right; vertical-align: middle; padding-right: 2px;">
+                           <t t-set="subtotal" t-value="line_tuple[1].product_uom_qty * line_tuple[1].price_unit * (1 - (line_tuple[1].discount or 0.0)/100)"/>
+                           <span t-esc="'{:,.2f}'.format(subtotal or 0.0)"/>
+                       </td>
+                   </tr>
+               </t>
+           </tbody>
+       </table>
 
+               
+      </div>
+    </t>     
+         
+ 
+                         <div style="display: flex; width: 100%; box-sizing: border-box; margin-bottom: 4px;margin-top: 10px;">
+ 
+                             <!-- ฝั่งซ้าย: หมายเหตุ + จำนวนเงินตัวอักษร (มีกรอบ + พื้นหลัง + ความสูงเท่าฝั่งขวา) -->
+                             <div style="width: 60%; padding: 0 4px 0 0; box-sizing: border-box; min-height: 174px; max-height: 174px; height: 174px;">
+                                 <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                                     <tr>
+                                         <td style="border: 1px solid black; padding: 0; min-height: 174px; max-height: 174px; height: 174px;">
+                                             <!-- กล่องสูง 150px แบ่งเป็น 80% + 20% -->
+
+                                             <!-- บรรทัดที่ 1: หมายเหตุ -->
+                                             <div style="min-height: 139px; max-height: 139px; height: 139px; padding: 10px; box-sizing: border-box; border-bottom: 1px solid black;">
+                                                 <strong>หมายเหตุ:</strong>
+                                                 <span t-esc="o.notes or ''"/>
+                                             </div>
+
+                                             <!-- บรรทัดที่ 2: จำนวนเงิน -->
+                                             <div style="min-height: 35px; height: 35px; padding: 10px; box-sizing: border-box;">
+                                                 <strong>จำนวนเงิน (ตัวอักษร):</strong>
+                                                 <span t-esc="o.amount_total_text_th"/>
+                                             </div>
+                                         </td>
+                                     </tr>
+                                 </table>
+                             </div>
+                             
+ 
+                             <!-- ฝั่งขวา: ผลรวม (ตารางมีเส้น แต่ไม่มีกรอบนอก) -->
+                             <div style="width: 40%; padding: 0 0 0 2px; box-sizing: border-box;">
+                                 <t t-set="amount_untaxed" t-value="o.amount_untaxed or 0.0"/>
+                                 <t t-set="total_discount" t-value="sum([(line.product_qty * line.price_unit * (line.discount or 0.0)/100.0) for line in o.order_line])"/>
+                                 <t t-set="amount_after_discount" t-value="(amount_untaxed or 0.0) - (total_discount or 0.0)"/>
+                                 <t t-set="amount_tax" t-value="o.has_vat and o.amount_tax or 0.0"/>
+                                 <t t-set="amount_total" t-value="(o.has_vat and amount_after_discount + amount_tax) or amount_after_discount"/>
+                             
+                                 <table style="width: 100%; border-collapse: collapse; font-size: 13px; border: 1px solid #000; margin: 0;">
+                                     <tr>
+                                         <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ราคารวม/Total:</td>
+                                         <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
+                                             <span t-esc="'{:,.2f}'.format(amount_untaxed)"/>
+                                         </td>
+                                     </tr>
+                                     <tr>
+                                         <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ส่วนลด/Discount:</td>
+                                         <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
+                                             <span t-esc="'{:,.2f}'.format(total_discount)"/>
+                                         </td>
+                                     </tr>
+                                     <tr>
+                                         <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">คงเหลือ/Remaining:</td>
+                                         <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
+                                             <span t-esc="'{:,.2f}'.format(amount_after_discount)"/>
+                                         </td>
+                                     </tr>
+                             
+                                     <tr>
+                                         <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">ภาษีมูลค่าเพิ่ม 7%:</td>
+                                         <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;">
+                                             <span t-esc="'{:,.2f}'.format(amount_tax)"/>
+                                         </td>
+                                     </tr>
+                             
+                                     <tr>
+                                         <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;"><strong>จำนวนเงินรวมทั้งสิ้น:</strong></td>
+                                         <td style="text-align: right; padding: 2px 4px; border: 1px solid #000;"><strong>
+                                             <span t-esc="'{:,.2f}'.format(amount_total)"/>
+                                         </strong></td>
+                                     </tr>
+                                 </table>
+                             </div>
+                         </div>
+
+                         
+
+
+                         <div style="width: 100%; display: flex; gap: 10px; margin-top: 20px; font-size: 16px;">
+  
+                          <!-- กรอบซ้าย 50%: เงื่อนไขอื่นๆ -->
+                          <div style="width: 50%; border: 1px solid black; padding: 10px; min-height: 120px;">
+                            <strong>เงื่อนไขอื่นๆ:</strong><br/>
+                            1.โปรดระบุเลขที่ใบสั่งซื้อข้างต้น ในใบส่งของทุกฉบับ
+                            2.การวางบิลเเละการรับเช็ค เป็นไปตามกำหนดเวลาที่บริษัทกำหนดไว้
+                            3.ในการวางบิลเพื่อเรียเก็บ ให้เเนบสำเนาใบสั่งซื้อกำกับมาด้วย
+                          </div>
+                        
+                          <!-- กรอบกลาง 25%: ช่องเซ็นชื่อ -->
+                          <div style="width: 25%; border: 1px solid black; padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <br/>
+                            <br/>
+                            ______________________
+                            ผู้จัดทำ
+                          </div>
+                        
+                          <!-- กรอบขวา 25%: ผู้มีอำนาจลงนาม -->
+                          <div style="width: 25%; border: 1px solid black; padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <br/>
+                            <br/>
+                            ______________________
+                            (.....................)
+                          </div>
+                        
+                        </div>
+                        
+                     
 
                 
 

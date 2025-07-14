@@ -13,16 +13,30 @@ class PurchaseOrder(models.Model):
     payment_term_id = fields.Many2one('account.payment.term', string="Payment Term")
     date_order = fields.Datetime(string="Order Date")
     date_planned = fields.Date(string='Planned Date', default=fields.Date.context_today)
-    vendor_id = fields.Many2one('res.partner', string='Vendor')  # กรณียังไม่มี vendor_id
     partner_id = fields.Many2one('res.partner', string='Vendor', required=True)
     purchase_ids = fields.One2many('purchase.order', 'requisition_id', string="Purchase Orders")
     department_id = fields.Many2one('hr.department', string='Department')
     requisition_id = fields.Many2one('purchase.requisition', string='Purchase Agreement')
+    partner_id = fields.Many2one('res.partner', string='Vendor', required=True)
+    custom_request_date = fields.Date(string="วันที่ตามแบบฟอร์ม")
+    delivery_date = fields.Date(string="วันที่ส่งมอบ")
+    project_id = fields.Many2one('project.project', string="Project")
+    remarks = fields.Char(string="หมายเหตุ")
+    district_id = fields.Many2one('res.country.district', string="ตำบล")
 
     department_name = fields.Char(
         string='Department Name',
         compute='_compute_department_name',
         store=False
+    )
+    
+
+    department_id = fields.Many2one(
+        'hr.department',
+        string="แผนก",
+        related='user_id.employee_id.department_id',
+        store=True,
+        readonly=True
     )
 
     amount_total_text_th = fields.Char(
@@ -52,6 +66,15 @@ class PurchaseOrder(models.Model):
                 for line in order.order_line
             )        
 
+    @api.model
+    def _get_report_values(self, docids, data=None):
+        docs = self.env['purchase.order'].browse(docids)
+        return {
+            'doc_ids': docids,
+            'doc_model': 'purchase.order',
+            'docs': docs,
+        }
+    
     @api.depends('amount_total')
     def _compute_amount_total_text_th(self):
         for rec in self:
@@ -114,3 +137,22 @@ class PurchaseOrder(models.Model):
 
     def button_confirm(self):
         return super(PurchaseOrder, self).button_confirm()
+
+    def name_get(self):
+        result = []
+        for rec in self:
+            name = rec.description or "รายการ"
+        result.append((rec.id, name))
+        return result    
+
+
+class BuzPurchaseOrderLine(models.Model):
+    _name = 'buz.purchase.order.line'
+    _description = 'Custom Purchase Order Line'
+
+    order_id = fields.Many2one('purchase.order', string='Purchase Order', ondelete='cascade')
+    quantity = fields.Float(string='จำนวน')
+    unit_id = fields.Many2one('uom.uom', string='หน่วย')
+    description = fields.Text(string='ชื่อและรายละเอียดสิ่งที่ต้องการ')
+    unit_price = fields.Float(string='ราคาต่อหน่วย')
+    remark = fields.Char(string='หมายเหตุ')

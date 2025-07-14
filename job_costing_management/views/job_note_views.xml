@@ -102,12 +102,5 @@
             <field name="view_mode">tree,form</field>
         </record>
 
-        <!-- Job Note Menu -->
-        <menuitem id="menu_job_note" 
-                  name="Job Notes" 
-                  parent="menu_job_orders" 
-                  action="action_job_note" 
-                  sequence="20"/>
-
     </data>
 </odoo>

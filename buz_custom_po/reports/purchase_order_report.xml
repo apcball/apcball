@@ -271,7 +271,7 @@
 
                 <div style="height:16px;"></div>
                 <table class="table table-sm mt-4 order-line-table"
-                style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 0px; margin-top: -85px;">
+            style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 0px; margin-top: -85px;">
              <thead>
                  <tr>
                      <th style="width: 5%; text-align: center; border: 1px solid black; padding: 4px;">ลำดับ<br/><span style="font-size: 12px;">(No)</span></th>

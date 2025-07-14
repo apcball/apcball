@@ -110,10 +110,10 @@
                             <!-- ซ้าย 50% -->
                             <div style="width: 50%; display: flex; flex-direction: column;">
                                 <!-- Vendor -->
-                                <div style="padding: 6px;">
-                                    <strong>Vendor:</strong><br/>
-                                    <span t-esc="o.partner_id.name"/>
-                                </div>
+                                <t t-if="o.purchase_ids">
+                                    <strong>Vendor:</strong>
+                                   
+                                </t>
                                 <!-- Address -->
                                 <div style="padding: 6px;">
                                     <strong>Address:</strong><br/>
@@ -161,6 +161,67 @@
                         </div>
                     </div>
 
+                    
+<!-- Order Lines -->
+<div class="row">
+    <div class="col-12">
+        <table class="table" style="font-size: 14px; width: 100%; margin: 20px 0 20px 0; padding: 0; border-collapse: collapse;">
+            <thead>
+                <tr class="text-center" style="background-color: #f8f9fa;">
+                    <th style="width: 5%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">NO.</th>
+                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">IMAGE</th>
+                    <th style="width: 25%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">DESCRIPTION</th>
+                    <th style="width: 10%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">DELIVERY</th>
+                    <th style="width: 18%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">QTY/UNIT</th>
+                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">UNIT PRICE</th>
+                    <th style="width: 8%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">DISC %</th>
+                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">AMOUNT</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr t-foreach="o.line_ids" t-as="line" t-foreach-index="line_index">
+                    <td style="text-align: center; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-esc="line_index + 1"/>
+                    </td>
+                    <td>
+                        <img t-if="line.product_id.image_128"
+                            t-att-src="image_data_uri(line.product_id.image_128)"
+                            style="width: 64px; height: 64px; object-fit: contain;"/>
+                    </td>
+                    <td style="padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.product_id.name_eng"/>
+                    </td>
+                    <td style="text-align: center; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.date_planned" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                    </td>
+                    <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/> <span t-field="line.product_uom.name"/>
+                    </td>
+                    <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.price_unit" t-options='{"widget": "float", "precision": 2}'/>
+                    </td>
+                    <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.discount" t-options='{"widget": "float", "precision": 2}'/>
+                    </td>
+                    <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.price_subtotal" t-options='{"widget": "float", "precision": 2}'/>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+   <!-- Summary Section -->
+<div class="row" style="margin-top: 5px;">
+    <div class="col-7">
+        <!-- Notes Section -->
+        <div style="border: 0.5px solid #dee2e6; padding: 8px; min-height: 150px;">
+            <strong>Remark.</strong> 
+        </div>
+    </div>
+</div>
+ 
 
                       </div>
                     </t>
