@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Define Paper Format -->
+    <record id="paperformat_purchase_order_id" model="report.paperformat">
+        <field name="name">Purchase Order Id A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">8</field>
+        <field name="dpi">90</field>
+    </record>
+
+
+     <!-- Report Template -->
+     <template id="report__purchase_order_id_document_custom">
+        <t t-name="buz_custom_po.report__purchase_order_id_document_custom">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                       <div class="page">
+
+
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_custom_po/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                font-weight: bold;
+                                font-style: normal;
+                            }
+                            @page {
+                                margin-top: 0mm;
+                                margin-bottom: 10mm;
+                                margin-left: 10mm;
+                                margin-right: 10mm;
+                            }
+                            
+                            body, .page, .row {
+                                margin-top: 0 !important;
+                                padding-top: 0 !important;
+                            }
+                            
+                            html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+                                font-family: 'Sarabun', sans-serif !important;
+                                font-size: 20px;
+                            }
+                            
+                            .table {
+                                border-collapse: collapse !important;
+                                width: 100%;
+                            }
+                            
+                            .table td,
+                            .table th {
+                                border-width: 0.5px !important;
+                                border-style: solid !important;
+                                border-color: #000 !important;
+                                padding:  1px 1px;
+                            }
+
+                            .order-line-table th,
+                            .order-line-table td {
+                                padding-top: 10px !important;
+                                padding-bottom: 10px !important;
+                               line-height: 1.1 !important;
+                            }
+                            
+                            .no-inner-borders td,
+                            .no-inner-borders th {
+                                border: none !important;
+                            }
+                            
+                            .table-bordered,
+                            .table-bordered td,
+                            .table-bordered th {
+                                border: none !important;
+                            }
+
+                            .page {
+                                page-break-after: always;
+                            }
+                            .page:last-child {
+                                page-break-after: auto;
+                            }
+
+                            .page-break {
+                                page-break-after: always;
+                              }
+
+                            .vendor-info, .delivery-info {
+                                font-size: 14px;
+                            }
+                
+                            .line.name{
+                                max-width: 100px;
+                                white-space: nowrap;
+                                overflow: hidden;
+                                text-overflow: ellipsis;
+                            }
+                            .footer-fixed {
+                                position: absolute;
+                                bottom: 0;
+                                width: 100%;
+                                font-size: 16px;
+                                display: flex;
+                                justify-content: space-between;
+                              }
+                              @page {
+                                margin: 10mm 10mm 20mm 10mm; /* ซ้าย ขวา บน ล่าง */
+                                @bottom-left {
+                                    content: "อนุมัติใช้วันที่ 14/09/2563";
+                                    font-size: 14px;
+                                }
+                                @bottom-right {
+                                    content: "FM-PUR-08.REV.01";
+                                    font-size: 14px;
+                                }
+                                }
+                        </style>
+
+                         
+    
+                <!-- ส่วนหัว (Header) -->
+                <div class="row mb-2">
+                    <div class="col-12 text-center">
+                        <div style="font-size: 28px;">
+                            <strong>บริษัท ไอดอล ซิมเท่ม จำกัด (สำนักงานใหญ่)   เลขที่ 45 หมู่14 ตำบลบึงคำพร้อย อำเภอลำลูกกา จังหวัดปทุมธานี 12150 โทร: (02) 105-4600</strong>
+                        </div>
+                    </div>
+                </div>  
+
+                <!-- Document Title -->
+               <!-- Document Title -->
+               <!-- Document Title -->
+               <div class="row mb-2">
+                <div class="col-12 text-center">
+                    <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 26px; margin-top: 10px;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
+                </div>
+            </div>
+
+
+
+
+
+
+                
+
+                        
+              </div>
+            </t>
+          </t>
+        </t>
+      </t>
+    </template>
+
+       <!-- Report Action -->
+       <record id="action_report_purchase_order_id_custom" model="ir.actions.report">
+        <field name="name">Purchase</field>
+        <field name="model">purchase.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_custom_po.report_purchase_order_id_document_custom</field>
+        <field name="report_file">buz_custom_po.report_purchase_order_id_document_custom</field>
+        <field name="print_report_name">'Purchase Order - %s' % object.name</field>
+        <field name="binding_model_id" ref="purchase.model_purchase_order"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_purchase_order_id"/>
+    </record>
+</odoo>
