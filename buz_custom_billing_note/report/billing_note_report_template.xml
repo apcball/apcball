@@ -83,8 +83,9 @@
                                     </div>
                                 </div>
                                 <div class="col-4 text-end">
-                                    <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)"
-                                         style="width: 180px; height: auto;"/>
+                                    <img src="/buz_custom_billing_note/static/img/LOGO MOGEN.png"
+                                                 style="width: 150px; height: auto; object-fit: contain;margin-bottom: -30px;"
+                                                 alt="Company Logo"/>
                                 </div>
                             </div>
                             

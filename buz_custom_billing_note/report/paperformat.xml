@@ -4,7 +4,7 @@
         <record id="paperformat_billing_note" model="report.paperformat">
             <field name="name">Billing Note A4</field>
             <field name="default" eval="True"/>
-            <field name="format">A4</field>
+            <field name="format">Letter</field>
             <field name="orientation">Portrait</field>
             <field name="margin_top">10</field>
             <field name="margin_bottom">10</field>
