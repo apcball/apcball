@@ -241,38 +241,38 @@
                     </tr>
                 </table>
 
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px; font-family: 'Sarabun', Arial, sans-serif; margin-top: 30px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; font-family: 'Sarabun', Arial, sans-serif; margin-top: 10px; border-spacing: 0; border: 1px solid #000;">
                     <thead>
                         <tr>
-                            <th style="width: 5%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 2px;">ลำดับ</th>
-                            <th style="width: 10%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 2px;">จำนวน</th>
-                            <th style="width: 10%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 2px;">หน่วย</th>
-                            <th style="width: 40%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 2px;">ชื่อและรายละเอียดสิ่งที่ต้องการ</th>
-                            <th style="width: 10%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 2px;">ราคาต่อหน่วย<br/>(ถ้าทราบ)</th>
-                            <th style="width: 25%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 2px;">หมายเหตุ</th>
+                            <th style="width: 5%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">รายการ</th>
+                            <th style="width: 10%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">จำนวน</th>
+                            <th style="width: 10%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">หน่วย</th>
+                            <th style="width: 40%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">ชื่อและรายละเอียดสิ่งที่ต้องการ</th>
+                            <th style="width: 10%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">ราคาต่อหน่วย<br/>(ถ้าทราบ)</th>
+                            <th style="width: 25%; border: 1px solid #000; text-align: center; vertical-align: middle; padding: 0 2px; margin: 0;">หมายเหตุ</th>
                         </tr>
                     </thead>
                     <tbody>
                         <t t-set="line_index" t-value="0"/>
                         <t t-foreach="o.order_line" t-as="line">
                             <tr>
-                                <td style="border: 1px solid #000; text-align: center; padding: 2px;">
+                                <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
                                     <t t-esc="line_index + 1"/>
                                     <t t-set="line_index" t-value="line_index + 1"/>
                                 </td>
-                                <td style="border: 1px solid #000; text-align: center; padding: 2px;">
+                                <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
                                     <t t-esc="line.product_qty"/>
                                 </td>
-                                <td style="border: 1px solid #000; text-align: center; padding: 2px;">
+                                <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
                                     <t t-esc="line.product_uom.name"/>
                                 </td>
-                                <td style="border: 1px solid #000; padding: 2px;">
+                                <td style="border: 1px solid #000; padding: 0 2px; margin: 0;">
                                     <t t-esc="line.name"/>
                                 </td>
-                                <td style="border: 1px solid #000; text-align: right; padding: 2px;">
+                                <td style="border: 1px solid #000; text-align: center; padding: 0 2px; margin: 0;">
                                     <t t-if="line.price_unit"><t t-esc="line.price_unit"/></t>
                                 </td>
-                                <td style="border: 1px solid #000; padding: 2px;">
+                                <td style="border: 1px solid #000; padding: 0 2px; margin: 0;">
                                     <t t-esc="o.notes"/>
                                 </td>
                             </tr>

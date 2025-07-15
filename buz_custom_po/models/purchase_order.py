@@ -15,22 +15,6 @@ class PurchaseOrder(models.Model):
     date_planned = fields.Date(string='Planned Date', default=fields.Date.context_today)
     partner_id = fields.Many2one('res.partner', string='Vendor', required=True)
     purchase_ids = fields.One2many('purchase.order', 'requisition_id', string="Purchase Orders")
-    department_id = fields.Many2one('hr.department', string='Department')
-    requisition_id = fields.Many2one('purchase.requisition', string='Purchase Agreement')
-    partner_id = fields.Many2one('res.partner', string='Vendor', required=True)
-    custom_request_date = fields.Date(string="วันที่ตามแบบฟอร์ม")
-    delivery_date = fields.Date(string="วันที่ส่งมอบ")
-    project_id = fields.Many2one('project.project', string="Project")
-    remarks = fields.Char(string="หมายเหตุ")
-    district_id = fields.Many2one('res.country.district', string="ตำบล")
-
-    department_name = fields.Char(
-        string='Department Name',
-        compute='_compute_department_name',
-        store=False
-    )
-    
-
     department_id = fields.Many2one(
         'hr.department',
         string="แผนก",
@@ -38,25 +22,28 @@ class PurchaseOrder(models.Model):
         store=True,
         readonly=True
     )
-
+    requisition_id = fields.Many2one('purchase.requisition', string='Purchase Agreement')
+    custom_request_date = fields.Date(string="วันที่ตามแบบฟอร์ม")
+    delivery_date = fields.Date(string="วันที่ส่งมอบ")
+    project_id = fields.Many2one('project.project', string="Project")
+    remarks = fields.Char(string="หมายเหตุ")
+    district_id = fields.Many2one('res.country.district', string="ตำบล")
+    department_name = fields.Char(
+        string='Department Name',
+        compute='_compute_department_name',
+        store=False
+    )
     amount_total_text_th = fields.Char(
         string='Amount Total (Thai Text)',
         compute='_compute_amount_total_text_th',
         store=False
     )
-
     has_vat = fields.Boolean(
         string='Has VAT',
         compute='_compute_has_vat',
         store=False
     )
-
-    # Temporary field to allow clean migration - will be removed in next version
-    approval_state = fields.Selection([
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),  
-        ('rejected', 'Rejected')
-    ], string='Approval Status')
+    destination_location_id = fields.Many2one('stock.location', string="Destination Location")
 
     @api.depends('order_line.taxes_id')
     def _compute_has_vat(self):
@@ -156,3 +143,4 @@ class BuzPurchaseOrderLine(models.Model):
     description = fields.Text(string='ชื่อและรายละเอียดสิ่งที่ต้องการ')
     unit_price = fields.Float(string='ราคาต่อหน่วย')
     remark = fields.Char(string='หมายเหตุ')
+    

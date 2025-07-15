@@ -30,3 +30,8 @@ class PurchaseOrder(models.Model):
         string='PR Number',
         help='Reference number of the PR',
     )
+    destination_location_id = fields.Many2one(
+        'stock.location',
+        string='Destination Location',
+        help='Destination location from requisition',
+    )

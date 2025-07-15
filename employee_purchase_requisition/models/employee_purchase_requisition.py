@@ -196,10 +196,12 @@ class PurchaseRequisition(models.Model):
             self.employee_id.department_id.department_location_id.id) if (
             self.employee_id.department_id.department_location_id) else (
             self.env.ref('stock.stock_location_stock').id)
-        self.destination_location_id = (
-            self.employee_id.employee_location_id.id) if (
-            self.employee_id.employee_location_id) else (
-            self.env.ref('stock.stock_location_stock').id)
+        # Only set destination_location_id if not already set by user
+        if not self.destination_location_id:
+            self.destination_location_id = (
+                self.employee_id.employee_location_id.id) if (
+                self.employee_id.employee_location_id) else (
+                self.env.ref('stock.stock_location_stock').id)
         self.delivery_type_id = (
             self.source_location_id.warehouse_id.in_type_id.id)
         self.internal_picking_id = (
@@ -265,6 +267,9 @@ class PurchaseRequisition(models.Model):
         # สร้าง Purchase Orders
         for vendor_id, lines in purchase_orders.items():
             order_lines = [(0, 0, line) for line in lines]
+            picking_type_id = False
+            if self.destination_location_id and self.destination_location_id.warehouse_id:
+                picking_type_id = self.destination_location_id.warehouse_id.in_type_id.id
             self.env['purchase.order'].create({
                 'partner_id': vendor_id,
                 'requisition_order': self.name,
@@ -273,6 +278,8 @@ class PurchaseRequisition(models.Model):
                 'pr_number': self.name,
                 'date_order': fields.Date.today(),
                 'order_line': order_lines,
+                'destination_location_id': self.destination_location_id.id,
+                'picking_type_id': picking_type_id,
             })
 
         if purchase_orders:

@@ -131,12 +131,7 @@
                               groups="employee_purchase_requisition.employee_requisition_manager,employee_purchase_requisition.employee_requisition_head">
                             <group>
                                 <group>
-                                    <field name="source_location_id"/>
-                                    <field name="delivery_type_id"/>
-                                </group>
-                                <group>
                                     <field name="destination_location_id"/>
-                                    <field name="internal_picking_id"/>
                                 </group>
                             </group>
                         </page>

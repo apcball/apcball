@@ -194,14 +194,11 @@
           style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 0px; margin-top: -85px;">
            <thead>
                <tr>
-                   <th style="width: 5%; text-align: center; border: 1px solid black; padding: 4px;">ลำดับ<br/><span style="font-size: 12px;">(No)</span></th>
-                   <th style="width: 14%; text-align: center; border: 1px solid black; padding: 4px;">รหัสสินค้า<br/><span style="font-size: 12px;">(Item No)</span></th>
-                   <th style="width: 34%; text-align: center; border: 1px solid black; padding: 4px;">รายการสินค้า<br/><span style="font-size: 12px;">(Description)</span></th>
-                   <th style="width: 9%; text-align: center; border: 1px solid black; padding: 4px;">วันที่ส่ง<br/><span style="font-size: 12px;">(Delivery Date)</span></th>
-                   <th style="width: 7%; text-align: center; border: 1px solid black; padding: 4px;">จำนวน<br/><span style="font-size: 12px;">(Qty)</span></th>
-                   <th style="width: 5%; text-align: center; border: 1px solid black; padding: 4px;">หน่วย<br/><span style="font-size: 12px;">(Unit)</span></th>
-                   <th style="width: 8%; text-align: center; border: 1px solid black; padding: 4px;">ราคา/หน่วย<br/><span style="font-size: 12px;">(Unit Price)</span></th>
-                   <th style="width: 6%; text-align: center; border: 1px solid black; padding: 4px;">ส่วนลด<br/><span style="font-size: 12px;">(Discount)</span></th>
+                   <th style="width: 8%; text-align: center; border: 1px solid black; padding: 4px;">ลำดับ<br/><span style="font-size: 12px;">(No)</span></th>
+                   <th style="width: 42%; text-align: center; border: 1px solid black; padding: 4px;">รายการ<br/><span style="font-size: 12px;">(Description)</span></th>
+                   <th style="width: 12%; text-align: center; border: 1px solid black; padding: 4px;">จำนวน<br/><span style="font-size: 12px;">(Qty)</span></th>
+                   <th style="width: 11%; text-align: center; border: 1px solid black; padding: 4px;">หน่วย<br/><span style="font-size: 12px;">(Unit)</span></th>
+                   <th style="width: 13%; text-align: center; border: 1px solid black; padding: 4px;">ราคา/หน่วย<br/><span style="font-size: 12px;">(Unit Price)</span></th>
                    <th style="width: 14%; text-align: center; border: 1px solid black; padding: 4px;">จำนวนเงิน<br/><span style="font-size: 12px;">(Amount)</span></th>
                </tr>
            </thead>
@@ -211,33 +208,28 @@
                <t t-set="current_line_number" t-value="start_idx + 1"/>
                <t t-foreach="enumerate(o.order_line[start_idx:end_idx])" t-as="line_tuple">
                    <tr style="font-size: 18px; height: 25px;">
+                       <!-- ลำดับ -->
                        <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
                            <span t-esc="current_line_number + line_tuple[0]"/>
                        </td>
-                       <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
-                           <span t-field="line_tuple[1].product_id.default_code"/>
-                       </td>
+                       <!-- รายการ (ชื่อสินค้า) -->
                        <td style="border: 1px solid black; vertical-align: middle; padding-left: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                            <span t-field="line_tuple[1].product_id.name"/>
                        </td>
-                       <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
-                           <span t-esc="line_tuple[1].date_planned.strftime('%d/%m/%Y') if line_tuple[1].date_planned else ''"/>
-                       </td>
+                       <!-- จำนวน -->
                        <td style="border: 1px solid black; text-align: right; vertical-align: middle; padding-right: 2px;">
                            <span t-esc="'%.0f' % line_tuple[1].product_uom_qty if line_tuple[1].product_uom_qty else '0'"/>
                        </td>
+                       <!-- หน่วย -->
                        <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
                            <span t-field="line_tuple[1].product_uom.name"/>
                        </td>
+                       <!-- ราคา/หน่วย -->
                        <td style="text-align: right; border: 1px solid black; padding: 1px 2px;
                                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px;">
                           <span t-esc="'{:,.2f}'.format(line_tuple[1].price_unit)"/>
                       </td>
-                       <td style="border: 1px solid black; text-align: right; vertical-align: middle; padding-right: 2px;">
-                           <t t-if="line_tuple[1].discount">
-                               <span t-esc="'{:,.2f}'.format(line_tuple[1].discount)"/>%
-                           </t>
-                       </td>
+                       <!-- จำนวนเงิน -->
                        <td style="border: 1px solid black; text-align: right; vertical-align: middle; padding-right: 2px;">
                            <t t-set="subtotal" t-value="line_tuple[1].product_uom_qty * line_tuple[1].price_unit * (1 - (line_tuple[1].discount or 0.0)/100)"/>
                            <span t-esc="'{:,.2f}'.format(subtotal or 0.0)"/>
@@ -331,25 +323,26 @@
                           <!-- กรอบซ้าย 50%: เงื่อนไขอื่นๆ -->
                           <div style="width: 50%; border: 1px solid black; padding: 10px; min-height: 120px;">
                             <strong>เงื่อนไขอื่นๆ:</strong><br/>
-                            1.โปรดระบุเลขที่ใบสั่งซื้อข้างต้น ในใบส่งของทุกฉบับ
-                            2.การวางบิลเเละการรับเช็ค เป็นไปตามกำหนดเวลาที่บริษัทกำหนดไว้
+                            1.โปรดระบุเลขที่ใบสั่งซื้อข้างต้น ในใบส่งของทุกฉบับ<br/>
+                            2.การวางบิลเเละการรับเช็ค เป็นไปตามกำหนดเวลาที่บริษัทกำหนดไว้<br/>
                             3.ในการวางบิลเพื่อเรียเก็บ ให้เเนบสำเนาใบสั่งซื้อกำกับมาด้วย
                           </div>
                         
                           <!-- กรอบกลาง 25%: ช่องเซ็นชื่อ -->
                           <div style="width: 25%; border: 1px solid black; padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: flex-end;">
                             <br/>
-                            <br/>
                             ______________________
+                            <br/>
                             ผู้จัดทำ
                           </div>
                         
                           <!-- กรอบขวา 25%: ผู้มีอำนาจลงนาม -->
                           <div style="width: 25%; border: 1px solid black; padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: flex-end;">
                             <br/>
-                            <br/>
                             ______________________
-                            (.....................)
+                            (................................)
+                            <br/>
+                            ผู้มีอำนาจลงนาม
                           </div>
                         
                         </div>
