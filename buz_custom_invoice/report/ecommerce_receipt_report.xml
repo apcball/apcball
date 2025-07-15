@@ -188,73 +188,96 @@ z                                margin: 0;
 
 
                     <!-- Document Info and Customer Information -->
-                    <div style="display: table; width: 100%; margin-top: 10px;">
-                        <div style="display: table-row;">
-                            <!-- ฝั่งซ้าย: ข้อมูลลูกค้า -->
-                            <div style="display: table-cell; width: 50%; vertical-align: top; padding-right: 5px;">
-                                <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; box-sizing: border-box; font-size: 18px;">
-                                    <div><strong>ชื่อลูกค้า / Customer Name:</strong> <span t-field="doc.partner_id.name"/></div>
-                                    <div><strong>เลขประจำตัวผู้เสียภาษีลูกค้า:</strong> <span t-field="doc.partner_id.vat"/></div>
-                                    <div>
-                                        <strong>ที่อยู่ / Address:</strong>
-                                        <span t-field="doc.partner_id.street"/>
-                                        <t t-if="doc.partner_id.city"> ตำบล<span t-field="doc.partner_id.city"/></t>
-                                        <t t-if="doc.partner_id.state_id"> อำเภอ<span t-field="doc.partner_id.state_id.name"/></t>
-                                        <t t-if="doc.partner_id.state_id"> จังหวัด<span t-field="doc.partner_id.state_id.name"/></t>
-                                        <span t-field="doc.partner_id.zip"/>
-                                    </div>
-                                    <div>
-                                        <strong>โทรศัพท์ / Tel:</strong> <span t-field="doc.partner_id.phone"/>
-                                    </div>
-                                    <div>
-                                        <strong style="margin-left: 20px;">E-Mail:</strong> <span t-field="doc.partner_id.email"/>
-                                    </div>
+                    <style>
+                        .equal-table-row {
+                            display: flex;
+                            width: 100%;
+                            margin-top: 10px;
+                            align-items: stretch;
+                        }
+                        .equal-table-cell {
+                            width: 50%;
+                            box-sizing: border-box;
+                            height: 100%;
+                            display: flex;
+                            flex-direction: column;
+                        }
+                        .equal-table-cell.left {
+                            padding-right: 5px;
+                        }
+                        .equal-table-cell.right {
+                            padding-left: 5px;
+                        }
+                        .equal-table-box {
+                            border: 1px solid black;
+                            padding: 10px;
+                            border-radius: 4px;
+                            font-size: 18px;
+                            height: 100%;
+                            min-height: 220px; /* ปรับสูงไว้ล่วงหน้า */
+                            box-sizing: border-box;
+                        }
+                    </style>
+                    
+                    <div class="equal-table-row">
+                        <!-- ฝั่งซ้าย: ข้อมูลลูกค้า -->
+                        <div class="equal-table-cell left">
+                            <div class="equal-table-box">
+                                <div><strong>ชื่อลูกค้า / Customer Name:</strong> <span t-field="doc.partner_id.name"/></div>
+                                <div><strong>เลขประจำตัวผู้เสียภาษีลูกค้า:</strong> <span t-field="doc.partner_id.vat"/></div>
+                                <div>
+                                    <strong>ที่อยู่ / Address:</strong>
+                                    <span t-field="doc.partner_id.street"/>
+                                    <t t-if="doc.partner_id.city"> ตำบล<span t-field="doc.partner_id.city"/></t>
+                                    <t t-if="doc.partner_id.state_id"> อำเภอ<span t-field="doc.partner_id.state_id.name"/></t>
+                                    <t t-if="doc.partner_id.state_id"> จังหวัด<span t-field="doc.partner_id.state_id.name"/></t>
+                                    <span t-field="doc.partner_id.zip"/>
+                                </div>
+                                <div>
+                                    <strong>โทรศัพท์ / Tel:</strong> <span t-field="doc.partner_id.phone"/>
+                                </div>
+                                <div>
+                                    <strong>E-Mail:</strong> <span t-field="doc.partner_id.email"/>
                                 </div>
                             </div>
+                        </div>
                     
-                            <!-- ฝั่งขวา: ข้อมูลการจัดส่ง -->
-                            <div style="display: table-cell; width: 50%; vertical-align: top; padding-left: 5px;">
-                                <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; box-sizing: border-box; font-size: 18px;">
-                                    <div style="margin-bottom: 5px;">
-                                        <strong>เงื่อนไขการชำระเงิน / Payment Term:</strong>
-                                        <span t-field="doc.invoice_payment_term_id.name"/>
-                                    </div>
-
-                                    <!-- เลขที่คำสั่งซื้อ -->
-                                    <div style="margin-bottom: 5px;">
-                                        <strong>Order Number:</strong>
-                                        <span t-field="doc.invoice_origin"/>
-                                    </div>
-
-                                    <!-- วันที่คำสั่งซื้อ -->
-                                    <div style="margin-bottom: 5px;">
-                                        <strong>Order Date:</strong>
-                                        <span t-field="doc.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
-                                    </div>
-
-                                    <!-- ที่อยู่จัดส่ง -->
-                                    <div style="margin-bottom: 5px;">
-                                        <strong>ที่อยู่จัดส่ง / Ship To:</strong>
-                                        <t t-if="doc.partner_shipping_id">
-                                            <div>
-                                                <span t-field="doc.partner_shipping_id.name"/>
-                                                <t t-if="doc.partner_shipping_id.street">, <span t-field="doc.partner_shipping_id.street"/></t>
-                                                <t t-if="doc.partner_shipping_id.street2">, <span t-field="doc.partner_shipping_id.street2"/></t>
-                                                <t t-if="doc.partner_shipping_id.city">, ตำบล<span t-field="doc.partner_shipping_id.city"/></t>
-                                                <t t-if="doc.partner_shipping_id.state_id">, อำเภอ<span t-field="doc.partner_shipping_id.state_id.name"/></t>
-                                                <t t-if="doc.partner_shipping_id.state_id">, จังหวัด<span t-field="doc.partner_shipping_id.state_id.name"/></t>
-                                                <t t-if="doc.partner_shipping_id.zip">, <span t-field="doc.partner_shipping_id.zip"/></t>
-                                            </div>
-                                            <t t-if="doc.partner_shipping_id.phone">
-                                                <div>โทร: <span t-field="doc.partner_shipping_id.phone"/></div>
-                                            </t>
+                        <!-- ฝั่งขวา: ข้อมูลการจัดส่ง -->
+                        <div class="equal-table-cell right">
+                            <div class="equal-table-box">
+                                <div style="margin-bottom: 5px;">
+                                    <strong>เงื่อนไขการชำระเงิน / Payment Term:</strong>
+                                    <span t-field="doc.invoice_payment_term_id.name"/>
+                                </div>
+                                <div style="margin-bottom: 5px;">
+                                    <strong>Order Number:</strong>
+                                    <span t-field="doc.invoice_origin"/>
+                                </div>
+                                <div style="margin-bottom: 5px;">
+                                    <strong>Order Date:</strong>
+                                    <span t-field="doc.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
+                                </div>
+                                <div style="margin-bottom: 5px;">
+                                   ที่อยู่จัดส่ง / Ship To:<t t-if="doc.partner_shipping_id">
+                                    
+                                        <div>
+                                            <span t-field="doc.partner_shipping_id.name"/>
+                                            <t t-if="doc.partner_shipping_id.street">, <span t-field="doc.partner_shipping_id.street"/></t>
+                                            <t t-if="doc.partner_shipping_id.street2">, <span t-field="doc.partner_shipping_id.street2"/></t>
+                                            <t t-if="doc.partner_shipping_id.city">, ตำบล<span t-field="doc.partner_shipping_id.city"/></t>
+                                            <t t-if="doc.partner_shipping_id.state_id">, อำเภอ<span t-field="doc.partner_shipping_id.state_id.name"/></t>
+                                            <t t-if="doc.partner_shipping_id.state_id">, จังหวัด<span t-field="doc.partner_shipping_id.state_id.name"/></t>
+                                            <t t-if="doc.partner_shipping_id.zip">, <span t-field="doc.partner_shipping_id.zip"/></t>
+                                        </div>
+                                        <t t-if="doc.partner_shipping_id.phone">
+                                            <div>โทร: <span t-field="doc.partner_shipping_id.phone"/></div>
                                         </t>
-                                    </div>
+                                    </t>
                                 </div>
                             </div>
                         </div>
                     </div>
-
+                    
 
 
                     <div class="product-section font-size-18">

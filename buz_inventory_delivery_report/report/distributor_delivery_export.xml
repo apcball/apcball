@@ -25,6 +25,11 @@
                        <!-- Report Template -->    
                         
                        <style>
+                        @font-face {
+                            font-family: 'Sarabun';
+                            src: url('/buz_inventory_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                        }
+                        
                         @page {
                             margin-top: 0mm;
                             margin-bottom: 10mm;
