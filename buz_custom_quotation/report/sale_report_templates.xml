@@ -80,7 +80,7 @@
             <div style="text-align: left; padding: 0 5%;">
                 <div style="color: white; font-size: 18px; font-weight: bold;">MOGEN CO., LTD. (HEAD OFFICE)</div>
                 <div style="color: white; font-size: 18px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
-                <div style="color: white; font-size: 18px;">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
+                <div style="color: white; font-size: 18px;">Tel: 02 1509710 E-mail: contact@mogen.co.th</div>
             </div>
         </div>
     </div>
@@ -172,7 +172,7 @@
         </div>
     </div>
 
-    <!-- Order Lines Table -->
+   <!-- Order Lines Table -->
     <table class="table table-sm" style="margin-top: 20px; font-size: 20px; border: none; border-collapse: separate; border-spacing: 0 5px;">
         <thead style="border: none;">
             <tr style="border: none;">
@@ -180,17 +180,15 @@
                 <th style="width: 30%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Product Description</th>
                 <th style="width: 15%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Image</th>
                 <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Quantity</th>
-                <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Price</th>
+                <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Unit Price</th>
                 <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Discount</th>
                 <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Price</th>
                 <th style="width: 19%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Amount</th>
             </tr>
         </thead>
         <tbody>
-               <t t-set="start_index" t-value="page_num * 6"/>
-            <t t-foreach="group" t-as="line" t-index="line_index">
-            <tr style="border-bottom: 1px solid #8B9B7C;">
-                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;"><span style="background-color: #1E3A78; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="start_index + line_index+ 1"/></span></td>
+            <tr t-foreach="doc.order_line" t-as="line" style="border-bottom: 1px solid #8B9B7C;">
+                <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;"><span style="background-color: #1E3A78; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span></td>
                 <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <div><span t-field="line.name"/></div>
                 </td>
@@ -202,11 +200,11 @@
                 </td>
                 <td style="text-align: center; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <t t-if="line.normal_price and line.normal_price != 0">
-                        <span t-esc="line.net_price"
+                        <span t-field="line.normal_price"
                               t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </t>
                     <t t-else="">
-                        <span t-esc="line.price_unit * (1 - (line.discount_percent or 0) / 100.0)"
+                        <span t-field="line.price_unit"
                               t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </t>
                 </td>
@@ -234,9 +232,8 @@
                           t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                 </td>
             </tr>
-        </t>
-      </tbody>
-  </table>
+        </tbody>
+    </table>
 </div>
 <t t-set="page_num" t-value="page_num + 1"/>
  </div>
