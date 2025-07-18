@@ -1,4 +1,240 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- This file is kept as a placeholder but not used since we removed the report functionality -->
+    <!-- Paper Format for Employee Purchase Requisition Reports -->
+    <record id="paperformat_employee_purchase_requisition_report" model="report.paperformat">
+        <field name="name">Employee Purchase Requisition Report A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">2</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">8</field>
+        <field name="dpi">90</field>
+    </record>
+
+
+    <!-- Report Template -->
+    <template id="employee_purchase_requisition_report_document">
+        <t t-name="employee_purchase_requisition.employee_purchase_requisition_report_document">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <div class="page">
+                            
+                            
+                            <style>
+                                @font-face {
+                                    font-family: 'Sarabun';
+                                    src: url('/buz_custom_po/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                    font-weight: bold;
+                                    font-style: normal;
+                                }
+                                @page {
+                                    margin-top: 0mm;
+                                    margin-bottom: 10mm;
+                                    margin-left: 10mm;
+                                    margin-right: 10mm;
+                                }
+                                
+                                body, .page, .row {
+                                    margin-top: 0 !important;
+                                    padding-top: 0 !important;
+                                }
+                                
+                                html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+                                    font-family: 'Sarabun', sans-serif !important;
+                                    font-size: 18px;
+                                }
+                                
+                                .table {
+                                    border-collapse: collapse !important;
+                                    width: 100%;
+                                }
+                                
+                                .table td,
+                                .table th {
+                                    border-width: 0.5px !important;
+                                    border-style: solid !important;
+                                    border-color: #000 !important;
+                                    padding:  1px 1px;
+                                }
+    
+                                .order-line-table th,
+                                .order-line-table td {
+                                    padding-top: 10px !important;
+                                    padding-bottom: 10px !important;
+                                   line-height: 1.1 !important;
+                                }
+                                
+                                .no-inner-borders td,
+                                .no-inner-borders th {
+                                    border: none !important;
+                                }
+                                
+                                .table-bordered,
+                                .table-bordered td,
+                                .table-bordered th {
+                                    border: none !important;
+                                }
+    
+                                .page {
+                                    page-break-after: always;
+                                }
+                                .page:last-child {
+                                    page-break-after: auto;
+                                }
+    
+                                .page-break {
+                                    page-break-after: always;
+                                  }
+    
+                                .vendor-info, .delivery-info {
+                                    font-size: 14px;
+                                }
+                    
+                                .line.name{
+                                    max-width: 100px;
+                                    white-space: nowrap;
+                                    overflow: hidden;
+                                    text-overflow: ellipsis;
+                                }
+                                .footer-fixed {
+                                    position: absolute;
+                                    bottom: 0;
+                                    width: 100%;
+                                    font-size: 16px;
+                                    display: flex;
+                                    justify-content: space-between;
+                                  }
+                                  @page {
+                                    margin: 10mm 10mm 20mm 10mm; /* ซ้าย ขวา บน ล่าง */
+                                    @bottom-left {
+                                        content: "อนุมัติใช้วันที่ 14/09/2563";
+                                        font-size: 14px;
+                                    }
+                                    @bottom-right {
+                                        content: "FM-PUR-08.REV.01";
+                                        font-size: 14px;
+                                    }
+                                    }
+                            </style>
+
+                <!-- ส่วนหัว (Header) -->
+                <div class="row mb-2">
+                    <div class="col-8">
+                        <div style="font-size: 18px;">
+                            <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
+                            <div style="font-size: 16px;">9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
+                            <div style="font-size: 16px;">เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
+                            <div style="font-size: 16px;">โทร 02 1509710 E-mail: contact@mogen.co.th</div>
+                        </div>
+                    </div>
+                    <div class="col-4 text-end">
+                        <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                    </div>
+                </div>
+    
+                <!-- Document Title -->
+                <div class="row mb-2">
+                    <div class="col-12 text-center">
+                        <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 26px; margin-top: -40px;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 10px; font-size: 14px;">
+                    <!-- ซ้ายสุด: วันที่ขอ -->
+                    <div style="width: 33%; text-align: left;">
+                        <strong>วันที่ขอ:</strong>
+                        <t t-esc="o.request_date.strftime('%d/%m/%Y') if o.request_date else ''"/>
+                    </div>
+                
+                    <!-- กลาง: แผนที่ขอ -->
+                    <div style="width: 33%; text-align: center;">
+                        <strong>แผนที่ขอ:</strong>
+                        <t t-esc="o.request_plan"/>
+                    </div>
+                
+                    <!-- ขวาสุด: เลขที่ใบที่ขอ -->
+                    <div style="width: 33%; text-align: right;">
+                        <strong>เลขที่ใบที่ขอ:</strong>
+                        <t t-esc="o.request_number"/>
+                    </div>
+                </div>
+
+
+                
+                
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;" border="1">
+                     <tr style="background-color: #f0f0f0;">
+                        <th style="width: 2%; text-align: center; border: 1px solid black;">ลำดับ</th>
+                        <th style="width: 4%; text-align: center; border: 1px solid black;">รหัสค่าใช้จ่าย</th>
+                        <th style="width: 6%; text-align: center; border: 1px solid black;">รหัสสินค้า</th>
+                        <th style="width: 8%; text-align: center; border: 1px solid black;">ชื่อสินค้า</th>
+                        <th style="width: 3%; text-align: center; border: 1px solid black;">คงเหลือ</th>
+                        <th style="width: 2%; text-align: center; border: 1px solid black;">ขอซื้อ</th>
+                        <th style="width: 3%; text-align: center; border: 1px solid black;">หน่วย</th>
+                        <th style="width: 3%; text-align: center; border: 1px solid black;">ราคา/หน่วย</th>
+                        <th style="width: 7%; text-align: center; border: 1px solid black;">จำนวนเงินรวม</th>
+                        <th style="width: 4%; text-align: center; border: 1px solid black;">วันที่ต้องการ</th>
+                        <th style="width: 4%; text-align: center; border: 1px solid black;">ผู้จัดจำหน่าย</th>
+                        <th style="width: 8%; text-align: center; border: 1px solid black;">
+                            สถานที่ส่ง/คลัง<br/><span style="font-weight: normal;">Place of Delivery</span>
+                        </th>
+                        <th style="width: 8%; text-align: center; border: 1px solid black;">วัตถุประสงค์การขอซื้อ / งานที่ใช้</th>
+                    </tr>
+                 
+                    <t t-set="counter" t-value="1"/>
+                    <t t-foreach="o.requisition_order_ids" t-as="line">
+                        <tr>
+                            <td style="text-align: center; border: 1px solid black;"><t t-esc="counter"/></td>
+                            <td style="border: 1px solid black;"></td> <!-- รหัสค่าใช้จ่าย -->
+                            <td style="border: 1px solid black;"><t t-esc="line.product_id.default_code or ''"/></td>
+                            <td style="border: 1px solid black;"><t t-esc="line.product_id.name or ''"/></td>
+                            <td style="border: 1px solid black;"></td> <!-- คงเหลือ -->
+                            <td style="text-align: right; border: 1px solid black;"><t t-esc="line.product_qty or 0.0"/></td>
+                            <td style="border: 1px solid black;"><t t-esc="line.product_uom_id.name or ''"/></td>
+                            <td style="text-align: right; border: 1px solid black;">
+                                <t t-esc="format_amount(line.price_unit or 0.0, o.currency_id)"/>
+                            </td>
+                            <td style="text-align: right; border: 1px solid black;">
+                                <t t-esc="format_amount(line.price_subtotal or 0.0, o.currency_id)"/>
+                            </td>
+                            <td style="text-align: center; border: 1px solid black;">
+                                <t t-esc="line.request_date and line.request_date.strftime('%d/%m/%Y') or ''"/>
+                            </td>
+                            <td style="border: 1px solid black;"><t t-esc="line.vendor_id.name or ''"/></td>
+                            <td style="border: 1px solid black;"><t t-esc="line.location_id.display_name or ''"/></td>
+                            <td style="border: 1px solid black;"><t t-esc="line.note or ''"/></td>
+                        </tr>
+                        <t t-set="counter" t-value="counter + 1"/>
+                    </t>
+                </table>
+                
+
+
+
+
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </t>
+    </template>
+
+
+
+    <record id="action_employee_purchase_requisition_report" model="ir.actions.report">
+        <field name="name">ขออนุมัติซื้อ/Purchase Requisition</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">employee_purchase_requisition.employee_purchase_requisition_report_document</field>
+        <field name="report_file">employee_purchase_requisition.employee_purchase_requisition_report_document</field>
+        <field name="print_report_name">'Employee Purchase Requisition - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_employee_purchase_requisition"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_employee_purchase_requisition_report"/>
+   </record>
 </odoo>

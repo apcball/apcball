@@ -8,8 +8,8 @@
         <field name="orientation">Portrait</field>
         <field name="margin_top">10</field>
         <field name="margin_bottom">10</field>
-        <field name="margin_left">6</field>
-        <field name="margin_right">6</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
@@ -88,6 +88,23 @@
                             }
                         </style>
 
+                        <!-- Order Lines -->
+                        <t t-set="move_list" t-value="o.move_ids"/>
+                        <t t-set="groups_of_10" t-value="[move_list[i:i+10] for i in range(0, len(move_list), 10)]"/>
+                        <t t-set="total_pages" t-value="groups_of_10 and len(groups_of_10) or 0"/>
+                        <t t-set="page_number" t-value="1"/>
+                        <t t-foreach="groups_of_10" t-as="group">
+                            <t t-if="group">
+                                <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                                    <t t-set="groups_of_10" t-value="[move_list[i:i+10] for i in range(0, len(move_list), 10)]"/>
+                                    <t t-if="groups_of_10">
+                                        <div>
+                                            <!-- เงื่อนไขแสดงเลขหน้าเฉพาะถ้ามีหลายหน้า -->
+                                            <t t-if="total_pages &gt; 1">
+                                                <div style="text-align: right; font-weight: bold; font-size: 14px; margin-bottom: 5px;">
+                                                    หน้า <t t-esc="page_number"/> / <t t-esc="total_pages"/>
+                                                </div>
+                                            </t>
 
                        <!-- Company Info Section -->
                        <div class="row mb-1">
@@ -301,72 +318,95 @@
 
 
                 <!-- Order Lines -->
-                <div style="min-height:920px; position:relative; box-sizing:border-box; display: flex; flex-direction: column;">
+                <div style="position:relative; box-sizing:border-box; display: flex; flex-direction: column;">
                     <!-- กำหนด min-height เพื่อให้ตารางไม่สูงเกินเฟรม A4 ประมาณ 297mm แต่เหลือที่ให้ footer -->
                     <table style="margin-top: 6px;">
                       <thead>
                         <tr>
-                          <th style="width: 5%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">ลำดับ</th>
+                          <th style="width: 3%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">ลำดับ</th>
                           <th style="width: 40%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">ชื่อสินค้า</th>
-                          <th style="width: 15%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">จำนวน</th>
-                          <th style="width: 10%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">หน่วย</th>
+                          <th style="width: 6%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">จำนวน</th>
+                          <th style="width: 6%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">หน่วย</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <t t-set="line_number" t-value="1"/>
-                        <t t-set="total_qty" t-value="0.0"/>
-                        <t t-foreach="o.move_ids_without_package" t-as="move">
-                          <tr>
-                            <td style="text-align: center; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-esc="line_number"/></td>
-                            <td style="vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_id.display_name"/></td>
-                            <td style="text-align: right; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_uom_qty"/></td>
-                            <td style="text-align: center; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_uom"/></td>
-                          </tr>
-                          <t t-set="line_number" t-value="line_number + 1"/>
-                          <t t-set="total_qty" t-value="total_qty + move.product_uom_qty"/>
+                        <!-- แสดงรายการจริง -->
+                        <t t-set="line_number" t-value="((page_number - 1) * 10) + 1"/>
+                        <t t-set="row_count" t-value="0"/>
+                        <t t-foreach="group" t-as="move">
+                            <tr>
+                                <td style="text-align: center; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-esc="line_number"/></td>
+                                <td style="vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_id.display_name"/></td>
+                                <td style="text-align: right; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_uom_qty"/></td>
+                                <td style="text-align: center; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;"><span t-field="move.product_uom"/></td>
+                            </tr>
+                            <t t-set="line_number" t-value="line_number + 1"/>
+                            <t t-set="row_count" t-value="row_count + 1"/>
                         </t>
-                      </tbody>
-                    </table>
-                </div>
 
-                    <!-- หมายเหตุ -->
-                    <div style="padding: 20px; min-height: 60px; font-size: 22px;">
-                        <strong style="font-size: 20px;">หมายเหตุ:</strong>
-                       <span t-field="o.note" style="font-size: 22px;"/>
+                        <!-- เติมแถวว่างจนครบ 10 แถว -->
+                        <t t-set="empty_rows" t-value="10 - row_count"/>
+                        <t t-if="empty_rows > 0">
+                            <t t-foreach="range(empty_rows)" t-as="i">
+                                <tr>
+                                    <td style="text-align: center; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;">&amp;nbsp;</td>
+                                    <td style="vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;">&amp;nbsp;</td>
+                                    <td style="text-align: right; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;">&amp;nbsp;</td>
+                                    <td style="text-align: center; vertical-align: middle; border-color: #fff; padding-top:2px; padding-bottom:2px;">&amp;nbsp;</td>
+                                </tr>
+                            </t>
+                        </t>
+                    </tbody>
+                </table>
+          </div>
+                             </div>
+    </t>
+ </div>
+</t>
+ <t t-set="page_number" t-value="page_number + 1"/></t>
+
+ <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
+ <t t-if="page_number == len(groups_of_10)">
+     <!-- ลายเซ็นหรือหมายเหตุ -->
+ </t>
+ 
+                    <!-- หมายเหตุและลายเซ็น แสดงต่อจากตาราง ไม่เว้นหน้า -->
+
+                    <div style="margin-top:8px;">
+                        <!-- หมายเหตุ -->
+                        <div style="padding: 10px 0 20px 0; min-height: 40px; font-size: 22px;">
+                            <strong style="font-size: 20px;">หมายเหตุ:</strong>
+                            <span t-field="o.note" style="font-size: 22px;"/>
+                        </div>
+                        <!-- ช่องลายเซ็น 3 ส่วน -->
+                        <div style="display: flex; justify-content: space-between; font-size: 18px; margin-top: 10px;">
+
+                            <!-- ส่วนที่ 1: S/R -->
+                            <div style="width: 32%; line-height: 1.8; text-align: center;">
+                                ลงชื่อ S/R ที่รับผิดชอบ ____________________<br/>
+                                (____________________)<br/>
+                                ..................................................<br/>
+                                เบอร์ติดต่อ ________________________
+                            </div>
+
+                            <!-- ส่วนที่ 2: ผู้ตรวจสอบ -->
+                            <div style="width: 32%; line-height: 1.8; text-align: center;">
+                                ผู้ตรวจสอบ ____________________<br/>
+                                (____________________)<br/>
+                                ผู้จัดการ<br/>
+                                วันที่ .......... เดือน ............. ปี ..........
+                            </div>
+
+                            <!-- ส่วนที่ 3: ลงนามอนุมัติ -->
+                            <div style="width: 32%; line-height: 1.8; text-align: center;">
+                                ลงนามอนุมัติ ____________________<br/>
+                                (____________________)<br/>
+                                กรรมการผู้จัดการ<br/>
+                                วันที่ .......... เดือน ............. ปี ..........
+                            </div>
+                        </div>
                     </div>
-
-                    <!-- ช่องลายเซ็น 3 ส่วน -->
-                    <div style="display: flex; justify-content: space-between; font-size: 18px; margin-top: 40px;">
-
-                        <!-- ส่วนที่ 1: S/R -->
-                        <div style="width: 32%; line-height: 1.8; text-align: center;">
-                            ลงชื่อ S/R ที่รับผิดชอบ ____________________<br/>
-                            (____________________)<br/>
-                            ..................................................<br/>
-                            เบอร์ติดต่อ ________________________
-                        </div>
-                    
-                        <!-- ส่วนที่ 2: ผู้ตรวจสอบ -->
-                        <div style="width: 32%; line-height: 1.8; text-align: center;">
-                            ผู้ตรวจสอบ ____________________<br/>
-                            (____________________)<br/>
-                            ผู้จัดการ<br/>
-                            วันที่ .......... เดือน ............. ปี ..........
-                        </div>
-                    
-                        <!-- ส่วนที่ 3: ลงนามอนุมัติ -->
-                        <div style="width: 32%; line-height: 1.8; text-align: center;">
-                            ลงนามอนุมัติ ____________________<br/>
-                            (____________________)<br/>
-                            กรรมการผู้จัดการ<br/>
-                            วันที่ .......... เดือน ............. ปี ..........
-                        </div>
-                    
-                    </div>
-
                     <div style="position: relative; min-height: 25mm; padding-bottom: 20mm;">
-                        <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
-
                         <!-- Footer fixed bottom -->
                         <div style="
                           position: absolute;
@@ -384,7 +424,8 @@
                             <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
                          </div>
                         </div>
-                      </div>
+                    </div>
+                
 
 
            

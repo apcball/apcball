@@ -10,11 +10,27 @@ class PurchaseRequisition(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
 
     name = fields.Char(string="Reference No", readonly=True)
+    requisition_id = fields.Many2one('employee.purchase.requisition', string="Requisition")
+    request_date = fields.Date(string="Requested Date")
+    vendor_id = fields.Many2one('res.partner', string="Suggested Vendor")
+    location_id = fields.Many2one('stock.location', string="Delivery Location")
+    purpose = fields.Text(string="Purpose / Usage")
+    purchase_price_unit = fields.Float(string="Purchase Price / Unit")
+    purchase_vendor_id = fields.Many2one('res.partner', string="Actual Vendor")
+    purchase_order_ref = fields.Char(string="PO Reference")
+    name = fields.Char(string="Request Number", required=True, copy=False, readonly=True, default='New')
+    request_number = fields.Char(string="Request Number")
+    expense_code_id = fields.Many2one('account.analytic.account', string='Expense Code')
+   
     employee_id = fields.Many2one(
         comodel_name='hr.employee',
         string='Employee',
         required=True,
         help='Select an employee'
+    )
+    expense_code_id = fields.Many2one(
+        'account.analytic.account',  # or your actual expense code model
+        string='Expense Code'
     )
     dept_id = fields.Many2one(
         comodel_name='hr.department',
@@ -23,6 +39,9 @@ class PurchaseRequisition(models.Model):
         store=True,
         help='Select an department'
     )
+    request_plan = fields.Date(
+    string="Planned Purchase Date"
+    )
     user_id = fields.Many2one(
         comodel_name='res.users',
         string='Responsible',
@@ -30,7 +49,6 @@ class PurchaseRequisition(models.Model):
         domain=lambda self: [('share', '=', False), ('id', '!=', self.env.uid)],
         help='Select a user who is responsible for requisition'
     )
-    
     manager_user_id = fields.Many2one(
         comodel_name='res.users',
         string='Head',
@@ -40,6 +58,15 @@ class PurchaseRequisition(models.Model):
         string="Requisition Date",
         default=lambda self: fields.Date.today(),
         help='Date of requisition'
+    )
+    request_plan = fields.Text(
+    string="Request Plan",
+    help="Planned usage or purchase justification"
+    )
+    request_date = fields.Date(
+    string='Request Date',
+    default=fields.Date.today,
+    help='Date of request'
     )
     receive_date = fields.Date(
         string="Received Date",
@@ -157,12 +184,11 @@ class PurchaseRequisition(models.Model):
         compute="_compute_user_is_purchase",
         help="Check if current user is purchase manager"
     )
-
-    @api.depends('dept_id')
-    def _compute_user_is_head(self):
-        """Computes if current user is department head"""
-        for rec in self:
-            rec.user_is_head = self.env.user.has_group('employee_purchase_requisition.employee_requisition_manager')
+    @api.model
+    def create(self, vals):
+        if vals.get('name', 'New') == 'New':
+            vals['name'] = self.env['ir.sequence'].next_by_code('employee.purchase.requisition') or 'New'
+        return super().create(vals)
 
     @api.depends('dept_id')
     def _compute_user_is_purchase(self):
