@@ -15,7 +15,8 @@
                 <button name="action_recompute_stock_valuation_location" 
                     type="object" 
                     string="Recompute Location" 
-                    class="btn-primary"/>
+                    class="btn-primary"
+                    groups="stock_valuation_location.group_stock_valuation_location_recompute"/>
             </field>
             <field name="company_id" position="after">
                 <field name="location_id" />

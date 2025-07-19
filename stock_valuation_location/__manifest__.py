@@ -27,6 +27,7 @@
     "license": "LGPL-3",
     "depends": ["stock_account"],
     "data": [
+        "security/stock_valuation_location_groups.xml",
         "views/stock_valuation_layer_views.xml",
         "data/stock_valuation_recompute_action.xml"
     ],

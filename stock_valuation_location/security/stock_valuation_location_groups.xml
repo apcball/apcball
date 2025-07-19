@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_stock_valuation_location_recompute" model="res.groups">
+        <field name="name">Stock Valuation Location: Recompute</field>
+        <field name="category_id" ref="base.module_category_inventory"/>
+    </record>
+</odoo>
