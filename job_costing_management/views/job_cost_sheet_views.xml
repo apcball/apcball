@@ -37,6 +37,9 @@
                                 class="btn-primary" invisible="state != 'draft'"/>
                         <button name="action_done" string="Mark as Done" type="object" 
                                 class="btn-primary" invisible="state != 'approved'"/>
+                        <button name="action_sync_actual_costs" string="Refresh Actual Costs" type="object" 
+                                class="btn-secondary" invisible="state not in ['approved', 'done']"
+                                help="Manually refresh actual costs from purchase orders, invoices, and timesheets"/>
                         <button name="action_cancel" string="Cancel" type="object" 
                                 invisible="state in ['done', 'cancelled']"/>
                         <button name="action_draft" string="Reset to Draft" type="object" 
@@ -56,6 +59,10 @@
                             <button name="action_view_invoices" type="object"
                                     class="oe_stat_button" icon="fa-file-text-o">
                                 <field name="invoice_count" widget="statinfo" string="Invoices"/>
+                            </button>
+                            <button name="action_view_all_cost_lines" type="object"
+                                    class="oe_stat_button" icon="fa-list">
+                                <field name="cost_lines_count" widget="statinfo" string="Cost Lines"/>
                             </button>
                             <button name="action_create_rfq" type="object"
                                     class="oe_stat_button" icon="fa-plus-square"
@@ -122,6 +129,8 @@
                                         <field name="cost_variance" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
                                         <field name="cost_type" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
+                                        <button name="action_edit_cost_line" type="object" 
+                                                icon="fa-edit" title="Edit Cost Line"/>
                                     </tree>
                                 </field>
                             </page>
@@ -143,6 +152,8 @@
                                         <field name="cost_variance" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
                                         <field name="cost_type" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
+                                        <button name="action_edit_cost_line" type="object" 
+                                                icon="fa-edit" title="Edit Cost Line"/>
                                     </tree>
                                 </field>
                             </page>
@@ -164,6 +175,8 @@
                                         <field name="cost_variance" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
                                         <field name="cost_type" column_invisible="1"/>
                                         <field name="currency_id" column_invisible="1"/>
+                                        <button name="action_edit_cost_line" type="object" 
+                                                icon="fa-edit" title="Edit Cost Line"/>
                                     </tree>
                                 </field>
                             </page>
@@ -264,6 +277,198 @@
                 <p>
                     Job cost sheets help you plan and track material, labour, and overhead costs 
                     for your construction projects and compare planned vs actual costs.
+                </p>
+            </field>
+        </record>
+
+        <!-- Job Cost Line Tree View -->
+        <record id="view_job_cost_line_tree" model="ir.ui.view">
+            <field name="name">job.cost.line.tree</field>
+            <field name="model">job.cost.line</field>
+            <field name="arch" type="xml">
+                <tree string="Job Cost Lines" decoration-info="cost_type=='material'" 
+                      decoration-success="cost_type=='labour'" decoration-warning="cost_type=='overhead'"
+                      multi_edit="1">
+                    <!-- Temporarily commented out wizard buttons to isolate loading issues
+                    <header>
+                        <button name="%(action_job_cost_line_wizard)d" type="action" 
+                                string="Update Cost Type" class="btn-primary"/>
+                        <button name="%(action_job_cost_line_bulk_edit_wizard)d" type="action" 
+                                string="Bulk Edit" class="btn-secondary"/>
+                    </header>
+                    -->
+                    <field name="sequence" widget="handle"/>
+                    <field name="cost_sheet_id"/>
+                    <field name="cost_type" widget="badge" 
+                           decoration-info="cost_type == 'material'"
+                           decoration-success="cost_type == 'labour'"
+                           decoration-warning="cost_type == 'overhead'"/>
+                    <field name="product_id"/>
+                    <field name="name"/>
+                    <field name="planned_qty"/>
+                    <field name="actual_qty"/>
+                    <field name="uom_id"/>
+                    <field name="unit_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    <field name="actual_unit_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    <field name="actual_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    <field name="cost_variance" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    <field name="currency_id" column_invisible="1"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Job Cost Line Form View -->
+        <record id="view_job_cost_line_form" model="ir.ui.view">
+            <field name="name">job.cost.line.form</field>
+            <field name="model">job.cost.line</field>
+            <field name="arch" type="xml">
+                <form string="Job Cost Line">
+                    <header>
+                        <button name="button_update_actual_costs" string="Update Actual Costs" 
+                                type="object" class="btn-primary" 
+                                invisible="cost_type not in ['material', 'overhead']"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Cost Line Description"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="cost_sheet_id" required="1"/>
+                                <field name="cost_type" required="1" widget="radio" options="{'horizontal': true}"/>
+                                <field name="product_id" 
+                                       domain="[('detailed_type', '!=', 'service')] if cost_type == 'material' else [('detailed_type', '=', 'service')] if cost_type == 'labour' else []"/>
+                                <field name="sequence"/>
+                            </group>
+                            <group>
+                                <field name="analytic_account_id"/>
+                                <field name="boq_line_id"/>
+                                <field name="uom_id"/>
+                                <field name="currency_id" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <group string="Planned Costs">
+                            <group>
+                                <field name="planned_qty"/>
+                                <field name="unit_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <group string="Actual Costs">
+                            <group>
+                                <field name="actual_qty" readonly="1"/>
+                                <field name="actual_unit_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                <field name="actual_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <group string="Variance Analysis">
+                            <group>
+                                <field name="qty_variance" readonly="1"/>
+                                <field name="cost_variance" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <!-- Purchase Orders Tab -->
+                            <page string="Purchase Orders" name="purchase_orders" invisible="cost_type == 'labour'">
+                                <field name="purchase_order_line_ids" readonly="1">
+                                    <tree>
+                                        <field name="order_id"/>
+                                        <field name="product_id"/>
+                                        <field name="name"/>
+                                        <field name="product_qty"/>
+                                        <field name="qty_received"/>
+                                        <field name="price_unit"/>
+                                        <field name="price_subtotal"/>
+                                    </tree>
+                                </field>
+                            </page>
+
+                            <!-- Timesheets Tab -->
+                            <page string="Timesheets" name="timesheets" invisible="cost_type != 'labour'">
+                                <field name="timesheet_ids" readonly="1">
+                                    <tree>
+                                        <field name="date"/>
+                                        <field name="employee_id"/>
+                                        <field name="name"/>
+                                        <field name="unit_amount"/>
+                                        <field name="amount"/>
+                                    </tree>
+                                </field>
+                            </page>
+
+                            <!-- Invoice Lines Tab -->
+                            <page string="Invoice Lines" name="invoice_lines">
+                                <field name="invoice_line_ids" readonly="1">
+                                    <tree>
+                                        <field name="move_id"/>
+                                        <field name="product_id"/>
+                                        <field name="name"/>
+                                        <field name="quantity"/>
+                                        <field name="price_unit"/>
+                                        <field name="price_subtotal"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <!-- Job Cost Line Search View -->
+        <record id="view_job_cost_line_search" model="ir.ui.view">
+            <field name="name">job.cost.line.search</field>
+            <field name="model">job.cost.line</field>
+            <field name="arch" type="xml">
+                <search string="Job Cost Lines">
+                    <field name="name" string="Description" filter_domain="[('name', 'ilike', self)]"/>
+                    <field name="cost_sheet_id" string="Cost Sheet"/>
+                    <field name="product_id" string="Product"/>
+                    <field name="cost_type" string="Cost Type"/>
+                    <separator/>
+                    <filter string="Material" name="material" domain="[('cost_type', '=', 'material')]"/>
+                    <filter string="Labour" name="labour" domain="[('cost_type', '=', 'labour')]"/>
+                    <filter string="Overhead" name="overhead" domain="[('cost_type', '=', 'overhead')]"/>
+                    <separator/>
+                    <filter string="With Variance" name="with_variance" domain="[('cost_variance', '!=', 0)]"/>
+                    <filter string="Over Budget" name="over_budget" domain="[('cost_variance', '>', 0)]"/>
+                    <filter string="Under Budget" name="under_budget" domain="[('cost_variance', '&lt;', 0)]"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter string="Cost Sheet" name="group_cost_sheet" context="{'group_by': 'cost_sheet_id'}"/>
+                        <filter string="Cost Type" name="group_cost_type" context="{'group_by': 'cost_type'}"/>
+                        <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Job Cost Line Action -->
+        <record id="action_job_cost_line" model="ir.actions.act_window">
+            <field name="name">Job Cost Lines</field>
+            <field name="res_model">job.cost.line</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_job_cost_line_search"/>
+            <field name="context">{'res_model': 'job.cost.line'}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first job cost line!
+                </p>
+                <p>
+                    Job cost lines help you track individual material, labour, and overhead costs 
+                    for your construction projects with detailed variance analysis.
                 </p>
             </field>
         </record>

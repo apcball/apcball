@@ -12,13 +12,15 @@ class CreateRfqFromJobCost(models.TransientModel):
     partner_id = fields.Many2one('res.partner', string='Vendor', required=True, 
                                 domain=[('is_company', '=', True), ('supplier_rank', '>', 0)])
     cost_line_ids = fields.Many2many('job.cost.line', string='Cost Lines to Include',
-                                   domain="[('cost_sheet_id', '=', job_cost_sheet_id), ('cost_type', 'in', ['material', 'overhead'])]")
+                                   domain="[('cost_sheet_id', '=', job_cost_sheet_id), ('cost_type', 'in', ['material', 'overhead', 'labour'])]")
     
     @api.onchange('job_cost_sheet_id')
     def _onchange_job_cost_sheet_id(self):
         if self.job_cost_sheet_id:
-            # Auto-select all material and overhead cost lines
-            cost_lines = self.job_cost_sheet_id.material_cost_ids + self.job_cost_sheet_id.overhead_cost_ids
+            # Auto-select all material, overhead, and labour cost lines that can be purchased
+            cost_lines = (self.job_cost_sheet_id.material_cost_ids + 
+                         self.job_cost_sheet_id.overhead_cost_ids + 
+                         self.job_cost_sheet_id.labour_cost_ids.filtered(lambda l: l.product_id.purchase_ok))
             self.cost_line_ids = [(6, 0, cost_lines.ids)]
     
     def action_create_rfq(self):
@@ -53,8 +55,11 @@ class CreateRfqFromJobCost(models.TransientModel):
         if not po_vals['order_line']:
             raise UserError(_('No valid products found in the selected cost lines. Please ensure cost lines have products assigned.'))
         
-        # Create the purchase order
-        purchase_order = self.env['purchase.order'].create(po_vals)
+        # Create the purchase order with context to allow flexible product validation
+        purchase_order = self.env['purchase.order'].with_context(
+            skip_product_validation=True,
+            flexible_product_validation=True
+        ).create(po_vals)
         
         # Return action to open the created RFQ
         return {

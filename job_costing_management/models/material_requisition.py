@@ -358,6 +358,11 @@ class MaterialRequisitionLine(models.Model):
     # Related fields for easier access
     requisition_state = fields.Selection(related='requisition_id.state', string='Requisition State', readonly=True)
     
+    # BOQ tracking fields
+    boq_remaining_qty = fields.Float(string='BOQ Remaining Qty', related='boq_line_id.remaining_qty', readonly=True)
+    boq_total_qty = fields.Float(string='BOQ Total Qty', related='boq_line_id.adjusted_quantity', readonly=True)
+    boq_requisitioned_qty = fields.Float(string='BOQ Requisitioned Qty', related='boq_line_id.total_requisitioned_qty', readonly=True)
+    
     # Notes
     notes = fields.Text(string='Notes')
     
@@ -378,6 +383,35 @@ class MaterialRequisitionLine(models.Model):
             if seller:
                 self.vendor_id = seller.partner_id
                 self.estimated_cost = seller.price
+    
+    @api.onchange('quantity', 'boq_line_id')
+    def _onchange_quantity_boq_check(self):
+        """Check quantity against BOQ remaining quantity and show warning"""
+        if self.boq_line_id and self.quantity:
+            remaining_qty = self.boq_line_id.remaining_qty
+            
+            if self.quantity > remaining_qty:
+                # Show warning but don't prevent the action
+                warning_msg = _(
+                    'Warning: Requisition quantity (%s %s) exceeds remaining BOQ quantity (%s %s).\n'
+                    'BOQ Total: %s %s\n'
+                    'Already Requisitioned: %s %s\n'
+                    'Remaining: %s %s\n\n'
+                    'You can still proceed with this requisition if needed.'
+                ) % (
+                    self.quantity, self.uom_id.name or '',
+                    remaining_qty, self.boq_line_id.uom_id.name,
+                    self.boq_line_id.adjusted_quantity, self.boq_line_id.uom_id.name,
+                    self.boq_line_id.total_requisitioned_qty, self.boq_line_id.uom_id.name,
+                    remaining_qty, self.boq_line_id.uom_id.name
+                )
+                
+                return {
+                    'warning': {
+                        'title': _('BOQ Quantity Exceeded'),
+                        'message': warning_msg
+                    }
+                }
     
     @api.onchange('requisition_action')
     def _onchange_requisition_action(self):

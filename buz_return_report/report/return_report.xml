@@ -34,6 +34,7 @@
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
                     <div class="page">
+                        <div style="min-height: 290mm; position: relative;">
 <style>
     @font-face {
         font-family: 'Sarabun';
@@ -158,24 +159,36 @@
                                 <div class="doc-title">ใบแจ้งคืนสินค้า / Return Slip  </div>
                             </div>
                         </div>
+                        
+                        <div style="text-align: left; line-height: 1.6;">
+                            <label style="display: inline-flex; align-items: center; margin-right: 24px; font-size: 18px;">
+                              <input type="checkbox" style="width: 15px; height: 15px; margin-right: 8px;" />
+                              คืนสินค้า
+                            </label>
+                            <label style="display: inline-flex; align-items: center; font-size: 18px;">
+                              <input type="checkbox" style="width: 15px; height: 15px; margin-right: 8px;" />
+                              คืนสินค่ายืมโชว์
+                            </label>
+                          </div>
+                          
 
                         <!-- Customer and Document Info -->
                         <div class="row mb-3">
                             <div class="col-6">
                                 <div class="info-box" style="height: 180px;">
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">ลูกค้า / Customer:</strong>
+                                        <strong style=" display: inline-block;">ลูกค้า / Customer:</strong>
                                         <span t-field="doc.partner_id.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">ที่อยู่ / Address:</strong>
+                                        <strong style=" display: inline-block;">ที่อยู่ / Address:</strong>
                                         <span t-field="doc.partner_id.street"/> <span t-field="doc.partner_id.street2"/>
                                         <br/>
                                         <span t-field="doc.partner_id.city"/> <span t-field="doc.partner_id.state_id.name"/>
                                         <span t-field="doc.partner_id.zip"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">โทรศัพท์ / Tel:</strong>
+                                        <strong style=" display: inline-block;">โทรศัพท์ / Tel:</strong>
                                         <span t-field="doc.partner_id.phone"/>
                                     </div>
                                 </div>
@@ -183,19 +196,19 @@
                             <div class="col-6">
                                 <div class="info-box" style="height: 180px;">
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">เลขที่เอกสาร / No.:</strong>
+                                        <strong style=" display: inline-block;">เลขที่เอกสาร / No.:</strong>
                                         <span t-field="doc.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">วันที่ / Date:</strong>
+                                        <strong style="display: inline-block;">วันที่ / Date:</strong>
                                         <span t-field="doc.date" t-options='{"widget": "date"}'/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">เอกสารอ้างอิง:</strong>
+                                        <strong style=" display: inline-block;">เอกสารอ้างอิง:</strong>
                                         <span t-field="doc.purchase_id.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">วันที่ส่งคืน / Return Date:</strong>
+                                        <strong style=" display: inline-block;">วันที่ส่งคืน / Return Date:</strong>
                                         <span t-field="doc.scheduled_date" t-options='{"widget": "date"}'/>
                                     </div>
                                 </div>
@@ -243,6 +256,7 @@
                               t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
                     </t>
                 </td>
+                
             </tr>
          <!-- เติมแถวเปล่าให้ครบ 7 แถวต่อหน้า -->
          <t t-if="len(group) == 7">
@@ -365,9 +379,16 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div style="position: absolute; bottom: -16mm; font-size:12px;">
+                            อนุมัติใช้วันที่ 01/08/2568
+                          </div>
+
+
+                        </div>
                     </div>
                     </t>   
                  </t>  
-             </t>\
+             </t>
     </template>
 </odoo>

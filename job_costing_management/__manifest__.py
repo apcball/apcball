@@ -68,7 +68,12 @@ Key Benefits:
         'data/subcontractor_data.xml',
         'data/subcontractor_cron.xml',
         
-        # Views (load first to define actions)
+        # Wizard (load before views that reference them)
+        'wizard/create_rfq_from_job_cost_view.xml',
+        'wizard/job_cost_line_wizard_view.xml',
+        'wizard/boq_material_requisition_wizard_view.xml',
+        
+        # Views (load after wizards to ensure actions are defined)
         'views/job_type_views.xml',
         'views/job_stage_views.xml',
         'views/job_cost_sheet_views.xml',
@@ -92,14 +97,12 @@ Key Benefits:
         'reports/job_order_report.xml',
         'reports/material_requisition_report.xml',
         'reports/boq_report.xml',
-        
-        # Wizard
-        'wizard/create_rfq_from_job_cost_view.xml',
     ],
     'demo': [
         'demo/job_costing_demo.xml',
         'demo/boq_demo.xml',
         'demo/job_cost_demo_rfq.xml',
+        'demo/job_cost_line_demo.xml',
     ],
     'qweb': [],
     'installable': True,

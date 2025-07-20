@@ -164,58 +164,55 @@
                     </div>
                 </div>
 
-
-                
-                
-                <table style="width: 100%; border-collapse: collapse; font-size: 12px;" border="1">
-                     <tr style="background-color: #f0f0f0;">
-                        <th style="width: 2%; text-align: center; border: 1px solid black;">ลำดับ</th>
-                        <th style="width: 4%; text-align: center; border: 1px solid black;">รหัสค่าใช้จ่าย</th>
-                        <th style="width: 6%; text-align: center; border: 1px solid black;">รหัสสินค้า</th>
-                        <th style="width: 8%; text-align: center; border: 1px solid black;">ชื่อสินค้า</th>
-                        <th style="width: 3%; text-align: center; border: 1px solid black;">คงเหลือ</th>
-                        <th style="width: 2%; text-align: center; border: 1px solid black;">ขอซื้อ</th>
-                        <th style="width: 3%; text-align: center; border: 1px solid black;">หน่วย</th>
-                        <th style="width: 3%; text-align: center; border: 1px solid black;">ราคา/หน่วย</th>
-                        <th style="width: 7%; text-align: center; border: 1px solid black;">จำนวนเงินรวม</th>
-                        <th style="width: 4%; text-align: center; border: 1px solid black;">วันที่ต้องการ</th>
-                        <th style="width: 4%; text-align: center; border: 1px solid black;">ผู้จัดจำหน่าย</th>
-                        <th style="width: 8%; text-align: center; border: 1px solid black;">
-                            สถานที่ส่ง/คลัง<br/><span style="font-weight: normal;">Place of Delivery</span>
-                        </th>
-                        <th style="width: 8%; text-align: center; border: 1px solid black;">วัตถุประสงค์การขอซื้อ / งานที่ใช้</th>
-                    </tr>
-                 
-                    <t t-set="counter" t-value="1"/>
-                    <t t-foreach="o.requisition_order_ids" t-as="line">
-                        <tr>
-                            <td style="text-align: center; border: 1px solid black;"><t t-esc="counter"/></td>
-                            <td style="border: 1px solid black;"></td> <!-- รหัสค่าใช้จ่าย -->
-                            <td style="border: 1px solid black;"><t t-esc="line.product_id.default_code or ''"/></td>
-                            <td style="border: 1px solid black;"><t t-esc="line.product_id.name or ''"/></td>
-                            <td style="border: 1px solid black;"></td> <!-- คงเหลือ -->
-                            <td style="text-align: right; border: 1px solid black;"><t t-esc="line.product_qty or 0.0"/></td>
-                            <td style="border: 1px solid black;"><t t-esc="line.product_uom_id.name or ''"/></td>
-                            <td style="text-align: right; border: 1px solid black;">
-                                <t t-esc="format_amount(line.price_unit or 0.0, o.currency_id)"/>
-                            </td>
-                            <td style="text-align: right; border: 1px solid black;">
-                                <t t-esc="format_amount(line.price_subtotal or 0.0, o.currency_id)"/>
-                            </td>
-                            <td style="text-align: center; border: 1px solid black;">
-                                <t t-esc="line.request_date and line.request_date.strftime('%d/%m/%Y') or ''"/>
-                            </td>
-                            <td style="border: 1px solid black;"><t t-esc="line.vendor_id.name or ''"/></td>
-                            <td style="border: 1px solid black;"><t t-esc="line.location_id.display_name or ''"/></td>
-                            <td style="border: 1px solid black;"><t t-esc="line.note or ''"/></td>
+                      <!-- Order Lines -->
+                      <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #000;">
+                        <tr style="background-color: #f0f0f0;">
+                          <th style="width: 2%; text-align: center; border: 1px solid #000;">ลำดับ</th>
+                          <th style="width: 2%; text-align: center; border: 1px solid #000;">รหัสค่าใช้จ่าย</th>
+                          <th style="width: 6%; text-align: center; border: 1px solid #000;">รหัสสินค้า</th>
+                          <th style="width: 8%; text-align: center; border: 1px solid #000;">ชื่อสินค้า</th>
+                          <th style="width: 3%; text-align: center; border: 1px solid #000;">สินค้าคงเหลือ</th>
+                          <th style="width: 2%; text-align: center; border: 1px solid #000;">จำนวนขอซื้อ</th>
+                          <th style="width: 3%; text-align: center; border: 1px solid #000;">หน่วย</th>
+                          <th style="width: 3%; text-align: center; border: 1px solid #000;">ราคา/หน่วย</th>
+                          <th style="width: 7%; text-align: center; border: 1px solid #000;">จำนวนเงินรวม</th>
+                          <th style="width: 4%; text-align: center; border: 1px solid #000;">วันที่ต้องการ</th>
+                          <th style="width: 4%; text-align: center; border: 1px solid #000;">ผู้จัดจำหน่าย</th>
+                          <th style="width: 8%; text-align: center; border: 1px solid #000;">สถานที่ส่ง/คลัง<br/><span style="font-weight: normal;">Place of Delivery</span></th>
+                          <th style="width: 8%; text-align: center; border: 1px solid #000;">วัตถุประสงค์การขอซื้อ / งานที่ใช้</th>
                         </tr>
-                        <t t-set="counter" t-value="counter + 1"/>
-                    </t>
-                </table>
+                        <!-- Loop for lines -->
+                        <t t-set="counter" t-value="1"/>
+                        <t t-foreach="o.requisition_order_ids" t-as="line" t-index="line_index">
+                          <tr>
+                            <td style="text-align: center; border: 1px solid #000;"><t t-esc="line_index + 1"/></td>
+                            <td style="border: 1px solid #000;"></td>
+                            <td style="text-align: center; border: 1px solid #000;"><t t-esc="line.product_id.default_code or ''"/></td>
+                            <td style="text-align: center; border: 1px solid #000;"><t t-esc="line.product_id.name or ''"/></td>
+                            <td style="border: 1px solid #000;"></td>
+                            <td style="border: 1px solid #000; text-align: right;"><t t-esc="line.quantity or ''"/></td>
+                            <td style="border: 1px solid #000;"></td>
+                            <td style="border: 1px solid #000;"></td>
+                            <td style="border: 1px solid #000;"></td>
+                            <td style="border: 1px solid #000;"></td>
+                            <td style="border: 1px solid #000;"></td>
+                            <td style="border: 1px solid #000;"></td>
+                            <td style="border: 1px solid #000;"></td>
+                          </tr>
+                        </t>
+
+                        <tr>
+                            <td colspan="5" style="text-align: center; font-weight: bold; border: 1px solid #000;">รวม TOTAL</td>
+                            <td style="text-align: right; font-weight: bold; border: 1px solid #000;"></td>
+                            <td style="border: 1px solid #000;"></td>
+                            <td style="border: 1px solid #000;"></td>
+                            <td style="text-align: right; font-weight: bold; border: 1px solid #000;"></td>
+                            <td colspan="4" style="border: 1px solid #000;"></td>
+                          </tr>
+                          
+                      </table>
+                      
                 
-
-
-
 
                         </div>
                     </t>

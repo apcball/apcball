@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Job Cost Line Wizard Form View -->
+        <record id="view_job_cost_line_wizard_form" model="ir.ui.view">
+            <field name="name">job.cost.line.wizard.form</field>
+            <field name="model">job.cost.line.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Update Cost Type">
+                    <group>
+                        <field name="job_cost_line_ids" widget="many2many_tags" readonly="1"/>
+                        <field name="new_cost_type" required="1"/>
+                        <field name="clear_product"/>
+                    </group>
+                    <footer>
+                        <button name="action_update_cost_type" string="Update" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Job Cost Line Bulk Edit Wizard Form View -->
+        <record id="view_job_cost_line_bulk_edit_wizard_form" model="ir.ui.view">
+            <field name="name">job.cost.line.bulk.edit.wizard.form</field>
+            <field name="model">job.cost.line.bulk.edit.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Bulk Edit Job Cost Lines">
+                    <group>
+                        <field name="job_cost_line_ids" widget="many2many_tags" readonly="1"/>
+                    </group>
+                    
+                    <group string="Fields to Update">
+                        <group>
+                            <field name="update_cost_type"/>
+                            <field name="new_cost_type" invisible="not update_cost_type" required="update_cost_type"/>
+                            
+                            <field name="update_unit_cost"/>
+                            <field name="new_unit_cost" invisible="not update_unit_cost" required="update_unit_cost"/>
+                        </group>
+                        <group>
+                            <field name="update_planned_qty"/>
+                            <field name="new_planned_qty" invisible="not update_planned_qty" required="update_planned_qty"/>
+                            
+                            <field name="update_analytic_account"/>
+                            <field name="new_analytic_account_id" invisible="not update_analytic_account"/>
+                        </group>
+                    </group>
+                    
+                    <footer>
+                        <button name="action_bulk_update" string="Update" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Job Cost Line Wizard Action -->
+        <record id="action_job_cost_line_wizard" model="ir.actions.act_window">
+            <field name="name">Update Cost Type</field>
+            <field name="res_model">job.cost.line.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <!-- Job Cost Line Bulk Edit Wizard Action -->
+        <record id="action_job_cost_line_bulk_edit_wizard" model="ir.actions.act_window">
+            <field name="name">Bulk Edit Job Cost Lines</field>
+            <field name="res_model">job.cost.line.bulk.edit.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- BOQ Material Requisition Wizard Form -->
+    <record id="view_boq_material_requisition_wizard_form" model="ir.ui.view">
+        <field name="name">boq.material.requisition.wizard.form</field>
+        <field name="model">boq.material.requisition.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Material Requisition from BOQ">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="boq_id" readonly="1"/>
+                            <field name="project_id" readonly="1"/>
+                            <field name="job_order_id" readonly="1"/>
+                            <field name="job_cost_sheet_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="required_date"/>
+                            <field name="priority"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <field name="purpose" placeholder="Enter purpose or reason for this requisition..."/>
+                    </group>
+                    
+                    <notebook>
+                        <page string="BOQ Lines">
+                            <field name="line_ids">
+                                <tree editable="bottom" decoration-warning="quantity_status == 'exceed'" decoration-muted="quantity_status == 'complete'">
+                                    <field name="selected"/>
+                                    <field name="product_id" options="{'no_create': True}" required="1"/>
+                                    <field name="description"/>
+                                    <field name="boq_quantity" readonly="1"/>
+                                    <field name="requisitioned_quantity" readonly="1"/>
+                                    <field name="remaining_quantity" readonly="1"/>
+                                    <field name="requested_quantity" 
+                                           decoration-warning="requested_quantity > remaining_quantity"/>
+                                    <field name="uom_id" options="{'no_create': True}" required="1"/>
+                                    <field name="estimated_cost"/>
+                                    <field name="total_cost" readonly="1"/>
+                                    <field name="quantity_status" readonly="1"/>
+                                    <field name="boq_line_id" invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                    
+                    <div class="alert alert-info" role="alert">
+                        <strong>Information:</strong>
+                        <ul>
+                            <li><strong>Yellow rows:</strong> Requested quantity exceeds remaining BOQ quantity</li>
+                            <li><strong>Gray rows:</strong> BOQ line is fully requisitioned</li>
+                            <li>You can still proceed with quantities that exceed BOQ if needed</li>
+                        </ul>
+                    </div>
+                </sheet>
+                
+                <footer>
+                    <button name="action_create_requisition" string="Create Requisition" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- BOQ Material Requisition Wizard Action -->
+    <record id="action_boq_material_requisition_wizard" model="ir.actions.act_window">
+        <field name="name">Create Material Requisition</field>
+        <field name="res_model">boq.material.requisition.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_boq_id': active_id}</field>
+    </record>
+</odoo>

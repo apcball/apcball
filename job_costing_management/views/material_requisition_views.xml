@@ -88,7 +88,7 @@
                         <notebook>
                             <page string="Requisition Lines">
                                 <field name="line_ids" nolabel="1">
-                                    <tree editable="bottom">
+                                    <tree editable="bottom" decoration-warning="quantity > boq_remaining_qty and boq_line_id">
                                         <field name="sequence" widget="handle"/>
                                         <field name="product_id"/>
                                         <field name="description"/>
@@ -99,6 +99,9 @@
                                         <field name="requisition_action"/>
                                         <field name="vendor_id" invisible="requisition_action != 'purchase'"/>
                                         <field name="boq_line_id"/>
+                                        <field name="boq_total_qty" string="BOQ Total" readonly="1" invisible="not boq_line_id"/>
+                                        <field name="boq_requisitioned_qty" string="BOQ Requisitioned" readonly="1" invisible="not boq_line_id"/>
+                                        <field name="boq_remaining_qty" string="BOQ Remaining" readonly="1" invisible="not boq_line_id"/>
                                     </tree>
                                 </field>
                             </page>

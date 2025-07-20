@@ -39,8 +39,10 @@
                                 invisible="state != 'cancelled'"/>
                         <button name="action_duplicate" string="Duplicate" type="object" 
                                 class="btn-secondary"/>
-                        <button name="action_create_material_requisition" string="Create Material Requisition" 
-                                type="object" class="oe_highlight" invisible="state not in ('approved', 'locked')"/>
+                        <button name="%(action_boq_material_requisition_wizard)d" string="Create Material Requisition" 
+                                type="action" class="oe_highlight" invisible="state not in ('approved', 'locked')"/>
+                        <button name="action_debug_wizard_access" string="Debug Wizard Access" 
+                                type="object" class="btn-secondary" groups="base.group_no_one"/>
                         <button name="action_create_job_cost_lines" string="Create Job Cost Lines" 
                                 type="object" invisible="state not in ('approved', 'locked')"/>
                         <field name="state" widget="statusbar" statusbar_visible="draft,approved,locked"/>
@@ -79,7 +81,7 @@
                         <notebook>
                             <page string="BOQ Lines">
                                 <field name="line_ids" nolabel="1">
-                                    <tree editable="bottom">
+                                    <tree editable="bottom" decoration-success="status=='completed'" decoration-warning="status=='ordered'" decoration-info="status=='requisitioned'">
                                         <field name="sequence" widget="handle"/>
                                         <field name="category_id"/>
                                         <field name="item_code"/>
@@ -93,7 +95,34 @@
                                         <field name="contingency_percentage"/>
                                         <field name="adjusted_quantity"/>
                                         <field name="adjusted_total_cost"/>
+                                        <field name="total_requisitioned_qty" string="Requisitioned"/>
+                                        <field name="total_ordered_qty" string="Ordered"/>
+                                        <field name="total_received_qty" string="Received"/>
+                                        <field name="remaining_qty" string="Remaining"/>
+                                        <field name="purchase_progress" string="Progress %" widget="progressbar"/>
                                         <field name="status"/>
+                                        <button name="action_create_requisition" string="Create Requisition" 
+                                                type="object" icon="fa-shopping-cart" 
+                                                invisible="remaining_qty &lt;= 0"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="Purchase Tracking">
+                                <field name="line_ids" nolabel="1" readonly="1">
+                                    <tree decoration-success="status=='completed'" decoration-warning="status=='ordered'" decoration-info="status=='requisitioned'" decoration-muted="remaining_qty &lt;= 0">
+                                        <field name="product_id"/>
+                                        <field name="description"/>
+                                        <field name="adjusted_quantity" string="BOQ Qty"/>
+                                        <field name="uom_id"/>
+                                        <field name="total_requisitioned_qty" string="Requisitioned"/>
+                                        <field name="total_ordered_qty" string="Ordered"/>
+                                        <field name="total_received_qty" string="Received"/>
+                                        <field name="remaining_qty" string="Remaining"/>
+                                        <field name="purchase_progress" string="Progress %" widget="progressbar"/>
+                                        <field name="status"/>
+                                        <button name="action_create_requisition" string="Create Requisition" 
+                                                type="object" icon="fa-shopping-cart" 
+                                                invisible="remaining_qty &lt;= 0"/>
                                     </tree>
                                 </field>
                             </page>
@@ -111,6 +140,18 @@
                         <group class="oe_subtotal_footer oe_right">
                             <field name="total_quantity"/>
                             <field name="total_cost" class="oe_subtotal_footer_separator"/>
+                        </group>
+                        
+                        <!-- Purchase Tracking Summary -->
+                        <group string="Purchase Tracking Summary" invisible="state == 'draft'">
+                            <group>
+                                <field name="total_requisitioned_amount" string="Total Requisitioned"/>
+                                <field name="total_ordered_amount" string="Total Ordered"/>
+                                <field name="total_received_amount" string="Total Received"/>
+                            </group>
+                            <group>
+                                <field name="overall_purchase_progress" string="Overall Progress" widget="progressbar"/>
+                            </group>
                         </group>
                     </sheet>
                     <div class="oe_chatter">

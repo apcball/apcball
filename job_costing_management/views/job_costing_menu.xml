@@ -12,6 +12,11 @@
                   parent="menu_job_costs" 
                   action="action_job_cost_sheet" 
                   sequence="10"/>
+                  
+        <menuitem id="menu_job_cost_lines" name="Job Cost Lines" 
+                  parent="menu_job_costs" 
+                  action="action_job_cost_line" 
+                  sequence="20"/>
 
         <!-- Projects Menu -->
         <menuitem id="menu_job_projects" name="Projects" parent="menu_job_costing_main" sequence="20"/>

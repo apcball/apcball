@@ -21,6 +21,18 @@ class PurchaseRequisition(models.Model):
     name = fields.Char(string="Request Number", required=True, copy=False, readonly=True, default='New')
     request_number = fields.Char(string="Request Number")
     expense_code_id = fields.Many2one('account.analytic.account', string='Expense Code')
+    requisition_id = fields.Many2one('employee.purchase.requisition', string="Requisition")
+    product_code = fields.Char(string="รหัสสินค้า")
+    product_name = fields.Char(string="ชื่อสินค้า")
+    request_qty = fields.Float(string="จำนวนขอซื้อ")
+    product_uom = fields.Many2one('uom.uom', string="หน่วย")
+    price_unit = fields.Float(string="ราคา/หน่วย")
+    price_subtotal = fields.Float(string="จำนวนเงินรวม", compute="_compute_price_subtotal")
+    request_date = fields.Date(string="วันที่ต้องการ")
+    vendor_id = fields.Many2one('res.partner', string="ผู้จัดจำหน่าย")
+    delivery_location = fields.Char(string="สถานที่ส่ง/คลัง")
+    purpose = fields.Text(string="วัตถุประสงค์")
+    purpose = fields.Char(string="Purpose")
    
     employee_id = fields.Many2one(
         comodel_name='hr.employee',
@@ -351,3 +363,13 @@ class PurchaseRequisition(models.Model):
             'res_model': 'stock.picking',
             'domain': [('requisition_order', '=', self.name)],
         }
+
+class RequisitionOrder(models.Model):
+    _name = 'requisition.order'
+    _description = 'Requisition Order Line'
+
+    requisition_product_id = fields.Many2one('employee.purchase.requisition', string="Requisition")
+    product_id = fields.Many2one('product.product', string="Product")
+    quantity = fields.Float(string="จำนวนขอซื้อ", required=True)
+    product_uom_id = fields.Many2one('uom.uom', string="หน่วย")
+    

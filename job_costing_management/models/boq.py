@@ -42,6 +42,12 @@ class BOQ(models.Model):
     total_quantity = fields.Float(string='Total Quantity', compute='_compute_totals', store=True)
     total_cost = fields.Float(string='Total Cost', compute='_compute_totals', store=True)
     
+    # Purchase tracking totals
+    total_requisitioned_amount = fields.Float(string='Total Requisitioned Amount', compute='_compute_purchase_totals', store=True)
+    total_ordered_amount = fields.Float(string='Total Ordered Amount', compute='_compute_purchase_totals', store=True)
+    total_received_amount = fields.Float(string='Total Received Amount', compute='_compute_purchase_totals', store=True)
+    overall_purchase_progress = fields.Float(string='Overall Purchase Progress (%)', compute='_compute_purchase_totals', store=True)
+    
     # Smart buttons
     requisition_count = fields.Integer(string='Requisitions', compute='_compute_requisition_count')
     
@@ -142,6 +148,30 @@ class BOQ(models.Model):
             record.total_quantity = sum(record.line_ids.mapped('quantity'))
             record.total_cost = sum(record.line_ids.mapped('total_cost'))
     
+    @api.depends('line_ids.total_requisitioned_qty', 'line_ids.total_ordered_qty', 'line_ids.total_received_qty', 'line_ids.unit_cost', 'line_ids.adjusted_total_cost')
+    def _compute_purchase_totals(self):
+        for record in self:
+            # Calculate total amounts based on quantities and unit costs
+            total_req_amount = 0
+            total_ord_amount = 0
+            total_rec_amount = 0
+            total_boq_amount = sum(record.line_ids.mapped('adjusted_total_cost'))
+            
+            for line in record.line_ids:
+                total_req_amount += line.total_requisitioned_qty * line.unit_cost
+                total_ord_amount += line.total_ordered_qty * line.unit_cost
+                total_rec_amount += line.total_received_qty * line.unit_cost
+            
+            record.total_requisitioned_amount = total_req_amount
+            record.total_ordered_amount = total_ord_amount
+            record.total_received_amount = total_rec_amount
+            
+            # Calculate overall progress
+            if total_boq_amount > 0:
+                record.overall_purchase_progress = (total_req_amount / total_boq_amount) * 100
+            else:
+                record.overall_purchase_progress = 0.0
+    
     def _compute_requisition_count(self):
         for record in self:
             record.requisition_count = len(record.line_ids.mapped('requisition_line_ids.requisition_id'))
@@ -180,23 +210,31 @@ class BOQ(models.Model):
         if not self.line_ids:
             raise ValidationError(_('No BOQ lines to create requisition from.'))
         
-        # Filter lines that have products
+        # Filter lines that have products and remaining quantities
         lines_with_products = self.line_ids.filtered(lambda l: l.product_id)
         if not lines_with_products:
             raise ValidationError(_('No BOQ lines with products found to create requisition from.'))
+        
+        # Filter lines with remaining quantities
+        lines_with_remaining = lines_with_products.filtered(lambda l: l.remaining_qty > 0)
+        if not lines_with_remaining:
+            raise ValidationError(_(
+                'No BOQ lines with remaining quantities found to create requisition from.\n'
+                'All items have already been fully requisitioned.'
+            ))
         
         # Group lines by category or create single requisition
         requisition_vals = {
             'project_id': self.project_id.id,
             'job_order_id': self.job_order_id.id if self.job_order_id else False,
-            'job_cost_sheet_id': self.job_cost_sheet_id.id if self.job_cost_sheet_id else False,  # Pass job cost sheet
+            'job_cost_sheet_id': self.job_cost_sheet_id.id if self.job_cost_sheet_id else False,
             'boq_id': self.id,
             'purpose': f'Material requisition from BOQ: {self.name}',
-            'required_date': fields.Date.today(),  # Add required date
+            'required_date': fields.Date.today(),
             'line_ids': []
         }
         
-        for line in lines_with_products:
+        for line in lines_with_remaining:
             # Find the corresponding job cost line for this BOQ line
             job_cost_line = False
             if line.cost_line_ids:
@@ -205,11 +243,11 @@ class BOQ(models.Model):
             req_line_vals = {
                 'product_id': line.product_id.id,
                 'description': line.description,
-                'quantity': line.quantity,
+                'quantity': line.remaining_qty,  # Use remaining quantity instead of full quantity
                 'uom_id': line.uom_id.id,
                 'estimated_cost': line.unit_cost,
                 'boq_line_id': line.id,
-                'job_cost_line_id': job_cost_line.id if job_cost_line else False,  # Link to job cost line
+                'job_cost_line_id': job_cost_line.id if job_cost_line else False,
             }
             requisition_vals['line_ids'].append((0, 0, req_line_vals))
         
@@ -307,6 +345,73 @@ class BOQ(models.Model):
             'res_model': 'material.requisition',
             'view_mode': 'tree,form',
             'domain': [('id', 'in', requisition_ids)],
+        }
+    
+    def action_debug_wizard_access(self):
+        """Debug method to check wizard access rights"""
+        try:
+            # Try to access the wizard model
+            wizard_model = self.env['boq.material.requisition.wizard']
+            
+            # Check if user can create wizard records
+            wizard_model.check_access_rights('create')
+            wizard_model.check_access_rights('read')
+            wizard_model.check_access_rights('write')
+            
+            # Get user groups
+            user_groups = self.env.user.groups_id.mapped('name')
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Wizard Access Check',
+                    'message': f'✅ User has access to wizard. Groups: {", ".join(user_groups)}',
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        except Exception as e:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Wizard Access Error',
+                    'message': f'❌ Access denied: {str(e)}',
+                    'type': 'danger',
+                    'sticky': True,
+                }
+            }
+    
+    def check_requisition_readiness(self):
+        """Check if BOQ is ready for material requisition creation"""
+        issues = []
+        
+        if self.state not in ('approved', 'locked'):
+            issues.append(f'BOQ state must be approved or locked (current: {self.state})')
+        
+        if not self.line_ids:
+            issues.append('BOQ has no lines')
+        
+        lines_without_products = self.line_ids.filtered(lambda l: not l.product_id)
+        if lines_without_products:
+            issues.append(f'{len(lines_without_products)} BOQ lines have no products assigned')
+        
+        lines_with_products = self.line_ids.filtered(lambda l: l.product_id)
+        lines_with_remaining = lines_with_products.filtered(lambda l: l.remaining_qty > 0)
+        
+        if not lines_with_remaining:
+            if lines_with_products:
+                issues.append('All BOQ lines with products have been fully requisitioned')
+            else:
+                issues.append('No BOQ lines have products assigned')
+        
+        return {
+            'ready': len(issues) == 0,
+            'issues': issues,
+            'lines_total': len(self.line_ids),
+            'lines_with_products': len(lines_with_products),
+            'lines_with_remaining': len(lines_with_remaining),
         }
     
     def copy(self, default=None):
@@ -442,6 +547,13 @@ class BOQLine(models.Model):
     requisition_line_ids = fields.One2many('material.requisition.line', 'boq_line_id', string='Requisition Lines')
     cost_line_ids = fields.One2many('job.cost.line', 'boq_line_id', string='Cost Lines')
     
+    # Purchase tracking fields
+    total_requisitioned_qty = fields.Float(string='Total Requisitioned Qty', compute='_compute_purchase_tracking', store=True)
+    total_ordered_qty = fields.Float(string='Total Ordered Qty', compute='_compute_purchase_tracking', store=True)
+    total_received_qty = fields.Float(string='Total Received Qty', compute='_compute_purchase_tracking', store=True)
+    remaining_qty = fields.Float(string='Remaining Qty', compute='_compute_purchase_tracking', store=True)
+    purchase_progress = fields.Float(string='Purchase Progress (%)', compute='_compute_purchase_tracking', store=True)
+    
     # Status
     status = fields.Selection([
         ('pending', 'Pending'),
@@ -459,6 +571,34 @@ class BOQLine(models.Model):
         for record in self:
             record.total_cost = record.quantity * record.unit_cost
     
+    @api.depends('requisition_line_ids', 'requisition_line_ids.quantity', 'requisition_line_ids.requisition_state')
+    def _compute_purchase_tracking(self):
+        """Compute purchase tracking fields"""
+        for record in self:
+            # Get all requisition lines for this BOQ line
+            req_lines = record.requisition_line_ids
+            
+            # Calculate total requisitioned quantity (all states except cancelled/rejected)
+            active_req_lines = req_lines.filtered(lambda l: l.requisition_state not in ['cancelled', 'rejected'])
+            record.total_requisitioned_qty = sum(active_req_lines.mapped('quantity'))
+            
+            # Calculate total ordered quantity (approved and above states)
+            ordered_req_lines = req_lines.filtered(lambda l: l.requisition_state in ['approved', 'ordered', 'received'])
+            record.total_ordered_qty = sum(ordered_req_lines.mapped('quantity'))
+            
+            # Calculate total received quantity
+            received_req_lines = req_lines.filtered(lambda l: l.requisition_state == 'received')
+            record.total_received_qty = sum(received_req_lines.mapped('quantity'))
+            
+            # Calculate remaining quantity
+            record.remaining_qty = record.adjusted_quantity - record.total_requisitioned_qty
+            
+            # Calculate purchase progress percentage
+            if record.adjusted_quantity > 0:
+                record.purchase_progress = (record.total_requisitioned_qty / record.adjusted_quantity) * 100
+            else:
+                record.purchase_progress = 0.0
+    
     @api.depends('quantity', 'waste_percentage', 'contingency_percentage', 'total_cost')
     def _compute_adjusted_values(self):
         for record in self:
@@ -468,18 +608,20 @@ class BOQLine(models.Model):
             record.adjusted_quantity = record.quantity * waste_factor
             record.adjusted_total_cost = record.total_cost * waste_factor * contingency_factor
     
-    @api.depends('requisition_line_ids.requisition_id.state')
+    @api.depends('requisition_line_ids.requisition_id.state', 'total_received_qty', 'adjusted_quantity')
     def _compute_status(self):
         for record in self:
             if not record.requisition_line_ids:
                 record.status = 'pending'
             else:
-                states = record.requisition_line_ids.mapped('requisition_id.state')
-                if 'received' in states:
+                # Check if fully received
+                if record.total_received_qty >= record.adjusted_quantity:
+                    record.status = 'completed'
+                elif record.total_received_qty > 0:
                     record.status = 'received'
-                elif 'ordered' in states:
+                elif record.total_ordered_qty > 0:
                     record.status = 'ordered'
-                elif 'approved' in states:
+                elif record.total_requisitioned_qty > 0:
                     record.status = 'requisitioned'
                 else:
                     record.status = 'pending'
@@ -497,16 +639,33 @@ class BOQLine(models.Model):
         if not self.product_id:
             raise ValidationError(_('Please specify a product for this BOQ line before creating a requisition.'))
         
+        # Check remaining quantity
+        if self.remaining_qty <= 0:
+            raise ValidationError(_(
+                'No remaining quantity to requisition for this BOQ line.\n'
+                'BOQ Quantity: %s %s\n'
+                'Already Requisitioned: %s %s\n'
+                'Remaining: %s %s'
+            ) % (
+                self.adjusted_quantity, self.uom_id.name,
+                self.total_requisitioned_qty, self.uom_id.name,
+                self.remaining_qty, self.uom_id.name
+            ))
+        
+        # Use remaining quantity as default, but allow user to modify
+        default_qty = self.remaining_qty
+        
         requisition_vals = {
             'project_id': self.boq_id.project_id.id,
             'job_order_id': self.boq_id.job_order_id.id if self.boq_id.job_order_id else False,
+            'job_cost_sheet_id': self.boq_id.job_cost_sheet_id.id if self.boq_id.job_cost_sheet_id else False,
             'boq_id': self.boq_id.id,
             'purpose': f'Material requisition for BOQ line: {self.description}',
-            'required_date': fields.Date.today(),  # Add required date
+            'required_date': fields.Date.today(),
             'line_ids': [(0, 0, {
                 'product_id': self.product_id.id,
                 'description': self.description,
-                'quantity': self.adjusted_quantity,
+                'quantity': default_qty,
                 'uom_id': self.uom_id.id,
                 'estimated_cost': self.unit_cost,
                 'boq_line_id': self.id,
