@@ -33,6 +33,7 @@ class PurchaseRequisition(models.Model):
     delivery_location = fields.Char(string="สถานที่ส่ง/คลัง")
     purpose = fields.Text(string="วัตถุประสงค์")
     purpose = fields.Char(string="Purpose")
+    note = fields.Text(string="หมายเหตุ")
    
     employee_id = fields.Many2one(
         comodel_name='hr.employee',
@@ -372,4 +373,14 @@ class RequisitionOrder(models.Model):
     product_id = fields.Many2one('product.product', string="Product")
     quantity = fields.Float(string="จำนวนขอซื้อ", required=True)
     product_uom_id = fields.Many2one('uom.uom', string="หน่วย")
-    
+    price_unit = fields.Float(string="ราคา/หน่วย", default=0.0)
+    requisition_order_ids = fields.One2many('requisition.order', 'requisition_id', string="รายการสินค้า")
+    need_date = fields.Date(string='วันที่ต้องการสินค้า')
+    need_date = fields.Date(string="วันที่ต้องการ")
+    partner_id = fields.Many2one('res.partner', string="ผู้จัดจำหน่าย")
+    delivery_location_id = fields.Many2one('stock.location', string="สถานที่ส่ง/คลัง")
+
+    def format_date(self, date_obj):
+        if date_obj and hasattr(date_obj, 'strftime') and callable(date_obj.strftime):
+            return date_obj.strftime('%d/%m/%Y')
+        return ''

@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-    <record id="view_account_payment_register_form" model="ir.ui.view">
-        <field name="name">account.payment.register.form</field>
+    <!-- Simple view inheritance to add WHT fields -->
+    <record id="view_account_payment_register_form_wht" model="ir.ui.view">
+        <field name="name">account.payment.register.form.wht</field>
         <field name="model">account.payment.register</field>
         <field name="inherit_id" ref="account.view_account_payment_register_form" />
         <field name="arch" type="xml">
-            <xpath expr="//form" position="inside">
-                <group invisible="payment_difference_handling != 'reconcile'" string="Withholding Tax">
-                    <field name="wht_tax_id" string="Withholding Tax" options="{'no_create': True, 'no_open': True}"/>
-                    <field name="wht_amount_base" string="Withholding Base"/>
-                </group>
-            </xpath>
+            <!-- Add WHT fields as invisible to ensure they are available -->
+            <field name="amount" position="after">
+                <field name="wht_tax_id" invisible="1"/>
+                <field name="wht_amount_base" invisible="1"/>
+            </field>
         </field>
     </record>
 </odoo>

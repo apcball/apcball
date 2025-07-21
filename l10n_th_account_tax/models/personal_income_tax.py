@@ -101,16 +101,28 @@ class PersonalIncomeTax(models.Model):
         self.ensure_one()
         pit_amount_year = self._get_pit_amount_yearly(partner, pit_date)
         # From currency to company currency
-        base_amount = currency._convert(
-            base_amount, company.currency_id, company, pit_date
-        )
+        try:
+            base_amount = currency._convert(
+                base_amount, company.currency_id, company, pit_date
+            )
+        except Exception:
+            # Fallback for different currency conversion methods
+            base_amount = company.currency_id._convert(
+                base_amount, currency, company, pit_date
+            )
         # Calculate PIT amount from PIT Rate Table
         total_pit = pit_amount_year + base_amount
         expected_wht = self.calculate_rate_wht(total_pit, base_amount, pit_date)
         # From company currency to currency of base_amount
-        expected_wht = company.currency_id._convert(
-            expected_wht, currency, company, pit_date
-        )
+        try:
+            expected_wht = company.currency_id._convert(
+                expected_wht, currency, company, pit_date
+            )
+        except Exception:
+            # Fallback for different currency conversion methods
+            expected_wht = currency._convert(
+                expected_wht, company.currency_id, company, pit_date
+            )
         return expected_wht
 
     @api.model

@@ -2,13 +2,13 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
 
 {
-    "name": "buz Thai Localization - VAT and Withholding Tax",
+    "name": "Thai Localization - VAT and Withholding Tax",
     "version": "17.0.1.1.1",
     "author": "Ecosoft, Odoo Community Association (OCA)",
     "license": "AGPL-3",
     "website": "https://github.com/OCA/l10n-thailand",
     "category": "Localization / Accounting",
-    "depends": ["account"],
+    "depends": ["account", "base"],
     "data": [
         "data/pit_rate_data.xml",
         "data/withholding_tax_type_income_data.xml",
@@ -29,6 +29,9 @@
         "views/personal_income_tax_view.xml",
         "views/res_partner_view.xml",
         "views/account_menu.xml",
+    ],
+    "test": [
+        "tests/test_missing_record_handling.py",
     ],
     "installable": True,
     "development_status": "Beta",

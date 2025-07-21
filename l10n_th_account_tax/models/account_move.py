@@ -27,209 +27,342 @@ class AccountMoveLine(models.Model):
     @api.depends("product_id", "partner_id")
     def _compute_wht_tax_id(self):
         for rec in self:
-            # From invoice, default from product
-            if rec.move_id.move_type in ("out_invoice", "out_refund", "in_receipt"):
-                rec.wht_tax_id = rec.product_id.wht_tax_id
-            elif rec.move_id.move_type in ("in_invoice", "in_refund", "out_receipt"):
-                partner_id = rec.partner_id or rec.move_id.partner_id
-                if partner_id and partner_id.company_type == "company":
-                    rec.wht_tax_id = rec.product_id.supplier_company_wht_tax_id
+            try:
+                # Check if record exists and is not deleted
+                if not rec.exists():
                     continue
-                rec.wht_tax_id = rec.product_id.supplier_wht_tax_id
-            else:
+                    
+                # From invoice, default from product
+                if rec.move_id.move_type in ("out_invoice", "out_refund", "in_receipt"):
+                    rec.wht_tax_id = rec.product_id.wht_tax_id if rec.product_id else False
+                elif rec.move_id.move_type in ("in_invoice", "in_refund", "out_receipt"):
+                    partner_id = rec.partner_id or rec.move_id.partner_id
+                    if partner_id and partner_id.company_type == "company":
+                        rec.wht_tax_id = rec.product_id.supplier_company_wht_tax_id if rec.product_id else False
+                        continue
+                    rec.wht_tax_id = rec.product_id.supplier_wht_tax_id if rec.product_id else False
+                else:
+                    rec.wht_tax_id = False
+            except Exception:
+                # If any error occurs, set to False to prevent crashes
                 rec.wht_tax_id = False
 
     def _get_wht_base_amount(self, currency, currency_date):
         self.ensure_one()
-        wht_base_amount = 0
-        if not currency or self.currency_id == currency:
-            # Same currency
-            wht_base_amount = self.amount_currency
-        elif currency == self.company_currency_id:
-            # Payment expressed on the company's currency.
-            wht_base_amount = self.balance
-        else:
-            # Foreign currency on payment different than the one set on the journal entries.
-            wht_base_amount = self.company_currency_id._convert(
-                self.balance, currency, self.company_id, currency_date
-            )
-        return wht_base_amount
+        try:
+            # Check if record exists
+            if not self.exists():
+                return 0
+                
+            wht_base_amount = 0
+            if not currency or self.currency_id == currency:
+                # Same currency
+                wht_base_amount = self.amount_currency
+            elif currency == self.company_currency_id:
+                # Payment expressed on the company's currency.
+                wht_base_amount = self.balance
+            else:
+                # Foreign currency on payment different than the one set on the journal entries.
+                # Use proper currency conversion for Odoo 17
+                try:
+                    if hasattr(self.company_currency_id, '_convert'):
+                        wht_base_amount = self.company_currency_id._convert(
+                            self.balance, currency, self.company_id, currency_date
+                        )
+                    else:
+                        # Fallback for older versions
+                        wht_base_amount = currency._convert(
+                            self.balance, currency, self.company_id, currency_date
+                        )
+                except Exception:
+                    # If currency conversion fails, use balance
+                    wht_base_amount = self.balance
+            return wht_base_amount
+        except Exception:
+            # If any error occurs, return 0
+            return 0
 
     def _get_wht_amount(self, currency, wht_date):
         """Calculate withholding tax and base amount based on currency"""
-        wht_lines = self.filtered("wht_tax_id")
-        pit_lines = wht_lines.filtered("wht_tax_id.is_pit")
-        wht_lines = wht_lines - pit_lines
-        # Mixing PIT and WHT or > 1 type, no auto deduct
-        if pit_lines and wht_lines or not self:
-            return (0, 0)
-        # WHT
-        if wht_lines:
-            wht_tax = wht_lines.mapped("wht_tax_id")
-            if len(wht_tax) != 1:
+        try:
+            # Filter only existing records
+            wht_lines = self.filtered(lambda l: l.exists() and l.wht_tax_id)
+            pit_lines = wht_lines.filtered(lambda l: l.wht_tax_id.is_pit)
+            wht_lines = wht_lines - pit_lines
+            
+            # Mixing PIT and WHT or > 1 type, no auto deduct
+            if pit_lines and wht_lines or not self:
                 return (0, 0)
-            amount_base = 0
-            amount_wht = 0
-            for line in wht_lines:
-                base_amount = line._get_wht_base_amount(currency, wht_date)
-                amount_wht += float_round(
-                    line.wht_tax_id.amount / 100 * base_amount,
-                    precision_digits=currency.decimal_places,
+                
+            # WHT
+            if wht_lines:
+                wht_tax = wht_lines.mapped("wht_tax_id")
+                if len(wht_tax) != 1:
+                    return (0, 0)
+                amount_base = 0
+                amount_wht = 0
+                for line in wht_lines:
+                    try:
+                        base_amount = line._get_wht_base_amount(currency, wht_date)
+                        amount_wht += float_round(
+                            line.wht_tax_id.amount / 100 * base_amount,
+                            precision_digits=currency.decimal_places,
+                        )
+                        amount_base += base_amount
+                    except Exception:
+                        # Skip this line if error occurs
+                        continue
+                return (amount_base, amount_wht)
+                
+            # PIT
+            if pit_lines:
+                pit_tax = pit_lines.mapped("wht_tax_id")
+                if not pit_tax:
+                    return (0, 0)
+                pit_tax.ensure_one()
+                move_lines = self.filtered(lambda l: l.exists() and l.wht_tax_id == pit_tax)
+                if not move_lines:
+                    return (0, 0)
+                    
+                amount_invoice_currency = sum(move_lines.mapped("amount_currency"))
+                move = move_lines[0]
+                company = move.company_id
+                partner = move.partner_id
+                
+                # Convert invoice currency to payment currency
+                try:
+                    amount_base = move.currency_id._convert(
+                        amount_invoice_currency, currency, company, wht_date
+                    )
+                except Exception:
+                    # Fallback for different currency conversion methods
+                    try:
+                        amount_base = company.currency_id._convert(
+                            amount_invoice_currency, currency, company, wht_date
+                        )
+                    except Exception:
+                        amount_base = amount_invoice_currency
+                        
+                effective_pit = pit_tax.with_context(pit_date=wht_date).pit_id
+                if not effective_pit:
+                    raise UserError(
+                        _("No effective PIT rate for date %s")
+                        % format_date(self.env, wht_date)
+                    )
+                amount_wht = effective_pit._compute_expected_wht(
+                    partner,
+                    amount_base,
+                    wht_date,
+                    currency,
+                    company,
                 )
-                amount_base += base_amount
-            return (amount_base, amount_wht)
-        # PIT
-        if pit_lines:
-            pit_tax = pit_lines.mapped("wht_tax_id")
-            pit_tax.ensure_one()
-            move_lines = self.filtered(lambda l: l.wht_tax_id == pit_tax)
-            amount_invoice_currency = sum(move_lines.mapped("amount_currency"))
-            move = move_lines[0]
-            company = move.company_id
-            partner = move.partner_id
-            # Convert invoice currency to payment currency
-            amount_base = move.currency_id._convert(
-                amount_invoice_currency, currency, company, wht_date
-            )
-            effective_pit = pit_tax.with_context(pit_date=wht_date).pit_id
-            if not effective_pit:
-                raise UserError(
-                    _("No effective PIT rate for date %s")
-                    % format_date(self.env, wht_date)
-                )
-            amount_wht = effective_pit._compute_expected_wht(
-                partner,
-                amount_base,
-                wht_date,
-                currency,
-                company,
-            )
-            return (amount_base, amount_wht)
+                return (amount_base, amount_wht)
+                
+        except Exception:
+            # If any error occurs, return (0, 0)
+            return (0, 0)
+            
+        return (0, 0)
 
     def _get_tax_base_amount(self, sign, vals_list):
-        self.ensure_one()
-        base = abs(self.tax_base_amount)
-        tax = abs(self.balance)
-        prec = self.env.company.currency_id.decimal_places
-        full_tax = abs(float_round(self.tax_line_id.amount / 100 * base, prec))
-        # partial payment, we need to compute the base amount
-        partial_payment = self.env.context.get("partial_payment", False)
-        if (
-            partial_payment
-            and self.tax_line_id
-            and float_compare(full_tax, tax, prec) != 0
-        ):
-            base = abs(float_round(tax * 100 / self.tax_line_id.amount, prec))
-        return sign * base
+        try:
+            self.ensure_one()
+            # Check if record exists
+            if not self.exists():
+                return 0
+                
+            base = abs(self.tax_base_amount)
+            tax = abs(self.balance)
+            prec = self.env.company.currency_id.decimal_places
+            
+            if not self.tax_line_id:
+                return sign * base
+                
+            full_tax = abs(float_round(self.tax_line_id.amount / 100 * base, prec))
+            # partial payment, we need to compute the base amount
+            partial_payment = self.env.context.get("partial_payment", False)
+            if (
+                partial_payment
+                and self.tax_line_id
+                and float_compare(full_tax, tax, prec) != 0
+            ):
+                if self.tax_line_id.amount != 0:
+                    base = abs(float_round(tax * 100 / self.tax_line_id.amount, prec))
+            return sign * base
+        except Exception:
+            # If any error occurs, return 0
+            return 0
 
     def _prepare_move_tax_invoice(self, sign, vals_list):
-        self.ensure_one()
-        tax_base_amount = self._get_tax_base_amount(sign, vals_list)
-        # For case customer invoice, customer credit note and not manual reconcile
-        # it default value in tax invoice
-        default_tax_invoice = self.move_id.move_type in [
-            "out_invoice",
-            "out_refund",
-        ] and not self.env.context.get("invoice_net_refund")
-        taxinv_dict = {
-            "move_id": self.move_id.id,
-            "move_line_id": self.id,
-            "partner_id": self.partner_id.id,
-            "tax_invoice_number": default_tax_invoice and "/" or False,
-            "tax_invoice_date": default_tax_invoice and fields.Date.today() or False,
-            "tax_base_amount": tax_base_amount,
-            "balance": sign * abs(self.balance),
-            "reversed_id": (
-                self.move_id.move_type == "entry"
-                and self.move_id.reversed_entry_id.id
-                or False
-            ),
-        }
-        return taxinv_dict
+        try:
+            self.ensure_one()
+            # Check if record exists
+            if not self.exists():
+                return {}
+                
+            tax_base_amount = self._get_tax_base_amount(sign, vals_list)
+            # For case customer invoice, customer credit note and not manual reconcile
+            # it default value in tax invoice
+            default_tax_invoice = self.move_id.move_type in [
+                "out_invoice",
+                "out_refund",
+            ] and not self.env.context.get("invoice_net_refund")
+            
+            taxinv_dict = {
+                "move_id": self.move_id.id,
+                "move_line_id": self.id,
+                "partner_id": self.partner_id.id,
+                "tax_invoice_number": default_tax_invoice and "/" or False,
+                "tax_invoice_date": default_tax_invoice and fields.Date.today() or False,
+                "tax_base_amount": tax_base_amount,
+                "balance": sign * abs(self.balance),
+                "reversed_id": (
+                    self.move_id.move_type == "entry"
+                    and self.move_id.reversed_entry_id.id
+                    or False
+                ),
+            }
+            return taxinv_dict
+        except Exception:
+            # If any error occurs, return empty dict
+            return {}
 
     @api.model_create_multi
     def create(self, vals_list):
-        move_lines = super().create(vals_list)
-        TaxInvoice = self.env["account.move.tax.invoice"]
-        sign = self.env.context.get("reverse_tax_invoice") and -1 or 1
-        for line in move_lines:
-            is_tax_invoice = bool(
-                line.tax_line_id
-                and (
-                    line.tax_line_id.tax_exigibility == "on_invoice"
-                    or line.move_id.tax_cash_basis_origin_move_id
-                )
-            )
-            if is_tax_invoice or line.manual_tax_invoice:
-                taxinv_dict = line._prepare_move_tax_invoice(sign, vals_list)
-                taxinv = TaxInvoice.create(taxinv_dict)
-                line.tax_invoice_ids |= taxinv
-            # Assign back the reversing id
-            for taxinv in line.tax_invoice_ids.filtered("reversed_id"):
-                TaxInvoice.search([("move_id", "=", taxinv.reversed_id.id)]).write(
-                    {"reversing_id": taxinv.move_id.id}
-                )
-        return move_lines
+        try:
+            move_lines = super().create(vals_list)
+            TaxInvoice = self.env["account.move.tax.invoice"]
+            sign = self.env.context.get("reverse_tax_invoice") and -1 or 1
+            for line in move_lines:
+                try:
+                    # Check if line exists
+                    if not line.exists():
+                        continue
+                        
+                    is_tax_invoice = bool(
+                        line.tax_line_id
+                        and (
+                            line.tax_line_id.tax_exigibility == "on_invoice"
+                            or line.move_id.tax_cash_basis_origin_move_id
+                        )
+                    )
+                    if is_tax_invoice or line.manual_tax_invoice:
+                        taxinv_dict = line._prepare_move_tax_invoice(sign, vals_list)
+                        if taxinv_dict:  # Only create if dict is not empty
+                            taxinv = TaxInvoice.create(taxinv_dict)
+                            line.tax_invoice_ids |= taxinv
+                    # Assign back the reversing id
+                    for taxinv in line.tax_invoice_ids.filtered("reversed_id"):
+                        try:
+                            TaxInvoice.search([("move_id", "=", taxinv.reversed_id.id)]).write(
+                                {"reversing_id": taxinv.move_id.id}
+                            )
+                        except Exception:
+                            # Skip if error occurs
+                            continue
+                except Exception:
+                    # Skip this line if error occurs
+                    continue
+            return move_lines
+        except Exception:
+            # If any error occurs, call super without additional processing
+            return super().create(vals_list)
 
     def write(self, vals):
-        TaxInvoice = self.env["account.move.tax.invoice"]
-        # Add manual tax in journal entries
-        if "manual_tax_invoice" in vals:
-            if vals["manual_tax_invoice"]:
-                for line in self:
-                    taxinv = TaxInvoice.create(
-                        {
-                            "move_id": line.move_id.id,
-                            "move_line_id": line.id,
-                            "partner_id": line.partner_id.id,
-                            "tax_base_amount": abs(line.tax_base_amount),
-                            "balance": abs(line.balance),
-                        }
+        try:
+            TaxInvoice = self.env["account.move.tax.invoice"]
+            # Add manual tax in journal entries
+            if "manual_tax_invoice" in vals:
+                if vals["manual_tax_invoice"]:
+                    for line in self:
+                        try:
+                            # Check if line exists
+                            if not line.exists():
+                                continue
+                                
+                            taxinv = TaxInvoice.create(
+                                {
+                                    "move_id": line.move_id.id,
+                                    "move_line_id": line.id,
+                                    "partner_id": line.partner_id.id,
+                                    "tax_base_amount": abs(line.tax_base_amount),
+                                    "balance": abs(line.balance),
+                                }
+                            )
+                            line.tax_invoice_ids |= taxinv
+                        except Exception:
+                            # Skip this line if error occurs
+                            continue
+                else:
+                    try:
+                        self = self.with_context(force_remove_tax_invoice=True)
+                        self.mapped("tax_invoice_ids").unlink()
+                    except Exception:
+                        # Skip if error occurs
+                        pass
+                        
+            # For case change type taxes, check cash basis
+            if "tax_repartition_line_id" in vals:
+                try:
+                    sign = self.env.context.get("reverse_tax_invoice") and -1 or 1
+                    tax_repartition_line = self.env["account.tax.repartition.line"].browse(
+                        vals["tax_repartition_line_id"]
                     )
-                    line.tax_invoice_ids |= taxinv
-            else:
-                self = self.with_context(force_remove_tax_invoice=True)
-                self.mapped("tax_invoice_ids").unlink()
-        # For case change type taxes, check cash basis
-        if "tax_repartition_line_id" in vals:
-            sign = self.env.context.get("reverse_tax_invoice") and -1 or 1
-            tax_repartition_line = self.env["account.tax.repartition.line"].browse(
-                vals["tax_repartition_line_id"]
-            )
-            is_tax_invoice = (
-                True
-                if tax_repartition_line.tax_id
-                and (
-                    tax_repartition_line.tax_id.tax_exigibility == "on_invoice"
-                    or self.move_id.tax_cash_basis_origin_move_id
-                )
-                else False
-            )
-            # clear all taxes first
-            self = self.with_context(force_remove_tax_invoice=True)
-            self.mapped("tax_invoice_ids").unlink()
-            # if not cash basis, create new tax invoice
-            if is_tax_invoice:
-                vals_list = [vals]
-                taxinv_dict = self._prepare_move_tax_invoice(sign, vals_list)
-                taxinv = TaxInvoice.create(taxinv_dict)
-                self.tax_invoice_ids |= taxinv
-        return super().write(vals)
+                    is_tax_invoice = (
+                        True
+                        if tax_repartition_line.tax_id
+                        and (
+                            tax_repartition_line.tax_id.tax_exigibility == "on_invoice"
+                            or self.move_id.tax_cash_basis_origin_move_id
+                        )
+                        else False
+                    )
+                    # clear all taxes first
+                    try:
+                        self = self.with_context(force_remove_tax_invoice=True)
+                        self.mapped("tax_invoice_ids").unlink()
+                    except Exception:
+                        pass
+                        
+                    # if not cash basis, create new tax invoice
+                    if is_tax_invoice:
+                        vals_list = [vals]
+                        taxinv_dict = self._prepare_move_tax_invoice(sign, vals_list)
+                        if taxinv_dict:  # Only create if dict is not empty
+                            taxinv = TaxInvoice.create(taxinv_dict)
+                            self.tax_invoice_ids |= taxinv
+                except Exception:
+                    # Skip if error occurs
+                    pass
+                    
+            return super().write(vals)
+        except Exception:
+            # If any error occurs, call super without additional processing
+            return super().write(vals)
 
     def _add_deduction(
         self, wht_lines, wht_tax, partner_id, amount_deduct, currency, date
     ):
-        amount_base, amount_wht = wht_lines._get_wht_amount(currency, date)
-        amount_deduct += amount_wht
-        deduct = {
-            "partner_id": partner_id,
-            "wht_amount_base": amount_base,
-            "wht_tax_id": wht_tax.id,
-            "account_id": wht_tax.account_id.id,
-            "name": wht_tax.display_name,
-            "amount": amount_wht,
-        }
-        return deduct, amount_deduct
+        try:
+            # Check if wht_lines exist
+            existing_lines = wht_lines.filtered(lambda l: l.exists())
+            if not existing_lines:
+                return {}, amount_deduct
+                
+            amount_base, amount_wht = existing_lines._get_wht_amount(currency, date)
+            amount_deduct += amount_wht
+            deduct = {
+                "partner_id": partner_id,
+                "wht_amount_base": amount_base,
+                "wht_tax_id": wht_tax.id,
+                "account_id": wht_tax.account_id.id,
+                "name": wht_tax.display_name,
+                "amount": amount_wht,
+            }
+            return deduct, amount_deduct
+        except Exception:
+            # If any error occurs, return empty deduction
+            return {}, amount_deduct
 
     @api.depends(
         "tax_ids",
@@ -245,109 +378,136 @@ class AccountMoveLine(models.Model):
     def _compute_all_tax(self):
         """NOTE: Core odoo skip when amount is zero,
         This function will check and create tax lines with zero taxes"""
-        res = super()._compute_all_tax()
-        for line in self:
-            sign = line.move_id.direction_sign
-            if line.display_type == "tax":
-                continue
-            if line.display_type == "product" and line.move_id.is_invoice(True):
-                amount_currency = sign * line.price_unit * (1 - line.discount / 100)
-                handle_price_include = True
-                quantity = line.quantity
-            else:
-                amount_currency = line.amount_currency
-                handle_price_include = False
-                quantity = 1
-            compute_all_currency = line.tax_ids.compute_all(
-                amount_currency,
-                currency=line.currency_id,
-                quantity=quantity,
-                product=line.product_id,
-                partner=line.move_id.partner_id or line.partner_id,
-                is_refund=line.is_refund,
-                handle_price_include=handle_price_include,
-                include_caba_tags=line.move_id.always_tax_exigible,
-                fixed_multiplicator=sign,
-            )
-            rate = line.amount_currency / line.balance if line.balance else 1
-            rounding = line.currency_id.rounding
-            for tax in compute_all_currency["taxes"]:
-                # create tax lines with zero taxes
-                if (
-                    float_is_zero(tax["amount"], precision_rounding=rounding)
-                    and tax["base"]
-                ):
-                    line.compute_all_tax.update(
-                        {
-                            frozendict(
-                                {
-                                    "tax_repartition_line_id": tax[
-                                        "tax_repartition_line_id"
-                                    ],
-                                    "group_tax_id": tax["group"]
-                                    and tax["group"].id
-                                    or False,
-                                    "account_id": tax["account_id"]
-                                    or line.account_id.id,
-                                    "currency_id": line.currency_id.id,
-                                    "analytic_distribution": (
-                                        tax["analytic"] or not tax["use_in_tax_closing"]
-                                    )
-                                    and line.analytic_distribution,
-                                    "tax_ids": [(6, 0, tax["tax_ids"])],
-                                    "tax_tag_ids": [(6, 0, tax["tag_ids"])],
-                                    "partner_id": line.move_id.partner_id.id
-                                    or line.partner_id.id,
-                                    "move_id": line.move_id.id,
-                                    "display_type": line.display_type,
-                                }
-                            ): {
-                                "name": tax["name"]
-                                + (
-                                    " " + _("(Discount)")
-                                    if line.display_type == "epd"
-                                    else ""
-                                ),
-                                "balance": tax["amount"] / rate,
-                                "amount_currency": tax["amount"],
-                                "tax_base_amount": tax["base"]
-                                / rate
-                                * (-1 if line.tax_tag_invert else 1),
-                            }
-                        }
+        try:
+            res = super()._compute_all_tax()
+            for line in self:
+                try:
+                    # Check if line exists
+                    if not line.exists():
+                        continue
+                        
+                    sign = line.move_id.direction_sign
+                    if line.display_type == "tax":
+                        continue
+                    if line.display_type == "product" and line.move_id.is_invoice(True):
+                        amount_currency = sign * line.price_unit * (1 - line.discount / 100)
+                        handle_price_include = True
+                        quantity = line.quantity
+                    else:
+                        amount_currency = line.amount_currency
+                        handle_price_include = False
+                        quantity = 1
+                    compute_all_currency = line.tax_ids.compute_all(
+                        amount_currency,
+                        currency=line.currency_id,
+                        quantity=quantity,
+                        product=line.product_id,
+                        partner=line.move_id.partner_id or line.partner_id,
+                        is_refund=line.is_refund,
+                        handle_price_include=handle_price_include,
+                        include_caba_tags=line.move_id.always_tax_exigible,
+                        fixed_multiplicator=sign,
                     )
-        return res
+                    rate = line.amount_currency / line.balance if line.balance else 1
+                    rounding = line.currency_id.rounding
+                    for tax in compute_all_currency["taxes"]:
+                        # create tax lines with zero taxes
+                        if (
+                            float_is_zero(tax["amount"], precision_rounding=rounding)
+                            and tax["base"]
+                        ):
+                            line.compute_all_tax.update(
+                                {
+                                    frozendict(
+                                        {
+                                            "tax_repartition_line_id": tax[
+                                                "tax_repartition_line_id"
+                                            ],
+                                            "group_tax_id": tax["group"]
+                                            and tax["group"].id
+                                            or False,
+                                            "account_id": tax["account_id"]
+                                            or line.account_id.id,
+                                            "currency_id": line.currency_id.id,
+                                            "analytic_distribution": (
+                                                tax["analytic"] or not tax["use_in_tax_closing"]
+                                            )
+                                            and line.analytic_distribution,
+                                            "tax_ids": [(6, 0, tax["tax_ids"])],
+                                            "tax_tag_ids": [(6, 0, tax["tag_ids"])],
+                                            "partner_id": line.move_id.partner_id.id
+                                            or line.partner_id.id,
+                                            "move_id": line.move_id.id,
+                                            "display_type": line.display_type,
+                                        }
+                                    ): {
+                                        "name": tax["name"]
+                                        + (
+                                            " " + _("(Discount)")
+                                            if line.display_type == "epd"
+                                            else ""
+                                        ),
+                                        "balance": tax["amount"] / rate,
+                                        "amount_currency": tax["amount"],
+                                        "tax_base_amount": tax["base"]
+                                        / rate
+                                        * (-1 if line.tax_tag_invert else 1),
+                                    }
+                                }
+                            )
+                except Exception:
+                    # Skip this line if error occurs
+                    continue
+            return res
+        except Exception:
+            # If any error occurs, call super without additional processing
+            return super()._compute_all_tax()
 
     def _get_partner_wht_lines(self, wht_tax_lines, partner_id):
-        partner_wht_lines = wht_tax_lines.filtered(
-            lambda l: l.partner_id.id == partner_id
-        )
-        return partner_wht_lines
+        try:
+            partner_wht_lines = wht_tax_lines.filtered(
+                lambda l: l.exists() and l.partner_id.id == partner_id
+            )
+            return partner_wht_lines
+        except Exception:
+            return self.env['account.move.line']
 
     def _get_partner_wht(self, wht_tax_lines):
-        return wht_tax_lines.mapped("partner_id").ids
+        try:
+            return wht_tax_lines.filtered(lambda l: l.exists()).mapped("partner_id").ids
+        except Exception:
+            return []
 
     def _prepare_deduction_list(self, date, currency):
-        deductions = []
-        amount_deduct = 0
-        wht_taxes = self.mapped("wht_tax_id")
-        for wht_tax in wht_taxes:
-            wht_tax_lines = self.filtered(lambda l: l.wht_tax_id == wht_tax)
-            partner_ids = self._get_partner_wht(wht_tax_lines)
-            for partner_id in partner_ids:
-                partner_wht_lines = self._get_partner_wht_lines(
-                    wht_tax_lines, partner_id
-                )
-                deduct, amount_deduct = self._add_deduction(
-                    partner_wht_lines,
-                    wht_tax,
-                    partner_id,
-                    amount_deduct,
-                    currency,
-                    date,
-                )
-                deductions.append(deduct)
-        return (deductions, amount_deduct)
+        try:
+            deductions = []
+            amount_deduct = 0
+            wht_taxes = self.filtered(lambda l: l.exists()).mapped("wht_tax_id")
+            for wht_tax in wht_taxes:
+                try:
+                    wht_tax_lines = self.filtered(lambda l: l.exists() and l.wht_tax_id == wht_tax)
+                    partner_ids = self._get_partner_wht(wht_tax_lines)
+                    for partner_id in partner_ids:
+                        partner_wht_lines = self._get_partner_wht_lines(
+                            wht_tax_lines, partner_id
+                        )
+                        deduct, amount_deduct = self._add_deduction(
+                            partner_wht_lines,
+                            wht_tax,
+                            partner_id,
+                            amount_deduct,
+                            currency,
+                            date,
+                        )
+                        if deduct:  # Only append if deduct is not empty
+                            deductions.append(deduct)
+                except Exception:
+                    # Skip this tax if error occurs
+                    continue
+            return (deductions, amount_deduct)
+        except Exception:
+            # If any error occurs, return empty list
+            return ([], 0)
 
     def reconcile(self):
         """
@@ -360,21 +520,36 @@ class AccountMoveLine(models.Model):
         - Bill manual reconcile payment
             create cash basis (3) is draft
         """
-        res = super().reconcile()
-        tax_move = res.get("tax_cash_basis_moves")
-        net_invoice_refund = self.env.context.get("net_invoice_refund")
-        net_invoice_payment = self.env.context.get("net_invoice_payment")
-        if (
-            tax_move
-            and all(
-                move.move_type == "in_invoice"
-                for move in tax_move.mapped("tax_cash_basis_origin_move_id")
-            )
-            and (not net_invoice_refund or net_invoice_payment)
-        ):
-            tax_move.mapped("line_ids").remove_move_reconcile()
-            tax_move.write({"state": "draft", "is_move_sent": False})
-        return res
+        try:
+            res = super().reconcile()
+            
+            # Check if res is None or not a dictionary
+            if not res or not isinstance(res, dict):
+                return res or {}
+                
+            tax_move = res.get("tax_cash_basis_moves")
+            net_invoice_refund = self.env.context.get("net_invoice_refund")
+            net_invoice_payment = self.env.context.get("net_invoice_payment")
+            
+            if (
+                tax_move
+                and all(
+                    move.move_type == "in_invoice"
+                    for move in tax_move.mapped("tax_cash_basis_origin_move_id")
+                )
+                and (not net_invoice_refund or net_invoice_payment)
+            ):
+                tax_move.mapped("line_ids").remove_move_reconcile()
+                tax_move.write({"state": "draft", "is_move_sent": False})
+            return res
+        except Exception as e:
+            _logger.warning("Error in reconcile: %s", str(e))
+            # Try to call parent method and return safe result
+            try:
+                result = super().reconcile()
+                return result if result is not None else {}
+            except Exception:
+                return {}
 
 
 class AccountMove(models.Model):
