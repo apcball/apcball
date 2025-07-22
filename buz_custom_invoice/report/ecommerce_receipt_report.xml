@@ -34,7 +34,7 @@
                                 padding: 0;
                                 width: 100%;
                                 height: 100%;
-z                                margin: 0;
+                            margin: 0;
                             }
                             .header-section {
                                 display: flex;
@@ -214,7 +214,7 @@ z                                margin: 0;
                             border-radius: 4px;
                             font-size: 18px;
                             height: 100%;
-                            min-height: 220px; /* ปรับสูงไว้ล่วงหน้า */
+                            min-height: 200px; /* ปรับสูงไว้ล่วงหน้า */
                             box-sizing: border-box;
                         }
                     </style>
@@ -259,16 +259,14 @@ z                                margin: 0;
                                 </div>
                                 <div style="margin-bottom: 5px;">
                                    ที่อยู่จัดส่ง / Ship To:<t t-if="doc.partner_shipping_id">
-                                    
-                                        <div>
-                                            <span t-field="doc.partner_shipping_id.name"/>
+                                     <span t-field="doc.partner_shipping_id.name"/>
                                             <t t-if="doc.partner_shipping_id.street">, <span t-field="doc.partner_shipping_id.street"/></t>
                                             <t t-if="doc.partner_shipping_id.street2">, <span t-field="doc.partner_shipping_id.street2"/></t>
                                             <t t-if="doc.partner_shipping_id.city">, ตำบล<span t-field="doc.partner_shipping_id.city"/></t>
                                             <t t-if="doc.partner_shipping_id.state_id">, อำเภอ<span t-field="doc.partner_shipping_id.state_id.name"/></t>
                                             <t t-if="doc.partner_shipping_id.state_id">, จังหวัด<span t-field="doc.partner_shipping_id.state_id.name"/></t>
                                             <t t-if="doc.partner_shipping_id.zip">, <span t-field="doc.partner_shipping_id.zip"/></t>
-                                        </div>
+                                      
                                         <t t-if="doc.partner_shipping_id.phone">
                                             <div>โทร: <span t-field="doc.partner_shipping_id.phone"/></div>
                                         </t>
@@ -287,22 +285,22 @@ z                                margin: 0;
                                   <th style="width: 6%; text-align: center; border: 1px solid black; padding: 4px;">
                                     ลำดับ<br/><span style="font-size: 16px;">(No)</span>
                                   </th>
-                                  <th style="width: 14%; text-align: center; border: 1px solid black; padding: 4px;">
+                                  <th style="width: 12%; text-align: center; border: 1px solid black; padding: 4px;">
                                     รหัสสินค้า<br/><span style="font-size: 16px;">(Code No)</span>
                                   </th>
-                                  <th style="width: 25%; text-align: center; border: 1px solid black; padding: 4px;">
+                                  <th style="width: 28%; text-align: center; border: 1px solid black; padding: 4px;">
                                     รายการ<br/><span style="font-size: 16px;">(Description)</span>
                                   </th>
-                                  <th style="width: 10%; text-align: center; border: 1px solid black; padding: 4px;">
+                                  <th style="width: 6%; text-align: center; border: 1px solid black; padding: 4px;">
                                     จำนวน<br/><span style="font-size: 16px;">(Quantity)</span>
                                   </th>
-                                  <th style="width: 10%; text-align: center; border: 1px solid black; padding: 4px;">
+                                  <th style="width: 6%; text-align: center; border: 1px solid black; padding: 4px;">
                                     หน่วย<br/><span style="font-size: 16px;">(Unit)</span>
                                   </th>
-                                  <th style="width: 12%; text-align: center; border: 1px solid black; padding: 4px;">
+                                  <th style="width: 8%; text-align: center; border: 1px solid black; padding: 4px;">
                                     ราคาต่อหน่วย<br/><span style="font-size: 16px;">(Unit Price)</span>
                                   </th>
-                                  <th style="width: 10%; text-align: center; border: 1px solid black; padding: 4px;">
+                                  <th style="width: 6%; text-align: center; border: 1px solid black; padding: 4px;">
                                     ส่วนลด<br/><span style="font-size: 16px;">(Discount)</span>
                                   </th>
                                   <th style="width: 13%; text-align: center; border: 1px solid black; padding: 4px;">

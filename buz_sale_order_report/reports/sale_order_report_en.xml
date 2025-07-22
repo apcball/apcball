@@ -73,33 +73,33 @@
                         <!-- Customer and Document Info -->
                         <div class="row mb-3">
                             <div class="col-6">
-                                <div class="info-box" style="height: 150px;">
+                                <div class="info-box" style="height: 160px;">
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">Customer:</strong>
+                                        <strong style=" display: inline-block;">Customer:</strong>
                                         <span t-field="doc.partner_id.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">Address:</strong>
+                                        <strong style="display: inline-block;">Address:</strong>
                                         <span t-field="doc.partner_id.street"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">Tax ID:</strong>
+                                        <strong style="display: inline-block;">Tax ID:</strong>
                                         <span t-field="doc.partner_id.vat"/>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-6">
-                                <div class="info-box" style="height: 150px;">
+                                <div class="info-box" style="height: 160px;">
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">Order No:</strong>
+                                        <strong style=" display: inline-block;">Order No:</strong>
                                         <span t-field="doc.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">Date:</strong>
+                                        <strong style="display: inline-block;">Date:</strong>
                                         <span t-field="doc.date_order" t-options='{"widget": "date"}'/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">Sales Person:</strong>
+                                        <strong style=" display: inline-block;">Sales Person:</strong>
                                         <span t-field="doc.user_id.name"/>
                                     </div>
                                 </div>

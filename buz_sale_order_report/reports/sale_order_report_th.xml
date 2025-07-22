@@ -72,33 +72,33 @@
                         <!-- Customer and Document Info -->
                         <div class="row mb-3">
                             <div class="col-6">
-                                <div class="info-box" style="height: 150px;">
+                                <div class="info-box" style="height: 180px;">
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">นามผู้ซื้อ / Customer:</strong>
+                                        <strong style="display: inline-block;">นามผู้ซื้อ / Customer:</strong>
                                         <span t-field="doc.partner_id.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">ที่อยู่ / Address:</strong>
+                                        <strong style=" display: inline-block;">ที่อยู่ / Address:</strong>
                                         <span t-field="doc.partner_id.street"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">เลขประจำตัวผู้เสียภาษี:</strong>
+                                        <strong style="display: inline-block;">เลขประจำตัวผู้เสียภาษี:</strong>
                                         <span t-field="doc.partner_id.vat"/>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-6">
-                                <div class="info-box" style="height: 150px;">
+                                <div class="info-box" style="height:180px;">
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">เลขที่ / No.:</strong>
+                                        <strong style="xdisplay: inline-block;">เลขที่ / No.:</strong>
                                         <span t-field="doc.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">วันที่ / Date:</strong>
+                                        <strong style="x display: inline-block;">วันที่ / Date:</strong>
                                         <span t-field="doc.date_order" t-options='{"widget": "date"}'/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">พนักงานขาย:</strong>
+                                        <strong style="xdisplay: inline-block;">พนักงานขาย:</strong>
                                         <span t-field="doc.user_id.name"/>
                                     </div>
                                 </div>
