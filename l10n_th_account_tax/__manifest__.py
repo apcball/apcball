@@ -30,6 +30,7 @@
         "views/res_partner_view.xml",
         "views/account_menu.xml",
         "views/hr_expense_sheet_tax_invoice_view.xml",
+        "views/account_withholding_tax_odoo17.xml",
     ],
     "depends": ["account", "base", "hr_expense"],
     "test": [

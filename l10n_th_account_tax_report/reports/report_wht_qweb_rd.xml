@@ -4,9 +4,10 @@
         <t t-set="number" t-value="0" />
         <t t-set="sum_total_base" t-value="0" />
         <t t-set="sum_total_amount" t-value="0" />
-        <t t-set="results" t-value="o._convert_result_to_dict(o.results)" />
+        <t t-set="results" t-value="o._convert_result_to_dict(o.results) if o.results else {}" />
         <t t-set="result_keys" t-value="list(results.keys())" />
-        <t t-set="num_page" t-value="ceil(len(result_keys)/8)" />
+        <t t-set="num_page" t-value="int((len(result_keys) + 7) / 8)" />
+        <t t-if="num_page == 0" t-set="num_page" t-value="1" />
         <t t-foreach="range(num_page)" t-as="num">
             <!-- Header -->
             <div
@@ -248,9 +249,10 @@
         <t t-set="number" t-value="0" />
         <t t-set="sum_total_base" t-value="0" />
         <t t-set="sum_total_amount" t-value="0" />
-        <t t-set="results" t-value="o._convert_result_to_dict(o.results)" />
+        <t t-set="results" t-value="o._convert_result_to_dict(o.results) if o.results else {}" />
         <t t-set="result_keys" t-value="list(results.keys())" />
-        <t t-set="num_page" t-value="ceil(len(result_keys)/7)" />
+        <t t-set="num_page" t-value="int((len(result_keys) + 6) / 7)" />
+        <t t-if="num_page == 0" t-set="num_page" t-value="1" />
         <t t-foreach="range(num_page)" t-as="num">
             <!-- Header -->
             <div
@@ -492,9 +494,10 @@
         <t t-set="number" t-value="0" />
         <t t-set="sum_total_base" t-value="0" />
         <t t-set="sum_total_amount" t-value="0" />
-        <t t-set="results" t-value="o._convert_result_to_dict(o.results)" />
+        <t t-set="results" t-value="o._convert_result_to_dict(o.results) if o.results else {}" />
         <t t-set="result_keys" t-value="list(results.keys())" />
-        <t t-set="num_page" t-value="ceil(len(result_keys)/6)" />
+        <t t-set="num_page" t-value="int((len(result_keys) + 5) / 6)" />
+        <t t-if="num_page == 0" t-set="num_page" t-value="1" />
         <t t-foreach="range(num_page)" t-as="num">
             <!-- Header -->
             <div
@@ -780,9 +783,10 @@
         <t t-set="number" t-value="0" />
         <t t-set="sum_total_base" t-value="0" />
         <t t-set="sum_total_amount" t-value="0" />
-        <t t-set="results" t-value="o._convert_result_to_dict(o.results)" />
+        <t t-set="results" t-value="o._convert_result_to_dict(o.results) if o.results else {}" />
         <t t-set="result_keys" t-value="list(results.keys())" />
-        <t t-set="num_page" t-value="ceil(len(result_keys)/6)" />
+        <t t-set="num_page" t-value="int((len(result_keys) + 5) / 6)" />
+        <t t-if="num_page == 0" t-set="num_page" t-value="1" />
         <t t-foreach="range(num_page)" t-as="num">
             <!-- Header -->
             <div
@@ -1064,25 +1068,45 @@
     </template>
 
     <template id="report_rd_withholding_tax_qweb">
-        <t t-call="web.html_container">
-            <t t-foreach="docs" t-as="o">
-                <t
-                    t-if="o.income_tax_form == 'pnd1'"
-                    t-call="l10n_th_account_tax_report.report_rd_withholding_tax_pnd1"
-                />
-                <t
-                    t-if="o.income_tax_form == 'pnd1a'"
-                    t-call="l10n_th_account_tax_report.report_rd_withholding_tax_pnd1a"
-                />
-                <t
-                    t-if="o.income_tax_form == 'pnd3'"
-                    t-call="l10n_th_account_tax_report.report_rd_withholding_tax_pnd3"
-                />
-                <t
-                    t-if="o.income_tax_form == 'pnd53'"
-                    t-call="l10n_th_account_tax_report.report_rd_withholding_tax_pnd53"
-                />
-            </t>
-        </t>
+        <html>
+            <head>
+                <meta charset="utf-8"/>
+                <title>Withholding Tax Report</title>
+            </head>
+            <body>
+                <main>
+                    <t t-foreach="docs" t-as="o">
+                        <div class="page">
+                            <t t-if="len(o.results) == 0">
+                                <div style="padding: 50px; text-align: center;">
+                                    <h2 style="color: red;">No Withholding Tax Data Found</h2>
+                                    <p>Please check your search criteria and ensure you have confirmed withholding tax certificates in the selected period.</p>
+                                    <p>Period: <span t-out="o.date_from"/> to <span t-out="o.date_to"/></p>
+                                    <p>Income Tax Form: <span t-out="o.income_tax_form"/></p>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <t
+                                    t-if="o.income_tax_form == 'pnd1'"
+                                    t-call="l10n_th_account_tax_report.report_rd_withholding_tax_pnd1"
+                                />
+                                <t
+                                    t-if="o.income_tax_form == 'pnd1a'"
+                                    t-call="l10n_th_account_tax_report.report_rd_withholding_tax_pnd1a"
+                                />
+                                <t
+                                    t-if="o.income_tax_form == 'pnd3'"
+                                    t-call="l10n_th_account_tax_report.report_rd_withholding_tax_pnd3"
+                                />
+                                <t
+                                    t-if="o.income_tax_form == 'pnd53'"
+                                    t-call="l10n_th_account_tax_report.report_rd_withholding_tax_pnd53"
+                                />
+                            </t>
+                        </div>
+                    </t>
+                </main>
+            </body>
+        </html>
     </template>
 </odoo>

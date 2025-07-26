@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extend account.tax form to add withholding tax fields -->
+    <record id="view_account_tax_form_withholding" model="ir.ui.view">
+        <field name="name">account.tax.form.withholding</field>
+        <field name="model">account.tax</field>
+        <field name="inherit_id" ref="account.view_tax_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='amount']" position="after">
+                <field name="is_withholding_tax"/>
+                <field name="withholding_tax_type" invisible="not is_withholding_tax"/>
+                <field name="withholding_account_id" invisible="not is_withholding_tax"/>
+                <field name="wht_cert_income_type" invisible="not is_withholding_tax"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend account.move.line form to add withholding tax -->
+    <record id="view_account_move_line_form_withholding" model="ir.ui.view">
+        <field name="name">account.move.line.form.withholding</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tax_ids']" position="after">
+                <field name="withholding_tax_id"/>
+                <field name="withholding_tax_amount" readonly="1"/>
+                <field name="withholding_base_amount" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend account.move form to show withholding tax summary -->
+    <record id="view_account_move_form_withholding" model="ir.ui.view">
+        <field name="name">account.move.form.withholding</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group name="withholding_tax_info" string="Withholding Tax Information" invisible="not id">
+                    <field name="total_withholding_base"/>
+                    <field name="total_withholding_tax"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend invoice form to show withholding tax in lines -->
+    <!--
+    <record id="view_invoice_line_tree_withholding" model="ir.ui.view">
+        <field name="name">account.move.line.tree.withholding</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_invoice_line_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tax_ids']" position="after">
+                <field name="withholding_tax_id" optional="hide"/>
+                <field name="withholding_tax_amount" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+    -->
+</odoo>

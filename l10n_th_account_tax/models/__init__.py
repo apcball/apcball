@@ -1,5 +1,6 @@
 # Add import for hr_expense extension
 from . import hr_expense
+from . import account_move_odoo17
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
 
 from . import res_company
