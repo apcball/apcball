@@ -29,7 +29,9 @@
         "views/personal_income_tax_view.xml",
         "views/res_partner_view.xml",
         "views/account_menu.xml",
+        "views/hr_expense_sheet_tax_invoice_view.xml",
     ],
+    "depends": ["account", "base", "hr_expense"],
     "test": [
         "tests/test_missing_record_handling.py",
     ],

@@ -14,8 +14,8 @@ class AccountMoveTaxInvoice(models.Model):
     _name = "account.move.tax.invoice"
     _description = "Tax Invoice Info"
 
-    tax_invoice_number = fields.Char(copy=False)
-    tax_invoice_date = fields.Date(copy=False)
+    tax_invoice_number = fields.Char(copy=False, required=False)
+    tax_invoice_date = fields.Date(copy=False, required=False)
     report_late_mo = fields.Selection(
         [
             ("0", "0 month"),
@@ -89,6 +89,39 @@ class AccountMoveTaxInvoice(models.Model):
     reversed_id = fields.Many2one(
         comodel_name="account.move", help="This move that this move reverse"
     )
+    expense_sheet_id = fields.Many2one(
+        comodel_name="hr.expense.sheet",
+        string="Expense Sheet",
+        compute="_compute_expense_sheet_id",
+        store=True,
+        help="Related expense sheet if this tax invoice comes from an expense"
+    )
+
+    @api.depends("move_id")
+    def _compute_expense_sheet_id(self):
+        """Compute expense sheet related to this tax invoice"""
+        for rec in self:
+            expense_sheet = False
+            if rec.move_id:
+                # Search for expense sheet that has this move
+                # Try different field names that might exist in hr.expense.sheet
+                try:
+                    expense_sheet = self.env['hr.expense.sheet'].search([
+                        ('account_move_id', '=', rec.move_id.id)
+                    ], limit=1)
+                except:
+                    try:
+                        expense_sheet = self.env['hr.expense.sheet'].search([
+                            ('account_move_ids', 'in', rec.move_id.id)
+                        ], limit=1)
+                    except:
+                        # If no direct field exists, search through expense lines
+                        expense_lines = self.env['hr.expense'].search([
+                            ('account_move_id', '=', rec.move_id.id)
+                        ])
+                        if expense_lines:
+                            expense_sheet = expense_lines.mapped('sheet_id')[:1]
+            rec.expense_sheet_id = expense_sheet
 
     @api.depends("move_line_id.balance", "move_line_id.tax_base_amount")
     def _compute_tax_amount(self):

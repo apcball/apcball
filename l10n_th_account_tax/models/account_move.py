@@ -663,6 +663,9 @@ class AccountMove(models.Model):
                             )
                             line_reconcile.reconcile()
                         continue
+                    # Skip validation for expense-related moves
+                    elif tax_invoice.expense_sheet_id:
+                        continue
                     # Skip Error when found refund
                     elif self.env.context.get("net_invoice_refund"):
                         continue

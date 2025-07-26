@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_expense_sheet_form_inherit_tax_tab" model="ir.ui.view">
+        <field name="name">hr.expense.sheet.form.inherit.tax.tab</field>
+        <field name="model">hr.expense.sheet</field>
+        <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Invoice Taxes" name="invoice_tax_tab">
+                    <!-- Place your tax fields or tree here. Example below: -->
+                    <field name="invoice_tax_ids" widget="many2many_tags"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

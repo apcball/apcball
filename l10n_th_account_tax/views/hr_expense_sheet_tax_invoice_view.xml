@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_expense_sheet_form_inherit_tax_invoice_tab" model="ir.ui.view">
+        <field name="name">hr.expense.sheet.form.inherit.tax.invoice.tab</field>
+        <field name="model">hr.expense.sheet</field>
+        <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Tax Invoices" name="tax_invoice_tab">
+                    <group>
+                        <group>
+                            <field name="total_tax_base" readonly="1"/>
+                            <field name="total_tax_amount" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="tax_invoice_ids">
+                        <tree editable="bottom">
+                            <field name="tax_invoice_number"/>
+                            <field name="tax_invoice_date"/>
+                            <field name="partner_id"/>
+                            <field name="tax_base_amount"/>
+                            <field name="balance"/>
+                            <field name="move_id" readonly="1"/>
+                        </tree>
+                        <form string="Tax Invoice">
+                            <group>
+                                <field name="tax_invoice_number"/>
+                                <field name="tax_invoice_date"/>
+                                <field name="partner_id"/>
+                                <field name="tax_base_amount"/>
+                                <field name="balance"/>
+                                <field name="move_id" readonly="1"/>
+                                <field name="report_late_mo"/>
+                                <field name="report_date"/>
+                            </group>
+                        </form>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
