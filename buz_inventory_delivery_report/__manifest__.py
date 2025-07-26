@@ -26,7 +26,8 @@
         'report/request_change_products.xml',
         'report/request_job_order.xml',
         'report/delivery_report_tem.xml',
-
+        'report/dispatch_report_dis.xml',
+        
     ],
     'installable': True,
     'application': False,

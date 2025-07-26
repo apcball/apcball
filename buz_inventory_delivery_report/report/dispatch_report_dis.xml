@@ -1,46 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <!-- Paper Format for delivery document Reports -->
-    <record id="paperformat_dispatch_report" model="report.paperformat">
-        <field name="name">Dispatch Report Letter</field>
+    <record id="paperformat_dispatch_report_dis" model="report.paperformat">
+        <field name="name">Dispatch Report Dis</field>
         <field name="default" eval="True"/>
         <field name="format">Letter</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">10</field>
-        <field name="margin_bottom">10</field>
-        <field name="margin_left">6</field>
-        <field name="margin_right">6</field>
+        <field name="margin_top">0</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
     </record>
     
-    <template id="dispatch_report_document">
+    <template id="dispatch_report_dis_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
                     <div class="page dispatch-bg">
                         <style>
+                            
                             .dispatch-bg {
                                 position: relative;
-                                min-height: 1000px; /* adjust based on paper height */
                                 background-image: url('/buz_inventory_delivery_report/static/src/img/Dispatch_Report.jpg');
-                                background-size: cover;
+                                background-size: contain; /*  แสดงภาพเต็มโดยไม่เพี้ยน */
                                 background-repeat: no-repeat;
-                                background-position: center center;
-                                -webkit-print-color-adjust: exact;
-                                print-color-adjust: exact;
-                            }
-                            .dispatch-bg > * {
-                                position: relative;
-                                z-index: 2;
-                            }
-                            .dispatch-bg {
-                                padding: 30px 20px 20px 20px;
-                            }
-                        </style>
-                        
-                        <style>
+                                background-position: top left;
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+
+                                /*  ไม่กำหนดความสูงเลย ปล่อยให้ div ขยายตามเนื้อหาหรือภาพ */
+                                 padding-top: 100%; /* ใช้สัดส่วนช่วยให้ภาพปรากฏเต็ม (ถ้ารู้อัตราส่วนของภาพ เช่น 4:3 ก็ปรับเป็น 75%) */
+                                }
+                       
                              @font-face {
                                 font-family: 'Sarabun';
                                 src: url('/buz_inventory_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
@@ -60,7 +54,7 @@
                             
                             html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
                                 font-family: 'Sarabun', sans-serif !important;
-                                font-size: 20px;
+                                font-size: 18px;
                             }
                             
                             .table {
@@ -133,19 +127,19 @@
                            <!-- Company Info Section -->
                            <div class="row mb-1">
                                <div class="col-8">
-                                   <div class="company-header mb-1" style="font-size: 24px; font-weight: bold;">
+                                   <div class="company-header mb-1" style="font-size: 22px; font-weight: bold;">
                                        บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
                                    </div>
-                                   <div class="company-info" style="font-size: 20px;">
+                                   <div class="company-info" style="font-size: 18px;">
                                        9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150
                                    </div>
-                                   <div class="company-info" style="font-size: 20px;">
+                                   <div class="company-info" style="font-size: 18px;">
                                        เลขที่ประจําตัวผู้เสียภาษี 0105547076103
                                    </div>
-                                   <div class="company-info" style="font-size: 20px;">
+                                   <div class="company-info" style="font-size: 18px;">
                                        โทร 02 1509710 แฟกซ์ 02 1528803
                                    </div>
-                                   <div class="company-info" style="font-size: 20px;">
+                                   <div class="company-info" style="font-size: 18px;">
                                        E-mail: contact@mogen.co.th
                                    </div>
                                </div>
@@ -156,9 +150,18 @@
                            </div>
 
                             <!-- Document Title -->
-                            <div class="row mb-3">
+                            <div class="row mb-3" style="margin-bottom: 20px;">
                                <div class="col-4 offset-4 text-center">
-                                   <div class="doc-title" style="padding: 14px; margin-bottom: -10px;font-size: 24px; font-family: 'TH SarabunPSK', 'THSarabunNew', Tahoma, Arial, sans-serif;">
+                                   <div class="doc-title"
+                                        style="display:inline-block;
+                                               padding: 14px 24px;
+                                               margin-bottom: -10px;
+                                               font-size: 22px;
+                                               font-family: 'TH SarabunPSK', 'THSarabunNew', Tahoma, Arial, sans-serif;
+                                               border: 2px solid #111;
+                                               border-radius: 9px;
+                                               box-shadow: 2px 2px 4px #0002;
+                                               background: #e6f1fa;">
                                        ใบจ่ายสินค้า
                                    </div>
                                </div>
@@ -169,43 +172,43 @@
                               <!-- Left side: Customer name -->
                                <div class="col-6" style="text-align: left; padding-right: 0;">
                                    <div>
-                                       <strong style="display: inline-block; width: 15%; font-size: 20px;">ชื่อลูกค้า </strong>
-                                       <span t-field="o.partner_id.name" style="font-size: 20px;"/>
+                                       <strong style="display: inline-block; width: 15%; font-size: 18px;">ชื่อลูกค้า </strong>
+                                       <span t-field="o.partner_id.name" style="font-size: 18px;"/>
                                    </div>
-                                   <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
+                                   <div class="company-header mb-1" style="font-size: 18px; font-weight: bold;">
                                        (Customer Name)
                                    </div>
                                    <div style="margin-top: 10px;">
-                                       <strong style="display: inline-block; width: 20%; font-size: 20px;">สถานที่ส่งสินค้า</strong>
-                                       <span t-field="o.partner_id.street" style="font-size: 20px;"/>
+                                       <strong style="display: inline-block; width: 20%; font-size: 18px;">สถานที่ส่งสินค้า</strong>
+                                       <span t-field="o.partner_id.street" style="font-size: 18px;"/>
                                    </div>
-                                   <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
+                                   <div class="company-header mb-1" style="font-size: 18px; font-weight: bold;">
                                        (Ship To)
                                    </div>
                                    <div style="margin-top: 10px;">
-                                     <strong style="display: inline-block; width: 20%; font-size: 20px;">สถานที่จ่ายสินค้า</strong>
-                                     <span t-field="o.ship_from_partner_id.name" style="font-size: 20px;"/>
+                                     <strong style="display: inline-block; width: 20%; font-size: 18px;">สถานที่จ่ายสินค้า</strong>
+                                     <span t-field="o.ship_from_partner_id.name" style="font-size: 18px;"/>
                                    </div>
-                                     <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
+                                     <div class="company-header mb-1" style="font-size: 18px; font-weight: bold;">
                                       (Ship From)
                                 </div>
                                </div>
                                <!-- Right side: Document info -->
                                <div class="col-6" style="text-align: right; padding-left: 0;">
-                                   <div class="info-box" style="font-size: 20px;">
+                                   <div class="info-box" style="font-size: 18px;">
                                        <div class="mb-2">
-                                           <strong style="width: 60%; display: inline-block; font-size: 20px;">เลขที่ (Shipment No):</strong>
-                                           <span t-field="o.name" style="font-size: 20px;"/>
+                                           <strong style="width: 60%; display: inline-block; font-size: 18px;">เลขที่ (Shipment No):</strong>
+                                           <span t-field="o.name" style="font-size: 18px;"/>
                                        </div>
                                        <div class="mb-2">
-                                           <strong style="width: 60%; display: inline-block; font-size: 20px;">วันที่ (Date):</strong>
-                                           <span t-field="o.scheduled_date" t-options='{"widget": "date"}' style="font-size: 20px;"/>
+                                           <strong style="width: 60%; display: inline-block; font-size: 18px;">วันที่ (Date):</strong>
+                                           <span t-field="o.scheduled_date" t-options='{"widget": "date"}' style="font-size: 18px;"/>
                                        </div>
                                    </div>
                                </div>
                            </div>
 
-                           <table style="width: 100%; table-layout: fixed; text-align: center; border-collapse: collapse; font-size: 20px;">
+                           <table style="width: 100%; table-layout: fixed; text-align: center; border-collapse: collapse; font-size: 18px;">
                             <thead>
                                 <tr>
                                     <th style="border: 1px solid #000;">เลขที่ใบสั่งซื้อ
@@ -243,23 +246,23 @@
                         <table class="table table-sm mt-4 order-line-table" style="border-collapse: collapse; width: 100%;">
                             <thead>
                                 <tr>
-                                    <th style="width: 6%; padding: 1px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
-                                        ลำดับ<br/><span style="font-size: 16px; font-weight: normal;">(No)</span>
+                                    <th style="width: 6%; padding: 1px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 18px; background-color: #f8f9fa; font-weight: bold;">
+                                        ลำดับ<br/><span style="font-size: 14px; font-weight: normal;">(No)</span>
                                     </th>
-                                    <th style="width: 12%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
-                                        รหัสสินค้า<br/><span style="font-size: 16px; font-weight: normal;">(Item No)</span>
+                                    <th style="width: 12%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 18px; background-color: #f8f9fa; font-weight: bold;">
+                                        รหัสสินค้า<br/><span style="font-size: 14px; font-weight: normal;">(Item No)</span>
                                     </th>
-                                    <th style="padding: 22px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
-                                        รายการสินค้า<br/><span style="font-size: 16px; font-weight: normal;">(Description)</span>
+                                    <th style="padding: 22px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 18px; background-color: #f8f9fa; font-weight: bold;">
+                                        รายการสินค้า<br/><span style="font-size: 14px; font-weight: normal;">(Description)</span>
                                     </th>
-                                    <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
-                                        จำนวน<br/><span style="font-size: 16px; font-weight: normal;">(Qty)</span>
+                                    <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 18px; background-color: #f8f9fa; font-weight: bold;">
+                                        จำนวน<br/><span style="font-size: 14px; font-weight: normal;">(Qty)</span>
                                     </th>
-                                    <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
-                                        หน่วย<br/><span style="font-size: 16px; font-weight: normal;">(Unit)</span>
+                                    <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 18px; background-color: #f8f9fa; font-weight: bold;">
+                                        หน่วย<br/><span style="font-size: 14px; font-weight: normal;">(Unit)</span>
                                     </th>
-                                    <th style="width: 14%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
-                                        หมายเหตุ<br/><span style="font-size: 16px; font-weight: normal;">(Remark)</span>
+                                    <th style="width: 14%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 18px; background-color: #f8f9fa; font-weight: bold;">
+                                        หมายเหตุ<br/><span style="font-size: 14px; font-weight: normal;">(Remark)</span>
                                     </th>
                                 </tr>
                             </thead>
@@ -267,7 +270,7 @@
                                            <t t-set="line_number" t-value="((page_number - 1) * 7) + 1"/>
                                            <t t-set="current_line_number" t-value="line_number"/>
                                            <t t-foreach="group" t-as="move">
-                                               <tr class="data-row" style="font-size: 20px;">
+                                               <tr class="data-row" style="font-size: 18px;">
                                                    <td style="text-align: center;"><span t-esc="current_line_number"/></td>
                                                    <td><span t-field="move.product_id.default_code"/></td>
                                                    <td><span t-field="move.product_id"/></td>
@@ -287,7 +290,7 @@
                                            <t t-if="len(group) == 7">
                                             <t t-set="empty_rows" t-value="7 - len(group)"/>
                                             <t t-foreach="range(empty_rows)" t-as="i">
-                                                <tr class="data-row" style="font-size: 20px; height: 50px; line-height: 50px;">
+                                                <tr class="data-row" style="font-size: 18px; height: 50px; line-height: 50px;">
                                                     <td style="text-align: center;"></td>
                                                     <td></td><td></td><td></td><td></td>
                                                 </tr>
@@ -308,7 +311,7 @@
                        
         
                                   <!-- หมายเหตุ -->
-                                  <div style="padding: 15px; font-size: 20px;  margin-top: 10px; line-height: 1.6;">
+                                  <div style="padding: 15px; font-size: 18px;  margin-top: 10px; line-height: 1.6;">
                                     <strong>หมายเหตุ: </strong><span>1. การซื้อขายสมบูรณ์ เมื่อมีการส่งมอบสินค้า / บริษัทฯ สงวนสิทธิ์ที่จะปรับปรุงราคาให้เท่ากับราคาซื้อขายในวันรับสินค้า</span><br/>
                                     
                                     <div style="display: flex; margin-left: 50px;">
@@ -333,24 +336,24 @@
                                            <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
                                        </tr>
                                        <tr>
-                                           <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                           <td style="padding-top: 10px; font-size: 18px; text-align: center;">
                                                ผู้ขอเบิกสินค้า<br/>
-                                               <span style="font-size: 16px; font-weight: normal;">[Withdrawed By]</span>
-                                               <div style="margin-top: 5px; font-size: 16px;">
+                                               <span style="font-size: 14px; font-weight: normal;">[Withdrawed By]</span>
+                                               <div style="margin-top: 5px; font-size: 14px;">
                                                 ........./........../........
                                             </div>
                                            </td>
-                                           <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                           <td style="padding-top: 10px; font-size: 18px; text-align: center;">
                                                ผู้อนุมัติจ่ายสินค้า<br/>
-                                               <span style="font-size: 16px; font-weight: normal;">[Approved By]</span>
-                                               <div style="margin-top: 5px; font-size: 16px;">
+                                               <span style="font-size: 14px; font-weight: normal;">[Approved By]</span>
+                                               <div style="margin-top: 5px; font-size: 14px;">
                                                 ........./........../........
                                             </div>
                                            </td>
-                                           <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                           <td style="padding-top: 10px; font-size: 18px; text-align: center;">
                                                ผู้รับสินค้า(ตัวบรรจง)<br/>
-                                               <span style="font-size: 16px; font-weight: normal;">[Received By]</span>
-                                               <div style="margin-top: 5px; font-size: 16px;">
+                                               <span style="font-size: 14px; font-weight: normal;">[Received By]</span>
+                                               <div style="margin-top: 5px; font-size: 14px;">
                                                  ........./........../........
                                             </div>
                                            </td>
@@ -360,10 +363,10 @@
    
                                <!-- ศูนย์บริการ -->
                                <div class="row justify-content-center">
-                                   <div class="company-header text-center" style="font-size: 20px;">
+                                   <div class="company-header text-center" style="font-size: 18px;">
                                        ศูนย์บริการและรับข้อร้องเรียน โทร(02-5691980)
                                    </div>
-                                   <div class="company-info text-center" style="font-size: 20px;">
+                                   <div class="company-info text-center" style="font-size: 18px;">
                                        Customer Service Tel.(02-5691980)
                                    </div>
                                </div>
@@ -375,15 +378,15 @@
     </template>
 
 
-    <record id="action_distributor_delivery_export" model="ir.actions.report">
-        <field name="name">ใบจ่าย</field>
+    <record id="action_dispatch_report_dis" model="ir.actions.report">
+        <field name="name">ใบจ่ายสินค้า Tast</field>
         <field name="model">stock.picking</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">buz_inventory_delivery_report.dispatch_report_document</field>
-        <field name="report_file">buz_inventory_delivery_report.dispatch_report_document</field>
+        <field name="report_name">buz_inventory_delivery_report.dispatch_report_dis_document</field>
+        <field name="report_file">buz_inventory_delivery_report.dispatch_report_dis_document</field>
         <field name="print_report_name">'Delivery Report - %s' % object.name</field>
         <field name="binding_model_id" ref="stock.model_stock_picking"/>
         <field name="binding_type">report</field>
-        <field name="paperformat_id" ref="paperformat_dispatch_report"/>
+        <field name="paperformat_id" ref="paperformat_dispatch_report_dis"/>
     </record>
 </odoo>
