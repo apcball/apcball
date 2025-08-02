@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<odoo>
+    <template id="cheque_print">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div t-attf-style="width:{{width}}px; height:{{height}}px; font-size:{{font-size}}px;">
+
+                    <!-- A/C Payee Image -->
+                    <div t-if="is_account_payee">
+                        <img src="/sttl_dynamic_bank_cheque_print/static/src/img/accountpay.png"
+                             t-attf-style="margin-left:{{a_c_payee_left_margin}}px; margin-top:{{a_c_payee_top_margin}}px; width:{{a_c_payee_width}}px; height:{{a_c_payee_height}}px"/>
+                    </div>
+
+                    <!--                    CHEQUE SEQUENCE NUMBER FORMAT-->
+                    <div t-attf-style="margin-left:{{cheque_no_lm}}px; margin-top:{{cheque_no_tm}}px;">
+                        <t t-if="print_cheque_number">
+                            <span>
+                                <t t-esc="number"/>
+                            </span>
+                        </t>
+                        <t t-else=""/>
+                    </div>
+
+                    <!--                    CHEQUE DATE-->
+                    <div t-attf-style="margin-left:{{date_left_margin}}px; margin-top:{{date_top_margin}}px; letter-spacing: {{date_letter_spacing}}em;">
+                        <t t-esc="cheque_date"/>
+                    </div>
+
+                    <!-- Amount in words format-->
+                    <div t-attf-style="margin-left:{{amount_word_lm}}px; margin-top:{{amount_word_tm}}px; letter-spacing: {{amount_word_ls}}em; white-space: nowrap;">
+                        <t t-esc="amount_in_words"/>
+                    </div>
+
+
+                    <!--                    A/C Number Symbol-->
+                    <div t-attf-style="margin-left:{{amount_digit_lm}}px; margin-top:{{amount_digit_tm}}px; letter-spacing: {{amount_digit_ls}}em; font-size:{{amount_digit_size}}px;">
+                        <t t-if="print_currency">
+                            <t t-esc="currency_symbol"/>
+                        </t>
+                        <t t-esc="amount_in_digit"/>/-
+                    </div>
+
+                    <!--                    A/C Number -->
+                    <div t-attf-style="margin-left:{{account_number_lm}}px; margin-top:{{account_number_tm}}px; letter-spacing: {{account_number_ls}}em; font-size: {{account_number_size}}px;">
+                        <t t-esc="doc.account_number"/>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+    <template id="cheque_test_print">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div t-attf-style="border:1px solid black; width:{{cheque_width}}px; height:{{cheque_height}}px; font-size:{{font_size}}px;">
+
+                    <div style="position:absolute; top: ${a_c_payee_top_margin}px; left: ${a_c_payee_left_margin}px;">
+                        A/C Payee
+                    </div>
+
+                    <!--Cheque sequence number format-->
+                    <div t-attf-style="margin-left:{{cheque_no_lm}}px; margin-top:{{cheque_no_tm}}px;">
+                        <t t-if="print_number">
+                            <span>0000001</span>
+                        </t>
+                        <t t-else=""/>
+                    </div>
+                    <!--Cheque date format-->
+                    <div t-attf-style="margin-left:{{date_left_margin}}px; margin-top:{{date_top_margin}}px; letter-space:{{date_letter_spacing}}em;">
+                        <t t-if="date_remove_slashes">
+                            <span>30 08 2001</span>
+                        </t>
+                        <t t-else="">
+                            30/08/2001
+                        </t>
+                    </div>
+                    <!-- Amount in words format-->
+                    <div t-attf-style="margin-left:{{amount_word_lm}}px; margin-top:{{amount_word_tm}}px; letter-spacing:{{amount_word_ls}}em;">
+                        One Million, Two Hundred And Forty Thousand, Six Hundred And Twelve Dollars
+                    </div>
+
+                    <!-- Account Number -->
+                    <div t-attf-style="margin-left:{{account_no_lm}}px; margin-top:{{account_no_tm}}px;">
+                        <t t-if="docs.account_number">
+                            <span t-esc="docs.account_number"/>
+                        </t>
+                        <t t-else=""/>
+                    </div>
+
+                    <!--Amount in digits format-->
+                    <div t-attf-style="margin-left:{{amount_digit_lm}}px; margin-top:{{amount_digit_tm}}px; letter-spacing:{{amount_digit_ls}}em;
+                                       font-size:{{amount_digit_size}}px;">
+                        <t t-if="print_currency">
+                            <t t-esc="currency_symbol"/>
+                        </t>
+                        12,40,612 /-
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

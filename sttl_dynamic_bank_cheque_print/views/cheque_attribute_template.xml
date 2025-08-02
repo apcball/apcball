@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="configure_attributes_template" name="Configure Cheque Attributes">
+        <t t-call="website.layout">
+            <div class="container">
+                <h2>Configure Cheque Attributes</h2>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Font Size</th>
+                            <th>Letter Space</th>
+                            <th>Top Displacement</th>
+                            <th>Left Displacement</th>
+                            <th>Height</th>
+                            <th>Width</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="cheque_attributes" t-as="attr">
+                            <tr>
+                                <td><t t-esc="attr.attribute_name"/></td>
+                                <td><t t-esc="attr.font_size"/></td>
+                                <td><t t-esc="attr.letter_space"/></td>
+                                <td><t t-esc="attr.top_displacement"/></td>
+                                <td><t t-esc="attr.left_displacement"/></td>
+                                <td><t t-esc="attr.height"/></td>
+                                <td><t t-esc="attr.width"/></td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+        </t>
+    </template>
+</odoo>

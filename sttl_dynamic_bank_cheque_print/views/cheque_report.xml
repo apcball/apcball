@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="cheque_report_template_view">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div>
+                    <h2>Cheque Print Report</h2>
+                    <p>Cheque Number:
+                        <t t-esc="doc.cheque_number_id.name"/>
+                    </p>
+                    <p>Pay To:
+                        <t t-esc="doc.pay_to"/>
+                    </p>
+                    <p>Amount:
+                        <t t-esc="doc.amount"/>
+                        <t t-esc="doc.currency_id.symbol"/>
+                    </p>
+                    <p>Date:
+                        <t t-esc="doc.date_on_cheque"/>
+                    </p>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <record id="cheque_report_view" model="ir.actions.report">
+        <field name="name">Cheque Print</field>
+        <field name="model">bank.cheque</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">sttl_dynamic_bank_cheque_print.cheque_report_template_view</field>
+        <field name="print_report_name">'Cheque_Print_' + object.cheque_no</field>
+    </record>
+</odoo>

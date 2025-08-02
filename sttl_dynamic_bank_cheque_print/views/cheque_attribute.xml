@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_cheque_attribute_form" model="ir.ui.view">
+        <field name="name">cheque.attribute.form</field>
+        <field name="model">cheque.attribute</field>
+        <field name="arch" type="xml">
+            <form string="Cheque Attribute">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="attribute_name"/>
+                            <field name="font_size"/>
+                        </group>
+                        <group>
+                            <field name="letter_space"/>
+                            <field name="top_displacement"/>
+                            <field name="left_displacement"/>
+                        </group>
+                        <group>
+                            <field name="height"/>
+                            <field name="width"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="x1"/>
+                        <field name="y1"/>
+                        <field name="x2"/>
+                        <field name="y2"/>
+                    </group>
+                    <group>
+                        <button name="action_print_test" type="object" string="Test Cheque"
+                                class="oe_highlight" icon="fa-print"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Window Action -->
+    <record id="action_cheque_attribute" model="ir.actions.act_window">
+        <field name="name">Cheque Attribute</field>
+        <field name="res_model">cheque.attribute</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_cheque_attribute_form"/>
+    </record>
+
+    <!-- Menu Item -->
+<!--    <menuitem id="menu_cheque_attribute_root"-->
+<!--              name="Cheque Attributes"-->
+<!--              parent="menu_bank_cheque_root"-->
+<!--              action="action_cheque_attribute"/>-->
+</odoo>

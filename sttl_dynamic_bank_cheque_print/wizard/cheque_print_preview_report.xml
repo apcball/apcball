@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This template is used in report-->
+<odoo>
+    <template id="cheque_print_preview_template">
+        <t t-name="sttl_dynamic_bank_cheque_print.cheque_print_preview_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="doc">
+                    <div class="container mt-4">
+                        <div class="card shadow-sm p-4 border">
+                            <div class="cheque-background-container position-relative text-center p-3"
+                                 style="width: 800px; height: 400px; margin: auto; ">
+
+                                <t t-if="doc.cheque_background">
+                                    <img t-att-src="'data:image/png;base64,' + doc.cheque_background.decode('utf-8')"
+                                         class="cheque-background img-fluid"
+                                         style="width: 800px; height: 400px; position: absolute; top: -5px; left: 0;"/>
+
+
+                                    <t t-if="doc.print_a_c_label">
+                                        <t t-set="a_c_label_attr"
+                                           t-value="doc.cheque_book_id.bank_id.cheque_attribute_ids.filtered(lambda a: a.attribute_name == 'a_c_label')"/>
+                                        <t t-if="a_c_label_attr">
+                                            <div t-attf-style="position: absolute; left:#{a_c_label_attr[0].x1}px; top: {a_c_label_attr[0].y1}px;">
+                                                <img t-att-src="request.httprequest.host_url + 'sttl_dynamic_bank_cheque_print/static/description/accountpay.png'"
+                                                     style="width: 100px; height: auto;"/>
+                                            </div>
+                                        </t>
+                                    </t>
+
+                                    <!-- PAY TO -->
+                                    <t t-set="pay_to_attr"
+                                       t-value="doc.cheque_book_id.bank_id.cheque_attribute_ids.filtered(lambda a: a.attribute_name == 'pay_to')"/>
+                                    <t t-if="pay_to_attr">
+                                        <div t-attf-style="position: absolute; left: #{pay_to_attr[0].x1}px; top: #{pay_to_attr[0].y1}px; font-size: 14px; font-weight: bold; width: #{pay_to_attr[0].x2 - pay_to_attr[0].x1}px; height: #{pay_to_attr[0].y2 - pay_to_attr[0].y1}px;">
+                                            <t t-esc="doc.pay_to"/>
+                                        </div>
+                                    </t>
+
+                                    <!-- AMOUNT -->
+                                    <t t-set="amount_attr"
+                                       t-value="doc.cheque_book_id.bank_id.cheque_attribute_ids.filtered(lambda a: a.attribute_name == 'amount_box')"/>
+                                    <t t-if="amount_attr">
+                                        <div t-attf-style="position: absolute; left: #{amount_attr[0].x1}px; top: #{amount_attr[0].y1}px; font-size: 14px; font-weight: bold; width: #{amount_attr[0].x2 - amount_attr[0].x1}px; height: #{amount_attr[0].y2 - amount_attr[0].y1}px;">
+                                            <t t-esc="doc.amount"/>/-
+                                        </div>
+                                    </t>
+
+                                    <!-- AMOUNT IN WORDS -->
+                                    <t t-set="amount_words_attr"
+                                       t-value="doc.cheque_book_id.bank_id.cheque_attribute_ids.filtered(lambda a: a.attribute_name == 'amount_words1')"/>
+                                    <t t-if="amount_words_attr">
+                                        <div t-attf-style="position: absolute; left: #{amount_words_attr[0].x1}px; top: #{amount_words_attr[0].y1}px; font-size: 14px;">
+                                            <t t-esc="doc.amount_in_words"/>
+                                        </div>
+                                    </t>
+
+                                    <t t-set="amount_words_attr_2"
+                                       t-value="doc.cheque_book_id.bank_id.cheque_attribute_ids.filtered(lambda a: a.attribute_name == 'amount_words2')"/>
+                                    <t t-if="amount_words_attr_2">
+                                        <div t-attf-style="position: absolute; left: #{amount_words_attr_2[0].x1}px; top: #{amount_words_attr_2[0].y1}px; font-size: 14px;">
+                                            <t t-esc="doc.amount_in_words_2"/>
+                                        </div>
+                                    </t>
+
+                                    <!-- DATE -->
+                                    <t t-set="date_attr"
+                                       t-value="doc.cheque_book_id.bank_id.cheque_attribute_ids.filtered(lambda a: a.attribute_name == 'cheque_date')"/>
+                                    <t t-if="date_attr">
+                                        <div t-attf-style="position: absolute; left: #{date_attr[0].x1}px; top: #{date_attr[0].y1}px; font-size: 14px; font-weight: bold; width: #{date_attr[0].x2 - date_attr[0].x1}px; height: #{date_attr[0].y2 - date_attr[0].y1}px;">
+                                            <t t-esc="doc.date_on_cheque"/>
+                                        </div>
+                                    </t>
+
+                                    <t t-set="acc_number_attr"
+                                       t-value="doc.cheque_book_id.bank_id.cheque_attribute_ids.filtered(lambda a: a.attribute_name == 'account_number')"/>
+                                    <t t-if="acc_number_attr">
+                                        <div t-attf-style="position: absolute; left: #{acc_number_attr[0].x1}px; top: #{acc_number_attr[0].y1}px; font-size: 14px; font-weight: bold; width: #{acc_number_attr[0].x2 - acc_number_attr[0].x1}px; height: #{acc_number_attr[0].y2 - acc_number_attr[0].y1}px;">
+                                            <t t-esc="doc.account_number"/>
+                                        </div>
+                                    </t>
+                                </t>
+
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="cheque_print_preview_template_view">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div t-attf-style="width:{{width}}px; height:{{height}}px; font-size:{{font_size}}px;">
+
+                    <!-- Account Payee Image Preview -->
+                    <div t-if="is_account_payee">
+                        <img src="/sttl_dynamic_bank_cheque_print/static/src/accountpay.png"
+                             t-attf-style="margin-left:{{a_c_payee_left_margin}}px; margin-top:{{a_c_payee_top_margin}}px; width:{{a_c_payee_width}}px; height:{{a_c_payee_height}}px"/>
+                    </div>
+
+                    <!--                    A/C Number -->
+                    <div t-attf-style="margin-left:{{cheque_no_lm}}px; margin-top:{{cheque_no_tm}}px;">
+                        <t t-if="number">
+                            <span>
+                                <t t-esc="account_number"/>
+                            </span>
+                        </t>
+                    </div>
+
+                    <!-- Cheque date -->
+                    <div t-attf-style="margin-left:{{date_left_margin}}px; margin-top:{{date_top_margin}}px; letter-spacing: {{date_letter_spacing}}em;">
+                        <t t-esc="cheque_date"/>
+                    </div>
+
+                    <!-- Amount in words -->
+                    <div t-attf-style="margin-left:{{amount_word_lm}}px; margin-top:{{amount_word_tm}}px; letter-spacing: {{amount_word_ls}}em; white-space: nowrap;">
+                        <t t-esc="amount_in_words"/>
+                    </div>
+
+
+                    <!-- Amount in digits -->
+                    <div t-attf-style="margin-left:{{amount_digit_lm}}px; margin-top:{{amount_digit_tm}}px; letter-spacing: {{amount_digit_ls}}em; font-size:{{amount_digit_size}}px;">
+                        <t t-if="print_currency">
+                            <t t-esc="currency_symbol"/>
+                        </t>
+                        <t t-esc="amount_in_digit"/>/-
+                    </div>
+
+                    <!-- Cheque Attribute Table -->
+                    <div style="margin-top: 50px;">
+                        <h3>Cheque Attribute Details</h3>
+                        <table style="width:100%; border-collapse: collapse;" border="1">
+                            <tbody>
+                                <t t-foreach="doc.cheque_attribute_ids" t-as="attr">
+                                    <tr>
+                                        <td>
+                                            <t t-esc="attr.attribute_name"/>
+                                        </td>
+                                        <td>
+                                            <t t-esc="attr.top_displacement"/>
+                                        </td>
+                                        <td>
+                                            <t t-esc="attr.left_displacement"/>
+                                        </td>
+                                        <td>
+                                            <t t-esc="attr.width"/>
+                                        </td>
+                                        <td>
+                                            <t t-esc="attr.height"/>
+                                        </td>
+                                        <td>
+                                            <t t-esc="attr.font_size"/>
+                                        </td>
+                                        <td>
+                                            <t t-esc="attr.letter_space"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="bank_cheque_report">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                    <h2>Bank Cheque Report</h2>
+                    <t t-foreach="docs" t-as="doc">
+                        <p>
+                            <strong>Name:</strong>
+                            <t t-esc="doc.name"/>
+                        </p>
+                        <p>
+                            <strong>Bank Identifier Code:</strong>
+                            <t t-esc="doc.bank_identifier_code"/>
+                        </p>
+                        <p>
+                            <strong>Phone:</strong>
+                            <t t-esc="doc.phone"/>
+                        </p>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

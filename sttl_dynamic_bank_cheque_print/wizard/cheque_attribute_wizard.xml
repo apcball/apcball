@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_cheque_attribute_wizard_form" model="ir.ui.view">
+        <field name="name">cheque.attribute.wizard.form</field>
+        <field name="model">cheque.attribute.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Configure Cheque Attributes">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="width"/>
+                            <field name="height"/>
+                            <field name="font_size"/>
+                        </group>
+                        <group>
+                            <field name="cheque_no_lm"/>
+                            <field name="cheque_no_tm"/>
+                            <field name="amount_word_lm"/>
+                            <field name="amount_word_tm"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="cheque_image" widget="image"/>
+                    </group>
+                    <footer>
+                        <button name="action_save_attributes" type="object" string="Save" class="btn btn-primary"/>
+                        <button string="Cancel" class="btn btn-secondary" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_cheque_attribute_wizard" model="ir.actions.act_window">
+        <field name="name">Configure Cheque Attributes</field>
+        <field name="res_model">cheque.attribute.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_bank_cheque_id': active_id}</field>
+    </record>
+</odoo>

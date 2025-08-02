@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <!-- Print Preview Report -->
+    <record id="cheque_print_preview_report" model="ir.actions.report">
+        <field name="name">Cheque Print Preview</field>
+        <field name="model">cheque.print</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">sttl_dynamic_bank_cheque_print.cheque_print_preview_template</field>
+        <field name="report_file">sttl_dynamic_bank_cheque_print.cheque_print_preview_template</field>
+        <field name="print_report_name">'Cheque_Preview_' + (object.cheque_number_id.name or '')</field>
+        <field name="binding_model_id" ref="model_cheque_print"/>
+        <field name="binding_type">report</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<odoo>
+    <data>
+        <record id="action_report_bank_cheque" model="ir.actions.report">
+            <field name="name">Bank Cheque Report</field>
+            <field name="model">bank.cheque</field>
+            <field name="report_type">qweb-html</field>
+            <field name="report_name">sttl_dynamic_bank_cheque_print.cheque_print</field>
+            <field name="report_file">sttl_dynamic_bank_cheque_print.cheque_print</field>
+            <field name="print_report_name">'cheque_print_report_view_%s' % (object.name)</field>
+            <field name="binding_model_id" ref="model_bank_cheque"/>
+            <field name="binding_type">report</field>
+        </record>
+    </data>
+</odoo>

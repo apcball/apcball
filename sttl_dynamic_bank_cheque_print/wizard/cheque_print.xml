@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<odoo>
+    <record id="view_cheque_print_form" model="ir.ui.view">
+        <field name="name">bank.cheque.print</field>
+        <field name="model">cheque.print</field>
+        <field name="arch" type="xml">
+            <form string="Cheque Print">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="cheque_book_id" options="{'no_open': True}"/>
+                            <field name="cheque_number_id" options="{'no_open': True}"/>
+                        </group>
+                        <group>
+                            <field name="date_on_cheque"/>
+                            <field name="currency_id"/>
+                            <field name="print_a_c_label"/>
+                            <field name="show_preview" invisible="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="pay_to" readonly="1"/>
+                        <field name="amount" readonly="1"/>
+                        <field name="amt_2_words" readonly="1"/>
+                        <field name="account_number"/>
+                    </group>
+                    <group>
+                        <field name="report_preview" widget="html" readonly="1" invisible="not show_preview"/>
+                    </group>
+                    <footer>
+                        <button name="action_print_preview" type="object" string="Show Preview"
+                                class="oe_highlight" icon="fa-eye" invisible="show_preview"/>
+                        <button name="action_hide_preview" type="object" string="Hide Preview"
+                                class="oe_highlight" icon="fa-eye" invisible="not show_preview"/>
+                        <button name="action_print_cheque" type="object" string="Print Cheque"
+                                class="btn-primary" icon="fa-print"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Window Action -->
+    <record id="action_cheque_print_wizard" model="ir.actions.act_window">
+        <field name="name">Cheque Print</field>
+        <field name="res_model">cheque.print</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_cheque_print_form"/>
+        <field name="target">new</field>
+    </record>
+</odoo>

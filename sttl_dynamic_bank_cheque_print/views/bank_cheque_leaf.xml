@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<odoo>
+    <record id="view_cheque_leaf_tree" model="ir.ui.view">
+        <field name="name">bank.cheque.leaf</field>
+        <field name="model">cheque.leaf</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="number"/>
+                <field name="payee_name"/>
+                <field name="is_used"/>
+                <field name="date"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_cheque_leaf_form" model="ir.ui.view">
+        <field name="name">bank.cheque.leaf</field>
+        <field name="model">cheque.leaf</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="number"/>
+                        <field name="payee_name"/>
+                        <field name="date"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_cheque_leaf" model="ir.actions.act_window">
+        <field name="name">Cheque Leaf</field>
+        <field name="res_model">cheque.leaf</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- <menuitem id="menu_cheque_leaf"
+              name="Cheque Leaf"
+              parent="menu_bank_cheque_root"
+              action="action_cheque_leaf"/> -->
+</odoo>

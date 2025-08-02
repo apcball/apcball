@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<odoo>
+    <record id="view_bank_cheque_tree" model="ir.ui.view">
+        <field name="name">bank.cheque.tree</field>
+        <field name="model">bank.cheque</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="bank_address"/>
+                <field name="bank_identifier_code"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bank_cheque_form" model="ir.ui.view">
+        <field name="name">bank.cheque.form</field>
+        <field name="model">bank.cheque</field>
+        <field name="arch" type="xml">
+            <form string="Bank Cheque">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="bank_address"/>
+                            <field name="bank_identifier_code"/>
+                            <field name="phone"/>
+                            <field name="email"/>
+                            <field name="font_size" options="{'type': 'number', 'step': 1}"/>
+                        </group>
+                        <group>
+                            <field name="cheque_image" widget="image"/>
+                            <field name="cheque_background" invisible="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="report_preview" widget="html" readonly="1"/>
+                    </group>
+                    <button name="action_configure_attributes"
+                            string="Configure Attributes"
+                            type="object"
+                            class="oe_highlight my-4" style="float:left"/>
+                    <field name="cheque_attribute_ids">
+                        <tree editable="bottom" create="0">
+                            <field name="attribute_name"/>
+                            <field name="x1"/>
+                            <field name="x2"/>
+                            <field name="y1"/>
+                            <field name="y2"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+
+    <!--    ACTION FOR BANK CHEQUE-->
+    <record id="action_bank_cheque" model="ir.actions.act_window">
+        <field name="name">Bank Cheque</field>
+        <field name="res_model">bank.cheque</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!--    MAIN MENU ITEM-->
+    <menuitem id="menu_bank_cheque_root"
+              name="Bank Cheques"
+              parent="account.menu_finance"
+              sequence="10"/>
+
+    <menuitem id="menu_bank_cheque"
+              name="Bank "
+              parent="menu_bank_cheque_root"
+              action="action_bank_cheque"/>
+</odoo>

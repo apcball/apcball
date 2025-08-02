@@ -1,0 +1,82 @@
+<odoo>
+    <template id="cheque_configure_template" name="Cheque Configure Page">
+<!--        <t t-call="website.layout">-->
+            <!-- Modal Structure -->
+            <div class="modal fade" id="cheque-configure-modal" tabindex="-1" aria-labelledby="chequeConfigureModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-xl modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="chequeConfigureModalLabel">Configure Cheque Attributes</h5>
+                        </div>
+                        <div class="modal-body">
+                            <div class="container mt-4">
+                                <!-- Cheque Dropdown -->
+                                <div class="row mb-3 justify-content-center">
+                                    <div class="col-md-6">
+                                        <label for="cheque-attribute-dropdown" class="form-label">Select Cheque:</label>
+                                        <select id="cheque-attribute-dropdown" class="form-select">
+                                            <option value="">-- Select Attribute --</option>
+                                            <t t-foreach="cheques" t-as="cheque">
+                                                <option t-att-value="cheque.id"
+                                                        t-att-data-image="'data:image/png;base64,' + (cheque.background_image if cheque.background_image else '')">
+                                                    <t t-esc="cheque.attribute_name"/>
+                                                </option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Background Image -->
+                                <div class="row">
+                                    <div class="col text-center">
+                                        <h5>Uploaded Scanned Copy:</h5>
+                                        <div class="cheque-background-container position-relative"
+                                             style="width: 800px; height: 400px; margin: auto;">
+                                            <img t-att-src="'data:image/png;base64,' + image.decode('utf-8')"
+                                                 id="cheque-background"
+                                                 class="img-fluid cheque-background"
+                                                 style="width: 800px; height: 400px;"/>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Configuration Section -->
+                                <div class="row w-50 m-auto" id="chequeConfigSection">
+                                    <!-- Manual Input for Positions -->
+                                    <div class="row mt-4">
+                                        <div class="col-md-6">
+                                            <label>X1</label>
+                                            <input type="text" id="x1" class="form-control"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label>Y1</label>
+                                            <input type="text" id="y1" class="form-control"/>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mt-3">
+                                        <div class="col-md-6">
+                                            <label>X2</label>
+                                            <input type="text" id="x2" class="form-control"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label>Y2</label>
+                                            <input type="text" id="y2" class="form-control"/>
+                                        </div>
+                                    </div>
+
+                                    <input type="hidden" id="attribute_id" value=""/>
+
+                                    <div class="text-center my-3">
+                                        <button class="btn btn-success" id="update-positions">Update Position</button>
+                                        <button class="btn btn-danger" id="save-and-close" onclick="window.location.reload()">Save &amp; Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+<!--        </t>-->
+    </template>
+</odoo>
