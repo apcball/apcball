@@ -197,14 +197,14 @@
                                    </div>
                                    <div style="margin-top: 10px;">
                                        <strong style="display: inline-block; width: 20%; font-size: 20px; visibility: hidden;">สถานที่ส่งสินค้า</strong>
-                                       <span t-field="o.partner_id.street" style="font-size: 20px;margin-left: 60px;"/>
+                                       <span t-field="o.partner_id.street" style="font-size: 20px;margin-left: 60px;margin-top: -20px;"/>
                                    </div>
                                    <div class="company-header mb-1" style="font-size: 20px; font-weight: bold; visibility: hidden;">
                                        (Ship To)
                                    </div>
                                    <div style="margin-top: 10px;">
                                      <strong style="display: inline-block; width: 20%; font-size: 20px; visibility: hidden;">สถานที่จ่ายสินค้า</strong>
-                                     <span t-field="o.ship_from_partner_id.name" style="font-size: 20px;margin-left: 60px;"/>
+                                     <span t-field="o.ship_from_partner_id.name" style="font-size: 20px;padding-top: -100px;"/>
                                    </div>
                                      <div class="company-header mb-1" style="font-size: 20px; font-weight: bold; visibility: hidden;">
                                       (Ship From)
@@ -214,18 +214,18 @@
                                <div class="col-6" style="text-align: right; padding-right: 45px; margin-top: -40px;">
                                    <div class="info-box" style="font-size: 20px;">
                                        <div class="mb-2">
-                                           <strong style="width:65%; display: inline-block; font-size: 20px; visibility: hidden;">เลขที่ (Shipment No):</strong>
-                                           <span t-field="o.name" style="font-size: 20px;padding-right: 70px;"/>
+                                           <strong style="width:75%; display: inline-block; font-size: 20px; visibility: hidden;">เลขที่ (Shipment No):</strong>
+                                           <span t-field="o.name" style="font-size: 20px;padding-right: 60px;"/>
                                        </div>
                                        <div class="mb-2">
                                            <strong style="width: 65%; display: inline-block; font-size: 20px; visibility: hidden;">วันที่ (Date):</strong>
-                                           <span t-field="o.scheduled_date" t-options='{"widget": "date"}' style="font-size: 20px;padding-right: 70px;margin-top: -16px;"/>
+                                           <span t-field="o.scheduled_date" t-options='{"widget": "date"}' style="font-size: 20px;padding-right: 70px;margin-top: -20px;"/>
                                        </div>
                                    </div>
                                </div>
                            </div>
 
-                          <table style="width: 100%; table-layout: fixed; text-align: center; border-collapse: collapse; font-size: 14px; margin-bottom: 80px;">
+                          <table style="width: 100%; table-layout: fixed; text-align: center; border-collapse: collapse; font-size: 14px; margin-bottom: 60px;">
                                <thead style="visibility: hidden;">
                                    <tr>
                                        <th style="border: 1px solid transparent; font-size:14px; padding: 2px; visibility: hidden;">เลขที่ใบสั่งซื้อ</th>
