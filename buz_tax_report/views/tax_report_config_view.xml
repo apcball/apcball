@@ -24,6 +24,12 @@
                 <form string="Tax Report Configuration">
                     <sheet>
                         <div class="oe_button_box" name="button_box">
+                            <button name="action_generate_report" type="object" class="oe_stat_button" icon="fa-file-excel-o">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">Generate</span>
+                                    <span class="o_stat_text">Report</span>
+                                </div>
+                            </button>
                         </div>
                         <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
                         <group>

@@ -91,13 +91,14 @@ class TaxReportXlsx(models.AbstractModel):
             sheet.set_column('G:G', 12)  # Date
             sheet.set_column('H:H', 20)  # Document Reference
             sheet.set_column('I:I', 20)  # Partner Name
-            sheet.set_column('J:J', 30)  # Description
+            sheet.set_column('J:J', 15)  # Tax ID/VAT
+            sheet.set_column('K:K', 30)  # Description
             
             # Write title
-            sheet.merge_range('A1:J2', f'{wizard.company_id.name}\nTax Report (Detailed)', title_format)
+            sheet.merge_range('A1:K2', f'{wizard.company_id.name}\nTax Report (Detailed)', title_format)
             
             # Write period
-            sheet.merge_range('A3:J3', 
+            sheet.merge_range('A3:K3', 
                              f'Period: {date_from.strftime("%d/%m/%Y") if date_from else ""} - {date_to.strftime("%d/%m/%Y") if date_to else ""}', 
                              header_format)
             
@@ -112,6 +113,7 @@ class TaxReportXlsx(models.AbstractModel):
                 _('Date'),
                 _('Document Reference'),
                 _('Partner'),
+                _('Tax ID/VAT'),
                 _('Description')
             ]
         else:
@@ -170,7 +172,8 @@ class TaxReportXlsx(models.AbstractModel):
                 sheet.write(row, 6, tax_line.get('date', ''), date_format)
                 sheet.write(row, 7, tax_line.get('reference', ''), data_format)
                 sheet.write(row, 8, tax_line.get('partner_name', ''), data_format)
-                sheet.write(row, 9, tax_line.get('description', ''), data_format)
+                sheet.write(row, 9, tax_line.get('partner_vat', ''), data_format)
+                sheet.write(row, 10, tax_line.get('description', ''), data_format)
             else:
                 sheet.write(row, 6, tax_line.get('count', 0), data_format)
             
@@ -203,7 +206,7 @@ class TaxReportXlsx(models.AbstractModel):
             sheet.merge_range(f'A{row+1}:D{row+1}', _('TOTAL'), total_label_format)
             sheet.write(row, 4, total_base, total_format)
             sheet.write(row, 5, total_tax, total_format)
-            for col in range(6, 10):
+            for col in range(6, 11):
                 sheet.write(row, col, '', total_label_format)
         else:
             sheet.merge_range(f'A{row+1}:D{row+1}', _('TOTAL'), total_label_format)
@@ -269,6 +272,7 @@ class TaxReportXlsx(models.AbstractModel):
                         'date': line_data['date'],
                         'reference': move.name or '',
                         'partner_name': partner.name if partner else '',
+                        'partner_vat': partner.vat or '' if partner else '',
                         'description': line_data['name'] or ''
                     })
         else:

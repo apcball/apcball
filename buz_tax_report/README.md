@@ -1,6 +1,6 @@
-# Tax Report Excel (buz_tax_report)
+# Tax Report Excel (buz_tax_report) - เพิ่ม Tax ID ในรายงาน
 
-A comprehensive Odoo module for generating tax reports in Excel format, similar to the `account_tax_report_excel` module.
+A comprehensive Odoo module for generating tax reports in Excel format with Tax ID/VAT information, similar to the `account_tax_report_excel` module.
 
 ## Features
 
@@ -10,6 +10,7 @@ A comprehensive Odoo module for generating tax reports in Excel format, similar 
 - **Tax Type Filtering**: Filter by Sales Taxes, Purchase Taxes, or All Taxes
 - **Date Range Filtering**: Generate reports for specific periods
 - **Company-wise Reporting**: Multi-company support
+- **Tax ID Integration**: Display partner Tax ID/VAT numbers in detailed reports
 
 ### Report Views
 1. **Detailed View**: Shows individual journal entries with:
@@ -17,6 +18,7 @@ A comprehensive Odoo module for generating tax reports in Excel format, similar 
    - Tax Rate and Amounts
    - Document References
    - Partner Information
+   - **Partner Tax ID/VAT Numbers**
    - Transaction Descriptions
 
 2. **Summary View**: Shows aggregated data with:

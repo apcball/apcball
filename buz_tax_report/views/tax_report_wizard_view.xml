@@ -7,6 +7,11 @@
       <field name="arch" type="xml">
         <form string="Tax Report XLSX">
           <group>
+            <group string="Quick Configuration">
+              <field name="tax_config_id" options="{'no_create': True}"/>
+            </group>
+          </group>
+          <group>
             <group>
               <field name="date_from"/>
               <field name="date_to"/>
@@ -22,6 +27,7 @@
           </group>
           <footer>
             <button string="Cancel" class="btn btn-secondary" special="cancel"/>
+            <button string="Save as Configuration" type="object" name="action_save_as_config" class="btn btn-link" help="Save current settings as a reusable configuration"/>
             <button string="Generate Excel Report" type="object" name="action_generate_xlsx" class="btn btn-primary"/>
           </footer>
         </form>
