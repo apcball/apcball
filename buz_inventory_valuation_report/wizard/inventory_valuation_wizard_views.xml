@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inventory Valuation Wizard Form View -->
+    <record id="view_inventory_valuation_wizard_form" model="ir.ui.view">
+        <field name="name">inventory.valuation.wizard.form</field>
+        <field name="model">inventory.valuation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Inventory Valuation Report">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="company_id" invisible="1"/>
+                            Generate Inventory Valuation Report
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Report Information">
+                            <field name="start_date" required="1"/>
+                            <field name="end_date" required="1"/>
+                            <div colspan="2" class="text-muted">
+                                <small>Note: This report shows inventory valuation based on stock movements up to the end date. The calculation includes all stock movements from system start until the end date.</small>
+                            </div>
+                        </group>
+                        <group string="Company">
+                            <field name="company_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group string="Warehouse &amp; Location Filters">
+                            <field name="warehouse_ids" widget="many2many_tags" 
+                                   options="{'no_create': True}"/>
+                            <field name="location_ids" widget="many2many_tags" 
+                                   options="{'no_create': True}"/>
+                        </group>
+                        <group string="Product Filters">
+                            <field name="category_ids" widget="many2many_tags" 
+                                   options="{'no_create': True}"/>
+                            <field name="product_ids" widget="many2many_tags" 
+                                   options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group string="Report Options">
+                            <field name="report_type" widget="radio" invisible="1"/>
+                            <div class="text-muted">
+                                <small>Reports will be generated in Excel format</small>
+                            </div>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_generate_report" string="Generate Excel Report" 
+                            type="object" class="btn-primary"/>
+                    <button name="action_print_xlsx" string="Export Excel" 
+                            type="object" class="btn-secondary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_inventory_valuation_wizard" model="ir.actions.act_window">
+        <field name="name">Inventory Valuation Report</field>
+        <field name="res_model">inventory.valuation.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_inventory_valuation_wizard_form"/>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_inventory_valuation_report"
+              name="Inventory Valuation Report"
+              parent="stock.menu_warehouse_report"
+              action="action_inventory_valuation_wizard"
+              sequence="10"/>
+</odoo>

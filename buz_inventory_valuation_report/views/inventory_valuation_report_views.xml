@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inventory Valuation Report Menu -->
+    <menuitem id="menu_inventory_valuation_main"
+              name="Inventory Valuation"
+              parent="stock.menu_warehouse_report"
+              sequence="10"/>
+
+    <!-- Additional Menu for XLS -->
+    <menuitem id="menu_inventory_valuation_xlsx"
+              name="Inventory Valuation Excel"
+              parent="menu_inventory_valuation_main"
+              action="buz_inventory_valuation_report.action_inventory_valuation_wizard"
+              sequence="10"/>
+</odoo>
