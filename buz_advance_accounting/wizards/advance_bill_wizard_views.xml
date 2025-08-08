@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_advance_bill_wizard_form" model="ir.ui.view">
+        <field name="name">purchase.advance.bill.wizard.form</field>
+        <field name="model">purchase.advance.bill.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Advance Accrual">
+                <sheet>
+                    <group string="Accrual Information">
+                        <group>
+                            <field name="purchase_id" invisible="1"/>
+                            <field name="journal_id" required="1"/>
+                            <field name="date" required="1"/>
+                            <field name="accrual_account_id" required="1"/>
+                        </group>
+                        <group>
+                            <field name="amount" required="1"/>
+                            <field name="currency_id" required="1"/>
+                            <field name="ref" string="Reference"/>
+                        </group>
+                    </group>
+                    
+                    <separator string="Journal Entry Preview"/>
+                    <field name="preview_line_ids" nolabel="1" readonly="1" context="{'default_wizard_id': active_id}">
+                        <tree editable="bottom" create="false" delete="false">
+                            <field name="account_id" string="Account" width="200px"/>
+                            <field name="name" string="Description" width="200px"/>
+                            <field name="debit" widget="monetary" string="Debit" sum="Total Debit"/>
+                            <field name="credit" widget="monetary" string="Credit" sum="Total Credit"/>
+                            <field name="currency_id" invisible="1"/>
+                        </tree>
+                    </field>
+                </sheet>
+                <footer>
+                    <button name="action_create" string="Create Accrual Entry" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
