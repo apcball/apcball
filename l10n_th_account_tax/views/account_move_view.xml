@@ -92,7 +92,8 @@
                 <field
                     name="wht_tax_id"
                     options="{'no_create': True}"
-                    optional="hide"
+                    optional="show"
+                    string="WHT Tax"
                 />
             </xpath>
             <xpath
@@ -102,7 +103,8 @@
                 <field
                     name="wht_tax_id"
                     options="{'no_create': True}"
-                    optional="hide"
+                    optional="show"
+                    string="WHT Tax"
                 />
             </xpath>
             <xpath

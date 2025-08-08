@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- WHT Setup Wizard Form -->
+        <record id="view_wht_setup_wizard_form" model="ir.ui.view">
+            <field name="name">wht.setup.wizard.form</field>
+            <field name="model">wht.setup.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Withholding Tax Setup Wizard">
+                    <header>
+                        <field name="state" widget="statusbar" statusbar_visible="step1,step2,step3,complete"/>
+                    </header>
+                    <sheet>
+                        <!-- Step 1: Account Setup -->
+                        <div invisible="state != 'step1'">
+                            <h1>Step 1: Account Setup</h1>
+                            <p>Configure the account for withholding tax payable entries.</p>
+                            
+                            <group>
+                                <field name="create_wht_account"/>
+                            </group>
+                            
+                            <group invisible="not create_wht_account">
+                                <field name="wht_account_code"/>
+                                <field name="wht_account_name"/>
+                            </group>
+                            
+                            <group invisible="create_wht_account">
+                                <field name="wht_account_id" required="1"/>
+                            </group>
+                            
+                            <div class="alert alert-info">
+                                <p><strong>Note:</strong> The WHT account will be used to record withholding tax liabilities. 
+                                   It should be a Current Liability account type.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Tax Types -->
+                        <div invisible="state != 'step2'">
+                            <h1>Step 2: Withholding Tax Types</h1>
+                            <p>Select which withholding tax types to create automatically.</p>
+                            
+                            <group>
+                                <field name="create_service_wht"/>
+                                <field name="create_rent_wht"/>
+                                <field name="create_pit"/>
+                            </group>
+                            
+                            <div class="alert alert-info">
+                                <p><strong>Tax Types:</strong></p>
+                                <ul>
+                                    <li><strong>Service WHT 3%:</strong> For professional services and consulting</li>
+                                    <li><strong>Rental WHT 5%:</strong> For rental income</li>
+                                    <li><strong>Personal Income Tax:</strong> For employee payments (variable rate)</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Verification -->
+                        <div invisible="state != 'step3'">
+                            <h1>Step 3: Verification</h1>
+                            <p>Review the setup configuration and verify everything is working.</p>
+                            
+                            <group>
+                                <field name="verification_results" nolabel="1" widget="text"/>
+                            </group>
+                            
+                            <div class="alert alert-success" invisible="'✓' not in (verification_results or '')">
+                                <p><strong>Setup looks good!</strong> You can now use withholding tax features.</p>
+                            </div>
+                            
+                            <div class="alert alert-warning" invisible="'✗' not in (verification_results or '')">
+                                <p><strong>Some issues found.</strong> Please review and fix before proceeding.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Complete -->
+                        <div invisible="state != 'complete'">
+                            <h1>🎉 Setup Complete!</h1>
+                            <p>Your withholding tax configuration is ready to use.</p>
+                            
+                            <div class="alert alert-success">
+                                <h4>Next Steps:</h4>
+                                <ol>
+                                    <li>Configure products with appropriate WHT taxes</li>
+                                    <li>Test with a sample vendor bill</li>
+                                    <li>Process a payment with WHT deduction</li>
+                                    <li>Generate withholding tax certificate</li>
+                                </ol>
+                            </div>
+                            
+                            <div class="oe_button_box">
+                                <button name="action_open_wht_config" type="object" 
+                                        class="oe_stat_button" icon="fa-cog">
+                                    <div class="o_field_widget o_stat_info">
+                                        <span class="o_stat_text">Configure</span>
+                                        <span class="o_stat_text">WHT Types</span>
+                                    </div>
+                                </button>
+                                <button name="action_open_accounts" type="object" 
+                                        class="oe_stat_button" icon="fa-list">
+                                    <div class="o_field_widget o_stat_info">
+                                        <span class="o_stat_text">View</span>
+                                        <span class="o_stat_text">Accounts</span>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </sheet>
+                    <footer>
+                        <button string="Previous" name="action_previous_step" type="object" 
+                                class="btn-secondary" 
+                                invisible="state in ['step1', 'complete']"/>
+                        <button string="Next" name="action_next_step" type="object" 
+                                class="btn-primary" 
+                                invisible="state == 'complete'"/>
+                        <button string="Close" special="cancel" class="btn-secondary" 
+                                invisible="state != 'complete'"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- WHT Setup Wizard Action -->
+        <record id="action_wht_setup_wizard" model="ir.actions.act_window">
+            <field name="name">Withholding Tax Setup Wizard</field>
+            <field name="res_model">wht.setup.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="view_wht_setup_wizard_form"/>
+        </record>
+
+        <!-- Menu Item -->
+        <menuitem id="menu_wht_setup_wizard"
+                  name="WHT Setup Wizard"
+                  parent="account.menu_finance_configuration"
+                  action="action_wht_setup_wizard"
+                  sequence="50"/>
+
+    </data>
+</odoo>

@@ -237,10 +237,10 @@
                                <tbody>
                                    <tr>
                                    <td style="border: 1px solid transparent; font-size:14px; padding: 50px 8px 8px 8px;">
-    <t t-if="o.sale_id">
-        <span t-field="o.sale_id.name"/>
-    </t>
-</td>
+                                      <t t-if="o.sale_id">
+                                          <span t-field="o.sale_id.name"/>
+                                      </t>
+                                  </td>
                                        <td style="visibility: hidden; border: none;"><div style="height: 2em;"></div></td>
                                        <td style="visibility: hidden; border: none;"><div style="height: 2em;"></div></td>
                                        <td style="visibility: hidden; border: none;"><div style="height: 2em;"></div></td>
@@ -314,6 +314,7 @@
                                    <t t-if="page_number == len(groups_of_9)">
                                        <!-- ลายเซ็นหรือหมายเหตุ -->
                                    </t>
+                                   
 
                        
 

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Product Template WHT Tax View - Temporarily disabled -->
+    <!-- 
+    <record id="product_template_form_view_wht" model="ir.ui.view">
+        <field name="name">product.template.form.wht</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="account.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <group name="accounting" position="inside">
+                <group string="Withholding Tax" col="2">
+                    <field name="wht_tax_purchase_id" options="{'no_create': True}"/>
+                    <field name="wht_tax_sale_id" options="{'no_create': True}"/>
+                </group>
+            </group>
+        </field>
+    </record>
+    -->
+    
+    <!-- Product Category WHT Tax View - Temporarily disabled -->
+    <!--
+    <record id="product_category_form_view_wht" model="ir.ui.view">
+        <field name="name">product.category.form.wht</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <group name="accounting" position="inside">
+                <group string="Default Withholding Tax" col="2">
+                    <field name="default_wht_tax_purchase_id" options="{'no_create': True}"/>
+                    <field name="default_wht_tax_sale_id" options="{'no_create': True}"/>
+                </group>
+            </group>
+        </field>
+    </record>
+    -->
+    
+    <!-- Account Payment WHT Certificate View - Temporarily disabled -->
+    <!--
+    <record id="account_payment_form_view_wht" model="ir.ui.view">
+        <field name="name">account.payment.form.wht</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button 
+                    class="oe_stat_button" 
+                    name="action_view_wht_certificates"
+                    type="object"
+                    icon="fa-file-text-o"
+                    invisible="not wht_cert_count">
+                    <field name="wht_cert_count" widget="statinfo" string="WHT Certs"/>
+                </button>
+            </div>
+            
+            <group name="payment_method" position="after">
+                <group string="Withholding Tax Information" invisible="not has_wht_tax">
+                    <field name="has_wht_tax" invisible="1"/>
+                    <field name="wht_cert_count" invisible="1"/>
+                    <label for="wht_cert_ids" string="WHT Certificates"/>
+                    <div>
+                        <field name="wht_cert_ids" nolabel="1" readonly="1">
+                            <tree>
+                                <field name="number"/>
+                                <field name="date"/>
+                                <field name="partner_id"/>
+                                <field name="total_amount" sum="Total"/>
+                                <field name="state"/>
+                            </tree>
+                        </field>
+                        <button 
+                            name="action_manual_generate_wht_cert" 
+                            string="Generate WHT Certificate" 
+                            type="object"
+                            class="btn btn-link"
+                            invisible="wht_cert_count > 0 or not has_wht_tax"/>
+                    </div>
+                </group>
+            </group>
+        </field>
+    </record>
+    -->
+    
+    <!-- Account Move (Invoice) WHT Information -->
+    <record id="account_move_form_view_wht_info" model="ir.ui.view">
+        <field name="name">account.move.form.wht.info</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Add WHT Information in header -->
+            <xpath expr="//sheet//group[last()]" position="after">
+                <group string="Withholding Tax Summary" 
+                       invisible="not line_ids or move_type not in ('in_invoice', 'in_refund', 'out_invoice', 'out_refund')">
+                    <group col="4">
+                        <label for="total_withholding_base" string="WHT Base Amount"/>
+                        <div>
+                            <field name="total_withholding_base" nolabel="1" class="oe_inline"/>
+                            <span class="oe_inline"> (Base amount subject to WHT)</span>
+                        </div>
+                        <label for="total_withholding_tax" string="WHT Tax Amount"/>
+                        <div>
+                            <field name="total_withholding_tax" nolabel="1" class="oe_inline"/>
+                            <span class="oe_inline"> (Withholding tax amount)</span>
+                        </div>
+                    </group>
+                    <div invisible="total_withholding_tax == 0" class="alert alert-info">
+                        <strong>Note:</strong> This invoice contains withholding tax. 
+                        The WHT amount will be deducted from payment and WHT certificates will be generated automatically.
+                    </div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Withholding Tax Cert with Payment Link -->
+    <record id="withholding_tax_cert_form_view_payment" model="ir.ui.view">
+        <field name="name">withholding.tax.cert.form.payment</field>
+        <field name="model">withholding.tax.cert</field>
+        <field name="inherit_id" ref="l10n_th_account_tax.withholding_tax_cert_form"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="payment_id" readonly="1" invisible="not payment_id"/>
+                <field name="auto_generated" invisible="1"/>
+                <div invisible="not auto_generated" class="alert alert-success">
+                    <i class="fa fa-check-circle"/> This certificate was automatically generated from payment processing.
+                </div>
+            </field>
+        </field>
+    </record>
+    
+</odoo>

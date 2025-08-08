@@ -27,12 +27,17 @@ class AccountMoveLine(models.Model):
         store=True,
     )
 
-    @api.depends('withholding_tax_id', 'price_total')
+    @api.depends('withholding_tax_id', 'price_total', 'wht_tax_id', 'price_subtotal')
     def _compute_withholding_tax_amount(self):
         for line in self:
+            # ระบบใหม่ (withholding_tax_id)
             if line.withholding_tax_id and line.price_total:
                 line.withholding_base_amount = abs(line.price_total)
                 line.withholding_tax_amount = abs(line.price_total) * (line.withholding_tax_id.amount / 100)
+            # ระบบเดิม (wht_tax_id) - รองรับด้วย
+            elif hasattr(line, 'wht_tax_id') and line.wht_tax_id and line.price_subtotal:
+                line.withholding_base_amount = abs(line.price_subtotal)
+                line.withholding_tax_amount = abs(line.price_subtotal) * (line.wht_tax_id.amount / 100)
             else:
                 line.withholding_base_amount = 0
                 line.withholding_tax_amount = 0
@@ -54,11 +59,30 @@ class AccountMove(models.Model):
         store=True,
     )
 
-    @api.depends('line_ids.withholding_tax_amount', 'line_ids.withholding_base_amount')
+    @api.depends('line_ids.withholding_tax_amount', 'line_ids.withholding_base_amount', 'line_ids.wht_tax_id', 'line_ids.price_subtotal')
     def _compute_withholding_totals(self):
         for move in self:
-            move.total_withholding_tax = sum(move.line_ids.mapped('withholding_tax_amount'))
-            move.total_withholding_base = sum(move.line_ids.mapped('withholding_base_amount'))
+            # รวมทั้ง 2 ระบบ: withholding_tax_id (ใหม่) และ wht_tax_id (เดิม)
+            total_wht_tax = 0
+            total_wht_base = 0
+            
+            for line in move.line_ids:
+                # ระบบใหม่ (withholding_tax_id)
+                if hasattr(line, 'withholding_tax_amount') and line.withholding_tax_amount:
+                    total_wht_tax += line.withholding_tax_amount
+                    
+                if hasattr(line, 'withholding_base_amount') and line.withholding_base_amount:
+                    total_wht_base += line.withholding_base_amount
+                
+                # ระบบเดิม (wht_tax_id) - เพิ่มการรองรับ
+                elif hasattr(line, 'wht_tax_id') and line.wht_tax_id and line.price_subtotal:
+                    base_amount = abs(line.price_subtotal)
+                    wht_amount = base_amount * (line.wht_tax_id.amount / 100)
+                    total_wht_base += base_amount
+                    total_wht_tax += wht_amount
+            
+            move.total_withholding_tax = total_wht_tax
+            move.total_withholding_base = total_wht_base
 
     def _post(self, soft=True):
         """Create withholding tax entries when posting"""

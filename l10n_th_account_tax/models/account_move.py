@@ -1,6 +1,7 @@
 # Copyright 2019 Ecosoft Co., Ltd (https://ecosoft.co.th/)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
 
+import logging
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.float_utils import float_compare, float_is_zero, float_round
@@ -586,6 +587,21 @@ class AccountMove(models.Model):
     has_wht = fields.Boolean(
         compute="_compute_has_wht",
     )
+    
+    # New WHT System v2.0 Summary Fields
+    total_withholding_base = fields.Monetary(
+        string='WHT Base Amount',
+        compute='_compute_wht_summary',
+        currency_field='currency_id',
+        help='Total base amount subject to withholding tax'
+    )
+    
+    total_withholding_tax = fields.Monetary(
+        string='WHT Tax Amount', 
+        compute='_compute_wht_summary',
+        currency_field='currency_id',
+        help='Total withholding tax amount'
+    )
 
     def _compute_has_wht(self):
         """Has WHT when
@@ -611,6 +627,45 @@ class AccountMove(models.Model):
                 rec.wht_cert_status = "done"
             elif rec.wht_cert_ids.mapped("state") == ["cancel"]:
                 rec.wht_cert_status = "cancel"
+
+    @api.depends('line_ids.tax_ids', 'line_ids.price_subtotal', 'amount_tax', 'tax_totals')
+    def _compute_wht_summary(self):
+        """Calculate WHT summary totals using Odoo standard tax computation"""
+        for move in self:
+            wht_base = 0.0
+            wht_tax = 0.0
+            
+            # Only calculate for posted invoices
+            if move.move_type in ('in_invoice', 'in_refund', 'out_invoice', 'out_refund'):
+                
+                # Calculate base amount from lines with WHT taxes
+                for line in move.invoice_line_ids:
+                    wht_taxes = line.tax_ids.filtered(lambda t: t.amount < 0)
+                    if wht_taxes:
+                        wht_base += line.price_subtotal
+                
+                # Use Odoo's tax_totals for accurate tax calculation
+                if move.tax_totals:
+                    tax_groups = move.tax_totals.get('groups_by_subtotal', {})
+                    for subtotal_group in tax_groups.values():
+                        for group in subtotal_group:
+                            # Find WHT tax groups (negative amounts)
+                            if group.get('tax_group_amount', 0) < 0:
+                                wht_tax += abs(group.get('tax_group_amount', 0))
+                
+                # Fallback: calculate directly from tax lines if tax_totals not available
+                if not wht_tax:
+                    wht_tax_lines = move.line_ids.filtered(
+                        lambda l: l.tax_line_id and l.tax_line_id.amount < 0
+                    )
+                    for tax_line in wht_tax_lines:
+                        if move.move_type in ('in_invoice', 'in_refund'):
+                            wht_tax += tax_line.credit
+                        else:
+                            wht_tax += tax_line.debit
+                        
+            move.total_withholding_base = wht_base
+            move.total_withholding_tax = wht_tax
 
     def button_wht_certs(self):
         self.ensure_one()
@@ -743,6 +798,17 @@ class AccountMove(models.Model):
                     move.write({"wht_move_ids": bill_wht_moves})
         # When post, do remove the existing certs
         self.mapped("wht_cert_ids").unlink()
+        
+        # Auto-generate WHT certificates for payments with WHT
+        for move in self:
+            if move.payment_id and move.payment_id.has_wht_tax:
+                try:
+                    # Use the new auto-creation method
+                    move.auto_create_wht_cert_from_payment()
+                except Exception as e:
+                    _logger = logging.getLogger(__name__)
+                    _logger.warning(f"Failed to auto-generate WHT certificate for payment {move.payment_id.name}: {e}")
+        
         return res
 
     def _prepare_withholding_move(self, wht_move):
@@ -852,6 +918,88 @@ class AccountMove(models.Model):
             )
         certs = self._preapare_wht_certs()
         self.env["withholding.tax.cert"].create(certs)
+
+    def auto_create_wht_cert_from_payment(self):
+        """
+        Auto-create WHT certificate when payment is posted
+        This method will be called from payment posting
+        """
+        self.ensure_one()
+        
+        if not self.payment_id or not self.payment_id.has_wht_tax:
+            return False
+            
+        # Create WHT certificate based on reconciled invoices
+        try:
+            wht_data = self.payment_id._get_wht_tax_data()
+            if not wht_data:
+                return False
+                
+            # Group by partner
+            partner_wht_data = {}
+            for data in wht_data:
+                partner_id = data['partner_id']
+                if partner_id not in partner_wht_data:
+                    partner_wht_data[partner_id] = []
+                partner_wht_data[partner_id].append(data)
+            
+            # Create certificates for each partner
+            created_certs = []
+            for partner_id, partner_data in partner_wht_data.items():
+                partner = self.env['res.partner'].browse(partner_id)
+                cert = self._create_auto_wht_certificate(partner, partner_data)
+                if cert:
+                    created_certs.append(cert)
+                    
+            return created_certs
+            
+        except Exception as e:
+            _logger = logging.getLogger(__name__)
+            _logger.error(f"Failed to auto-create WHT certificate for payment {self.payment_id.name}: {e}")
+            return False
+
+    def _create_auto_wht_certificate(self, partner, wht_data):
+        """Create WHT certificate for a partner using payment data"""
+        
+        # Calculate totals
+        total_base = sum(data['base_amount'] for data in wht_data)
+        total_wht = sum(data['wht_amount'] for data in wht_data)
+        
+        # Get the first tax for default form
+        first_tax = None
+        if wht_data:
+            tax_id = wht_data[0].get('tax_id')
+            if tax_id:
+                first_tax = self.env['account.withholding.tax'].browse(tax_id)
+        
+        # Create certificate
+        cert_vals = {
+            'partner_id': partner.id,
+            'payment_id': self.payment_id.id,
+            'move_id': self.id,
+            'date': self.date or self.payment_id.date,
+            'state': 'draft',
+            'company_partner_id': self.company_id.partner_id.id,
+            'total_amount': total_wht,
+            'company_id': self.company_id.id,
+            'currency_id': self.currency_id.id,
+        }
+        
+        # Set default income tax form
+        if first_tax and first_tax.income_tax_form:
+            cert_vals['income_tax_form'] = first_tax.income_tax_form
+        else:
+            cert_vals['income_tax_form'] = 'pnd3'  # Default form
+        
+        try:
+            cert = self.env['withholding.tax.cert'].create(cert_vals)
+            _logger = logging.getLogger(__name__)
+            _logger.info(f"Auto-created WHT certificate {cert.id} for payment {self.payment_id.name} with partner {partner.name}")
+            return cert
+        except Exception as e:
+            _logger = logging.getLogger(__name__)
+            _logger.error(f"Failed to create WHT certificate: {e}")
+            return False
 
     def _preapare_wht_certs(self):
         """Create withholding tax certs, 1 cert per partner"""

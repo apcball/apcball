@@ -6,6 +6,8 @@ from . import account_move_odoo17
 from . import res_company
 from . import res_config_settings
 from . import product
+# from . import product_wht  # Temporarily disabled - field dependency issues
+# from . import account_payment_wht  # Temporarily disabled - causing load issues
 from . import personal_income_tax
 from . import withholding_tax_cert
 from . import account

@@ -13,6 +13,14 @@
                        widget="res_partner_many2one"/>
                 <field name="grouped_partner_shipping_ids" invisible="1"/>
             </field>
+            <field name="partner_invoice_id" position="replace">
+                <field name="partner_invoice_id"
+                       domain="[('id', 'in', grouped_partner_invoice_ids)]"
+                       options="{'no_create': True, 'no_create_edit': True}"
+                       context="{'show_address': 1}"
+                       widget="res_partner_many2one"/>
+                <field name="grouped_partner_invoice_ids" invisible="1"/>
+            </field>
         </field>
     </record>
 </odoo>

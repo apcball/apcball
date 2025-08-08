@@ -176,9 +176,10 @@ class AccountPaymentRegister(models.TransientModel):
             _logger.warning("Error in parent _compute_amount: %s", str(e))
             res = None
             
-        # Get the sum withholding tax amount from invoice line
+        # Enhanced WHT calculation - Get the sum withholding tax amount from invoice line
         skip_wht_deduct = self.env.context.get("skip_wht_deduct")
         active_model = self.env.context.get("active_model")
+        
         if not skip_wht_deduct and active_model == "account.move":
             try:
                 active_ids = self.env.context.get("active_ids", [])
@@ -189,36 +190,42 @@ class AccountPaymentRegister(models.TransientModel):
                 invoices = self.env["account.move"].browse(active_ids).exists()
                 if not invoices:
                     return res
-                    
-                wht_move_lines = invoices.mapped("line_ids").filtered(lambda l: l.exists() and l.wht_tax_id)
-                if not wht_move_lines:
-                    return res
-                    
-                # Case WHT only, ensure only 1 wizard
-                try:
-                    self.ensure_one()
-                    # Check if wizard exists
-                    if not self.exists():
+                
+                # Enhanced WHT detection - check all invoice lines
+                all_wht_lines = []
+                for invoice in invoices:
+                    for line in invoice.line_ids:
+                        if line.exists() and line.wht_tax_id and line.balance != 0:
+                            all_wht_lines.append(line)
+                
+                if not all_wht_lines:
+                    # Try alternative approach - check if lines have products with WHT
+                    for invoice in invoices:
+                        for line in invoice.line_ids:
+                            if line.exists() and line.product_id and not line.wht_tax_id:
+                                # Auto-assign WHT tax based on product and partner
+                                self._auto_assign_wht_tax(line, invoice.partner_id)
+                                if line.wht_tax_id:
+                                    all_wht_lines.append(line)
+                
+                if all_wht_lines:
+                    # Case WHT only, ensure only 1 wizard
+                    try:
+                        self.ensure_one()
+                        # Check if wizard exists
+                        if not self.exists():
+                            return res
+                    except Exception:
+                        # If ensure_one fails or wizard doesn't exist, skip
                         return res
-                except Exception:
-                    # If ensure_one fails or wizard doesn't exist, skip
-                    return res
                     
-                try:
-                    deduction_list, _ = wht_move_lines._prepare_deduction_list(
-                        self.payment_date, self.currency_id
-                    )
-                    # Support only case single WHT line in this module
-                    # Use l10n_th_account_tax_mult if there are mixed lines
-                    amount_base = 0
-                    amount_wht = 0
-                    if len(deduction_list) == 1:
-                        amount_base = deduction_list[0].get("wht_amount_base", 0)
-                        amount_wht = deduction_list[0].get("amount", 0)
-                    self._update_payment_register(amount_base, amount_wht, wht_move_lines)
-                except Exception as e:
-                    # Log error but don't break the flow
-                    _logger.warning("Error processing WHT deduction: %s", str(e))
+                    try:
+                        # Enhanced WHT calculation
+                        self._calculate_and_apply_wht(all_wht_lines, invoices)
+                    except Exception as e:
+                        # Log error but don't break the flow
+                        _logger.warning("Error processing WHT deduction: %s", str(e))
+                        
             except Exception as e:
                 # Log error but don't break the flow
                 _logger.warning("Error in WHT computation: %s", str(e))
@@ -249,6 +256,114 @@ class AccountPaymentRegister(models.TransientModel):
             _logger.warning("Error updating payment register with WHT: %s", str(e))
             return False
         return True
+
+    def _auto_assign_wht_tax(self, line, partner):
+        """Auto assign WHT tax to invoice line based on product and partner type"""
+        try:
+            if not line.product_id:
+                return False
+                
+            # Determine WHT tax based on partner type
+            if partner.company_type == 'company':
+                wht_tax = line.product_id.supplier_company_wht_tax_id
+            else:
+                wht_tax = line.product_id.supplier_wht_tax_id
+                
+            if wht_tax:
+                line.wht_tax_id = wht_tax
+                _logger.info(f"Auto-assigned WHT tax {wht_tax.name} to line {line.name}")
+                return True
+                
+        except Exception as e:
+            _logger.warning(f"Error auto-assigning WHT tax: {e}")
+            
+        return False
+
+    def _calculate_and_apply_wht(self, wht_lines, invoices):
+        """Calculate and apply WHT amounts to payment register"""
+        try:
+            total_wht_base = 0
+            total_wht_amount = 0
+            wht_taxes = []
+            
+            for line in wht_lines:
+                if not line.exists() or not line.wht_tax_id:
+                    continue
+                    
+                # Calculate WHT base amount (absolute value of balance)
+                base_amount = abs(line.balance)
+                
+                # Calculate WHT amount
+                if line.wht_tax_id.is_pit:
+                    # Personal Income Tax - use PIT calculation
+                    try:
+                        pit_date = self.payment_date or fields.Date.context_today(self)
+                        effective_pit = line.wht_tax_id.with_context(pit_date=pit_date).pit_id
+                        if effective_pit:
+                            wht_amount = effective_pit._compute_expected_wht(
+                                line.partner_id or invoices[0].partner_id,
+                                base_amount,
+                                pit_date,
+                                self.currency_id,
+                                self.company_id,
+                            )
+                        else:
+                            wht_amount = 0
+                    except Exception:
+                        wht_amount = 0
+                else:
+                    # Regular WHT - fixed percentage
+                    wht_amount = base_amount * (line.wht_tax_id.amount / 100)
+                
+                total_wht_base += base_amount
+                total_wht_amount += wht_amount
+                wht_taxes.append(line.wht_tax_id)
+                
+                _logger.info(f"WHT calculation: {line.name} - Base: {base_amount}, WHT: {wht_amount}")
+            
+            # Apply WHT to payment if any amount found
+            if total_wht_amount > 0:
+                # Reduce payment amount by WHT
+                self.amount -= total_wht_amount
+                self.wht_amount_base = total_wht_base
+                
+                # Set writeoff configuration
+                unique_wht_taxes = list(set(wht_taxes))
+                if len(unique_wht_taxes) == 1:
+                    # Single WHT tax type
+                    wht_tax = unique_wht_taxes[0]
+                    self.wht_tax_id = wht_tax
+                    self.writeoff_account_id = wht_tax.account_id
+                    self.writeoff_label = wht_tax.display_name
+                else:
+                    # Multiple WHT tax types - use first one's account
+                    self.writeoff_account_id = unique_wht_taxes[0].account_id
+                    self.writeoff_label = f"WHT - Multiple Types ({len(unique_wht_taxes)} types)"
+                
+                # Set payment difference handling to reconcile
+                self.payment_difference_handling = 'reconcile'
+                
+                _logger.info(f"Applied WHT: Base={total_wht_base}, Amount={total_wht_amount}, Final Payment={self.amount}")
+                
+        except Exception as e:
+            _logger.error(f"Error calculating and applying WHT: {e}")
+            # Don't break the flow, just log the error
+
+    @api.onchange('partner_id', 'currency_id', 'payment_date')
+    def _onchange_partner_currency_date(self):
+        """Recalculate WHT when partner, currency, or date changes"""
+        if self.env.context.get('active_model') == 'account.move':
+            # Force recalculate WHT
+            self._compute_amount()
+
+    @api.onchange('amount')
+    def _onchange_amount_wht_check(self):
+        """Check if amount was manually changed and WHT should be recalculated"""
+        if (self.env.context.get('active_model') == 'account.move' and 
+            hasattr(self, 'wht_amount_base') and self.wht_amount_base):
+            # If user manually changed amount, don't override with WHT calculation
+            # But show a warning message if needed
+            pass
 
     @api.model
     def default_get(self, fields_list):
