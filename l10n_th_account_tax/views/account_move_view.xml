@@ -66,48 +66,6 @@
                 </div>
             </xpath>
             <xpath
-                expr="//page/field[@name='invoice_line_ids']/tree/field[@name='tax_ids']"
-                position="after"
-            >
-                <field
-                    name="wht_tax_id"
-                    options="{'no_create': True}"
-                    optional="show"
-                />
-            </xpath>
-            <xpath
-                expr="//page/field[@name='invoice_line_ids']/form//field[@name='tax_ids']"
-                position="after"
-            >
-                <field
-                    name="wht_tax_id"
-                    options="{'no_create': True}"
-                    optional="hide"
-                />
-            </xpath>
-            <xpath
-                expr="//page/field[@name='line_ids']/tree/field[@name='tax_ids']"
-                position="after"
-            >
-                <field
-                    name="wht_tax_id"
-                    options="{'no_create': True}"
-                    optional="show"
-                    string="WHT Tax"
-                />
-            </xpath>
-            <xpath
-                expr="//page/field[@name='line_ids']/form//field[@name='tax_ids']"
-                position="after"
-            >
-                <field
-                    name="wht_tax_id"
-                    options="{'no_create': True}"
-                    optional="show"
-                    string="WHT Tax"
-                />
-            </xpath>
-            <xpath
                 expr="//field[@name='line_ids']//field[@name='tax_tag_ids']"
                 position="after"
             >
