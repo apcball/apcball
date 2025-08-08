@@ -33,7 +33,7 @@ class PurchaseOrder(models.Model):
             'target': 'new',
             'context': {
                 'default_purchase_id': self.id,
-                'default_amount': self.amount_total,
+                'default_amount': self.amount_untaxed,
                 'default_currency_id': self.currency_id.id,
             }
         }

@@ -21,7 +21,7 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
     @api.onchange('purchase_id')
     def _onchange_purchase(self):
         if self.purchase_id:
-            self.amount = self.purchase_id.amount_total
+            self.amount = self.purchase_id.amount_untaxed
             self.currency_id = self.purchase_id.currency_id
             self._recompute_preview()
 

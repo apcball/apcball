@@ -55,15 +55,15 @@
         <field name="arch" type="xml">
             <!-- Add smart buttons to button_box -->
             <div name="button_box" position="inside">
-                <button class="oe_stat_button" type="object" name="action_open_advance_bill_wizard" icon="fa-plus">
+                <button class="oe_stat_button" type="object" name="action_open_advance_bill_wizard" icon="fa-plus" groups="buz_advance_accounting.group_advance_accounting">
                     <div class="o_stat_info">
                         <span class="o_stat_text">Create Advance</span>
                     </div>
                 </button>
-                <button class="oe_stat_button" type="object" name="action_open_advance_accruals" icon="fa-book">
+                <button class="oe_stat_button" type="object" name="action_open_advance_accruals" icon="fa-book" groups="buz_advance_accounting.group_advance_accounting">
                     <field string="Advance Entries" name="advance_accrual_count" widget="statinfo"/>
                 </button>
-                <button class="oe_stat_button" type="object" name="action_reverse_all_advance_accruals" icon="fa-undo">
+                <button class="oe_stat_button" type="object" name="action_reverse_all_advance_accruals" icon="fa-undo" groups="buz_advance_accounting.group_advance_accounting">
                     <div class="o_stat_info">
                         <span class="o_stat_text">Reverse All</span>
                     </div>
