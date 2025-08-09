@@ -85,12 +85,22 @@ class AccountWithholdingMove(models.Model):
         copy=False,
     )
 
-    @api.depends("move_id")
+    @api.depends("move_id", "move_id.payment_id")
     def _compute_move_data(self):
         for rec in self:
             rec.date = rec.move_id and rec.move_id.date or False
             rec.calendar_year = rec.date and rec.date.strftime("%Y")
-            rec.payment_id = rec.move_id.payment_id
+            # Enhanced payment detection
+            if rec.move_id:
+                payment = rec.move_id.payment_id
+                if not payment:
+                    # Try to find payment from reconciled partials
+                    payment_lines = rec.move_id.line_ids.mapped('matched_debit_ids.debit_move_id') + \
+                                   rec.move_id.line_ids.mapped('matched_credit_ids.credit_move_id')
+                    payments = payment_lines.mapped('payment_id').filtered(lambda p: p.state == 'posted')
+                    if payments:
+                        payment = payments[0]
+                rec.payment_id = payment
 
     @api.depends("wht_tax_id")
     def _compute_wht_cert_income_type(self):

@@ -15,24 +15,50 @@
                     invisible="not wht_cert_ids"
                     icon="fa-bars"
                 />
+                <button
+                    class="oe_stat_button"
+                    name="action_open_wht_wizard"
+                    string="Create WHT"
+                    type="object"
+                    groups="account.group_account_invoice"
+                    invisible="state != 'posted' or move_type not in ('in_invoice', 'in_refund', 'out_invoice', 'out_refund') or wht_cert_ids"
+                    icon="fa-plus"
+                    title="Create WHT Certificate (only if none exists)"
+                />
                 <field name="wht_cert_ids" invisible="1" />
+                <field name="total_withholding_base" invisible="1" />
+                <field name="total_withholding_tax" invisible="1" />
             </div>
             <xpath expr="//header[last()]" position="after">
                 <field name="wht_cert_status" invisible="1" />
                 <div
-                    class="alert alert-warning"
+                    class="alert alert-info"
                     role="alert"
                     style="margin-bottom:0px;"
-                    invisible="wht_cert_status != 'none' or state != 'posted'"
+                    invisible="state != 'posted' or move_type not in ('in_invoice', 'in_refund', 'out_invoice', 'out_refund') or wht_cert_ids"
                 >
-                    This entry containg withholding tax, but no withholding tax certs. created yet.
+                    <strong>WHT Certificate:</strong> Click to create withholding tax certificate for this document.
                     <button
-                        name="create_wht_cert"
+                        name="action_open_wht_wizard"
                         string="⇒ Create withholding tax cert."
                         type="object"
                         class="oe_link"
-                        invisible="state != 'posted'"
-                        title="Create withholding tax certificate objects, based on withholding moves"
+                        title="Create withholding tax certificate (only if none exists)"
+                    />
+                </div>
+                <div
+                    class="alert alert-success"
+                    role="alert"
+                    style="margin-bottom:0px;"
+                    invisible="state != 'posted' or move_type not in ('in_invoice', 'in_refund', 'out_invoice', 'out_refund') or not wht_cert_ids"
+                >
+                    <strong>WHT Certificate:</strong> This document already has WHT certificate(s) created.
+                    <button
+                        name="button_wht_certs"
+                        string="⇒ View WHT certificates"
+                        type="object"
+                        class="oe_link"
+                        title="View existing WHT certificates"
                     />
                 </div>
                 <div

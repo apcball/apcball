@@ -1,7 +1,7 @@
 # Copyright 2024 Ecosoft Co., Ltd (https://ecosoft.co.th/)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
 
-from odoo import api, fields, models, Command, _
+from odoo import api, fields, models, _ 
 from odoo.exceptions import UserError
 import logging
 
@@ -24,51 +24,19 @@ class AccountPayment(models.Model):
         compute='_compute_wht_cert_count'
     )
     
-    has_wht_tax = fields.Boolean(
-        string='Has WHT Tax',
-        compute='_compute_has_wht_tax',
-        store=True,
-        help='True if this payment has withholding tax'
-    )
-    
     @api.depends('wht_cert_ids')
     def _compute_wht_cert_count(self):
         for payment in self:
             payment.wht_cert_count = len(payment.wht_cert_ids)
-    
-    @api.depends('reconciled_invoice_ids', 'reconciled_bill_ids', 'move_id.line_ids.tax_ids')
-    def _compute_has_wht_tax(self):
-        """Check if payment involves WHT tax"""
-        for payment in self:
-            has_wht = False
-            
-            # Check reconciled bills and invoices for WHT taxes
-            all_invoices = payment.reconciled_bill_ids + payment.reconciled_invoice_ids
-            for invoice in all_invoices:
-                # Check for negative taxes (WHT taxes)
-                for line in invoice.invoice_line_ids:
-                    wht_taxes = line.tax_ids.filtered(lambda t: t.amount < 0)
-                    if wht_taxes:
-                        has_wht = True
-                        break
-                
-                # Also check existing wht_tax_id field from current system
-                if hasattr(invoice, 'line_ids'):
-                    wht_lines = invoice.line_ids.filtered(lambda l: l.wht_tax_id)
-                    if wht_lines:
-                        has_wht = True
-                        break
-                        
-                if has_wht:
-                    break
-            
-            payment.has_wht_tax = has_wht    def action_post(self):
+
+    def action_post(self):
         """Override to auto-generate WHT certificates after posting payment"""
         res = super().action_post()
         
         # Auto-generate WHT certificates for payments with WHT tax
         for payment in self:
-            if payment.has_wht_tax and not payment.wht_cert_ids:
+            # Check if payment has withholding tax moves
+            if (hasattr(payment, 'wht_move_ids') and payment.wht_move_ids) and not payment.wht_cert_ids:
                 try:
                     payment._auto_generate_wht_certificates()
                     _logger.info(f"Auto-generated WHT certificate for payment {payment.name}")
@@ -81,7 +49,11 @@ class AccountPayment(models.Model):
         """Auto-generate WHT certificates based on payment WHT taxes"""
         self.ensure_one()
         
-        if not self.has_wht_tax:
+        # Check if payment has withholding tax moves
+        has_wht = (hasattr(self, 'wht_move_ids') and self.wht_move_ids) or \
+                  (hasattr(self.move_id, 'wht_move_ids') and self.move_id.wht_move_ids)
+        
+        if not has_wht:
             return
         
         _logger.info(f"Auto-generating WHT certificates for payment {self.name}")
@@ -106,14 +78,40 @@ class AccountPayment(models.Model):
             self._create_wht_certificate(partner, partner_data)
     
     def _get_wht_tax_data(self):
-        """Extract WHT tax data from reconciled invoices"""
+        """Extract WHT tax data from reconciled invoices and withholding moves"""
         wht_data = []
         
-        # Check both bill and invoice types
+        # Method 1: Get from existing withholding tax moves (preferred)
+        if hasattr(self, 'wht_move_ids') and self.wht_move_ids:
+            for wht_move in self.wht_move_ids:
+                wht_data.append({
+                    'partner_id': wht_move.partner_id.id,
+                    'tax_id': wht_move.wht_tax_id.id if wht_move.wht_tax_id else False,
+                    'tax_name': wht_move.wht_tax_id.name if wht_move.wht_tax_id else 'WHT Tax',
+                    'base_amount': wht_move.amount_income,
+                    'wht_amount': wht_move.amount_wht,
+                    'income_type': wht_move.wht_cert_income_type or 'other',
+                    'wht_move_id': wht_move.id,
+                })
+            return wht_data
+        elif hasattr(self.move_id, 'wht_move_ids') and self.move_id.wht_move_ids:
+            for wht_move in self.move_id.wht_move_ids:
+                wht_data.append({
+                    'partner_id': wht_move.partner_id.id,
+                    'tax_id': wht_move.wht_tax_id.id if wht_move.wht_tax_id else False,
+                    'tax_name': wht_move.wht_tax_id.name if wht_move.wht_tax_id else 'WHT Tax',
+                    'base_amount': wht_move.amount_income,
+                    'wht_amount': wht_move.amount_wht,
+                    'income_type': wht_move.wht_cert_income_type or 'other',
+                    'wht_move_id': wht_move.id,
+                })
+            return wht_data
+        
+        # Method 2: Extract from reconciled invoices (fallback)
         all_invoices = self.reconciled_bill_ids + self.reconciled_invoice_ids
         
         for invoice in all_invoices:
-            # Method 1: Check current system wht_tax_id field
+            # Method 2a: Check current system wht_tax_id field
             for line in invoice.line_ids:
                 if hasattr(line, 'wht_tax_id') and line.wht_tax_id:
                     wht_tax = line.wht_tax_id
@@ -121,10 +119,10 @@ class AccountPayment(models.Model):
                     # Calculate amounts from line
                     if invoice.move_type in ('in_invoice', 'in_refund'):
                         base_amount = abs(line.debit or line.credit)
-                        wht_amount = abs(base_amount * (wht_tax.percent / 100))
+                        wht_amount = abs(base_amount * (wht_tax.amount / 100)) if hasattr(wht_tax, 'amount') else abs(line.credit or line.debit)
                     else:
                         base_amount = abs(line.credit or line.debit)  
-                        wht_amount = abs(base_amount * (wht_tax.percent / 100))
+                        wht_amount = abs(base_amount * (wht_tax.amount / 100)) if hasattr(wht_tax, 'amount') else abs(line.credit or line.debit)
                     
                     wht_data.append({
                         'partner_id': invoice.partner_id.id,
@@ -137,7 +135,7 @@ class AccountPayment(models.Model):
                         'line_id': line.id,
                     })
             
-            # Method 2: Check standard tax_ids with negative amounts
+            # Method 2b: Check standard tax_ids with negative amounts
             for line in invoice.invoice_line_ids:
                 wht_taxes = line.tax_ids.filtered(lambda t: t.amount < 0)
                 
@@ -181,6 +179,17 @@ class AccountPayment(models.Model):
         else:
             return 'other'
     
+    def _map_income_type_to_cert_type(self, income_type):
+        """Map income type to WHT certificate income type"""
+        mapping = {
+            'service': '5',      # ค่าจ้างทำของ ค่าบริการ ค่าเช่า ค่าขนส่ง ฯลฯ 3 เตรส
+            'rental': '5',       # ค่าจ้างทำของ ค่าบริการ ค่าเช่า ค่าขนส่ง ฯลฯ 3 เตรส
+            'professional': '2', # ค่าธรรมเนียม ค่านายหน้า ฯลฯ 40(2)
+            'transport': '5',    # ค่าจ้างทำของ ค่าบริการ ค่าเช่า ค่าขนส่ง ฯลฯ 3 เตรส
+            'other': '6',        # อื่นๆ (ระบุ)
+        }
+        return mapping.get(income_type, '6')
+    
     def _get_income_type_from_tax(self, tax):
         """Determine income type from tax name/tags - Legacy method"""
         return self._get_income_type_from_tax_name(tax.name)
@@ -200,9 +209,9 @@ class AccountPayment(models.Model):
             'state': 'draft',
             'income_tax_form': 'pnd3',  # Default form
             'company_partner_id': self.company_id.partner_id.id,
-            'total_amount': total_wht,
             'company_id': self.company_id.id,
             'currency_id': self.currency_id.id,
+            'auto_generated': True,
         }
         
         # Auto-generate certificate number if not exists
@@ -211,17 +220,40 @@ class AccountPayment(models.Model):
         
         try:
             cert = self.env['withholding.tax.cert'].create(cert_vals)
-            _logger.info(f"Created WHT certificate {cert.number} for payment {self.name} with partner {partner.name}")
+            
+            # Create certificate lines
+            for data in wht_data:
+                line_vals = {
+                    'cert_id': cert.id,
+                    'wht_cert_income_type': self._map_income_type_to_cert_type(data['income_type']),
+                    'base': data['base_amount'],
+                    'amount': data['wht_amount'],
+                }
+                
+                # Add withholding tax if available
+                if data.get('tax_id'):
+                    # Try to find corresponding withholding tax
+                    wht_tax = self.env['account.withholding.tax'].search([
+                        '|', ('name', 'ilike', data['tax_name']),
+                        ('id', '=', data['tax_id'])
+                    ], limit=1)
+                    if wht_tax:
+                        line_vals['wht_tax_id'] = wht_tax.id
+                
+                self.env['withholding.tax.cert.line'].create(line_vals)
+            
+            _logger.info(f"Created WHT certificate {cert.name} for payment {self.name} with partner {partner.name}")
             return cert
+            
         except Exception as e:
             _logger.error(f"Failed to create WHT certificate: {e}")
-            # Create simplified certificate
+            # Create simplified certificate without lines
             simple_cert_vals = {
                 'partner_id': partner.id,
                 'payment_id': self.id,
                 'date': self.date,
                 'state': 'draft',
-                'total_amount': total_wht,
+                'company_id': self.company_id.id,
             }
             cert = self.env['withholding.tax.cert'].create(simple_cert_vals)
             _logger.info(f"Created simplified WHT certificate for payment {self.name}")
@@ -247,42 +279,6 @@ class AccountPayment(models.Model):
         sequence = self.env['ir.sequence'].next_by_code('wht.cert.auto') or '001'
         return f"WHT-{year}-{sequence}"
     
-    def action_manual_generate_wht_cert(self):
-        """Manual WHT certificate generation for testing"""
-        self.ensure_one()
-        if self.has_wht_tax:
-            try:
-                self._auto_generate_wht_certificates()
-                return {
-                    'type': 'ir.actions.client',
-                    'tag': 'display_notification',
-                    'params': {
-                        'title': 'Success',
-                        'message': 'WHT Certificate generated successfully!',
-                        'type': 'success',
-                    }
-                }
-            except Exception as e:
-                return {
-                    'type': 'ir.actions.client',
-                    'tag': 'display_notification',
-                    'params': {
-                        'title': 'Error',
-                        'message': f'Failed to generate WHT Certificate: {str(e)}',
-                        'type': 'danger',
-                    }
-                }
-        else:
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': 'Warning',
-                    'message': 'This payment does not contain WHT tax.',
-                    'type': 'warning',
-                }
-            }
-
     def action_view_wht_certificates(self):
         """View WHT certificates linked to this payment"""
         self.ensure_one()
@@ -304,41 +300,58 @@ class AccountPayment(models.Model):
                 'view_mode': 'tree,form',
                 'target': 'current',
             }
-        """Open WHT certificates related to this payment"""
-        self.ensure_one()
-        
-        if len(self.wht_cert_ids) == 1:
-            return {
-                'type': 'ir.actions.act_window',
-                'name': 'WHT Certificate',
-                'res_model': 'withholding.tax.cert',
-                'res_id': self.wht_cert_ids[0].id,
-                'view_mode': 'form',
-                'target': 'current',
-            }
-        else:
-            return {
-                'type': 'ir.actions.act_window',
-                'name': 'WHT Certificates',
-                'res_model': 'withholding.tax.cert',
-                'domain': [('id', 'in', self.wht_cert_ids.ids)],
-                'view_mode': 'tree,form',
-                'target': 'current',
-            }
     
     def action_manual_generate_wht_cert(self):
         """Manual action to generate WHT certificate"""
         self.ensure_one()
         
-        if not self.has_wht_tax:
-            raise UserError(_("This payment does not have withholding tax."))
+        # Check if payment has withholding tax moves
+        has_wht = (hasattr(self, 'wht_move_ids') and self.wht_move_ids) or \
+                  (hasattr(self.move_id, 'wht_move_ids') and self.move_id.wht_move_ids)
+        
+        if not has_wht:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Warning'),
+                    'message': _('This payment does not have withholding tax.'),
+                    'type': 'warning',
+                }
+            }
         
         if self.wht_cert_ids:
-            raise UserError(_("WHT certificates already exist for this payment."))
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Warning'),
+                    'message': _('WHT certificates already exist for this payment.'),
+                    'type': 'warning',
+                }
+            }
         
-        self._auto_generate_wht_certificates()
-        
-        return self.action_view_wht_certificates()
+        try:
+            self._auto_generate_wht_certificates()
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Success'),
+                    'message': _('WHT Certificate generated successfully!'),
+                    'type': 'success',
+                }
+            }
+        except Exception as e:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Error'),
+                    'message': _('Failed to generate WHT Certificate: %s') % str(e),
+                    'type': 'danger',
+                }
+            }
 
 
 class WithholdingTaxCert(models.Model):

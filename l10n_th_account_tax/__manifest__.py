@@ -20,8 +20,10 @@
         "security/ir.model.access.csv",
         
         # Wizards - Enhanced
+        "wizard/wht_manual_create_wizard_view.xml",
         "wizard/account_payment_register_views.xml",
         "wizard/account_move_reversal_view.xml",
+        # "wizard/wht_cert_generator_views.xml",  # Temporarily disabled for debugging
         # "wizard/wht_setup_wizard_views.xml",  # Temporarily disabled for debugging
         
         # Views - Core and Enhanced

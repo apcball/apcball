@@ -1,5 +1,5 @@
 # Copyright 2019 Ecosoft Co., Ltd (http://ecosoft.co.th/)
-# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
+# License AGPL-3.0 or later (http    def _compute_wht_cert_count(self)://www.gnu.org/licenses/agpl.html)
 import logging
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -51,11 +51,119 @@ class AccountPayment(models.Model):
         string="# Withholding Tax Certs",
         compute="_compute_wht_certs_count",
     )
+    
+    # Enhanced WHT Certificate fields
+    wht_cert_count = fields.Integer(
+        string='WHT Certificates Count',
+        compute='_compute_wht_cert_count'
+    )
+    wht_tax_amount = fields.Monetary(
+        string='WHT Tax Amount',
+        currency_field='currency_id',
+        help='Amount of withholding tax deducted from this payment'
+    )
+    # Keep only essential fields from original module
+    wht_tax_rate = fields.Float(
+        string='WHT Tax Rate (%)',
+        help='Withholding tax rate percentage'
+    )
+    wht_base_amount = fields.Monetary(
+        string='WHT Base Amount',
+        currency_field='currency_id',
+        help='Base amount for withholding tax calculation'
+    )
 
-    @api.depends("wht_cert_ids")
     def _compute_wht_certs_count(self):
         for payment in self:
             payment.wht_certs_count = len(payment.wht_cert_ids)
+    
+    def _compute_wht_cert_count(self):
+        for payment in self:
+            payment.wht_cert_count = len(payment.wht_cert_ids)
+
+    def _compute_has_wht_tax(self):
+        for payment in self:
+            has_wht = False
+            
+            # Check from reconciled bills/invoices
+            if payment.reconciled_bill_ids:
+                if any(bill.total_withholding_tax > 0 for bill in payment.reconciled_bill_ids):
+                    has_wht = True
+            
+            # Check from manual WHT amount
+            elif payment.wht_tax_amount > 0:
+                has_wht = True
+            
+            # Check from wht_move_ids
+            elif payment.wht_move_ids:
+                has_wht = True
+            
+            # Check from journal entry
+            elif payment.move_id:
+                # Look for typical WHT patterns in journal lines
+                for line in payment.move_id.line_ids:
+                    account_name = line.account_id.name.lower()
+                    account_code = line.account_id.code or ''
+                    
+                    wht_patterns = [
+                        'withholding', 'หัก ณ ที่จ่าย', 'wht', 'ภาษีหัก',
+                        '1512', '15120', '151200'  # Common WHT account codes
+                    ]
+                    
+                    if (any(pattern in account_name for pattern in wht_patterns[:4]) or 
+                        any(pattern in account_code for pattern in wht_patterns[4:])):
+                        if line.debit > 0:  # WHT is usually a debit
+                            has_wht = True
+                            break
+            
+            payment.has_wht_tax = has_wht
+
+    def _compute_withholding_totals(self):
+        for payment in self:
+            total_base = 0.0
+            total_tax = 0.0
+            
+            # Method 1: From reconciled bills/invoices
+            if payment.reconciled_bill_ids:
+                total_base = sum(payment.reconciled_bill_ids.mapped('total_withholding_base'))
+                total_tax = sum(payment.reconciled_bill_ids.mapped('total_withholding_tax'))
+            
+            # Method 2: From manual fields
+            elif payment.wht_tax_amount > 0 and payment.wht_base_amount > 0:
+                total_base = payment.wht_base_amount
+                total_tax = payment.wht_tax_amount
+            
+            # Method 3: From wht_move_ids
+            elif payment.wht_move_ids:
+                total_base = sum(payment.wht_move_ids.mapped('amount_income'))
+                total_tax = sum(payment.wht_move_ids.mapped('amount_wht'))
+            
+            # Method 4: From journal entry lines
+            elif payment.move_id:
+                wht_lines = payment.move_id.line_ids.filtered(
+                    lambda l: l.debit > 0 and l.account_id.id != payment.destination_account_id.id
+                )
+                
+                for line in wht_lines:
+                    account_name = line.account_id.name.lower()
+                    account_code = line.account_id.code or ''
+                    
+                    wht_patterns = ['withholding', 'หัก ณ ที่จ่าย', 'wht', 'ภาษีหัก']
+                    wht_codes = ['1512', '15120', '151200']
+                    
+                    if (any(pattern in account_name for pattern in wht_patterns) or 
+                        any(code in account_code for code in wht_codes)):
+                        total_tax += line.debit
+                        # Estimate base (assuming 3% WHT rate if no tax_line_id)
+                        if line.tax_line_id and line.tax_line_id.amount > 0:
+                            total_base += (line.debit * 100) / abs(line.tax_line_id.amount)
+                        else:
+                            total_base += (line.debit * 100) / 3  # Default 3% assumption
+            
+            payment.total_withholding_base = total_base
+            payment.total_withholding_tax = total_tax
+
+    # Remove unused methods - clean up payment model
 
     def button_wht_certs(self):
         self.ensure_one()
@@ -114,7 +222,6 @@ class AccountPayment(models.Model):
                     (line + counterpart_line).reconcile()
         return True
 
-    @api.depends("tax_invoice_ids")
     def _compute_tax_invoice_move_ids(self):
         for payment in self:
             payment.tax_invoice_move_ids = payment.tax_invoice_ids.mapped("move_id")
@@ -138,49 +245,7 @@ class AccountPayment(models.Model):
         self.ensure_one()
         self.move_id.create_wht_cert()
 
-    # New WHT System v2.0 Fields and Methods
-    has_wht_tax = fields.Boolean(
-        string='Has WHT Tax',
-        compute='_compute_has_wht_tax',
-        help='Indicates if this payment involves withholding tax',
-    )
-    
-    wht_cert_count = fields.Integer(
-        string='WHT Certificate Count',
-        compute='_compute_wht_cert_count',
-        help='Number of WHT certificates linked to this payment'
-    )
 
-    @api.depends('reconciled_bill_ids', 'reconciled_invoice_ids')
-    def _compute_has_wht_tax(self):
-        """Check if payment involves WHT tax"""
-        for payment in self:
-            wht_found = False
-            # Check bills and invoices for WHT taxes
-            all_invoices = payment.reconciled_bill_ids + payment.reconciled_invoice_ids
-            for invoice in all_invoices:
-                # Check for wht_tax_id field
-                if invoice.line_ids.filtered(lambda l: hasattr(l, 'wht_tax_id') and l.wht_tax_id):
-                    wht_found = True
-                    break
-                # Check for standard tax lines with negative amounts (WHT)
-                if invoice.line_ids.filtered(lambda l: l.tax_line_id and l.tax_line_id.amount < 0):
-                    wht_found = True
-                    break
-                # Check for invoice lines with WHT taxes
-                for line in invoice.invoice_line_ids or []:
-                    if line.tax_ids.filtered(lambda t: t.amount < 0):
-                        wht_found = True
-                        break
-                if wht_found:
-                    break
-            payment.has_wht_tax = wht_found
-
-    @api.depends('wht_cert_ids')
-    def _compute_wht_cert_count(self):
-        """Count WHT certificates"""
-        for payment in self:
-            payment.wht_cert_count = len(payment.wht_cert_ids)
 
     def action_view_wht_certificates(self):
         """Action to view WHT certificates"""
@@ -198,7 +263,7 @@ class AccountPayment(models.Model):
         
         # Auto-generate WHT certificates if payment has WHT
         for payment in self:
-            if payment.has_wht_tax and payment.state == 'posted':
+            if payment.wht_move_ids and payment.state == 'posted':
                 try:
                     # Try to generate certificates via the move
                     if payment.move_id:
@@ -212,138 +277,406 @@ class AccountPayment(models.Model):
         
         return res
 
+    # Remove all unused WHT generation methods - use invoice wizard instead
+
+    def _compute_tax_invoice_move_ids(self):        return res
+
     def action_manual_generate_wht_cert(self):
-        """Manual WHT certificate generation"""
-        self.ensure_one()
-        if self.has_wht_tax:
-            try:
-                self._auto_generate_wht_certificates()
+        """สร้าง WHT Certificate แบบแมนนวล"""
+        try:
+            # Recompute fields
+            self._compute_withholding_totals()
+            
+            # Check conditions
+            if not self.total_withholding_tax:
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
-                        'title': 'Success',
-                        'message': 'WHT Certificate generated successfully!',
+                        'message': 'ไม่พบข้อมูลภาษี WHT ในการชำระเงินนี้',
+                        'type': 'warning',
+                        'sticky': False,
+                    }
+                }
+            
+            # Try to create certificate automatically
+            cert = self._generate_wht_cert_from_totals()
+            if cert:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'message': f'สร้าง WHT Certificate สำเร็จ: {cert.name}',
+                        'type': 'success',
+                        'sticky': False,
+                    }
+                }
+            
+            # Fallback to wizard
+            return {
+                'type': 'ir.actions.act_window',
+                'name': 'สร้าง WHT Certificate',
+                'res_model': 'wht.manual.create.wizard',
+                'view_mode': 'form',
+                'target': 'new',
+                'context': {
+                    'default_payment_id': self.id,
+                    'default_partner_id': self.partner_id.id,
+                    'default_total_base': self.total_withholding_base,
+                    'default_total_tax': self.total_withholding_tax,
+                }
+            }
+            
+        except Exception:
+            # Any error - fallback to wizard
+            return {
+                'type': 'ir.actions.act_window',
+                'name': 'สร้าง WHT Certificate',
+                'res_model': 'wht.manual.create.wizard',
+                'view_mode': 'form',
+                'target': 'new',
+                'context': {
+                    'default_payment_id': self.id,
+                    'default_partner_id': self.partner_id.id,
+                    'default_total_base': 0.0,
+                    'default_total_tax': 0.0,
+                }
+            }
+
+    def action_view_wht_certificates(self):
+        """Action to view WHT certificates"""
+        self.ensure_one()
+        action = self.env["ir.actions.act_window"]._for_xml_id(
+            "l10n_th_account_tax.action_withholding_tax_cert_menu"
+        )
+        action["domain"] = [("id", "in", self.wht_cert_ids.ids)]
+        action["context"] = {"default_payment_id": self.id}
+        return action
+
+    def action_manual_generate_wht_cert(self):
+        """Manual action to generate WHT certificate - safe version"""
+        self.ensure_one()
+        
+        try:
+            # Check if certificates already exist
+            if self.wht_cert_ids:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': _('Warning'),
+                        'message': _('WHT certificates already exist for this payment.'),
+                        'type': 'warning',
+                    }
+                }
+            
+            # Simple check for WHT data
+            has_wht_data = (
+                self.total_withholding_tax > 0 or 
+                self.wht_tax_amount > 0 or 
+                bool(self.wht_move_ids)
+            )
+            
+            if not has_wht_data:
+                # Open wizard for manual creation
+                return {
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'wht.manual.create.wizard',
+                    'view_mode': 'form',
+                    'view_type': 'form',
+                    'target': 'new',
+                    'context': {
+                        'default_payment_id': self.id,
+                        'default_partner_id': self.partner_id.id,
+                        'default_amount_total': self.amount,
+                    }
+                }
+            
+            # Generate certificate using existing data
+            cert = None
+            if self.wht_move_ids:
+                certs = self._auto_generate_wht_certificates()
+                cert = certs[0] if certs else None
+            elif self.total_withholding_tax > 0:
+                cert = self._generate_wht_cert_from_totals()
+            
+            if cert:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': _('Success'),
+                        'message': _('WHT Certificate %s generated successfully!') % cert.name,
                         'type': 'success',
                     }
                 }
-            except Exception as e:
+            else:
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
-                        'title': 'Error',
-                        'message': f'Failed to generate WHT Certificate: {str(e)}',
+                        'title': _('Error'),
+                        'message': _('Could not generate WHT certificate. Please check the data.'),
                         'type': 'danger',
                     }
                 }
-        else:
+                
+        except Exception as e:
+            # Log the error but don't break the transaction
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.error(f"Error in manual WHT cert generation: {e}")
+            
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
-                    'title': 'Warning',
-                    'message': 'This payment does not contain WHT tax.',
-                    'type': 'warning',
+                    'title': _('Error'),
+                    'message': _('Failed to generate certificate. Please try again or contact administrator.'),
+                    'type': 'danger',
                 }
             }
 
-    def _auto_generate_wht_certificates(self):
-        """Auto-generate WHT certificates for payment"""
+    def _generate_wht_cert_from_totals(self):
+        """Generate WHT certificate from total withholding amounts"""
         self.ensure_one()
         
-        # Get WHT data from reconciled invoices
-        wht_data = self._get_wht_tax_data()
-        if not wht_data:
-            return
+        if not self.total_withholding_tax or not self.total_withholding_base:
+            raise UserError(_('No withholding tax amounts found to generate certificate.'))
         
-        # Group by partner
-        partner_wht_data = {}
-        for data in wht_data:
-            partner_id = data['partner_id']
-            if partner_id not in partner_wht_data:
-                partner_wht_data[partner_id] = []
-            partner_wht_data[partner_id].append(data)
+        # Get partner from payment
+        partner = self.partner_id
+        if not partner:
+            raise UserError(_('No partner found for this payment.'))
         
-        # Create certificates for each partner
-        for partner_id, partner_data in partner_wht_data.items():
-            partner = self.env['res.partner'].browse(partner_id)
-            self._create_wht_certificate(partner, partner_data)
-
-    def _get_wht_tax_data(self):
-        """Extract WHT tax data from reconciled invoices"""
-        wht_data = []
-        
-        # Check both bill and invoice types
-        all_invoices = self.reconciled_bill_ids + self.reconciled_invoice_ids
-        
-        for invoice in all_invoices:
-            # Method 1: Check current system wht_tax_id field
-            for line in invoice.line_ids:
-                if hasattr(line, 'wht_tax_id') and line.wht_tax_id:
-                    wht_tax = line.wht_tax_id
-                    
-                    # Calculate amounts from line
-                    if invoice.move_type in ('in_invoice', 'in_refund'):
-                        base_amount = abs(line.debit or line.credit)
-                        wht_amount = abs(base_amount * (wht_tax.percent / 100))
-                    else:
-                        base_amount = abs(line.credit or line.debit)  
-                        wht_amount = abs(base_amount * (wht_tax.percent / 100))
-                    
-                    wht_data.append({
-                        'partner_id': invoice.partner_id.id,
-                        'tax_id': wht_tax.id,
-                        'tax_name': wht_tax.name,
-                        'base_amount': base_amount,
-                        'wht_amount': wht_amount,
-                        'invoice_id': invoice.id,
-                        'line_id': line.id,
-                    })
-            
-            # Method 2: Check standard tax lines with negative amounts (WHT)
-            for line in invoice.line_ids:
-                if line.tax_line_id and line.tax_line_id.amount < 0:
-                    # This is a WHT tax line
-                    wht_tax = line.tax_line_id
-                    base_amount = abs(line.tax_base_amount)
-                    wht_amount = abs(line.balance)
-                    
-                    wht_data.append({
-                        'partner_id': invoice.partner_id.id,
-                        'tax_id': wht_tax.id,
-                        'tax_name': wht_tax.name,
-                        'base_amount': base_amount,
-                        'wht_amount': wht_amount,
-                        'invoice_id': invoice.id,
-                        'line_id': line.id,
-                    })
-        
-        return wht_data
-
-    def _create_wht_certificate(self, partner, wht_data):
-        """Create WHT certificate for a partner using current system"""
-        
-        # Calculate totals
-        total_wht = sum(data['wht_amount'] for data in wht_data)
-        
-        # Create certificate using current system structure
+        # Create certificate
         cert_vals = {
             'partner_id': partner.id,
             'payment_id': self.id,
             'date': self.date,
             'state': 'draft',
-            'income_tax_form': 'pnd3',  # Default form
             'company_partner_id': self.company_id.partner_id.id,
-            'total_amount': total_wht,
             'company_id': self.company_id.id,
             'currency_id': self.currency_id.id,
+            'income_tax_form': 'pnd3',  # Default
         }
         
         try:
             cert = self.env['withholding.tax.cert'].create(cert_vals)
-            logging.getLogger(__name__).info(f"Created WHT certificate for payment {self.name} with partner {partner.name}")
+            
+            # Create certificate line
+            line_vals = {
+                'cert_id': cert.id,
+                'base': self.total_withholding_base,
+                'amount': self.total_withholding_tax,
+                'wht_cert_income_type': '5',  # Default: ค่าจ้างทำของ ค่าบริการ
+            }
+            
+            # Try to find a WHT tax for this line
+            if self.reconciled_bill_ids:
+                for bill in self.reconciled_bill_ids:
+                    wht_tax_lines = bill.line_ids.filtered(
+                        lambda l: l.tax_line_id and (
+                            l.tax_line_id.amount < 0 or 
+                            'withholding' in l.tax_line_id.name.lower() or 
+                            'หัก' in l.tax_line_id.name
+                        )
+                    )
+                    if wht_tax_lines:
+                        line_vals['wht_tax_id'] = wht_tax_lines[0].tax_line_id.id
+                        break
+            
+            cert_line = self.env['withholding.tax.cert.line'].create(line_vals)
+            
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.info(f"Created WHT certificate {cert.name} from totals for payment {self.name}")
             return cert
+            
         except Exception as e:
-            logging.getLogger(__name__).error(f"Failed to create WHT certificate: {e}")
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.error(f"Error creating WHT certificate: {e}")
+            raise UserError(_('Failed to create WHT certificate: %s') % str(e))
+
+    def _generate_wht_cert_from_journal_lines(self):
+        """Generate WHT certificate from journal entry lines when no wht_move_ids"""
+        self.ensure_one()
+        
+        if not self.move_id:
+            return False
+        
+        # Find WHT tax lines
+        wht_taxes = self.env['account.tax'].search([
+            '|', '|',
+            ('name', 'ilike', 'withholding'),
+            ('name', 'ilike', 'หัก ณ ที่จ่าย'),
+            ('description', 'ilike', 'wht'),
+            ('company_id', '=', self.company_id.id)
+        ])
+        
+        wht_lines = self.move_id.line_ids.filtered(
+            lambda l: l.tax_line_id.id in wht_taxes.ids and l.debit > 0
+        )
+        
+        if not wht_lines:
+            # Try to find by account name/code
+            wht_accounts = self.env['account.account'].search([
+                '|',
+                ('name', 'ilike', 'withholding'),
+                ('code', 'like', '%หัก%'),
+                ('company_id', '=', self.company_id.id)
+            ])
+            wht_lines = self.move_id.line_ids.filtered(
+                lambda l: l.account_id.id in wht_accounts.ids and l.debit > 0
+            )
+        
+        if not wht_lines:
+            raise UserError(_('No withholding tax lines found in payment journal entry.'))
+        
+        # Get partner from payment
+        partner = self.partner_id
+        if not partner:
+            raise UserError(_('No partner found for this payment.'))
+        
+        # Calculate totals from WHT lines
+        total_wht = sum(line.debit for line in wht_lines)
+        
+        # Estimate base amount (assuming standard WHT rates)
+        estimated_base = 0
+        for line in wht_lines:
+            if line.tax_line_id and line.tax_line_id.amount > 0:
+                # Calculate base from tax amount and rate
+                estimated_base += (line.debit * 100) / abs(line.tax_line_id.amount)
+            else:
+                # Default assumption: 3% WHT rate
+                estimated_base += (line.debit * 100) / 3
+        
+        # Create certificate
+        cert_vals = {
+            'partner_id': partner.id,
+            'payment_id': self.id,
+            'date': self.date,
+            'state': 'draft',
+            'company_partner_id': self.company_id.partner_id.id,
+            'company_id': self.company_id.id,
+            'currency_id': self.currency_id.id,
+            'income_tax_form': 'pnd3',  # Default
+        }
+        
+        cert = self.env['withholding.tax.cert'].create(cert_vals)
+        
+        # Create certificate lines
+        for wht_line in wht_lines:
+            # Calculate base for this line
+            if wht_line.tax_line_id and wht_line.tax_line_id.amount > 0:
+                line_base = (wht_line.debit * 100) / abs(wht_line.tax_line_id.amount)
+            else:
+                line_base = (wht_line.debit * 100) / 3  # Default 3% assumption
+            
+            line_vals = {
+                'cert_id': cert.id,
+                'base': line_base,
+                'amount': wht_line.debit,
+                'wht_cert_income_type': '5',  # Default: ค่าจ้างทำของ ค่าบริการ
+            }
+            
+            if wht_line.tax_line_id:
+                line_vals['wht_tax_id'] = wht_line.tax_line_id.id
+            
+            self.env['withholding.tax.cert.line'].create(line_vals)
+        
+        _logger = logging.getLogger(__name__)
+        _logger.info(f"Created WHT certificate {cert.name} from journal lines for payment {self.name}")
+        return cert
+
+    def _auto_generate_wht_certificates(self):
+        """Auto-generate WHT certificates from withholding moves"""
+        self.ensure_one()
+        
+        if not self.wht_move_ids:
+            return False
+        
+        # Group withholding moves by partner
+        partner_wht_data = {}
+        for wht_move in self.wht_move_ids:
+            partner_id = wht_move.partner_id.id
+            if partner_id not in partner_wht_data:
+                partner_wht_data[partner_id] = []
+            partner_wht_data[partner_id].append(wht_move)
+        
+        # Create certificates for each partner
+        created_certs = []
+        for partner_id, wht_moves in partner_wht_data.items():
+            partner = self.env['res.partner'].browse(partner_id)
+            cert = self._create_wht_certificate_from_moves(partner, wht_moves)
+            if cert:
+                created_certs.append(cert)
+        
+        return created_certs
+
+    def _create_wht_certificate_from_moves(self, partner, wht_moves):
+        """Create WHT certificate from withholding moves"""
+        
+        # Calculate totals
+        total_base = sum(move.amount_income for move in wht_moves)
+        total_wht = sum(move.amount_wht for move in wht_moves)
+        
+        # Get the first tax for default form
+        first_tax = None
+        if wht_moves and wht_moves[0].wht_tax_id:
+            first_tax = wht_moves[0].wht_tax_id
+        
+        # Create certificate
+        cert_vals = {
+            'partner_id': partner.id,
+            'payment_id': self.id,
+            'date': self.date,
+            'state': 'draft',
+            'company_partner_id': self.company_id.partner_id.id,
+            'company_id': self.company_id.id,
+            'currency_id': self.currency_id.id,
+        }
+        
+        # Set default income tax form
+        if first_tax and hasattr(first_tax, 'income_tax_form'):
+            cert_vals['income_tax_form'] = first_tax.income_tax_form
+        else:
+            cert_vals['income_tax_form'] = 'pnd3'  # Default
+        
+        try:
+            cert = self.env['withholding.tax.cert'].create(cert_vals)
+            
+            # Create certificate lines
+            for wht_move in wht_moves:
+                line_vals = {
+                    'cert_id': cert.id,
+                    'base': wht_move.amount_income,
+                    'amount': wht_move.amount_wht,
+                }
+                
+                # Set income type
+                if wht_move.wht_cert_income_type:
+                    line_vals['wht_cert_income_type'] = wht_move.wht_cert_income_type
+                else:
+                    line_vals['wht_cert_income_type'] = '5'  # Default: ค่าจ้างทำของ ค่าบริการ
+                
+                # Set withholding tax
+                if wht_move.wht_tax_id:
+                    line_vals['wht_tax_id'] = wht_move.wht_tax_id.id
+                
+                self.env['withholding.tax.cert.line'].create(line_vals)
+                
+                # Link the cert to the withholding move
+                wht_move.cert_id = cert.id
+            
+            _logger = logging.getLogger(__name__)
+            _logger.info(f"Created WHT certificate {cert.name} for payment {self.name} with partner {partner.name}")
+            return cert
+            
+        except Exception as e:
+            _logger = logging.getLogger(__name__)
+            _logger.error(f"Failed to create WHT certificate: {e}")
             raise
+
+
