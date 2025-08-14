@@ -245,8 +245,6 @@ class AccountPayment(models.Model):
         self.ensure_one()
         self.move_id.create_wht_cert()
 
-
-
     def action_view_wht_certificates(self):
         """Action to view WHT certificates"""
         self.ensure_one()
@@ -278,8 +276,6 @@ class AccountPayment(models.Model):
         return res
 
     # Remove all unused WHT generation methods - use invoice wizard instead
-
-    def _compute_tax_invoice_move_ids(self):        return res
 
     def action_manual_generate_wht_cert(self):
         """สร้าง WHT Certificate แบบแมนนวล"""
