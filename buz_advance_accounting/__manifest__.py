@@ -15,6 +15,7 @@
         'views/account_move_views.xml',
         'views/menu.xml',
         'wizards/advance_bill_wizard_views.xml',
+        'wizards/reverse_accrual_wizard_views.xml',
     ],
     'assets': {},
     'icon': 'static/description/icon.png',

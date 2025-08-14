@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_reverse_accrual_wizard_form" model="ir.ui.view">
+        <field name="name">reverse.accrual.wizard.form</field>
+        <field name="model">reverse.accrual.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reverse All Accrual Entries">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="purchase_id" readonly="1" style="font-size: 1.2em;"/>
+                        </h1>
+                    </div>
+                    
+                    <group string="Reversal Information">
+                        <group>
+                            <field name="accrual_count" string="Entries to Reverse"/>
+                            <field name="reversal_date" required="1"/>
+                        </group>
+                    </group>
+                    
+                    <separator string="Accrual Entries to be Reversed"/>
+                    <field name="accrual_ids" nolabel="1" readonly="1">
+                        <tree create="false" delete="false">
+                            <field name="name" string="Reference"/>
+                            <field name="date" string="Date"/>
+                            <field name="amount" string="Amount"/>
+                            <field name="currency_id" string="Currency"/>
+                            <field name="state" string="Status"/>
+                            <field name="move_id" string="Journal Entry"/>
+                        </tree>
+                    </field>
+                    
+                    <div class="alert alert-info" role="alert" style="margin-top: 15px;">
+                        <strong>Note:</strong> This action will reverse all posted accrual entries for this Purchase Order. 
+                        The reversal entries will be dated <field name="reversal_date" readonly="1" nolabel="1" style="display: inline; font-weight: bold;"/>.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_reverse_all" 
+                            string="Reverse All Entries" 
+                            type="object" 
+                            class="btn-primary"
+                            confirm="Are you sure you want to reverse all accrual entries?"/>
+                    <button name="action_cancel" 
+                            string="Cancel" 
+                            type="object" 
+                            class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -33,25 +33,22 @@ class PurchaseOrder(models.Model):
             'target': 'new',
             'context': {
                 'default_purchase_id': self.id,
-                'default_amount': self.amount_untaxed,
+                'default_amount': self.amount_total,  # Changed from amount_untaxed to amount_total
                 'default_currency_id': self.currency_id.id,
             }
         }
 
     def action_reverse_all_advance_accruals(self):
         self.ensure_one()
-        count = 0
-        for accrual in self.advance_accrual_ids.filtered(lambda a: a.state == 'posted'):
-            accrual.action_reverse()
-            count += 1
         return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Reversal Complete'),
-                'message': _('%s accrual entries reversed.') % count,
-                'type': 'success',
-                'sticky': False,
+            'type': 'ir.actions.act_window',
+            'name': _('Reverse All Accrual Entries'),
+            'res_model': 'reverse.accrual.wizard',
+            'view_mode': 'form',
+            'view_id': self.env.ref('buz_advance_accounting.view_reverse_accrual_wizard_form').id,
+            'target': 'new',
+            'context': {
+                'default_purchase_id': self.id,
             }
         }
 

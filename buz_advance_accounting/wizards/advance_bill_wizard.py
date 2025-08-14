@@ -21,7 +21,8 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
     @api.onchange('purchase_id')
     def _onchange_purchase(self):
         if self.purchase_id:
-            self.amount = self.purchase_id.amount_untaxed
+            # Set amount to include tax (total amount)
+            self.amount = self.purchase_id.amount_total
             self.currency_id = self.purchase_id.currency_id
             self._recompute_preview()
 
@@ -52,6 +53,40 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
             
         return expense_account
 
+    def _get_tax_input_account(self, po):
+        """Get tax input account for purchase taxes"""
+        tax_account = False
+        
+        # Get tax account from purchase order lines
+        for line in po.order_line:
+            for tax in line.taxes_id:
+                if tax.type_tax_use == 'purchase':
+                    # Get the input tax account
+                    tax_account = tax.invoice_repartition_line_ids.filtered(
+                        lambda r: r.repartition_type == 'tax'
+                    ).account_id
+                    if tax_account:
+                        break
+            if tax_account:
+                break
+        
+        # Fallback: search for typical input tax account
+        if not tax_account:
+            tax_account = self.env['account.account'].search([
+                ('code', 'like', '15%'),  # Common input tax account code
+                ('company_id', '=', po.company_id.id)
+            ], limit=1)
+            
+        # Another fallback: search for any input tax related account
+        if not tax_account:
+            tax_account = self.env['account.account'].search([
+                ('name', 'ilike', 'input'),
+                ('name', 'ilike', 'tax'),
+                ('company_id', '=', po.company_id.id)
+            ], limit=1)
+            
+        return tax_account
+
     def _recompute_preview(self):
         for wizard in self:
             lines = []
@@ -62,26 +97,62 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
             company = po.company_id
             company_currency = company.currency_id
             src_currency = wizard.currency_id or po.currency_id or company_currency
+            
+            # Use the amount from wizard (which is the total amount including tax)
+            total_amount = wizard.amount
+            
+            # Calculate tax rate from PO to split the amount
+            if po.amount_total > 0:
+                tax_rate = po.amount_tax / po.amount_total
+                untaxed_rate = po.amount_untaxed / po.amount_total
+            else:
+                tax_rate = 0
+                untaxed_rate = 1
+            
+            # Split the total amount
+            amount_untaxed = total_amount * untaxed_rate
+            amount_tax = total_amount * tax_rate
+            
             # Convert to company currency for accounting amounts
-            amount_company = src_currency._convert(wizard.amount, company_currency, company, wizard.date or fields.Date.context_today(wizard))
+            amount_untaxed_company = src_currency._convert(amount_untaxed, company_currency, company, wizard.date or fields.Date.context_today(wizard))
+            amount_tax_company = src_currency._convert(amount_tax, company_currency, company, wizard.date or fields.Date.context_today(wizard))
+            
             payable_account = wizard._get_payable_account_from_partner(po.partner_id)
             expense_account = wizard._get_expense_account_from_po(po)
+            
+            # Get tax input account
+            tax_input_account = wizard._get_tax_input_account(po)
+            
             label = wizard.ref or _('Advance Accrual')
-            if amount_company > 0 and expense_account and wizard.accrual_account_id:
-                lines = [
-                    (0, 0, {
-                        'account_id': expense_account.id,
-                        'name': label,
-                        'debit': amount_company,
+            label_tax = wizard.ref or _('Input Tax')
+            
+            if amount_untaxed_company > 0 and expense_account and wizard.accrual_account_id:
+                # Expense line (Debit) - amount before tax
+                lines.append((0, 0, {
+                    'account_id': expense_account.id,
+                    'name': label,
+                    'debit': amount_untaxed_company,
+                    'credit': 0.0,
+                }))
+                
+                # Tax line (Debit) - if there's tax
+                if amount_tax_company > 0 and tax_input_account:
+                    lines.append((0, 0, {
+                        'account_id': tax_input_account.id,
+                        'name': label_tax,
+                        'debit': amount_tax_company,
                         'credit': 0.0,
-                    }),
-                    (0, 0, {
-                        'account_id': wizard.accrual_account_id.id,
-                        'name': label,
-                        'debit': 0.0,
-                        'credit': amount_company,
-                    }),
-                ]
+                    }))
+                
+                # Accrual account (Credit) - total amount (as entered by user)
+                total_amount_company = src_currency._convert(total_amount, company_currency, company, wizard.date or fields.Date.context_today(wizard))
+                lines.append((0, 0, {
+                    'account_id': wizard.accrual_account_id.id,
+                    'name': label,
+                    'debit': 0.0,
+                    'credit': total_amount_company,
+                }))
+            
             wizard.preview_line_ids = [Command.clear()] + [Command.create(vals[2]) for vals in lines]
 
     def action_create(self):
@@ -97,11 +168,69 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
         expense_account = self._get_expense_account_from_po(po)
         if not expense_account:
             raise UserError(_('No expense account found for products in this Purchase Order.'))
+        
+        tax_input_account = self._get_tax_input_account(po)
             
         company = po.company_id
         company_currency = company.currency_id
         src_currency = self.currency_id or po.currency_id or company_currency
-        amount_company = src_currency._convert(self.amount, company_currency, company, self.date or fields.Date.context_today(self))
+        
+        # Use the amount from wizard (which is the total amount including tax)
+        total_amount = self.amount
+        
+        # Calculate tax rate from PO to split the amount
+        if po.amount_total > 0:
+            tax_rate = po.amount_tax / po.amount_total
+            untaxed_rate = po.amount_untaxed / po.amount_total
+        else:
+            tax_rate = 0
+            untaxed_rate = 1
+        
+        # Split the total amount
+        amount_untaxed = total_amount * untaxed_rate
+        amount_tax = total_amount * tax_rate
+        
+        # Convert to company currency
+        amount_untaxed_company = src_currency._convert(amount_untaxed, company_currency, company, self.date or fields.Date.context_today(self))
+        amount_tax_company = src_currency._convert(amount_tax, company_currency, company, self.date or fields.Date.context_today(self))
+        total_amount_company = src_currency._convert(total_amount, company_currency, company, self.date or fields.Date.context_today(self))
+
+        # Prepare journal entry lines
+        journal_lines = []
+        
+        # Expense line (Debit) - amount before tax
+        journal_lines.append((0, 0, {
+            'name': self.ref or _('Advance Accrual'),
+            'debit': amount_untaxed_company if amount_untaxed_company > 0 else 0.0,
+            'credit': 0.0,
+            'account_id': expense_account.id,
+            'partner_id': po.partner_id.id,
+            'currency_id': src_currency.id,
+            'amount_currency': amount_untaxed if src_currency != company_currency else amount_untaxed_company,
+        }))
+        
+        # Tax line (Debit) - if there's tax and tax account
+        if amount_tax_company > 0 and tax_input_account:
+            journal_lines.append((0, 0, {
+                'name': self.ref or _('Input Tax'),
+                'debit': amount_tax_company,
+                'credit': 0.0,
+                'account_id': tax_input_account.id,
+                'partner_id': po.partner_id.id,
+                'currency_id': src_currency.id,
+                'amount_currency': amount_tax if src_currency != company_currency else amount_tax_company,
+            }))
+        
+        # Accrual account (Credit) - total amount as entered by user
+        journal_lines.append((0, 0, {
+            'name': self.ref or _('Advance Accrual'),
+            'debit': 0.0,
+            'credit': total_amount_company if total_amount_company > 0 else 0.0,
+            'account_id': self.accrual_account_id.id,
+            'partner_id': po.partner_id.id,
+            'currency_id': src_currency.id,
+            'amount_currency': -total_amount if src_currency != company_currency else -total_amount_company,
+        }))
 
         move_vals = {
             'move_type': 'entry',
@@ -110,26 +239,7 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
             'ref': self.ref or (po.name + ' - ' + _('Advance Accrual')),
             'partner_id': po.partner_id.id,
             'currency_id': company_currency.id,
-            'line_ids': [
-                (0, 0, {
-                    'name': self.ref or _('Advance Accrual'),
-                    'debit': amount_company if amount_company > 0 else 0.0,
-                    'credit': 0.0,
-                    'account_id': expense_account.id,
-                    'partner_id': po.partner_id.id,
-                    'currency_id': src_currency.id,
-                    'amount_currency': self.amount if src_currency != company_currency else amount_company,
-                }),
-                (0, 0, {
-                    'name': self.ref or _('Advance Accrual'),
-                    'debit': 0.0,
-                    'credit': amount_company if amount_company > 0 else 0.0,
-                    'account_id': self.accrual_account_id.id,
-                    'partner_id': po.partner_id.id,
-                    'currency_id': src_currency.id,
-                    'amount_currency': -self.amount if src_currency != company_currency else -amount_company,
-                }),
-            ],
+            'line_ids': journal_lines,
             'purchase_id': po.id,
         }
         move = self.env['account.move'].create(move_vals)
@@ -137,7 +247,7 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
         accrual = self.env['purchase.advance.accrual'].create({
             'purchase_id': po.id,
             'move_id': move.id,
-            'amount': self.amount,
+            'amount': total_amount,  # Store the total amount as entered by user
             'currency_id': self.currency_id.id,
             'date': self.date,
         })
