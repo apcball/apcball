@@ -3,7 +3,21 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
-from .withholding_tax_cert import INCOME_TAX_FORM, WHT_CERT_INCOME_TYPE
+# Define constants locally to avoid circular import
+INCOME_TAX_FORM = [
+    ("1", "PIT1"),
+    ("2", "PIT2"),
+    ("3", "PIT3"),
+    ("3a", "PIT3a"),
+]
+
+WHT_CERT_INCOME_TYPE = [
+    ("1", "Salary / Wages"),
+    ("2", "Interest"),
+    ("3", "Dividends"),
+    ("4", "Service Fees"),
+    ("5", "Other"),
+]
 
 
 class AccountWithholdingTax(models.Model):
@@ -29,37 +43,52 @@ class AccountWithholdingTax(models.Model):
         comodel_name="personal.income.tax",
         string="PIT Rate",
         compute="_compute_pit_id",
-        help="Latest PIT Rates used to calcuate withholiding amount",
-    )
-    income_tax_form = fields.Selection(
-        selection=INCOME_TAX_FORM,
-        string="Default Income Tax Form",
+        store=True,
     )
     wht_cert_income_type = fields.Selection(
-        selection=WHT_CERT_INCOME_TYPE,
-        string="Default Type of Income",
+        WHT_CERT_INCOME_TYPE,
+        string="Type of Income",
+        required=True,
+        default="1",
+    )
+    wht_cert_income_desc = fields.Char(
+        string="Income Description",
+        default="Services",
+    )
+    income_tax_form = fields.Selection(
+        INCOME_TAX_FORM,
+        string="Income Tax Form",
+        compute="_compute_income_tax_form",
+        store=True,
     )
 
-    _sql_constraints = [
-        ("name_unique", "UNIQUE(name)", "Name must be unique!"),
-    ]
+    @api.depends("pit_id", "amount")
+    def _compute_income_tax_form(self):
+        for rec in self:
+            if rec.pit_id:
+                rec.income_tax_form = rec.pit_id.income_tax_form
+            else:
+                rec.income_tax_form = False
 
     @api.constrains("is_pit")
     def _check_is_pit(self):
         pits = self.search_count([("is_pit", "=", True)])
         if pits > 1:
-            raise ValidationError(_("Only 1 personal income tax allowed!"))
-
-    @api.constrains("account_id")
-    def _check_account_id(self):
-        for rec in self:
-            if rec.account_id and not rec.account_id.wht_account:
-                raise ValidationError(_("Selected account is not for withholding tax"))
+            raise ValidationError(
+                _(
+                    "You can only have 1 withholding tax type " + 
+                    "as personal income tax."
+                )
+            )
 
     @api.depends("is_pit")
     def _compute_pit_id(self):
-        pit_date = self.env.context.get("pit_date") or fields.Date.context_today(self)
-        pit = self.env["personal.income.tax"].search(
-            [("effective_date", "<=", pit_date)], order="effective_date desc", limit=1
-        )
-        self.update({"pit_id": pit.id})
+        PIT = self.env["personal.income.tax"]
+        for rec in self:
+            if rec.is_pit:
+                # Find active PIT rate
+                pit = PIT.search([("year", "<=", fields.Date.today().year)], 
+                                order="year desc", limit=1)
+                rec.pit_id = pit.id if pit else False
+            else:
+                rec.pit_id = False

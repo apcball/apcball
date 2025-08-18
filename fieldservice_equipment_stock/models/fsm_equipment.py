@@ -7,8 +7,8 @@ from odoo import api, fields, models
 class FSMEquipment(models.Model):
     _inherit = "fsm.equipment"
 
-    product_id = fields.Many2one("product.product", string="Product", required=True)
-    lot_id = fields.Many2one("stock.lot", string="Serial #", required=True)
+    product_id = fields.Many2one("product.product", string="Product")
+    lot_id = fields.Many2one("stock.lot", string="Serial #")
     current_stock_location_id = fields.Many2one(
         "stock.location",
         string="Current Inventory Location",
@@ -32,14 +32,14 @@ class FSMEquipment(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        equipments = super(FSMEquipment, self).create(vals_list)
+        equipments = super().create(vals_list)
         for equipment in equipments:
             if equipment.lot_id:
                 equipment.lot_id.fsm_equipment_id = equipment.id
         return equipments
 
     def write(self, vals):
-        res = super(FSMEquipment, self).write(vals)
+        res = super().write(vals)
         for equipment in self:
             if "lot_id" in vals:
                 equipment.lot_id.fsm_equipment_id = equipment.id

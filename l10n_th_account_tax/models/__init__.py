@@ -10,16 +10,16 @@ from . import res_partner
 from . import product
 # from . import product_wht  # Temporarily disabled - field dependency issues
 
+# Base withholding tax models - must be loaded first to avoid circular imports
+from . import withholding_tax_code_income
+from . import personal_income_tax
+from . import account_withholding_tax
+from . import withholding_tax_cert
+
 # Account base models
 from . import account
 from . import account_tax
 from . import account_move_tax_invoice
-
-# Withholding tax models - must be loaded before extending models
-from . import account_withholding_tax
-from . import withholding_tax_code_income
-from . import withholding_tax_cert
-from . import personal_income_tax
 
 # Account move and payment models (extends withholding models)
 from . import account_move

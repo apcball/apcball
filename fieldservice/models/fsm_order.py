@@ -38,9 +38,6 @@ class FSMOrder(models.Model):
             return team
         raise ValidationError(_("You must create an FSM team first."))
 
-    def _default_request_early(self):
-        return fields.Datetime.now().replace(second=0)
-
     @api.depends("date_start", "date_end")
     def _compute_duration(self):
         for rec in self:
@@ -115,10 +112,9 @@ class FSMOrder(models.Model):
     location_id = fields.Many2one(
         "fsm.location", string="Location", index=True, required=True
     )
-    location_directions = fields.Html()
+    location_directions = fields.Char()
     request_early = fields.Datetime(
-        string="Earliest Request Date",
-        default=lambda self: self._default_request_early(),
+        string="Earliest Request Date", default=datetime.now()
     )
     color = fields.Integer("Color Index")
     company_id = fields.Many2one(
@@ -180,7 +176,7 @@ class FSMOrder(models.Model):
     scheduled_duration = fields.Float(help="Scheduled duration of the work in" " hours")
     scheduled_date_end = fields.Datetime(string="Scheduled End")
     sequence = fields.Integer(default=10)
-    todo = fields.Html(string="Instructions")
+    todo = fields.Text(string="Instructions")
 
     # Execution
     resolution = fields.Text()
@@ -321,7 +317,7 @@ class FSMOrder(models.Model):
                     self.scheduled_date_start != vals.get("scheduled_date_start", False)
                 )
             ):
-                hours = vals.get("scheduled_duration", self.scheduled_duration)
+                hours = vals.get("scheduled_duration", False)
                 start_date_val = vals.get(
                     "scheduled_date_start", self.scheduled_date_start
                 )
@@ -350,7 +346,7 @@ class FSMOrder(models.Model):
             date_to_with_delta = fields.Datetime.from_string(
                 self.scheduled_date_end
             ) - timedelta(hours=self.scheduled_duration)
-            self.scheduled_date_start = str(date_to_with_delta)
+            self.date_start = str(date_to_with_delta)
 
     @api.onchange("scheduled_date_start", "scheduled_duration")
     def onchange_scheduled_duration(self):
@@ -418,7 +414,6 @@ class FSMOrder(models.Model):
                 [
                     ("date_from", ">=", rec.scheduled_date_start),
                     ("date_to", "<=", rec.scheduled_date_end),
-                    ("resource_id", "=", False),
                 ]
             )
             if holidays:

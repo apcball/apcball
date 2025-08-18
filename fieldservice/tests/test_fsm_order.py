@@ -1,40 +1,40 @@
 # Copyright (C) 2019 - TODAY, Open Source Integrators
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
-from datetime import timedelta
 
-from freezegun import freeze_time
+from datetime import timedelta
 
 from odoo import fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import Form, TransactionCase
 
 
-class TestFSMOrderBase(TransactionCase):
-    def setUp(self):
-        super().setUp()
-        self.Order = self.env["fsm.order"]
-        self.test_location = self.env.ref("fieldservice.test_location")
-        self.stage1 = self.env.ref("fieldservice.fsm_stage_completed")
-        self.stage2 = self.env.ref("fieldservice.fsm_stage_cancelled")
-        self.init_values = {
-            "stage_id": self.env.ref("fieldservice.fsm_stage_completed").id
+class TestFSMOrder(TransactionCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Order = cls.env["fsm.order"]
+        cls.test_location = cls.env.ref("fieldservice.test_location")
+        cls.stage1 = cls.env.ref("fieldservice.fsm_stage_completed")
+        cls.stage2 = cls.env.ref("fieldservice.fsm_stage_cancelled")
+        cls.init_values = {
+            "stage_id": cls.env.ref("fieldservice.fsm_stage_completed").id
         }
-        self.init_values_2 = {
-            "stage_id": self.env.ref("fieldservice.fsm_stage_cancelled").id
+        cls.init_values_2 = {
+            "stage_id": cls.env.ref("fieldservice.fsm_stage_cancelled").id
         }
         today = fields.Datetime.today()
         start_date = today + timedelta(days=1)
         date_end = start_date.replace(hour=23, minute=59, second=59)
-        self.location_1 = self.env.ref("fieldservice.location_1")
-        self.p_leave = self.env["resource.calendar.leaves"].create(
+        cls.location_1 = cls.env.ref("fieldservice.location_1")
+        cls.p_leave = cls.env["resource.calendar.leaves"].create(
             {
                 "date_from": start_date,
                 "date_to": date_end,
             }
         )
-        self.tag = self.env["fsm.tag"].create({"name": "Test Tag"})
-        self.tag1 = self.env["fsm.tag"].create(
-            {"name": "Test Tag1", "parent_id": self.tag.id}
+        cls.tag = cls.env["fsm.tag"].create({"name": "Test Tag"})
+        cls.tag1 = cls.env["fsm.tag"].create(
+            {"name": "Test Tag1", "parent_id": cls.tag.id}
         )
 
     def test_fsm_order_default_stage(self):
@@ -115,9 +115,6 @@ class TestFSMOrderBase(TransactionCase):
             )
             self.assertRegex(str(res[0]), order.name)
 
-
-class TestFSMOrder(TestFSMOrderBase):
-    @freeze_time("2023-02-01")
     def test_fsm_order(self):
         """Test creating new workorders, and test following functions,
         - _compute_duration() in hrs
@@ -193,7 +190,7 @@ class TestFSMOrder(TestFSMOrderBase):
                 order_test.request_late, order.request_early + timedelta(days=late_days)
             )
         # Test scheduled_date_start is not automatically set
-        self.assertFalse(order.scheduled_date_start)
+        self.assertEqual(order.scheduled_date_start, False)
         # Test scheduled_date_end = scheduled_date_start + duration (hrs)
         # Set date start
         order.scheduled_date_start = fields.Datetime.now().replace(
@@ -206,7 +203,8 @@ class TestFSMOrder(TestFSMOrderBase):
         order.onchange_scheduled_duration()
         # Check date end
         self.assertEqual(
-            order.scheduled_date_end, fields.Datetime.from_string("2023-02-01 10:00:00")
+            order.scheduled_date_end,
+            order.scheduled_date_start + timedelta(hours=duration),
         )
         # Set new date end
         order.scheduled_date_end = order.scheduled_date_end.replace(
@@ -216,7 +214,7 @@ class TestFSMOrder(TestFSMOrderBase):
         # Check date start
         self.assertEqual(
             order.scheduled_date_start,
-            fields.Datetime.from_string("2023-01-31 15:01:00"),
+            order.scheduled_date_end - timedelta(hours=duration),
         )
         view_id = "fieldservice.fsm_location_form_view"
         with Form(self.env["fsm.location"], view=view_id) as f:
@@ -246,7 +244,7 @@ class TestFSMOrder(TestFSMOrderBase):
         order.copy_notes()
         order.type = False
         order.equipment_id = equipment.id
-        order.copy_notes()
+        order.onchange_equipment_ids()
         order.type = False
         order.description = False
         self.location_1.direction = "Test Direction"

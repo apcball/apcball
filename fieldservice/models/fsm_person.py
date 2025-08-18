@@ -51,9 +51,8 @@ class FSMPerson(models.Model):
             access_rights_uid=access_rights_uid,
         )
         # Check for args first having location_ids as default filter
-        preferred_workers_list = None
         for arg in args:
-            if isinstance(arg, list):
+            if isinstance(args, (list)):
                 if arg[0] == "location_ids":
                     # If given int search ID, else search name
                     if isinstance(arg[2], int):
@@ -63,9 +62,6 @@ class FSMPerson(models.Model):
                             "WHERE location_id=%s",
                             (arg[2],),
                         )
-                        workers_ids = self.env.cr.fetchall()
-                        if workers_ids:
-                            preferred_workers_list = [worker[0] for worker in workers_ids]
                     else:
                         arg_2 = "%" + arg[2] + "%"
                         self.env.cr.execute(
@@ -83,12 +79,8 @@ class FSMPerson(models.Model):
                                 "WHERE location_id in %s",
                                 [tuple(location_ids)],
                             )
-                            workers_ids = self.env.cr.fetchall()
-                            if workers_ids:
-                                preferred_workers_list = [worker[0] for worker in workers_ids]
-        if preferred_workers_list is not None:
-            # Only keep IDs that are in both res and preferred_workers_list
-            res = [rid for rid in res if rid in preferred_workers_list]
+                    workers_ids = self.env.cr.fetchall()
+                    return self.browse(workers_ids)._as_query()
         return res
 
     @api.model_create_multi

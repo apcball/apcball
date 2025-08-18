@@ -11,7 +11,7 @@
                     name="action_view_delivery"
                     class="oe_stat_button"
                     icon="fa-truck"
-                    invisible="1"
+                    invisible="delivery_count == 0"
                     groups="base.group_user"
                 >
                     <field
@@ -25,7 +25,7 @@
                     name="action_view_returns"
                     class="oe_stat_button"
                     icon="fa-truck"
-                    invisible="1"
+                    invisible="return_count == 0"
                     groups="base.group_user"
                 >
                     <field name="return_count" widget="statinfo" string="Returns" />
@@ -42,12 +42,9 @@
                         </group>
                         <group id="stock-right" />
                     </group>
-                    <field
-                        name="move_ids"
-                        readonly="1"
-                        invisible="1"
-                    >
+                    <field name="move_ids" readonly="1" invisible="move_ids == False">
                         <tree
+                            decoration-muted="state == 'cancel'"
                             default_order='date, picking_id, sequence'
                         >
                             <field name="reference" />
@@ -57,7 +54,17 @@
                             <field name="origin" />
                             <field name="product_id" />
                             <field name="product_uom_qty" string="Requested Quantity" />
-                            <field name="state" invisible="1" />
+                            <field name="quantity" string="Quantity" />
+                            <field
+                                name="product_uom"
+                                options="{'no_open': True, 'no_create': True}"
+                                string="Unit of Measure"
+                                groups="uom.group_uom"
+                            />
+                            <field name="location_id" invisible="1" />
+                            <field name="location_dest_id" invisible="1" />
+                            <field name="create_date" invisible="1" />
+                            <field name="state" />
                         </tree>
                     </field>
                 </page>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Direct inheritance for invoice line tree view -->
+    <record id="view_invoice_line_tree_wht_direct" model="ir.ui.view">
+        <field name="name">account.move.line.invoice.tree.wht</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_tree"/>
+        <field name="arch" type="xml">
+            <field name="tax_ids" position="after">
+                <field name="wht_tax_id" string="WHT" optional="show"/>
+                <field name="wht_invoice_amount" string="WHT Amount" optional="hide" readonly="1"/>
+            </field>
+        </field>
+    </record>
+    
+    <!-- Force show WHT fields in invoice form -->
+    <record id="view_invoice_form_wht_direct" model="ir.ui.view">
+        <field name="name">account.move.invoice.form.wht</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Add to invoice header for visibility -->
+            <field name="partner_id" position="after">
+                <field name="invoice_wht_total_base" string="Total WHT Base" readonly="1" 
+                       invisible="move_type not in ('in_invoice', 'in_refund', 'out_invoice', 'out_refund') or not invoice_wht_total_tax"/>
+                <field name="invoice_wht_total_tax" string="Total WHT Tax" readonly="1" 
+                       invisible="move_type not in ('in_invoice', 'in_refund', 'out_invoice', 'out_refund') or not invoice_wht_total_tax"/>
+            </field>
+        </field>
+    </record>
+    
+</odoo>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_transit_transfer_wizard_form_plus" model="ir.ui.view">
+    <field name="name">transit.transfer.wizard.form.plus</field>
+    <field name="model">transit.transfer.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Create Transfer from Transit / No Valuation Location">
+        <group>
+          <field name="picking_id" readonly="1"/>
+          <field name="purchase_order_ref" readonly="1"/>
+          <field name="source_location_id" readonly="1"/>
+          <field name="dest_location_id" options="{'no_create': False}"/>
+          <field name="picking_type_id"/>
+          <field name="auto_validate"/>
+          <field name="create_landed_cost"/>
+          <field name="force_valuation"/>
+        </group>
+        <notebook>
+          <page string="Products to Transfer">
+            <field name="line_ids">
+              <tree editable="bottom">
+                <field name="product_id"/>
+                <field name="product_uom_qty"/>
+                <field name="product_uom_id"/>
+                <field name="price_unit"/>
+              </tree>
+            </field>
+          </page>
+        </notebook>
+        <footer>
+          <button string="Create" type="object" name="action_create_transfer" class="btn-primary"/>
+          <button string="Cancel" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>

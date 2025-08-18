@@ -31,6 +31,8 @@
         "views/account_view.xml",
         "views/account_tax_view.xml",
         "views/account_move_view.xml",
+        "views/account_move_line_wht_view.xml",  # New WHT fields for invoice lines
+        # "views/wht_fields_direct.xml",  # Temporarily disabled - duplicate with account_move_line_wht_view.xml
         "views/withholding_tax_cert.xml",
         "views/account_withholding_tax.xml",
         "views/withholding_tax_code_income.xml",

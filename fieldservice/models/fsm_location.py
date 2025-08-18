@@ -11,8 +11,9 @@ class FSMLocation(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin", "fsm.model.mixin"]
     _description = "Field Service Location"
     _stage_type = "location"
+    _rec_names_search = ["complete_name"]
 
-    direction = fields.Html()
+    direction = fields.Char()
     partner_id = fields.Many2one(
         "res.partner",
         string="Related Partner",
@@ -54,7 +55,7 @@ class FSMLocation(models.Model):
 
     calendar_id = fields.Many2one("resource.calendar", string="Office Hours")
     fsm_parent_id = fields.Many2one("fsm.location", string="Parent", index=True)
-    notes = fields.Html(string="Location Notes")
+    notes = fields.Text(string="Location Notes")
     person_ids = fields.One2many("fsm.location.person", "location_id", string="Workers")
     contact_count = fields.Integer(
         string="Contacts Count", compute="_compute_contact_ids"
@@ -70,15 +71,10 @@ class FSMLocation(models.Model):
     )
 
     @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            # By default, create inherited partner as typed child of the location owner.
-            vals.update({"fsm_location": True, "type": "fsm_location"})
-            if not vals.get("partner_id"):  # Don't change parent of existing partners.
-                vals["parent_id"] = vals.get("owner_id")
-        return super(FSMLocation, self.with_context(creating_fsm_location=True)).create(
-            vals_list
-        )
+    def create(self, vals):
+        res = super().create(vals)
+        res.write({"fsm_location": True})
+        return res
 
     @api.depends("partner_id.name", "fsm_parent_id.complete_name", "ref")
     def _compute_complete_name(self):
@@ -94,24 +90,9 @@ class FSMLocation(models.Model):
                     )
             else:
                 if loc.ref:
-                    loc.complete_name = "[{}] {}".format(loc.ref, loc.partner_id.name)
+                    loc.complete_name = f"[{loc.ref}] {loc.partner_id.name}"
                 else:
                     loc.complete_name = loc.partner_id.name
-
-    def name_get(self):
-        return [(rec.id, rec.complete_name) for rec in self]
-
-    @api.model
-    def name_search(self, name, args=None, operator="ilike", limit=100):
-        args = args or []
-        recs = self.browse()
-        if name:
-            recs = self.search([("ref", "ilike", name)] + args, limit=limit)
-        if not recs and self.env.company.search_on_complete_name:
-            recs = self.search([("complete_name", operator, name)] + args, limit=limit)
-        if not recs and not self.env.company.search_on_complete_name:
-            recs = self.search([("name", operator, name)] + args, limit=limit)
-        return recs.name_get()
 
     @api.onchange("fsm_parent_id")
     def _onchange_fsm_parent_id(self):

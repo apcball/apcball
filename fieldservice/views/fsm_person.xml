@@ -74,7 +74,11 @@
                     />
                     <div
                         class="alert alert-info text-center o_form_header"
-                        invisible="(active and active_partner) or (not active and not active_partner) or (active and not active_partner)"
+                        invisible="
+                            (active and active_partner) or
+                            (not active and not active_partner) or
+                            (active and not active_partner)
+                        "
                         role="alert"
                     >
                         <a class="close" data-dismiss="alert" href="#">x</a>
@@ -82,7 +86,7 @@
                         <strong>The contact linked to this user is still active</strong>
                         </div>
                         <div>You can archive the contact
-                        <field name="partner_id" required="0" readonly="0" />
+                        <field name="partner_id" required="0" readonly="1" />
                         </div>
                     </div>
                     <label for="name" class="oe_edit_only" />

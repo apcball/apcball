@@ -44,35 +44,11 @@
         action="action_my_hr_advance_sheet"
         name="Advances"
     />
-    <!-- Simple action for clearing sheets that works with Odoo 17 -->
-    <record id="action_hr_expense_sheet_clearing" model="ir.actions.act_window">
-        <field name="name">Clearing Sheets</field>
-        <field name="res_model">hr.expense.sheet</field>
-        <field name="view_mode">tree,form</field>
-        <field name="domain">[('advance_sheet_id', '!=', False)]</field>
-        <field name="context">{'default_advance': False}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">No clearing sheets found</p>
-            <p>
-                Clearing sheets are used to clear employee advances.
-            </p>
-        </field>
-    </record>
-    
-    <menuitem
-        id="menu_clearing_sheets"
-        sequence="4"
-        parent="hr_expense.menu_hr_expense_sheet_my_reports"
-        action="action_hr_expense_sheet_clearing"
-        name="Clearing Sheets"
-    />
     <menuitem
         id="menu_my_hr_expense_sheet"
         sequence="2"
         parent="hr_expense.menu_hr_expense_sheet_my_reports"
         action="action_my_hr_expense_sheet"
-        name="Expenses"
-    />
         name="Expenses"
     />
 
@@ -124,37 +100,18 @@
     <record id="action_hr_expense_sheet_advance_clearing" model="ir.actions.act_window">
         <field name="name">Advance Clearing</field>
         <field name="res_model">hr.expense.sheet</field>
-        <field name="view_mode">tree,form</field>
-        <field name="search_view_id" ref="hr_expense.hr_expense_sheet_view_search" />
+        <field name="view_mode">form</field>
+        <field name="search_view_id" ref="hr_expense_sheet_view_search" />
         <field name="domain">
-            [('employee_id.user_id', '=', uid), ('state', '!=', 'cancel'), ('advance', '=', False)]
+            [('employee_id.user_id', '=', uid), ('state', '!=', 'cancel')]
         </field>
-        <field name="context">{'search_default_my_reports': 1, 'default_advance': False}</field>
-        <field name="target">current</field>
+        <field name="context">{'search_default_my_reports': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Create a new clearing sheet</p>
+            <p class="o_view_nocontent_smiling_face">Create a new expense report</p>
             <p>
-                Create a clearing sheet to clear advances. Select an advance to clear and add your expense lines.
+                Once you have created your expense, submit it to your manager who will
+                validate it.
             </p>
-        </field>
-    </record>
-
-    <!-- Add search view for hr.expense.sheet with advance filtering -->
-    <record id="hr_expense_sheet_view_search" model="ir.ui.view">
-        <field name="name">hr.expense.sheet.view.search</field>
-        <field name="model">hr.expense.sheet</field>
-        <field name="inherit_id" ref="hr_expense.hr_expense_sheet_view_search" />
-        <field name="arch" type="xml">
-            <filter name="my_reports" position="after">
-                <filter name="advance_sheets" string="Advance Sheets" domain="[('advance', '=', True)]"/>
-                <filter name="clearing_sheets" string="Clearing Sheets" domain="[('advance', '=', False), ('advance_sheet_id', '!=', False)]"/>
-                <filter name="expense_sheets" string="Regular Expenses" domain="[('advance', '=', False), ('advance_sheet_id', '=', False)]"/>
-                <separator/>
-            </filter>
-            <field name="name" position="after">
-                <field name="advance"/>
-                <field name="advance_sheet_id"/>
-            </field>
         </field>
     </record>
     <record id="hr_expense_view_form" model="ir.ui.view">
@@ -172,18 +129,18 @@
                 <label for="advance" invisible="not context.get('default_advance')" />
             </h1>
             <field name="product_id" position="attributes">
-                <attribute name="readonly">advance == True</attribute>
+                <attribute name="readonly">not is_editable or advance</attribute>
                 <attribute name="force_save">1</attribute>
             </field>
             <field name="product_id" position="after">
                 <field
                     name="clearing_product_id"
-                    invisible="advance == False"
+                    invisible="not advance"
                     placeholder="Optional clearing product is used during clear advance"
                 />
             </field>
             <field name="analytic_distribution" position="attributes">
-                <attribute name="invisible">advance != False</attribute>
+                <attribute name="invisible">advance</attribute>
             </field>
         </field>
     </record>
@@ -211,13 +168,13 @@
                     type="object"
                     string="Clear Advance"
                     class="oe_highlight"
-                    invisible="advance == False or state != 'done' or clearing_residual == 0.0"
+                    invisible="not advance or state != 'done' or clearing_residual == 0.0"
                 />
                 <button
                     name="action_register_payment"
                     type="object"
                     string="Return Advance"
-                    invisible="advance == False or state != 'done' or clearing_residual == 0.0"
+                    invisible="not advance or state != 'done' or clearing_residual == 0.0"
                     context="{'hr_return_advance': True}"
                     groups="account.group_account_user"
                 />
@@ -225,29 +182,25 @@
             <h1 position="after">
                 <field
                     name="advance"
-                    invisible="advance == False"
+                    invisible="not advance"
                     readonly="1"
                     force_save="1"
                 />
-                <label for="advance" invisible="advance == False" />
+                <label for="advance" invisible="not advance" />
             </h1>
             <xpath expr="/form/sheet/group/group" position="after">
                 <group>
                     <field name="id" invisible="1" />
                     <field
                         name="advance_sheet_id"
-                        invisible="advance == True"
-                        readonly="state not in ('draft', 'submit')"
+                        invisible="advance"
+                        readonly="state not in ['draft', 'submit', 'approve'] or id != False"
                         force_save="1"
-                        options="{'no_create': True, 'no_edit': True}"
                     />
-                    <field
-                        name="clearing_residual"
-                        invisible="advance == False"
-                    />
+                    <field name="clearing_residual" invisible="not advance" />
                     <field
                         name="advance_sheet_residual"
-                        invisible="advance_sheet_id == False"
+                        invisible="not advance_sheet_id"
                     />
                 </group>
             </xpath>
@@ -263,7 +216,7 @@
                 <field name="product_uom_category_id" invisible="1" />
                 <field
                     name="clearing_product_id"
-                    column_invisible="parent.advance == False"
+                    column_invisible="not parent.advance"
                 />
                 <field name="av_line_id" invisible="1" />
             </xpath>
@@ -271,7 +224,9 @@
                 <attribute
                     name="context"
                 >{'default_advance': advance, 'search_default_is_advance': advance, 'search_default_is_expense': not advance, 'form_view_ref' : 'hr_expense.hr_expense_view_form_without_header', 'default_company_id': company_id, 'default_employee_id': employee_id}</attribute>
-                <attribute name="readonly">state not in ('draft', 'submit') and advance_sheet_id</attribute>
+                <attribute
+                    name="readonly"
+                >not id and advance_sheet_id != False</attribute>
                 <attribute name="force_save">True</attribute>
             </xpath>
             <xpath
@@ -286,7 +241,7 @@
                     class="oe_stat_button"
                     icon="fa-file-text-o"
                     type="object"
-                    invisible="advance == False"
+                    invisible="not advance"
                 >
                     <field name="clearing_count" widget="statinfo" string="Clearings" />
                 </button>

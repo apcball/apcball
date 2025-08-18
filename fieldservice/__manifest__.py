@@ -1,9 +1,9 @@
 # Copyright (C) 2018 Open Source Integrators
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 {
-    "name": "buz Field Service",
+    "name": "Field Service",
     "summary": "Manage Field Service Locations, Workers and Orders",
-    "version": "17.0.1.13.0",
+    "version": "17.0.1.2.0",
     "license": "AGPL-3",
     "category": "Field Service",
     "author": "Open Source Integrators, Odoo Community Association (OCA)",
@@ -19,7 +19,6 @@
         "security/ir.model.access.csv",
         "security/ir_rule.xml",
         "report/fsm_order_report_template.xml",
-        "report/fsm_order_report_action.xml",
         "views/res_config_settings.xml",
         "views/res_territory.xml",
         "views/fsm_stage.xml",
@@ -45,7 +44,7 @@
     ],
     "application": True,
     "development_status": "Production/Stable",
-    "maintainers": ["wolfhall", "max3903"],
+    "maintainers": ["max3903", "brian10048"],
     "assets": {
         "web.assets_backend": [
             "fieldservice/static/src/scss/team_dashboard.scss",

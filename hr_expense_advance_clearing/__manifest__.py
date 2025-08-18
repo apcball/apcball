@@ -2,7 +2,7 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 {
-    "name": "buz Employee Advance and Clearing",
+    "name": "Employee Advance and Clearing",
     "version": "17.0.1.0.0",
     "category": "Human Resources",
     "author": "Ecosoft, Odoo Community Association (OCA)",
@@ -10,7 +10,6 @@
     "website": "https://github.com/OCA/hr-expense",
     "depends": ["hr_expense"],
     "data": [
-        "security/ir.model.access.csv",
         "data/advance_product.xml",
         "views/account_payment_view.xml",
         "views/hr_expense_views.xml",

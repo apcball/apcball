@@ -1,7 +1,7 @@
 # Copyright (C) 2018 - TODAY, Open Source Integrators
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from odoo import api, fields, models
+from odoo import fields, models
 
 
 class ResPartner(models.Model):
@@ -14,7 +14,7 @@ class ResPartner(models.Model):
         comodel_name="fsm.location",
         string="Related FS Location",
         inverse_name="partner_id",
-        readonly=1,
+        readonly=True,
     )
     service_location_id = fields.Many2one(
         "fsm.location", string="Primary Service Location"
@@ -52,22 +52,21 @@ class ResPartner(models.Model):
             return action
 
     def _convert_fsm_location(self):
-        """Build service location when adding child partner with type=fsm_location."""
-        if self.env.context.get("creating_fsm_location"):
-            return  # partner created by inheritance from fsm.location
-        for partner in self:
-            if partner.type == "fsm_location" and not partner.fsm_location_id:
-                self.env["fsm.wizard"].action_convert_location(partner)
+        wiz = self.env["fsm.wizard"]
+        partners_with_loc_ids = (
+            self.env["fsm.location"]
+            .sudo()
+            .search([("active", "in", [False, True]), ("partner_id", "in", self.ids)])
+            .mapped("partner_id")
+        ).ids
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        partners = super().create(vals_list)
-        if any(vals.get("type") == "fsm_location" for vals in vals_list):
-            partners._convert_fsm_location()
-        return partners
+        partners_to_convert = self.filtered(
+            lambda p: p.type == "fsm_location" and p.id not in partners_with_loc_ids
+        )
+        for partner_to_convert in partners_to_convert:
+            wiz.action_convert_location(partner_to_convert)
 
-    def write(self, vals):
-        res = super().write(vals)
-        if vals.get("type") == "fsm_location":
-            self._convert_fsm_location()
+    def write(self, value):
+        res = super().write(value)
+        self._convert_fsm_location()
         return res

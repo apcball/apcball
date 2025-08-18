@@ -18,12 +18,6 @@ class HrExpenseSheet(models.Model):
         string="Clear Advance",
         domain="[('advance', '=', True), ('employee_id', '=', employee_id),"
         " ('clearing_residual', '>', 0.0)]",
-        readonly=True,
-        states={
-            "draft": [("readonly", False)],
-            "submit": [("readonly", False)],
-            "approve": [("readonly", False)],
-        },
         help="Show remaining advance of this employee",
     )
     clearing_sheet_ids = fields.One2many(
@@ -64,25 +58,20 @@ class HrExpenseSheet(models.Model):
         if advance_lines and len(advance_lines) != len(self.expense_line_ids):
             raise ValidationError(_("Advance must contain only advance expense line"))
 
-    @api.depends("account_move_ids.payment_state")
-    def _compute_payment_state(self):
+    @api.depends("account_move_ids.payment_state", "account_move_ids.amount_residual")
+    def _compute_from_account_move_ids(self):
         """After clear advance.
         if amount residual is zero, payment state will change to 'paid'
         """
-        super()._compute_payment_state()
+        res = super()._compute_from_account_move_ids()
         for sheet in self:
             if (
                 sheet.advance_sheet_id
-                and sheet.account_move_ids
-                and sheet.account_move_ids[:1].state == "posted"
-                and sheet.state in ("post", "done")
+                and sheet.account_move_ids.state == "posted"
+                and not sheet.amount_residual
             ):
-                # Check if all move lines are reconciled
-                move_lines = sheet.account_move_ids.line_ids.filtered(
-                    lambda l: l.account_id.account_type == 'liability_payable'
-                )
-                if all(line.reconciled for line in move_lines):
-                    sheet.payment_state = "paid"
+                sheet.payment_state = "paid"
+        return res
 
     def _get_product_advance(self):
         return self.env.ref("hr_expense_advance_clearing.product_emp_advance", False)
@@ -93,11 +82,8 @@ class HrExpenseSheet(models.Model):
             emp_advance = sheet._get_product_advance()
             residual_company = 0.0
             if emp_advance:
-                property_account_expense_id = emp_advance.with_company(
-                    sheet.company_id
-                ).property_account_expense_id
                 for line in sheet.sudo().account_move_ids.line_ids:
-                    if line.account_id == property_account_expense_id:
+                    if line.account_id == emp_advance.property_account_expense_id:
                         residual_company += line.amount_residual
             sheet.clearing_residual = residual_company
 
@@ -150,12 +136,12 @@ class HrExpenseSheet(models.Model):
                 )
             # Update amount residual and state when advance residual < total amount
             else:
-                # Calculate remaining amount to pay
-                remaining_amount = sheet.total_amount - amount_residual_bf_reconcile
                 sheet.write(
                     {
                         "state": "post",
                         "payment_state": "not_paid",
+                        "amount_residual": sheet.total_amount
+                        - amount_residual_bf_reconcile,
                     }
                 )
         return res
@@ -172,14 +158,12 @@ class HrExpenseSheet(models.Model):
             )
             total_amount = 0.0
             total_amount_currency = 0.0
-            partner_id = (
-                expense.employee_id.sudo().address_home_id.commercial_partner_id.id
-            )
+            partner_id = expense.employee_id.sudo().work_contact_id.id
             # source move line
             move_line_src = expense._get_move_line_src(move_line_name, partner_id)
             move_line_values = [move_line_src]
-            total_amount -= expense.total_amount_company
-            total_amount_currency -= expense.total_amount
+            total_amount -= expense.total_amount
+            total_amount_currency -= expense.total_amount_currency
 
             # destination move line
             move_line_dst = expense._get_move_line_dst(
@@ -213,7 +197,7 @@ class HrExpenseSheet(models.Model):
                 payable_move_line["amount_currency"] = -remain_payable
                 payable_move_line[
                     "account_id"
-                ] = expense._get_expense_account_destination()
+                ] = expense.sheet_id._get_expense_account_destination()
             else:
                 advance_to_clear -= credit
             # Add destination first (if credit is not zero)
@@ -224,10 +208,10 @@ class HrExpenseSheet(models.Model):
             move_line_vals.extend(move_line_values)
         return move_line_vals
 
-    def _prepare_bill_vals(self):
+    def _prepare_bills_vals(self):
         """create journal entry instead of bills when clearing document"""
         self.ensure_one()
-        res = super()._prepare_bill_vals()
+        res = super()._prepare_bills_vals()
         if self.advance_sheet_id and self.payment_mode == "own_account":
             if (
                 self.advance_sheet_residual <= 0.0
@@ -257,62 +241,56 @@ class HrExpenseSheet(models.Model):
     def get_domain_advance_sheet_expense_line(self):
         return self.advance_sheet_id.expense_line_ids.filtered("clearing_product_id")
 
+    def create_clearing_expense_line(self, line):
+        clear_advance = self._prepare_clear_advance(line)
+        clearing_line = self.env["hr.expense"].new(clear_advance)
+        return clearing_line
+
     @api.onchange("advance_sheet_id")
     def _onchange_advance_sheet_id(self):
-        # Clear existing auto-generated lines
-        if hasattr(self, '_origin') and self._origin.id:
-            # For existing records, remove only auto-generated lines
-            self.expense_line_ids = [(6, 0, [
-                line.id for line in self.expense_line_ids 
-                if not line.av_line_id
-            ])]
-        else:
-            # For new records, clear all lines that reference advance lines
-            self.expense_line_ids = [(5, 0, 0)]  # Clear all
-        
-        if self.advance_sheet_id:
-            # Get advance lines that have clearing products
-            advance_lines = self.advance_sheet_id.expense_line_ids.filtered('clearing_product_id')
-            
-            # Create clearing lines
-            expense_lines = []
-            for line in advance_lines:
-                clearing_vals = self._prepare_clear_advance(line)
-                expense_lines.append((0, 0, clearing_vals))
-            
-            if expense_lines:
-                self.expense_line_ids = expense_lines
+        self.expense_line_ids -= self.expense_line_ids.filtered("av_line_id")
+        self.advance_sheet_id.expense_line_ids.sudo().read()  # prefetch
+        lines = self.get_domain_advance_sheet_expense_line()
+        for line in lines:
+            self.expense_line_ids += self.create_clearing_expense_line(line)
 
     def _prepare_clear_advance(self, line):
-        # Prepare the clearing expense based on advance line
-        vals = {
-            'advance': False,
-            'name': line.clearing_product_id.display_name or line.name,
-            'product_id': line.clearing_product_id.id if line.clearing_product_id else line.product_id.id,
-            'clearing_product_id': False,
-            'date': fields.Date.context_today(self),
-            'employee_id': self.employee_id.id,
-            'company_id': self.company_id.id,
-            'currency_id': line.currency_id.id,
-            'av_line_id': line.id,
-            'unit_amount': line.unit_amount,
-            'quantity': line.quantity,
-            'total_amount': line.total_amount,
-            'payment_mode': line.payment_mode,
+        # Prepare the clearing expense
+        clear_line_dict = {
+            "advance": False,
+            "name": line.clearing_product_id.display_name,
+            "product_id": line.clearing_product_id.id,
+            "clearing_product_id": False,
+            "date": fields.Date.context_today(self),
+            "account_id": False,
+            "state": "draft",
+            "product_uom_id": False,
+            "av_line_id": line.id,
         }
-        
-        # Set account based on product
-        if line.clearing_product_id:
-            product = line.clearing_product_id
-        else:
-            product = line.product_id
-            
-        if product:
-            account = product._get_product_accounts()['expense']
-            if account:
-                vals['account_id'] = account.id
-        
-        return vals
+        clear_line = self.env["hr.expense"].new(clear_line_dict)
+        clear_line._compute_account_id()  # Set some vals
+        # Prepare the original advance line
+        adv_dict = line._convert_to_write(line._cache)
+        # remove no update columns
+        _fields = line._fields
+        del_cols = [k for k in _fields.keys() if _fields[k].type == "one2many"]
+        del_cols += list(self.env["mail.thread"]._fields.keys())
+        del_cols += list(self.env["mail.activity.mixin"]._fields.keys())
+        del_cols += list(clear_line_dict.keys())
+        del_cols = list(set(del_cols))
+        adv_dict = {k: v for k, v in adv_dict.items() if k not in del_cols}
+        # Assign the known value from original advance line
+        clear_line.update(adv_dict)
+        clearing_dict = clear_line._convert_to_write(clear_line._cache)
+        # Convert list of int to [(6, 0, list)]
+        clearing_dict = {
+            k: isinstance(v, list)
+            and all(isinstance(x, int) for x in v)
+            and [(6, 0, v)]
+            or v
+            for k, v in clearing_dict.items()
+        }
+        return clearing_dict
 
     def action_open_clearings(self):
         self.ensure_one()

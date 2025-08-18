@@ -237,14 +237,14 @@
                           <!-- แถว 4: ที่อยู่ -->
                           <div style="margin-bottom: -4px;">
                             <strong>ที่อยู่:</strong>
-                            <t t-esc="o.partner_id.contact_address or '-'"/>
+                            <t t-esc="(o.location_id and ((o.location_id.partner_id and o.location_id.partner_id.contact_address) or o.location_id.contact_address)) or '-'"/>
                           </div>
                       </div>
 
                       <!--  ส่วนขวา: 20% -->
                       <div style="width: 20%; text-align: right; padding-left: 0;margin-bottom: -4px;">
-                          <div style="margin-bottom: -4px;"><strong>เลขที่ใบรับประกัน:</strong> <t t-esc="o.warranty_number or '-'"/></div>
-                          <div style="margin-bottom: -4px;"><strong>วันที่แจ้ง:</strong> <t t-esc="o.date_notice"/></div>
+                          <div style="margin-bottom: -4px;"><strong>เลขที่ใบรับประกัน:</strong></div>
+                          <div style="margin-bottom: -4px;"><strong>วันที่แจ้ง:</strong></div>
                           <div style="margin-bottom: -4px;"><strong>วันที่เข้ารับบริการ:</strong> -</div>
                       </div>
 

@@ -26,8 +26,8 @@
                     title="Create WHT Certificate (only if none exists)"
                 />
                 <field name="wht_cert_ids" invisible="1" />
-                <field name="total_withholding_base" invisible="1" />
-                <field name="total_withholding_tax" invisible="1" />
+                <field name="invoice_wht_total_base" invisible="1" />
+                <field name="invoice_wht_total_tax" invisible="1" />
             </div>
             <xpath expr="//header[last()]" position="after">
                 <field name="wht_cert_status" invisible="1" />
