@@ -57,12 +57,16 @@ class FSMOrder(models.Model):
     def _track_subtype(self, init_values):
         self.ensure_one()
         if "stage_id" in init_values:
-            if self.stage_id.id == self.env.ref("fieldservice.fsm_stage_completed").id:
-                return self.env.ref("fieldservice.mt_order_completed")
-            elif (
-                self.stage_id.id == self.env.ref("fieldservice.fsm_stage_cancelled").id
-            ):
-                return self.env.ref("fieldservice.mt_order_cancelled")
+            completed_ref = self.env.ref(
+                "fieldservice.fsm_stage_completed", raise_if_not_found=False
+            )
+            cancelled_ref = self.env.ref(
+                "fieldservice.fsm_stage_cancelled", raise_if_not_found=False
+            )
+            if completed_ref and self.stage_id.id == completed_ref.id:
+                return self.env.ref("fieldservice.mt_order_completed", raise_if_not_found=False)
+            elif cancelled_ref and self.stage_id.id == cancelled_ref.id:
+                return self.env.ref("fieldservice.mt_order_cancelled", raise_if_not_found=False)
         return super()._track_subtype(init_values)
 
     stage_id = fields.Many2one(
@@ -263,8 +267,12 @@ class FSMOrder(models.Model):
             vals["is_button"] = False
         else:
             stage_id = self.env["fsm.stage"].browse(vals.get("stage_id"))
-            if stage_id == self.env.ref("fieldservice.fsm_stage_completed"):
-                raise UserError(_("Cannot move to completed from Kanban"))
+            # Allow changing to Completed stage from Kanban and other flows.
+            # Previously this raised a UserError to block Kanban moves.
+            # Keep a defensive lookup for the completed stage but do not block the write.
+            completed_ref = self.env.ref(
+                "fieldservice.fsm_stage_completed", raise_if_not_found=False
+            )
         self._calc_scheduled_dates(vals)
         res = super().write(vals)
         return res
@@ -328,12 +336,12 @@ class FSMOrder(models.Model):
             vals["scheduled_date_end"] = False
 
     def action_complete(self):
-        return self.write(
-            {
-                "stage_id": self.env.ref("fieldservice.fsm_stage_completed").id,
-                "is_button": True,
-            }
+        completed_ref = self.env.ref(
+            "fieldservice.fsm_stage_completed", raise_if_not_found=False
         )
+        if not completed_ref:
+            raise UserError(_("FSM 'Completed' stage not found. Please install or update the fieldservice module."))
+        return self.write({"stage_id": completed_ref.id, "is_button": True})
 
     def action_cancel(self):
         return self.write(

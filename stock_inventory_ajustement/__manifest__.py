@@ -4,14 +4,14 @@
 # Copyright (c) 2022  - feddad.imad@gmail.com
 
 {
-    "name": "buz Stock Inventory Adjustment",
+    "name": "Stock Inventory Adjustment",
     "version": "17.0.0.0.0",
     "license": "LGPL-3",
     "category": "Inventory/Inventory",
     "summary": "Allows to do an easier follow up of the Inventory Adjustments",
     "author": "feddad.imad@gmail.com",
     "website": "",
-    "depends": ["stock","base","buz_inventory_delivery_report"],
+    "depends": ["stock","base"],
     "data": [
         "security/ir.model.access.csv",
         "security/security.xml",

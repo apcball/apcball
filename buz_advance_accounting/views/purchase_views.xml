@@ -6,6 +6,7 @@
         <field name="name">Advance Accruals</field>
         <field name="res_model">purchase.advance.accrual</field>
         <field name="view_mode">tree,form</field>
+    <field name="groups_id" eval="[(4, ref('buz_advance_accounting.group_advance_accounting'))]"/>
         <field name="context">{}</field>
     </record>
 

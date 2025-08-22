@@ -4,15 +4,15 @@
         <field name="model">stock.move.line</field>
         <field name="priority">1000</field>
         <field name="arch" type="xml">
-            <tree string="Stock Move Lines">
-                <field name="date" string="Date"/>
-                <field name="product_id" string="Product"/>
-                <field name="lot_id" string="Lot/Serial"/>
-                <field name="location_id" string="Source Location"/>
-                <field name="location_dest_id" string="Destination Location"/>
-                <field name="quantity" string="Quantity"/>
-                <field name="company_id" string="Company" optional="hide"/>
-                <field name="reference" string="Reference" optional="show"/>
+            <tree>
+                <field name="date" />
+                <field name="product_id" />
+                <field name="lot_id" />
+                <field name="location_id" />
+                <field name="location_dest_id" />
+                <field name="quantity" />
+                <field name="company_id" optional="hide" />
+                <field name="reference" optional="show" />
             </tree>
         </field>
     </record>

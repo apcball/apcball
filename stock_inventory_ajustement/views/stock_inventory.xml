@@ -9,7 +9,7 @@
                 <header>
                     <button 
                         name="action_start"
-                        string="Start Inventory"
+                        string="Démarer l'inventaire"
                         type="object"
                         class="oe_highlight"
                         invisible="state not in ('draft')"
@@ -41,13 +41,6 @@
                         class="oe_highlight"
                         invisible="state not in ('in_progress')"
                         string="Set to Done"
-                    />
-                    <button
-                        type="object"
-                        name="action_recompute_inventory"
-                        string="Recompute"
-                        class="btn-primary"
-                        attrs="{'invisible': [('state', '=', 'done'), ('state', '=', 'cancel')]}"
                     />
                     <field
                         name="state"
@@ -151,7 +144,7 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Inventory Lines">
+                        <page string="Ligne d'inventaire">
                             <field name="line_ids">
                                 <tree editable="bottom" decoration-danger="difference_qty != 0">
                                     <field name="product_id"/>

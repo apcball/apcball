@@ -51,7 +51,7 @@ class InventoryAdjustmentsGroup(models.Model):
     state = fields.Selection(
         [
             ("draft", "Draft"),
-            ('validation1', 'First Validation'),
+            ('validation1', 'Première Validation'),
             ("in_progress", "In Progress"),
             ("done", "Done"),
             ("cancel", "Cancelled"),
@@ -515,7 +515,7 @@ class InventoryAdjustmentsGroup(models.Model):
     def action_view_stock_moves(self):
         self.ensure_one()
         result = self.env["ir.actions.act_window"]._for_xml_id(
-            "stock_inventory_ajustement.action_view_stock_move_line_inventory_tree"
+            "stock_inventory.action_view_stock_move_line_inventory_tree"
         )
         result["domain"] = [("inventory_adjustment_id", "=", self.id)]
         result["context"] = {}
@@ -743,7 +743,7 @@ class InventoryAdjustmentsLine(models.Model):
     categ_id = fields.Many2one(related='product_id.categ_id', store=True)
 
     prod_lot_id = fields.Many2one(
-        'stock.lot', 'Lot/Serial Number', check_company=True,
+        'stock.lot', 'Lot/Numéro de série', check_company=True,
         domain="[('product_id','=',product_id), ('company_id', '=', company_id)]")
 
     partner_id = fields.Many2one('res.partner', 'Owner', check_company=True)
@@ -880,12 +880,3 @@ class InventoryAdjustmentsLine(models.Model):
         lines = self.search([('inventory_id', '=', self.env.context.get('default_inventory_id'))])
         line_ids = lines.filtered(lambda line: float_is_zero(line.difference_qty, line.product_id.uom_id.rounding) == result).ids
         return [('id', 'in', line_ids)]
-
-    def action_recompute_inventory(self):
-        """
-        Placeholder for recompute logic. Add your recompute code here.
-        """
-        for record in self:
-            # Example: log recompute action
-            _logger.info(f"Recompute triggered for inventory: {record.name}")
-        return True

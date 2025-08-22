@@ -59,9 +59,11 @@ class FSMOrder(models.Model):
     @api.onchange("person_id")
     def _onchange_person_id(self):
         # Autofill the worker default warehouse if has one
-        completed_stage = self.env.ref("fieldservice.fsm_stage_completed")
+        completed_stage = self.env.ref(
+            "fieldservice.fsm_stage_completed", raise_if_not_found=False
+        )
         for order in self:
-            if order.stage_id.id == completed_stage.id:
+            if completed_stage and order.stage_id.id == completed_stage.id:
                 continue
             if order.person_id and order.person_id.default_warehouse_id:
                 order.warehouse_id = order.person_id.default_warehouse_id

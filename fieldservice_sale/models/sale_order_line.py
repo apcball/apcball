@@ -41,10 +41,10 @@ class SaleOrderLine(models.Model):
         lines_by_fsm = self.filtered(
             lambda sol: sol.qty_delivered_method == "field_service"
         )
-        complete = self.env.ref("fieldservice.fsm_stage_completed")
+        complete = self.env.ref("fieldservice.fsm_stage_completed", raise_if_not_found=False)
         for line in lines_by_fsm:
             qty = 0
-            if line.fsm_order_id.stage_id == complete:
+            if complete and line.fsm_order_id.stage_id == complete:
                 qty = line.product_uom_qty
                 line.qty_delivered = qty
         return res
