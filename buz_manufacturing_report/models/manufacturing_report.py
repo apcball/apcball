@@ -10,14 +10,16 @@ class ManufacturingReport(models.Model):
     _description = 'Manufacturing Report'
     _order = 'id desc'
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _inherit = 'mrp.production' 
     department_id = fields.Many2one('hr.department', string='Department')
-    production_id = fields.Many2one('mrp.production', string='Production Order')
-    date_planned_finished = fields.Datetime(string='Planned End Date')
+    # Link to the production order (separate model, do not inherit mrp.production to avoid
+    # field duplication such as stock_request_ids from other modules)
+    production_id = fields.Many2one(
+        'mrp.production', string='Manufacturing Order', required=True
+    )
 
-    name = fields.Char(string='Name', required=True, copy=False, readonly=True,
-                       default=lambda self: _('New'))
-    production_id = fields.Many2one('mrp.production', string='Manufacturing Order', required=True)
+    name = fields.Char(
+        string='Name', required=True, copy=False, readonly=True, default=lambda self: _('New')
+    )
     product_id = fields.Many2one('product.product', string='Product', related='production_id.product_id', store=True)
     product_qty = fields.Float(string='Quantity', related='production_id.product_qty', store=True)
     product_uom_id = fields.Many2one('uom.uom', string='Unit of Measure', related='production_id.product_uom_id', store=True)
@@ -41,8 +43,7 @@ class ManufacturingReport(models.Model):
     move_finished_ids = fields.One2many('stock.move', string='Finished Products', related='production_id.move_finished_ids')
     report_date = fields.Date(string='Report Date', default=fields.Date.today, required=True)
     notes = fields.Text(string='Notes')
-    note = fields.Text(string='Notes')  # Add this line to define the note field
-    date_planned_finished = fields.Datetime(string='Planned End Date', store=True)
+    note = fields.Text(string='Notes')  # kept for compatibility
 
     
     @api.model_create_multi
