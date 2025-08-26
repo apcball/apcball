@@ -1,22 +1,16 @@
 # Copyright 2019 Ecosoft Co., Ltd (https://ecosoft.co.th)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
 
-from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+
+from odoo import fields, models
 
 
 class TaxReportWizard(models.TransientModel):
     _name = "tax.report.wizard"
+    _inherit = "account.tax.report.abstract.wizard"
     _description = "Wizard for Tax Report"
 
     # Search Criteria
-    company_id = fields.Many2one(
-        comodel_name="res.company",
-        default=lambda self: self.env.company,
-        string="Company",
-        required=True,
-        ondelete="cascade",
-    )
     tax_id = fields.Many2one(
         comodel_name="account.tax",
         string="Tax",
@@ -27,63 +21,40 @@ class TaxReportWizard(models.TransientModel):
             ("include_base_amount", "=", False),
         ],
     )
-    date_range_id = fields.Many2one(comodel_name="date.range", string="Period")
-    date_from = fields.Date(required=True)
-    date_to = fields.Date(required=True)
-    show_cancel = fields.Boolean(
-        string="Show Cancelled",
-        default=True,
-    )
 
-    @api.constrains("date_from", "date_to")
-    def check_date_from_to(self):
-        for rec in self:
-            if rec.date_from and rec.date_to and rec.date_from > rec.date_to:
-                raise UserError(_("Date From must not be after Date To"))
-
-    def button_export_html(self):
+    def _get_report_base_filename(self):
         self.ensure_one()
-        action = self.env.ref(
-            "l10n_th_account_tax_report.action_report_tax_report_html"
+        date_format = self.format_thai_date(
+            self.date_from, month_format="numeric", format_date="{year}{month}"
         )
-        vals = action.sudo().read()[0]
-        context1 = {"active_model": "report.tax.report"}
-        model = self.env["report.tax.report"]
-        report = model.create(self._prepare_tax_report())
-        context1["active_id"] = report.id
-        context1["active_ids"] = report.ids
-        vals["context"] = context1
-        return vals
+        return f"{self.tax_id.display_name}-{date_format}"
 
-    def button_export_pdf(self):
-        self.ensure_one()
-        report_type = "qweb-pdf"
-        return self._export(report_type)
+    def _get_period_be(self, date_start, date_end):
+        month = year = "-"
+        if date_start.strftime("%m-%Y") == date_end.strftime("%m-%Y"):
+            month = self.thai_month_name(date_end.month)
+            year = self.format_thai_date(date_end, format_date="{year}")
+        return [month, year]
 
-    def button_export_xlsx(self):
-        self.ensure_one()
-        report_type = "xlsx"
-        return self._export(report_type)
-
-    def _prepare_tax_report(self):
+    def _prepare_report_tax(self):
         self.ensure_one()
         return {
+            "wizard_id": self.id,
             "company_id": self.company_id.id,
-            "tax_id": self.tax_id.id,
-            "date_range_id": self.date_range_id and self.date_range_id.id or False,
             "date_from": self.date_from,
             "date_to": self.date_to,
+            "tax_id": self.tax_id.id,
             "show_cancel": self.show_cancel,
         }
 
-    def _export(self, report_type):
-        model = self.env["report.tax.report"]
-        report = model.create(self._prepare_tax_report())
-        return report.print_report(report_type)
-
-    @api.onchange("date_range_id")
-    def onchange_date_range_id(self):
-        """Handle date range change."""
-        if self.date_range_id:
-            self.date_from = self.date_range_id.date_start
-            self.date_to = self.date_range_id.date_end
+    def _get_report_name(self, report_type):
+        self.ensure_one()
+        data = self._prepare_report_tax()
+        if report_type == "xlsx":
+            report_name = "l10n_th_account_tax_report.report_thai_tax_xlsx"
+        else:
+            if self.company_id.tax_report_format == "rd":
+                report_name = "l10n_th_account_tax_report.report_rd_thai_tax"
+            else:
+                report_name = "l10n_th_account_tax_report.report_thai_tax"
+        return report_name, data

@@ -1,174 +1,153 @@
-# Copyright 2019 Ecosoft Co., Ltd (https://ecosoft.co.th)
-# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
-
-from dateutil.relativedelta import relativedelta
-
-from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+# Copyright 2025 Ecosoft Co., Ltd (https://ecosoft.co.th)
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 
-class TaxReportView(models.TransientModel):
-    _name = "tax.report.view"
-    _description = "Tax Report View"
-    _order = "id"
-
-    name = fields.Char()
-    company_id = fields.Many2one("res.company")
-    account_id = fields.Many2one("account.account")
-    partner_id = fields.Many2one("res.partner")
-    tax_base_amount = fields.Float()
-    tax_amount = fields.Float()
-    tax_date = fields.Date()
-    tax_invoice_number = fields.Char()
+from odoo import models
 
 
-class TaxReport(models.TransientModel):
-    _name = "report.tax.report"
-    _description = "Report Tax Report"
-
-    # Filters fields, used for data computation
-    company_id = fields.Many2one(comodel_name="res.company")
-    tax_id = fields.Many2one(comodel_name="account.tax")
-    date_range_id = fields.Many2one(comodel_name="date.range")
-    date_from = fields.Date()
-    date_to = fields.Date()
-    show_cancel = fields.Boolean(string="Show Cancelled")
-
-    # Data fields, used to browse report data
-    results = fields.Many2many(
-        comodel_name="tax.report.view",
-        compute="_compute_results",
-        help="Use compute fields, so there is nothing store in database",
-    )
+class ThaiTaxReport(models.AbstractModel):
+    _name = "report.l10n_th_account_tax_report.report_thai_tax"
+    _description = "Thai Tax Report"
 
     def _query_select_tax(self):
-        return """company_id, account_id, partner_id, tax_invoice_number,
-            tax_date, name, sum(tax_base_amount) tax_base_amount,
-            sum(tax_amount) tax_amount"""
+        return """
+            ROW_NUMBER() OVER (ORDER BY tax_date, tax_invoice_number) AS row_number,
+            company_id, account_id, partner_id, tax_invoice_number,
+            TO_CHAR(tax_date, 'DD/MM/YYYY') AS tax_date,
+            name, sum(tax_base_amount) tax_base_amount,
+            sum(tax_amount) tax_amount
+        """
 
     def _query_select_sub_tax(self):
         return """t.id, t.company_id, ml.account_id, t.partner_id,
-            case when ml.parent_state = 'posted' and t.reversing_id is null
-            then t.tax_invoice_number else
-            t.tax_invoice_number || ' (VOID)' end as tax_invoice_number,
-            t.tax_invoice_date as tax_date,
-            case when ml.parent_state = 'posted' and t.reversing_id is null
-            then t.tax_base_amount else 0.0 end as tax_base_amount,
-            case when ml.parent_state = 'posted' and t.reversing_id is null
-            then t.balance else 0.0 end as tax_amount,
-            case when m.ref is not null
-            then m.ref else ml.move_name end as name"""
+            CASE WHEN ml.parent_state = 'posted' AND t.reversing_id IS NULL
+                THEN t.tax_invoice_number
+            ELSE
+                t.tax_invoice_number || ' (VOID)'
+            END AS tax_invoice_number,
+            t.tax_invoice_date AS tax_date,
+            CASE WHEN ml.parent_state = 'posted' AND t.reversing_id IS NULL
+                THEN t.tax_base_amount
+            ELSE 0.0
+            END AS tax_base_amount,
+            CASE WHEN ml.parent_state = 'posted' AND t.reversing_id IS NULL
+                THEN t.balance
+            ELSE 0.0
+            END AS tax_amount,
+            CASE WHEN m.ref IS NOT NULL
+                THEN m.ref
+            ELSE ml.move_name
+            END AS name
+        """
 
-    def _compute_results(self):
-        self.ensure_one()
-        reverse_cancel = ""
-        if self.show_cancel:
-            condition = "in ('posted', 'cancel')"
-        else:
-            condition = "= 'posted'"
-            reverse_cancel = "and t.reversing_id is null"
-        domain_cancel = " ".join(["ml.parent_state", condition, reverse_cancel])
+    def _query_groupby_tax(self):
+        return "company_id, account_id, partner_id, tax_invoice_number, tax_date, name"
+
+    def _domain_where_clause_tax(self, show_cancel):
+        condition = "IN ('posted', 'cancel')" if show_cancel else "= 'posted'"
+        return " ".join(["ml.parent_state", condition])
+
+    def _get_tax_data(self, tax_id, date_from, date_to, show_cancel, company_id):
+        domain = self._domain_where_clause_tax(show_cancel)
         self._cr.execute(
-            """
-            select {}
-            from (
-                select {}
-                from account_move_tax_invoice t
-                join account_move_line ml on ml.id = t.move_line_id
-                join account_move m on m.id = ml.move_id
-                where {}
-                and t.tax_invoice_number is not null
-                and ml.account_id in (select distinct account_id
-                                        from account_tax_repartition_line
-                                        where account_id is not null
-                                        and tax_id = %s)
-                -- query condition with normal report date by report date
-                -- and late report date within range date end
-                and (
-                    (t.report_date >= %s and t.report_date <= %s)
-                    or (t.report_late_mo != '0' and EXTRACT(MONTH FROM t.report_date) <= %s
-                        and EXTRACT(YEAR FROM t.report_date) <= %s)
-                )
-                and ml.company_id = %s
-                and t.reversed_id is null
+            f"""
+            SELECT {self._query_select_tax()}
+            FROM (
+                SELECT {self._query_select_sub_tax()}
+                FROM account_move_tax_invoice t
+                JOIN account_move_line ml ON ml.id = t.move_line_id
+                JOIN account_move m ON m.id = ml.move_id
+                WHERE {domain}
+                    AND t.tax_invoice_number IS NOT NULL
+                    AND ml.account_id IN (
+                        SELECT account_id
+                        FROM account_tax_repartition_line
+                        WHERE account_id is not null AND tax_id = %s
+                        GROUP BY account_id
+                    )
+                    -- query condition with normal report date by report date
+                    -- and late report date within range date end
+                    AND (
+                        (t.report_date >= %s AND t.report_date <= %s)
+                        OR (
+                            t.report_late_mo != '0' AND
+                            EXTRACT(MONTH FROM t.report_date) <= %s AND
+                            EXTRACT(YEAR FROM t.report_date) <= %s AND
+                            EXTRACT(MONTH FROM t.report_date) >= %s AND
+                            EXTRACT(YEAR FROM t.report_date) >= %s
+                        )
+                    )
+                AND ml.company_id = %s
+                AND t.reversed_id is null
             ) a
-            group by company_id, account_id, partner_id,
-                tax_invoice_number, tax_date, name
-            order by tax_date, tax_invoice_number
-        """.format(
-                self._query_select_tax(), self._query_select_sub_tax(), domain_cancel
-            ),
+            GROUP BY {self._query_groupby_tax()}
+            ORDER BY tax_date, tax_invoice_number
+        """,
             (
-                self.tax_id.id,
-                self.date_from,
-                self.date_to,
-                self.date_to.month,
-                self.date_to.year,
-                self.company_id.id,
+                tax_id,
+                date_from,
+                date_to,
+                date_to.month,
+                date_to.year,
+                date_from.month,
+                date_from.year,
+                company_id,
             ),
         )
-        tax_report_results = self._cr.dictfetchall()
-        ReportLine = self.env["tax.report.view"]
-        self.results = False
-        for line in tax_report_results:
-            self.results += ReportLine.new(line)
+        tax_report_data = self._cr.dictfetchall()
+        return tax_report_data
 
-    def print_report(self, report_type="qweb-pdf"):
-        self.ensure_one()
-        action = False
-        if report_type == "xlsx":
-            action = self.env.ref("l10n_th_account_tax_report.action_tax_report_xlsx")
-        elif report_type == "qweb-pdf":
-            if self.company_id.tax_report_format == "rd":
-                action = self.env.ref(
-                    "l10n_th_account_tax_report.action_rd_tax_report_pdf"
-                )
-            else:
-                action = self.env.ref(
-                    "l10n_th_account_tax_report.action_tax_report_pdf"
-                )
-        if not action:
-            raise ValidationError(_("Invalid Reporting Data!"))
-        return action.report_action(self, config=False)
+    def _add_data_line(self, tax_report_data):
+        partner_model = self.env["res.partner"]
+        total_base = 0.0
+        total_tax = 0.0
+        for line in tax_report_data:
+            partner_id = partner_model.browse(line["partner_id"])
+            line.update(
+                {
+                    "partner_name": partner_id.display_name,
+                    "partner_vat": partner_id.vat,
+                    "partner_branch": partner_id.company_registry,
+                }
+            )
+            total_base += line["tax_base_amount"]
+            total_tax += line["tax_amount"]
+        return total_base, total_tax, tax_report_data
 
-    def _get_html(self):
-        result = {}
-        rcontext = {}
-        context = dict(self.env.context)
-        report = self.browse(context.get("active_id"))
-        if report:
-            rcontext["o"] = report
-            result["html"] = self.env.ref(
-                "l10n_th_account_tax_report.report_tax_report_html"
-            )._render(rcontext)
-        return result
+    def _get_report_values(self, docids, data):
+        docs = self.env["tax.report.wizard"].browse(docids)
+        data = docs._prepare_report_tax()
 
-    @api.model
-    def get_html(self, given_context=None):
-        return self.with_context(**given_context)._get_html()
+        company = self.env["res.company"].browse(data["company_id"])
+        date_from = data["date_from"]
+        date_to = data["date_to"]
+        tax_id = data["tax_id"]
+        show_cancel = data["show_cancel"]
 
-    def _get_period_be(self, date_start, date_end):
-        month = year = "-"
-        date_start = (date_start + relativedelta(years=543)).strftime("%m-%Y")
-        date_end = (date_end + relativedelta(years=543)).strftime("%m-%Y")
-        if date_start == date_end:
-            m, year = date_end.split("-")
-            month = self._get_month_thai(m)
-        return [month, year]
+        tax_report_data = self._get_tax_data(
+            tax_id=tax_id,
+            date_from=date_from,
+            date_to=date_to,
+            show_cancel=show_cancel,
+            company_id=company.id,
+        )
 
-    def _get_month_thai(self, month):
-        month_thai = {
-            "01": "มกราคม",
-            "02": "กุมภาพันธ์",
-            "03": "มีนาคม",
-            "04": "เมษายน",
-            "05": "พฤษภาคม",
-            "06": "มิถุนายน",
-            "07": "กรกฎาคม",
-            "08": "สิงหาคม",
-            "09": "กันยายน",
-            "10": "ตุลาคม",
-            "11": "พฤศจิกายน",
-            "12": "ธันวาคม",
+        # Add parameter to line
+        total_base, total_tax, tax_report_data = self._add_data_line(tax_report_data)
+
+        return {
+            "doc_ids": docids,
+            "doc_model": "tax.report.wizard",
+            "docs": docs,
+            "tax_report_format": company.tax_report_format,
+            "company_name": company.display_name,
+            "company_vat": company.partner_id.vat,
+            "company_branch": company.partner_id.company_registry,
+            "date_from": date_from,
+            "date_to": date_to,
+            "tax_id": tax_id,
+            "show_cancel": show_cancel,
+            "total_base": total_base,
+            "total_tax": total_tax,
+            "tax_report_data": tax_report_data,
         }
-        return month_thai[month]
