@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
-    <record id="view_personal_income_tax_tree" model="ir.ui.view">
-        <field name="name">view.personal.income.tax.tree</field>
+    <record id="view_personal_income_tax_list" model="ir.ui.view">
+        <field name="name">view.personal.income.tax.list</field>
         <field name="model">personal.income.tax</field>
         <field name="arch" type="xml">
             <tree>
-                <field name="calendar_year" />
-                <field name="effective_date" />
+                <field name="calendar_year"/>
+                <field name="effective_date"/>
             </tree>
         </field>
     </record>
@@ -39,10 +39,7 @@
                             <field name="active" />
                         </group>
                     </group>
-                    <span
-                        style="color: red;"
-                        invisible="effective_date"
-                    >
+                    <span style="color: red;" invisible="effective_date">
                         *Effective Date is required. Please provide a valid calendar year as an integer.
                     </span>
                     <separator string="Withholding Tax Rates" />
@@ -64,7 +61,7 @@
     <record id="action_personal_income_tax" model="ir.actions.act_window">
         <field name="name">PIT Rate Table</field>
         <field name="res_model">personal.income.tax</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <menuitem

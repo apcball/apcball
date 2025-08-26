@@ -10,7 +10,7 @@
                         name="action_draft"
                         string="Set to Draft"
                         type="object"
-                        invisible="state not in ('done', 'cancel')"
+                        invisible="state not in ('done','cancel')"
                     />
                     <button
                         name="action_done"
@@ -33,13 +33,17 @@
                     />
                 </header>
                 <sheet>
-                    <h1>
-                        <field name="move_id" readonly="state != 'draft'" />
-                    </h1>
+                    <div class="oe_title">
+                        <label for="number" />
+                        <h1>
+                            <field name="number" />
+                        </h1>
+                    </div>
                     <group>
                         <group>
                             <field name="name" invisible="1" />
-                            <field name="company_partner_id" />
+                            <field name="move_id" readonly="state != 'draft'" />
+                            <field name="company_partner_id" readonly="1" />
                             <field name="company_vat" string="Tax ID" />
                         </group>
                         <group>
@@ -49,20 +53,25 @@
                     </group>
                     <group>
                         <group string="Options">
-                            <field name="income_tax_form" required="1" readonly="state != 'draft'" />
+                            <field
+                                name="income_tax_form"
+                                readonly="state != 'draft'"
+                                required="1"
+                            />
                             <field name="tax_payer" readonly="state != 'draft'" />
                         </group>
                         <group string="References">
-                            <field name="company_id" invisible="1" />
+                            <field name="company_id" invisible="1" readonly="1" />
                             <field name="currency_id" invisible="1" />
                             <field name="ref_wht_cert_id" readonly="state != 'draft'" />
+                            <field name="verify_by" readonly="1" />
                             <field name="date" readonly="state != 'draft'" />
                         </group>
                     </group>
                     <field name="wht_line" readonly="state != 'draft'">
                         <tree editable="bottom">
-                            <field name="wht_income_tax_form" invisible="1" />
-                            <field name="company_id" invisible="1" />
+                            <field name="wht_income_tax_form" column_invisible="1" />
+                            <field name="company_id" column_invisible="1" />
                             <field name="wht_cert_income_type" />
                             <field
                                 name="wht_cert_income_code"
@@ -85,25 +94,33 @@
                         </tree>
                     </field>
                 </sheet>
-                <div class="oe_chatter">
-                    <field name="message_follower_ids" widget="mail_followers" />
-                    <field name="activity_ids" widget="mail_activity" />
-                    <field name="message_ids" widget="mail_thread" />
-                </div>
+                <!-- Chatter -->
+                <chatter />
             </form>
         </field>
     </record>
-    <record id="view_withholding_tax_cert_tree" model="ir.ui.view">
-        <field name="name">view.withholding.tax.cert.tree</field>
+    <record id="view_withholding_tax_cert_list" model="ir.ui.view">
+        <field name="name">view.withholding.tax.cert.list</field>
         <field name="model">withholding.tax.cert</field>
         <field name="arch" type="xml">
             <tree create="1" edit="1" delete="1">
+                <field name="number" />
                 <field name="name" />
                 <field name="partner_id" />
                 <field name="income_tax_form" />
                 <field name="tax_payer" />
                 <field name="date" />
-                <field name="state" />
+                <field
+                    name="company_id"
+                    groups="base.group_multi_company"
+                    optional="show"
+                />
+                <field
+                    name="state"
+                    widget="badge"
+                    decoration-info="state == 'draft'"
+                    decoration-success="state == 'done'"
+                />
             </tree>
         </field>
     </record>
@@ -112,7 +129,11 @@
         <field name="model">withholding.tax.cert</field>
         <field name="arch" type="xml">
             <search string="WHT Cert.">
-                <field name="name" string="WHT Cert." />
+                <field
+                    name="name"
+                    string="WHT Cert."
+                    filter_domain="['|', ('name', 'ilike', self), ('number', 'ilike', self)]"
+                />
                 <field name="partner_id" />
                 <filter
                     string="Payment"
@@ -142,7 +163,7 @@
     <record id="action_withholding_tax_cert_menu" model="ir.actions.act_window">
         <field name="name">WHT Certificates</field>
         <field name="res_model">withholding.tax.cert</field>
-        <field name="view_id" ref="view_withholding_tax_cert_tree" />
+        <field name="view_id" ref="view_withholding_tax_cert_list" />
     </record>
     <menuitem
         id="menu_withholding_tax_cert"

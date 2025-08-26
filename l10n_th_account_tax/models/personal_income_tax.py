@@ -1,7 +1,7 @@
 # Copyright 2021 Ecosoft Co., Ltd. (http://ecosoft.co.th)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.float_utils import float_compare
 
@@ -46,11 +46,13 @@ class PersonalIncomeTax(models.Model):
                 and len(rec.calendar_year) == 4
                 and len(str(int(rec.calendar_year))) == 4
             ):
-                rec.effective_date = "{}-01-01".format(rec.calendar_year)
+                rec.effective_date = f"{rec.calendar_year}-01-01"
 
     def copy(self, default=None):
         self.ensure_one()
-        default = dict(default or {}, calendar_year=_("%s (copy)") % self.calendar_year)
+        default = dict(
+            default or {}, calendar_year=self.env._("%s (copy)") % self.calendar_year
+        )
         return super().copy(default)
 
     @api.constrains("rate_ids")
@@ -59,10 +61,10 @@ class PersonalIncomeTax(models.Model):
             prev_income_to = 0.0
             for i, rate in enumerate(rec.rate_ids):
                 if i == 0 and rate.income_from != 0.0:
-                    raise UserError(_("Income amount must start from 0.0"))
+                    raise UserError(self.env._("Income amount must start from 0.0"))
                 if i > 0 and float_compare(rate.income_from, prev_income_to, 2) != 0:
                     raise UserError(
-                        _(
+                        self.env._(
                             "Discontinued income range!\n"
                             "Please make sure Income From = Previous Income To"
                         )
@@ -76,7 +78,7 @@ class PersonalIncomeTax(models.Model):
         self.ensure_one()
         pit_date.strftime("%Y")
         rate_ranges = self.rate_ids.filtered(
-            lambda l: abs(total_income) > l.income_from
+            lambda rate: abs(total_income) > rate.income_from
         )
         current_amount = 0.0
         income_residual = income
@@ -101,35 +103,23 @@ class PersonalIncomeTax(models.Model):
         self.ensure_one()
         pit_amount_year = self._get_pit_amount_yearly(partner, pit_date)
         # From currency to company currency
-        try:
-            base_amount = currency._convert(
-                base_amount, company.currency_id, company, pit_date
-            )
-        except Exception:
-            # Fallback for different currency conversion methods
-            base_amount = company.currency_id._convert(
-                base_amount, currency, company, pit_date
-            )
+        base_amount = currency._convert(
+            base_amount, company.currency_id, company, pit_date
+        )
         # Calculate PIT amount from PIT Rate Table
         total_pit = pit_amount_year + base_amount
         expected_wht = self.calculate_rate_wht(total_pit, base_amount, pit_date)
         # From company currency to currency of base_amount
-        try:
-            expected_wht = company.currency_id._convert(
-                expected_wht, currency, company, pit_date
-            )
-        except Exception:
-            # Fallback for different currency conversion methods
-            expected_wht = currency._convert(
-                expected_wht, company.currency_id, company, pit_date
-            )
+        expected_wht = company.currency_id._convert(
+            expected_wht, currency, company, pit_date
+        )
         return expected_wht
 
     @api.model
     def _get_pit_amount_yearly(self, partner, pit_date):
         calendar_year = pit_date.strftime("%Y")
         pit_year = partner.pit_move_ids.filtered(
-            lambda l: l.calendar_year == calendar_year
+            lambda pit: pit.calendar_year == calendar_year
         )
         return sum(pit_year.mapped("amount_income"))
 
@@ -174,5 +164,5 @@ class PersonalIncomeTaxRate(models.Model):
 
     def _compute_amount_accum(self):
         for rec in self:
-            prev_rec = self.filtered(lambda l: l.sequence <= rec.sequence)
+            prev_rec = self.filtered(lambda pit, rec=rec: pit.sequence <= rec.sequence)
             rec.amount_tax_accum = sum(prev_rec.mapped("amount_tax_max"))

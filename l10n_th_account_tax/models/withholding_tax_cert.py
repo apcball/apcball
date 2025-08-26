@@ -1,7 +1,7 @@
 # Copyright 2019 Ecosoft Co., Ltd (https://ecosoft.co.th/)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
 
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import float_round
 
@@ -56,8 +56,7 @@ WHT_CERT_INCOME_TYPE = [
     ),
     (
         "4B24",
-        "4. เงินปันผล เงินส่วนแบ่งกำไร ฯลฯ 40(4)ข (2.4) "
-        "กำไรที่รับรู้ทางบัญชีโดยวิธีส่วนได้เสีย",
+        "4. เงินปันผล เงินส่วนแบ่งกำไร ฯลฯ 40(4)ข (2.4) " "กำไรที่รับรู้ทางบัญชีโดยวิธีส่วนได้เสีย",
     ),
     ("4B25", "4. เงินปันผล เงินส่วนแบ่งกำไร ฯลฯ 40(4)ข (2.5) อื่นๆ (ระบุ)"),
     ("5", "5. ค่าจ้างทำของ ค่าบริการ ค่าเช่า ค่าขนส่ง ฯลฯ 3 เตรส"),
@@ -76,12 +75,20 @@ class WithholdingTaxCert(models.Model):
     _name = "withholding.tax.cert"
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _description = "Withholding Tax Certificate"
+    _check_company_auto = True
 
     name = fields.Char(
         string="Number",
         compute="_compute_wht_cert_data",
         store=True,
         tracking=True,
+    )
+    number = fields.Char(
+        string="WHT Number",
+        required=True,
+        default="/",
+        readonly=True,
+        copy=False,
     )
     date = fields.Date(
         required=True,
@@ -100,31 +107,27 @@ class WithholdingTaxCert(models.Model):
         string="Ref WHT Cert.",
         comodel_name="withholding.tax.cert",
         tracking=True,
-        readonly=True,
+        check_company=True,
         help="This field related from Old WHT Cert.",
     )
     payment_id = fields.Many2one(
         comodel_name="account.payment",
         string="Payment",
         copy=False,
-        readonly=True,
         domain="[('partner_id', '=', partner_id)]",
         ondelete="restrict",
         tracking=True,
     )
     move_id = fields.Many2one(
         comodel_name="account.move",
-        string="Move",
         copy=False,
-        readonly=True,
-        domain="[('journal_id.type', '=', 'general')," "('state', '=', 'posted')]",
+        domain="[('journal_id.type', '=', 'general'), ('state', '=', 'posted')]",
         ondelete="restrict",
         tracking=True,
     )
     company_partner_id = fields.Many2one(
         comodel_name="res.partner",
         string="Company",
-        readonly=True,
         copy=False,
         default=lambda self: self.env.company.partner_id,
         ondelete="restrict",
@@ -133,7 +136,6 @@ class WithholdingTaxCert(models.Model):
         comodel_name="res.partner",
         string="Vendor",
         required=True,
-        readonly=True,
         tracking=True,
         ondelete="restrict",
     )
@@ -141,7 +143,6 @@ class WithholdingTaxCert(models.Model):
         comodel_name="res.company",
         string="Main Company",
         required=True,
-        readonly=True,
         default=lambda self: self.env.company,
     )
     currency_id = fields.Many2one(
@@ -149,18 +150,11 @@ class WithholdingTaxCert(models.Model):
         related="company_id.currency_id",
         store=True,
         string="Currency",
-        readonly=True,
     )
-    company_vat = fields.Char(
-        related="company_partner_id.vat", string="Company Tax ID", readonly=True
-    )
-    partner_vat = fields.Char(
-        related="partner_id.vat", string="Vendor Tax ID", readonly=True
-    )
+    company_vat = fields.Char(related="company_partner_id.vat", string="Company Tax ID")
+    partner_vat = fields.Char(related="partner_id.vat", string="Vendor Tax ID")
     income_tax_form = fields.Selection(
         selection=INCOME_TAX_FORM,
-        required=False,
-        readonly=True,
         copy=False,
         tracking=True,
     )
@@ -168,14 +162,17 @@ class WithholdingTaxCert(models.Model):
         comodel_name="withholding.tax.cert.line",
         inverse_name="cert_id",
         string="Withholding Line",
-        readonly=True,
         copy=False,
     )
     tax_payer = fields.Selection(
         selection=TAX_PAYER,
         default="withholding",
         required=True,
-        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    verify_by = fields.Many2one(
+        comodel_name="res.users",
         copy=False,
         tracking=True,
     )
@@ -187,20 +184,35 @@ class WithholdingTaxCert(models.Model):
             rec.date = rec.payment_id.date or rec.move_id.date or rec.date
 
     def action_draft(self):
-        return self.write({"state": "draft"})
+        return self.write(
+            {
+                "verify_by": False,
+                "state": "draft",
+            }
+        )
 
     def action_done(self):
+        sequence_model = self.env["ir.sequence"]
         for rec in self:
+            # Update sequence WHT
+            if rec.number == "/":
+                rec.number = sequence_model.next_by_code("withholding.tax.cert") or "/"
+
             if rec.ref_wht_cert_id:
                 rec.ref_wht_cert_id.write({"state": "cancel"})
                 rec.ref_wht_cert_id.message_post(
-                    body=_("This document was substituted by %s.") % rec.name
+                    body=self.env._("This document was substituted by %s.") % rec.name
                 )
-        self.write({"state": "done"})
+        self.write({"verify_by": self.env.user.id, "state": "done"})
         return True
 
     def action_cancel(self):
-        self.write({"state": "cancel"})
+        self.write(
+            {
+                "verify_by": False,
+                "state": "cancel",
+            }
+        )
         return True
 
     @api.onchange("income_tax_form")
@@ -211,6 +223,7 @@ class WithholdingTaxCert(models.Model):
 class WithholdingTaxCertLine(models.Model):
     _name = "withholding.tax.cert.line"
     _description = "Withholding Tax Cert Lines"
+    _check_company_auto = True
 
     cert_id = fields.Many2one(
         comodel_name="withholding.tax.cert", string="WHT Cert", index=True
@@ -229,6 +242,7 @@ class WithholdingTaxCertLine(models.Model):
         compute="_compute_wht_bank_account",
         store=True,
         readonly=False,
+        check_company=True,
         string="Bank Account",
         help="PND2 type 4A need bank account",
     )
@@ -239,6 +253,7 @@ class WithholdingTaxCertLine(models.Model):
     wht_tax_id = fields.Many2one(
         comodel_name="account.withholding.tax",
         string="Tax",
+        check_company=True,
         readonly=False,
     )
     wht_percent = fields.Float(
@@ -281,23 +296,13 @@ class WithholdingTaxCertLine(models.Model):
         if self.wht_cert_income_type:
             select_dict = dict(WHT_CERT_INCOME_TYPE)
             self.wht_cert_income_desc = select_dict[self.wht_cert_income_type]
-            try:
-                income_code = WHT_CODE_INCOME.search(
-                    [
-                        ("wht_cert_income_type", "=", self.wht_cert_income_type),
-                        ("income_tax_form", "=", self.cert_id.income_tax_form),
-                        ("is_default", "=", True),
-                    ]
-                )
-            except:
-                # Fallback if is_default field doesn't exist
-                income_code = WHT_CODE_INCOME.search(
-                    [
-                        ("wht_cert_income_type", "=", self.wht_cert_income_type),
-                        ("income_tax_form", "=", self.cert_id.income_tax_form),
-                    ],
-                    limit=1
-                )
+            income_code = WHT_CODE_INCOME.search(
+                [
+                    ("wht_cert_income_type", "=", self.wht_cert_income_type),
+                    ("income_tax_form", "=", self.cert_id.income_tax_form),
+                    ("is_default", "=", True),
+                ]
+            )
             self.wht_cert_income_code = income_code or False
 
 
@@ -319,26 +324,23 @@ class WithholdingTaxCodeIncome(models.Model):
 
     @api.constrains("is_default")
     def check_is_default(self):
-        try:
-            field_default_duplicate = self.env["withholding.tax.code.income"].search(
-                [
-                    ("income_tax_form", "=", self.income_tax_form),
-                    ("wht_cert_income_type", "=", self.wht_cert_income_type),
-                    ("is_default", "=", True),
-                ]
-            )
-            if len(field_default_duplicate) > 1:
-                dict_wht_income_type = dict(WHT_CERT_INCOME_TYPE)
-                dict_income_tax_form = dict(INCOME_TAX_FORM)
-                raise UserError(
-                    _(
-                        "You can not default field '%(income)s - %(wht_income_type)s' more than 1."
-                    )
-                    % {
-                        "income": dict_income_tax_form[self.income_tax_form],
-                        "wht_income_type": dict_wht_income_type[self.wht_cert_income_type],
-                    }
+        field_default_duplicate = self.env["withholding.tax.code.income"].search(
+            [
+                ("income_tax_form", "=", self.income_tax_form),
+                ("wht_cert_income_type", "=", self.wht_cert_income_type),
+                ("is_default", "=", True),
+            ]
+        )
+        if len(field_default_duplicate) > 1:
+            dict_wht_income_type = dict(WHT_CERT_INCOME_TYPE)
+            dict_income_tax_form = dict(INCOME_TAX_FORM)
+            raise UserError(
+                self.env._(
+                    "You can not default field '%(income)s - %(wht_income_type)s' "
+                    "more than 1."
                 )
-        except Exception:
-            # Skip validation if field doesn't exist
-            pass
+                % {
+                    "income": dict_income_tax_form[self.income_tax_form],
+                    "wht_income_type": dict_wht_income_type[self.wht_cert_income_type],
+                }
+            )

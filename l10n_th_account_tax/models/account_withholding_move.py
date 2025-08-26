@@ -9,6 +9,7 @@ from .withholding_tax_cert import WHT_CERT_INCOME_TYPE
 class AccountWithholdingMove(models.Model):
     _name = "account.withholding.move"
     _description = "Withholding Tax Moves"
+    _check_company_auto = True
 
     payment_id = fields.Many2one(
         comodel_name="account.payment",
@@ -55,6 +56,7 @@ class AccountWithholdingMove(models.Model):
     wht_tax_id = fields.Many2one(
         comodel_name="account.withholding.tax",
         index=True,
+        check_company=True,
     )
     is_pit = fields.Boolean(
         related="wht_tax_id.is_pit",
@@ -74,33 +76,32 @@ class AccountWithholdingMove(models.Model):
         store=True,
         readonly=False,
     )
+    company_id = fields.Many2one(
+        comodel_name="res.company",
+        string="Company",
+        index=True,
+        required=True,
+        default=lambda self: self.env.company,
+    )
     currency_id = fields.Many2one(
         comodel_name="res.currency",
-        default=lambda self: self.env.user.company_id.currency_id,
+        default=lambda self: self.env.company.currency_id,
     )
     cert_id = fields.Many2one(
         comodel_name="withholding.tax.cert",
         string="Withholding Cert.",
         readonly=True,
         copy=False,
+        check_company=True,
     )
 
-    @api.depends("move_id", "move_id.payment_id")
+    @api.depends("move_id")
     def _compute_move_data(self):
         for rec in self:
             rec.date = rec.move_id and rec.move_id.date or False
             rec.calendar_year = rec.date and rec.date.strftime("%Y")
-            # Enhanced payment detection
-            if rec.move_id:
-                payment = rec.move_id.payment_id
-                if not payment:
-                    # Try to find payment from reconciled partials
-                    payment_lines = rec.move_id.line_ids.mapped('matched_debit_ids.debit_move_id') + \
-                                   rec.move_id.line_ids.mapped('matched_credit_ids.credit_move_id')
-                    payments = payment_lines.mapped('payment_id').filtered(lambda p: p.state == 'posted')
-                    if payments:
-                        payment = payments[0]
-                rec.payment_id = payment
+            # origin_payment_id may not exist on older Odoo versions
+            rec.payment_id = getattr(rec.move_id, "origin_payment_id", False)
 
     @api.depends("wht_tax_id")
     def _compute_wht_cert_income_type(self):
