@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="petty_cash_settlement_view_form" model="ir.ui.view">
+        <field name="name">petty.cash.settlement.tree</field>
+        <field name="model">petty.cash.settlement</field>
+        <field name="arch" type="xml">
+            <tree string="Settlements" create="false" edit="true" expand="context.get('expand', False)" multi_edit="1" sample="1">
+                <field name="name"/>
+                <field name="petty_request_id"/>
+                <field name="bill_id"/>
+                <field name="expense_account_id" invisible="1"/>
+                <field name="amount"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_open_petty_cash_settlement" model="ir.actions.act_window">
+        <field name="name">Settlement</field>
+        <field name="res_model">petty.cash.settlement</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'group_by':['petty_request_id'], 'create':False}</field>
+    </record>
+
+    <menuitem id="menu_open_petty_cash_settlement"
+              parent="petty_cash.menu_petty_settlement"
+              action="action_open_petty_cash_settlement"
+              sequence="1"/>
+
+</odoo>

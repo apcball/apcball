@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Top menu item -->
+    <menuitem name="Petty Cash"
+        id="menu_petty_cash"
+        web_icon="petty_cash,static/description/icon.png"
+        sequence="55">
+        <menuitem id="menu_petty_orders" name="Petty Cash Orders" sequence="1"/>
+        <menuitem id="menu_petty_settlement" name="Settlements" sequence="2"/>
+        <menuitem id="menu_petty_expense_product" action="hr_expense.hr_expense_product" sequence="3"/>
+        <menuitem id="menu_petty_config" name="Configuration" sequence="99"/>
+    </menuitem>
+</odoo>

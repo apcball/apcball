@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_petty_cash_request,petty.cash.request,model_petty_cash_request,,1,1,1,1
+access_petty_cash_settlement,petty.cash.settlement,model_petty_cash_settlement,,1,1,1,1
+access_petty_cash_operations,petty.cash.operations,model_petty_cash_operations,,1,1,1,1

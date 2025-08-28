@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="view_petty_cash_operation_form" model="ir.ui.view">
+        <field name="name">Petty Cash Operations Form</field>
+        <field name="model">petty.cash.operations</field>
+        <field name="arch" type="xml">
+            <form>
+                <field name="is_return" invisible="1"/>
+                <field name="is_intemperance" invisible="1"/>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="operation_journal_id" widget="selection" groups="account.group_account_user"/>
+                            <field name="operation_account_id"
+                                   readonly="1" force_save="1"
+                                   groups="account.group_account_user"/>
+                        </group>
+                        <group>
+                            <field name="amount" readonly="1" force_save="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                  <button name="action_paid" type="object"
+                          string="Register Petty Cash" class="oe_highlight"
+                          invisible="is_return or is_intemperance"/>
+                  <button name="return_remaining_petty_cash" type="object"
+                          invisible="not is_return"
+                          string="Return Petty Cash Remaining" class="oe_highlight"/>
+                  <button name="intemperance_petty_cash" type="object"
+                          invisible="not is_intemperance"
+                          string="Register Petty Cash Intemperance" class="oe_highlight"/>
+                  <button class="btn btn-secondary oe_button oe_form_button" special="cancel" string="Cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

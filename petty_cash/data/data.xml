@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="seq_petty_cash_request" model="ir.sequence">
+        <field name="name">Petty Cash Request</field>
+        <field name="code">petty.cash.request</field>
+        <field name="prefix">PETTY/%(range_year)s/</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="petty_account" model="account.account">
+        <field name="name">Petty Cash</field>
+        <field name="code">10000000001</field>
+        <field name="account_type">asset_cash</field>
+        <field name="reconcile" eval="True"/>
+    </record>
+
+    <record id="petty_suspense_account" model="account.account">
+        <field name="name">Petty Cash Suspense</field>
+        <field name="code">10000000011</field>
+        <field name="account_type">asset_current</field>
+        <field name="reconcile" eval="True"/>
+    </record>
+
+    <record id="petty_cash_journal" model="account.journal">
+        <field name="company_id" ref="base.main_company"/>
+        <field name="name">Petty Cash</field>
+        <field name="code">PCSH</field>
+        <field name="type">cash</field>
+        <field name="default_account_id" ref="petty_account"/>
+        <field name="suspense_account_id" ref="petty_suspense_account"/>
+        <field name="show_on_dashboard" eval="True"/>
+    </record>
+</odoo>
