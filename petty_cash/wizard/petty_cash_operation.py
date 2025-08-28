@@ -2,6 +2,9 @@
 import logging
 
 from odoo import api, fields, models, _
+import logging
+
+from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -19,15 +22,27 @@ class pettyCashOperations(models.TransientModel):
 
     petty_request_id = fields.Many2one('petty.cash.request', 'Petty Cash Request', copy=False)
     requester_partner_id = fields.Many2one('res.partner', related='petty_request_id.requester_partner_id')
-    operation_account_id = fields.Many2one('account.account', 'Operation Account', default=lambda self : self.env.company.account_journal_suspense_account_id)
+    operation_account_id = fields.Many2one('account.account', 'Operation Account', default=lambda self: self.env.company.account_journal_suspense_account_id)
     operation_journal_id = fields.Many2one('account.journal', 'Operation Journal', domain=_get_operation_journal_domain)
     amount = fields.Float('Petty Cash Amount', required=True)
     is_return = fields.Boolean(default=False)
     is_intemperance = fields.Boolean(default=False)
 
+    @api.onchange('operation_journal_id')
+    def _onchange_operation_journal(self):
+        """When the operation journal is changed, set the operation account
+        to the journal's default account (if any)."""
+        for rec in self:
+            if rec.operation_journal_id:
+                rec.operation_account_id = rec.operation_journal_id.default_account_id
+            else:
+                rec.operation_account_id = False
+
     def action_paid(self):
+        # Use the selected operation_account_id (not the journal's default account)
+        operation_account = self.operation_account_id or self.operation_journal_id.default_account_id
         self.petty_request_id.move_id.write({
-            'line_ids': self.petty_request_id._prepare_move_lines_data(self.operation_journal_id.default_account_id, self.amount)
+            'line_ids': self.petty_request_id._prepare_move_lines_data(operation_account, self.amount)
         })
         self.petty_request_id.move_id.action_post()
         self.petty_request_id.state = 'complete'
@@ -40,7 +55,8 @@ class pettyCashOperations(models.TransientModel):
 
     def return_remaining_petty_cash(self):
         petty_account_id = self.petty_request_id.petty_cash_journal_id.default_account_id
-        return_account_id = self.operation_journal_id.default_account_id
+        # prefer explicit selected operation account, fallback to journal default
+        return_account_id = self.operation_account_id or self.operation_journal_id.default_account_id
 
         adjustment_name = 'Return The Remaining of ( %s )' % self.petty_request_id.narration
 
@@ -69,7 +85,8 @@ class pettyCashOperations(models.TransientModel):
 
     def intemperance_petty_cash(self):
         petty_account_id = self.petty_request_id.petty_cash_journal_id.default_account_id
-        intemperance_account_id = self.operation_journal_id.default_account_id
+        # prefer explicit selected operation account, fallback to journal default
+        intemperance_account_id = self.operation_account_id or self.operation_journal_id.default_account_id
 
         adjustment_name = 'Settlement of intemperance amount of ( %s )' % self.petty_request_id.narration
 

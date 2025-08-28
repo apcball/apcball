@@ -12,9 +12,9 @@
                     <group>
                         <group>
                             <field name="operation_journal_id" widget="selection" groups="account.group_account_user"/>
-                            <field name="operation_account_id"
-                                   readonly="1" force_save="1"
-                                   groups="account.group_account_user"/>
+                <field name="operation_account_id"
+                    force_save="1"
+                    groups="account.group_account_user"/>
                         </group>
                         <group>
                             <field name="amount" readonly="1" force_save="1"/>
