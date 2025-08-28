@@ -15,8 +15,7 @@ class AccountWithholdingTax(models.Model):
     account_id = fields.Many2one(
         comodel_name="account.account",
         string="Withholding Tax Account",
-        # domain="[('wht_account', '=', True), ('company_ids', 'in', company_id)]",
-        domain="[('wht_account', '=', True)]",
+    # No domain restriction so any chart of account can be selected from the dropdown
         required=True,
         ondelete="restrict",
     )
@@ -47,6 +46,8 @@ class AccountWithholdingTax(models.Model):
         default=lambda self: self.env.company,
     )
 
+    # ...existing code...
+
     _sql_constraints = [
         ("name_unique", "UNIQUE(name,company_id)", "Name must be unique!"),
     ]
@@ -57,13 +58,10 @@ class AccountWithholdingTax(models.Model):
         if pits > 1:
             raise ValidationError(self.env._("Only 1 personal income tax allowed!"))
 
-    @api.constrains("account_id")
-    def _check_account_id(self):
-        for rec in self:
-            if rec.account_id and not rec.account_id.wht_account:
-                raise ValidationError(
-                    self.env._("Selected account is not for withholding tax")
-                )
+    # Removed constraint that required selected account to have wht_account=True
+    # so users can choose existing chart of accounts freely. If you want to
+    # enforce WHT accounts only, re-add this constraint or set the
+    # 'wht_account' flag on the desired accounts.
 
     @api.depends("is_pit")
     def _compute_pit_id(self):

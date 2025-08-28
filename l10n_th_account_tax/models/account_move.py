@@ -123,11 +123,8 @@ class AccountMoveLine(models.Model):
         self.ensure_one()
         tax_base_amount = self._get_tax_base_amount(sign, vals_list)
         # For case customer invoice, customer credit note and not manual reconcile
-        # it default value following accounting date
-        default_tax_invoice = self.move_id.move_type in [
-            "out_invoice",
-            "out_refund",
-        ] and not self.env.context.get("invoice_net_refund")
+        # Remove auto-fill to require manual tax invoice input
+        default_tax_invoice = False  # Force manual input for all cases
         taxinv_dict = {
             "move_id": self.move_id.id,
             "move_line_id": self.id,
@@ -413,9 +410,8 @@ class AccountMove(models.Model):
 
         def handle_withholding_taxes(move):
             # Normal case, create withholding.move only when withholding
-            wht_movelines = move.line_ids.filtered(
-                lambda line: line.account_id.wht_account and line.wht_tax_id
-            )
+            # Changed: only check wht_tax_id, not wht_account flag
+            wht_movelines = move.line_ids.filtered(lambda line: line.wht_tax_id)
             withholding_moves = [
                 Command.create(self._prepare_withholding_move(wht_ml))
                 for wht_ml in wht_movelines
@@ -574,6 +570,15 @@ class AccountMove(models.Model):
         Group by partner and income type, regardless of wht_tax_id
         """
         self.ensure_one()
+        # Auto-fill missing Type of Income from related withholding tax default
+        for w in self.wht_move_ids.filtered(lambda w: not w.wht_cert_income_type):
+            if w.wht_tax_id and w.wht_tax_id.wht_cert_income_type:
+                w.write({"wht_cert_income_type": w.wht_tax_id.wht_cert_income_type})
+            else:
+                # Fallback: use default "5" (ค่าจ้างทำของ ค่าบริการ ค่าเช่า ค่าขนส่ง ฯลฯ 3 เตรส)
+                w.write({"wht_cert_income_type": "5"})
+
+        # If still missing after autofill, require user input
         if self.wht_move_ids.filtered(lambda wht: not wht.wht_cert_income_type):
             raise UserError(
                 _("Please select Type of Income on every withholding moves")

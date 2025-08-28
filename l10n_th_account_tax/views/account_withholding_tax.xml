@@ -19,10 +19,7 @@
                                 name="company_id"
                                 groups="base.group_multi_company"
                             />
-                            <field
-                                name="account_id"
-                                context="{'default_wht_account': True}"
-                            />
+                            <field name="account_id" context="{}"/>
                             <label for="amount" invisible="is_pit" />
                             <div invisible="is_pit">
                                 <field name="amount" class="oe_inline" />
