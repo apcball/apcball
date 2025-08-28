@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<odoo noupdate="1">
+<odoo noupdate="0">
     <record id="mis_report_tb" model="mis.report">
         <field name="name">Trial Balance</field>
     </record>
 
+    <!-- Force delete and recreate the expressions -->
+    <delete model="mis.report.kpi.expression" search="[('kpi_id.report_id.name', '=', 'Trial Balance')]"/>
+    
     <!-- SUBKPI -->
     <record id="mis_report_subkpi_tb_01" model="mis.report.subkpi">
         <field name="sequence">10</field>
@@ -71,12 +74,12 @@
     </record>
     <record id="mis_report_kpi_expression_tb_04" model="mis.report.kpi.expression">
         <field name="subkpi_id" ref="mis_report_subkpi_tb_04" />
-        <field name="name">crdp[]</field>
+        <field name="name">debp[]</field>
         <field name="kpi_id" ref="mis_report_kpi_tb_01" />
     </record>
     <record id="mis_report_kpi_expression_tb_05" model="mis.report.kpi.expression">
         <field name="subkpi_id" ref="mis_report_subkpi_tb_05" />
-        <field name="name">debp[]</field>
+        <field name="name">crdp[]</field>
         <field name="kpi_id" ref="mis_report_kpi_tb_01" />
     </record>
 </odoo>
