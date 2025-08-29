@@ -11,6 +11,7 @@
         "security/ir.model.access.csv",
     "views/marketplace_settlement_wizard_views.xml",
     "views/sale_order_view_inherit.xml",
+    "views/account_move_view_inherit.xml",
     ],
     "assets": {},
     "installable": True,

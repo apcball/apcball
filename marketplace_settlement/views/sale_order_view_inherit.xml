@@ -5,8 +5,8 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
-            <!-- Insert Trade Channel right after the quotation_no field -->
-            <xpath expr="//field[@name='warehouse_id']" position="after">
+            <!-- Insert Trade Channel after the partner field (safer xpath across versions) -->
+            <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="trade_channel"/>
             </xpath>
         </field>
