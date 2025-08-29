@@ -35,7 +35,7 @@ class AccountTaxReportAbstractWizard(models.AbstractModel):
     def check_date_from_to(self):
         for rec in self:
             if rec.date_from and rec.date_to and rec.date_from > rec.date_to:
-                raise UserError(self.env._("Date From must not be after Date To"))
+                raise UserError("Date From must not be after Date To")
 
     def button_export_html(self):
         self.ensure_one()

@@ -42,7 +42,7 @@ class TaxReportXlsx(models.AbstractModel):
         # Define formats
         title_format = workbook.add_format({
             'bold': True,
-            'font_size': 16,
+            'font_size': 18,
             'align': 'center',
             'valign': 'vcenter',
             'bg_color': '#D7E4BC',
@@ -51,7 +51,7 @@ class TaxReportXlsx(models.AbstractModel):
         
         header_format = workbook.add_format({
             'bold': True,
-            'font_size': 12,
+            'font_size': 11,
             'align': 'center',
             'valign': 'vcenter',
             'bg_color': '#F2F2F2',
@@ -70,61 +70,64 @@ class TaxReportXlsx(models.AbstractModel):
             'font_size': 10,
             'valign': 'vcenter',
             'border': 1,
-            'num_format': '#,##0.00'
+            'num_format': '#,##0.00',
+            'align': 'right'
         })
         
         date_format = workbook.add_format({
             'font_size': 10,
             'valign': 'vcenter',
             'border': 1,
-            'num_format': 'dd/mm/yyyy'
+            'num_format': 'dd/mm/yyyy',
+            'align': 'center'
         })
         
         if display_details:
-            # Set column widths for detailed view
-            sheet.set_column('A:A', 5)   # No.
-            sheet.set_column('B:B', 20)  # Tax Name
-            sheet.set_column('C:C', 15)  # Tax Type
-            sheet.set_column('D:D', 12)  # Rate
-            sheet.set_column('E:E', 15)  # Base Amount
-            sheet.set_column('F:F', 15)  # Tax Amount
-            sheet.set_column('G:G', 12)  # Date
-            sheet.set_column('H:H', 20)  # Document Reference
-            sheet.set_column('I:I', 20)  # Partner Name
-            sheet.set_column('J:J', 15)  # Tax ID/VAT
-            sheet.set_column('K:K', 30)  # Description
-            
-            # Write title
-            sheet.merge_range('A1:K2', f'{wizard.company_id.name}\nTax Report (Detailed)', title_format)
-            
+            # Set column widths for detailed view (reordered to match requested layout)
+            # Column widths tuned to match the visual in the provided screenshot
+            sheet.set_column('A:A', 7)   # No.
+            sheet.set_column('B:B', 12)  # Date
+            sheet.set_column('C:C', 22)  # Document Reference
+            sheet.set_column('D:D', 32)  # Partner Name
+            sheet.set_column('E:E', 10)  # Tax Rate
+            sheet.set_column('F:F', 18)  # Tax ID/VAT
+            sheet.set_column('G:G', 14)  # Establishment
+            sheet.set_column('H:H', 18)  # Base Amount
+            sheet.set_column('I:I', 14)  # Tax Amount
+            # Hide any extra columns to avoid stray empty fields showing in Excel
+            sheet.set_column('J:Z', 2)
+
+            # Write title (adjusted merged range)
+            sheet.merge_range('A1:I2', f'{wizard.company_id.name}\nTax Report (Detailed)', title_format)
+
             # Write period
-            sheet.merge_range('A3:K3', 
+            sheet.merge_range('A3:I3', 
                              f'Period: {date_from.strftime("%d/%m/%Y") if date_from else ""} - {date_to.strftime("%d/%m/%Y") if date_to else ""}', 
                              header_format)
-            
-            # Write headers
+
+            # Write headers in the desired order
             headers = [
-                _('No.'),
-                _('Tax Name'),
-                _('Tax Type'),
-                _('Rate (%)'),
-                _('Base Amount'),
-                _('Tax Amount'),
-                _('Date'),
-                _('Document Reference'),
-                _('Partner'),
-                _('Tax ID/VAT'),
-                _('Description')
+                _('ลำดับ'),
+                _('วันที่'),
+                _('เลขที่เอกสาร'),
+                _('ชื่อผู้ขายสินค้า/ผู้ให้บริการ'),
+                _('อัตรา (%)'),
+                _('เลขประจำตัวผู้เสียภาษี'),
+                _('สถานประกอบการ'),
+                _('มูลค่าสินค้า/บริการ (ไม่รวมภาษี)'),
+                _('จำนวนเงินภาษี')
             ]
         else:
             # Set column widths for summary view
-            sheet.set_column('A:A', 5)   # No.
+            sheet.set_column('A:A', 7)   # No.
             sheet.set_column('B:B', 20)  # Tax Name
             sheet.set_column('C:C', 15)  # Tax Type
             sheet.set_column('D:D', 12)  # Rate
             sheet.set_column('E:E', 15)  # Base Amount
             sheet.set_column('F:F', 15)  # Tax Amount
             sheet.set_column('G:G', 12)  # Count
+            # Hide extra columns for summary view as well
+            sheet.set_column('H:Z', 2)
             
             # Write title
             sheet.merge_range('A1:G2', f'{wizard.company_id.name}\nTax Report (Summary)', title_format)
@@ -136,13 +139,13 @@ class TaxReportXlsx(models.AbstractModel):
             
             # Write headers
             headers = [
-                _('No.'),
-                _('Tax Name'),
-                _('Tax Type'),
-                _('Rate (%)'),
-                _('Base Amount'),
-                _('Tax Amount'),
-                _('Count')
+                _('ลำดับ'),
+                _('ชื่อภาษี'),
+                _('ประเภทภาษี'),
+                _('อัตรา (%)'),
+                _('มูลค่า (ไม่รวมภาษี)'),
+                _('จำนวนเงินภาษี'),
+                _('จำนวนรายการ')
             ]
         
         row = 4
@@ -161,25 +164,42 @@ class TaxReportXlsx(models.AbstractModel):
         total_tax = 0.0
         
         for tax_line in tax_data:
+            # Reordered write for detailed view
             sheet.write(row, 0, line_no, data_format)
-            sheet.write(row, 1, tax_line.get('tax_name', ''), data_format)
-            sheet.write(row, 2, tax_line.get('tax_type', ''), data_format)
-            sheet.write(row, 3, tax_line.get('tax_rate', 0.0), number_format)
-            sheet.write(row, 4, tax_line.get('base_amount', 0.0), number_format)
-            sheet.write(row, 5, tax_line.get('tax_amount', 0.0), number_format)
-            
             if display_details:
-                sheet.write(row, 6, tax_line.get('date', ''), date_format)
-                sheet.write(row, 7, tax_line.get('reference', ''), data_format)
-                sheet.write(row, 8, tax_line.get('partner_name', ''), data_format)
-                sheet.write(row, 9, tax_line.get('partner_vat', ''), data_format)
-                sheet.write(row, 10, tax_line.get('description', ''), data_format)
+                    # Date
+                    sheet.write(row, 1, tax_line.get('date', ''), date_format)
+                    # Document Reference
+                    sheet.write(row, 2, tax_line.get('reference', ''), data_format)
+                    # Partner Name
+                    sheet.write(row, 3, tax_line.get('partner_name', ''), data_format)
+                    # Tax Rate (show like '7%')
+                    rate = tax_line.get('tax_rate', 0.0)
+                    try:
+                        rate_val = float(rate)
+                        rate_str = f"{int(rate_val)}%" if rate_val.is_integer() else f"{rate_val}%"
+                    except Exception:
+                        rate_str = str(rate)
+                    sheet.write(row, 4, rate_str, data_format)
+                    # Partner VAT / Tax ID
+                    sheet.write(row, 5, tax_line.get('partner_vat', ''), data_format)
+                    # Establishment (best-effort field from partner)
+                    sheet.write(row, 6, tax_line.get('establishment', ''), data_format)
+                    # Base & Tax amounts
+                    sheet.write(row, 7, tax_line.get('base_amount', 0.0), number_format)
+                    sheet.write(row, 8, tax_line.get('tax_amount', 0.0), number_format)
             else:
+                # Summary view unchanged
+                sheet.write(row, 1, tax_line.get('tax_name', ''), data_format)
+                sheet.write(row, 2, tax_line.get('tax_type', ''), data_format)
+                sheet.write(row, 3, tax_line.get('tax_rate', 0.0), number_format)
+                sheet.write(row, 4, tax_line.get('base_amount', 0.0), number_format)
+                sheet.write(row, 5, tax_line.get('tax_amount', 0.0), number_format)
                 sheet.write(row, 6, tax_line.get('count', 0), data_format)
-            
+
             total_base += tax_line.get('base_amount', 0.0)
             total_tax += tax_line.get('tax_amount', 0.0)
-            
+
             row += 1
             line_no += 1
         
@@ -203,10 +223,12 @@ class TaxReportXlsx(models.AbstractModel):
         })
         
         if display_details:
-            sheet.merge_range(f'A{row+1}:D{row+1}', _('TOTAL'), total_label_format)
-            sheet.write(row, 4, total_base, total_format)
-            sheet.write(row, 5, total_tax, total_format)
-            for col in range(6, 11):
+            # Merge label across first 7 columns (No. through Establishment)
+            sheet.merge_range(f'A{row+1}:G{row+1}', _('TOTAL'), total_label_format)
+            # Base Amount column is index 7, Tax Amount is index 8
+            sheet.write(row, 7, total_base, total_format)
+            sheet.write(row, 8, total_tax, total_format)
+            for col in range(0, 7):
                 sheet.write(row, col, '', total_label_format)
         else:
             sheet.merge_range(f'A{row+1}:D{row+1}', _('TOTAL'), total_label_format)
@@ -263,6 +285,12 @@ class TaxReportXlsx(models.AbstractModel):
                     for base_line_data in base_lines_data:
                         base_amount += abs(base_line_data['balance'])
                     
+                    # Try to get an 'establishment' / branch code where available (best-effort)
+                    establishment = ''
+                    if partner:
+                        # Thai localization often stores branch in l10n_th_vat_branch or use city/street
+                        establishment = getattr(partner, 'l10n_th_vat_branch', '') or partner.city or partner.street or ''
+
                     tax_data.append({
                         'tax_name': tax.name,
                         'tax_type': tax_type_label,
@@ -273,7 +301,7 @@ class TaxReportXlsx(models.AbstractModel):
                         'reference': move.name or '',
                         'partner_name': partner.name if partner else '',
                         'partner_vat': partner.vat or '' if partner else '',
-                        'description': line_data['name'] or ''
+                        'establishment': establishment
                     })
         else:
             # Return summarized data grouped by tax
