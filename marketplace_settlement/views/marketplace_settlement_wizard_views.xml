@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard form -->
+    <record id="view_marketplace_settlement_wizard_form" model="ir.ui.view">
+        <field name="name">marketplace.settlement.wizard.form</field>
+        <field name="model">marketplace.settlement.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Marketplace Settlement">
+                <group>
+                    <field name="name"/>
+                    <field name="trade_channel"/>
+                    <field name="marketplace_partner_id"/>
+                    <field name="journal_id"/>
+                    <field name="date"/>
+                    <field name="invoice_ids"/>
+                </group>
+                <footer>
+                    <button string="Create" type="object" name="action_create" class="btn-primary"/>
+                    <button string="Cancel" class="btn-default" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard action -->
+    <record id="action_marketplace_settlement_wizard" model="ir.actions.act_window">
+        <field name="name">Marketplace Settlement</field>
+        <field name="res_model">marketplace.settlement.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Menu under Accounting -->
+    <menuitem id="menu_marketplace_settlement_root" name="Marketplace" parent="account.menu_finance" sequence="90"/>
+    <menuitem id="menu_marketplace_settlement" name="Marketplace Settlement" parent="menu_marketplace_settlement_root"/>
+    <menuitem id="menu_marketplace_settlement_wizard_action" name="Create Settlement" parent="menu_marketplace_settlement" action="action_marketplace_settlement_wizard"/>
+
+    <!-- List and form views for marketplace.settlement -->
+    <record id="view_marketplace_settlement_tree" model="ir.ui.view">
+        <field name="name">marketplace.settlement.tree</field>
+        <field name="model">marketplace.settlement</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="trade_channel"/>
+                <field name="marketplace_partner_id"/>
+                <field name="journal_id"/>
+                <field name="date"/>
+                <field name="move_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_marketplace_settlement_form" model="ir.ui.view">
+        <field name="name">marketplace.settlement.form</field>
+        <field name="model">marketplace.settlement</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="trade_channel"/>
+                        <field name="marketplace_partner_id"/>
+                        <field name="journal_id"/>
+                        <field name="date"/>
+                        <field name="move_id"/>
+                        <field name="invoice_ids"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Channel-specific actions -->
+    <record id="action_marketplace_settlement_shopee" model="ir.actions.act_window">
+        <field name="name">Shopee Settlements</field>
+        <field name="res_model">marketplace.settlement</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('trade_channel','=','shopee')]</field>
+    </record>
+
+    <record id="action_marketplace_settlement_lazada" model="ir.actions.act_window">
+        <field name="name">Lazada Settlements</field>
+        <field name="res_model">marketplace.settlement</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('trade_channel','=','lazada')]</field>
+    </record>
+
+    <menuitem id="menu_marketplace_settlement_shopee" name="Shopee Settlements" parent="menu_marketplace_settlement" action="action_marketplace_settlement_shopee"/>
+    <menuitem id="menu_marketplace_settlement_lazada" name="Lazada Settlements" parent="menu_marketplace_settlement" action="action_marketplace_settlement_lazada"/>
+</odoo>
