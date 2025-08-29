@@ -6,6 +6,7 @@
     "category": "Accounting/Localizations",
     "website": "https://example.com",
     "license": "LGPL-3",
+    "icon": "static/description/icon.png",
     "depends": ["account", "sale"],
     "data": [
         "security/ir.model.access.csv",
