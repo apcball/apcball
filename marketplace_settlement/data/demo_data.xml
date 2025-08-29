@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Demo marketplace partners -->
+        <record id="partner_shopee_marketplace" model="res.partner">
+            <field name="name">Shopee Marketplace</field>
+            <field name="is_company">True</field>
+            <field name="supplier_rank">0</field>
+            <field name="customer_rank">1</field>
+            <field name="category_id" eval="[(4, ref('base.res_partner_category_2'))]"/>
+        </record>
+
+        <record id="partner_lazada_marketplace" model="res.partner">
+            <field name="name">Lazada Marketplace</field>
+            <field name="is_company">True</field>
+            <field name="supplier_rank">0</field>
+            <field name="customer_rank">1</field>
+            <field name="category_id" eval="[(4, ref('base.res_partner_category_2'))]"/>
+        </record>
+
+        <record id="partner_tiktok_marketplace" model="res.partner">
+            <field name="name">TikTok Shop</field>
+            <field name="is_company">True</field>
+            <field name="supplier_rank">0</field>
+            <field name="customer_rank">1</field>
+            <field name="category_id" eval="[(4, ref('base.res_partner_category_2'))]"/>
+        </record>
+
+        <!-- Demo customers -->
+        <record id="partner_shopee_customer_1" model="res.partner">
+            <field name="name">John Doe (Shopee)</field>
+            <field name="is_company">False</field>
+            <field name="supplier_rank">0</field>
+            <field name="customer_rank">1</field>
+        </record>
+
+        <record id="partner_shopee_customer_2" model="res.partner">
+            <field name="name">Jane Smith (Shopee)</field>
+            <field name="is_company">False</field>
+            <field name="supplier_rank">0</field>
+            <field name="customer_rank">1</field>
+        </record>
+
+        <record id="partner_lazada_customer_1" model="res.partner">
+            <field name="name">Mike Johnson (Lazada)</field>
+            <field name="is_company">False</field>
+            <field name="supplier_rank">0</field>
+            <field name="customer_rank">1</field>
+        </record>
+    </data>
+</odoo>

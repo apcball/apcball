@@ -6,17 +6,51 @@
         <field name="model">marketplace.settlement.wizard</field>
         <field name="arch" type="xml">
             <form string="Marketplace Settlement">
-                <group>
-                    <field name="name"/>
-                    <field name="trade_channel"/>
-                    <field name="marketplace_partner_id"/>
-                    <field name="journal_id"/>
-                    <field name="date"/>
-                    <!-- filter invoices in the add popup by the wizard.trade_channel -->
-                    <field name="invoice_ids" domain="[('state','=','posted'),('move_type','in',['out_invoice','out_refund']),('amount_residual','!=',0.0)]"/>
-                </group>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Settlement Reference"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="trade_channel" required="1"/>
+                            <field name="marketplace_partner_id"/>
+                            <field name="journal_id"/>
+                            <field name="settlement_account_id"/>
+                            <field name="date"/>
+                        </group>
+                        <group>
+                            <field name="auto_filter"/>
+                            <field name="date_from" invisible="not auto_filter"/>
+                            <field name="date_to" invisible="not auto_filter"/>
+                            <field name="invoice_count" readonly="1"/>
+                            <field name="total_amount" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Invoices" name="invoices">
+                            <div class="oe_button_box">
+                                <button name="action_refresh_invoices" type="object" class="oe_stat_button" icon="fa-refresh" string="Refresh" help="Refresh invoice list based on trade channel"/>
+                            </div>
+                            <field name="invoice_ids" nolabel="1">
+                                <tree decoration-info="move_type=='out_refund'" decoration-bf="amount_residual > 1000">
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="invoice_date"/>
+                                    <field name="trade_channel"/>
+                                    <field name="amount_total"/>
+                                    <field name="amount_residual"/>
+                                    <field name="move_type"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
                 <footer>
-                    <button string="Create" type="object" name="action_create" class="btn-primary"/>
+                    <button string="Create Settlement" type="object" name="action_create" class="btn-primary" invisible="invoice_count == 0"/>
                     <button string="Cancel" class="btn-default" special="cancel"/>
                 </footer>
             </form>
@@ -37,8 +71,19 @@
         <field name="name">Marketplace Settlements</field>
         <field name="res_model">marketplace.settlement</field>
         <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_filter_done': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Use this menu to review marketplace settlement documents created by the wizard.</p>
+            <p class="o_view_nocontent_smiling_face">
+                Create your first marketplace settlement!
+            </p>
+            <p>
+                Use marketplace settlements to group customer invoices by trade channel
+                and create a single receivable entry to the marketplace platform.
+            </p>
+            <p>
+                This is useful for platforms like Shopee, Lazada, TikTok where customers
+                pay the platform and the platform pays you periodically.
+            </p>
         </field>
     </record>
 
@@ -49,17 +94,48 @@
     <!-- Submenu: create a new settlement (wizard) -->
     <menuitem id="menu_marketplace_settlement_wizard_action" name="Create Settlement" parent="menu_marketplace_settlement" action="action_marketplace_settlement_wizard"/>
 
+    <!-- Search view for marketplace settlements -->
+    <record id="view_marketplace_settlement_search" model="ir.ui.view">
+        <field name="name">marketplace.settlement.search</field>
+        <field name="model">marketplace.settlement</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Settlement Reference"/>
+                <field name="marketplace_partner_id"/>
+                <field name="trade_channel"/>
+                <field name="date"/>
+                <filter name="filter_draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_done" string="Done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter name="filter_shopee" string="Shopee" domain="[('trade_channel', '=', 'shopee')]"/>
+                <filter name="filter_lazada" string="Lazada" domain="[('trade_channel', '=', 'lazada')]"/>
+                <filter name="filter_tiktok" string="TikTok" domain="[('trade_channel', '=', 'tiktok')]"/>
+                <separator/>
+                <filter name="filter_today" string="Today" domain="[('date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="filter_this_month" string="This Month" domain="[('date', '&gt;=', context_today().replace(day=1)), ('date', '&lt;=', (context_today().replace(day=1) + relativedelta(months=1) - relativedelta(days=1)))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_trade_channel" string="Trade Channel" context="{'group_by': 'trade_channel'}"/>
+                    <filter name="group_by_marketplace" string="Marketplace Partner" context="{'group_by': 'marketplace_partner_id'}"/>
+                    <filter name="group_by_state" string="State" context="{'group_by': 'state'}"/>
+                    <filter name="group_by_date" string="Date" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <!-- List and form views for marketplace.settlement -->
     <record id="view_marketplace_settlement_tree" model="ir.ui.view">
         <field name="name">marketplace.settlement.tree</field>
         <field name="model">marketplace.settlement</field>
         <field name="arch" type="xml">
-            <tree>
+            <tree decoration-success="state=='done'" decoration-muted="state=='draft'">
                 <field name="name"/>
                 <field name="trade_channel"/>
                 <field name="marketplace_partner_id"/>
                 <field name="journal_id"/>
                 <field name="date"/>
+                <field name="invoice_count"/>
+                <field name="state" widget="badge" decoration-success="state=='done'" decoration-muted="state=='draft'"/>
                 <field name="move_id"/>
             </tree>
         </field>
@@ -70,16 +146,54 @@
         <field name="model">marketplace.settlement</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="action_create_settlement" type="object" string="Create Settlement" class="btn-primary" invisible="move_id != False"/>
+                </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_invoices" type="object" class="oe_stat_button" icon="fa-file-text-o">
+                            <field name="invoice_count" widget="statinfo" string="Invoices"/>
+                        </button>
+                        <button name="action_view_settlement_move" type="object" class="oe_stat_button" icon="fa-book" invisible="move_id == False">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Settlement</span>
+                                <span class="o_stat_text">Move</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
                     <group>
-                        <field name="name"/>
-                        <field name="trade_channel"/>
-                        <field name="marketplace_partner_id"/>
-                        <field name="journal_id"/>
-                        <field name="date"/>
-                        <field name="move_id"/>
-                        <field name="invoice_ids" domain="[('state','=','posted'),('move_type','in',['out_invoice','out_refund']),('amount_residual','!=',0.0)]"/>
+                        <group>
+                            <field name="trade_channel"/>
+                            <field name="marketplace_partner_id"/>
+                            <field name="journal_id"/>
+                            <field name="date"/>
+                        </group>
+                        <group>
+                            <field name="move_id"/>
+                            <field name="invoice_count" invisible="1"/>
+                        </group>
                     </group>
+                    <notebook>
+                        <page string="Invoices" name="invoices">
+                            <field name="invoice_ids" nolabel="1">
+                                <tree decoration-info="move_type=='out_refund'" decoration-bf="amount_residual > 1000">
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="invoice_date"/>
+                                    <field name="trade_channel"/>
+                                    <field name="amount_total"/>
+                                    <field name="amount_residual"/>
+                                    <field name="move_type"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>

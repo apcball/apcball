@@ -7,14 +7,63 @@ from odoo.tools import float_compare
 class MarketplaceSettlement(models.Model):
     _name = 'marketplace.settlement'
     _description = 'Marketplace Settlement'
+    _order = 'date desc, name desc'
 
     name = fields.Char('Settlement Ref', required=True)
     marketplace_partner_id = fields.Many2one('res.partner', string='Marketplace Partner', required=True)
     journal_id = fields.Many2one('account.journal', string='Journal', required=True)
-    date = fields.Date('Date', required=True)
+    date = fields.Date('Date', required=True, default=fields.Date.context_today)
     invoice_ids = fields.Many2many('account.move', string='Invoices')
     move_id = fields.Many2one('account.move', string='Settlement Move')
-    trade_channel = fields.Selection([('shopee', 'Shopee'), ('lazada', 'Lazada'), ('nocnoc', 'Noc Noc'), ('tiktok', 'Tiktok'), ('other', 'Other')], string='Trade Channel', default='shopee')
+    settlement_account_id = fields.Many2one('account.account', string='Settlement Account',
+        help='Optional account to post the marketplace aggregate line to. If empty the marketplace partner receivable will be used.')
+    trade_channel = fields.Selection([
+        ('shopee', 'Shopee'), 
+        ('lazada', 'Lazada'), 
+        ('nocnoc', 'Noc Noc'), 
+        ('tiktok', 'Tiktok'), 
+        ('other', 'Other')
+    ], string='Trade Channel', default='shopee')
+    invoice_count = fields.Integer('Invoice Count', compute='_compute_invoice_count')
+    state = fields.Selection([
+        ('draft', 'Draft'),
+        ('done', 'Done')
+    ], string='State', default='draft', compute='_compute_state', store=True)
+
+    @api.depends('invoice_ids')
+    def _compute_invoice_count(self):
+        for record in self:
+            record.invoice_count = len(record.invoice_ids)
+
+    @api.depends('move_id')
+    def _compute_state(self):
+        for record in self:
+            record.state = 'done' if record.move_id else 'draft'
+
+    def action_view_invoices(self):
+        """Open related invoices"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Settlement Invoices'),
+            'res_model': 'account.move',
+            'view_mode': 'tree,form',
+            'domain': [('id', 'in', self.invoice_ids.ids)],
+            'context': {'default_trade_channel': self.trade_channel},
+        }
+
+    def action_view_settlement_move(self):
+        """Open settlement move"""
+        self.ensure_one()
+        if not self.move_id:
+            return None
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Settlement Move'),
+            'res_model': 'account.move',
+            'res_id': self.move_id.id,
+            'view_mode': 'form',
+        }
 
     def action_create_settlement(self):
         self.ensure_one()
@@ -25,11 +74,6 @@ class MarketplaceSettlement(models.Model):
         lines = []
         total_amount = 0.0
         currency = self.invoice_ids[0].currency_id
-
-        # marketplace receivable account: use partner property_account_receivable
-        mp_account = self.marketplace_partner_id.property_account_receivable_id
-        if not mp_account:
-            raise UserError(_('Marketplace partner must have Receivable account defined.'))
 
         # helper to detect receivable account across Odoo versions
         def _is_receivable_account(account):
@@ -45,6 +89,25 @@ class MarketplaceSettlement(models.Model):
             if hasattr(account, 'account_type_id') and getattr(account.account_type_id, 'internal_type', False):
                 return account.account_type_id.internal_type == 'receivable'
             return False
+
+        # Determine aggregate account for settlement:
+        # 1) explicit settlement_account_id (preferred)
+        # 2) journal default account (e.g., bank/cash account for the selected journal)
+        # 3) marketplace partner receivable as a last resort
+        mp_account = self.settlement_account_id or getattr(self.journal_id, 'default_account_id', False) or self.marketplace_partner_id.property_account_receivable_id
+        if not mp_account:
+            raise UserError(_('Please configure a settlement account on the settlement, a default account on the journal, or set a receivable account on the marketplace partner.'))
+
+        # Prevent posting the marketplace aggregate to a receivable account by mistake.
+        # This commonly causes both customer receivables and the aggregate to post to the
+        # same account (as seen in your screenshot). Ask the user to select a proper
+        # liquidity/bank account in the wizard or configure the journal default account.
+        if _is_receivable_account(mp_account):
+            raise UserError(_(
+                'The settlement aggregate account (%s) is a receivable account.\n'
+                'Please choose a bank/liquidity account as the settlement account in the wizard,\n'
+                'or configure the selected journal with an appropriate default account.'
+            ) % (mp_account.name,))
 
         for inv in self.invoice_ids:
             if inv.state != 'posted':

@@ -1,17 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_account_move_form_trade_channel_tab" model="ir.ui.view">
-        <field name="name">account.move.form.inherit.trade.channel.tab</field>
+    <!-- Add trade channel to invoice form view header area -->
+    <record id="view_account_move_form_trade_channel_header" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.trade.channel.header</field>
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
-            <!-- Add a Marketplace tab to the invoice notebook and show trade_channel there -->
-            <xpath expr="(//notebook)[1]" position="inside">
-                <page string="Marketplace" name="marketplace_tab">
-                    <group>
-                        <field name="trade_channel"/>
-                    </group>
-                </page>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="trade_channel" invisible="move_type not in ('out_invoice', 'out_refund')"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Add trade channel to invoice tree view (robust xpath) -->
+    <record id="view_account_move_tree_trade_channel" model="ir.ui.view">
+        <field name="name">account.move.tree.inherit.trade.channel</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <!-- Insert into the first tree element to avoid relying on a specific field position -->
+            <xpath expr="(//tree)[1]" position="inside">
+                <!-- place the column after existing columns; optional attribute allows graceful fallback -->
+                <field name="trade_channel" optional="show"/>
             </xpath>
         </field>
     </record>
