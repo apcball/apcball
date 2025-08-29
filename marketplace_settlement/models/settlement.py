@@ -175,4 +175,16 @@ class MarketplaceSettlement(models.Model):
                 # best-effort: continue
                 pass
 
-        return True
+        # return action opening the posted move with a banner link to reconcile models
+        action = {
+            'type': 'ir.actions.act_window',
+            'name': _('Settlement Move'),
+            'res_model': 'account.move',
+            'res_id': move.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+        # attach a client action / notification by using context flags the view can pick up
+        # Here we provide an action that the caller (wizard) can return directly as well.
+        return action

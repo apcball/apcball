@@ -15,6 +15,7 @@
                     <group>
                         <group>
                             <field name="trade_channel" required="1"/>
+                            <field name="profile_id"/>
                             <field name="marketplace_partner_id"/>
                             <field name="journal_id"/>
                             <field name="settlement_account_id"/>

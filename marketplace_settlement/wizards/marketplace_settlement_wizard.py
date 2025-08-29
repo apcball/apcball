@@ -8,6 +8,7 @@ class MarketplaceSettlementWizard(models.TransientModel):
 
     name = fields.Char('Settlement Ref', required=True)
     marketplace_partner_id = fields.Many2one('res.partner', string='Marketplace Partner', required=True)
+    profile_id = fields.Many2one('marketplace.settlement.profile', string='Profile')
     journal_id = fields.Many2one('account.journal', string='Journal', required=True)
     date = fields.Date('Date', required=True, default=fields.Date.context_today)
     trade_channel = fields.Selection([
@@ -39,6 +40,19 @@ class MarketplaceSettlementWizard(models.TransientModel):
     @api.onchange('trade_channel', 'date_from', 'date_to')
     def _onchange_trade_channel(self):
         """Automatically filter and populate invoices when trade channel is selected"""
+        # load profile defaults for this channel if any (only if no explicit profile selected)
+        if self.trade_channel and not self.profile_id:
+            Profile = self.env['marketplace.settlement.profile'].sudo()
+            prof = Profile.search([('trade_channel', '=', self.trade_channel)], limit=1)
+            if prof:
+                # only set defaults when fields are empty to avoid overwriting manual choices
+                if not self.marketplace_partner_id:
+                    self.marketplace_partner_id = prof.marketplace_partner_id
+                if not self.journal_id:
+                    self.journal_id = prof.journal_id
+                if not self.settlement_account_id:
+                    self.settlement_account_id = prof.settlement_account_id
+
         if self.trade_channel and self.auto_filter:
             # Build domain for filtering invoices
             domain = [
@@ -96,6 +110,26 @@ class MarketplaceSettlementWizard(models.TransientModel):
         elif not self.auto_filter:
             self.invoice_ids = [(5, 0, 0)]  # Clear invoices
 
+    @api.onchange('profile_id')
+    def _onchange_profile(self):
+        """When a profile is selected, populate related defaults and refresh invoices."""
+        if not self.profile_id:
+            return
+        prof = self.profile_id
+        # set trade channel from profile if not set or different
+        if prof.trade_channel:
+            self.trade_channel = prof.trade_channel
+        # apply defaults (do not override manual values)
+        if prof.marketplace_partner_id and not self.marketplace_partner_id:
+            self.marketplace_partner_id = prof.marketplace_partner_id
+        if prof.journal_id and not self.journal_id:
+            self.journal_id = prof.journal_id
+        if prof.settlement_account_id and not self.settlement_account_id:
+            self.settlement_account_id = prof.settlement_account_id
+        # ensure auto_filter is enabled and refresh invoices
+        self.auto_filter = True
+        self._onchange_trade_channel()
+
     def action_create(self):
         self.ensure_one()
         if not self.invoice_ids:
@@ -112,7 +146,26 @@ class MarketplaceSettlementWizard(models.TransientModel):
         })
         settlement.action_create_settlement()
 
-        # Return action to view the created settlement
+        # action_create_settlement on the model returns an action opening the created move
+        action = settlement.action_create_settlement()
+
+        # Build a warning message linking to Reconcile Models action
+        reconcile_action = self.env.ref('marketplace_settlement.action_marketplace_reconcile')
+        if reconcile_action:
+            link = '/web#action=%d' % (reconcile_action.id,)
+            warning_msg = _('Settlement created. You may want to reconcile fees: <a href="%s" target="_blank">Open Reconcile Models</a>') % link
+        else:
+            warning_msg = _('Settlement created.')
+
+        # If the settlement returned an action (to open the move), attach a warning popup
+        if isinstance(action, dict):
+            action['warning'] = {
+                'title': _('Settlement Created'),
+                'message': warning_msg,
+            }
+            return action
+
+        # fallback: open settlement form with a warning
         return {
             'type': 'ir.actions.act_window',
             'name': _('Marketplace Settlement'),
@@ -120,6 +173,10 @@ class MarketplaceSettlementWizard(models.TransientModel):
             'res_id': settlement.id,
             'view_mode': 'form',
             'target': 'current',
+            'warning': {
+                'title': _('Settlement Created'),
+                'message': warning_msg,
+            },
         }
 
     def action_refresh_invoices(self):
