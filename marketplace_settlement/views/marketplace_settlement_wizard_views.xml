@@ -12,7 +12,8 @@
                     <field name="marketplace_partner_id"/>
                     <field name="journal_id"/>
                     <field name="date"/>
-                    <field name="invoice_ids"/>
+                    <!-- filter invoices in the add popup by the wizard.trade_channel -->
+                    <field name="invoice_ids" domain="[('state','=','posted'),('move_type','in',['out_invoice','out_refund']),('amount_residual','!=',0.0)]"/>
                 </group>
                 <footer>
                     <button string="Create" type="object" name="action_create" class="btn-primary"/>
@@ -32,7 +33,20 @@
 
     <!-- Menu under Accounting -->
     <menuitem id="menu_marketplace_settlement_root" name="Marketplace" parent="account.menu_finance" sequence="90"/>
+    <record id="action_marketplace_settlement" model="ir.actions.act_window">
+        <field name="name">Marketplace Settlements</field>
+        <field name="res_model">marketplace.settlement</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Use this menu to review marketplace settlement documents created by the wizard.</p>
+        </field>
+    </record>
+
+    <!-- Container menu for marketplace settlement -->
     <menuitem id="menu_marketplace_settlement" name="Marketplace Settlement" parent="menu_marketplace_settlement_root"/>
+    <!-- Submenu: view recorded settlements -->
+    <menuitem id="menu_marketplace_settlement_records" name="Settlement Records" parent="menu_marketplace_settlement" action="action_marketplace_settlement"/>
+    <!-- Submenu: create a new settlement (wizard) -->
     <menuitem id="menu_marketplace_settlement_wizard_action" name="Create Settlement" parent="menu_marketplace_settlement" action="action_marketplace_settlement_wizard"/>
 
     <!-- List and form views for marketplace.settlement -->
@@ -64,7 +78,7 @@
                         <field name="journal_id"/>
                         <field name="date"/>
                         <field name="move_id"/>
-                        <field name="invoice_ids"/>
+                        <field name="invoice_ids" domain="[('state','=','posted'),('move_type','in',['out_invoice','out_refund']),('amount_residual','!=',0.0)]"/>
                     </group>
                 </sheet>
             </form>
@@ -72,20 +86,5 @@
     </record>
 
     <!-- Channel-specific actions -->
-    <record id="action_marketplace_settlement_shopee" model="ir.actions.act_window">
-        <field name="name">Shopee Settlements</field>
-        <field name="res_model">marketplace.settlement</field>
-        <field name="view_mode">tree,form</field>
-        <field name="domain">[('trade_channel','=','shopee')]</field>
-    </record>
-
-    <record id="action_marketplace_settlement_lazada" model="ir.actions.act_window">
-        <field name="name">Lazada Settlements</field>
-        <field name="res_model">marketplace.settlement</field>
-        <field name="view_mode">tree,form</field>
-        <field name="domain">[('trade_channel','=','lazada')]</field>
-    </record>
-
-    <menuitem id="menu_marketplace_settlement_shopee" name="Shopee Settlements" parent="menu_marketplace_settlement" action="action_marketplace_settlement_shopee"/>
-    <menuitem id="menu_marketplace_settlement_lazada" name="Lazada Settlements" parent="menu_marketplace_settlement" action="action_marketplace_settlement_lazada"/>
+    <!-- Channel-specific actions were removed per request: only generic Marketplace menus remain -->
 </odoo>

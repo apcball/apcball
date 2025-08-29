@@ -13,7 +13,7 @@
     "views/sale_order_view_inherit.xml",
     "views/account_move_view_inherit.xml",
     ],
-    "assets": {},
+    # Custom JS assets removed temporarily to avoid webclient break while debugging
     "installable": True,
     "application": False,
 }

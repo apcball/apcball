@@ -7,6 +7,8 @@ class MarketplaceSettlementWizard(models.TransientModel):
 
     company_id = fields.Many2one("res.company", required=True, default=lambda s: s.env.company)
     date = fields.Date(string="Settlement Date", default=fields.Date.context_today, required=True)
+    date_from = fields.Date(string="Invoice Date From")
+    date_to = fields.Date(string="Invoice Date To")
     journal_id = fields.Many2one(
         "account.journal",
         string="Clearing Journal",
@@ -20,6 +22,13 @@ class MarketplaceSettlementWizard(models.TransientModel):
         help="Who actually pays you (Shopee/Lazada). The grouped receivable will be moved to this partner."
     )
     settlement_ref = fields.Char(string="Settlement Ref/No.", help="e.g., SHOPEE-SETT-2025-08-29")
+    trade_channel = fields.Selection([
+        ("shopee", "Shopee"),
+        ("lazada", "Lazada"),
+        ("nocnoc", "Noc Noc"),
+        ("tiktok", "Tiktok"),
+        ("other", "Other"),
+    ], string="Trade Channel", help="Filter invoices by trade channel when adding lines.")
     currency_id = fields.Many2one(related="company_id.currency_id", store=False, readonly=True)
     line_ids = fields.One2many("marketplace.settlement.line", "wizard_id", string="Invoices to Settle")
 
@@ -51,6 +60,20 @@ class MarketplaceSettlementWizard(models.TransientModel):
         if j:
             res["journal_id"] = j.id
         return res
+
+    @api.onchange('trade_channel')
+    def _onchange_trade_channel(self):
+        # When trade_channel is selected, restrict the invoice selection in the one2many lines
+        if self.trade_channel:
+            domain = [
+                ('move_type', 'in', ['out_invoice', 'out_refund']),
+                ('state', '=', 'posted'),
+                ('trade_channel', '=', self.trade_channel),
+                ('amount_residual', '!=', 0.0),
+            ]
+            return {'domain': {'line_ids.invoice_id': domain}}
+        # clear domain if not set
+        return {'domain': {'line_ids.invoice_id': [('move_type','in',['out_invoice','out_refund'])]}}
 
     def _validate_inputs(self):
         if not self.line_ids:
@@ -185,7 +208,12 @@ class MarketplaceSettlementLine(models.TransientModel):
     _description = "Marketplace Settlement Line"
 
     wizard_id = fields.Many2one("marketplace.settlement.wizard", required=True, ondelete="cascade")
-    invoice_id = fields.Many2one("account.move", string="Invoice", required=True, domain="[('move_type','in',['out_invoice','out_refund'])]")
+    invoice_id = fields.Many2one(
+        "account.move",
+        string="Invoice",
+        required=True,
+        domain="[('move_type','in',['out_invoice','out_refund']), ('state','=','posted'), ('amount_residual','!=',0.0)]",
+    )
     partner_id = fields.Many2one("res.partner", string="Customer", required=True)
     currency_id = fields.Many2one("res.currency", required=True)
     amount = fields.Monetary(string="Amount to settle (invoice currency)", required=True)
