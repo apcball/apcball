@@ -9,8 +9,8 @@
     "depends": ["account", "sale"],
     "data": [
         "security/ir.model.access.csv",
-    "views/marketplace_settlement_wizard_views.xml",
-    "views/profile_views.xml",
+        "views/marketplace_settlement_wizard_views.xml",
+        "views/profile_views.xml",
         "views/sale_order_view_inherit.xml",
         "views/account_move_view_inherit.xml",
     ],

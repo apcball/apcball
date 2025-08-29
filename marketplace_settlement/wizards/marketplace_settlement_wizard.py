@@ -25,17 +25,35 @@ class MarketplaceSettlementWizard(models.TransientModel):
     settlement_account_id = fields.Many2one('account.account', string='Settlement Account', help='Account to post the marketplace aggregate line to (optional)')
     invoice_count = fields.Integer('Invoice Count', compute='_compute_invoice_count')
     total_amount = fields.Monetary('Total Amount', compute='_compute_total_amount', currency_field='currency_id')
+    total_deductions = fields.Monetary('Total Deductions', compute='_compute_total_amount', currency_field='currency_id')
+    net_settlement_amount = fields.Monetary('Net Settlement Amount', compute='_compute_total_amount', currency_field='currency_id')
     currency_id = fields.Many2one('res.currency', default=lambda self: self.env.company.currency_id)
+    
+    # Deduction fields
+    fee_amount = fields.Monetary('Marketplace Fee', currency_field='currency_id', help='Commission or fee charged by marketplace (e.g., Shopee, Lazada)')
+    fee_account_id = fields.Many2one('account.account', string='Fee Account', 
+                                   help='Expense account for marketplace fees (e.g., 6201 - Marketplace Commission)',
+                                   domain="[('account_type', 'in', ['expense', 'asset_expense'])]")
+    vat_on_fee_amount = fields.Monetary('VAT on Fee', currency_field='currency_id', help='VAT amount calculated on marketplace fee')
+    vat_account_id = fields.Many2one('account.account', string='VAT Account',
+                                   help='VAT account for input tax (e.g., 1310 - VAT Input Tax)',
+                                   domain="[('account_type', 'in', ['asset_current', 'liability_current'])]")
+    wht_amount = fields.Monetary('Withholding Tax (WHT)', currency_field='currency_id', help='Tax withheld at source by marketplace')
+    wht_account_id = fields.Many2one('account.account', string='WHT Account',
+                                   help='Withholding tax payable account (e.g., 2170 - WHT Payable)',
+                                   domain="[('account_type', '=', 'liability_current')]")
 
     @api.depends('invoice_ids')
     def _compute_invoice_count(self):
         for record in self:
             record.invoice_count = len(record.invoice_ids)
 
-    @api.depends('invoice_ids')
+    @api.depends('invoice_ids', 'fee_amount', 'vat_on_fee_amount', 'wht_amount')
     def _compute_total_amount(self):
         for record in self:
             record.total_amount = sum(record.invoice_ids.mapped('amount_residual'))
+            record.total_deductions = (record.fee_amount or 0.0) + (record.vat_on_fee_amount or 0.0) + (record.wht_amount or 0.0)
+            record.net_settlement_amount = record.total_amount - record.total_deductions
 
     @api.onchange('trade_channel', 'date_from', 'date_to')
     def _onchange_trade_channel(self):
@@ -130,10 +148,33 @@ class MarketplaceSettlementWizard(models.TransientModel):
         self.auto_filter = True
         self._onchange_trade_channel()
 
+    @api.onchange('fee_amount')
+    def _onchange_fee_amount(self):
+        if self.fee_amount and self.fee_amount > 0 and not self.fee_account_id:
+            return {'warning': {'title': _('Account Required'), 'message': _('Please specify Fee Account for marketplace fee.\n\nSuggested account types:\n• 6xxx - Marketing/Sales Expenses\n• 62xx - Commission/Fee Expenses\n• Example: 6201 - Marketplace Commission')}}
+
+    @api.onchange('vat_on_fee_amount')
+    def _onchange_vat_on_fee_amount(self):
+        if self.vat_on_fee_amount and self.vat_on_fee_amount > 0 and not self.vat_account_id:
+            return {'warning': {'title': _('Account Required'), 'message': _('Please specify VAT Account for VAT on fee.\n\nSuggested account types:\n• 1xxx - VAT Input/Receivable\n• 2xxx - VAT Payable\n• Example: 1310 - VAT Input Tax')}}
+
+    @api.onchange('wht_amount')
+    def _onchange_wht_amount(self):
+        if self.wht_amount and self.wht_amount > 0 and not self.wht_account_id:
+            return {'warning': {'title': _('Account Required'), 'message': _('Please specify WHT Account for withholding tax.\n\nSuggested account types:\n• 2xxx - Tax Payable\n• Example: 2170 - Withholding Tax Payable\n• Example: 2171 - WHT 3% (Services)')}}
+
     def action_create(self):
         self.ensure_one()
         if not self.invoice_ids:
             raise UserError(_('Please select invoices to settle.'))
+
+        # Validate deduction accounts if amounts are provided
+        if self.fee_amount and self.fee_amount > 0 and not self.fee_account_id:
+            raise UserError(_('Please specify Fee Account for marketplace fee.\n\nSuggested account codes:\n• 6201 - Marketplace Commission\n• 6210 - Sales Commission\n• 6xxx - Marketing/Sales Expenses'))
+        if self.vat_on_fee_amount and self.vat_on_fee_amount > 0 and not self.vat_account_id:
+            raise UserError(_('Please specify VAT Account for VAT on fee.\n\nSuggested account codes:\n• 1310 - VAT Input Tax\n• 1311 - VAT Recoverable\n• 2xxx - VAT Payable (if applicable)'))
+        if self.wht_amount and self.wht_amount > 0 and not self.wht_account_id:
+            raise UserError(_('Please specify WHT Account for withholding tax.\n\nSuggested account codes:\n• 2170 - Withholding Tax Payable\n• 2171 - WHT 3% (Services)\n• 2172 - WHT 1% (Others)'))
 
         settlement = self.env['marketplace.settlement'].create({
             'name': self.name,
@@ -143,14 +184,19 @@ class MarketplaceSettlementWizard(models.TransientModel):
             'trade_channel': self.trade_channel,
             'invoice_ids': [(6, 0, self.invoice_ids.ids)],
             'settlement_account_id': self.settlement_account_id.id if self.settlement_account_id else False,
+            'fee_amount': self.fee_amount,
+            'fee_account_id': self.fee_account_id.id if self.fee_account_id else False,
+            'vat_on_fee_amount': self.vat_on_fee_amount,
+            'vat_account_id': self.vat_account_id.id if self.vat_account_id else False,
+            'wht_amount': self.wht_amount,
+            'wht_account_id': self.wht_account_id.id if self.wht_account_id else False,
         })
-        settlement.action_create_settlement()
-
-        # action_create_settlement on the model returns an action opening the created move
+        
+        # action_create_settlement creates the journal entry and returns an action
         action = settlement.action_create_settlement()
 
         # Build a warning message linking to Reconcile Models action
-        reconcile_action = self.env.ref('marketplace_settlement.action_marketplace_reconcile')
+        reconcile_action = self.env.ref('marketplace_settlement.action_marketplace_reconcile', raise_if_not_found=False)
         if reconcile_action:
             link = '/web#action=%d' % (reconcile_action.id,)
             warning_msg = _('Settlement created. You may want to reconcile fees: <a href="%s" target="_blank">Open Reconcile Models</a>') % link

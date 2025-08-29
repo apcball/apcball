@@ -30,20 +30,52 @@
                             <field name="currency_id" invisible="1"/>
                         </group>
                     </group>
+                    
+                    <!-- Deductions Section -->
+                    <group string="Deductions" name="deductions">
+                        <group string="Marketplace Fee">
+                            <field name="fee_amount" placeholder="0.00"/>
+                            <field name="fee_account_id" invisible="not fee_amount" 
+                                   placeholder="Select expense account (e.g., 6201)"
+                                   context="{'default_account_type': 'expense'}"/>
+                        </group>
+                        <group string="VAT &amp; Withholding Tax">
+                            <field name="vat_on_fee_amount" placeholder="0.00"/>
+                            <field name="vat_account_id" invisible="not vat_on_fee_amount"
+                                   placeholder="Select VAT account (e.g., 1310)"
+                                   context="{'default_account_type': 'asset_current'}"/>
+                            <field name="wht_amount" placeholder="0.00"/>
+                            <field name="wht_account_id" invisible="not wht_amount"
+                                   placeholder="Select WHT account (e.g., 2170)"
+                                   context="{'default_account_type': 'liability_current'}"/>
+                        </group>
+                    </group>
+                    
+                    <!-- Summary Section -->
+                    <group string="Settlement Summary" name="summary">
+                        <group>
+                            <field name="total_amount" readonly="1"/>
+                            <field name="total_deductions" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="net_settlement_amount" readonly="1"/>
+                        </group>
+                    </group>
                     <notebook>
                         <page string="Invoices" name="invoices">
                             <div class="oe_button_box">
                                 <button name="action_refresh_invoices" type="object" class="oe_stat_button" icon="fa-refresh" string="Refresh" help="Refresh invoice list based on trade channel"/>
                             </div>
                             <field name="invoice_ids" nolabel="1">
-                                <tree decoration-info="move_type=='out_refund'" decoration-bf="amount_residual > 1000">
+                                <tree decoration-info="is_refund" decoration-bf="amount_residual > 1000">
                                     <field name="name"/>
                                     <field name="partner_id"/>
                                     <field name="invoice_date"/>
                                     <field name="trade_channel"/>
                                     <field name="amount_total"/>
                                     <field name="amount_residual"/>
-                                    <field name="move_type"/>
+                                    <field name="move_type" invisible="1"/>
+                                    <field name="is_refund" widget="boolean"/>
                                     <field name="state"/>
                                 </tree>
                             </field>
@@ -72,7 +104,7 @@
         <field name="name">Marketplace Settlements</field>
         <field name="res_model">marketplace.settlement</field>
         <field name="view_mode">tree,form</field>
-        <field name="context">{'search_default_filter_done': 1}</field>
+        <field name="context">{'search_default_filter_posted': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Create your first marketplace settlement!
@@ -106,7 +138,8 @@
                 <field name="trade_channel"/>
                 <field name="date"/>
                 <filter name="filter_draft" string="Draft" domain="[('state', '=', 'draft')]"/>
-                <filter name="filter_done" string="Done" domain="[('state', '=', 'done')]"/>
+                <filter name="filter_posted" string="Posted" domain="[('state', '=', 'posted')]"/>
+                <filter name="filter_reversed" string="Reversed" domain="[('state', '=', 'reversed')]"/>
                 <separator/>
                 <filter name="filter_shopee" string="Shopee" domain="[('trade_channel', '=', 'shopee')]"/>
                 <filter name="filter_lazada" string="Lazada" domain="[('trade_channel', '=', 'lazada')]"/>
@@ -129,14 +162,14 @@
         <field name="name">marketplace.settlement.tree</field>
         <field name="model">marketplace.settlement</field>
         <field name="arch" type="xml">
-            <tree decoration-success="state=='done'" decoration-muted="state=='draft'">
+            <tree decoration-success="state=='posted'" decoration-muted="state=='draft'" decoration-danger="state=='reversed'">
                 <field name="name"/>
                 <field name="trade_channel"/>
                 <field name="marketplace_partner_id"/>
                 <field name="journal_id"/>
                 <field name="date"/>
                 <field name="invoice_count"/>
-                <field name="state" widget="badge" decoration-success="state=='done'" decoration-muted="state=='draft'"/>
+                <field name="state" widget="badge" decoration-success="state=='posted'" decoration-muted="state=='draft'" decoration-danger="state=='reversed'"/>
                 <field name="move_id"/>
             </tree>
         </field>
@@ -149,6 +182,9 @@
             <form>
                 <header>
                     <button name="action_create_settlement" type="object" string="Create Settlement" class="btn-primary" invisible="move_id != False"/>
+                    <button name="action_reverse_settlement" type="object" string="Reverse Settlement" class="btn-secondary" 
+                            invisible="state != 'posted'" confirm="Are you sure you want to reverse this settlement? This will create a reverse journal entry and clear the settlement link."/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted,reversed"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -177,19 +213,45 @@
                         <group>
                             <field name="move_id"/>
                             <field name="invoice_count" invisible="1"/>
+                            <field name="settlement_account_id"/>
+                        </group>
+                    </group>
+                    
+                    <!-- Summary Section -->
+                    <group string="Settlement Summary" name="summary">
+                        <group>
+                            <field name="total_invoice_amount" readonly="1"/>
+                            <field name="total_deductions" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="net_settlement_amount" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <!-- Deductions Section -->
+                    <group string="Deductions" name="deductions">
+                        <group>
+                            <field name="fee_amount"/>
+                            <field name="fee_account_id" invisible="not fee_amount"/>
+                            <field name="vat_on_fee_amount"/>
+                            <field name="vat_account_id" invisible="not vat_on_fee_amount"/>
+                        </group>
+                        <group>
+                            <field name="wht_amount"/>
+                            <field name="wht_account_id" invisible="not wht_amount"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Invoices" name="invoices">
                             <field name="invoice_ids" nolabel="1">
-                                <tree decoration-info="move_type=='out_refund'" decoration-bf="amount_residual > 1000">
+                                <tree decoration-info="is_refund" decoration-bf="amount_residual > 1000">
                                     <field name="name"/>
                                     <field name="partner_id"/>
                                     <field name="invoice_date"/>
                                     <field name="trade_channel"/>
                                     <field name="amount_total"/>
                                     <field name="amount_residual"/>
-                                    <field name="move_type"/>
+                                    <field name="is_refund" widget="boolean"/>
                                     <field name="state"/>
                                 </tree>
                             </field>

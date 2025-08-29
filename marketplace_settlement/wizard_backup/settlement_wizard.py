@@ -2,8 +2,8 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 class MarketplaceSettlementWizard(models.TransientModel):
-    _name = "marketplace.settlement.wizard"
-    _description = "Marketplace Settlement Wizard"
+    _name = "marketplace.settlement.wizard.simple"
+    _description = "Simple Marketplace Settlement Wizard"
 
     company_id = fields.Many2one("res.company", required=True, default=lambda s: s.env.company)
     date = fields.Date(string="Settlement Date", default=fields.Date.context_today, required=True)
@@ -30,7 +30,23 @@ class MarketplaceSettlementWizard(models.TransientModel):
         ("other", "Other"),
     ], string="Trade Channel", help="Filter invoices by trade channel when adding lines.")
     currency_id = fields.Many2one(related="company_id.currency_id", store=False, readonly=True)
-    line_ids = fields.One2many("marketplace.settlement.line", "wizard_id", string="Invoices to Settle")
+    line_ids = fields.One2many("marketplace.settlement.line.simple", "wizard_id", string="Invoices to Settle")
+    
+    # Deduction fields
+    fee_amount = fields.Monetary('Marketplace Fee', currency_field='currency_id')
+    fee_account_id = fields.Many2one('account.account', string='Fee Account')
+    vat_on_fee_amount = fields.Monetary('VAT on Fee', currency_field='currency_id')
+    vat_account_id = fields.Many2one('account.account', string='VAT Account')
+    wht_amount = fields.Monetary('Withholding Tax (WHT)', currency_field='currency_id')
+    wht_account_id = fields.Many2one('account.account', string='WHT Account')
+    
+    # Deduction fields
+    fee_amount = fields.Monetary('Marketplace Fee', currency_field='currency_id')
+    fee_account_id = fields.Many2one('account.account', string='Fee Account')
+    vat_on_fee_amount = fields.Monetary('VAT on Fee', currency_field='currency_id')
+    vat_account_id = fields.Many2one('account.account', string='VAT Account')
+    wht_amount = fields.Monetary('Withholding Tax (WHT)', currency_field='currency_id')
+    wht_account_id = fields.Many2one('account.account', string='WHT Account')
 
     @api.model
     def default_get(self, fields_list):
@@ -80,6 +96,14 @@ class MarketplaceSettlementWizard(models.TransientModel):
             raise UserError(_("No invoices selected."))
         if any(l.amount <= 0 for l in self.line_ids):
             raise UserError(_("Each line amount must be greater than zero."))
+        
+        # Validate deduction accounts if amounts are provided
+        if self.fee_amount and not self.fee_account_id:
+            raise UserError(_('Please specify Fee Account for marketplace fee.'))
+        if self.vat_on_fee_amount and not self.vat_account_id:
+            raise UserError(_('Please specify VAT Account for VAT on fee.'))
+        if self.wht_amount and not self.wht_account_id:
+            raise UserError(_('Please specify WHT Account for withholding tax.'))
 
     def action_create_entry(self):
         self._validate_inputs()
@@ -148,18 +172,57 @@ class MarketplaceSettlementWizard(models.TransientModel):
         if not aml_vals:
             raise UserError(_("Nothing to settle. Check residuals."))
 
+        # Add deduction lines
+        total_deductions = 0.0
+        
+        # Marketplace Fee
+        if self.fee_amount and self.fee_amount > 0:
+            aml_vals.append({
+                "name": _('Marketplace Fee - %s') % name,
+                "account_id": self.fee_account_id.id,
+                "partner_id": mp_partner.id,
+                "debit": self.fee_amount,
+                "credit": 0.0,
+            })
+            total_deductions += self.fee_amount
+
+        # VAT on Fee
+        if self.vat_on_fee_amount and self.vat_on_fee_amount > 0:
+            aml_vals.append({
+                "name": _('VAT on Marketplace Fee - %s') % name,
+                "account_id": self.vat_account_id.id,
+                "partner_id": mp_partner.id,
+                "debit": self.vat_on_fee_amount,
+                "credit": 0.0,
+            })
+            total_deductions += self.vat_on_fee_amount
+
+        # Withholding Tax (WHT)
+        if self.wht_amount and self.wht_amount > 0:
+            aml_vals.append({
+                "name": _('Withholding Tax - %s') % name,
+                "account_id": self.wht_account_id.id,
+                "partner_id": mp_partner.id,
+                "debit": self.wht_amount,
+                "credit": 0.0,
+            })
+            total_deductions += self.wht_amount
+
+        # Adjust total_company for deductions
+        total_company_adjusted = total_company - total_deductions
+
         # Build balancing line to marketplace receivable
         name = self.settlement_ref or _("Marketplace Settlement")
-        # total_company currently equals sum(credits) - sum(debits) on counterpart lines (positive if credit > debit)
+        # total_company_adjusted currently equals sum(credits) - sum(debits) on counterpart lines minus deductions
         # We need the opposite on the MP line to balance the entry.
-        if total_company > 0:
+        if total_company_adjusted > 0:
             # counterpart lines are overall CREDIT > DEBIT -> we need a DEBIT to MP
-            mp_debit = total_company
+            mp_debit = total_company_adjusted
             mp_credit = 0.0
             amount_currency = 0.0
         else:
             mp_debit = 0.0
-            mp_credit = -total_company
+            mp_credit = -total_company_adjusted
             amount_currency = 0.0
 
         aml_vals.append({
@@ -204,10 +267,10 @@ class MarketplaceSettlementWizard(models.TransientModel):
 
 
 class MarketplaceSettlementLine(models.TransientModel):
-    _name = "marketplace.settlement.line"
-    _description = "Marketplace Settlement Line"
+    _name = "marketplace.settlement.line.simple"
+    _description = "Simple Marketplace Settlement Line"
 
-    wizard_id = fields.Many2one("marketplace.settlement.wizard", required=True, ondelete="cascade")
+    wizard_id = fields.Many2one("marketplace.settlement.wizard.simple", required=True, ondelete="cascade")
     invoice_id = fields.Many2one(
         "account.move",
         string="Invoice",

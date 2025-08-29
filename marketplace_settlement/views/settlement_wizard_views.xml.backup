@@ -1,7 +1,7 @@
 <odoo>
-    <record id="view_marketplace_settlement_wizard" model="ir.ui.view">
-        <field name="name">marketplace.settlement.wizard.form</field>
-        <field name="model">marketplace.settlement.wizard</field>
+    <record id="view_marketplace_settlement_wizard_simple" model="ir.ui.view">
+        <field name="name">marketplace.settlement.wizard.simple.form</field>
+        <field name="model">marketplace.settlement.wizard.simple</field>
         <field name="arch" type="xml">
             <form string="Marketplace Settlement" create="false" edit="true">
                     <group>
@@ -29,6 +29,22 @@
                         <field name="residual_company" readonly="1"/>
                     </tree>
                 </field>
+                
+                <!-- Deductions Section -->
+                <separator string="Deductions"/>
+                <group name="deductions">
+                    <group>
+                        <field name="fee_amount"/>
+                        <field name="fee_account_id" invisible="not fee_amount"/>
+                        <field name="vat_on_fee_amount"/>
+                        <field name="vat_account_id" invisible="not vat_on_fee_amount"/>
+                    </group>
+                    <group>
+                        <field name="wht_amount"/>
+                        <field name="wht_account_id" invisible="not wht_amount"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                </group>
                     <footer>
                     <button name="action_create_entry" type="object" class="btn-primary" string="Create Settlement Entry &amp; Reconcile"/>
                     <button string="Cancel" special="cancel" class="btn-secondary"/>
@@ -38,9 +54,9 @@
     </record>
 
     <!-- Action Window to open wizard -->
-    <record id="action_marketplace_settlement_wizard" model="ir.actions.act_window">
-        <field name="name">Marketplace Settlement</field>
-        <field name="res_model">marketplace.settlement.wizard</field>
+    <record id="action_marketplace_settlement_wizard_simple" model="ir.actions.act_window">
+        <field name="name">Marketplace Settlement (Simple)</field>
+        <field name="res_model">marketplace.settlement.wizard.simple</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
         <field name="context">{'active_model': 'account.move', 'default_company_id': company_id}</field>

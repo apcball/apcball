@@ -22,3 +22,8 @@ class AccountMove(models.Model):
     _inherit = 'account.move'
 
     trade_channel = fields.Selection([('shopee', 'Shopee'), ('lazada', 'Lazada'), ('nocnoc', 'Noc Noc'), ('tiktok', 'Tiktok'), ('other', 'Other')], string='Trade Channel')
+    is_refund = fields.Boolean('Is Credit Note', compute='_compute_is_refund')
+
+    def _compute_is_refund(self):
+        for rec in self:
+            rec.is_refund = (rec.move_type == 'out_refund')
