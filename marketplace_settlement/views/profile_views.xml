@@ -54,6 +54,4 @@
         </field>
     </record>
 
-    <menuitem id="menu_marketplace_reconcile" name="Reconcile Models" parent="menu_marketplace_settlement_root" action="action_marketplace_reconcile"/>
-
 </odoo>
