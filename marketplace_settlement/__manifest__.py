@@ -1,5 +1,5 @@
 {
-    "name": "Marketplace Settlement (Shopee/Lazada)",
+    "name": "Marketplace Settlement",
     "summary": "Wizard to group many customer invoices into a single receivable to marketplace (e.g., Shopee)",
     "version": "17.0.1.0.0",
     "author": "Ball + Manow",
