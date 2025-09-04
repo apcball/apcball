@@ -365,18 +365,11 @@ class TaxReportXlsx(models.AbstractModel):
                     doc_ref = (getattr(move, 'ref', None) or move.name or '')
                     doc_date = line_data['date']
                     if tax.type_tax_use == 'sale':
-                        # Try mapping by move_line_id first, then fallback to (move_id, tax_id)
-                        taxinv = None
-                        # move_line id may be present in the original move lines; we try to use mapping
-                        ml_id = line_data.get('id')
-                        if ml_id and ml_id in taxinv_map_by_move_line:
-                            taxinv = taxinv_map_by_move_line.get(ml_id)
-                        if not taxinv and (move.id, tax.id) in taxinv_map_by_move_and_tax:
-                            taxinv = taxinv_map_by_move_and_tax.get((move.id, tax.id))
-                        if taxinv:
-                            doc_ref = taxinv.tax_invoice_number or doc_ref
-                            if getattr(taxinv, 'tax_invoice_date', False):
-                                doc_date = taxinv.tax_invoice_date
+                        # For sales, show the invoice number (field 'number') as the document reference
+                        # Fallback to move.name if number not set
+                        doc_ref = getattr(move, 'number', None) or getattr(move, 'name', '') or doc_ref
+                        # Prefer the invoice date if present on move
+                        doc_date = getattr(move, 'invoice_date', line_data.get('date'))
 
                     tax_data.append({
                         'tax_name': tax.name,
