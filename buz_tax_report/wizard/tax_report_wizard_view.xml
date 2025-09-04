@@ -14,6 +14,7 @@
                         <field name="company_id"/>
                         <field name="tax_type"/>
                         <field name="display_details"/>
+                        <field name="report_name"/>
                     </group>
                 </group>
                 <footer>

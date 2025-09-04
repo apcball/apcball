@@ -17,7 +17,8 @@
             <field name="report_type">xlsx</field>
             <field name="report_name">buz_tax_report.tax_report_xlsx</field>
             <field name="report_file">buz_tax_report.tax_report_xlsx</field>
-            <field name="print_report_name">'Tax Report - %s' % (object.company_id.name)</field>
+            <!-- Use the wizard's report_name if provided, otherwise fallback to Tax Report - <Company> -->
+            <field name="print_report_name">(object.report_name or ('Tax Report - %s' % (object.company_id.name)))</field>
             <field name="binding_model_id" ref="model_tax_report_wizard"/>
             <field name="binding_type">report</field>
         </record>

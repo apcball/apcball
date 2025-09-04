@@ -19,7 +19,7 @@
     'category': 'Accounting',
     'author': 'apcball',
     'website': 'https://www.example.com',
-    'depends': ['account', 'report_xlsx'],
+    'depends': ['account', 'report_xlsx', 'l10n_th_account_tax'],
     'data': [
         'security/ir.model.access.csv',
         'views/tax_report_wizard_view.xml',

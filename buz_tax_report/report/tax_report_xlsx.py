@@ -91,19 +91,39 @@ class TaxReportXlsx(models.AbstractModel):
             sheet.set_column('D:D', 32)  # Partner Name
             sheet.set_column('E:E', 10)  # Tax Rate
             sheet.set_column('F:F', 18)  # Tax ID/VAT
-            sheet.set_column('G:G', 14)  # Establishment
-            sheet.set_column('H:H', 18)  # Base Amount
-            sheet.set_column('I:I', 14)  # Tax Amount
+            # Removed Establishment column
+            sheet.set_column('G:G', 18)  # Base Amount
+            sheet.set_column('H:H', 14)  # Tax Amount
+            sheet.set_column('I:I', 14)  # Total Amount (Base + Tax)
             # Hide any extra columns to avoid stray empty fields showing in Excel
             sheet.set_column('J:Z', 2)
 
-            # Write title (adjusted merged range)
-            sheet.merge_range('A1:I2', f'{wizard.company_id.name}\nTax Report (Detailed)', title_format)
+            # Write title (company name + custom report name)
+            # Prefer explicit report_name from wizard/config. If missing, use tax_type->Thai name.
+            if getattr(wizard, 'report_name', False):
+                base_title = wizard.report_name
+            else:
+                if wizard.tax_type == 'purchase':
+                    base_title = _('รายงานภาษีซื้อ')
+                elif wizard.tax_type == 'sale':
+                    base_title = _('รายงานภาษีขาย')
+                else:
+                    base_title = _('รายงานภาษี')
+            # Append localized detail/summary suffix
+            suffix = _('(Detailed)') if display_details else _('(Summary)')
+            report_title = f"{base_title} {suffix}" if suffix not in (base_title or '') else base_title
+            sheet.merge_range('A1:I2', "%s\n%s" % (wizard.company_id.name or '', report_title), title_format)
 
-            # Write period
-            sheet.merge_range('A3:I3', 
-                             f'Period: {date_from.strftime("%d/%m/%Y") if date_from else ""} - {date_to.strftime("%d/%m/%Y") if date_to else ""}', 
-                             header_format)
+            # Write period in Thai-style label
+            period_label = _('เดือนภาษี')
+            period_value = ''
+            if date_from and date_to:
+                # Try to show month name and year from date_from
+                try:
+                    period_value = f"{date_from.strftime('%B')} {date_from.year}"
+                except Exception:
+                    period_value = f"{date_from} - {date_to}"
+            sheet.merge_range('A3:I3', f"{period_label} {period_value}", header_format)
 
             # Write headers in the desired order
             headers = [
@@ -113,9 +133,10 @@ class TaxReportXlsx(models.AbstractModel):
                 _('ชื่อผู้ขายสินค้า/ผู้ให้บริการ'),
                 _('อัตรา (%)'),
                 _('เลขประจำตัวผู้เสียภาษี'),
-                _('สถานประกอบการ'),
+                # removed establishment header
                 _('มูลค่าสินค้า/บริการ (ไม่รวมภาษี)'),
-                _('จำนวนเงินภาษี')
+                _('จำนวนเงินภาษี'),
+                _('จำนวนเงินรวม')
             ]
         else:
             # Set column widths for summary view
@@ -125,18 +146,35 @@ class TaxReportXlsx(models.AbstractModel):
             sheet.set_column('D:D', 12)  # Rate
             sheet.set_column('E:E', 15)  # Base Amount
             sheet.set_column('F:F', 15)  # Tax Amount
-            sheet.set_column('G:G', 12)  # Count
+            sheet.set_column('G:G', 15)  # Total Amount (Base + Tax)
+            sheet.set_column('H:H', 12)  # Count
             # Hide extra columns for summary view as well
-            sheet.set_column('H:Z', 2)
-            
-            # Write title
-            sheet.merge_range('A1:G2', f'{wizard.company_id.name}\nTax Report (Summary)', title_format)
-            
-            # Write period
-            sheet.merge_range('A3:G3', 
-                             f'Period: {date_from.strftime("%d/%m/%Y") if date_from else ""} - {date_to.strftime("%d/%m/%Y") if date_to else ""}', 
-                             header_format)
-            
+            sheet.set_column('I:Z', 2)
+            # Prepare title and period (compute before writing merged ranges)
+            if getattr(wizard, 'report_name', False):
+                base_title = wizard.report_name
+            else:
+                if wizard.tax_type == 'purchase':
+                    base_title = _('รายงานภาษีซื้อ')
+                elif wizard.tax_type == 'sale':
+                    base_title = _('รายงานภาษีขาย')
+                else:
+                    base_title = _('รายงานภาษี')
+            suffix = _('(Detailed)') if display_details else _('(Summary)')
+            report_title = f"{base_title} {suffix}" if suffix not in (base_title or '') else base_title
+
+            period_label = _('เดือนภาษี')
+            period_value = ''
+            if date_from and date_to:
+                try:
+                    period_value = f"{date_from.strftime('%B')} {date_from.year}"
+                except Exception:
+                    period_value = f"{date_from} - {date_to}"
+
+            # Write title and period
+            sheet.merge_range('A1:G2', "%s\n%s" % (wizard.company_id.name or '', report_title), title_format)
+            sheet.merge_range('A3:G3', f"{period_label} {period_value}", header_format)
+
             # Write headers
             headers = [
                 _('ลำดับ'),
@@ -183,11 +221,12 @@ class TaxReportXlsx(models.AbstractModel):
                     sheet.write(row, 4, rate_str, data_format)
                     # Partner VAT / Tax ID
                     sheet.write(row, 5, tax_line.get('partner_vat', ''), data_format)
-                    # Establishment (best-effort field from partner)
-                    sheet.write(row, 6, tax_line.get('establishment', ''), data_format)
-                    # Base & Tax amounts
-                    sheet.write(row, 7, tax_line.get('base_amount', 0.0), number_format)
-                    sheet.write(row, 8, tax_line.get('tax_amount', 0.0), number_format)
+                    # Base & Tax amounts (establishment removed)
+                    sheet.write(row, 6, tax_line.get('base_amount', 0.0), number_format)
+                    sheet.write(row, 7, tax_line.get('tax_amount', 0.0), number_format)
+                    # Total = base + tax
+                    total_line = (tax_line.get('base_amount', 0.0) or 0.0) + (tax_line.get('tax_amount', 0.0) or 0.0)
+                    sheet.write(row, 8, total_line, number_format)
             else:
                 # Summary view unchanged
                 sheet.write(row, 1, tax_line.get('tax_name', ''), data_format)
@@ -199,6 +238,7 @@ class TaxReportXlsx(models.AbstractModel):
 
             total_base += tax_line.get('base_amount', 0.0)
             total_tax += tax_line.get('tax_amount', 0.0)
+            # accumulate totals for the new total column as base + tax
 
             row += 1
             line_no += 1
@@ -224,17 +264,19 @@ class TaxReportXlsx(models.AbstractModel):
         
         if display_details:
             # Merge label across first 7 columns (No. through Establishment)
-            sheet.merge_range(f'A{row+1}:G{row+1}', _('TOTAL'), total_label_format)
-            # Base Amount column is index 7, Tax Amount is index 8
-            sheet.write(row, 7, total_base, total_format)
-            sheet.write(row, 8, total_tax, total_format)
-            for col in range(0, 7):
+            sheet.merge_range(f'A{row+1}:F{row+1}', _('TOTAL'), total_label_format)
+            # Base Amount column is index 6, Tax Amount is index 7, Total Amount is index 8
+            sheet.write(row, 6, total_base, total_format)
+            sheet.write(row, 7, total_tax, total_format)
+            sheet.write(row, 8, total_base + total_tax, total_format)
+            for col in range(0, 6):
                 sheet.write(row, col, '', total_label_format)
         else:
             sheet.merge_range(f'A{row+1}:D{row+1}', _('TOTAL'), total_label_format)
             sheet.write(row, 4, total_base, total_format)
             sheet.write(row, 5, total_tax, total_format)
-            sheet.write(row, 6, '', total_label_format)
+            sheet.write(row, 6, total_base + total_tax, total_format)
+            sheet.write(row, 7, '', total_label_format)
 
     def _get_tax_data(self, date_from, date_to, company_id, tax_type='all', display_details=False, specific_tax_ids=None):
         """Get tax data from account move lines"""
@@ -263,6 +305,33 @@ class TaxReportXlsx(models.AbstractModel):
             ['id', 'tax_line_id', 'balance', 'date', 'name', 'partner_id', 'move_id'],
             order='date, move_id'
         )
+        # Prefetch tax-invoice records related to these move lines to avoid per-line searches
+        move_line_ids = [ml['id'] for ml in move_lines]
+        move_ids = [ml['move_id'][0] for ml in move_lines if ml.get('move_id')]
+        taxinv_map_by_move_line = {}
+        taxinv_map_by_move_and_tax = {}
+        if move_line_ids or move_ids:
+            try:
+                taxinv_domain = []
+                if move_ids and move_line_ids:
+                    taxinv_domain = ['|', ('move_id', 'in', move_ids), ('move_line_id', 'in', move_line_ids)]
+                elif move_line_ids:
+                    taxinv_domain = [('move_line_id', 'in', move_line_ids)]
+                elif move_ids:
+                    taxinv_domain = [('move_id', 'in', move_ids)]
+
+                taxinv_records = self.env['account.move.tax.invoice'].search(taxinv_domain)
+                for tiv in taxinv_records:
+                    # map by move_line_id when available (preferred)
+                    if tiv.move_line_id:
+                        taxinv_map_by_move_line[tiv.move_line_id.id] = tiv
+                    # also map by (move_id, tax_line_id) as a fallback
+                    if tiv.move_id and tiv.tax_line_id:
+                        taxinv_map_by_move_and_tax[(tiv.move_id.id, tiv.tax_line_id.id)] = tiv
+            except Exception:
+                # If the localization module isn't installed or model missing, silently continue
+                taxinv_map_by_move_line = {}
+                taxinv_map_by_move_and_tax = {}
         
         if display_details:
             # Return detailed data for each line
@@ -291,14 +360,32 @@ class TaxReportXlsx(models.AbstractModel):
                         # Thai localization often stores branch in l10n_th_vat_branch or use city/street
                         establishment = getattr(partner, 'l10n_th_vat_branch', '') or partner.city or partner.street or ''
 
+                    # Prefer tax invoice info for sales (l10n_th_account_tax.account.move.tax.invoice)
+                    # For purchases prefer the move.ref (bill reference)
+                    doc_ref = (getattr(move, 'ref', None) or move.name or '')
+                    doc_date = line_data['date']
+                    if tax.type_tax_use == 'sale':
+                        # Try mapping by move_line_id first, then fallback to (move_id, tax_id)
+                        taxinv = None
+                        # move_line id may be present in the original move lines; we try to use mapping
+                        ml_id = line_data.get('id')
+                        if ml_id and ml_id in taxinv_map_by_move_line:
+                            taxinv = taxinv_map_by_move_line.get(ml_id)
+                        if not taxinv and (move.id, tax.id) in taxinv_map_by_move_and_tax:
+                            taxinv = taxinv_map_by_move_and_tax.get((move.id, tax.id))
+                        if taxinv:
+                            doc_ref = taxinv.tax_invoice_number or doc_ref
+                            if getattr(taxinv, 'tax_invoice_date', False):
+                                doc_date = taxinv.tax_invoice_date
+
                     tax_data.append({
                         'tax_name': tax.name,
                         'tax_type': tax_type_label,
                         'tax_rate': tax.amount,
                         'base_amount': base_amount,
                         'tax_amount': abs(line_data['balance']),
-                        'date': line_data['date'],
-                        'reference': move.name or '',
+                        'date': doc_date,
+                        'reference': doc_ref,
                         'partner_name': partner.name if partner else '',
                         'partner_vat': partner.vat or '' if partner else '',
                         'establishment': establishment
