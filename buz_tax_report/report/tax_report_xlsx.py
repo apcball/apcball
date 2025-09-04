@@ -360,16 +360,31 @@ class TaxReportXlsx(models.AbstractModel):
                         # Thai localization often stores branch in l10n_th_vat_branch or use city/street
                         establishment = getattr(partner, 'l10n_th_vat_branch', '') or partner.city or partner.street or ''
 
-                    # Prefer tax invoice info for sales (l10n_th_account_tax.account.move.tax.invoice)
-                    # For purchases prefer the move.ref (bill reference)
+                    # Handle tax invoice info differently for sales vs purchases
                     doc_ref = (getattr(move, 'ref', None) or move.name or '')
                     doc_date = line_data['date']
+                    
                     if tax.type_tax_use == 'sale':
                         # For sales, show the invoice number (field 'number') as the document reference
                         # Fallback to move.name if number not set
                         doc_ref = getattr(move, 'number', None) or getattr(move, 'name', '') or doc_ref
                         # Prefer the invoice date if present on move
                         doc_date = getattr(move, 'invoice_date', line_data.get('date'))
+                    elif tax.type_tax_use == 'purchase':
+                        # For purchases, try to get tax invoice data from l10n_th_account_tax
+                        # Try mapping by move_line_id first, then fallback to (move_id, tax_id)
+                        taxinv = None
+                        ml_id = line_data.get('id')
+                        if ml_id and ml_id in taxinv_map_by_move_line:
+                            taxinv = taxinv_map_by_move_line.get(ml_id)
+                        if not taxinv and (move.id, tax.id) in taxinv_map_by_move_and_tax:
+                            taxinv = taxinv_map_by_move_and_tax.get((move.id, tax.id))
+                        if taxinv:
+                            # For purchases: use tax_invoice_number for document reference
+                            doc_ref = taxinv.tax_invoice_number or doc_ref
+                            # For purchases: use tax_invoice_date for date
+                            if getattr(taxinv, 'tax_invoice_date', False):
+                                doc_date = taxinv.tax_invoice_date
 
                     tax_data.append({
                         'tax_name': tax.name,
