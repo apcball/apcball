@@ -281,30 +281,95 @@ class TaxReportXlsx(models.AbstractModel):
     def _get_tax_data(self, date_from, date_to, company_id, tax_type='all', display_details=False, specific_tax_ids=None):
         """Get tax data from account move lines"""
         
-        domain = [
-            ('company_id', '=', company_id),
-            ('date', '>=', date_from),
-            ('date', '<=', date_to),
-            ('tax_line_id', '!=', False),
-            ('move_id.state', '=', 'posted')
-        ]
+        # For purchase tax, we should query directly from tax invoice records within date range
+        if tax_type == 'purchase':
+            # Query tax invoice records directly for purchase tax
+            tax_invoice_domain = [
+                ('company_id', '=', company_id),
+                ('tax_invoice_date', '>=', date_from),
+                ('tax_invoice_date', '<=', date_to),
+                ('tax_line_id.type_tax_use', '=', 'purchase'),
+                ('move_id.state', '=', 'posted'),
+                ('move_line_id', '!=', False)  # Ensure we have a valid move line
+            ]
+            
+            # Filter by specific taxes if provided
+            if specific_tax_ids:
+                tax_invoice_domain.append(('tax_line_id', 'in', specific_tax_ids))
+            
+            tax_invoices = self.env['account.move.tax.invoice'].search(tax_invoice_domain, order='tax_invoice_date, move_id')
+            
+            # Debug: log the number of tax invoices found
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.info(f"Found {len(tax_invoices)} tax invoice records for purchase tax in date range {date_from} to {date_to}")
+            
+            # Convert tax invoice records to move line format for compatibility
+            move_lines = []
+            for tax_inv in tax_invoices:
+                if tax_inv.move_line_id:
+                    move_lines.append({
+                        'id': tax_inv.move_line_id.id,
+                        'tax_line_id': [tax_inv.tax_line_id.id, tax_inv.tax_line_id.name] if tax_inv.tax_line_id else False,
+                        'balance': tax_inv.balance or 0.0,
+                        'date': tax_inv.tax_invoice_date or tax_inv.move_line_id.date,
+                        'name': tax_inv.move_line_id.name or '',
+                        'partner_id': [tax_inv.partner_id.id, tax_inv.partner_id.name] if tax_inv.partner_id else False,
+                        'move_id': [tax_inv.move_id.id, tax_inv.move_id.name] if tax_inv.move_id else False,
+                        'tax_invoice_record': tax_inv  # Keep reference to original tax invoice
+                    })
+            
+        else:
+            # For sale and 'all', use standard move line filtering
+            domain = [
+                ('company_id', '=', company_id),
+                ('date', '>=', date_from),
+                ('date', '<=', date_to),
+                ('tax_line_id', '!=', False),
+                ('move_id.state', '=', 'posted')
+            ]
+            
+            # Filter by tax type if specified
+            if tax_type == 'sale':
+                domain.append(('tax_line_id.type_tax_use', '=', 'sale'))
+            
+            # Filter by specific taxes if provided
+            if specific_tax_ids:
+                domain.append(('tax_line_id', 'in', specific_tax_ids))
+            
+            # Fetch move lines
+            move_lines = self.env['account.move.line'].search_read(
+                domain, 
+                ['id', 'tax_line_id', 'balance', 'date', 'name', 'partner_id', 'move_id'],
+                order='date, move_id'
+            )
         
-        # Filter by tax type if specified
-        if tax_type == 'sale':
-            domain.append(('tax_line_id.type_tax_use', '=', 'sale'))
-        elif tax_type == 'purchase':
-            domain.append(('tax_line_id.type_tax_use', '=', 'purchase'))
-        
-        # Filter by specific taxes if provided
-        if specific_tax_ids:
-            domain.append(('tax_line_id', 'in', specific_tax_ids))
+        # Filter by specific taxes if provided - this is now handled above for purchase
+        # if specific_tax_ids:
+        #     if tax_type == 'purchase':
+        #         # For purchase, filter the tax_invoices result
+        #         tax_invoices = tax_invoices.filtered(lambda t: t.tax_line_id.id in specific_tax_ids)
+        #         move_line_ids = tax_invoices.mapped('move_line_id.id')
+        #         move_lines = self.env['account.move.line'].search_read([
+        #             ('id', 'in', move_line_ids),
+        #             ('tax_line_id', '!=', False)
+        #         ], ['id', 'tax_line_id', 'balance', 'date', 'name', 'partner_id', 'move_id'],
+        #         order='date, move_id')
+        #     else:
+        #         # For sale/all, add to domain
+        #         domain.append(('tax_line_id', 'in', specific_tax_ids))
+        #         move_lines = self.env['account.move.line'].search_read(
+        #             domain, 
+        #             ['id', 'tax_line_id', 'balance', 'date', 'name', 'partner_id', 'move_id'],
+        #             order='date, move_id'
+        #         )
         
         # Fetch only the fields we need to avoid potential conflicts
-        move_lines = self.env['account.move.line'].search_read(
-            domain, 
-            ['id', 'tax_line_id', 'balance', 'date', 'name', 'partner_id', 'move_id'],
-            order='date, move_id'
-        )
+        # move_lines = self.env['account.move.line'].search_read(
+        #     domain, 
+        #     ['id', 'tax_line_id', 'balance', 'date', 'name', 'partner_id', 'move_id'],
+        #     order='date, move_id'
+        # )
         # Prefetch tax-invoice records related to these move lines to avoid per-line searches
         move_line_ids = [ml['id'] for ml in move_lines]
         move_ids = [ml['move_id'][0] for ml in move_lines if ml.get('move_id')]
@@ -371,20 +436,25 @@ class TaxReportXlsx(models.AbstractModel):
                         # Prefer the invoice date if present on move
                         doc_date = getattr(move, 'invoice_date', line_data.get('date'))
                     elif tax.type_tax_use == 'purchase':
-                        # For purchases, try to get tax invoice data from l10n_th_account_tax
-                        # Try mapping by move_line_id first, then fallback to (move_id, tax_id)
-                        taxinv = None
-                        ml_id = line_data.get('id')
-                        if ml_id and ml_id in taxinv_map_by_move_line:
-                            taxinv = taxinv_map_by_move_line.get(ml_id)
-                        if not taxinv and (move.id, tax.id) in taxinv_map_by_move_and_tax:
-                            taxinv = taxinv_map_by_move_and_tax.get((move.id, tax.id))
-                        if taxinv:
-                            # For purchases: use tax_invoice_number for document reference
+                        # For purchases, if we have the tax invoice record directly, use it
+                        if 'tax_invoice_record' in line_data:
+                            taxinv = line_data['tax_invoice_record']
                             doc_ref = taxinv.tax_invoice_number or doc_ref
-                            # For purchases: use tax_invoice_date for date
-                            if getattr(taxinv, 'tax_invoice_date', False):
-                                doc_date = taxinv.tax_invoice_date
+                            doc_date = taxinv.tax_invoice_date or doc_date
+                        else:
+                            # Fallback to mapping lookup
+                            taxinv = None
+                            ml_id = line_data.get('id')
+                            if ml_id and ml_id in taxinv_map_by_move_line:
+                                taxinv = taxinv_map_by_move_line.get(ml_id)
+                            if not taxinv and (move.id, tax.id) in taxinv_map_by_move_and_tax:
+                                taxinv = taxinv_map_by_move_and_tax.get((move.id, tax.id))
+                            if taxinv:
+                                # For purchases: use tax_invoice_number for document reference
+                                doc_ref = taxinv.tax_invoice_number or doc_ref
+                                # For purchases: use tax_invoice_date for date
+                                if getattr(taxinv, 'tax_invoice_date', False):
+                                    doc_date = taxinv.tax_invoice_date
 
                     tax_data.append({
                         'tax_name': tax.name,
