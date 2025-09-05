@@ -8,8 +8,10 @@
                 <field name="name"/>
                 <field name="trade_channel"/>
                 <field name="marketplace_partner_id"/>
-                <field name="journal_id"/>
-                <field name="settlement_account_id"/>
+                <field name="vendor_partner_id"/>
+                <field name="default_vat_rate"/>
+                <field name="default_wht_rate"/>
+                <field name="active"/>
             </tree>
         </field>
     </record>
@@ -20,13 +22,91 @@
         <field name="arch" type="xml">
             <form>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="action" icon="fa-file-text-o" 
+                                name="%(marketplace_vendor_bill_action)d"
+                                context="{'search_default_profile_id': active_id}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Vendor Bills</span>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <widget name="web_ribbon" title="Archived" bg_color="bg-danger" 
+                            invisible="active"/>
+                    
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="e.g., Shopee Thailand Profile"/>
+                        </h1>
+                    </div>
+                    
                     <group>
-                        <field name="name"/>
-                        <field name="trade_channel"/>
-                        <field name="marketplace_partner_id"/>
-                        <field name="journal_id"/>
-                        <field name="settlement_account_id"/>
+                        <group>
+                            <field name="trade_channel"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="invoice_pattern" placeholder="e.g., TR"/>
+                            <field name="receipt_pattern" placeholder="e.g., RC"/>
+                        </group>
                     </group>
+                    
+                    <notebook>
+                        <page string="Settlement Configuration">
+                            <group string="Customer Settlement">
+                                <group>
+                                    <field name="marketplace_partner_id" 
+                                           context="{'default_is_company': True, 'default_customer_rank': 1}"/>
+                                    <field name="journal_id" domain="[('type', '=', 'sale')]"/>
+                                </group>
+                                <group>
+                                    <field name="settlement_account_id" 
+                                           domain="[('account_type', '=', 'asset_receivable')]"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Vendor Bill Configuration">
+                            <group string="Default Vendor Settings">
+                                <group>
+                                    <field name="vendor_partner_id" 
+                                           context="{'default_is_company': True, 'default_supplier_rank': 1}"/>
+                                    <field name="purchase_journal_id"/>
+                                </group>
+                                <group>
+                                    <field name="default_vat_rate"/>
+                                    <field name="default_wht_rate"/>
+                                </group>
+                            </group>
+                            
+                            <group string="Tax Configuration">
+                                <group>
+                                    <field name="vat_tax_id"/>
+                                </group>
+                                <group>
+                                    <field name="wht_tax_id"/>
+                                </group>
+                            </group>
+                            
+                            <group string="Default Expense Accounts">
+                                <group>
+                                    <field name="commission_account_id"/>
+                                    <field name="service_fee_account_id"/>
+                                    <field name="advertising_account_id"/>
+                                </group>
+                                <group>
+                                    <field name="logistics_account_id"/>
+                                    <field name="other_expense_account_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Notes">
+                            <field name="notes" placeholder="Additional configuration notes for this trade channel..."/>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Fee Allocation Report Tree View -->
+    <record id="view_marketplace_fee_allocation_report_tree" model="ir.ui.view">
+        <field name="name">marketplace.fee.allocation.report.tree</field>
+        <field name="model">marketplace.fee.allocation.report</field>
+        <field name="arch" type="xml">
+            <tree string="Fee Allocation Analysis" create="false" edit="false" delete="false">
+                <field name="settlement_name"/>
+                <field name="settlement_date"/>
+                <field name="trade_channel"/>
+                <field name="invoice_number"/>
+                <field name="customer_id"/>
+                <field name="allocation_method"/>
+                <field name="allocation_base_amount" sum="Total Base"/>
+                <field name="base_fee_alloc" sum="Total Fee"/>
+                <field name="vat_input_alloc" sum="Total VAT"/>
+                <field name="wht_alloc" sum="Total WHT"/>
+                <field name="gross_profit" sum="Total Gross Profit"/>
+                <field name="profit_margin" avg="Avg Margin"/>
+                <field name="company_currency_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Fee Allocation Report Search View -->
+    <record id="view_marketplace_fee_allocation_report_search" model="ir.ui.view">
+        <field name="name">marketplace.fee.allocation.report.search</field>
+        <field name="model">marketplace.fee.allocation.report</field>
+        <field name="arch" type="xml">
+            <search string="Search Fee Allocation Analysis">
+                <field name="settlement_name"/>
+                <field name="invoice_number"/>
+                <field name="customer_id"/>
+                <field name="marketplace_partner_id"/>
+                
+                <filter name="shopee" string="Shopee" domain="[('trade_channel', '=', 'shopee')]"/>
+                <filter name="lazada" string="Lazada" domain="[('trade_channel', '=', 'lazada')]"/>
+                <filter name="proportional" string="Proportional Allocation" domain="[('allocation_method', '=', 'proportional')]"/>
+                <filter name="exact" string="Exact Allocation" domain="[('allocation_method', '=', 'exact')]"/>
+                
+                <separator/>
+                <filter name="current_month" string="Current Month" 
+                        domain="[('settlement_date', '&gt;=', datetime.datetime.now().strftime('%Y-%m-01'))]"/>
+                <filter name="current_quarter" string="Current Quarter" 
+                        domain="[('quarter', '=', ((datetime.datetime.now().month - 1) // 3) + 1), 
+                                ('year', '=', datetime.datetime.now().year)]"/>
+                <filter name="current_year" string="Current Year" 
+                        domain="[('year', '=', datetime.datetime.now().year)]"/>
+                
+                <separator/>
+                <filter name="positive_margin" string="Positive Margin" domain="[('profit_margin', '&gt;', 0)]"/>
+                <filter name="negative_margin" string="Negative Margin" domain="[('profit_margin', '&lt;', 0)]"/>
+                
+                <group expand="0" string="Group By">
+                    <filter name="group_settlement" string="Settlement" context="{'group_by': 'settlement_name'}"/>
+                    <filter name="group_channel" string="Trade Channel" context="{'group_by': 'trade_channel'}"/>
+                    <filter name="group_customer" string="Customer" context="{'group_by': 'customer_id'}"/>
+                    <filter name="group_method" string="Allocation Method" context="{'group_by': 'allocation_method'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'settlement_date:month'}"/>
+                    <filter name="group_quarter" string="Quarter" context="{'group_by': 'settlement_date:quarter'}"/>
+                    <filter name="group_year" string="Year" context="{'group_by': 'settlement_date:year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Fee Allocation Report Pivot View -->
+    <record id="view_marketplace_fee_allocation_report_pivot" model="ir.ui.view">
+        <field name="name">marketplace.fee.allocation.report.pivot</field>
+        <field name="model">marketplace.fee.allocation.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Fee Allocation Analysis">
+                <field name="trade_channel" type="row"/>
+                <field name="settlement_date" interval="month" type="col"/>
+                <field name="allocation_base_amount" type="measure"/>
+                <field name="base_fee_alloc" type="measure"/>
+                <field name="vat_input_alloc" type="measure"/>
+                <field name="wht_alloc" type="measure"/>
+                <field name="gross_profit" type="measure"/>
+                <field name="profit_margin" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Fee Allocation Report Graph View -->
+    <record id="view_marketplace_fee_allocation_report_graph" model="ir.ui.view">
+        <field name="name">marketplace.fee.allocation.report.graph</field>
+        <field name="model">marketplace.fee.allocation.report</field>
+        <field name="arch" type="xml">
+            <graph string="Fee Allocation Trends" type="line">
+                <field name="settlement_date" interval="month"/>
+                <field name="gross_profit" type="measure"/>
+                <field name="base_fee_alloc" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Fee Allocation Report Action -->
+    <record id="action_marketplace_fee_allocation_report" model="ir.actions.act_window">
+        <field name="name">Fee Allocation Analysis</field>
+        <field name="res_model">marketplace.fee.allocation.report</field>
+        <field name="view_mode">tree,pivot,graph</field>
+        <field name="search_view_id" ref="view_marketplace_fee_allocation_report_search"/>
+        <field name="context">{'search_default_current_year': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No fee allocation data available
+            </p>
+            <p>
+                Fee allocation analysis helps you understand the profitability impact 
+                of marketplace fees across your sales channels and customers.
+            </p>
+        </field>
+    </record>
+
+    <!-- Add Fee Allocation Analysis menu item -->
+    <menuitem id="menu_marketplace_fee_allocation_report"
+              name="Fee Allocation Analysis"
+              parent="account.menu_finance_reports"
+              action="action_marketplace_fee_allocation_report"
+              sequence="25"/>
+
+</odoo>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Marketplace Netting Wizard Form View -->
+    <record id="marketplace_netting_wizard_form_view" model="ir.ui.view">
+        <field name="name">marketplace.netting.wizard.form</field>
+        <field name="model">marketplace.netting.wizard</field>
+        <field name="arch" type="xml">
+            <form string="AR/AP Netting">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <span>AR/AP Netting</span>
+                        </h1>
+                        <div class="o_row">
+                            <field name="settlement_id" readonly="1"/>
+                        </div>
+                    </div>
+                    
+                    <!-- Required fields for domain calculations -->
+                    <field name="company_id" invisible="1"/>
+                    
+                    <div class="alert alert-info" role="alert">
+                        <p><strong>AR/AP Netting Process:</strong></p>
+                        <p>Select vendor bills from <strong><field name="marketplace_partner_id" readonly="1" style="display: inline;"/></strong> to net against customer receivables.</p>
+                        <p>This will reconcile the amounts and leave only the net payout amount for bank reconciliation.</p>
+                    </div>
+                    
+                    <group>
+                        <group string="Current Amounts">
+                            <field name="total_receivables" widget="monetary"/>
+                            <field name="total_selected_bills" widget="monetary"/>
+                        </group>
+                        <group string="Netting Result">
+                            <field name="net_amount" widget="monetary" 
+                                   decoration-success="net_amount &gt;= 0" 
+                                   decoration-danger="net_amount &lt; 0"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <div class="oe_button_box">
+                            <button name="action_auto_select_bills" type="object" 
+                                    string="Auto Select" class="btn-secondary"
+                                    help="Automatically select bills up to receivable amount"/>
+                            <button name="action_clear_selection" type="object" 
+                                    string="Clear Selection" class="btn-secondary"
+                                    help="Clear all selected bills"/>
+                        </div>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Vendor Bills Selection">
+                            <field name="selected_vendor_bill_ids" nolabel="1">
+                                <tree editable="bottom" create="false" delete="true">
+                                    <field name="name"/>
+                                    <field name="invoice_date"/>
+                                    <field name="amount_total" sum="Total"/>
+                                    <field name="amount_residual" sum="Outstanding"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        
+                        <page string="Available Bills" invisible="not available_vendor_bill_ids">>
+                            <p>Available vendor bills from the same marketplace partner:</p>
+                            <field name="available_vendor_bill_ids" nolabel="1" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="invoice_date"/>
+                                    <field name="amount_total"/>
+                                    <field name="amount_residual"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                
+                <footer>
+                    <button string="Confirm Netting" name="action_confirm_netting" type="object" 
+                            class="oe_highlight" invisible="not selected_vendor_bill_ids"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Marketplace Netting Wizard Action -->
+    <record id="marketplace_netting_wizard_action" model="ir.actions.act_window">
+        <field name="name">AR/AP Netting</field>
+        <field name="res_model">marketplace.netting.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="marketplace_netting_wizard_form_view"/>
+    </record>
+
+</odoo>

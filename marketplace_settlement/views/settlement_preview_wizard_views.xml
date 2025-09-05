@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Settlement Preview Wizard Form -->
+        <record id="view_marketplace_settlement_preview_wizard_form" model="ir.ui.view">
+            <field name="name">marketplace.settlement.preview.wizard.form</field>
+            <field name="model">marketplace.settlement.preview.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Settlement Preview">
+                    <sheet>
+                        <div class="oe_title">
+                            <label for="settlement_id" class="oe_edit_only"/>
+                            <h1>
+                                <field name="settlement_id" readonly="1"/>
+                            </h1>
+                        </div>
+                        
+                        <group>
+                            <group name="amounts" string="Settlement Summary">
+                                <field name="currency_id" invisible="1"/>
+                                <field name="total_invoice_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="fee_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="vat_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="wht_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <separator string="Total Deductions"/>
+                                <field name="total_deductions" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
+                                <separator string="Net Settlement"/>
+                                <field name="net_settlement" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator" style="font-weight: bold;"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Invoice Details" name="invoice_details">
+                                <field name="invoice_detail_ids" readonly="1">
+                                    <tree string="Invoices">
+                                        <field name="invoice_name"/>
+                                        <field name="partner_name"/>
+                                        <field name="currency_id" invisible="1"/>
+                                        <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                        
+                        <div class="alert alert-info" role="alert">
+                            <strong>Preview Notice:</strong> This is a preview of the settlement that will be created. 
+                            No journal entry will be posted until you confirm the creation.
+                        </div>
+                    </sheet>
+                    
+                    <footer>
+                        <button name="action_create_settlement" 
+                                string="Create Settlement" 
+                                type="object" 
+                                class="btn-primary"
+                                confirm="Are you sure you want to create this settlement? This will post a journal entry."/>
+                        <button name="action_cancel" 
+                                string="Cancel" 
+                                type="object" 
+                                class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Settlement Preview Line Tree View -->
+        <record id="view_marketplace_settlement_preview_line_tree" model="ir.ui.view">
+            <field name="name">marketplace.settlement.preview.line.tree</field>
+            <field name="model">marketplace.settlement.preview.line</field>
+            <field name="arch" type="xml">
+                <tree string="Invoice Details" create="false" edit="false" delete="false">
+                    <field name="invoice_name"/>
+                    <field name="partner_name"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                </tree>
+            </field>
+        </record>
+
+    </data>
+</odoo>

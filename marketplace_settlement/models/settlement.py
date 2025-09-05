@@ -47,13 +47,59 @@ class MarketplaceSettlement(models.Model):
         ('posted', 'Posted'),
         ('reversed', 'Reversed')
     ], string='State', default='draft', compute='_compute_state', store=True)
+    
+    # AR/AP Netting fields
+    vendor_bill_ids = fields.Many2many('account.move', 'settlement_vendor_bill_rel', 
+                                      'settlement_id', 'vendor_bill_id',
+                                      string='Related Vendor Bills',
+                                      domain="[('move_type', '=', 'in_invoice'), ('state', '=', 'posted')]",
+                                      help='Vendor bills to be netted against customer receivables')
+    netting_move_id = fields.Many2one('account.move', string='Netting Move', readonly=True,
+                                     help='Journal entry created for AR/AP netting')
+    vendor_bill_count = fields.Integer('Vendor Bill Count', compute='_compute_vendor_bill_count')
+    total_vendor_bills = fields.Monetary('Total Vendor Bills', currency_field='company_currency_id', 
+                                        compute='_compute_amounts')
+    net_payout_amount = fields.Monetary('Net Payout Amount', currency_field='company_currency_id', 
+                                       compute='_compute_amounts',
+                                       help='Final amount to be reconciled against bank statement after netting')
+    is_netted = fields.Boolean('AR/AP Netted', compute='_compute_netting_state', store=True,
+                              help='Indicates if AR/AP netting has been performed')
+    can_perform_netting = fields.Boolean('Can Perform Netting', compute='_compute_netting_state', store=True,
+                                        help='Indicates if netting is possible')
+
+    # Fee Allocation fields
+    fee_allocation_ids = fields.One2many('marketplace.fee.allocation', 'settlement_id', 
+                                        string='Fee Allocations',
+                                        help='Fee allocation breakdown per invoice for reporting')
+    fee_allocation_count = fields.Integer('Fee Allocation Count', compute='_compute_fee_allocation_count')
+    has_fee_allocations = fields.Boolean('Has Fee Allocations', compute='_compute_fee_allocation_state', store=True)
+    allocation_method = fields.Selection([
+        ('proportional', 'Proportional by Pre-tax Amount'),
+        ('exact', 'Exact Values from Marketplace CSV')
+    ], string='Default Allocation Method', default='proportional',
+       help='Default method for fee allocation calculations')
 
     @api.depends('invoice_ids')
     def _compute_invoice_count(self):
         for record in self:
             record.invoice_count = len(record.invoice_ids)
 
-    @api.depends('invoice_ids', 'fee_amount', 'vat_on_fee_amount', 'wht_amount')
+    @api.depends('vendor_bill_ids')
+    def _compute_vendor_bill_count(self):
+        for record in self:
+            record.vendor_bill_count = len(record.vendor_bill_ids)
+
+    @api.depends('fee_allocation_ids')
+    def _compute_fee_allocation_count(self):
+        for record in self:
+            record.fee_allocation_count = len(record.fee_allocation_ids)
+
+    @api.depends('fee_allocation_ids')
+    def _compute_fee_allocation_state(self):
+        for record in self:
+            record.has_fee_allocations = len(record.fee_allocation_ids) > 0
+
+    @api.depends('invoice_ids', 'fee_amount', 'vat_on_fee_amount', 'wht_amount', 'vendor_bill_ids')
     def _compute_amounts(self):
         for record in self:
             total_invoice = 0.0
@@ -63,9 +109,29 @@ class MarketplaceSettlement(models.Model):
                 else:
                     total_invoice += abs(inv.amount_residual)
             
+            # Calculate total vendor bills
+            total_vendor_bills = 0.0
+            for bill in record.vendor_bill_ids:
+                total_vendor_bills += abs(bill.amount_residual)
+            
             record.total_invoice_amount = total_invoice
+            record.total_vendor_bills = total_vendor_bills
             record.total_deductions = (record.fee_amount or 0.0) + (record.vat_on_fee_amount or 0.0) + (record.wht_amount or 0.0)
             record.net_settlement_amount = total_invoice - record.total_deductions
+            # Net payout is settlement amount minus vendor bills (after netting)
+            record.net_payout_amount = record.net_settlement_amount - total_vendor_bills
+
+    @api.depends('move_id', 'netting_move_id', 'vendor_bill_ids', 'state')
+    def _compute_netting_state(self):
+        for record in self:
+            # Can perform netting if settlement is posted and has vendor bills
+            record.can_perform_netting = (
+                record.state == 'posted' and 
+                len(record.vendor_bill_ids) > 0 and 
+                not record.netting_move_id
+            )
+            # Is netted if netting move exists and is posted
+            record.is_netted = bool(record.netting_move_id and record.netting_move_id.state == 'posted')
 
     def _compute_company_currency(self):
         for rec in self:
@@ -119,14 +185,7 @@ class MarketplaceSettlement(models.Model):
         
         # Check if settlement is already created
         if self.move_id:
-            return {
-                'type': 'ir.actions.act_window',
-                'name': _('Settlement Move'),
-                'res_model': 'account.move',
-                'res_id': self.move_id.id,
-                'view_mode': 'form',
-                'target': 'current',
-            }
+            return self._open_settlement_move_with_banner()
             
         if not self.invoice_ids:
             raise UserError(_('Please select invoices to settle.'))
@@ -138,6 +197,92 @@ class MarketplaceSettlement(models.Model):
             raise UserError(_('Please specify VAT Account for VAT on fee.\n\nSuggested account codes:\n• 1310 - VAT Input Tax\n• 1311 - VAT Recoverable\n• 2xxx - VAT Payable (if applicable)'))
         if self.wht_amount and not self.wht_account_id:
             raise UserError(_('Please specify WHT Account for withholding tax.\n\nSuggested account codes:\n• 2170 - Withholding Tax Payable\n• 2171 - WHT 3% (Services)\n• 2172 - WHT 1% (Others)'))
+
+        # Create the settlement move
+        move = self._create_settlement_move()
+        self.move_id = move.id
+
+        # Return action to open the settlement move with banner
+        return self._open_settlement_move_with_banner()
+
+    def action_preview_settlement(self):
+        """Preview settlement before posting"""
+        self.ensure_one()
+        
+        if self.move_id:
+            raise UserError(_('Settlement has already been created.'))
+            
+        if not self.invoice_ids:
+            raise UserError(_('Please select invoices to settle.'))
+
+        # Calculate preview totals
+        preview_data = self._calculate_settlement_preview()
+        
+        # Return wizard with preview data
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Settlement Preview'),
+            'res_model': 'marketplace.settlement.preview.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_settlement_id': self.id,
+                'default_preview_data': preview_data,
+            },
+        }
+
+    def _calculate_settlement_preview(self):
+        """Calculate settlement preview data"""
+        self.ensure_one()
+        
+        # Calculate invoice totals
+        total_invoice_amount = 0.0
+        invoice_details = []
+        
+        for inv in self.invoice_ids:
+            residual = inv.amount_residual
+            sign = 1 if inv.move_type != 'out_refund' else -1
+            amount = residual * sign
+            
+            total_invoice_amount += amount
+            invoice_details.append({
+                'invoice_name': inv.name,
+                'partner_name': inv.partner_id.name,
+                'amount': amount,
+                'currency_id': inv.currency_id.id or self.company_currency_id.id,
+            })
+        
+        # Calculate deductions
+        fee_amount = self.fee_amount or 0.0
+        vat_amount = self.vat_on_fee_amount or 0.0
+        wht_amount = self.wht_amount or 0.0
+        total_deductions = fee_amount + vat_amount + wht_amount
+        
+        # Calculate net settlement
+        net_settlement = total_invoice_amount - total_deductions
+        
+        return {
+            'total_invoice_amount': total_invoice_amount,
+            'fee_amount': fee_amount,
+            'vat_amount': vat_amount,
+            'wht_amount': wht_amount,
+            'total_deductions': total_deductions,
+            'net_settlement': net_settlement,
+            'invoice_details': invoice_details,
+            'currency_symbol': self.company_currency_id.symbol,
+        }
+
+    def _create_settlement_move(self):
+        """Create the settlement journal entry"""
+        self.ensure_one()
+
+        # Validate deduction accounts if amounts are provided
+        if self.fee_amount and not self.fee_account_id:
+            raise UserError(_('Please specify Fee Account for marketplace fee.'))
+        if self.vat_on_fee_amount and not self.vat_account_id:
+            raise UserError(_('Please specify VAT Account for VAT on fee.'))
+        if self.wht_amount and not self.wht_account_id:
+            raise UserError(_('Please specify WHT Account for withholding tax.'))
 
         # prepare move lines
         lines = []
@@ -160,22 +305,15 @@ class MarketplaceSettlement(models.Model):
             return False
 
         # Determine aggregate account for settlement:
-        # 1) explicit settlement_account_id (preferred)
-        # 2) journal default account (e.g., bank/cash account for the selected journal)
-        # 3) marketplace partner receivable as a last resort
         mp_account = self.settlement_account_id or getattr(self.journal_id, 'default_account_id', False) or self.marketplace_partner_id.property_account_receivable_id
         if not mp_account:
-            raise UserError(_('Please configure a settlement account on the settlement, a default account on the journal, or set a receivable account on the marketplace partner.'))
+            raise UserError(_('Please configure a settlement account.'))
 
         # Prevent posting the marketplace aggregate to a receivable account by mistake.
-        # This commonly causes both customer receivables and the aggregate to post to the
-        # same account (as seen in your screenshot). Ask the user to select a proper
-        # liquidity/bank account in the wizard or configure the journal default account.
         if _is_receivable_account(mp_account):
             raise UserError(_(
                 'The settlement aggregate account (%s) is a receivable account.\n'
-                'Please choose a bank/liquidity account as the settlement account in the wizard,\n'
-                'or configure the selected journal with an appropriate default account.'
+                'Please choose a bank/liquidity account as the settlement account.'
             ) % (mp_account.name,))
 
         for inv in self.invoice_ids:
@@ -261,63 +399,61 @@ class MarketplaceSettlement(models.Model):
             'line_ids': lines,
         }
         move = self.env['account.move'].create(move_vals)
-        # use action_post() to post moves (action name depends on Odoo version)
+        # use action_post() to post moves
         if hasattr(move, 'action_post'):
             move.action_post()
         elif hasattr(move, 'post'):
             move.post()
-        self.move_id = move.id
 
-        # compute total in company currency to detect overall negative settlements
-        company = self.env.company
-        company_total = 0.0
-        for inv in self.invoice_ids:
-            # amount in invoice currency with sign
-            sign = -1 if inv.move_type == 'out_refund' else 1
-            amt = inv.amount_residual * sign
-            # convert to company currency using invoice currency conversion helper
-            curr = inv.currency_id or company.currency_id
-            company_total += curr._convert(amt, company.currency_id, inv.company_id, self.date or fields.Date.context_today(self))
+        # Reconcile invoices
+        self._reconcile_invoices(move)
+        
+        return move
 
-        # reconcile each invoice's receivable line with corresponding move line
+    def _reconcile_invoices(self, move):
+        """Reconcile invoices with settlement move"""
         for inv in self.invoice_ids:
             # find invoice receivable line
-            aml_inv = inv.line_ids.filtered(lambda l: _is_receivable_account(l.account_id) and (not float_is_zero(l.balance, precision_digits=2)))
-            # find in settlement move corresponding partner line
-            aml_set = move.line_ids.filtered(lambda l: l.partner_id == inv.partner_id and _is_receivable_account(l.account_id))
-            # reconcile pairwise (only unreconciled lines)
-            try:
-                to_reconcile = (aml_inv + aml_set).filtered(lambda l: not l.reconciled)
-                if to_reconcile:
-                    to_reconcile.reconcile()
-            except Exception:
-                # best-effort: continue
-                pass
+            inv_rec_line = inv.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable' and not l.reconciled)
+            if not inv_rec_line:
+                continue
+            # find settlement move line for this customer
+            settle_line = move.line_ids.filtered(lambda l: l.partner_id == inv.partner_id and l.account_id.account_type == 'asset_receivable')
+            if settle_line:
+                # reconcile
+                (inv_rec_line + settle_line).reconcile()
 
-        # return action opening the posted move with a banner link to reconcile models
-        action = {
+    def _open_settlement_move_with_banner(self):
+        """Open settlement move with reconciliation banner"""
+        self.ensure_one()
+        
+        if not self.move_id:
+            raise UserError(_('No settlement move found.'))
+        
+        # Create context with banner message
+        banner_message = _(
+            "Settlement created successfully! "
+            "To automate fee deductions in future settlements, "
+            "configure Reconciliation Models for marketplace fees."
+        )
+        
+        return {
             'type': 'ir.actions.act_window',
             'name': _('Settlement Move'),
             'res_model': 'account.move',
-            'res_id': move.id,
+            'res_id': self.move_id.id,
             'view_mode': 'form',
             'target': 'current',
+            'context': {
+                'settlement_banner_message': banner_message,
+                'show_reconciliation_models_link': True,
+                'settlement_id': self.id,
+            },
+            'flags': {
+                'action_buttons': True,
+                'sidebar': True,
+            },
         }
-
-        # warn user if company-currency total is negative
-        if company_total < 0:
-            warning_msg = _(
-                'Total settlement amount in company currency is negative (%.2f).\n'
-                'This will result in a negative entry for the company and may need to be adjusted in a subsequent period.'
-            ) % (company_total,)
-            action['warning'] = {
-                'title': _('Negative Settlement Total'),
-                'message': warning_msg,
-            }
-
-        # attach a client action / notification by using context flags the view can pick up
-        # Here we provide an action that the caller (wizard) can return directly as well.
-        return action
 
     def action_reverse_settlement(self):
         """Reverse the settlement move and clear the link"""
@@ -360,3 +496,398 @@ class MarketplaceSettlement(models.Model):
             }
         else:
             raise UserError(_('Failed to create reverse move.'))
+
+    def action_view_vendor_bills(self):
+        """Open related vendor bills"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Related Vendor Bills'),
+            'res_model': 'account.move',
+            'view_mode': 'tree,form',
+            'domain': [('id', 'in', self.vendor_bill_ids.ids)],
+            'context': {'default_move_type': 'in_invoice'},
+        }
+
+    def action_view_netting_move(self):
+        """Open netting move"""
+        self.ensure_one()
+        if not self.netting_move_id:
+            return None
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('AR/AP Netting Move'),
+            'res_model': 'account.move',
+            'res_id': self.netting_move_id.id,
+            'view_mode': 'form',
+        }
+
+    def action_netoff_ar_ap(self):
+        """Perform AR/AP netting reconciliation"""
+        self.ensure_one()
+        
+        # Validations
+        if not self.move_id:
+            raise UserError(_('Settlement must be posted before performing netting.'))
+        
+        if self.state != 'posted':
+            raise UserError(_('Can only perform netting on posted settlements.'))
+            
+        if not self.vendor_bill_ids:
+            raise UserError(_('No vendor bills selected for netting.'))
+            
+        if self.netting_move_id:
+            raise UserError(_('AR/AP netting has already been performed for this settlement.'))
+        
+        # Check all vendor bills are posted
+        unposted_bills = self.vendor_bill_ids.filtered(lambda b: b.state != 'posted')
+        if unposted_bills:
+            raise UserError(_('All vendor bills must be posted before netting. Unposted bills: %s') % 
+                          ', '.join(unposted_bills.mapped('name')))
+
+        return self._create_netting_move()
+
+    def _create_netting_move(self):
+        """Create journal entry for AR/AP netting"""
+        self.ensure_one()
+        
+        # Get marketplace partner
+        marketplace_partner = self.marketplace_partner_id
+        
+        # Prepare move lines
+        netting_lines = []
+        total_receivable_amount = 0.0
+        total_payable_amount = 0.0
+        
+        # Helper function to check account types
+        def _get_account_type(account):
+            if hasattr(account, 'account_type'):
+                return account.account_type
+            elif hasattr(account, 'user_type_id') and hasattr(account.user_type_id, 'type'):
+                return account.user_type_id.type
+            elif hasattr(account, 'internal_type'):
+                return account.internal_type
+            return None
+
+        # Process receivables from settlement move (marketplace partner receivable)
+        settlement_receivable_lines = self.move_id.line_ids.filtered(
+            lambda l: l.partner_id == marketplace_partner and 
+            _get_account_type(l.account_id) in ['asset_receivable', 'receivable'] and
+            not l.reconciled
+        )
+        
+        for line in settlement_receivable_lines:
+            if line.debit > 0:  # Marketplace owes us
+                total_receivable_amount += line.debit
+                netting_lines.append((0, 0, {
+                    'name': f'Net-off AR: {line.name}',
+                    'account_id': line.account_id.id,
+                    'partner_id': marketplace_partner.id,
+                    'credit': line.debit,  # Reverse the debit
+                    'debit': 0.0,
+                }))
+
+        # Process payables from vendor bills (marketplace partner payable)
+        for bill in self.vendor_bill_ids:
+            bill_payable_lines = bill.line_ids.filtered(
+                lambda l: l.partner_id == marketplace_partner and 
+                _get_account_type(l.account_id) in ['liability_payable', 'payable'] and
+                not l.reconciled
+            )
+            
+            for line in bill_payable_lines:
+                if line.credit > 0:  # We owe marketplace
+                    total_payable_amount += line.credit
+                    netting_lines.append((0, 0, {
+                        'name': f'Net-off AP: {line.name}',
+                        'account_id': line.account_id.id,
+                        'partner_id': marketplace_partner.id,
+                        'debit': line.credit,  # Reverse the credit
+                        'credit': 0.0,
+                    }))
+
+        # Calculate net amount
+        net_amount = total_receivable_amount - total_payable_amount
+        
+        if float_is_zero(net_amount, precision_digits=2):
+            # Perfect netting - no additional line needed
+            pass
+        else:
+            # Net amount goes to marketplace partner account
+            marketplace_account = (self.settlement_account_id or 
+                                 marketplace_partner.property_account_receivable_id)
+            
+            netting_lines.append((0, 0, {
+                'name': f'Net Amount - {self.name}',
+                'account_id': marketplace_account.id,
+                'partner_id': marketplace_partner.id,
+                'debit': net_amount if net_amount > 0 else 0.0,
+                'credit': -net_amount if net_amount < 0 else 0.0,
+            }))
+
+        if not netting_lines:
+            raise UserError(_('No lines to net. Please check that there are unreconciled receivables and payables.'))
+
+        # Create netting move
+        netting_move_vals = {
+            'ref': f'AR/AP Netting - {self.name}',
+            'journal_id': self.journal_id.id,
+            'date': fields.Date.context_today(self),
+            'line_ids': netting_lines,
+        }
+        
+        netting_move = self.env['account.move'].create(netting_move_vals)
+        
+        # Post the netting move
+        if hasattr(netting_move, 'action_post'):
+            netting_move.action_post()
+        elif hasattr(netting_move, 'post'):
+            netting_move.post()
+        
+        # Link netting move to settlement
+        self.netting_move_id = netting_move.id
+        
+        # Perform reconciliation
+        self._reconcile_netted_amounts(netting_move)
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('AR/AP Netting Move'),
+            'res_model': 'account.move',
+            'res_id': netting_move.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def _reconcile_netted_amounts(self, netting_move):
+        """Reconcile the netted amounts between original moves and netting move"""
+        self.ensure_one()
+        
+        def _get_account_type(account):
+            if hasattr(account, 'account_type'):
+                return account.account_type
+            elif hasattr(account, 'user_type_id') and hasattr(account.user_type_id, 'type'):
+                return account.user_type_id.type
+            elif hasattr(account, 'internal_type'):
+                return account.internal_type
+            return None
+        
+        marketplace_partner = self.marketplace_partner_id
+        
+        # Reconcile receivables (settlement move lines with netting move lines)
+        settlement_receivable_lines = self.move_id.line_ids.filtered(
+            lambda l: l.partner_id == marketplace_partner and 
+            _get_account_type(l.account_id) in ['asset_receivable', 'receivable'] and
+            not l.reconciled
+        )
+        
+        netting_receivable_lines = netting_move.line_ids.filtered(
+            lambda l: l.partner_id == marketplace_partner and 
+            _get_account_type(l.account_id) in ['asset_receivable', 'receivable'] and
+            l.credit > 0  # These are the offsetting credits
+        )
+        
+        # Group by account for reconciliation
+        accounts_to_reconcile = {}
+        
+        # Add settlement lines
+        for line in settlement_receivable_lines:
+            if line.account_id not in accounts_to_reconcile:
+                accounts_to_reconcile[line.account_id] = []
+            accounts_to_reconcile[line.account_id].append(line)
+        
+        # Add netting lines
+        for line in netting_receivable_lines:
+            if line.account_id not in accounts_to_reconcile:
+                accounts_to_reconcile[line.account_id] = []
+            accounts_to_reconcile[line.account_id].append(line)
+        
+        # Reconcile by account
+        for account, lines in accounts_to_reconcile.items():
+            unreconciled_lines = [l for l in lines if not l.reconciled]
+            if len(unreconciled_lines) > 1:
+                try:
+                    self.env['account.move.line'].browse([l.id for l in unreconciled_lines]).reconcile()
+                except Exception as e:
+                    # Continue with other reconciliations if one fails
+                    pass
+        
+        # Reconcile payables (vendor bill lines with netting move lines)
+        for bill in self.vendor_bill_ids:
+            bill_payable_lines = bill.line_ids.filtered(
+                lambda l: l.partner_id == marketplace_partner and 
+                _get_account_type(l.account_id) in ['liability_payable', 'payable'] and
+                not l.reconciled
+            )
+            
+            for bill_line in bill_payable_lines:
+                # Find corresponding netting line
+                netting_payable_lines = netting_move.line_ids.filtered(
+                    lambda l: l.partner_id == marketplace_partner and 
+                    l.account_id == bill_line.account_id and
+                    l.debit > 0 and  # These are the offsetting debits
+                    not l.reconciled
+                )
+                
+                if netting_payable_lines:
+                    try:
+                        (bill_line + netting_payable_lines[0]).reconcile()
+                    except Exception as e:
+                        # Continue with other reconciliations if one fails
+                        pass
+
+    def action_reverse_netting(self):
+        """Reverse the AR/AP netting"""
+        self.ensure_one()
+        
+        if not self.netting_move_id:
+            raise UserError(_('No netting move to reverse.'))
+            
+        if not self.is_netted:
+            raise UserError(_('Netting move is not posted.'))
+        
+        # Create reverse move
+        reverse_move = self.netting_move_id._reverse_moves([{
+            'ref': f'Reverse AR/AP Netting - {self.name}',
+            'date': fields.Date.context_today(self),
+        }])
+        
+        if reverse_move:
+            # Post the reverse move
+            reverse_move.action_post()
+            
+            # Clear the netting link
+            old_netting_move_id = self.netting_move_id.id
+            self.netting_move_id = False
+            
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Netting Reversed'),
+                'res_model': 'account.move',
+                'view_mode': 'tree,form',
+                'domain': [('id', 'in', [old_netting_move_id, reverse_move.id])],
+                'context': {
+                    'default_ref': f'Netting - {self.name}',
+                },
+            }
+        else:
+            raise UserError(_('Failed to create reverse netting move.'))
+
+    # Fee Allocation Methods
+    def action_generate_fee_allocations(self):
+        """Generate fee allocation records for all invoices in this settlement"""
+        self.ensure_one()
+        
+        if not self.invoice_ids:
+            raise UserError(_("No invoices found in this settlement to allocate fees."))
+        
+        # Use the fee allocation model's method to generate allocations
+        FeeAllocation = self.env['marketplace.fee.allocation']
+        allocations = FeeAllocation.generate_allocations_for_settlement(
+            self.id, 
+            self.allocation_method
+        )
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Fee Allocations Generated'),
+            'res_model': 'marketplace.fee.allocation',
+            'view_mode': 'tree,form',
+            'domain': [('settlement_id', '=', self.id)],
+            'context': {
+                'default_settlement_id': self.id,
+            },
+        }
+
+    def action_view_fee_allocations(self):
+        """View fee allocation records for this settlement"""
+        self.ensure_one()
+        
+        action = self.env.ref('marketplace_settlement.action_marketplace_fee_allocation').read()[0]
+        action['domain'] = [('settlement_id', '=', self.id)]
+        action['context'] = {
+            'default_settlement_id': self.id,
+            'default_allocation_method': self.allocation_method,
+        }
+        
+        if self.fee_allocation_count == 1:
+            action['view_mode'] = 'form'
+            action['res_id'] = self.fee_allocation_ids[0].id
+        
+        return action
+
+    def action_import_fee_allocations_csv(self):
+        """Open CSV import wizard for fee allocations"""
+        self.ensure_one()
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Import Fee Allocations',
+            'res_model': 'marketplace.fee.allocation.import.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_settlement_id': self.id},
+        }
+
+    def action_recalculate_fee_allocations(self):
+        """Recalculate all fee allocations for this settlement"""
+        self.ensure_one()
+        
+        if not self.fee_allocation_ids:
+            raise UserError(_("No fee allocations found to recalculate. Generate allocations first."))
+        
+        for allocation in self.fee_allocation_ids:
+            if allocation.allocation_method == 'proportional':
+                allocation.action_allocate_proportional()
+        
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Success'),
+                'message': _('Fee allocations have been recalculated.'),
+                'type': 'success',
+            }
+        }
+
+    def action_clear_fee_allocations(self):
+        """Clear all fee allocation records for this settlement"""
+        self.ensure_one()
+        
+        if not self.fee_allocation_ids:
+            raise UserError(_("No fee allocations found to clear."))
+        
+        self.fee_allocation_ids.unlink()
+        
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Success'),
+                'message': _('Fee allocations have been cleared.'),
+                'type': 'success',
+            }
+        }
+
+    def get_fee_allocation_summary(self):
+        """Get summary of fee allocations for reporting"""
+        self.ensure_one()
+        
+        summary = {
+            'total_base_fee_allocated': sum(self.fee_allocation_ids.mapped('base_fee_alloc')),
+            'total_vat_input_allocated': sum(self.fee_allocation_ids.mapped('vat_input_alloc')),
+            'total_wht_allocated': sum(self.fee_allocation_ids.mapped('wht_alloc')),
+            'total_net_payout_allocated': sum(self.fee_allocation_ids.mapped('net_payout_alloc')),
+            'allocation_count': len(self.fee_allocation_ids),
+            'allocation_methods': list(set(self.fee_allocation_ids.mapped('allocation_method'))),
+        }
+        
+        # Validation - check if allocations match settlement totals
+        precision = self.env['decimal.precision'].precision_get('Account')
+        summary['allocations_match'] = (
+            float_compare(summary['total_base_fee_allocated'], self.fee_amount or 0.0, precision_digits=precision) == 0 and
+            float_compare(summary['total_vat_input_allocated'], self.vat_on_fee_amount or 0.0, precision_digits=precision) == 0 and
+            float_compare(summary['total_wht_allocated'], self.wht_amount or 0.0, precision_digits=precision) == 0
+        )
+        
+        return summary
