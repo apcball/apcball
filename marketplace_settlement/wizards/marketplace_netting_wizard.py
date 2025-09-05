@@ -41,13 +41,15 @@ class MarketplaceNettingWizard(models.TransientModel):
                 continue
                 
             # Find posted vendor bills from the same marketplace partner with outstanding amounts
+            # Include bills directly linked to this settlement
             domain = [
-                ('move_type', '=', 'in_invoice'),
+                ('move_type', 'in', ['in_invoice', 'in_refund']),
                 ('partner_id', '=', wizard.marketplace_partner_id.id),
                 ('state', '=', 'posted'),
                 ('amount_residual', '>', 0),
-                # Exclude bills already linked to this settlement
-                ('id', 'not in', wizard.settlement_id.vendor_bill_ids.ids)
+                '|',
+                ('x_settlement_id', '=', wizard.settlement_id.id),  # Direct link to this settlement
+                ('x_settlement_id', '=', False)  # Not linked to any settlement
             ]
             
             available_bills = self.env['account.move'].search(domain)
@@ -68,8 +70,10 @@ class MarketplaceNettingWizard(models.TransientModel):
         if not self.selected_vendor_bill_ids:
             raise UserError(_('Please select at least one vendor bill for netting.'))
         
-        # Update settlement with selected vendor bills
-        self.settlement_id.vendor_bill_ids = [(6, 0, self.selected_vendor_bill_ids.ids)]
+        # Link selected bills to settlement if not already linked
+        for bill in self.selected_vendor_bill_ids:
+            if not bill.x_settlement_id:
+                bill.x_settlement_id = self.settlement_id.id
         
         # Perform the netting
         return self.settlement_id.action_netoff_ar_ap()

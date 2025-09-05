@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Partner form view extension for Thai localization -->
+    <record id="view_partner_form_thai_localization" model="ir.ui.view">
+        <field name="name">res.partner.form.thai.localization</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='accounting']" position="after">
+                <page string="Thai Localization" invisible="country_id.code != 'TH'">
+                    <group string="Thai WHT Configuration">
+                        <group>
+                            <field name="is_thai_wht_enabled"/>
+                        </group>
+                    </group>
+                    <group string="Default Thai Tax Settings" invisible="not is_thai_wht_enabled">
+                        <group>
+                            <field name="default_thai_income_tax_form"/>
+                        </group>
+                        <group>
+                            <field name="default_thai_wht_income_type"/>
+                        </group>
+                    </group>
+                    <group string="Information" invisible="not is_thai_wht_enabled">
+                        <p>These settings will be used as defaults when creating settlements or transactions with this partner.</p>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

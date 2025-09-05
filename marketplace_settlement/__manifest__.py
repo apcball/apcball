@@ -8,11 +8,20 @@
     "license": "LGPL-3",
     "icon": "static/description/icon.png",
     "depends": ["account", "sale"],
+    "external_dependencies": {
+        "python": [],
+    },
+    # Optional dependencies for Thai localization features
+    "auto_install": False,
     'data': [
+        'security/marketplace_settlement_security.xml',
         'security/ir.model.access.csv',
+        'data/ir_sequence_data.xml',
         'data/marketplace_settlement_profile_data.xml',
+        'views/settlement_views.xml',
         'views/marketplace_vendor_bill_views.xml',
-        'views/profile_views.xml',
+        'views/bill_link_wizard_views.xml',
+        'views/marketplace_config_change_wizard_views.xml',
         'views/marketplace_netting_wizard_views.xml',
         'views/account_move_view_inherit.xml',
         'views/sale_order_view_inherit.xml',
@@ -21,11 +30,15 @@
         'views/marketplace_fee_allocation_report_views.xml',
         'views/settlement_preview_wizard_views.xml',
         'views/marketplace_settlement_wizard_views.xml',
+        'views/profile_views.xml',
+        'views/thai_localization_views.xml',
+        'views/partner_thai_extension_views.xml',
     ],
     "demo": [
         "data/demo_data.xml",
         "data/demo_vendor_bills.xml",
         "data/demo_fee_allocations.xml",
+        "data/thai_localization_demo.xml",
     ],
     # Custom JS assets removed temporarily to avoid webclient break while debugging
     "installable": True,

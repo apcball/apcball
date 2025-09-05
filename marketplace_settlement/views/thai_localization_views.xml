@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Partner Thai Localization Configuration -->
+    <record id="view_partner_thai_localization_form" model="ir.ui.view">
+        <field name="name">res.partner.form.thai.localization</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="account.view_partner_property_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='accounting_entries']" position="after">
+                <group string="Thai Localization" name="thai_localization">
+                    <field name="default_thai_income_tax_form"/>
+                    <field name="default_thai_wht_income_type"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Thai Localization Actions and Menus -->
+    <!-- TODO: Enable these menus when Thai localization modules are installed -->
+    <!--
+    <record id="action_settlement_wht_certificates" model="ir.actions.act_window">
+        <field name="name">Settlement WHT Certificates</field>
+        <field name="res_model">marketplace.thai.localization</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{
+            'default_action_type': 'view_wht_certificates',
+        }</field>
+    </record>
+
+    <menuitem id="menu_settlement_wht_certificates" 
+              name="Settlement WHT Certificates" 
+              parent="menu_marketplace_settlement" 
+              action="action_settlement_wht_certificates"
+              sequence="30"/>
+    -->
+
+</odoo>

@@ -88,10 +88,10 @@
                                     <field name="trade_channel" related="settlement_id.trade_channel" readonly="1"/>
                                     <field name="settlement_date" related="settlement_id.date" readonly="1"/>
                                 </group>
-                                <group string="Settlement Totals">
-                                    <field name="settlement_fee_total" related="settlement_id.fee_amount" readonly="1" string="Total Settlement Fee"/>
-                                    <field name="settlement_vat_total" related="settlement_id.vat_on_fee_amount" readonly="1" string="Total Settlement VAT"/>
-                                    <field name="settlement_wht_total" related="settlement_id.wht_amount" readonly="1" string="Total Settlement WHT"/>
+                                <group string="Settlement Totals (from linked vendor bills)">
+                                    <field name="settlement_fee_total" readonly="1" string="Total Settlement Fee"/>
+                                    <field name="settlement_vat_total" readonly="1" string="Total Settlement VAT"/>
+                                    <field name="settlement_wht_total" readonly="1" string="Total Settlement WHT"/>
                                 </group>
                             </group>
                         </page>

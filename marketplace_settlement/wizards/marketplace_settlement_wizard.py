@@ -16,6 +16,7 @@ class MarketplaceSettlementWizard(models.TransientModel):
         ('lazada', 'Lazada'),
         ('nocnoc', 'Noc Noc'),
         ('tiktok', 'Tiktok'),
+        ('spx', 'SPX'),
         ('other', 'Other')
     ], string='Trade Channel', required=True)
     invoice_ids = fields.Many2many('account.move', string='Invoices')
@@ -29,36 +30,83 @@ class MarketplaceSettlementWizard(models.TransientModel):
     net_settlement_amount = fields.Monetary('Net Settlement Amount', compute='_compute_total_amount', currency_field='currency_id')
     currency_id = fields.Many2one('res.currency', default=lambda self: self.env.company.currency_id)
     
-    # Deduction fields
-    fee_amount = fields.Monetary('Marketplace Fee', currency_field='currency_id', help='Commission or fee charged by marketplace (e.g., Shopee, Lazada)')
-    fee_account_id = fields.Many2one('account.account', string='Fee Account', 
-                                   help='Expense account for marketplace fees (e.g., 6201 - Marketplace Commission)',
-                                   domain="[('account_type', 'in', ['expense', 'asset_expense'])]")
-    vat_on_fee_amount = fields.Monetary('VAT on Fee', currency_field='currency_id', help='VAT amount calculated on marketplace fee')
-    vat_account_id = fields.Many2one('account.account', string='VAT Account',
-                                   help='VAT account for input tax (e.g., 1310 - VAT Input Tax)',
-                                   domain="[('account_type', 'in', ['asset_current', 'liability_current'])]")
-    wht_amount = fields.Monetary('Withholding Tax (WHT)', currency_field='currency_id', help='Tax withheld at source by marketplace')
-    wht_account_id = fields.Many2one('account.account', string='WHT Account',
-                                   help='Withholding tax payable account (e.g., 2170 - WHT Payable)',
-                                   domain="[('account_type', '=', 'liability_current')]")
+    # Note: Deduction fields removed - fees should be handled through vendor bills for proper tax documentation
+    
+    # Settlement posting options
+    auto_post_settlement = fields.Boolean('Auto Post Settlement', default=False,
+                                         help='Automatically post the settlement after creation')
+
+    @api.model
+    def default_get(self, fields_list):
+        """Set default values and auto-populate from profile if available"""
+        res = super().default_get(fields_list)
+        
+        # Try to find a profile from context or default profile
+        profile_id = self.env.context.get('default_profile_id')
+        if not profile_id:
+            # Try to get default profile for most common trade channel (Shopee)
+            default_profile = self.env['marketplace.settlement.profile'].search([
+                ('trade_channel', '=', 'shopee'),
+                ('active', '=', True)
+            ], limit=1)
+            if default_profile:
+                profile_id = default_profile.id
+                
+        if profile_id:
+            res['profile_id'] = profile_id
+            profile = self.env['marketplace.settlement.profile'].browse(profile_id)
+            
+            # Apply profile defaults
+            if profile.trade_channel:
+                res['trade_channel'] = profile.trade_channel
+            if profile.marketplace_partner_id:
+                res['marketplace_partner_id'] = profile.marketplace_partner_id.id
+            if profile.journal_id:
+                res['journal_id'] = profile.journal_id.id
+            if profile.settlement_account_id:
+                res['settlement_account_id'] = profile.settlement_account_id.id
+            
+            # Apply vendor bill defaults from profile
+            if profile.vendor_partner_id:
+                res['vendor_partner_id'] = profile.vendor_partner_id.id
+            if profile.purchase_journal_id:
+                res['purchase_journal_id'] = profile.purchase_journal_id.id
+            if profile.vat_tax_id:
+                res['vat_tax_id'] = profile.vat_tax_id.id
+            if profile.wht_tax_id:
+                res['wht_tax_id'] = profile.wht_tax_id.id
+                
+        return res
 
     @api.depends('invoice_ids')
     def _compute_invoice_count(self):
         for record in self:
             record.invoice_count = len(record.invoice_ids)
 
-    @api.depends('invoice_ids', 'fee_amount', 'vat_on_fee_amount', 'wht_amount')
+    @api.depends('invoice_ids')
     def _compute_total_amount(self):
         for record in self:
             record.total_amount = sum(record.invoice_ids.mapped('amount_residual'))
-            record.total_deductions = (record.fee_amount or 0.0) + (record.vat_on_fee_amount or 0.0) + (record.wht_amount or 0.0)
-            record.net_settlement_amount = record.total_amount - record.total_deductions
+            record.total_deductions = 0.0  # Deductions now handled through vendor bills
+            record.net_settlement_amount = record.total_amount
 
     @api.onchange('trade_channel', 'date_from', 'date_to')
     def _onchange_trade_channel(self):
         """Automatically filter and populate invoices when trade channel is selected"""
-        # load profile defaults for this channel if any (only if no explicit profile selected)
+        # Auto-suggest profile for selected trade channel if no profile selected
+        if self.trade_channel and not self.profile_id:
+            Profile = self.env['marketplace.settlement.profile']
+            matching_profile = Profile.search([
+                ('trade_channel', '=', self.trade_channel),
+                ('active', '=', True)
+            ], limit=1)
+            
+            if matching_profile:
+                # Don't auto-assign, but make it available for suggestion
+                # This prevents overwriting user's explicit profile choice
+                pass
+                
+        # Load profile defaults for this channel if no explicit profile selected  
         if self.trade_channel and not self.profile_id:
             Profile = self.env['marketplace.settlement.profile'].sudo()
             prof = Profile.search([('trade_channel', '=', self.trade_channel)], limit=1)
@@ -70,6 +118,9 @@ class MarketplaceSettlementWizard(models.TransientModel):
                     self.journal_id = prof.journal_id
                 if not self.settlement_account_id:
                     self.settlement_account_id = prof.settlement_account_id
+                # Also set expense accounts - removed as fees handled through vendor bills
+                # if not self.fee_account_id and prof.commission_account_id:
+                #     self.fee_account_id = prof.commission_account_id
 
         if self.trade_channel and self.auto_filter:
             # Build domain for filtering invoices
@@ -134,48 +185,66 @@ class MarketplaceSettlementWizard(models.TransientModel):
         if not self.profile_id:
             return
         prof = self.profile_id
-        # set trade channel from profile if not set or different
+        
+        # Always set trade channel from profile
         if prof.trade_channel:
             self.trade_channel = prof.trade_channel
-        # apply defaults (do not override manual values)
-        if prof.marketplace_partner_id and not self.marketplace_partner_id:
+            
+        # Apply marketplace partner (always override if profile has one)
+        if prof.marketplace_partner_id:
             self.marketplace_partner_id = prof.marketplace_partner_id
-        if prof.journal_id and not self.journal_id:
+            
+        # Apply journal (always override if profile has one)
+        if prof.journal_id:
             self.journal_id = prof.journal_id
-        if prof.settlement_account_id and not self.settlement_account_id:
+            
+        # Apply settlement account
+        if prof.settlement_account_id:
             self.settlement_account_id = prof.settlement_account_id
-        # ensure auto_filter is enabled and refresh invoices
+            
+        # Apply default expense accounts - removed as fees handled through vendor bills
+        # if prof.commission_account_id and not self.fee_account_id:
+        #     self.fee_account_id = prof.commission_account_id
+        
+        # Apply vendor bill configuration from profile
+        if prof.vendor_partner_id and not self.vendor_partner_id:
+            self.vendor_partner_id = prof.vendor_partner_id
+        if prof.purchase_journal_id and not self.purchase_journal_id:
+            self.purchase_journal_id = prof.purchase_journal_id
+        if prof.vat_tax_id and not self.vat_tax_id:
+            self.vat_tax_id = prof.vat_tax_id
+        if prof.wht_tax_id and not self.wht_tax_id:
+            self.wht_tax_id = prof.wht_tax_id
+            
+        # Apply VAT account from profile VAT tax configuration
+        if prof.vat_tax_id and not self.vat_account_id:
+            # Try to get account from tax configuration
+            vat_tax = prof.vat_tax_id
+            if vat_tax.invoice_repartition_line_ids:
+                for line in vat_tax.invoice_repartition_line_ids:
+                    if line.account_id and 'input' in line.account_id.name.lower():
+                        self.vat_account_id = line.account_id
+                        break
+                        
+        # Fee-related calculations are now handled through vendor bills
+        # No automatic calculations needed in settlement wizard
+        
+        # Enable auto-filter and refresh invoices
         self.auto_filter = True
         self._onchange_trade_channel()
 
-    @api.onchange('fee_amount')
-    def _onchange_fee_amount(self):
-        if self.fee_amount and self.fee_amount > 0 and not self.fee_account_id:
-            return {'warning': {'title': _('Account Required'), 'message': _('Please specify Fee Account for marketplace fee.\n\nSuggested account types:\n• 6xxx - Marketing/Sales Expenses\n• 62xx - Commission/Fee Expenses\n• Example: 6201 - Marketplace Commission')}}
-
-    @api.onchange('vat_on_fee_amount')
-    def _onchange_vat_on_fee_amount(self):
-        if self.vat_on_fee_amount and self.vat_on_fee_amount > 0 and not self.vat_account_id:
-            return {'warning': {'title': _('Account Required'), 'message': _('Please specify VAT Account for VAT on fee.\n\nSuggested account types:\n• 1xxx - VAT Input/Receivable\n• 2xxx - VAT Payable\n• Example: 1310 - VAT Input Tax')}}
-
-    @api.onchange('wht_amount')
-    def _onchange_wht_amount(self):
-        if self.wht_amount and self.wht_amount > 0 and not self.wht_account_id:
-            return {'warning': {'title': _('Account Required'), 'message': _('Please specify WHT Account for withholding tax.\n\nSuggested account types:\n• 2xxx - Tax Payable\n• Example: 2170 - Withholding Tax Payable\n• Example: 2171 - WHT 3% (Services)')}}
+        # Remove all fee-related field validations - these are now handled through vendor bills
+        # Removed: fee validation, VAT validation, WHT validation}
 
     def action_create(self):
         self.ensure_one()
         if not self.invoice_ids:
             raise UserError(_('Please select invoices to settle.'))
 
-        # Validate deduction accounts if amounts are provided
-        if self.fee_amount and self.fee_amount > 0 and not self.fee_account_id:
-            raise UserError(_('Please specify Fee Account for marketplace fee.\n\nSuggested account codes:\n• 6201 - Marketplace Commission\n• 6210 - Sales Commission\n• 6xxx - Marketing/Sales Expenses'))
-        if self.vat_on_fee_amount and self.vat_on_fee_amount > 0 and not self.vat_account_id:
-            raise UserError(_('Please specify VAT Account for VAT on fee.\n\nSuggested account codes:\n• 1310 - VAT Input Tax\n• 1311 - VAT Recoverable\n• 2xxx - VAT Payable (if applicable)'))
-        if self.wht_amount and self.wht_amount > 0 and not self.wht_account_id:
-            raise UserError(_('Please specify WHT Account for withholding tax.\n\nSuggested account codes:\n• 2170 - Withholding Tax Payable\n• 2171 - WHT 3% (Services)\n• 2172 - WHT 1% (Others)'))
+        # Remove deduction validation - fees now handled through vendor bills
+        # No longer need to validate fee accounts since they are in vendor bills
 
+        # Create settlement (always as draft first) - deduction fields removed
         settlement = self.env['marketplace.settlement'].create({
             'name': self.name,
             'marketplace_partner_id': self.marketplace_partner_id.id,
@@ -184,34 +253,34 @@ class MarketplaceSettlementWizard(models.TransientModel):
             'trade_channel': self.trade_channel,
             'invoice_ids': [(6, 0, self.invoice_ids.ids)],
             'settlement_account_id': self.settlement_account_id.id if self.settlement_account_id else False,
-            'fee_amount': self.fee_amount,
-            'fee_account_id': self.fee_account_id.id if self.fee_account_id else False,
-            'vat_on_fee_amount': self.vat_on_fee_amount,
-            'vat_account_id': self.vat_account_id.id if self.vat_account_id else False,
-            'wht_amount': self.wht_amount,
-            'wht_account_id': self.wht_account_id.id if self.wht_account_id else False,
+            # Store profile reference for future use
+            'profile_id': self.profile_id.id if self.profile_id else False,
         })
+
+        # Post settlement if auto-post is enabled
+        if self.auto_post_settlement:
+            try:
+                action = settlement.action_create_settlement()
+            except Exception as e:
+                raise UserError(_('Failed to post settlement: %s') % str(e))
         
-        # action_create_settlement creates the journal entry and returns an action
-        action = settlement.action_create_settlement()
-
-        # Build a warning message linking to Reconcile Models action
-        reconcile_action = self.env.ref('marketplace_settlement.action_marketplace_reconcile', raise_if_not_found=False)
-        if reconcile_action:
-            link = '/web#action=%d' % (reconcile_action.id,)
-            warning_msg = _('Settlement created. You may want to reconcile fees: <a href="%s" target="_blank">Open Reconcile Models</a>') % link
+        # Prepare success message with new workflow guidance
+        messages = [_('Settlement "%s" created successfully as draft.') % settlement.name]
+        if self.auto_post_settlement:
+            messages.append(_('Settlement has been posted.'))
         else:
-            warning_msg = _('Settlement created.')
+            messages.append(_('Settlement is in draft state. You can review and post it manually.'))
 
-        # If the settlement returned an action (to open the move), attach a warning popup
-        if isinstance(action, dict):
-            action['warning'] = {
-                'title': _('Settlement Created'),
-                'message': warning_msg,
-            }
-            return action
+        # Guidance for new workflow
+        messages.append(_('\nNew Workflow:'))
+        messages.append(_('1. Create Vendor Bills for marketplace fees (Shopee/SPX) separately'))
+        messages.append(_('2. Link vendor bills to this settlement'))
+        messages.append(_('3. Use Net-off AR/AP button to offset receivables against payables'))
+        messages.append(_('4. Reconcile remaining net amount with bank statement'))
 
-        # fallback: open settlement form with a warning
+        warning_msg = '\n'.join(messages)
+
+        # Return action to open settlement form
         return {
             'type': 'ir.actions.act_window',
             'name': _('Marketplace Settlement'),
@@ -219,6 +288,10 @@ class MarketplaceSettlementWizard(models.TransientModel):
             'res_id': settlement.id,
             'view_mode': 'form',
             'target': 'current',
+            'context': {'create': False},
+            'flags': {
+                'mode': 'readonly' if self.auto_post_settlement else 'edit',
+            },
             'warning': {
                 'title': _('Settlement Created'),
                 'message': warning_msg,

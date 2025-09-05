@@ -12,61 +12,130 @@
                             <field name="name" placeholder="Settlement Reference (Auto-generated)"/>
                         </h1>
                     </div>
-                    <group>
+                    
+                    <!-- Profile Selection -->
+                    <div class="alert alert-info" role="alert" style="margin: 10px 0;">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <strong>💡 Quick Setup:</strong> เลือก Profile เพื่อตั้งค่าอัตโนมัติสำหรับ Marketplace | 
+                                <span invisible="not profile_id">✅ กำลังใช้: <strong><field name="profile_id" readonly="1" nolabel="1"/></strong></span>
+                                <span invisible="profile_id">⚠️ ยังไม่ได้เลือก Profile</span>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <strong>วิธีใหม่:</strong> แยกค่าธรรมเนียม → ลดภาษี WHT ได้เต็ม
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <group string="Profile &amp; Basic Settings">
                         <group>
-                            <field name="date"/>
-                            <field name="journal_id" options="{'no_create_edit': True}"/>
-                            <field name="marketplace_partner_id" options="{'no_create_edit': False}" placeholder="Shopee/Lazada partner"/>
+                            <field name="profile_id" placeholder="เลือก Profile สำหรับ Marketplace..." 
+                                   options="{'no_create_edit': True, 'no_open': True}"
+                                   class="oe_highlight" string="Marketplace Profile"/>
+                            <field name="marketplace_partner_id" options="{'no_create_edit': False}" 
+                                   placeholder="คู่ค้า Shopee/Lazada" string="Marketplace Partner"/>
                         </group>
                         <group>
-                            <field name="trade_channel"/>
-                            <field name="date_from"/>
-                            <field name="date_to"/>
-                            <field name="settlement_account_id"/>
-                            <field name="invoice_count" invisible="1"/>
+                            <field name="date" string="วันที่ Settlement"/>
+                            <field name="trade_channel" string="ช่องทางการขาย"/>
                         </group>
                     </group>
                     
-                    <!-- Deductions Section -->
-                    <group string="Deductions" name="deductions">
+                    <!-- Settlement Configuration -->
+                    <group string="Settlement Configuration">
                         <group>
-                            <field name="fee_amount"/>
-                            <field name="fee_account_id" invisible="not fee_amount"/>
-                            <field name="vat_on_fee_amount"/>
-                            <field name="vat_account_id" invisible="not vat_on_fee_amount"/>
+                            <field name="journal_id" options="{'no_create_edit': True}" string="Journal"/>
+                            <field name="settlement_account_id" string="Settlement Account"/>
                         </group>
                         <group>
-                            <field name="wht_amount"/>
-                            <field name="wht_account_id" invisible="not wht_amount"/>
+                            <field name="auto_filter" widget="boolean_toggle" string="Auto Filter Invoices"/>
+                            <field name="date_from" invisible="not auto_filter" string="From Date"/>
+                            <field name="date_to" invisible="not auto_filter" string="To Date"/>
                         </group>
                     </group>
+                    
+                    <!-- New Workflow Guidance -->
+                    <div class="alert alert-info" role="alert" style="margin: 10px 0;">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <strong>🔄 ขั้นตอนใหม่:</strong>
+                                <span class="badge badge-primary">1. สร้าง Settlement</span> →
+                                <span class="badge badge-info">2. สร้าง Vendor Bills</span> →
+                                <span class="badge badge-warning">3. เชื่อมโยง Bills</span> →
+                                <span class="badge badge-success">4. หักกลบ AR/AP</span> →
+                                <span class="badge badge-dark">5. กระทบยอดธนาคาร</span>
+                                | <i class="fa fa-check-circle text-success"></i> <strong>ผลลัพธ์:</strong> ได้หลักฐานภาษีซื้อ + WHT ครบถ้วน
+                            </div>
+                        </div>
+                    </div>
                     
                     <!-- Summary Section -->
-                    <group string="Settlement Summary" name="summary">
-                        <group>
-                            <field name="total_amount" readonly="1"/>
-                            <field name="total_deductions" readonly="1"/>
-                        </group>
-                        <group>
-                            <field name="net_settlement_amount" readonly="1"/>
-                        </group>
-                    </group>
+                    <div class="alert alert-success" role="alert" style="margin: 10px 0;">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <h4><field name="invoice_count" readonly="1" nolabel="1"/></h4>
+                                <small>จำนวน Invoice</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h4><field name="total_amount" readonly="1" nolabel="1"/></h4>
+                                <small>ยอดรวม (บาท)</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h4><field name="net_settlement_amount" readonly="1" nolabel="1"/></h4>
+                                <small>ยอดสุทธิ (บาท)</small>
+                            </div>
+                            <div class="col-md-3">
+                                <i class="fa fa-check-circle fa-2x text-success"></i>
+                                <small>พร้อม Settlement</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Settlement Posting Options -->
+                    <div class="alert alert-warning" role="alert" style="margin: 10px 0;">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <field name="auto_post_settlement" widget="boolean_toggle" string="Post ทันที"/>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <span invisible="auto_post_settlement">
+                                    <i class="fa fa-edit text-info"></i> <strong>Draft Mode:</strong> ตรวจสอบก่อน Post
+                                </span>
+                                <span invisible="not auto_post_settlement">
+                                    <i class="fa fa-flash text-warning"></i> <strong>Auto Post:</strong> Post ทันทีหลังสร้าง
+                                </span>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <i class="fa fa-lightbulb-o text-success"></i> <strong>แนะนำ:</strong> ควรตรวจสอบข้อมูลก่อน Post
+                            </div>
+                        </div>
+                    </div>
+                    
                     <notebook>
-                        <page string="Invoices" name="invoices">
-                            <div class="oe_button_box">
-                                <button name="action_refresh_invoices" type="object" class="oe_stat_button" icon="fa-refresh" string="Refresh" help="Refresh invoice list based on trade channel"/>
+                        <page string="รายการ Invoices" name="invoices">
+                            <div class="row" style="margin-bottom: 10px;">
+                                <div class="col-md-3">
+                                    <button name="action_refresh_invoices" type="object" class="btn btn-primary" icon="fa-refresh" string="รีเฟรช"/>
+                                </div>
+                                <div class="col-md-9">
+                                    <div class="alert alert-info" role="alert" style="margin: 0; padding: 10px;">
+                                        <span class="badge badge-info"><field name="invoice_count" readonly="1" nolabel="1"/> ใบ</span>
+                                        <span class="badge badge-success">รวม <field name="total_amount" readonly="1" nolabel="1"/> บาท</span>
+                                        <span class="pull-right"><i class="fa fa-info-circle"></i> กรองตาม Trade Channel อัตโนมัติ</span>
+                                    </div>
+                                </div>
                             </div>
                             <field name="invoice_ids" nolabel="1">
-                                <tree decoration-info="is_refund" decoration-bf="amount_residual &gt; 1000">
-                                    <field name="name"/>
-                                    <field name="partner_id"/>
-                                    <field name="invoice_date"/>
-                                    <field name="trade_channel"/>
-                                    <field name="amount_total"/>
-                                    <field name="amount_residual"/>
+                                <tree decoration-info="is_refund" decoration-bf="amount_residual &gt; 1000" decoration-muted="state == 'cancel'">
+                                    <field name="name" string="เลขที่ Invoice"/>
+                                    <field name="partner_id" string="ลูกค้า"/>
+                                    <field name="invoice_date" string="วันที่"/>
+                                    <field name="trade_channel" string="ช่องทาง"/>
+                                    <field name="amount_total" string="ยอดรวม" sum="รวมทั้งหมด"/>
+                                    <field name="amount_residual" string="ยอดคงเหลือ" sum="รวมคงเหลือ"/>
                                     <field name="move_type" invisible="1"/>
-                                    <field name="is_refund" widget="boolean"/>
-                                    <field name="state"/>
+                                    <field name="is_refund" widget="boolean" string="คืนเงิน"/>
+                                    <field name="state" string="สถานะ"/>
                                 </tree>
                             </field>
                         </page>
@@ -180,16 +249,29 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_preview_settlement" type="object" string="Preview Settlement" class="btn-secondary" invisible="move_id != False"/>
-                    <button name="action_create_settlement" type="object" string="Create Settlement" class="btn-primary" invisible="move_id != False"/>
-                    <button name="action_netoff_ar_ap" type="object" string="Net-off AP/AR" class="oe_highlight" 
+                    <button name="action_preview_settlement" type="object" string="Preview Settlement" class="btn-secondary" 
+                            invisible="move_id != False or not can_modify"/>
+                    <button name="action_create_settlement" type="object" string="Create Settlement" class="btn-primary" 
+                            invisible="move_id != False or not can_modify"
+                            groups="account.group_account_user"/>
+                    <button name="action_open_netting_wizard" type="object" string="Setup AR/AP Netting" class="oe_highlight" 
                             invisible="not can_perform_netting" 
-                            confirm="This will reconcile customer receivables against vendor payables. Continue?"/>
+                            groups="account.group_account_user"/>
+                    <button name="action_netoff_ar_ap" type="object" string="Quick Net-off" class="btn-secondary" 
+                            invisible="not can_perform_netting or vendor_bill_count == 0" 
+                            confirm="This will automatically reconcile customer receivables against available vendor payables. Continue?"
+                            groups="account.group_account_user"/>
                     <button name="action_reverse_netting" type="object" string="Reverse Netting" class="btn-secondary" 
                             invisible="not is_netted" 
-                            confirm="Are you sure you want to reverse the AR/AP netting?"/>
+                            confirm="Are you sure you want to reverse the AR/AP netting?"
+                            groups="account.group_account_user"/>
                     <button name="action_reverse_settlement" type="object" string="Reverse Settlement" class="btn-secondary" 
-                            invisible="state != 'posted'" confirm="Are you sure you want to reverse this settlement? This will create a reverse journal entry and clear the settlement link."/>
+                            invisible="state != 'posted'" confirm="Are you sure you want to reverse this settlement? This will create a reverse journal entry and clear the settlement link."
+                            groups="account.group_account_user"/>
+                    <button name="action_generate_fee_allocations" type="object" string="Generate Fee Allocations" class="btn-secondary" 
+                            invisible="state != 'posted' or has_fee_allocations"/>
+                    <button name="action_import_fee_allocations_csv" type="object" string="Import CSV" class="btn-secondary" 
+                            invisible="state != 'posted'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,posted,reversed"/>
                 </header>
                 <sheet>
@@ -200,6 +282,20 @@
                         <button name="action_view_vendor_bills" type="object" class="oe_stat_button" icon="fa-file-o" 
                                 invisible="vendor_bill_count == 0">
                             <field name="vendor_bill_count" widget="statinfo" string="Vendor Bills"/>
+                        </button>
+                        <button name="action_link_vendor_bills" type="object" class="oe_stat_button" icon="fa-link" 
+                                invisible="state != 'draft'">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Link</span>
+                                <span class="o_stat_text">Bills</span>
+                            </div>
+                        </button>
+                        <button name="action_netoff_ap_ar_preview" type="object" class="oe_stat_button" icon="fa-calculator" 
+                                invisible="not can_perform_netting or vendor_bill_count == 0">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Net-off</span>
+                                <span class="o_stat_text">Preview</span>
+                            </div>
                         </button>
                         <button name="action_view_settlement_move" type="object" class="oe_stat_button" icon="fa-book" invisible="move_id == False">
                             <div class="o_field_widget o_stat_info">
@@ -214,6 +310,14 @@
                                 <span class="o_stat_text">Move</span>
                             </div>
                         </button>
+                        <button name="action_view_wht_certificates" type="object" class="oe_stat_button" icon="fa-file-text" 
+                                invisible="not is_thai_localization_available or wht_cert_count == 0">
+                            <field name="wht_cert_count" widget="statinfo" string="WHT Certs"/>
+                        </button>
+                        <button name="action_view_fee_allocations" type="object" class="oe_stat_button" icon="fa-pie-chart" 
+                                invisible="fee_allocation_count == 0">
+                            <field name="fee_allocation_count" widget="statinfo" string="Fee Allocations"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <h1>
@@ -222,19 +326,26 @@
                     </div>
                     <group>
                         <group>
-                            <field name="trade_channel"/>
-                            <field name="marketplace_partner_id"/>
-                            <field name="journal_id"/>
-                            <field name="date"/>
+                            <field name="profile_id" readonly="state == 'posted'" 
+                                   options="{'no_create_edit': True}"
+                                   help="Profile used to create this settlement"/>
+                            <field name="trade_channel" readonly="not can_modify"/>
+                            <field name="marketplace_partner_id" readonly="not can_modify"/>
+                            <field name="journal_id" readonly="not can_modify"/>
+                            <field name="date" readonly="not can_modify"/>
                         </group>
                         <group>
                             <field name="move_id"/>
                             <field name="netting_move_id" readonly="1"/>
                             <field name="invoice_count" invisible="1"/>
                             <field name="vendor_bill_count" invisible="1"/>
-                            <field name="settlement_account_id"/>
+                            <field name="settlement_account_id" readonly="not can_modify"/>
                             <field name="can_perform_netting" invisible="1"/>
                             <field name="is_netted" invisible="1"/>
+                            <field name="is_settled" readonly="1"/>
+                            <field name="can_modify" invisible="1"/>
+                            <field name="fee_allocation_count" invisible="1"/>
+                            <field name="has_fee_allocations" invisible="1"/>
                         </group>
                     </group>
                     
@@ -243,7 +354,6 @@
                         <group>
                             <field name="total_invoice_amount" readonly="1"/>
                             <field name="total_vendor_bills" readonly="1"/>
-                            <field name="total_deductions" readonly="1"/>
                         </group>
                         <group>
                             <field name="net_settlement_amount" readonly="1"/>
@@ -252,23 +362,27 @@
                         </group>
                     </group>
                     
-                    <!-- Deductions Section -->
-                    <group string="Deductions" name="deductions">
-                        <group>
-                            <field name="fee_amount"/>
-                            <field name="fee_account_id" invisible="not fee_amount"/>
-                            <field name="vat_on_fee_amount"/>
-                            <field name="vat_account_id" invisible="not vat_on_fee_amount"/>
-                        </group>
-                        <group>
-                            <field name="wht_amount"/>
-                            <field name="wht_account_id" invisible="not wht_amount"/>
+                    <!-- New Workflow Information -->
+                    <group string="New Workflow Process" name="workflow_info">
+                        <div class="alert alert-info" role="alert">
+                            <strong>Enhanced Workflow:</strong><br/>
+                            • <strong>Settlement</strong> now only groups customer invoices (no deductions)<br/>
+                            • <strong>Fees &amp; Taxes</strong> are recorded in separate vendor bills for proper documentation<br/>
+                            • <strong>AR/AP Netting</strong> offsets settlement receivables against vendor bill payables<br/>
+                            • <strong>Bank Reconciliation</strong> handles only the net remaining amount
+                        </div>
+                        <!-- Thai Localization Fields - moved here -->
+                        <group invisible="not is_thai_localization_available">
+                            <field name="is_thai_localization_available" invisible="1"/>
+                            <field name="use_thai_wht" invisible="not is_thai_localization_available" readonly="not can_modify"/>
+                            <field name="thai_income_tax_form" invisible="not use_thai_wht or not is_thai_localization_available" readonly="not can_modify"/>
+                            <field name="thai_wht_income_type" invisible="not use_thai_wht or not is_thai_localization_available" readonly="not can_modify"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Invoices" name="invoices">
                             <field name="invoice_ids" nolabel="1">
-                                <tree decoration-info="is_refund" decoration-bf="amount_residual &gt; 1000">
+                                <tree decoration-info="is_refund" decoration-bf="amount_residual &gt; 1000" decoration-danger="is_settled">
                                     <field name="name"/>
                                     <field name="partner_id"/>
                                     <field name="invoice_date"/>
@@ -276,6 +390,7 @@
                                     <field name="amount_total"/>
                                     <field name="amount_residual"/>
                                     <field name="is_refund" widget="boolean"/>
+                                    <field name="is_settled" widget="boolean" string="Already Settled"/>
                                     <field name="state"/>
                                 </tree>
                             </field>
@@ -351,22 +466,45 @@
                             </group>
                             
                             <field name="fee_allocation_ids" nolabel="1" invisible="not has_fee_allocations">
-                                <tree editable="bottom" decoration-info="allocation_method=='proportional'" decoration-warning="allocation_method=='exact'">
+                                <tree editable="bottom" decoration-info="allocation_method=='proportional'" decoration-warning="allocation_method=='exact'" 
+                                      sum_label="Totals:">
                                     <field name="invoice_number" readonly="1"/>
                                     <field name="invoice_partner_id" readonly="1"/>
                                     <field name="allocation_method"/>
-                                    <field name="allocation_base_amount" readonly="1"/>
+                                    <field name="allocation_base_amount" readonly="1" sum="Total Base"/>
                                     <field name="allocation_percentage" widget="percentage" readonly="1"/>
-                                    <field name="base_fee_alloc"/>
-                                    <field name="vat_input_alloc"/>
-                                    <field name="wht_alloc"/>
-                                    <field name="total_deductions_alloc" readonly="1"/>
-                                    <field name="net_payout_alloc" readonly="1"/>
+                                    <field name="base_fee_alloc" sum="Total Fee"/>
+                                    <field name="vat_input_alloc" sum="Total VAT"/>
+                                    <field name="wht_alloc" sum="Total WHT"/>
+                                    <field name="total_deductions_alloc" readonly="1" sum="Total Deductions"/>
+                                    <field name="net_payout_alloc" readonly="1" sum="Net Payout"/>
                                     <button name="action_allocate_proportional" type="object" string="Recalc" 
                                             icon="fa-calculator" title="Recalculate proportional allocation"
                                             invisible="allocation_method != 'proportional'"/>
                                 </tree>
                             </field>
+                        </page>
+                        <page string="Thai Localization" name="thai_localization" invisible="not is_thai_localization_available">
+                            <div class="alert alert-info" role="alert">
+                                <strong>Thai Localization:</strong> This section provides integration with Thai tax modules 
+                                for withholding tax certificates and Thai tax reporting compliance.
+                            </div>
+                            
+                            <group string="Thai WHT Configuration">
+                                <group>
+                                    <field name="use_thai_wht"/>
+                                    <field name="thai_income_tax_form" invisible="not use_thai_wht"/>
+                                    <field name="thai_wht_income_type" invisible="not use_thai_wht"/>
+                                </group>
+                                <group>
+                                    <field name="wht_cert_count" readonly="1"/>
+                                    <button name="action_create_wht_certificate" type="object" string="Create WHT Certificate" 
+                                            class="btn-primary" invisible="not use_thai_wht or state != 'posted' or vendor_bill_count == 0"
+                                            help="Create Thai withholding tax certificate from vendor bills"/>
+                                </group>
+                            </group>
+                            
+                            <field name="wht_cert_data" nolabel="1" invisible="wht_cert_count == 0" readonly="1" widget="text"/>
                         </page>
                     </notebook>
                 </sheet>

@@ -4,6 +4,97 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 
 
+class SettlementPreviewWizard(models.TransientModel):
+    _name = 'settlement.preview.wizard'
+    _description = 'Settlement Net-off Preview'
+
+    preview_text = fields.Text(string="Preview", readonly=True)
+    warning_message = fields.Text(string="Warning", readonly=True)
+    can_perform_netting = fields.Boolean(string="Can Perform Netting", readonly=True)
+    settlement_id = fields.Many2one('marketplace.settlement', string='Settlement', readonly=True)
+    
+    # Amount fields for netting preview
+    total_receivables = fields.Monetary(string="Total Receivables", readonly=True)
+    total_payables = fields.Monetary(string="Total Payables", readonly=True) 
+    net_amount = fields.Monetary(string="Net Amount", readonly=True)
+    currency_id = fields.Many2one('res.currency', string='Currency', readonly=True)
+    
+    # Detail text fields
+    receivable_details = fields.Text(string="Receivable Details", readonly=True)
+    payable_details = fields.Text(string="Payable Details", readonly=True)
+
+    @api.depends('total_receivables', 'total_payables')
+    def _compute_can_perform_netting(self):
+        for wizard in self:
+            wizard.can_perform_netting = (wizard.total_receivables > 0 and wizard.total_payables > 0)
+
+    @api.depends('total_receivables', 'total_payables', 'net_amount')
+    def _compute_warnings(self):
+        for wizard in self:
+            warnings = []
+            
+            if wizard.total_receivables <= 0:
+                warnings.append(_('No settlement receivables found. This may be because:'))
+                warnings.append(_('• Settlement has not been posted yet'))
+                warnings.append(_('• Settlement amount is zero'))
+                warnings.append(_('• Settlement has been reconciled already'))
+            
+            if wizard.total_payables <= 0:
+                warnings.append(_('No outstanding vendor bill payables found. This may be because:'))
+                warnings.append(_('• No vendor bills have been linked to this settlement'))
+                warnings.append(_('• Vendor bills are not posted'))
+                warnings.append(_('• Vendor bills have been reconciled already'))
+            
+            if abs(wizard.net_amount) > max(wizard.total_receivables, wizard.total_payables) * 2:
+                warnings.append(_('Net amount is significantly large. Please verify the amounts.'))
+            
+            # Add workflow guidance
+            if wizard.total_receivables > 0 and wizard.total_payables > 0:
+                if wizard.net_amount > 0:
+                    warnings.append(_('Net result: Company will receive {:.2f} after netting').format(wizard.net_amount))
+                elif wizard.net_amount < 0:
+                    warnings.append(_('Net result: Company will pay {:.2f} after netting').format(-wizard.net_amount))
+                else:
+                    warnings.append(_('Perfect netting: No net amount remaining'))
+            
+            wizard.warning_message = '\n'.join(warnings) if warnings else ''
+
+    def action_confirm_netting(self):
+        """Confirm and perform the AR/AP netting"""
+        self.ensure_one()
+        
+        if not self.can_perform_netting:
+            raise UserError(_('Cannot perform netting. Please check the receivable and payable amounts.'))
+        
+        # Perform the actual netting
+        return self.settlement_id.action_netoff_ar_ap()
+
+    def action_cancel(self):
+        """Cancel the preview"""
+        return {'type': 'ir.actions.act_window_close'}
+
+    @api.model
+    def default_get(self, fields_list):
+        """Set default values from context"""
+        res = super().default_get(fields_list)
+        
+        settlement_id = self.env.context.get('default_settlement_id')
+        if settlement_id:
+            settlement = self.env['marketplace.settlement'].browse(settlement_id)
+            res.update({
+                'settlement_id': settlement_id,
+                'currency_id': settlement.company_currency_id.id,
+            })
+        
+        # Set amounts from context if provided
+        for field in ['total_receivables', 'total_payables', 'net_amount', 'currency_id']:
+            context_key = f'default_{field}'
+            if context_key in self.env.context:
+                res[field] = self.env.context[context_key]
+        
+        return res
+
+
 class MarketplaceSettlementPreviewWizard(models.TransientModel):
     _name = 'marketplace.settlement.preview.wizard'
     _description = 'Settlement Preview Wizard'

@@ -23,6 +23,13 @@
             <form>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_create_settlement_with_profile" type="object" 
+                                class="oe_stat_button btn-primary" icon="fa-plus">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Create</span>
+                                <span class="o_stat_text">Settlement</span>
+                            </div>
+                        </button>
                         <button class="oe_stat_button" type="action" icon="fa-file-text-o" 
                                 name="%(marketplace_vendor_bill_action)d"
                                 context="{'search_default_profile_id': active_id}">
@@ -100,6 +107,26 @@
                                     <field name="logistics_account_id"/>
                                     <field name="other_expense_account_id"/>
                                 </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Thai Localization">
+                            <group string="Thai WHT Configuration">
+                                <group>
+                                    <field name="use_thai_wht"/>
+                                    <field name="thai_income_tax_form" invisible="not use_thai_wht"/>
+                                </group>
+                                <group>
+                                    <field name="thai_wht_income_type" invisible="not use_thai_wht"/>
+                                </group>
+                            </group>
+                            <group string="Thai Tax Information" invisible="not use_thai_wht">
+                                <p>When Thai WHT is enabled, settlements will automatically:</p>
+                                <ul>
+                                    <li>Generate WHT certificates using the configured income tax form</li>
+                                    <li>Apply the default WHT income type to all items</li>
+                                    <li>Integrate with Thai tax reporting modules</li>
+                                </ul>
                             </group>
                         </page>
                         

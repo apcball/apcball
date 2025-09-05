@@ -23,10 +23,25 @@ class MarketplaceVendorBill(models.Model):
                                domain="[('type', '=', 'purchase')]")
     vendor_bill_id = fields.Many2one('account.move', string='Created Vendor Bill', readonly=True)
     
-    # Trade Channel Profile
+    # Trade Channel Profile (Optional - Users can configure manually)
     profile_id = fields.Many2one('marketplace.settlement.profile', string='Trade Channel Profile',
-                               help='Profile containing default settings for this trade channel')
-    trade_channel = fields.Selection(related='profile_id.trade_channel', string='Trade Channel', readonly=True)
+                               help='Optional profile for default settings. Users can configure manually instead.')
+    trade_channel = fields.Selection([
+        ('shopee', 'Shopee'),
+        ('lazada', 'Lazada'),
+        ('nocnoc', 'Noc Noc'),
+        ('tiktok', 'Tiktok'),
+        ('spx', 'SPX'),
+        ('other', 'Other'),
+    ], string='Trade Channel', help='Trade channel for this vendor bill')
+    
+    # Manual Configuration Fields (when not using profile)
+    use_manual_config = fields.Boolean('Manual Configuration', default=False,
+                                     help='Enable manual configuration instead of using profile defaults')
+    manual_vat_rate = fields.Float('VAT Rate (%)', default=0.0,
+                                 help='VAT rate for manual configuration')
+    manual_wht_rate = fields.Float('WHT Rate (%)', default=0.0,
+                                 help='Withholding tax rate for manual configuration')
     
     # Document lines
     line_ids = fields.One2many('marketplace.vendor.bill.line', 'bill_id', string='Lines')
@@ -92,15 +107,41 @@ class MarketplaceVendorBill(models.Model):
 
     @api.onchange('document_type')
     def _onchange_document_type(self):
+        """Auto-detect trade channel and suggest profile, but allow manual override"""
         if self.document_type == 'shopee_tr':
-            # Find Shopee profile
+            self.trade_channel = 'shopee'
+            # Suggest profile but don't force it
             profile = self.env['marketplace.settlement.profile'].get_profile_by_channel('shopee')
-            if profile:
+            if profile and not self.use_manual_config:
                 self.profile_id = profile.id
                 self._apply_profile_defaults()
         elif self.document_type == 'spx_rc':
-            # Find SPX profile
+            self.trade_channel = 'spx'
+            # Suggest profile but don't force it
             profile = self.env['marketplace.settlement.profile'].get_profile_by_channel('spx')
+            if profile and not self.use_manual_config:
+                self.profile_id = profile.id
+                self._apply_profile_defaults()
+
+    @api.onchange('use_manual_config')
+    def _onchange_use_manual_config(self):
+        """Switch between profile and manual configuration"""
+        if self.use_manual_config:
+            # Clear profile when switching to manual
+            self.profile_id = False
+        else:
+            # Try to apply profile when switching back
+            if self.trade_channel:
+                profile = self.env['marketplace.settlement.profile'].get_profile_by_channel(self.trade_channel)
+                if profile:
+                    self.profile_id = profile.id
+                    self._apply_profile_defaults()
+
+    @api.onchange('trade_channel')
+    def _onchange_trade_channel(self):
+        """Update profile suggestion when trade channel changes"""
+        if self.trade_channel and not self.use_manual_config:
+            profile = self.env['marketplace.settlement.profile'].get_profile_by_channel(self.trade_channel)
             if profile:
                 self.profile_id = profile.id
                 self._apply_profile_defaults()
@@ -108,12 +149,12 @@ class MarketplaceVendorBill(models.Model):
     @api.onchange('profile_id')
     def _onchange_profile_id(self):
         """Apply profile defaults when profile is changed"""
-        if self.profile_id:
+        if self.profile_id and not self.use_manual_config:
             self._apply_profile_defaults()
 
     def _apply_profile_defaults(self):
         """Apply default values from the selected profile"""
-        if not self.profile_id:
+        if not self.profile_id or self.use_manual_config:
             return
             
         profile = self.profile_id
@@ -126,11 +167,74 @@ class MarketplaceVendorBill(models.Model):
         if profile.purchase_journal_id and not self.journal_id:
             self.journal_id = profile.purchase_journal_id
             
-        # Clear existing lines and add default lines
+        # Update manual rates from profile
+        self.manual_vat_rate = profile.default_vat_rate
+        self.manual_wht_rate = profile.default_wht_rate
+            
+        # Clear existing lines and add default lines only if no lines exist
         if not self.line_ids:
             self._add_default_lines_from_profile()
 
     def _add_default_lines_from_profile(self):
+        """Add default lines based on profile configuration or manual setup"""
+        if self.use_manual_config:
+            # For manual configuration, add basic lines that user can customize
+            self._add_manual_default_lines()
+        elif self.profile_id:
+            self._add_profile_default_lines()
+
+    def _add_manual_default_lines(self):
+        """Add basic default lines for manual configuration"""
+        lines_data = []
+        
+        if self.document_type == 'shopee_tr':
+            lines_data = [
+                {
+                    'description': 'Platform Commission',
+                    'amount': 0.0,
+                    'vat_rate': self.manual_vat_rate,
+                    'wht_rate': self.manual_wht_rate,
+                    'sequence': 10
+                },
+                {
+                    'description': 'Service Fees',
+                    'amount': 0.0,
+                    'vat_rate': self.manual_vat_rate,
+                    'wht_rate': self.manual_wht_rate,
+                    'sequence': 20
+                },
+                {
+                    'description': 'Advertising Fees',
+                    'amount': 0.0,
+                    'vat_rate': self.manual_vat_rate,
+                    'wht_rate': self.manual_wht_rate,
+                    'sequence': 30
+                }
+            ]
+        elif self.document_type == 'spx_rc':
+            lines_data = [
+                {
+                    'description': 'Logistics Fees',
+                    'amount': 0.0,
+                    'vat_rate': self.manual_vat_rate,
+                    'wht_rate': self.manual_wht_rate,
+                    'sequence': 10
+                },
+                {
+                    'description': 'Shipping Charges',
+                    'amount': 0.0,
+                    'vat_rate': self.manual_vat_rate,
+                    'wht_rate': self.manual_wht_rate,
+                    'sequence': 20
+                }
+            ]
+        
+        # Create lines
+        for line_data in lines_data:
+            line_data['bill_id'] = self.id
+            self.env['marketplace.vendor.bill.line'].create(line_data)
+
+    def _add_profile_default_lines(self):
         """Add default lines based on profile configuration"""
         if not self.profile_id:
             return
@@ -206,83 +310,51 @@ class MarketplaceVendorBill(models.Model):
             if profile:
                 self.profile_id = profile.id
 
-    def action_create_vendor_bill(self):
-        """Create vendor bill from marketplace document"""
+    def action_link_vendor_bill(self):
+        """Open wizard to link an existing vendor bill to this marketplace document"""
+        self.ensure_one()
+        if self.state != 'draft':
+            raise UserError(_('Only draft documents can be linked'))
+        
+        # Return action to open the bill link wizard
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Link Vendor Bill'),
+            'res_model': 'bill.link.wizard',
+            'view_mode': 'form',
+            'context': {
+                'default_marketplace_document_id': self.id,
+            },
+            'target': 'new',
+        }
+    
+    def action_create_bill_from_template(self):
+        """Create a new vendor bill with pre-filled data from this document"""
         self.ensure_one()
         if self.state != 'draft':
             raise UserError(_('Only draft documents can be processed'))
         
-        if not self.line_ids:
-            raise UserError(_('Please add at least one line before creating vendor bill'))
-        
-        # Create vendor bill
+        # Prepare bill values based on marketplace document
         bill_vals = {
             'move_type': 'in_invoice',
             'partner_id': self.partner_id.id,
             'invoice_date': self.date,
-            'journal_id': self.journal_id.id,
+            'journal_id': self.journal_id.id if self.journal_id else False,
             'ref': self.document_reference,
+            'trade_channel': self.trade_channel,
+            'settlement_ref': f'MP-{self.document_reference}',
             'narration': f'Marketplace document: {self.document_reference}\n{self.notes or ""}',
-            'invoice_line_ids': []
         }
         
-        # Add invoice lines
-        for line in self.line_ids:
-            line_vals = {
-                'name': line.description,
-                'account_id': line.account_id.id,
-                'quantity': 1,
-                'price_unit': line.amount,
-                'tax_ids': []
-            }
-            
-            # Add VAT tax if applicable
-            if line.vat_amount > 0:
-                vat_tax = self._get_vat_tax()
-                if vat_tax:
-                    line_vals['tax_ids'].append((4, vat_tax.id))
-            
-            # Add WHT tax if applicable
-            if line.wht_amount > 0:
-                wht_tax = self._get_wht_tax(line.wht_rate)
-                if wht_tax:
-                    line_vals['tax_ids'].append((4, wht_tax.id))
-            
-            bill_vals['invoice_line_ids'].append((0, 0, line_vals))
-        
-        # Create the bill
-        vendor_bill = self.env['account.move'].create(bill_vals)
-        
-        # Update state and link
-        self.write({
-            'vendor_bill_id': vendor_bill.id,
-            'state': 'processed'
-        })
-        
+        # Return action to create new bill with pre-filled data
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Vendor Bill'),
+            'name': _('Create Vendor Bill'),
             'res_model': 'account.move',
-            'res_id': vendor_bill.id,
             'view_mode': 'form',
+            'context': dict(self.env.context, default_move_type='in_invoice', **bill_vals),
             'target': 'current',
         }
-
-    def _get_vat_tax(self):
-        """Get VAT purchase tax (7%)"""
-        return self.env['account.tax'].search([
-            ('type_tax_use', '=', 'purchase'),
-            ('amount', '=', 7),
-            ('amount_type', '=', 'percent')
-        ], limit=1)
-
-    def _get_wht_tax(self, rate):
-        """Get WHT tax by rate"""
-        return self.env['account.tax'].search([
-            ('type_tax_use', '=', 'purchase'),
-            ('amount', '=', -abs(rate)),  # WHT taxes are negative
-            ('amount_type', '=', 'percent')
-        ], limit=1)
 
     def action_view_vendor_bill(self):
         """View created vendor bill"""
@@ -312,6 +384,36 @@ class MarketplaceVendorBill(models.Model):
         if self.vendor_bill_id:
             raise UserError(_('Cannot reset to draft when vendor bill exists'))
         self.state = 'draft'
+
+    def action_toggle_manual_config(self):
+        """Toggle between manual configuration and profile configuration"""
+        self.ensure_one()
+        if self.state != 'draft':
+            raise UserError(_('Can only change configuration for draft documents'))
+        
+        self.use_manual_config = not self.use_manual_config
+        
+        # If there are existing lines, ask user what to do
+        if self.line_ids:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Configuration Changed'),
+                'res_model': 'marketplace.config.change.wizard',
+                'view_mode': 'form',
+                'target': 'new',
+                'context': {
+                    'default_vendor_bill_id': self.id,
+                    'default_use_manual_config': self.use_manual_config,
+                },
+            }
+        else:
+            # No lines exist, just apply new configuration
+            if self.use_manual_config:
+                self._add_manual_default_lines()
+            else:
+                self._add_profile_default_lines()
+        
+        return True
 
 
 class MarketplaceVendorBillLine(models.Model):
@@ -345,10 +447,61 @@ class MarketplaceVendorBillLine(models.Model):
         for line in self:
             line.wht_amount = line.amount * (line.wht_rate / 100.0)
 
-    @api.onchange('bill_id.document_type', 'bill_id.profile_id')
+    @api.onchange('bill_id.document_type', 'bill_id.profile_id', 'bill_id.use_manual_config')
     def _onchange_document_type(self):
-        """Set default rates based on document type and profile"""
-        if self.bill_id and self.bill_id.profile_id:
+        """Set default rates based on document type, profile, or manual configuration"""
+        if not self.bill_id:
+            return
+            
+        if self.bill_id.use_manual_config:
+            # Use manual rates
+            self.vat_rate = self.bill_id.manual_vat_rate
+            self.wht_rate = self.bill_id.manual_wht_rate
+        elif self.bill_id.profile_id:
+            # Use profile rates
             profile = self.bill_id.profile_id
             self.vat_rate = profile.default_vat_rate
             self.wht_rate = profile.default_wht_rate
+        else:
+            # Default rates based on trade channel
+            if self.bill_id.trade_channel == 'shopee':
+                self.vat_rate = 7.0
+                self.wht_rate = 3.0
+            elif self.bill_id.trade_channel == 'spx':
+                self.vat_rate = 0.0
+                self.wht_rate = 1.0
+            else:
+                self.vat_rate = 0.0
+                self.wht_rate = 0.0
+
+    def get_account_suggestions(self):
+        """Get account suggestions based on line description"""
+        if not self.description:
+            return []
+            
+        description_lower = self.description.lower()
+        suggestions = []
+        
+        # Get expense accounts
+        expense_accounts = self.env['account.account'].search([
+            ('account_type', 'in', ['expense', 'asset_expense']),
+            ('company_id', '=', self.bill_id.company_id.id)
+        ])
+        
+        # Suggest accounts based on keywords in description
+        keywords = {
+            'commission': ['commission', 'fee', 'charge'],
+            'advertising': ['advertising', 'ads', 'promotion', 'marketing'],
+            'logistics': ['logistics', 'shipping', 'delivery', 'transport'],
+            'service': ['service', 'platform', 'system']
+        }
+        
+        for account in expense_accounts:
+            account_name_lower = account.name.lower()
+            for category, words in keywords.items():
+                if any(word in description_lower for word in words):
+                    if category in account_name_lower or any(word in account_name_lower for word in words):
+                        suggestions.append(account)
+                        break
+        
+        return suggestions[:5]  # Return top 5 suggestions

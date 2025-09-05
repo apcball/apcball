@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Sequence for Marketplace Settlement -->
+        <record id="sequence_marketplace_settlement" model="ir.sequence">
+            <field name="name">Marketplace Settlement</field>
+            <field name="code">marketplace.settlement</field>
+            <field name="prefix">MPS</field>
+            <field name="padding">5</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Sequence for Marketplace Vendor Bill -->
+        <record id="sequence_marketplace_vendor_bill" model="ir.sequence">
+            <field name="name">Marketplace Vendor Bill</field>
+            <field name="code">marketplace.vendor.bill</field>
+            <field name="prefix">MVB</field>
+            <field name="padding">5</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Sequence for Fee Allocation Report -->
+        <record id="sequence_marketplace_fee_allocation_report" model="ir.sequence">
+            <field name="name">Marketplace Fee Allocation Report</field>
+            <field name="code">marketplace.fee.allocation.report</field>
+            <field name="prefix">FAR</field>
+            <field name="padding">5</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

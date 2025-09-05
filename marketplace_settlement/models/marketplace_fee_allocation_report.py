@@ -16,6 +16,7 @@ class MarketplaceFeeAllocationReport(models.Model):
         ('lazada', 'Lazada'), 
         ('nocnoc', 'Noc Noc'), 
         ('tiktok', 'Tiktok'), 
+        ('spx', 'SPX'),
         ('other', 'Other')
     ], string='Trade Channel', readonly=True)
     marketplace_partner_id = fields.Many2one('res.partner', string='Marketplace Partner', readonly=True)
