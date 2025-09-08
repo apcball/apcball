@@ -431,6 +431,23 @@ class MarketplaceSettlement(models.Model):
         if not self.invoice_ids:
             raise UserError(_('Please select invoices to settle.'))
 
+        # Check for already reconciled invoices
+        reconciled_invoices = []
+        for invoice in self.invoice_ids:
+            # Check if invoice has unreconciled receivable lines
+            receivable_lines = invoice.line_ids.filtered(
+                lambda l: l.account_id.account_type == 'asset_receivable'
+            )
+            # Check if ALL receivable lines are reconciled
+            if receivable_lines and all(line.reconciled for line in receivable_lines):
+                reconciled_invoices.append(invoice.name)
+        
+        if reconciled_invoices:
+            raise UserError(_(
+                'The following invoices have all receivable lines reconciled and cannot be included in settlement:\n\n%s\n\n'
+                'Please remove these invoices from the settlement or create a new settlement with unreconciled invoices.'
+            ) % '\n'.join(reconciled_invoices))
+
         # Additional validation for currency consistency (warning)
         currencies = self.invoice_ids.mapped('currency_id')
         if len(currencies) > 1:
@@ -556,17 +573,13 @@ class MarketplaceSettlement(models.Model):
                 return account.account_type_id.internal_type == 'receivable'
             return False
 
-        # Determine aggregate account for settlement:
-        mp_account = self.settlement_account_id or getattr(self.journal_id, 'default_account_id', False) or self.marketplace_partner_id.property_account_receivable_id
-        if not mp_account:
-            raise UserError(_('Please configure a settlement account.'))
+        # Determine marketplace receivable account (AR-Shopee)
+        # Settlement should be Dr AR-Shopee / Cr AR-Customer
+        mp_receivable_account = self.marketplace_partner_id.property_account_receivable_id
+        if not mp_receivable_account:
+            raise UserError(_('Marketplace partner %s must have receivable account configured.') % self.marketplace_partner_id.name)
 
-        # Prevent posting the marketplace aggregate to a receivable account by mistake.
-        if _is_receivable_account(mp_account):
-            raise UserError(_(
-                'The settlement aggregate account (%s) is a receivable account.\n'
-                'Please choose a bank/liquidity account as the settlement account.'
-            ) % (mp_account.name,))
+        # No longer use settlement account for this line - use AR account directly
 
         for inv in self.invoice_ids:
             if inv.state != 'posted':
@@ -596,13 +609,14 @@ class MarketplaceSettlement(models.Model):
         # No deduction lines - these are now handled through vendor bills
         # This ensures proper VAT recovery and WHT documentation
 
-        # marketplace aggregate line (direct settlement amount without deductions)
+        # marketplace receivable line (Dr AR-Shopee)
+        # This represents the amount marketplace owes us after settlement
         if total_amount == 0.0:
             raise UserError(_('Total settlement amount is zero.'))
 
         lines.append((0, 0, {
-            'name': self.name,
-            'account_id': mp_account.id,
+            'name': f'{self.name} - Settlement',
+            'account_id': mp_receivable_account.id,
             'partner_id': self.marketplace_partner_id.id,
             'debit': total_amount if total_amount > 0 else 0.0,
             'credit': -total_amount if total_amount < 0 else 0.0,
@@ -629,15 +643,36 @@ class MarketplaceSettlement(models.Model):
     def _reconcile_invoices(self, move):
         """Reconcile invoices with settlement move"""
         for inv in self.invoice_ids:
-            # find invoice receivable line
-            inv_rec_line = inv.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable' and not l.reconciled)
-            if not inv_rec_line:
+            # find invoice receivable line that is NOT reconciled
+            inv_rec_lines = inv.line_ids.filtered(
+                lambda l: l.account_id.account_type == 'asset_receivable' 
+                and not l.reconciled 
+                and l.amount_residual != 0
+            )
+            
+            if not inv_rec_lines:
+                # Skip if no unreconciled receivable lines
                 continue
+                
             # find settlement move line for this customer
-            settle_line = move.line_ids.filtered(lambda l: l.partner_id == inv.partner_id and l.account_id.account_type == 'asset_receivable')
-            if settle_line:
-                # reconcile
-                (inv_rec_line + settle_line).reconcile()
+            settle_lines = move.line_ids.filtered(
+                lambda l: l.partner_id == inv.partner_id 
+                and l.account_id.account_type == 'asset_receivable'
+                and not l.reconciled
+            )
+            
+            if settle_lines and inv_rec_lines:
+                try:
+                    # reconcile only unreconciled lines
+                    lines_to_reconcile = inv_rec_lines + settle_lines
+                    if len(lines_to_reconcile) >= 2:  # Need at least 2 lines to reconcile
+                        lines_to_reconcile.reconcile()
+                except Exception as e:
+                    # Log the error but don't fail the settlement creation
+                    import logging
+                    _logger = logging.getLogger(__name__)
+                    _logger.warning(f'Failed to reconcile invoice {inv.name}: {str(e)}')
+                    # Continue with settlement creation even if reconciliation fails
 
     def _open_settlement_move_with_banner(self):
         """Open settlement move with reconciliation banner"""
@@ -1176,19 +1211,20 @@ class MarketplaceSettlement(models.Model):
             raise UserError(_('Settlement has no move_id. Cannot perform netting.'))
         
         # Process receivables from settlement move 
-        # Instead of looking for specific receivable account type, use settlement amount
-        settlement_account = self.settlement_account_id or self.journal_id.default_account_id
+        # Use marketplace partner's receivable account directly (AR-Shopee)
+        marketplace_receivable_account = marketplace_partner.property_account_receivable_id
+        if not marketplace_receivable_account:
+            raise UserError(_('Marketplace partner must have receivable account configured.'))
+            
         total_receivable_amount = self.net_settlement_amount  # Use the settlement amount directly
         
-        # For AR side - create credit entry to reduce receivable
+        # For AR side - create credit entry to reduce receivable (Cr AR-Shopee)
         if total_receivable_amount > 0:
-            receivable_account = (settlement_account or 
-                                marketplace_partner.property_account_receivable_id)
             netting_lines.append((0, 0, {
                 'name': f'Net-off AR: Settlement {self.name}',
-                'account_id': receivable_account.id,
+                'account_id': marketplace_receivable_account.id,
                 'partner_id': marketplace_partner.id,
-                'credit': total_receivable_amount,  # Credit to reduce AR
+                'credit': total_receivable_amount,  # Credit to reduce AR-Shopee
                 'debit': 0.0,
             }))
 
@@ -1249,38 +1285,37 @@ class MarketplaceSettlement(models.Model):
                 'Please add vendor bills linked to this settlement or use the regular settlement posting instead.'
             ))
         
-        if not float_is_zero(net_amount, precision_digits=2):
-            # Determine which account to use for the net balance
-            if net_amount > 0:
-                # Net receivable (marketplace still owes us more than we owe them)
-                # Use settlement account for the remaining balance
-                net_account = (self.settlement_account_id or 
-                              self.journal_id.default_account_id or
-                              receivable_account)
-                netting_lines.append((0, 0, {
-                    'name': f'Net AR Balance - {self.name}',
-                    'account_id': net_account.id,
-                    'partner_id': marketplace_partner.id,
-                    'debit': net_amount,
-                    'credit': 0.0,
-                }))
-            else:
-                # Net payable (we still owe marketplace more than they owe us)
-                # Use settlement account for the remaining balance
-                net_account = (self.settlement_account_id or 
-                              self.journal_id.default_account_id or
-                              payable_account)
-                netting_lines.append((0, 0, {
-                    'name': f'Net AP Balance - {self.name}',
-                    'account_id': net_account.id,
-                    'partner_id': marketplace_partner.id,
-                    'debit': 0.0,
-                    'credit': abs(net_amount),
-                }))
-        else:
-            # Perfect netting - no remaining balance
-            # Add a message to indicate complete netting
-            pass
+        # Pure AR/AP Netting - only net the overlapping amounts
+        # Do NOT create net balance entries here - they should be handled via bank reconciliation
+        netting_amount = min(total_receivable_amount, total_payable_amount)
+        
+        if float_is_zero(netting_amount, precision_digits=2):
+            raise UserError(_('No amount to net between AR and AP.'))
+        
+        # Create pure netting entries - same amount on both sides
+        # Remove the AR entry that we added earlier and replace with correct netting logic
+        netting_lines = []
+        
+        # Dr AP to reduce payable (reduce what we owe marketplace)
+        if payable_account:
+            netting_lines.append((0, 0, {
+                'name': f'Net-off AP: {self.name}',
+                'account_id': payable_account.id,
+                'partner_id': marketplace_partner.id,
+                'debit': netting_amount,  # Reduce AP
+                'credit': 0.0,
+            }))
+        
+        # Cr AR to reduce receivable (reduce what marketplace owes us)
+        netting_lines.append((0, 0, {
+            'name': f'Net-off AR: {self.name}',
+            'account_id': marketplace_receivable_account.id,
+            'partner_id': marketplace_partner.id,
+            'debit': 0.0,
+            'credit': netting_amount,  # Reduce AR
+        }))
+        
+        # Note: Net balance (difference) remains in AR and will be cleared via bank reconciliation
 
         if not netting_lines:
             raise UserError(_('No lines to net. Please check that there are unreconciled receivables and payables.'))

@@ -66,15 +66,7 @@ class MarketplaceSettlementWizard(models.TransientModel):
             if profile.settlement_account_id:
                 res['settlement_account_id'] = profile.settlement_account_id.id
             
-            # Apply vendor bill defaults from profile
-            if profile.vendor_partner_id:
-                res['vendor_partner_id'] = profile.vendor_partner_id.id
-            if profile.purchase_journal_id:
-                res['purchase_journal_id'] = profile.purchase_journal_id.id
-            if profile.vat_tax_id:
-                res['vat_tax_id'] = profile.vat_tax_id.id
-            if profile.wht_tax_id:
-                res['wht_tax_id'] = profile.wht_tax_id.id
+            # Vendor bill defaults removed - handled separately
                 
         return res
 
@@ -128,7 +120,8 @@ class MarketplaceSettlementWizard(models.TransientModel):
                 ('state', '=', 'posted'),
                 ('move_type', 'in', ['out_invoice', 'out_refund']),
                 ('trade_channel', '=', self.trade_channel),
-                ('amount_residual', '!=', 0.0)
+                ('amount_residual', '!=', 0.0),
+                ('payment_state', 'not in', ['paid', 'in_payment'])  # Exclude reconciled invoices
             ]
 
             # Add date filters if specified
@@ -139,7 +132,17 @@ class MarketplaceSettlementWizard(models.TransientModel):
 
             # Find matching invoices
             matching_invoices = self.env['account.move'].search(domain)
-            self.invoice_ids = [(6, 0, matching_invoices.ids)]
+            
+            # Additional check for reconciled invoices
+            unreconciled_invoices = []
+            for invoice in matching_invoices:
+                receivable_lines = invoice.line_ids.filtered(
+                    lambda l: l.account_id.account_type == 'asset_receivable'
+                )
+                if not any(line.reconciled for line in receivable_lines):
+                    unreconciled_invoices.append(invoice.id)
+            
+            self.invoice_ids = [(6, 0, unreconciled_invoices)]
 
             # Update settlement reference name if not manually set
             if not self.name or self.name.startswith('SETTLE-'):
@@ -206,18 +209,11 @@ class MarketplaceSettlementWizard(models.TransientModel):
         # if prof.commission_account_id and not self.fee_account_id:
         #     self.fee_account_id = prof.commission_account_id
         
-        # Apply vendor bill configuration from profile
-        if prof.vendor_partner_id and not self.vendor_partner_id:
-            self.vendor_partner_id = prof.vendor_partner_id
-        if prof.purchase_journal_id and not self.purchase_journal_id:
-            self.purchase_journal_id = prof.purchase_journal_id
-        if prof.vat_tax_id and not self.vat_tax_id:
-            self.vat_tax_id = prof.vat_tax_id
-        if prof.wht_tax_id and not self.wht_tax_id:
-            self.wht_tax_id = prof.wht_tax_id
+        # Vendor bill configuration removed - handled separately through vendor bills
+        # Users can create vendor bills manually or through import
             
-        # Apply VAT account from profile VAT tax configuration
-        if prof.vat_tax_id and not self.vat_account_id:
+        # Apply VAT account from profile VAT tax configuration - removed
+        # VAT handling is now done through vendor bills
             # Try to get account from tax configuration
             vat_tax = prof.vat_tax_id
             if vat_tax.invoice_repartition_line_ids:
@@ -240,6 +236,23 @@ class MarketplaceSettlementWizard(models.TransientModel):
         self.ensure_one()
         if not self.invoice_ids:
             raise UserError(_('Please select invoices to settle.'))
+
+        # Check for already reconciled invoices
+        reconciled_invoices = []
+        for invoice in self.invoice_ids:
+            # Check if invoice has unreconciled receivable lines
+            receivable_lines = invoice.line_ids.filtered(
+                lambda l: l.account_id.account_type == 'asset_receivable'
+            )
+            # Check if ALL receivable lines are reconciled
+            if receivable_lines and all(line.reconciled for line in receivable_lines):
+                reconciled_invoices.append(invoice.name)
+        
+        if reconciled_invoices:
+            raise UserError(_(
+                'The following invoices have all receivable lines reconciled and cannot be included in settlement:\n\n%s\n\n'
+                'Please remove these invoices from the selection or use the auto-filter to exclude them.'
+            ) % '\n'.join(reconciled_invoices))
 
         # Remove deduction validation - fees now handled through vendor bills
         # No longer need to validate fee accounts since they are in vendor bills
