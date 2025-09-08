@@ -29,6 +29,21 @@
                 <header>
                     <button name="action_view_move" type="object" string="View Settlement Move" 
                             class="btn-info" invisible="not move_id"/>
+                    
+                    <!-- AR/AP Netting Buttons -->
+                    <button name="action_open_netting_wizard" type="object" string="AR/AP Netting Wizard" 
+                            class="btn-secondary" invisible="not can_perform_netting"/>
+                    <button name="action_netoff_ar_ap" type="object" string="Quick Netting" 
+                            class="btn-primary" invisible="not can_perform_netting or not vendor_bill_ids"
+                            confirm="This will create a netting journal entry for all linked vendor bills. Continue?"/>
+                    <button name="action_view_netting_move" type="object" string="View Netting Move" 
+                            class="btn-info" invisible="not netting_move_id"/>
+                    <button name="action_reverse_netting" type="object" string="Reverse Netting" 
+                            class="btn-warning" invisible="not is_netted"
+                            confirm="This will reverse the AR/AP netting. Continue?"/>
+                    <button name="action_view_netting_history" type="object" string="Netting History" 
+                            class="btn-secondary" title="View all netting moves including reversed ones"/>
+                    
                     <field name="state" widget="statusbar" statusbar_visible="draft,posted,reversed"/>
                 </header>
                 <sheet>
@@ -41,6 +56,27 @@
                         </button>
                         <button name="action_view_fee_allocations" type="object" class="oe_stat_button" icon="fa-pie-chart">
                             <field name="fee_allocation_count" widget="statinfo" string="Fee Allocations"/>
+                        </button>
+                        <button name="action_view_netting_move" type="object" class="oe_stat_button" icon="fa-exchange" 
+                                invisible="not netting_move_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">1</span>
+                                <span class="o_stat_text">Netting Move</span>
+                            </div>
+                        </button>
+                        <button name="action_view_netting_history" type="object" class="oe_stat_button" icon="fa-history" 
+                                title="View all netting moves (including reversed)">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">📋</span>
+                                <span class="o_stat_text">Netting History</span>
+                            </div>
+                        </button>
+                        <button name="action_view_settlement_move" type="object" class="oe_stat_button" icon="fa-book" 
+                                invisible="not move_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">1</span>
+                                <span class="o_stat_text">Settlement Move</span>
+                            </div>
                         </button>
                     </div>
                     
@@ -62,6 +98,7 @@
                             <field name="journal_id"/>
                             <field name="settlement_account_id"/>
                             <field name="move_id" readonly="1"/>
+                            <field name="netting_move_id" readonly="1" invisible="not netting_move_id"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
@@ -71,25 +108,30 @@
                         <field name="is_netted"/>
                         <field name="can_perform_netting"/>
                         <field name="netting_move_id"/>
+                        <field name="vendor_bill_ids"/>
                     </group>
                     
                     <!-- Amount Summary -->
-                    <group string="Amount Summary">
+                    <group string="Settlement Summary">
                         <div class="alert alert-info" role="alert">
                             <div class="row">
-                                <div class="col-md-3 text-center">
+                                <div class="col-md-2 text-center">
                                     <h4><field name="total_invoice_amount" readonly="1" nolabel="1"/></h4>
                                     <small>Total Invoice Amount</small>
                                 </div>
-                                <div class="col-md-3 text-center">
+                                <div class="col-md-2 text-center">
                                     <h4><field name="total_vendor_bills" readonly="1" nolabel="1"/></h4>
                                     <small>Total Vendor Bills</small>
                                 </div>
-                                <div class="col-md-3 text-center">
+                                <div class="col-md-2 text-center" invisible="not is_netted">
+                                    <h4><field name="netted_amount" readonly="1" nolabel="1"/></h4>
+                                    <small>Netted Amount</small>
+                                </div>
+                                <div class="col-md-2 text-center">
                                     <h4><field name="net_payout_amount" readonly="1" nolabel="1"/></h4>
                                     <small>Net Payout Amount</small>
                                 </div>
-                                <div class="col-md-3 text-center">
+                                <div class="col-md-2 text-center">
                                     <span invisible="not is_netted">
                                         <i class="fa fa-check-circle fa-2x text-success"></i>
                                         <small>AR/AP Netted</small>

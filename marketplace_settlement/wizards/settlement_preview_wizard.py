@@ -176,10 +176,10 @@ class MarketplaceSettlementPreviewWizard(models.TransientModel):
         res.update({
             'settlement_id': settlement.id,
             'total_invoice_amount': preview_data['total_invoice_amount'],
-            'fee_amount': preview_data['fee_amount'],
-            'vat_amount': preview_data['vat_amount'],
-            'wht_amount': preview_data['wht_amount'],
-            'total_deductions': preview_data['total_deductions'],
+            'fee_amount': preview_data.get('total_vendor_bills', 0.0),  # Use vendor bills as fees
+            'vat_amount': 0.0,  # VAT is included in vendor bills
+            'wht_amount': 0.0,  # WHT is included in vendor bills
+            'total_deductions': preview_data.get('total_vendor_bills', 0.0),  # Vendor bills are the deductions
             'net_settlement': preview_data['net_settlement'],
             'currency_id': settlement.company_currency_id.id,
         })
