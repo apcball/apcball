@@ -1,7 +1,7 @@
 {
     "name": "Marketplace Settlement",
-    "summary": "Wizard to group many customer invoices into a single receivable to marketplace (e.g., Shopee)",
-    "version": "17.0.1.0.0",
+    "summary": "Enhanced wizard to group customer invoices with flexible account and journal selection",
+    "version": "17.0.1.1.0",
     "author": "Ball + Manow",
     "category": "Accounting/Localizations",
     "website": "https://example.com",

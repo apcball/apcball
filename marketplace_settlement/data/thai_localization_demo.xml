@@ -29,33 +29,19 @@
 
     <!-- Demo Settlement Profile with Thai Configuration -->
     <record id="demo_profile_thai_marketplace" model="marketplace.settlement.profile">
-        <field name="name">Thai Marketplace (with WHT)</field>
-        <field name="trade_channel">shopee_th</field>
+        <field name="name">Thai Marketplace</field>
+        <field name="trade_channel">shopee</field>
         <field name="marketplace_partner_id" ref="demo_partner_shopee_thailand"/>
-        <field name="vendor_partner_id" ref="demo_partner_shopee_thailand"/>
-        <field name="default_vat_rate">7.0</field>
-        <field name="default_wht_rate">3.0</field>
         <field name="invoice_pattern">SH-TH</field>
         <field name="receipt_pattern">REC-SH</field>
-        <!-- Thai-specific fields -->
-        <field name="use_thai_wht" eval="True"/>
-        <field name="thai_income_tax_form">pnd3</field>
-        <field name="thai_wht_income_type">2</field>
     </record>
 
     <record id="demo_profile_lazada_thai" model="marketplace.settlement.profile">
-        <field name="name">Lazada Thailand (with WHT)</field>
-        <field name="trade_channel">lazada_th</field>
+        <field name="name">Lazada Thailand</field>
+        <field name="trade_channel">lazada</field>
         <field name="marketplace_partner_id" ref="demo_partner_lazada_thailand"/>
-        <field name="vendor_partner_id" ref="demo_partner_lazada_thailand"/>
-        <field name="default_vat_rate">7.0</field>
-        <field name="default_wht_rate">3.0</field>
         <field name="invoice_pattern">LZ-TH</field>
         <field name="receipt_pattern">REC-LZ</field>
-        <!-- Thai-specific fields -->
-        <field name="use_thai_wht" eval="True"/>
-        <field name="thai_income_tax_form">pnd3</field>
-        <field name="thai_wht_income_type">2</field>
     </record>
 
 </odoo>

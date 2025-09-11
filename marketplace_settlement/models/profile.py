@@ -21,58 +21,16 @@ class MarketplaceSettlementProfile(models.Model):
     journal_id = fields.Many2one('account.journal', string='Default Journal')
     settlement_account_id = fields.Many2one('account.account', string='Default Settlement Account')
     
-    # Vendor Bill Configuration
-    vendor_partner_id = fields.Many2one('res.partner', string='Default Vendor Partner',
-                                       help='Default vendor partner for creating vendor bills from this channel')
-    purchase_journal_id = fields.Many2one('account.journal', string='Purchase Journal',
-                                         domain="[('type', '=', 'purchase')]",
-                                         help='Default journal for vendor bills')
-    
-    # Tax Configuration
-    default_vat_rate = fields.Float('Default VAT Rate (%)', default=0.0,
-                                   help='Default VAT rate for this channel (e.g., 7.0 for 7%)')
-    default_wht_rate = fields.Float('Default WHT Rate (%)', default=0.0,
-                                   help='Default withholding tax rate for this channel (e.g., 3.0 for 3%)')
-    vat_tax_id = fields.Many2one('account.tax', string='VAT Purchase Tax',
-                                domain="[('type_tax_use', '=', 'purchase'), ('amount_type', '=', 'percent')]",
-                                help='Purchase VAT tax to use for vendor bills')
-    wht_tax_id = fields.Many2one('account.tax', string='WHT Tax',
-                                domain="[('type_tax_use', '=', 'purchase'), ('amount_type', '=', 'percent')]",
-                                help='Withholding tax to use for vendor bills')
-    
-    # Default Expense Accounts
+    # Default Expense Accounts - Allow all account types
     commission_account_id = fields.Many2one('account.account', string='Commission Account',
-                                          domain="[('account_type', 'in', ['expense', 'asset_expense'])]",
                                           help='Default account for marketplace commission fees')
     service_fee_account_id = fields.Many2one('account.account', string='Service Fee Account',
-                                           domain="[('account_type', 'in', ['expense', 'asset_expense'])]",
                                            help='Default account for service fees')
     advertising_account_id = fields.Many2one('account.account', string='Advertising Account',
-                                           domain="[('account_type', 'in', ['expense', 'asset_expense'])]",
                                            help='Default account for advertising fees')
-    
-    # Thai Localization fields
-    use_thai_wht = fields.Boolean('Use Thai WHT', default=False,
-                                 help='Enable Thai withholding tax processing for this profile')
-    thai_income_tax_form = fields.Selection([
-        ('pnd1', 'PND1'),
-        ('pnd2', 'PND2'),
-        ('pnd3', 'PND3'),
-        ('pnd3a', 'PND3a'),
-        ('pnd53', 'PND53'),
-    ], string='Default Income Tax Form', help='Default Thai income tax form for this channel')
-    thai_wht_income_type = fields.Selection([
-        ('1', '1. เงินเดือน ค่าจ้าง ฯลฯ 40(1)'),
-        ('2', '2. ค่าธรรมเนียม ค่านายหน้า ฯลฯ 40(2)'),
-        ('3', '3. ค่าแห่งลิขสิทธิ์ ฯลฯ 40(3)'),
-        ('4A', '4. ดอกเบี้ย ฯลฯ 40(4)ก'),
-    ], string='Default WHT Income Type', help='Default Thai WHT income type for this channel')
-    
     logistics_account_id = fields.Many2one('account.account', string='Logistics Account',
-                                         domain="[('account_type', 'in', ['expense', 'asset_expense'])]",
                                          help='Default account for logistics/shipping fees')
     other_expense_account_id = fields.Many2one('account.account', string='Other Expenses Account',
-                                             domain="[('account_type', 'in', ['expense', 'asset_expense'])]",
                                              help='Default account for other miscellaneous expenses')
     
     # Document Patterns
@@ -124,8 +82,6 @@ class MarketplaceSettlementProfile(models.Model):
         account = self.get_default_account_for_type(expense_type)
         return {
             'account_id': account.id if account else False,
-            'vat_rate': self.default_vat_rate,
-            'wht_rate': self.default_wht_rate,
         }
 
     @api.onchange('trade_channel')
@@ -136,14 +92,15 @@ class MarketplaceSettlementProfile(models.Model):
             channel_names = dict(self._fields['trade_channel'].selection)
             self.name = f"{channel_names.get(self.trade_channel)} Profile"
             
-            # Set default patterns and rates based on channel
+            # Set default patterns based on channel
             if self.trade_channel == 'shopee':
                 self.invoice_pattern = 'TR'
-                self.default_vat_rate = 7.0
-                self.default_wht_rate = 3.0
+            elif self.trade_channel == 'spx':
+                self.receipt_pattern = 'RC'
             elif self.trade_channel == 'lazada':
-                self.default_vat_rate = 7.0
-                self.default_wht_rate = 3.0
+                self.invoice_pattern = 'LZ'
+            elif self.trade_channel == 'tiktok':
+                self.invoice_pattern = 'TT'
 
     def action_create_settlement_with_profile(self):
         """Action to create settlement using this profile"""
@@ -161,32 +118,74 @@ class MarketplaceSettlementProfile(models.Model):
                 'default_marketplace_partner_id': self.marketplace_partner_id.id if self.marketplace_partner_id else False,
                 'default_journal_id': self.journal_id.id if self.journal_id else False,
                 'default_settlement_account_id': self.settlement_account_id.id if self.settlement_account_id else False,
-                'default_fee_account_id': self.commission_account_id.id if self.commission_account_id else False,
+                # Include profile for settlement creation
+                'profile_setup': {
+                    'commission_account_id': self.commission_account_id.id if self.commission_account_id else False,
+                    'service_fee_account_id': self.service_fee_account_id.id if self.service_fee_account_id else False,
+                    'advertising_account_id': self.advertising_account_id.id if self.advertising_account_id else False,
+                    'logistics_account_id': self.logistics_account_id.id if self.logistics_account_id else False,
+                    'other_expense_account_id': self.other_expense_account_id.id if self.other_expense_account_id else False,
+                },
             },
         }
 
-    @api.onchange('trade_channel')
-    def _onchange_trade_channel(self):
-        """Set default values based on trade channel"""
-        if self.trade_channel:
-            # Set default name
-            channel_names = dict(self._fields['trade_channel'].selection)
-            self.name = f"{channel_names.get(self.trade_channel)} Profile"
+    def action_create_vendor_bill_with_profile(self):
+        """Action to create vendor bill using profile account settings"""
+        self.ensure_one()
+        
+        # Create vendor bill with profile account defaults
+        vendor_bill_values = {
+            'move_type': 'in_invoice',
+            'partner_id': self.marketplace_partner_id.id if self.marketplace_partner_id else False,
+            'invoice_date': fields.Date.context_today(self),
+            'ref': f'{self.trade_channel.upper()}-FEES-{fields.Date.context_today(self)}',
+        }
+        
+        # Prepare invoice lines with profile accounts
+        invoice_lines = []
+        if self.commission_account_id:
+            invoice_lines.append((0, 0, {
+                'name': 'Commission Fee',
+                'account_id': self.commission_account_id.id,
+                'quantity': 1,
+                'price_unit': 0.0,  # User will fill in the amount
+            }))
+        
+        if self.service_fee_account_id:
+            invoice_lines.append((0, 0, {
+                'name': 'Service Fee', 
+                'account_id': self.service_fee_account_id.id,
+                'quantity': 1,
+                'price_unit': 0.0,
+            }))
             
-            # Set default patterns and rates based on channel
-            if self.trade_channel == 'shopee':
-                self.invoice_pattern = 'TR'
-                self.default_vat_rate = 7.0
-                self.default_wht_rate = 3.0
-            elif self.trade_channel == 'spx':
-                self.receipt_pattern = 'RC'
-                self.default_vat_rate = 0.0
-                self.default_wht_rate = 1.0
-            elif self.trade_channel == 'lazada':
-                self.invoice_pattern = 'LZ'
-                self.default_vat_rate = 7.0
-                self.default_wht_rate = 3.0
-            elif self.trade_channel == 'tiktok':
-                self.invoice_pattern = 'TT'
-                self.default_vat_rate = 7.0
-                self.default_wht_rate = 3.0
+        if self.advertising_account_id:
+            invoice_lines.append((0, 0, {
+                'name': 'Advertising Fee',
+                'account_id': self.advertising_account_id.id,
+                'quantity': 1,
+                'price_unit': 0.0,
+            }))
+            
+        if self.logistics_account_id:
+            invoice_lines.append((0, 0, {
+                'name': 'Logistics Fee',
+                'account_id': self.logistics_account_id.id,
+                'quantity': 1,
+                'price_unit': 0.0,
+            }))
+        
+        if invoice_lines:
+            vendor_bill_values['invoice_line_ids'] = invoice_lines
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Create Vendor Bill with %s Profile') % self.name,
+            'res_model': 'account.move',
+            'view_mode': 'form',
+            'target': 'current',
+            'context': {
+                'default_move_type': 'in_invoice',
+                **vendor_bill_values,
+            },
+        }

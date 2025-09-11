@@ -205,32 +205,9 @@ class MarketplaceSettlementWizard(models.TransientModel):
         if prof.settlement_account_id:
             self.settlement_account_id = prof.settlement_account_id
             
-        # Apply default expense accounts - removed as fees handled through vendor bills
-        # if prof.commission_account_id and not self.fee_account_id:
-        #     self.fee_account_id = prof.commission_account_id
-        
-        # Vendor bill configuration removed - handled separately through vendor bills
-        # Users can create vendor bills manually or through import
-            
-        # Apply VAT account from profile VAT tax configuration - removed
-        # VAT handling is now done through vendor bills
-            # Try to get account from tax configuration
-            vat_tax = prof.vat_tax_id
-            if vat_tax.invoice_repartition_line_ids:
-                for line in vat_tax.invoice_repartition_line_ids:
-                    if line.account_id and 'input' in line.account_id.name.lower():
-                        self.vat_account_id = line.account_id
-                        break
-                        
-        # Fee-related calculations are now handled through vendor bills
-        # No automatic calculations needed in settlement wizard
-        
         # Enable auto-filter and refresh invoices
         self.auto_filter = True
         self._onchange_trade_channel()
-
-        # Remove all fee-related field validations - these are now handled through vendor bills
-        # Removed: fee validation, VAT validation, WHT validation}
 
     def action_create(self):
         self.ensure_one()
