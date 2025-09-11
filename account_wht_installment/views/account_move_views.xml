@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+  <record id="view_move_form_inherit_wht_btn" model="ir.ui.view">
+    <field name="name">account.move.form.wht.installment.button</field>
+    <field name="model">account.move</field>
+    <field name="inherit_id" ref="account.view_move_form"/>
+    <field name="arch" type="xml">
+      <!-- Add button only for vendor bills -->
+      <xpath expr="//header" position="inside">
+        <button name="action_open_wht_installment_wizard"
+                type="object"
+                class="oe_highlight"
+                string="Partial Payment (WHT)"
+                invisible="move_type not in ('in_invoice','in_refund') or state != 'posted'"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>
