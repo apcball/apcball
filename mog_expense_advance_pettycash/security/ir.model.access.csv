@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_petty_cash_box_user,access_petty_cash_box_user,model_account_petty_cash_box,base.group_user,1,1,1,0
+access_expense_advance_user,access_expense_advance_user,model_hr_expense_advance,base.group_user,1,1,1,0
+access_expense_advance_clearing_user,access_expense_advance_clearing_user,model_hr_expense_advance_clearing,base.group_user,1,1,1,0
+access_petty_cash_replenish_wizard_user,access_petty_cash_replenish_wizard_user,model_petty_cash_replenish_wizard,base.group_user,1,0,1,0

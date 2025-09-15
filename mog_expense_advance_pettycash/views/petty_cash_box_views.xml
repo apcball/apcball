@@ -1,0 +1,50 @@
+
+<odoo>
+    <record id="view_petty_cash_box_tree" model="ir.ui.view">
+        <field name="name">petty.cash.box.tree</field>
+        <field name="model">account.petty.cash.box</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="owner_id"/>
+                <field name="journal_id"/>
+                <field name="balance"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_petty_cash_box_form" model="ir.ui.view">
+        <field name="name">petty.cash.box.form</field>
+        <field name="model">account.petty.cash.box</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="%(action_petty_cash_replenish_wizard)d" type="action" string="Replenish" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="owner_id"/>
+                        <field name="journal_id"/>
+                        <field name="balance" readonly="1"/>
+                        <field name="active"/>
+                    </group>
+                    <notebook>
+                        <page string="Moves">
+                            <field name="move_ids" context="{'default_petty_cash_box_id': active_id}">
+                                <tree editable="bottom">
+                                    <field name="name"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_petty_cash_boxes" model="ir.actions.act_window">
+        <field name="name">Petty Cash Boxes</field>
+        <field name="res_model">account.petty.cash.box</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>
