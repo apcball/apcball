@@ -21,6 +21,7 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
 
     wht_percent = fields.Float(string="WHT %", default=lambda self: float(self.env["ir.config_parameter"].sudo().get_param("account_wht_installment.default_wht_percent", "3.0")))
     wht_amount = fields.Monetary(string="WHT amount", compute="_compute_amounts", store=False)
+    bank_charge = fields.Monetary(string="Bank charges", default=0.0, help="ค่าธรรมเนียมธนาคาร (ถ้ามี)")
     net_pay_amount = fields.Monetary(string="Net pay (bank)", compute="_compute_amounts", store=False)
     
     # WHT Certificate fields
@@ -45,13 +46,14 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
 
     memo = fields.Char(string="Memo/Ref")
 
-    @api.depends("amount_to_clear", "wht_percent")
+    @api.depends("amount_to_clear", "wht_percent", "bank_charge")
     def _compute_amounts(self):
         for w in self:
             gross = w.amount_to_clear or 0.0
             rate = max(w.wht_percent or 0.0, 0.0) / 100.0
+            bank_charge = w.bank_charge or 0.0
             w.wht_amount = round(gross * rate, 2)
-            w.net_pay_amount = gross - w.wht_amount
+            w.net_pay_amount = gross - w.wht_amount - bank_charge
 
     @api.onchange("partner_id")
     def _onchange_partner_id(self):
@@ -87,6 +89,12 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
             raise UserError(_("Amount to clear exceeds residual."))
         if not self.journal_id.default_account_id:
             raise UserError(_("Selected journal is missing Bank/Cash account."))
+        if self.bank_charge < 0:
+            raise UserError(_("Bank charges cannot be negative."))
+        if self.net_pay_amount < 0:
+            raise UserError(_("Net payment amount cannot be negative. Please reduce WHT percentage or bank charges."))
+        if self.wht_percent < 0 or self.wht_percent > 100:
+            raise UserError(_("WHT percentage must be between 0 and 100."))
 
         # Config: WHT Payable account
         wht_acc_param = self.env["ir.config_parameter"].sudo().get_param("account_wht_installment.wht_payable_account_id")
@@ -96,6 +104,16 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
         if not wht_account.exists():
             raise UserError(_("Configured WHT account not found."))
 
+        # Config: Bank Charge account (if bank charges > 0)
+        bank_charge_account = None
+        if self.bank_charge > 0:
+            bank_charge_acc_param = self.env["ir.config_parameter"].sudo().get_param("account_wht_installment.bank_charge_account_id")
+            if not bank_charge_acc_param:
+                raise UserError(_("Please set 'Bank Charge Account' in Accounting Settings."))
+            bank_charge_account = self.env["account.account"].browse(int(bank_charge_acc_param))
+            if not bank_charge_account.exists():
+                raise UserError(_("Configured Bank Charge account not found."))
+
         company = bill.company_id
         company_currency = company.currency_id
         currency = bill.currency_id
@@ -103,9 +121,10 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
         # Amounts are assumed in company currency when posting; for simplicity assume same currency
         gross = self.amount_to_clear
         wht_amt = self.wht_amount
+        bank_charge_amt = self.bank_charge or 0.0
         net_amt = self.net_pay_amount
 
-        if any(v < 0 for v in (gross, wht_amt, net_amt)):
+        if any(v < 0 for v in (gross, wht_amt, bank_charge_amt, net_amt)):
             raise UserError(_("Computed amounts are invalid."))
 
         # Helper to detect payable-like accounts (Odoo 17 may use 'liability' or account_type internals)
@@ -184,9 +203,7 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
             ))
         payable_account_id = payable_line.account_id.id
 
-        # Create one Bank Journal Entry with three lines:
-        # Dr AP(gross), Cr Bank(net), Cr WHT Payable(wht)
-        # Then reconcile AP(gross) with the bill's AP line (partial)
+        # Main JE: Dr AP gross, Cr Bank (gross - wht), Cr WHT
         move_lines = [
             (0, 0, {
                 "name": _("Installment clearance for %s") % (bill.name or bill.ref or ""),
@@ -200,10 +217,9 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
                 "account_id": self.journal_id.default_account_id.id,
                 "partner_id": False,
                 "debit": 0.0,
-                "credit": net_amt if net_amt > 0 else 0.0,
+                "credit": (gross - wht_amt) if (gross - wht_amt) > 0 else 0.0,
             }),
         ]
-        
         # Add WHT line only if WHT amount > 0
         if wht_amt > 0:
             wht_line_data = {
@@ -217,7 +233,7 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
             if self.wht_tax_id:
                 wht_line_data["wht_tax_id"] = self.wht_tax_id.id
             move_lines.append((0, 0, wht_line_data))
-        
+
         move_vals = {
             "date": self.date,
             "journal_id": self.journal_id.id,
@@ -227,6 +243,31 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
         pay_move = self.env["account.move"].create(move_vals)
         pay_move.action_post()
 
+        # Extra JE for bank charges if needed
+        if bank_charge_amt > 0:
+            if not bank_charge_account:
+                raise UserError(_("Bank charge account is not configured. Please set it in Accounting Settings."))
+            fee_move = self.env["account.move"].create({
+                "date": self.date,
+                "journal_id": self.journal_id.id,
+                "ref": (self.memo or (bill.name or "")) + " - Bank Charges",
+                "line_ids": [
+                    (0, 0, {
+                        "name": _("Bank Charges for %s") % (bill.name or bill.ref or ""),
+                        "account_id": bank_charge_account.id,
+                        "debit": bank_charge_amt,
+                        "credit": 0.0,
+                    }),
+                    (0, 0, {
+                        "name": _("Bank Charges for %s") % (bill.name or bill.ref or ""),
+                        "account_id": self.journal_id.default_account_id.id,
+                        "debit": 0.0,
+                        "credit": bank_charge_amt,
+                    }),
+                ],
+            })
+            fee_move.action_post()
+
         # Create withholding tax moves and certificate if WHT tax is selected
         if self.wht_tax_id and wht_amt > 0:
             self._create_wht_moves_and_cert(pay_move, gross, wht_amt)
@@ -234,12 +275,12 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
         # Reconcile AP debit (our move) against bill's AP credit (partial)
         ap_debit_line = pay_move.line_ids.filtered(lambda l: _is_payable_account(l.account_id) and l.debit > 0)
         bill_ap_credit = bill.line_ids.filtered(lambda l: _is_payable_account(l.account_id) and l.credit > 0 and not l.reconciled)
-        
+
         if len(ap_debit_line) != 1:
             raise UserError(_("Cannot find exactly one payable debit line in payment move. Found %d lines.") % len(ap_debit_line))
         if len(bill_ap_credit) < 1:
             raise UserError(_("Cannot find any payable credit lines in bill to reconcile against."))
-            
+
         lines_to_reconcile = ap_debit_line + bill_ap_credit[:1]  # Take only the first credit line
         lines_to_reconcile.reconcile()
 

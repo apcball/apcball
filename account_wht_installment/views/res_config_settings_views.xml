@@ -13,6 +13,9 @@
           <setting id="default_wht_percent_setting" company_dependent="1">
             <field name="default_wht_percent"/>
           </setting>
+          <setting id="bank_charge_account_setting" company_dependent="1">
+            <field name="bank_charge_account_id" options="{'no_create': False}"/>
+          </setting>
         </block>
       </xpath>
     </field>

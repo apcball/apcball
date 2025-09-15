@@ -19,3 +19,11 @@ class ResConfigSettings(models.TransientModel):
     config_parameter="account_wht_installment.default_wht_percent",
     default_model='res.company',
     )
+    bank_charge_account_id = fields.Many2one(
+        "account.account",
+        string="Bank Charge Account",
+        domain="[('account_type', '=', 'expense')]",
+        help="บัญชีค่าธรรมเนียมธนาคาร สำหรับบันทึกค่าใช้จ่ายในการโอนเงิน",
+        config_parameter="account_wht_installment.bank_charge_account_id",
+        default_model='res.company',
+    )
