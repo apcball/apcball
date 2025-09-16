@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Add tax invoice fields to expense form view -->
+    <record id="hr_expense_form_tax_invoice" model="ir.ui.view">
+        <field name="name">hr.expense.form.tax.invoice</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
+        <field name="arch" type="xml">
+                        <xpath expr="//field[@name='tax_ids']" position="after">
+                <div class="oe_title" invisible="not tax_ids" style="margin-top: 16px;">
+                    <h3>Tax Invoice Information</h3>
+                </div>
+                <group invisible="not tax_ids" col="4" style="margin-top: 8px;">
+                    <label for="tax_invoice_number" string="Tax Invoice Number" style="width: 150px;"/>
+                    <field name="tax_invoice_number" 
+                           placeholder="e.g. TAX-2024-001"
+                           nolabel="1"
+                           style="width: 250px;"/>
+                    <label for="tax_invoice_date" string="Tax Invoice Date" style="width: 120px;"/>
+                    <field name="tax_invoice_date"
+                           nolabel="1"
+                           style="width: 150px;"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Add tax invoice fields to expense tree view -->
+    <record id="hr_expense_tree_tax_invoice" model="ir.ui.view">
+        <field name="name">hr.expense.tree.tax.invoice</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.view_expenses_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tax_ids']" position="after">
+                <field name="tax_invoice_number" optional="hide"/>
+                <field name="tax_invoice_date" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Add tax invoice fields to expense sheet form view -->
+    <record id="hr_expense_sheet_form_tax_invoice" model="ir.ui.view">
+        <field name="name">hr.expense.sheet.form.tax.invoice</field>
+        <field name="model">hr.expense.sheet</field>
+        <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='expense_line_ids']/tree//field[@name='tax_ids']" position="after">
+                <field name="tax_invoice_number" optional="hide"/>
+                <field name="tax_invoice_date" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

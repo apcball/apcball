@@ -348,6 +348,11 @@ class AccountMove(models.Model):
         Case purchase tax, use vendor's info to fill back."""
 
         def handle_purchase_taxes(move):
+            # Check if this move is linked to an expense sheet
+            expense_sheet = False
+            if 'hr.expense.sheet' in self.env:
+                expense_sheet = self.env['hr.expense.sheet'].search([('account_move_ids', 'in', [move.id])], limit=1)
+            
             for tax_invoice in move.tax_invoice_ids.filtered(
                 lambda tax: tax.tax_line_id.type_tax_use == "purchase"
                 or (
@@ -357,6 +362,22 @@ class AccountMove(models.Model):
                     and tax.tax_line_id.type_tax_use != "sale"
                 )
             ):
+                # For expense moves, try to get tax invoice data from expense lines
+                if expense_sheet and not tax_invoice.tax_invoice_number:
+                    # Check if expense lines have tax invoice fields (module might not be installed)
+                    if hasattr(expense_sheet.expense_line_ids, 'tax_invoice_number'):
+                        # Find the expense line that matches this tax invoice
+                        matching_expense = expense_sheet.expense_line_ids.filtered(
+                            lambda exp: exp.tax_invoice_number and exp.tax_invoice_date and 
+                            any(tax.id == tax_invoice.tax_line_id.id for tax in exp.tax_ids)
+                        )
+                        if matching_expense:
+                            tax_invoice.write({
+                                'tax_invoice_number': matching_expense[0].tax_invoice_number,
+                                'tax_invoice_date': matching_expense[0].tax_invoice_date,
+                            })
+                            continue
+                
                 if (
                     not tax_invoice.tax_invoice_number
                     or not tax_invoice.tax_invoice_date
@@ -383,6 +404,9 @@ class AccountMove(models.Model):
                         continue
                     # Skip Error when found refund
                     elif self.env.context.get("net_invoice_refund"):
+                        continue
+                    # Skip Error for expense moves if they don't have tax invoice data
+                    elif expense_sheet:
                         continue
                     else:
                         # Provide clearer error with move reference to help user locate the missing data
