@@ -1,20 +1,20 @@
 
 <odoo>
-    <record id="view_advance_clear_wizard_form" model="ir.ui.view">
-        <field name="name">advance.clear.wizard.form</field>
-        <field name="model">advance.clear.wizard</field>
-        <field name="arch" type="xml">
-            <form string="Post Advance Clearing">
-                <group>
-                    <field name="sheet_id" readonly="1"/>
-                    <field name="amount" readonly="1"/>
-                    <field name="currency_id" readonly="1"/>
-                </group>
-                <footer>
-                    <button string="Post" type="object" name="action_post" class="btn-primary"/>
-                    <button string="Cancel" special="cancel"/>
-                </footer>
-            </form>
-        </field>
-    </record>
+  <record id="view_advance_clear_wizard_form" model="ir.ui.view">
+    <field name="name">advance.clear.wizard.form</field>
+    <field name="model">advance.clear.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Post Advance Clearing">
+        <group>
+          <field name="sheet_id" readonly="1"/>
+          <field name="amount" readonly="1"/>
+          <field name="currency_id" readonly="1"/>
+        </group>
+        <footer>
+          <button string="Post" type="object" name="action_post" class="btn-primary"/>
+          <button string="Cancel" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
 </odoo>

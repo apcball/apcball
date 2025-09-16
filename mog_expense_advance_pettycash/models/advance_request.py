@@ -1,7 +1,6 @@
 
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
-from odoo.tools import float_is_zero
 from odoo.exceptions import UserError
 
 class ExpenseAdvance(models.Model):
@@ -42,7 +41,6 @@ class ExpenseAdvance(models.Model):
         self.write({'state':'approved'})
 
     def action_register_payment(self):
-        """Create payment as a journal entry moving funds to the advance account."""
         for rec in self:
             if rec.state not in ('approved','draft'):
                 continue
@@ -65,8 +63,6 @@ class ExpenseAdvance(models.Model):
 
     def action_set_cleared(self):
         for rec in self:
-            # Use currency decimals for proper zero comparison
-            digits = rec.currency_id.decimal_places if rec.currency_id else self.env.company.currency_id.decimal_places
-            if not float_is_zero(rec.balance_amount, precision_digits=digits):
+            if rec.balance_amount > 0.0001:
                 raise UserError(_('Cannot set to cleared until balance is zero.'))
             rec.state = 'cleared'

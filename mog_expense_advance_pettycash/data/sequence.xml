@@ -1,23 +1,23 @@
 
 <odoo>
-    <data noupdate="1">
-        <record id="seq_petty_cash_box" model="ir.sequence">
-            <field name="name">Petty Cash Box</field>
-            <field name="code">petty.cash.box</field>
-            <field name="prefix">PCB%(y)s%(month)s-</field>
-            <field name="padding">4</field>
-        </record>
-        <record id="seq_hr_expense_advance" model="ir.sequence">
-            <field name="name">Expense Advance</field>
-            <field name="code">hr.expense.advance</field>
-            <field name="prefix">ADV%(y)s%(month)s-</field>
-            <field name="padding">4</field>
-        </record>
-        <record id="seq_hr_expense_advance_clearing" model="ir.sequence">
-            <field name="name">Advance Clearing</field>
-            <field name="code">hr.expense.advance.clearing</field>
-            <field name="prefix">CLR%(y)s%(month)s-</field>
-            <field name="padding">4</field>
-        </record>
-    </data>
+  <data noupdate="1">
+    <record id="seq_petty_cash_box" model="ir.sequence">
+      <field name="name">Petty Cash Box</field>
+      <field name="code">petty.cash.box</field>
+      <field name="prefix">PCB%(y)s%(month)s-</field>
+      <field name="padding">4</field>
+    </record>
+    <record id="seq_hr_expense_advance" model="ir.sequence">
+      <field name="name">Expense Advance</field>
+      <field name="code">hr.expense.advance</field>
+      <field name="prefix">ADV%(y)s%(month)s-</field>
+      <field name="padding">4</field>
+    </record>
+    <record id="seq_hr_expense_advance_clearing" model="ir.sequence">
+      <field name="name">Advance Clearing</field>
+      <field name="code">hr.expense.advance.clearing</field>
+      <field name="prefix">CLR%(y)s%(month)s-</field>
+      <field name="padding">4</field>
+    </record>
+  </data>
 </odoo>

@@ -20,24 +20,6 @@ class ExpenseAdvanceClearing(models.Model):
         for rec in self:
             if rec.amount <= 0:
                 raise UserError(_('Amount must be positive.'))
-            
-            # Validate that clearing amount doesn't exceed remaining advance balance
-            advance = rec.advance_id
-            advance._compute_cleared()  # Ensure latest values
-            
-            # Get other non-posted clearings for this advance to include in validation
-            other_draft_clearings = self.env['hr.expense.advance.clearing'].search([
-                ('advance_id', '=', advance.id),
-                ('state', '=', 'draft'),
-                ('id', '!=', rec.id)
-            ])
-            total_draft_amount = sum(other_draft_clearings.mapped('amount')) + rec.amount
-            
-            if advance.balance_amount < total_draft_amount:
-                raise UserError(_('Cannot clear amount %s. Remaining advance balance is only %s') % (
-                    rec.amount, advance.balance_amount))
-            
-            # Reduce the advance balance by moving from advance account to expense sheet payable/receivable
             advance_acct = rec.advance_id.advance_account_id
             sheet = rec.expense_sheet_id
             if not sheet.journal_id.default_account_id:
@@ -55,10 +37,3 @@ class ExpenseAdvanceClearing(models.Model):
             move = self.env['account.move'].create(move_vals)
             move._post()
             rec.write({'diff_move_id': move.id, 'state': 'posted'})
-            
-            # Check if advance is fully cleared and update status
-            advance._compute_cleared()  # Recompute after posting
-            digits = advance.currency_id.decimal_places if advance.currency_id else self.env.company.currency_id.decimal_places
-            from odoo.tools import float_is_zero
-            if float_is_zero(advance.balance_amount, precision_digits=digits):
-                advance.action_set_cleared()

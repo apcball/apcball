@@ -1,65 +1,67 @@
 
 <odoo>
-    <record id="view_expense_advance_tree" model="ir.ui.view">
-        <field name="name">expense.advance.tree</field>
-        <field name="model">hr.expense.advance</field>
-        <field name="arch" type="xml">
-            <tree>
-                <field name="name"/>
-                <field name="request_date"/>
-                <field name="employee_id"/>
-                <field name="partner_id"/>
-                <field name="amount"/>
-                <field name="cleared_amount"/>
-                <field name="balance_amount"/>
-                <field name="state"/>
-            </tree>
-        </field>
-    </record>
-    <record id="view_expense_advance_form" model="ir.ui.view">
-        <field name="name">expense.advance.form</field>
-        <field name="model">hr.expense.advance</field>
-        <field name="arch" type="xml">
-            <form string="Advance">
-                <header>
-                    <button name="action_approve" type="object" string="Approve" invisible="state != 'draft'"/>
-                    <button name="action_register_payment" type="object" string="Register Payment" invisible="state not in ('approved', 'draft')"/>
-                    <button name="action_set_cleared" type="object" string="Mark Cleared" invisible="state != 'paid'"/>
-                    <field name="state" widget="statusbar"/>
-                </header>
-                <sheet>
-                    <group>
-                        <field name="name" readonly="1"/>
-                        <field name="request_date"/>
-                        <field name="employee_id" options="{'no_create': True}" required="not partner_id"/>
-                        <field name="partner_id" required="not employee_id"/>
-                        <field name="amount"/>
-                        <field name="currency_id"/>
-                        <field name="journal_id"/>
-                        <field name="advance_account_id"/>
-                        <field name="payment_move_id" readonly="1"/>
-                        <field name="cleared_amount" readonly="1"/>
-                        <field name="balance_amount" readonly="1"/>
-                    </group>
-                    <notebook>
-                        <page string="Clearings">
-                            <field name="clearing_ids">
-                                <tree>
-                                    <field name="name"/>
-                                    <field name="expense_sheet_id"/>
-                                    <field name="amount"/>
-                                    <field name="state"/>
-                                </tree>
-                            </field>
-                        </page>
-                    </notebook>
-                </sheet>
-            </form>
-        </field>
-    </record>
-    <record id="action_expense_advances" model="ir.actions.act_window">
-        <field name="name">Advances</field>
-        <field name="res_model">hr.expense.advance</field>
-        <field name="view_mode">tree,form</field>
-    </record>
+  <record id="view_expense_advance_tree" model="ir.ui.view">
+    <field name="name">expense.advance.tree</field>
+    <field name="model">hr.expense.advance</field>
+    <field name="arch" type="xml">
+      <tree>
+        <field name="name"/>
+        <field name="request_date"/>
+        <field name="employee_id"/>
+        <field name="partner_id"/>
+        <field name="amount"/>
+        <field name="cleared_amount"/>
+        <field name="balance_amount"/>
+        <field name="state"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="view_expense_advance_form" model="ir.ui.view">
+    <field name="name">expense.advance.form</field>
+    <field name="model">hr.expense.advance</field>
+    <field name="arch" type="xml">
+      <form string="Advance">
+        <header>
+          <button name="action_approve" type="object" string="Approve" invisible="state != 'draft'"/>
+          <button name="action_register_payment" type="object" string="Register Payment" invisible="state not in ('approved','draft')"/>
+          <button name="action_set_cleared" type="object" string="Mark Cleared" invisible="state != 'paid'"/>
+          <field name="state" widget="statusbar"/>
+        </header>
+        <sheet>
+          <group>
+            <field name="name" readonly="1"/>
+            <field name="request_date"/>
+            <field name="employee_id" options="{'no_create': True}" required="not partner_id"/>
+            <field name="partner_id" required="not employee_id"/>
+            <field name="amount"/>
+            <field name="currency_id"/>
+            <field name="journal_id"/>
+            <field name="advance_account_id"/>
+            <field name="payment_move_id" readonly="1"/>
+            <field name="cleared_amount" readonly="1"/>
+            <field name="balance_amount" readonly="1"/>
+          </group>
+          <notebook>
+            <page string="Clearings">
+              <field name="clearing_ids">
+                <tree>
+                  <field name="name"/>
+                  <field name="expense_sheet_id"/>
+                  <field name="amount"/>
+                  <field name="state"/>
+                </tree>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_expense_advances" model="ir.actions.act_window">
+    <field name="name">Advances</field>
+    <field name="res_model">hr.expense.advance</field>
+    <field name="view_mode">tree,form</field>
+  </record>
 </odoo>

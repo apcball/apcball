@@ -1,33 +1,65 @@
 
 <odoo>
-    <!-- Define action first before using it in view -->
-    <record id="action_open_advance_clear_wizard" model="ir.actions.act_window">
-        <field name="name">Post Advance Clearing</field>
-        <field name="res_model">advance.clear.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-        <field name="context">{'default_sheet_id': active_id}</field>
-    </record>
+  <record id="action_open_advance_clear_wizard" model="ir.actions.act_window">
+    <field name="name">Post Advance Clearing</field>
+    <field name="res_model">advance.clear.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+    <field name="context">{'default_sheet_id': active_id}</field>
+  </record>
 
-    <record id="view_hr_expense_sheet_form_inherit_mog" model="ir.ui.view">
-        <field name="name">hr.expense.sheet.form.inherit.mog</field>
-        <field name="model">hr.expense.sheet</field>
-        <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//sheet//group" position="after">
-                <group string="Payment Source">
-                    <field name="payment_source"/>
-                    <field name="petty_cash_box_id" invisible="payment_source != 'petty_cash'" required="payment_source == 'petty_cash'"/>
-                    <field name="advance_id" invisible="payment_source != 'advance'" required="payment_source == 'advance'"/>
-                    <field name="partner_id"/>
+  <record id="view_hr_expense_sheet_form_inherit_mog" model="ir.ui.view">
+    <field name="name">hr.expense.sheet.form.inherit.mog</field>
+    <field name="model">hr.expense.sheet</field>
+    <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet//group" position="after">
+        <group string="Payment Source">
+          <field name="payment_source"/>
+          <field name="petty_cash_box_id" invisible="payment_source != 'petty_cash'" required="payment_source == 'petty_cash'"/>
+          <field name="default_tax_invoice_number" invisible="payment_source != 'petty_cash'"/>
+          <field name="default_tax_invoice_date" invisible="payment_source != 'petty_cash'"/>
+          <field name="advance_id" invisible="payment_source != 'advance'" required="payment_source == 'advance'"/>
+          <field name="partner_id"/>
+        </group>
+      </xpath>
+      
+      <!-- Add Tax Invoice tab after expense lines -->
+      <xpath expr="//notebook" position="inside">
+        <page string="Tax Invoices" name="tax_invoices">
+          <field name="tax_invoice_ids">
+            <tree editable="bottom">
+              <field name="tax_invoice_number" required="1"/>
+              <field name="tax_invoice_date" required="1"/>
+              <field name="partner_id"/>
+              <field name="description"/>
+              <field name="tax_base_amount" readonly="1"/>
+              <field name="tax_amount" readonly="1"/>
+              <field name="amount" readonly="1"/>
+            </tree>
+            <form>
+              <group>
+                <group>
+                  <field name="tax_invoice_number" required="1"/>
+                  <field name="tax_invoice_date" required="1"/>
+                  <field name="partner_id"/>
+                  <field name="description"/>
                 </group>
-            </xpath>
-            <xpath expr="//sheet" position="after">
-                <header position="inside">
-                    <button name="%(action_open_advance_clear_wizard)d" type="action" string="Post Clearing" class="oe_highlight"
-                        invisible="payment_source != 'advance'" />
-                </header>
-            </xpath>
-        </field>
-    </record>
+                <group>
+                  <field name="tax_base_amount" readonly="1"/>
+                  <field name="tax_amount" readonly="1"/>
+                  <field name="amount" readonly="1"/>
+                </group>
+              </group>
+            </form>
+          </field>
+        </page>
+      </xpath>
+      
+      <xpath expr="//header" position="inside">
+        <button name="%(action_open_advance_clear_wizard)d" type="action" string="Post Clearing" class="oe_highlight"
+                  invisible="payment_source != 'advance'" />
+      </xpath>
+    </field>
+  </record>
 </odoo>

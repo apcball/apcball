@@ -1,28 +1,29 @@
-<?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <record id="action_petty_cash_replenish_wizard" model="ir.actions.act_window">
-        <field name="name">Replenish Petty Cash</field>
-        <field name="res_model">petty.cash.replenish.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-    </record>
 
-    <record id="view_petty_cash_replenish_wizard_form" model="ir.ui.view">
-        <field name="name">petty.cash.replenish.wizard.form</field>
-        <field name="model">petty.cash.replenish.wizard</field>
-        <field name="arch" type="xml">
-            <form string="Replenish Petty Cash">
-                <group>
-                    <field name="box_id" invisible="True"/>
-                    <field name="amount"/>
-                    <field name="currency_id"/>
-                    <field name="src_journal_id"/>
-                </group>
-                <footer>
-                    <button string="Confirm" type="object" name="action_confirm" class="btn-primary"/>
-                    <button string="Cancel" class="btn-secondary" special="cancel"/>
-                </footer>
-            </form>
-        </field>
-    </record>
+<odoo>
+  <record id="view_petty_cash_replenish_wizard_form" model="ir.ui.view">
+    <field name="name">petty.cash.replenish.wizard.form</field>
+    <field name="model">petty.cash.replenish.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Replenish Petty Cash">
+        <group>
+          <field name="box_id" invisible="1"/>
+          <field name="amount"/>
+          <field name="currency_id" readonly="1"/>
+          <field name="src_journal_id"/>
+        </group>
+        <footer>
+          <button string="Confirm" type="object" name="action_confirm" class="btn-primary"/>
+          <button string="Cancel" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_petty_cash_replenish_wizard" model="ir.actions.act_window">
+    <field name="name">Replenish Petty Cash</field>
+    <field name="res_model">petty.cash.replenish.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+    <field name="context">{'default_box_id': active_id}</field>
+  </record>
 </odoo>

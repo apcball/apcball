@@ -1,26 +1,7 @@
 
 <odoo>
-    <!-- Define the main action for settings -->
-    <record id="action_mog_expense_config" model="ir.actions.act_window">
-        <field name="name">MOG Expense Settings</field>
-        <field name="res_model">res.config.settings</field>
-        <field name="view_mode">form</field>
-        <field name="view_id" ref="view_mog_expense_settings_form"/>
-        <field name="target">current</field>
-        <field name="context">{}</field>
-    </record>
-
-    <menuitem id="menu_mog_expense_root" name="Expenses+" parent="hr_expense.menu_hr_expense_root"/>
-    <menuitem id="menu_petty_cash_boxes" name="Petty Cash Boxes" parent="menu_mog_expense_root" action="action_petty_cash_boxes"/>
-    <!-- Configuration submenu for module-specific configuration -->
-    <menuitem id="menu_mog_expense_configuration" name="Configuration" parent="menu_mog_expense_root" sequence="90"/>
-    <menuitem id="menu_expense_advances" name="Advances" parent="menu_mog_expense_root" action="action_expense_advances"/>
-    <menuitem id="menu_expense_clearings" name="Advance Clearings" parent="menu_mog_expense_root" action="action_expense_clearings"/>
-    
-    <!-- Settings menu -->
-    <menuitem id="menu_mog_expense_config" 
-              name="Settings" 
-              parent="menu_mog_expense_configuration" 
-              action="action_mog_expense_config"
-              sequence="99"/>
+  <menuitem id="menu_mog_expense_root" name="Expenses+" parent="hr_expense.menu_hr_expense_root"/>
+  <menuitem id="menu_petty_cash_boxes" name="Petty Cash Boxes" parent="menu_mog_expense_root" action="action_petty_cash_boxes"/>
+  <menuitem id="menu_expense_advances" name="Advances" parent="menu_mog_expense_root" action="action_expense_advances"/>
+  <menuitem id="menu_expense_clearings" name="Advance Clearings" parent="menu_mog_expense_root" action="action_expense_clearings"/>
 </odoo>

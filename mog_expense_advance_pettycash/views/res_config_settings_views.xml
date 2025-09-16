@@ -1,0 +1,26 @@
+
+<odoo>
+  <record id="view_res_config_settings_mog_petty_cash" model="ir.ui.view">
+    <field name="name">res.config.settings.view.mog.petty.cash</field>
+    <field name="model">res.config.settings</field>
+    <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//app[@name='account']" position="inside">
+        <block title="Petty Cash" id="petty_cash_settings">
+          <setting id="petty_cash_expense_journal_setting" company_dependent="1">
+            <field name="petty_cash_expense_journal_id" domain="[('type','in',('general','misc'))]"/>
+            <div class="text-muted">Journal used to post expense &amp; tax lines when Payment Source = Petty Cash. The petty cash cash account will be credited.</div>
+          </setting>
+          <setting id="petty_cash_tax_mode_setting" company_dependent="1">
+            <field name="petty_cash_tax_mode"/>
+            <div class="text-muted">Choose whether to include VAT in expense lines, or post VAT to tax accounts as separate lines per tax.</div>
+          </setting>
+          <setting id="petty_cash_skip_tax_validation_setting" company_dependent="1">
+            <field name="petty_cash_skip_tax_invoice_validation"/>
+            <div class="text-muted">Skip Thai tax invoice number/date validation for petty cash entries. Enable to allow posting without tax invoice details.</div>
+          </setting>
+        </block>
+      </xpath>
+    </field>
+  </record>
+</odoo>

@@ -20,7 +20,6 @@ class PettyCashBox(models.Model):
     @api.depends('move_ids.line_ids.balance')
     def _compute_balance(self):
         for box in self:
-            # Balance = sum of cash account move lines assigned to this box (debit-credit)
             balance = 0.0
             for move in box.move_ids:
                 for line in move.line_ids.filtered(lambda l: l.account_id == box.journal_id.default_account_id):
@@ -42,16 +41,8 @@ class PettyCashBox(models.Model):
             'ref': _('Replenish petty cash %s') % self.name,
             'petty_cash_box_id': self.id,
             'line_ids': [
-                (0,0,{
-                    'name': _('Replenish petty cash'),
-                    'account_id': self.journal_id.default_account_id.id,
-                    'debit': amount,
-                }),
-                (0,0,{
-                    'name': _('From %s') % src_journal.name,
-                    'account_id': src_journal.default_account_id.id,
-                    'credit': amount,
-                }),
+                (0,0,{'name': _('Replenish petty cash'), 'account_id': self.journal_id.default_account_id.id, 'debit': amount}),
+                (0,0,{'name': _('From %s') % src_journal.name, 'account_id': src_journal.default_account_id.id, 'credit': amount}),
             ]
         })
         move._post()
