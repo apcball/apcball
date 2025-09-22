@@ -25,6 +25,18 @@
           <field name="bank_charge"/>
           <field name="net_pay_amount" readonly="1"/>
         </group>
+        <group string="VAT Information" invisible="not bill_has_vat">
+          <group>
+            <field name="bill_has_vat" invisible="1"/>
+            <field name="bill_vat_amount" readonly="1"/>
+            <field name="bill_amount_untaxed" readonly="1"/>
+            <field name="payment_percentage" readonly="1" widget="percentage"/>
+          </group>
+          <group>
+            <field name="proportional_vat_amount" readonly="1"/>
+            <field name="vat_account_id" readonly="1"/>
+          </group>
+        </group>
         <group string="Withholding Tax Certificate" invisible="wht_amount &lt;= 0">
           <field name="wht_tax_id" domain="[('account_id', '!=', False)]" 
                  placeholder="Select withholding tax for certificate generation"/>

@@ -12,6 +12,11 @@
                 class="oe_highlight"
                 string="Partial Payment (WHT)"
                 invisible="move_type not in ('in_invoice','in_refund') or state != 'posted'"/>
+        <button name="action_debug_vat_info"
+                type="object"
+                string="Debug VAT Info"
+                groups="base.group_no_one"
+                invisible="move_type not in ('in_invoice','in_refund') or state != 'posted'"/>
       </xpath>
     </field>
   </record>

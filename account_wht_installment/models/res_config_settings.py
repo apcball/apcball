@@ -27,3 +27,12 @@ class ResConfigSettings(models.TransientModel):
         config_parameter="account_wht_installment.bank_charge_account_id",
         default_model='res.company',
     )
+    
+    # VAT handling for partial payments
+    enable_vat_on_partial_payment = fields.Boolean(
+        string="Enable VAT calculation on partial payments",
+        default=True,
+        help="เปิดใช้งานการคำนวณ VAT สำหรับการจ่ายเงินบางส่วน",
+        config_parameter="account_wht_installment.enable_vat_on_partial_payment",
+        default_model='res.company',
+    )

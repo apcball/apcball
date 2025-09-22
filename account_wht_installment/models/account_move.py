@@ -25,3 +25,23 @@ class AccountMove(models.Model):
                 "default_amount_to_clear": abs(self.amount_residual),
             },
         }
+
+    def action_debug_vat_info(self):
+        """Debug action to show VAT information in this bill"""
+        self.ensure_one()
+        message = "=== VAT DEBUG INFO ===\n"
+        message += f"Bill: {self.name}\n"
+        message += f"Total amount: {self.amount_total}\n"
+        message += f"Untaxed amount: {self.amount_untaxed}\n"
+        message += f"Tax amount: {self.amount_tax}\n\n"
+        
+        message += "Lines with tax_line_id:\n"
+        for line in self.line_ids.filtered('tax_line_id'):
+            message += f"- {line.account_id.name}: {line.tax_line_id.name} ({line.tax_line_id.amount}%) = {line.credit - line.debit}\n"
+        
+        message += "\nLines with tax_ids:\n"
+        for line in self.line_ids.filtered('tax_ids'):
+            taxes = ", ".join([f"{t.name} ({t.amount}%)" for t in line.tax_ids])
+            message += f"- {line.account_id.name}: {taxes} = {line.credit - line.debit}\n"
+            
+        raise UserError(message)

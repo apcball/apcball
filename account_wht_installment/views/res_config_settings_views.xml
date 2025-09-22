@@ -16,6 +16,12 @@
           <setting id="bank_charge_account_setting" company_dependent="1">
             <field name="bank_charge_account_id" options="{'no_create': False}"/>
           </setting>
+          <setting id="enable_vat_partial_payment_setting" company_dependent="1">
+            <field name="enable_vat_on_partial_payment"/>
+            <div class="text-muted">
+              When enabled, partial payments on vendor bills with VAT will automatically calculate and record proportional VAT amounts.
+            </div>
+          </setting>
         </block>
       </xpath>
     </field>

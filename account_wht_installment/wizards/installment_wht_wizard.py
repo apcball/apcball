@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
+import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 class WHTInstallmentPaymentWizard(models.TransientModel):
     _name = "wht.installment.payment.wizard"
@@ -45,14 +48,140 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
     )
 
     memo = fields.Char(string="Memo/Ref")
+    
+    # VAT fields for partial payment calculation
+    bill_has_vat = fields.Boolean(string="Bill has VAT", compute="_compute_bill_vat_info", store=False)
+    bill_vat_amount = fields.Monetary(string="Total VAT on Bill", compute="_compute_bill_vat_info", store=False)
+    bill_amount_untaxed = fields.Monetary(string="Bill Amount (ex VAT)", compute="_compute_bill_vat_info", store=False)
+    payment_percentage = fields.Float(string="Payment %", compute="_compute_payment_percentage", store=False)
+    proportional_vat_amount = fields.Monetary(string="Proportional VAT", compute="_compute_proportional_vat", store=False)
+    vat_account_id = fields.Many2one("account.account", string="VAT Account", compute="_compute_vat_account", store=False)
+    
+    @api.depends("move_id")
+    def _compute_bill_vat_info(self):
+        """Calculate VAT information from the original bill"""
+        for w in self:
+            # Check if VAT on partial payment is enabled
+            vat_enabled = w.env["ir.config_parameter"].sudo().get_param(
+                "account_wht_installment.enable_vat_on_partial_payment", "True"
+            ).lower() == "true"
+            
+            if w.move_id and vat_enabled:
+                # Debug logging
+                _logger.info("=== VAT DEBUG INFO ===")
+                _logger.info("Bill ID: %s, Name: %s", w.move_id.id, w.move_id.name)
+                
+                # Find VAT tax lines (typically 7% VAT in Thailand)
+                all_tax_lines = w.move_id.line_ids.filtered(lambda l: l.tax_line_id)
+                for line in all_tax_lines:
+                    _logger.info("Tax line: account=%s, tax=%s, amount=%s, type=%s, debit=%s, credit=%s", 
+                                line.account_id.name, line.tax_line_id.name, 
+                                line.tax_line_id.amount, line.tax_line_id.type_tax_use,
+                                line.debit, line.credit)
+                
+                vat_lines = w.move_id.line_ids.filtered(
+                    lambda l: l.tax_line_id and (
+                        # Standard 7% purchase VAT - check both positive and negative amounts
+                        (l.tax_line_id.amount == 7.0 and l.tax_line_id.type_tax_use == 'purchase') or
+                        # VAT with name containing "VAT" or "ภาษีมูลค่าเพิ่ม" and 7%
+                        (l.tax_line_id.amount == 7.0 and (
+                            'vat' in (l.tax_line_id.name or '').lower() or
+                            'ภาษีมูลค่าเพิ่ม' in (l.tax_line_id.name or '') or
+                            'ภาษี 7%' in (l.tax_line_id.name or '') or
+                            'ภาษีซื้อ' in (l.tax_line_id.name or '')
+                        )) or
+                        # Account name contains VAT-related terms (for manual VAT entries)
+                        (l.tax_line_id and l.tax_line_id.amount == 7.0 and (
+                            'vat' in (l.account_id.name or '').lower() or
+                            'ภาษีมูลค่าเพิ่ม' in (l.account_id.name or '') or
+                            'ภาษีซื้อ' in (l.account_id.name or '')
+                        ))
+                    )
+                )
+                
+                _logger.info("🔍 Found %d VAT lines", len(vat_lines))
+                for vat_line in vat_lines:
+                    _logger.info("🔍 VAT line: %s, balance=%s, debit=%s, credit=%s", 
+                                vat_line.account_id.name, vat_line.balance, vat_line.debit, vat_line.credit)
+                
+                if vat_lines:
+                    w.bill_has_vat = True
+                    # VAT amount should be absolute value (positive for input VAT)
+                    w.bill_vat_amount = abs(sum(vat_lines.mapped('balance')))
+                    w.bill_amount_untaxed = w.move_id.amount_untaxed
+                    _logger.info("✅ VAT detected: amount=%s", w.bill_vat_amount)
+                else:
+                    w.bill_has_vat = False
+                    w.bill_vat_amount = 0.0
+                    w.bill_amount_untaxed = w.move_id.amount_untaxed
+                    _logger.info("No VAT detected")
+            else:
+                w.bill_has_vat = False
+                w.bill_vat_amount = 0.0
+                w.bill_amount_untaxed = 0.0
+    
+    @api.depends("amount_to_clear", "move_id.amount_total")
+    def _compute_payment_percentage(self):
+        """Calculate what percentage of the total bill we're paying"""
+        for w in self:
+            if w.move_id and w.move_id.amount_total > 0:
+                w.payment_percentage = (w.amount_to_clear / w.move_id.amount_total) * 100
+            else:
+                w.payment_percentage = 0.0
+    
+    @api.depends("bill_vat_amount", "payment_percentage")
+    def _compute_proportional_vat(self):
+        """Calculate proportional VAT amount for this payment"""
+        for w in self:
+            if w.bill_has_vat and w.payment_percentage > 0:
+                w.proportional_vat_amount = (w.bill_vat_amount * w.payment_percentage) / 100
+            else:
+                w.proportional_vat_amount = 0.0
+    
+    @api.depends("move_id")
+    def _compute_vat_account(self):
+        """Find the VAT account from the original bill"""
+        for w in self:
+            if w.move_id and w.bill_has_vat:
+                vat_lines = w.move_id.line_ids.filtered(
+                    lambda l: l.tax_line_id and (
+                        # Standard 7% purchase VAT
+                        (l.tax_line_id.amount == 7.0 and l.tax_line_id.type_tax_use == 'purchase') or
+                        # VAT with name containing "VAT" or "ภาษีมูลค่าเพิ่ม" and 7%
+                        (l.tax_line_id.amount == 7.0 and (
+                            'vat' in (l.tax_line_id.name or '').lower() or
+                            'ภาษีมูลค่าเพิ่ม' in (l.tax_line_id.name or '') or
+                            'ภาษี 7%' in (l.tax_line_id.name or '') or
+                            'ภาษีซื้อ' in (l.tax_line_id.name or '')
+                        )) or
+                        # Account name contains VAT-related terms (for manual VAT entries)
+                        (l.tax_line_id and l.tax_line_id.amount == 7.0 and (
+                            'vat' in (l.account_id.name or '').lower() or
+                            'ภาษีมูลค่าเพิ่ม' in (l.account_id.name or '') or
+                            'ภาษีซื้อ' in (l.account_id.name or '')
+                        ))
+                    )
+                )
+                if vat_lines:
+                    w.vat_account_id = vat_lines[0].account_id
+                else:
+                    w.vat_account_id = False
+            else:
+                w.vat_account_id = False
 
-    @api.depends("amount_to_clear", "wht_percent", "bank_charge")
+    @api.depends("amount_to_clear", "wht_percent", "bank_charge", "proportional_vat_amount")
     def _compute_amounts(self):
         for w in self:
             gross = w.amount_to_clear or 0.0
             rate = max(w.wht_percent or 0.0, 0.0) / 100.0
             bank_charge = w.bank_charge or 0.0
+            vat_amt = w.proportional_vat_amount or 0.0
+            
             w.wht_amount = round(gross * rate, 2)
+            
+            # For bills with VAT, the net payment calculation is:
+            # Net payment = gross amount - WHT - bank charges
+            # (VAT is handled as a separate debit entry, not affecting cash flow)
             w.net_pay_amount = gross - w.wht_amount - bank_charge
 
     @api.onchange("partner_id")
@@ -75,12 +204,24 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
                 self.wht_percent = self.wht_tax_id.amount
 
     def action_confirm(self):
+        from odoo import _  # Re-import _ to avoid conflicts with logging
         self.ensure_one()
         bill = self.move_id.with_company(self.company_id.id)
         if bill.state != "posted" or bill.move_type not in ("in_invoice", "in_refund"):
             raise UserError(_("Wizard can be used only on posted Vendor Bills/CNs."))
         if bill.amount_residual <= 0:
             raise UserError(_("Nothing to clear; the bill is already fully paid."))
+            
+        # Debug: Log all lines in the bill to see what's available
+        _logger.info("🔍 === BILL LINES DEBUG ===")
+        _logger.info("Bill: %s, Total: %s", bill.name, bill.amount_total)
+        for line in bill.line_ids:
+            _logger.info("📄 Line: account=%s, tax_line=%s, tax_ids=%s, balance=%s", 
+                        line.account_id.name, 
+                        line.tax_line_id.name if line.tax_line_id else None,
+                        [f"{t.name}({t.amount}%)" for t in line.tax_ids], 
+                        line.balance)
+        _logger.info("🔍 === END BILL LINES DEBUG ===")
 
         # Basic validations
         if self.amount_to_clear <= 0:
@@ -168,8 +309,6 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
         )
         
         # Debug logging to see what the helper detects
-        import logging
-        _logger = logging.getLogger(__name__)
         _logger.info("=== DEBUGGING PAYABLE ACCOUNT DETECTION ===")
         for line in bill.line_ids:
             is_payable = _is_payable_account(line.account_id)
@@ -203,13 +342,52 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
             ))
         payable_account_id = payable_line.account_id.id
 
-        # Main JE: Dr AP gross, Cr Bank (gross - wht), Cr WHT
+        # Check if we need to handle VAT for partial payment
+        vat_amt = self.proportional_vat_amount or 0.0
+        
+        # Debug logging for VAT calculation
+        _logger.info("💰 === VAT PAYMENT DEBUG ===")
+        _logger.info("💰 Bill has VAT: %s", self.bill_has_vat)
+        _logger.info("💰 VAT amount: %s", vat_amt)
+        _logger.info("💰 VAT account: %s", self.vat_account_id.name if self.vat_account_id else "None")
+        _logger.info("💰 Gross amount: %s", gross)
+        _logger.info("💰 WHT amount: %s", wht_amt)
+        _logger.info("💰 Bank charges: %s", bank_charge_amt)
+        
+        # Adjust amounts if VAT is involved
+        # For partial payments with VAT, we need to:
+        # 1. Dr AP (gross + proportional VAT) - to reduce the total payable including VAT
+        # 2. Cr Bank (gross - WHT) - actual payment (bank charges are handled separately)
+        # 3. Cr WHT (if applicable)
+        # 4. Dr VAT Input (proportional VAT) - to claim VAT
+        if vat_amt > 0 and self.vat_account_id:
+            # AP debit should be just the gross amount (VAT is separate)
+            adjusted_gross = gross
+            # Bank payment: to balance the journal entry properly
+            # Total debits = AP + VAT + Bank Charges = 200 + 13.08 + 20 = 233.08
+            # Total credits should equal total debits
+            # Bank credit + WHT credit = 233.08
+            # Bank credit = 233.08 - WHT = 233.08 - 6 = 227.08
+            bank_payment_amount = adjusted_gross + vat_amt + bank_charge_amt - wht_amt
+            _logger.info("💰 With VAT: AP debit=%s, VAT debit=%s, Bank Charges=%s, Bank credit=%s (to balance)", 
+                        adjusted_gross, vat_amt, bank_charge_amt, bank_payment_amount)
+        else:
+            adjusted_gross = gross
+            # Bank payment: gross + bank charges - WHT (to balance)
+            bank_payment_amount = gross + bank_charge_amt - wht_amt
+            _logger.info("💰 Without VAT: AP debit=%s, Bank Charges=%s, Bank credit=%s (to balance)", 
+                        adjusted_gross, bank_charge_amt, bank_payment_amount)
+        
+        _logger.info("Adjusted gross: %s", adjusted_gross)
+        _logger.info("Bank payment amount: %s", bank_payment_amount)
+
+        # Main JE: Dr AP gross, Cr Bank (net payment), Cr WHT, Dr VAT (if applicable)
         move_lines = [
             (0, 0, {
                 "name": _("Installment clearance for %s") % (bill.name or bill.ref or ""),
                 "account_id": payable_account_id,
                 "partner_id": bill.partner_id.id,
-                "debit": gross if gross > 0 else 0.0,
+                "debit": adjusted_gross if adjusted_gross > 0 else 0.0,
                 "credit": 0.0,
             }),
             (0, 0, {
@@ -217,9 +395,49 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
                 "account_id": self.journal_id.default_account_id.id,
                 "partner_id": False,
                 "debit": 0.0,
-                "credit": (gross - wht_amt) if (gross - wht_amt) > 0 else 0.0,
+                "credit": bank_payment_amount if bank_payment_amount > 0 else 0.0,
             }),
         ]
+        
+        # Add VAT line if VAT is involved in partial payment
+        if vat_amt > 0 and self.vat_account_id:
+            _logger.info("🔍 Adding VAT line: amount=%s, account=%s", vat_amt, self.vat_account_id.name)
+            vat_line_data = {
+                "name": _("VAT 7% (Proportional for partial payment)"),
+                "account_id": self.vat_account_id.id,
+                "partner_id": bill.partner_id.id,
+                "debit": vat_amt,
+                "credit": 0.0,
+            }
+            # Find the original VAT tax for tax invoice creation
+            original_vat_lines = bill.line_ids.filtered(
+                lambda l: l.tax_line_id and (
+                    # Standard 7% purchase VAT
+                    (l.tax_line_id.amount == 7.0 and l.tax_line_id.type_tax_use == 'purchase') or
+                    # VAT with name containing "VAT" or "ภาษีมูลค่าเพิ่ม" and 7%
+                    (l.tax_line_id.amount == 7.0 and (
+                        'vat' in (l.tax_line_id.name or '').lower() or
+                        'ภาษีมูลค่าเพิ่ม' in (l.tax_line_id.name or '') or
+                        'ภาษี 7%' in (l.tax_line_id.name or '') or
+                        'ภาษีซื้อ' in (l.tax_line_id.name or '')
+                    )) or
+                    # Account name contains VAT-related terms (for manual VAT entries)
+                    (l.tax_line_id and l.tax_line_id.amount == 7.0 and (
+                        'vat' in (l.account_id.name or '').lower() or
+                        'ภาษีมูลค่าเพิ่ม' in (l.account_id.name or '') or
+                        'ภาษีซื้อ' in (l.account_id.name or '')
+                    ))
+                )
+            )
+            if original_vat_lines:
+                vat_line_data["tax_line_id"] = original_vat_lines[0].tax_line_id.id
+                # Set base amount for tax calculation
+                vat_line_data["tax_base_amount"] = (vat_amt * 100) / 7.0  # Calculate base from 7% VAT
+            move_lines.append((0, 0, vat_line_data))
+            _logger.info("✅ VAT line added to move_lines")
+        else:
+            _logger.info("❌ VAT line not added: vat_amt=%s, vat_account=%s", vat_amt, self.vat_account_id)
+        
         # Add WHT line only if WHT amount > 0
         if wht_amt > 0:
             wht_line_data = {
@@ -234,43 +452,66 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
                 wht_line_data["wht_tax_id"] = self.wht_tax_id.id
             move_lines.append((0, 0, wht_line_data))
 
+        # Add bank charges line if bank charges > 0
+        if bank_charge_amt > 0:
+            if not bank_charge_account:
+                raise UserError(_("Bank charge account is not configured. Please set it in Accounting Settings."))
+            move_lines.append((0, 0, {
+                "name": _("Bank Charges"),
+                "account_id": bank_charge_account.id,
+                "partner_id": False,
+                "debit": bank_charge_amt,
+                "credit": 0.0,
+            }))
+
+        # Debug: Show all move lines before creating the move
+        _logger.info("🔍 === MOVE LINES DEBUG ===")
+        total_debit = 0
+        total_credit = 0
+        for i, (_, _, line_data) in enumerate(move_lines):
+            debit = line_data.get('debit', 0)
+            credit = line_data.get('credit', 0)
+            total_debit += debit
+            total_credit += credit
+            _logger.info("🔍 Line %d: %s - Dr: %s, Cr: %s", 
+                        i+1, line_data.get('name', ''), debit, credit)
+        _logger.info("🔍 Total Debit: %s, Total Credit: %s, Difference: %s", 
+                    total_debit, total_credit, total_debit - total_credit)
+        _logger.info("🔍 === END MOVE LINES DEBUG ===")
+
         move_vals = {
             "date": self.date,
             "journal_id": self.journal_id.id,
             "ref": self.memo or (bill.name or ""),
             "line_ids": move_lines,
         }
+        
+        # Debug: Log all move lines before creating
+        _logger.info("📝 === MOVE LINES DEBUG ===")
+        total_debit = 0
+        total_credit = 0
+        for line_data in move_lines:
+            line = line_data[2]  # Get the dict from (0, 0, dict)
+            debit = line.get('debit', 0)
+            credit = line.get('credit', 0)
+            total_debit += debit
+            total_credit += credit
+            _logger.info("📝 %s: Dr %s, Cr %s", line.get('name', 'Unknown'), debit, credit)
+        _logger.info("📝 Total Debit: %s, Total Credit: %s, Difference: %s", 
+                    total_debit, total_credit, total_debit - total_credit)
+        _logger.info("📝 === END MOVE LINES DEBUG ===")
+        
         pay_move = self.env["account.move"].create(move_vals)
         pay_move.action_post()
-
-        # Extra JE for bank charges if needed
-        if bank_charge_amt > 0:
-            if not bank_charge_account:
-                raise UserError(_("Bank charge account is not configured. Please set it in Accounting Settings."))
-            fee_move = self.env["account.move"].create({
-                "date": self.date,
-                "journal_id": self.journal_id.id,
-                "ref": (self.memo or (bill.name or "")) + " - Bank Charges",
-                "line_ids": [
-                    (0, 0, {
-                        "name": _("Bank Charges for %s") % (bill.name or bill.ref or ""),
-                        "account_id": bank_charge_account.id,
-                        "debit": bank_charge_amt,
-                        "credit": 0.0,
-                    }),
-                    (0, 0, {
-                        "name": _("Bank Charges for %s") % (bill.name or bill.ref or ""),
-                        "account_id": self.journal_id.default_account_id.id,
-                        "debit": 0.0,
-                        "credit": bank_charge_amt,
-                    }),
-                ],
-            })
-            fee_move.action_post()
 
         # Create withholding tax moves and certificate if WHT tax is selected
         if self.wht_tax_id and wht_amt > 0:
             self._create_wht_moves_and_cert(pay_move, gross, wht_amt)
+
+        # Create VAT tax invoice for partial payment if VAT is involved
+        if vat_amt > 0 and self.vat_account_id:
+            vat_base_amount = (vat_amt * 100) / 7.0  # Calculate base from 7% VAT
+            self._create_vat_tax_invoice(pay_move, vat_amt, vat_base_amount)
 
         # Reconcile AP debit (our move) against bill's AP credit (partial)
         ap_debit_line = pay_move.line_ids.filtered(lambda l: _is_payable_account(l.account_id) and l.debit > 0)
@@ -312,8 +553,62 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
             payment_move.create_wht_cert()
         except Exception as e:
             # If WHT cert creation fails, log it but don't block the payment
-            import logging
-            _logger = logging.getLogger(__name__)
             _logger.warning("Failed to create WHT certificate: %s", str(e))
             # You could also show a warning to the user
             # raise UserError(_("Payment created successfully, but WHT certificate creation failed: %s") % str(e))
+
+    def _create_vat_tax_invoice(self, payment_move, vat_amount, vat_base_amount):
+        """Create VAT tax invoice for partial payment"""
+        self.ensure_one()
+        
+        if not vat_amount or not vat_base_amount:
+            return
+            
+        # Find the VAT line in the payment move
+        vat_lines = payment_move.line_ids.filtered(
+            lambda l: l.tax_line_id and (
+                # Standard 7% purchase VAT
+                (l.tax_line_id.amount == 7.0 and l.tax_line_id.type_tax_use == 'purchase') or
+                # VAT with name containing "VAT" or "ภาษีมูลค่าเพิ่ม" and 7%
+                (l.tax_line_id.amount == 7.0 and (
+                    'vat' in (l.tax_line_id.name or '').lower() or
+                    'ภาษีมูลค่าเพิ่ม' in (l.tax_line_id.name or '') or
+                    'ภาษี 7%' in (l.tax_line_id.name or '') or
+                    'ภาษีซื้อ' in (l.tax_line_id.name or '')
+                )) or
+                # Account name contains VAT-related terms (for manual VAT entries)
+                (l.tax_line_id and l.tax_line_id.amount == 7.0 and (
+                    'vat' in (l.account_id.name or '').lower() or
+                    'ภาษีมูลค่าเพิ่ม' in (l.account_id.name or '') or
+                    'ภาษีซื้อ' in (l.account_id.name or '')
+                ))
+            )
+        )
+        
+        if not vat_lines:
+            return
+            
+        vat_line = vat_lines[0]
+        
+        # Create tax invoice for the VAT line
+        try:
+            # Use the context to indicate this is a partial payment
+            vat_line_with_context = vat_line.with_context(partial_payment=True)
+            
+            # Create tax invoice record
+            tax_invoice_vals = {
+                "move_id": payment_move.id,
+                "move_line_id": vat_line.id,
+                "partner_id": self.partner_id.id,
+                "tax_base_amount": vat_base_amount,
+                "balance": vat_amount,
+                "tax_invoice_number": False,  # Will be filled later when vendor info is provided
+                "tax_invoice_date": False,    # Will be filled later when vendor info is provided
+            }
+            
+            tax_invoice = self.env["account.move.tax.invoice"].create(tax_invoice_vals)
+            vat_line.tax_invoice_ids = [(4, tax_invoice.id)]
+            
+        except Exception as e:
+            # Log the error but don't block the payment
+            _logger.warning("Failed to create VAT tax invoice for partial payment: %s", str(e))

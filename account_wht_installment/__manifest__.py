@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 {
     "name": "buz Account WHT Installment (TH)",
-    "summary": "Partial payments on vendor bills with withholding tax (Thailand)",
-    "version": "17.0.1.0.0",
+    "summary": "Partial payments on vendor bills with withholding tax and VAT calculation (Thailand)",
+    "version": "17.0.1.1.0",
     "category": "Accounting",
     "author": "apcball + Manow",
     "website": "https://example.local",
