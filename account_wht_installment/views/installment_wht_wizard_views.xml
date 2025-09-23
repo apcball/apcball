@@ -25,16 +25,27 @@
           <field name="bank_charge"/>
           <field name="net_pay_amount" readonly="1"/>
         </group>
-        <group string="VAT Information" invisible="not bill_has_vat">
+        <group string="VAT Options">
+          <field name="include_vat" string="Include VAT calculation for this payment"/>
+        </group>
+        <group string="VAT Calculation" invisible="not include_vat">
+          <group>
+            <field name="vat_rate" string="VAT Rate (%)"/>
+            <field name="manual_vat_account_id" string="VAT Account" 
+                   required="include_vat" 
+                   options="{'no_create': True}"/>
+          </group>
+          <group>
+            <field name="proportional_vat_amount" readonly="1" string="VAT Amount"/>
+            <field name="vat_account_id" readonly="1" string="Selected VAT Account"/>
+          </group>
+        </group>
+        <group string="Auto VAT Information (from Bill)" invisible="not bill_has_vat">
           <group>
             <field name="bill_has_vat" invisible="1"/>
             <field name="bill_vat_amount" readonly="1"/>
             <field name="bill_amount_untaxed" readonly="1"/>
             <field name="payment_percentage" readonly="1" widget="percentage"/>
-          </group>
-          <group>
-            <field name="proportional_vat_amount" readonly="1"/>
-            <field name="vat_account_id" readonly="1"/>
           </group>
         </group>
         <group string="Withholding Tax Certificate" invisible="wht_amount &lt;= 0">

@@ -49,6 +49,23 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
 
     memo = fields.Char(string="Memo/Ref")
     
+    # VAT option selection
+    include_vat = fields.Boolean(
+        string="Include VAT calculation", 
+        default=False,
+        help="Check this box to include VAT calculation for this partial payment"
+    )
+    vat_rate = fields.Float(
+        string="VAT Rate (%)", 
+        default=7.0,
+        help="VAT rate percentage"
+    )
+    manual_vat_account_id = fields.Many2one(
+        "account.account", 
+        string="VAT Account",
+        help="Select account for recording VAT"
+    )
+    
     # VAT fields for partial payment calculation
     bill_has_vat = fields.Boolean(string="Bill has VAT", compute="_compute_bill_vat_info", store=False)
     bill_vat_amount = fields.Monetary(string="Total VAT on Bill", compute="_compute_bill_vat_info", store=False)
@@ -61,10 +78,12 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
     def _compute_bill_vat_info(self):
         """Calculate VAT information from the original bill"""
         for w in self:
+            _logger.info("🔍 Computing bill VAT info for move_id: %s", w.move_id.id if w.move_id else "None")
             # Check if VAT on partial payment is enabled
             vat_enabled = w.env["ir.config_parameter"].sudo().get_param(
                 "account_wht_installment.enable_vat_on_partial_payment", "True"
             ).lower() == "true"
+            _logger.info("🔍 VAT enabled: %s", vat_enabled)
             
             if w.move_id and vat_enabled:
                 # Debug logging
@@ -124,48 +143,39 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
     def _compute_payment_percentage(self):
         """Calculate what percentage of the total bill we're paying"""
         for w in self:
+            _logger.info("🔍 Computing payment percentage: amount_to_clear=%s, amount_total=%s", 
+                        w.amount_to_clear, w.move_id.amount_total if w.move_id else "None")
             if w.move_id and w.move_id.amount_total > 0:
                 w.payment_percentage = (w.amount_to_clear / w.move_id.amount_total) * 100
+                _logger.info("✅ Payment percentage: %s%%", w.payment_percentage)
             else:
                 w.payment_percentage = 0.0
+                _logger.info("❌ Payment percentage set to 0")
     
-    @api.depends("bill_vat_amount", "payment_percentage")
+    @api.depends("amount_to_clear", "include_vat", "vat_rate")
     def _compute_proportional_vat(self):
-        """Calculate proportional VAT amount for this payment"""
+        """Calculate VAT amount based on payment amount and VAT rate"""
         for w in self:
-            if w.bill_has_vat and w.payment_percentage > 0:
-                w.proportional_vat_amount = (w.bill_vat_amount * w.payment_percentage) / 100
+            _logger.info("🔍 Computing VAT: include_vat=%s, amount_to_clear=%s, vat_rate=%s", 
+                        w.include_vat, w.amount_to_clear, w.vat_rate)
+            
+            if w.include_vat and w.amount_to_clear > 0 and w.vat_rate > 0:
+                # Calculate VAT from base amount (partial payment amount)
+                base_amount = w.amount_to_clear
+                vat_amount = (base_amount * w.vat_rate) / 100
+                w.proportional_vat_amount = vat_amount
+                _logger.info("✅ VAT calculated: base=%s, rate=%s%%, VAT=%s", 
+                            base_amount, w.vat_rate, vat_amount)
             else:
                 w.proportional_vat_amount = 0.0
+                _logger.info("❌ VAT not calculated")
     
-    @api.depends("move_id")
+    @api.depends("manual_vat_account_id", "include_vat")
     def _compute_vat_account(self):
-        """Find the VAT account from the original bill"""
+        """Use manually selected VAT account"""
         for w in self:
-            if w.move_id and w.bill_has_vat:
-                vat_lines = w.move_id.line_ids.filtered(
-                    lambda l: l.tax_line_id and (
-                        # Standard 7% purchase VAT
-                        (l.tax_line_id.amount == 7.0 and l.tax_line_id.type_tax_use == 'purchase') or
-                        # VAT with name containing "VAT" or "ภาษีมูลค่าเพิ่ม" and 7%
-                        (l.tax_line_id.amount == 7.0 and (
-                            'vat' in (l.tax_line_id.name or '').lower() or
-                            'ภาษีมูลค่าเพิ่ม' in (l.tax_line_id.name or '') or
-                            'ภาษี 7%' in (l.tax_line_id.name or '') or
-                            'ภาษีซื้อ' in (l.tax_line_id.name or '')
-                        )) or
-                        # Account name contains VAT-related terms (for manual VAT entries)
-                        (l.tax_line_id and l.tax_line_id.amount == 7.0 and (
-                            'vat' in (l.account_id.name or '').lower() or
-                            'ภาษีมูลค่าเพิ่ม' in (l.account_id.name or '') or
-                            'ภาษีซื้อ' in (l.account_id.name or '')
-                        ))
-                    )
-                )
-                if vat_lines:
-                    w.vat_account_id = vat_lines[0].account_id
-                else:
-                    w.vat_account_id = False
+            if w.include_vat and w.manual_vat_account_id:
+                w.vat_account_id = w.manual_vat_account_id
             else:
                 w.vat_account_id = False
 
@@ -360,7 +370,7 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
         # 2. Cr Bank (gross - WHT) - actual payment (bank charges are handled separately)
         # 3. Cr WHT (if applicable)
         # 4. Dr VAT Input (proportional VAT) - to claim VAT
-        if vat_amt > 0 and self.vat_account_id:
+        if vat_amt > 0 and self.vat_account_id and self.include_vat:
             # AP debit should be just the gross amount (VAT is separate)
             adjusted_gross = gross
             # Bank payment: to balance the journal entry properly
@@ -400,7 +410,7 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
         ]
         
         # Add VAT line if VAT is involved in partial payment
-        if vat_amt > 0 and self.vat_account_id:
+        if vat_amt > 0 and self.vat_account_id and self.include_vat:
             _logger.info("🔍 Adding VAT line: amount=%s, account=%s", vat_amt, self.vat_account_id.name)
             vat_line_data = {
                 "name": _("VAT 7% (Proportional for partial payment)"),
@@ -509,7 +519,7 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
             self._create_wht_moves_and_cert(pay_move, gross, wht_amt)
 
         # Create VAT tax invoice for partial payment if VAT is involved
-        if vat_amt > 0 and self.vat_account_id:
+        if vat_amt > 0 and self.vat_account_id and self.include_vat:
             vat_base_amount = (vat_amt * 100) / 7.0  # Calculate base from 7% VAT
             self._create_vat_tax_invoice(pay_move, vat_amt, vat_base_amount)
 
