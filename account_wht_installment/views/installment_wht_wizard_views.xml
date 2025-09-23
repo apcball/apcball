@@ -40,6 +40,18 @@
             <field name="vat_account_id" readonly="1" string="Selected VAT Account"/>
           </group>
         </group>
+        <group string="Tax Invoice Information" invisible="not include_vat">
+          <group>
+            <field name="tax_invoice_number" string="Tax Invoice No." 
+                   placeholder="e.g. INV-2024-001"/>
+            <field name="tax_invoice_date" string="Tax Invoice Date"/>
+          </group>
+          <group>
+            <div class="o_form_label" style="font-style: italic; color: #6c757d;">
+              หมายเหตุ: กรอกข้อมูลใบกำกับภาษีเพื่อใช้ในการออกรายงานภาษี
+            </div>
+          </group>
+        </group>
         <group string="Auto VAT Information (from Bill)" invisible="not bill_has_vat">
           <group>
             <field name="bill_has_vat" invisible="1"/>

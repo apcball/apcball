@@ -66,6 +66,17 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
         help="Select account for recording VAT"
     )
     
+    # Tax invoice fields for l10n_th_account_tax integration
+    tax_invoice_number = fields.Char(
+        string="Tax Invoice Number",
+        help="Tax invoice number for VAT reporting"
+    )
+    tax_invoice_date = fields.Date(
+        string="Tax Invoice Date",
+        default=fields.Date.context_today,
+        help="Tax invoice date for VAT reporting"
+    )
+    
     # VAT fields for partial payment calculation
     bill_has_vat = fields.Boolean(string="Bill has VAT", compute="_compute_bill_vat_info", store=False)
     bill_vat_amount = fields.Monetary(string="Total VAT on Bill", compute="_compute_bill_vat_info", store=False)
@@ -246,6 +257,17 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
             raise UserError(_("Net payment amount cannot be negative. Please reduce WHT percentage or bank charges."))
         if self.wht_percent < 0 or self.wht_percent > 100:
             raise UserError(_("WHT percentage must be between 0 and 100."))
+            
+        # VAT and tax invoice validations
+        if self.include_vat:
+            if not self.manual_vat_account_id:
+                raise UserError(_("VAT Account is required when including VAT calculation."))
+            if self.vat_rate < 0 or self.vat_rate > 100:
+                raise UserError(_("VAT rate must be between 0 and 100."))
+            if not self.tax_invoice_number:
+                raise UserError(_("Tax Invoice Number is required for VAT reporting."))
+            if not self.tax_invoice_date:
+                raise UserError(_("Tax Invoice Date is required for VAT reporting."))
 
         # Config: WHT Payable account
         wht_acc_param = self.env["ir.config_parameter"].sudo().get_param("account_wht_installment.wht_payable_account_id")
@@ -568,7 +590,7 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
             # raise UserError(_("Payment created successfully, but WHT certificate creation failed: %s") % str(e))
 
     def _create_vat_tax_invoice(self, payment_move, vat_amount, vat_base_amount):
-        """Create VAT tax invoice for partial payment"""
+        """Create VAT tax invoice for partial payment with l10n_th_account_tax integration"""
         self.ensure_one()
         
         if not vat_amount or not vat_base_amount:
@@ -576,49 +598,81 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
             
         # Find the VAT line in the payment move
         vat_lines = payment_move.line_ids.filtered(
-            lambda l: l.tax_line_id and (
-                # Standard 7% purchase VAT
-                (l.tax_line_id.amount == 7.0 and l.tax_line_id.type_tax_use == 'purchase') or
-                # VAT with name containing "VAT" or "ภาษีมูลค่าเพิ่ม" and 7%
-                (l.tax_line_id.amount == 7.0 and (
-                    'vat' in (l.tax_line_id.name or '').lower() or
-                    'ภาษีมูลค่าเพิ่ม' in (l.tax_line_id.name or '') or
-                    'ภาษี 7%' in (l.tax_line_id.name or '') or
-                    'ภาษีซื้อ' in (l.tax_line_id.name or '')
-                )) or
-                # Account name contains VAT-related terms (for manual VAT entries)
-                (l.tax_line_id and l.tax_line_id.amount == 7.0 and (
-                    'vat' in (l.account_id.name or '').lower() or
-                    'ภาษีมูลค่าเพิ่ม' in (l.account_id.name or '') or
-                    'ภาษีซื้อ' in (l.account_id.name or '')
-                ))
-            )
+            lambda l: l.account_id == self.vat_account_id and l.debit > 0
         )
         
         if not vat_lines:
+            _logger.warning("VAT line not found in payment move for tax invoice creation")
             return
             
         vat_line = vat_lines[0]
         
-        # Create tax invoice for the VAT line
+        # Create tax invoice record using l10n_th_account_tax
         try:
-            # Use the context to indicate this is a partial payment
-            vat_line_with_context = vat_line.with_context(partial_payment=True)
+            # Check if l10n_th_account_tax models are available
+            _logger.info("🔍 Checking for l10n_th_account_tax models...")
             
-            # Create tax invoice record
-            tax_invoice_vals = {
-                "move_id": payment_move.id,
-                "move_line_id": vat_line.id,
-                "partner_id": self.partner_id.id,
-                "tax_base_amount": vat_base_amount,
-                "balance": vat_amount,
-                "tax_invoice_number": False,  # Will be filled later when vendor info is provided
-                "tax_invoice_date": False,    # Will be filled later when vendor info is provided
-            }
-            
-            tax_invoice = self.env["account.move.tax.invoice"].create(tax_invoice_vals)
-            vat_line.tax_invoice_ids = [(4, tax_invoice.id)]
-            
+            if 'account.move.tax.invoice' in self.env:
+                _logger.info("✅ Found account.move.tax.invoice model")
+                
+                # Get model fields to check what's available
+                model_fields = self.env['account.move.tax.invoice']._fields.keys()
+                _logger.info("📋 Available fields: %s", list(model_fields))
+                
+                tax_invoice_vals = {
+                    "move_id": payment_move.id,
+                    "move_line_id": vat_line.id,
+                    "partner_id": self.partner_id.id,
+                    "tax_base_amount": vat_base_amount,
+                    "balance": vat_amount,
+                }
+                
+                # Add optional fields if they exist
+                if 'tax_invoice_number' in model_fields:
+                    tax_invoice_vals["tax_invoice_number"] = self.tax_invoice_number or ""
+                if 'tax_invoice_date' in model_fields:
+                    tax_invoice_vals["tax_invoice_date"] = self.tax_invoice_date or self.date
+                if 'tax_purchase_wait_date' in model_fields:
+                    tax_invoice_vals["tax_purchase_wait_date"] = self.tax_invoice_date or self.date
+                if 'tax_purchase_ok' in model_fields:
+                    tax_invoice_vals["tax_purchase_ok"] = bool(self.tax_invoice_number)
+                
+                _logger.info("📝 Creating tax invoice with values: %s", tax_invoice_vals)
+                
+                tax_invoice = self.env["account.move.tax.invoice"].create(tax_invoice_vals)
+                
+                # Link tax invoice to the VAT line
+                if hasattr(vat_line, 'tax_invoice_ids'):
+                    vat_line.tax_invoice_ids = [(4, tax_invoice.id)]
+                elif hasattr(vat_line, 'tax_invoice_id'):
+                    vat_line.tax_invoice_id = tax_invoice.id
+                
+                _logger.info("✅ Tax invoice created successfully: ID %s, Number: %s, Amount: %s", 
+                            tax_invoice.id, self.tax_invoice_number or "(No number)", vat_amount)
+                            
+            elif 'tax.invoice' in self.env:
+                _logger.info("✅ Found tax.invoice model (alternative)")
+                
+                # Try alternative model name
+                tax_invoice_vals = {
+                    "move_id": payment_move.id,
+                    "partner_id": self.partner_id.id,
+                    "tax_base_amount": vat_base_amount,
+                    "tax_amount": vat_amount,
+                    "invoice_number": self.tax_invoice_number or "",
+                    "invoice_date": self.tax_invoice_date or self.date,
+                }
+                
+                tax_invoice = self.env["tax.invoice"].create(tax_invoice_vals)
+                _logger.info("✅ Alternative tax invoice created: ID %s", tax_invoice.id)
+                
+            else:
+                _logger.warning("❌ l10n_th_account_tax module models not found")
+                _logger.info("🔍 Available models: %s", [m for m in self.env.registry if 'tax' in m])
+                
         except Exception as e:
-            # Log the error but don't block the payment
-            _logger.warning("Failed to create VAT tax invoice for partial payment: %s", str(e))
+            # Log the detailed error
+            _logger.error("❌ Failed to create VAT tax invoice: %s", str(e))
+            _logger.error("🔍 Exception type: %s", type(e).__name__)
+            import traceback
+            _logger.error("🔍 Full traceback: %s", traceback.format_exc())
