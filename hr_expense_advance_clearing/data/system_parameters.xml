@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- System Parameters for Account Codes Configuration -->
+        
+        <!-- VAT Input Account Code Pattern -->
+        <record id="param_vat_input_account_code" model="ir.config_parameter">
+            <field name="key">hr_expense_advance_clearing.vat_input_account_code</field>
+            <field name="value">119%</field>
+        </record>
+        
+        <!-- Withholding Tax Payable Account Code Pattern -->
+        <record id="param_wht_payable_account_code" model="ir.config_parameter">
+            <field name="key">hr_expense_advance_clearing.wht_payable_account_code</field>
+            <field name="value">213%</field>
+        </record>
+        
+        <!-- Employee Advance Account Code Pattern -->
+        <record id="param_advance_account_code" model="ir.config_parameter">
+            <field name="key">hr_expense_advance_clearing.advance_account_code</field>
+            <field name="value">141101</field>
+        </record>
+        
+        <!-- VAT Input Account Name Pattern (fallback) -->
+        <record id="param_vat_input_account_name" model="ir.config_parameter">
+            <field name="key">hr_expense_advance_clearing.vat_input_account_name</field>
+            <field name="value">ภาษีซื้อ,vat input,input vat</field>
+        </record>
+        
+        <!-- Withholding Tax Account Name Pattern (fallback) -->
+        <record id="param_wht_account_name" model="ir.config_parameter">
+            <field name="key">hr_expense_advance_clearing.wht_account_name</field>
+            <field name="value">หัก ณ ที่จ่าย,withholding tax,wht</field>
+        </record>
+        
+    </data>
+</odoo>

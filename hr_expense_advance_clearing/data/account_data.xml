@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+    <!-- Thai Configuration for Advance Clearing -->
+    <!-- Note: This module will work with existing chart of accounts -->
+    <!-- Accounts are found dynamically by code patterns in models -->
+    
+    <!-- Sample Tax Configuration for Thailand -->
+    <!-- Only create if they don't already exist -->
+    
+    <!-- 7% VAT (Purchase) -->
+    <record id="tax_vat_7_purchase" model="account.tax">
+      <field name="name">VAT 7% (Purchase)</field>
+      <field name="type_tax_use">purchase</field>
+      <field name="amount_type">percent</field>
+      <field name="amount">7</field>
+      <field name="company_id" ref="base.main_company"/>
+      <field name="description">VAT7P</field>
+    </record>
+
+    <!-- 3% Withholding Tax -->
+    <record id="tax_wht_3_purchase" model="account.tax">
+      <field name="name">WHT 3% (Purchase)</field>
+      <field name="type_tax_use">purchase</field>
+      <field name="amount_type">percent</field>
+      <field name="amount">-3</field>
+      <field name="company_id" ref="base.main_company"/>
+      <field name="description">WHT3</field>
+    </record>
+
+    <!-- Sample Expense Products -->
+    <record id="product_travel_expense" model="product.product">
+      <field name="name">Travel Expense</field>
+      <field name="type">service</field>
+      <field name="can_be_expensed">True</field>
+      <field name="supplier_taxes_id" eval="[(6, 0, [ref('tax_vat_7_purchase')])]"/>
+    </record>
+
+    <record id="product_office_supplies" model="product.product">
+      <field name="name">Office Supplies</field>
+      <field name="type">consu</field>
+      <field name="can_be_expensed">True</field>
+      <field name="supplier_taxes_id" eval="[(6, 0, [ref('tax_vat_7_purchase')])]"/>
+    </record>
+
+    <record id="product_meals" model="product.product">
+      <field name="name">Meals and Entertainment</field>
+      <field name="type">service</field>
+      <field name="can_be_expensed">True</field>
+      <field name="supplier_taxes_id" eval="[(6, 0, [ref('tax_vat_7_purchase'), ref('tax_wht_3_purchase')])]"/>
+    </record>
+
+  </data>
+</odoo>

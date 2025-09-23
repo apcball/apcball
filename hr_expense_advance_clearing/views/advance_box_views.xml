@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_employee_advance_box_tree" model="ir.ui.view">
+    <field name="name">employee.advance.box.tree</field>
+    <field name="model">employee.advance.box</field>
+    <field name="arch" type="xml">
+      <tree decoration-success="balance &gt; 0" decoration-danger="balance &lt; 0">
+        <field name="employee_id"/>
+        <field name="account_id"/>
+        <field name="journal_id"/>
+        <field name="balance" widget="monetary"/>
+        <field name="currency_id" invisible="1"/>
+        <field name="company_id" invisible="1"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="view_employee_advance_box_form" model="ir.ui.view">
+    <field name="name">employee.advance.box.form</field>
+    <field name="model">employee.advance.box</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_topup_advance" type="object" string="Top-up" class="btn-primary" icon="fa-plus"/>
+          <button name="action_settle_advance" type="object" string="Settle" class="btn-warning" icon="fa-money" invisible="balance == 0"/>
+        </header>
+        <sheet>
+          <div class="oe_button_box" name="button_box">
+            <button type="object" name="action_view_journal_entries" class="oe_stat_button" icon="fa-list">
+              <div class="o_field_widget o_stat_info">
+                <span class="o_stat_text">Journal</span>
+                <span class="o_stat_text">Entries</span>
+              </div>
+            </button>
+          </div>
+          <group>
+            <group string="Employee Information">
+              <field name="employee_id"/>
+              <field name="active"/>
+              <field name="company_id" groups="base.group_multi_company"/>
+            </group>
+            <group string="Account Configuration">
+              <field name="account_id"/>
+              <field name="journal_id"/>
+              <field name="currency_id"/>
+            </group>
+            <group string="Balance Information" colspan="2">
+              <field name="balance" widget="monetary" readonly="1"/>
+              <div class="alert alert-info" invisible="balance &gt;= 0" colspan="2">
+                <strong>Negative Balance:</strong> Company owes money to employee
+              </div>
+              <div class="alert alert-success" invisible="balance &lt;= 0" colspan="2">
+                <strong>Positive Balance:</strong> Employee has advance amount
+              </div>
+            </group>
+          </group>
+        </sheet>
+        <div class="oe_chatter">
+          <field name="message_follower_ids"/>
+          <field name="message_ids"/>
+        </div>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_employee_advance_box_search" model="ir.ui.view">
+    <field name="name">employee.advance.box.search</field>
+    <field name="model">employee.advance.box</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="employee_id"/>
+        <field name="account_id"/>
+        <separator/>
+        <filter name="active" string="Active" domain="[('active', '=', True)]"/>
+        <filter name="inactive" string="Inactive" domain="[('active', '=', False)]"/>
+        <group expand="0" string="Group By">
+          <filter name="group_by_employee" string="Employee" domain="[]" context="{'group_by': 'employee_id'}"/>
+          <filter name="group_by_account" string="Account" domain="[]" context="{'group_by': 'account_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_employee_advance_box" model="ir.actions.act_window">
+    <field name="name">Employee Advance Boxes</field>
+    <field name="res_model">employee.advance.box</field>
+    <field name="view_mode">tree,form</field>
+    <field name="search_view_id" ref="view_employee_advance_box_search"/>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">
+        Create your first Employee Advance Box!
+      </p>
+      <p>
+        Advance boxes track employee advance balances and facilitate 
+        clearing expenses directly from advances instead of creating payables.
+      </p>
+    </field>
+  </record>
+
+  <!-- Menu items -->
+  <menuitem id="menu_employee_advance_root" 
+            name="Advance Management" 
+            parent="hr_expense.menu_hr_expense_root"
+            sequence="20"/>
+            
+  <menuitem id="menu_employee_advance_box" 
+            name="Advance Boxes" 
+            parent="menu_employee_advance_root" 
+            action="action_employee_advance_box"
+            sequence="10"/>
+
+</odoo>

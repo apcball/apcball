@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_advance_topup_wizard" model="ir.ui.view">
+    <field name="name">advance.topup.wizard.form</field>
+    <field name="model">advance.topup.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Top-up Advance">
+        <group>
+          <group string="Employee Information">
+            <field name="employee_id"/>
+            <field name="advance_box_id" options="{'no_create': True}"/>
+            <field name="current_balance" widget="monetary" readonly="1"/>
+          </group>
+          <group string="Top-up Details">
+            <field name="amount" widget="monetary"/>
+            <field name="new_balance" widget="monetary" readonly="1"/>
+            <field name="currency_id" invisible="1"/>
+          </group>
+          <group string="Payment Information">
+            <field name="journal_id"/>
+            <field name="date"/>
+            <field name="description"/>
+          </group>
+        </group>
+        <footer>
+          <button name="action_topup" type="object" string="Top-up" class="btn-primary"/>
+          <button string="Cancel" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_advance_topup_wizard" model="ir.actions.act_window">
+    <field name="name">Top-up Advance</field>
+    <field name="res_model">advance.topup.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+
+  <!-- Menu item for Top-up Advance -->
+  <menuitem id="menu_advance_topup" 
+            name="Top-up Advance" 
+            parent="hr_expense_advance_clearing.menu_employee_advance_root" 
+            action="action_advance_topup_wizard"
+            sequence="20"/>
+
+</odoo>

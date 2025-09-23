@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_advance_clear_wizard" model="ir.ui.view">
+    <field name="name">advance.clear.wizard.form</field>
+    <field name="model">advance.clear.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Manual Clear from Advance">
+        <group>
+          <field name="expense_sheet_id"/>
+          <field name="amount"/>
+        </group>
+        <footer>
+          <button name="action_clear" type="object" string="Create Adjusting Move" class="btn-primary"/>
+          <button string="Close" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_advance_clear_wizard" model="ir.actions.act_window">
+    <field name="name">Manual Clear</field>
+    <field name="res_model">advance.clear.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+</odoo>

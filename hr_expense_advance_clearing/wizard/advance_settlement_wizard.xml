@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_advance_settlement_wizard" model="ir.ui.view">
+    <field name="name">advance.settlement.wizard.form</field>
+    <field name="model">advance.settlement.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Settle Advance">
+        <group>
+          <group string="Employee Information">
+            <field name="employee_id"/>
+            <field name="advance_box_id" options="{'no_create': True}"/>
+            <field name="current_balance" readonly="1"/>
+          </group>
+          <group string="Settlement Details">
+            <field name="settlement_type"/>
+            <field name="amount"/>
+            <field name="final_balance" readonly="1"/>
+          </group>
+          <group string="Payment Information">
+            <field name="journal_id"/>
+            <field name="date"/>
+            <field name="description"/>
+            <field name="currency_id" invisible="1"/>
+          </group>
+        </group>
+        <footer>
+          <button name="action_settle" type="object" string="Settle" class="btn-primary"/>
+          <button string="Cancel" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_advance_settlement_wizard" model="ir.actions.act_window">
+    <field name="name">Settle Advance</field>
+    <field name="res_model">advance.settlement.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+
+  <!-- Menu item for Settle Advance -->
+  <menuitem id="menu_advance_settlement" 
+            name="Settle Advance" 
+            parent="hr_expense_advance_clearing.menu_employee_advance_root" 
+            action="action_advance_settlement_wizard"
+            sequence="30"/>
+
+</odoo>

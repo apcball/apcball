@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Configuration Form View -->
+    <record id="view_hr_expense_advance_config_form" model="ir.ui.view">
+        <field name="name">hr.expense.config.form</field>
+        <field name="model">hr.expense.config</field>
+        <field name="arch" type="xml">
+            <form string="HR Expense Advance Configuration">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="id" invisible="1"/>
+                            HR Expense Advance Configuration
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group string="Tax Accounts Configuration">
+                            <field name="vat_input_account_id" 
+                                   options="{'no_create': True, 'no_edit': True}"
+                                   placeholder="Select VAT Input Account"/>
+                            <field name="wht_payable_account_id"
+                                   options="{'no_create': True, 'no_edit': True}" 
+                                   placeholder="Select WHT Payable Account"/>
+                            <field name="advance_account_id"
+                                   options="{'no_create': True, 'no_edit': True}" 
+                                   placeholder="Select Employee Advance Account"/>
+                        </group>
+                    </group>
+                    
+                    <div class="alert alert-info" role="alert">
+                        <strong>Instructions:</strong>
+                        <ul>
+                            <li><strong>VAT Input Account:</strong> Account for recording input VAT from expenses</li>
+                            <li><strong>WHT Payable Account:</strong> Account for withholding tax payable</li>
+                            <li><strong>Employee Advance Account:</strong> Account for employee advances</li>
+                        </ul>
+                        <p>Select the appropriate accounts from your Chart of Accounts. These accounts will be used when creating journal entries for advance clearing.</p>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action for Configuration -->
+    <record id="action_hr_expense_advance_config" model="ir.actions.act_window">
+        <field name="name">Account Codes Configuration</field>
+        <field name="res_model">hr.expense.config</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_hr_expense_advance_config_form"/>
+        <field name="target">inline</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Menu Item under Advance Management -->
+    <menuitem id="menu_hr_expense_advance_config"
+              name="Advance Configuration"
+              parent="menu_employee_advance_root"
+              action="action_hr_expense_advance_config"
+              sequence="10"/>
+
+</odoo>
