@@ -440,7 +440,9 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
                 "partner_id": bill.partner_id.id,
                 "debit": vat_amt,
                 "credit": 0.0,
+                "tax_base_amount": (vat_amt * 100) / self.vat_rate,  # Calculate base from VAT rate
             }
+            
             # Find the original VAT tax for tax invoice creation
             original_vat_lines = bill.line_ids.filtered(
                 lambda l: l.tax_line_id and (
@@ -461,10 +463,20 @@ class WHTInstallmentPaymentWizard(models.TransientModel):
                     ))
                 )
             )
+            
             if original_vat_lines:
                 vat_line_data["tax_line_id"] = original_vat_lines[0].tax_line_id.id
-                # Set base amount for tax calculation
-                vat_line_data["tax_base_amount"] = (vat_amt * 100) / 7.0  # Calculate base from 7% VAT
+            else:
+                # Create or find a VAT tax record if no original VAT found
+                vat_tax = self.env['account.tax'].search([
+                    ('amount', '=', self.vat_rate),
+                    ('type_tax_use', '=', 'purchase'),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+                if vat_tax:
+                    vat_line_data["tax_line_id"] = vat_tax.id
+                    
+            _logger.info("🔍 VAT line data: %s", vat_line_data)
             move_lines.append((0, 0, vat_line_data))
             _logger.info("✅ VAT line added to move_lines")
         else:
