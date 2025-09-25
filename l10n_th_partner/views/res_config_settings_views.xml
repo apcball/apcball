@@ -10,14 +10,15 @@
             ref="partner_firstname.res_config_settings_view_form"
         />
         <field name="arch" type="xml">
-            <xpath expr="//block[@name='partner_names_order_setting_container']" position="inside">
-                <setting>
+            <xpath
+                expr="//block[@name='partner_names_order_setting_container']"
+                position="inside"
+            >
+                <setting
+                    id="partner_no_space_title"
+                    help="Disable space between title and name. example: Miss Firstname Lastname -> MissFirstname Lastname"
+                >
                     <field name="no_space_title_name" />
-                    <label for="no_space_title_name" />
-                    <div class="text-muted">
-                        Disable space between title and name. example:<br />
-                        Miss Firstname Lastname -> MissFirstname Lastname
-                    </div>
                 </setting>
             </xpath>
         </field>

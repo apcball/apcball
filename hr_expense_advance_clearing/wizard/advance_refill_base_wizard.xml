@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_advance_refill_base_wizard" model="ir.ui.view">
+    <field name="name">advance.refill.base.wizard.form</field>
+    <field name="model">advance.refill.base.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Refill Advance to Base">
+        <group>
+          <group string="Employee Information">
+            <field name="employee_id" readonly="1"/>
+            <field name="box_id" readonly="1"/>
+            <field name="current_balance" readonly="1" widget="monetary"/>
+          </group>
+          <group string="Base Information">
+            <field name="base_amount_ref" widget="monetary" invisible="need_initial_base"/>
+            <field name="manual_base_amount" widget="monetary"/>
+            <field name="initial_base_amount" invisible="not need_initial_base"/>
+            <field name="topup_amount" readonly="1" widget="monetary"/>
+            <field name="need_initial_base" invisible="1"/>
+          </group>
+          <group string="Refill Details">
+            <field name="journal_id" domain="[('type', 'in', ('cash', 'bank'))]"/>
+            <field name="date"/>
+            <field name="currency_id" invisible="1"/>
+          </group>
+        </group>
+        <footer>
+          <button name="action_refill" type="object" string="Refill" class="btn-primary"/>
+          <button string="Cancel" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_advance_refill_base_wizard" model="ir.actions.act_window">
+    <field name="name">Refill to Base</field>
+    <field name="res_model">advance.refill.base.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+</odoo>

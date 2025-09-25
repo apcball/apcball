@@ -4,5 +4,6 @@ access_employee_advance_box_manager,employee.advance.box manager,model_employee_
 access_advance_topup_wizard_user,advance.topup.wizard user,model_advance_topup_wizard,base.group_user,1,1,1,1
 access_advance_clear_wizard_user,advance.clear.wizard user,model_advance_clear_wizard,base.group_user,1,1,1,1
 access_advance_settlement_wizard_user,advance.settlement.wizard user,model_advance_settlement_wizard,base.group_user,1,1,1,1
+access_advance_refill_base_wizard_user,advance.refill.base.wizard user,model_advance_refill_base_wizard,base.group_user,1,1,1,1
 access_hr_expense_config_user,hr.expense.config user,model_hr_expense_config,base.group_user,1,1,1,0
 access_hr_expense_config_manager,hr.expense.config manager,model_hr_expense_config,hr_expense.group_hr_expense_team_approver,1,1,1,1

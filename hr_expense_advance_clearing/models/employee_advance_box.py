@@ -37,6 +37,13 @@ class EmployeeAdvanceBox(models.Model):
         default=lambda self: self.env.company.currency_id,
         string="Currency"
     )
+    remember_base_amount = fields.Monetary(
+        string="Base Amount Reference",
+        currency_field="currency_id",
+        default=0.0,
+        help="Stored base amount used when refilling advances",
+        tracking=True,
+    )
     balance = fields.Monetary(
         compute="_compute_balance", 
         store=False,
@@ -161,6 +168,25 @@ class EmployeeAdvanceBox(models.Model):
                 "default_employee_id": self.employee_id.id,
                 "default_advance_box_id": self.id,
                 "default_current_balance": self.balance,
+            }
+        }
+
+    def action_refill_to_base(self):
+        """Open wizard to refill advance to base amount"""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Refill to Base"),
+            "res_model": "advance.refill.base.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_employee_id": self.employee_id.id,
+                "default_box_id": self.id,
+                "default_current_balance": self.balance,
+                "default_base_amount_ref": self.remember_base_amount,
+                "default_currency_id": self.currency_id.id,
+                "default_journal_id": self.journal_id.id,
             }
         }
 

@@ -21,6 +21,7 @@
     <field name="arch" type="xml">
       <form>
         <header>
+          <button name="action_refill_to_base" type="object" string="Refill to Base" class="btn-info" icon="fa-refresh" groups="account.group_account_user,account.group_account_manager"/>
           <button name="action_topup_advance" type="object" string="Top-up" class="btn-primary" icon="fa-plus"/>
           <button name="action_settle_advance" type="object" string="Settle" class="btn-warning" icon="fa-money" invisible="balance == 0"/>
         </header>
@@ -43,6 +44,7 @@
               <field name="account_id"/>
               <field name="journal_id"/>
               <field name="currency_id"/>
+              <field name="remember_base_amount" invisible="1"/>
             </group>
             <group string="Balance Information" colspan="2">
               <field name="balance" widget="monetary" readonly="1"/>

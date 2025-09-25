@@ -13,6 +13,7 @@
         'views/hr_expense_views.xml',
         'views/hr_expense_config_views.xml',
         'wizard/advance_topup_wizard.xml',
+        'wizard/advance_refill_base_wizard.xml',
     ],
     "application": False,
     "installable": True
