@@ -47,7 +47,8 @@ class EmployeeAdvanceBox(models.Model):
     balance = fields.Monetary(
         compute="_compute_balance", 
         store=False,
-        string="Current Balance"
+        string="Current Balance",
+        help="Current advance balance calculated from posted journal entries"
     )
     display_name = fields.Char(
         compute="_compute_display_name", 
@@ -73,6 +74,9 @@ class EmployeeAdvanceBox(models.Model):
 
     @api.depends("employee_id", "account_id")
     def _compute_balance(self):
+        import logging
+        _logger = logging.getLogger(__name__)
+        
         for box in self:
             bal = 0.0
             if box.employee_id and box.account_id:
@@ -88,7 +92,33 @@ class EmployeeAdvanceBox(models.Model):
                     lines = self.env["account.move.line"].search(domain)
                     # Advance balance = debits - credits (positive means employee has advance)
                     bal = sum(line.debit - line.credit for line in lines)
+                    
+                    _logger.info("Balance computation for %s: Found %d lines, balance = %s", 
+                               box.employee_id.name, len(lines), bal)
             box.balance = bal
+    
+    def refresh_balance(self):
+        """Force refresh the balance computation with fresh data from database"""
+        # Invalidate any cached values
+        self.invalidate_recordset(['balance'])
+        # Re-read the record from database
+        self.env.cr.execute('SELECT 1')  # Force database sync
+        # Force recomputation
+        self._compute_balance()
+        return self.balance
+
+    def get_formview_action(self, access_uid=None):
+        """Override to remove create/save buttons from form view"""
+        result = super().get_formview_action(access_uid=access_uid)
+        result.update({
+            'flags': {
+                'mode': 'readonly',
+                'create': False,
+                'edit': False,
+                'delete': False
+            }
+        })
+        return result
 
     @api.constrains("employee_id")
     def _check_unique_employee(self):

@@ -37,11 +37,4 @@
     <field name="target">new</field>
   </record>
 
-  <!-- Menu item for Top-up Advance -->
-  <menuitem id="menu_advance_topup" 
-            name="Top-up Advance" 
-            parent="hr_expense_advance_clearing.menu_employee_advance_root" 
-            action="action_advance_topup_wizard"
-            sequence="20"/>
-
 </odoo>

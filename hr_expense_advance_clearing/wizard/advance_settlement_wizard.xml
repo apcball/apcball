@@ -9,12 +9,21 @@
           <group string="Employee Information">
             <field name="employee_id"/>
             <field name="advance_box_id" options="{'no_create': True}"/>
-            <field name="current_balance" readonly="1"/>
+            <field name="current_balance" readonly="1" widget="monetary"/>
+            <div class="alert alert-info" invisible="current_balance &gt;= 0">
+              <strong>Negative Balance:</strong> Company owes money to employee
+            </div>
+            <div class="alert alert-success" invisible="current_balance &lt;= 0">
+              <strong>Positive Balance:</strong> Employee has advance amount
+            </div>
           </group>
           <group string="Settlement Details">
             <field name="settlement_type"/>
-            <field name="amount"/>
-            <field name="final_balance" readonly="1"/>
+            <field name="amount" widget="monetary"/>
+            <field name="final_balance" readonly="1" widget="monetary"/>
+            <div class="alert alert-warning" invisible="settlement_type != 'clear'">
+              <strong>Clear Settlement:</strong> This will zero out the entire advance balance
+            </div>
           </group>
           <group string="Payment Information">
             <field name="journal_id"/>
@@ -22,9 +31,10 @@
             <field name="description"/>
             <field name="currency_id" invisible="1"/>
           </group>
+      <!-- Actions buttons moved to footer to render horizontally -->
         </group>
         <footer>
-          <button name="action_settle" type="object" string="Settle" class="btn-primary"/>
+          <button name="action_settle" type="object" string="Create Settlement" class="btn-primary"/>
           <button string="Cancel" class="btn-secondary" special="cancel"/>
         </footer>
       </form>
@@ -36,6 +46,7 @@
     <field name="res_model">advance.settlement.wizard</field>
     <field name="view_mode">form</field>
     <field name="target">new</field>
+    <field name="context">{'form_view_initial_mode': 'edit', 'force_detailed_view': True}</field>
   </record>
 
   <!-- Menu item for Settle Advance -->

@@ -23,7 +23,7 @@
         <header>
           <button name="action_refill_to_base" type="object" string="Refill to Base" class="btn-info" icon="fa-refresh" groups="account.group_account_user,account.group_account_manager"/>
           <button name="action_topup_advance" type="object" string="Top-up" class="btn-primary" icon="fa-plus"/>
-          <button name="action_settle_advance" type="object" string="Settle" class="btn-warning" icon="fa-money" invisible="balance == 0"/>
+          <button name="action_settle_advance" type="object" string="Settle" class="btn-warning" icon="fa-money" invisible="balance == 0" context="{'settlement_context': True}"/>
         </header>
         <sheet>
           <div class="oe_button_box" name="button_box">
