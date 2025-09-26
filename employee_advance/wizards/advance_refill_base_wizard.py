@@ -47,8 +47,14 @@ class AdvanceRefillBaseWizard(models.TransientModel):
             raise UserError(_("Top-up amount must be greater than zero."))
 
         # Create journal entry
+        # Ensure journal has sequence
+        if not getattr(advance_box.journal_id, 'sequence_id', False):
+            raise UserError(_('The selected journal for advance refill does not have a sequence configured. Please set a sequence on the journal.'))
+
         je_vals = {
             'journal_id': advance_box.journal_id.id,
+            'company_id': advance_box.company_id.id or self.env.company.id,
+            'move_type': 'entry',
             'date': fields.Date.context_today(self),
             'ref': f'Refill Advance to Base for {advance_box.employee_id.name}',
             'line_ids': [
@@ -68,8 +74,9 @@ class AdvanceRefillBaseWizard(models.TransientModel):
             ]
         }
 
+        # Create without explicit 'name' so the posting will assign sequence-based name
         je = self.env['account.move'].create(je_vals)
-        je.action_post()  # Post the journal entry
+        je.action_post()
 
         # Update remember_base_amount in advance box
         advance_box.remember_base_amount = self.base_amount_ref

@@ -7,9 +7,10 @@
         <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='employee_id']" position="after">
-                <field name="use_advance" invisible="state != 'draft'"/>
+                <field name="clear_mode" invisible="state != 'draft'"/>
+                <field name="use_advance" invisible="state != 'draft' or clear_mode == 'pay_vendor'"/>
                 <field name="advance_box_id" 
-                       invisible="not use_advance or state != 'draft'"
+                       invisible="not use_advance or state != 'draft' or clear_mode == 'pay_vendor'"
                        domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>
             </xpath>
             

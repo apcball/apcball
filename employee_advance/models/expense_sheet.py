@@ -8,6 +8,11 @@ _logger = logging.getLogger(__name__)
 class HrExpenseSheet(models.Model):
     _inherit = 'hr.expense.sheet'
 
+    clear_mode = fields.Selection([
+        ('reimburse_employee', 'Reimburse Employee'),
+        ('pay_vendor', 'Pay Vendor'),
+    ], string='Clear Mode', default='reimburse_employee', states={'done': [('readonly', True)]})
+    
     use_advance = fields.Boolean(
         string='Clear from Advance',
         default=True
@@ -49,6 +54,20 @@ class HrExpenseSheet(models.Model):
         """Clear advance box if not using advance"""
         if not self.use_advance:
             self.advance_box_id = False
+
+    @api.onchange('clear_mode')
+    def _onchange_clear_mode(self):
+        """Handle clear_mode changes"""
+        if self.clear_mode == 'pay_vendor':
+            # When switching to Pay Vendor mode, ensure use_advance is disabled
+            # since the clearing logic is different
+            self.use_advance = False
+            self.advance_box_id = False
+        elif self.clear_mode == 'reimburse_employee':
+            # When switching back to reimburse, allow use_advance
+            if not self.use_advance:
+                # Re-enable use_advance if it was previously set
+                self.use_advance = True
 
     def action_approve_expense_sheets(self):
         """Override approval to create draft vendor bill when using advance"""
@@ -158,98 +177,54 @@ class HrExpenseSheet(models.Model):
         return bill
 
     def action_clear_advance(self):
-        """Clear advance by creating JE and reconciling"""
-        for sheet in self:
-            if not sheet.bill_id:
-                raise UserError(_("No vendor bill found for this expense sheet."))
-            
-            if sheet.bill_id.state != 'posted':
-                raise UserError(_("The vendor bill must be posted before clearing the advance."))
-            
-            if sheet.bill_id.amount_residual <= 0:
-                raise UserError(_("The vendor bill is already fully paid."))
-            
-            advance_box = sheet.advance_box_id
-            if not advance_box:
-                raise UserError(_("No advance box selected."))
-            
-            if not advance_box.account_id:
-                raise UserError(_("Please set the advance account for the selected advance box."))
-            
-            # Check if employee has private address using the same logic as above
-            partner_id = False
-            
-            # Method 1: Check if address_home_id exists (from hr_contract module)
-            if hasattr(advance_box.employee_id, 'address_home_id'):
-                partner_id = advance_box.employee_id.sudo().address_home_id.id if advance_box.employee_id.sudo().address_home_id else False
-            
-            # If still not found, try to get the related user's partner (which might contain private address)
-            if not partner_id and advance_box.employee_id.user_id:
-                partner_id = advance_box.employee_id.user_id.partner_id.id
-            
-            # If still not found, default to employee's address_id (work address)
-            if not partner_id:
-                partner_id = advance_box.employee_id.address_id.id if advance_box.employee_id.address_id else False
-            
-            if not partner_id:
-                raise UserError(_("Please set the employee's private address."))
-                
-            # Check if default clearing journal is set in config
-            clearing_journal_id = self.env['ir.config_parameter'].sudo().get_param('employee_advance.advance_default_clearing_journal_id')
-            if not clearing_journal_id:
-                raise UserError(_("Please set the default clearing journal in configuration."))
-            
-            clearing_journal = self.env['account.journal'].browse(int(clearing_journal_id))
-            if not clearing_journal.exists():
-                raise UserError(_("Clearing journal not found. Please check configuration."))
-            
-            # Create journal entry to clear advance
-            residual_amount = sheet.bill_id.amount_residual
-            # Use the partner_id from the address check above
-            target_partner_id = sheet.bill_id.partner_id.id
-            
-            je_vals = {
-                'journal_id': clearing_journal.id,
-                'date': fields.Date.context_today(sheet),
-                'ref': f'Clear Advance for Bill {sheet.bill_id.name}',
-                'line_ids': [
-                    (0, 0, {
-                        'account_id': sheet.bill_id.partner_id.property_account_payable_id.id,
-                        'partner_id': target_partner_id,
-                        'debit': residual_amount,
-                        'credit': 0.0,
-                        'name': f'Clear Advance for Bill {sheet.bill_id.name}'
-                    }),
-                    (0, 0, {
-                        'account_id': advance_box.account_id.id,
-                        'partner_id': target_partner_id,
-                        'debit': 0.0,
-                        'credit': residual_amount,
-                        'name': f'Clear Advance for Bill {sheet.bill_id.name}'
-                    }),
-                ]
-            }
-            
-            je = self.env['account.move'].create(je_vals)
-            je.action_post()  # Post the journal entry
-            
-            # Now reconcile the AP line from the JE with the bill's AP line
-            ap_line_from_je = je.line_ids.filtered(lambda l: l.account_id.account_type == 'liability_payable')
-            ap_line_from_bill = sheet.bill_id.line_ids.filtered(lambda l: l.account_id.account_type == 'liability_payable')
-            
-            if ap_line_from_je and ap_line_from_bill:
-                lines_to_reconcile = ap_line_from_je + ap_line_from_bill
-                if lines_to_reconcile:
-                    lines_to_reconcile.reconcile()
-            
-            # Update expense sheet and bill
-            sheet.message_post(body=_("Advance cleared via journal entry %s." % je.name))
-            sheet.bill_id.message_post(body=_("Advance cleared via journal entry %s." % je.name))
-            
-            # Log in advance box
-            advance_box.message_post(body=_("Advance cleared for expense sheet %s via journal entry %s." % (sheet.name, je.name)))
-            
-            return je
+        """Open Register Payment wizard to clear advance instead of creating JE directly"""
+        self.ensure_one()
+        
+        if not self.bill_id:
+            raise UserError(_("No vendor bill found for this expense sheet."))
+        
+        if self.bill_id.state != 'posted':
+            raise UserError(_("The vendor bill must be posted before clearing the advance."))
+        
+        if self.bill_id.amount_residual <= 0:
+            raise UserError(_("The vendor bill is already fully paid."))
+        
+        advance_box = self.advance_box_id
+        if not advance_box:
+            raise UserError(_("No advance box selected."))
+        
+        if not advance_box.journal_id:
+            raise UserError(_("The advance box does not have a journal configured. Please set a journal for the advance box."))
+        
+        # Prepare values for the payment wizard
+        payment_vals = {
+            'date': fields.Date.context_today(self),
+            'journal_id': advance_box.journal_id.id,
+            'partner_id': self.bill_id.partner_id.id,
+            'partner_type': 'supplier',
+            'payment_type': 'outbound',  # Payment to vendor/employee
+            'amount': min(self.bill_id.amount_residual, self.bill_id.amount_total_signed),
+            'currency_id': self.bill_id.currency_id.id,
+            'payment_difference_handling': 'open',
+            'move_ids': [(4, self.bill_id.id, False)],
+        }
+
+        # Create a payment wizard context
+        action = {
+            'name': _('Register Payment on Advance'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.payment.register',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'active_model': 'account.move',
+                'active_ids': [self.bill_id.id],
+                'default_is_advance_clearing': True,  # Flag to identify this is an advance clearing
+                **payment_vals
+            },
+        }
+        
+        return action
 
     def action_sheet_paid(self):
         """Override method to handle paid status after advance clearing"""

@@ -100,11 +100,17 @@ class EmployeeAdvanceBox(models.Model):
                     ('move_id.state', '=', 'posted'),
                     ('partner_id', '=', partner_id),
                 ]
-                lines = self.env['account.move.line'].search(domain)
-                
-                # Calculate balance: debit - credit
-                total_debit = sum(lines.mapped('debit'))
-                total_credit = sum(lines.mapped('credit'))
+
+                # Use read_group to aggregate in the database for accuracy and performance
+                grouped = self.env['account.move.line'].read_group(domain, ['debit', 'credit'], [])
+                if grouped:
+                    total_debit = grouped[0].get('debit') or 0.0
+                    total_credit = grouped[0].get('credit') or 0.0
+                else:
+                    total_debit = 0.0
+                    total_credit = 0.0
+
+                # Calculate net balance: debits increase the available advance, credits decrease it
                 record.balance = total_debit - total_credit
             else:
                 record.balance = 0.0
@@ -173,3 +179,25 @@ class EmployeeAdvanceBox(models.Model):
             partner_id = self.employee_id.address_id.id if self.employee_id.address_id else False
         
         return partner_id
+
+    def action_open_settlement_wizard(self):
+        """Open the settlement wizard for this advance box"""
+        self.ensure_one()
+        
+        # Create a wizard record with the current advance box
+        wizard = self.env['advance.settlement.wizard'].create({
+            'box_id': self.id,
+        })
+        
+        return {
+            'name': _('Settle Advance'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'advance.settlement.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_box_id': self.id,
+                'default_employee_name': self.employee_id.name,
+            }
+        }

@@ -41,6 +41,11 @@
                             string="Refill to Base" 
                             class="btn-primary"
                             invisible="not employee_id or not account_id or not journal_id"/>
+                    <button name="action_open_settlement_wizard" 
+                            type="object" 
+                            string="Settle Advance" 
+                            class="btn-secondary"
+                            invisible="balance == 0"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -50,6 +55,12 @@
                                 class="oe_stat_button" 
                                 icon="fa-plus-circle"
                                 invisible="not employee_id or not account_id or not journal_id"/>
+                        <button name="action_open_settlement_wizard" 
+                                type="object" 
+                                string="Settle Advance" 
+                                class="oe_stat_button" 
+                                icon="fa-usd"
+                                invisible="balance == 0"/>
                     </div>
                     <group>
                         <group>
@@ -74,6 +85,31 @@
         </field>
     </record>
     
+    <!-- Settlement Tree View -->
+    <record id="view_employee_advance_settlement_tree" model="ir.ui.view">
+        <field name="name">employee.advance.box.settlement.tree</field>
+        <field name="model">employee.advance.box</field>
+        <field name="arch" type="xml">
+            <tree string="Advance Box Settlements">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="balance"/>
+                <field name="account_id"/>
+                <field name="journal_id"/>
+                <field name="company_id" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Settlement Action -->
+    <record id="action_employee_advance_settlement" model="ir.actions.act_window">
+        <field name="name">Settlement</field>
+        <field name="res_model">employee.advance.box</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[]</field>
+        <field name="context">{}</field>
+    </record>
+
     <!-- Menu Item -->
     <menuitem id="menu_employee_advance_root"
               name="Employee Advance"
@@ -84,5 +120,17 @@
               name="Advance Boxes"
               parent="menu_employee_advance_root"
               action="action_employee_advance_box"
+              sequence="10"/>
+
+    <menuitem id="menu_employee_advance_settlement_root"
+              name="Settlement"
+              parent="menu_employee_advance_root"
+              sequence="20"
+              groups="account.group_account_manager"/>
+
+    <menuitem id="menu_employee_advance_settlement"
+              name="Settlement"
+              parent="menu_employee_advance_settlement_root"
+              action="action_employee_advance_settlement"
               sequence="10"/>
 </odoo>

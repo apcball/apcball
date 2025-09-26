@@ -8,8 +8,10 @@
         - Maintain Advance Box per employee with Refill-to-Base functionality
         - Submit expenses and clear from advance
         - Create draft vendor bills after manager approval
-        - Clear advances with journal entries
+        - Clear advances with payment wizard
         - Support for VAT/WHT reporting
+        - Two clearing modes: Reimburse Employee or Pay Vendor
+        - Settlement functionality for closing advance boxes
     """,
     'author': 'Your Company',
     'website': 'https://www.yourcompany.com',
@@ -25,6 +27,7 @@
         'views/actions.xml',
         'views/advance_box_views.xml',
         'views/expense_sheet_views.xml',
+        'views/hr_expense_views.xml',
         'views/res_config_settings_views.xml',
         'views/wizard_views.xml',
         'views/account_move_views.xml',
