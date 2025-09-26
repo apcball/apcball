@@ -18,12 +18,14 @@ This module addresses the need for a proper advance management system that:
 2. **hr.expense** - Extended with advance clearing functionality
 3. **hr.expense.sheet** - Expense sheets with advance clearing options
 4. **hr.expense.config** - Configuration for tax and advance accounts
+5. **account.move** - Extended with advance clearing functionality for vendor bills
 
 ### Wizards
 1. **advance.topup.wizard** - Handles advance top-up functionality
 2. **advance.clear.wizard** - Manual clearing from advance
 3. **advance.settlement.wizard** - Advance settlement functionality
 4. **advance.refill.base.wizard** - Refill to base amount functionality
+5. **bill.clear.advance.wizard** - Clear vendor bills with employee advance
 
 ### Views
 - Custom views for advance boxes, expense forms, and configuration
@@ -46,7 +48,13 @@ This module addresses the need for a proper advance management system that:
 - **Expense Integration** - Checkbox to clear from advance, redirects credit from Payable → Advance Account
 - **Tax Support** - Automatic posting of VAT and WHT entries
 
-## File Structure
+### New Files Added
+- **models/account_move.py** - Extends account.move with advance clearing functionality
+- **wizard/bill_clear_advance_wizard.py** - Wizard to handle clearing bills with employee advance
+- **wizard/bill_clear_advance_wizard.xml** - View for the advance clearing wizard
+- **views/account_move_views.xml** - UI extensions for account.move form
+
+### File Structure
 ```
 hr_expense_advance_clearing/
 ├── __init__.py
@@ -59,6 +67,7 @@ hr_expense_advance_clearing/
 │   └── system_parameters.xml
 ├── models/
 │   ├── __init__.py
+│   ├── account_move.py
 │   ├── employee_advance_box.py
 │   ├── hr_expense.py
 │   └── hr_expense_config.py
@@ -68,6 +77,7 @@ hr_expense_advance_clearing/
 │   ├── __init__.py
 │   └── test_advance_refill_base.py
 ├── views/
+│   ├── account_move_views.xml
 │   ├── advance_box_views.xml
 │   ├── hr_expense_config_views.xml
 │   └── hr_expense_views.xml
@@ -80,7 +90,9 @@ hr_expense_advance_clearing/
     ├── advance_settlement_wizard.py
     ├── advance_settlement_wizard.xml
     ├── advance_topup_wizard.py
-    └── advance_topup_wizard.xml
+    ├── advance_topup_wizard.xml
+    ├── bill_clear_advance_wizard.py
+    └── bill_clear_advance_wizard.xml
 ```
 
 ## Key Classes and Methods
@@ -143,3 +155,27 @@ Includes transaction tests in `tests/test_advance_refill_base.py` that validate:
 - License: LGPL-3
 - Installable: True
 - Application: False
+
+## New Advance Clearing Feature
+The module now includes functionality to clear vendor bills against employee advance accounts:
+
+### Functionality
+- Adds a "Clear with Advance" button to vendor bills
+- Creates reclassification journal entries to move amounts from AP to advance accounts
+- Automatically reconciles entries 
+- Supports partial clearing amounts
+- Handles multi-currency scenarios
+- Provides audit trail through messages and smart buttons
+
+### Technical Implementation
+- New wizard model `bill.clear.advance.wizard` for the clearing process
+- Extended `account.move` model with `action_clear_with_advance` method
+- New view `account_move_views.xml` to add button to vendor bill forms
+- Proper security access controls
+
+### Implementation Notes
+- Uses `invisible` attribute instead of deprecated `attrs` for Odoo 17 compatibility
+- Fixed message posting to use `clearing_move.name` for proper journal entry reference
+- Corrected employee lookup by traversing through employee.advance.box records instead of direct field search due to field access issues
+- Added proper error handling for cases where address_home_id field is not accessible, using fallback to user_id.partner_id relationship
+- Enhanced functionality to support context-based advance box selection, allowing users to select an advance box first and then clear bills against it

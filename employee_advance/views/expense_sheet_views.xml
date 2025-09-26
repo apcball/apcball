@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Expense Sheet Form View to add Advance functionality -->
+    <record id="view_expense_sheet_form_advance" model="ir.ui.view">
+        <field name="name">hr.expense.sheet.form.advance</field>
+        <field name="model">hr.expense.sheet</field>
+        <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='employee_id']" position="after">
+                <field name="use_advance" invisible="state != 'draft'"/>
+                <field name="advance_box_id" 
+                       invisible="not use_advance or state != 'draft'"
+                       domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>
+            </xpath>
+            
+            <!-- Add buttons section if not already present -->
+            <header position="inside">
+                <button name="action_clear_advance" 
+                        type="object" 
+                        string="Clear with Advance" 
+                        class="btn-primary"
+                        invisible="not bill_id or bill_id.state != 'posted' or bill_id.amount_residual &lt;= 0 or not advance_box_id"/>
+            </header>
+            
+            <!-- Add tabs for Bill and Payment information -->
+            <notebook position="inside">
+                <page string="Advance &amp; Bill Information" invisible="not use_advance">
+                    <group>
+                        <group string="Bill Information">
+                            <field name="bill_id" readonly="1"/>
+                            <field name="payment_ids" readonly="1" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+    </record>
+    
+    <!-- Vendor Bill Form View - Add Clear with Advance button -->
+    <!-- Note: This functionality is already provided in account_move_views.xml to avoid duplicate buttons -->
+</odoo>

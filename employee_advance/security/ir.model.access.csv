@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_employee_advance_box_user,employee.advance.box.user,model_employee_advance_box,base.group_user,1,0,0,0
+access_employee_advance_box_manager,employee.advance.box.manager,model_employee_advance_box,base.group_erp_manager,1,1,1,1
+access_advance_refill_base_wizard_user,advance.refill.base.wizard.user,model_advance_refill_base_wizard,base.group_user,1,1,1,1
+access_advance_refill_base_wizard_manager,advance.refill.base.wizard.manager,model_advance_refill_base_wizard,base.group_erp_manager,1,1,1,1
+access_link_advance_wizard_user,link.advance.wizard.user,model_link_advance_wizard,base.group_user,1,1,1,1
+access_link_advance_wizard_manager,link.advance.wizard.manager,model_link_advance_wizard,base.group_erp_manager,1,1,1,1
