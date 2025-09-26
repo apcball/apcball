@@ -6,3 +6,4 @@ from . import account_move_line
 from . import account_payment_register
 from . import res_config_settings
 from . import utils_journal
+from . import wht_integration

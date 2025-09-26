@@ -20,6 +20,8 @@
         'account',
         'mail',
         'hr_contract',
+        'l10n_th_account_tax',
+        'l10n_th_account_wht_cert_form',
     ],
     'data': [
         'security/ir.model.access.csv',

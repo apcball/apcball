@@ -7,14 +7,55 @@
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
                 <button name="action_clear_advance_from_bill" type="object" string="Clear with Advance" class="btn-primary" invisible="move_type != 'in_invoice' or state != 'posted'"/>
-                <button name="%(action_link_advance_wizard)d" type="action" string="Link to Advance" class="btn-secondary" invisible="move_type != 'in_invoice'"/>
+                <button name="%(l10n_th_account_tax.action_withholding_tax_cert_menu)d" 
+                        type="action" 
+                        string="Print WHT Certificates" 
+                        class="btn-secondary"
+                        invisible="not wht_cert_ids"/>
             </xpath>
-            <xpath expr="//sheet/notebook/page/field[@name='invoice_line_ids']" position="after">
-                <group string="Advance Info">
-                    <field name="is_expense_advance_bill" readonly="1"/>
-                    <field name="advance_box_id"/>
-                    <field name="expense_sheet_id"/>
-                </group>
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Withholding Tax Certificates" invisible="not wht_cert_ids">
+                    <field name="wht_cert_ids" nolabel="1" 
+                           context="{'default_move_id': id, 'default_partner_id': partner_id}">
+                        <tree string="WHT Certificates" decoration-info="state == 'draft'" decoration-success="state == 'done'" decoration-danger="state == 'cancel'">
+                            <field name="number"/>
+                            <field name="date"/>
+                            <field name="partner_id"/>
+                            <field name="income_tax_form"/>
+                            <field name="state"/>
+                        </tree>
+                        <form string="Withholding Tax Certificate">
+                            <group>
+                                <field name="number"/>
+                                <field name="date"/>
+                                <field name="state"/>
+                                <field name="partner_id"/>
+                                <field name="income_tax_form"/>
+                                <field name="tax_payer"/>
+                            </group>
+                            <notebook>
+                                <page string="Lines">
+                                    <field name="wht_line">
+                                        <tree editable="bottom">
+                                            <field name="wht_cert_income_type"/>
+                                            <field name="wht_cert_income_desc"/>
+                                            <field name="base"/>
+                                            <field name="amount"/>
+                                            <field name="wht_percent"/>
+                                        </tree>
+                                    </field>
+                                </page>
+                            </notebook>
+                        </form>
+                    </field>
+                </page>
+                <page string="Advance Info">
+                    <group string="Advance Info">
+                        <field name="is_expense_advance_bill" readonly="1"/>
+                        <field name="advance_box_id"/>
+                        <field name="expense_sheet_id"/>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>

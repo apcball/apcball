@@ -11,6 +11,7 @@
                 <field name="advance_box_id" 
                        invisible="not use_advance or state != 'draft'"
                        domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>
+                <field name="has_wht_certs" invisible="1"/>
             </xpath>
             
             <!-- Add buttons section if not already present -->
@@ -20,15 +21,38 @@
                         string="Clear with Advance" 
                         class="btn-primary"
                         invisible="not bill_id or bill_id.state != 'posted' or bill_id.amount_residual &lt;= 0 or not advance_box_id"/>
+                <button name="%(l10n_th_account_tax.action_withholding_tax_cert_menu)d" 
+                        type="action" 
+                        string="Print WHT Certificates" 
+                        class="btn-secondary"
+                        invisible="not bill_id or not has_wht_certs"/>
             </header>
             
             <!-- Add tabs for Bill and Payment information -->
             <notebook position="inside">
-                <page string="Advance &amp; Bill Information" invisible="not use_advance">
+                <page string="Bill Information" invisible="not use_advance">
                     <group>
                         <group string="Bill Information">
                             <field name="bill_id" readonly="1"/>
                             <field name="payment_ids" readonly="1" widget="many2many_tags"/>
+                        </group>
+                        <group string="WHT Certificates" invisible="not bill_id or not has_wht_certs">
+                            <field name="bill_id" invisible="1"/>
+                            <field name="has_wht_certs" invisible="1"/>
+                            <div class="mt-4">
+                                <h3>Withholding Tax Certificates</h3>
+                                <p>WHT certificates associated with this expense's vendor bill are available via the Print WHT Certificates action.</p>
+                            </div>
+                        </group>
+                    </group>
+                </page>
+                <page string="Advance Info" invisible="not use_advance">
+                    <group>
+                        <group string="Advance Information">
+                            <field name="use_advance" invisible="state != 'draft'"/>
+                            <field name="advance_box_id" 
+                                   invisible="not use_advance or state != 'draft'"
+                                   domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>
                         </group>
                     </group>
                 </page>
