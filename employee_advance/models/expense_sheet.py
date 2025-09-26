@@ -8,11 +8,6 @@ _logger = logging.getLogger(__name__)
 class HrExpenseSheet(models.Model):
     _inherit = 'hr.expense.sheet'
 
-    clear_mode = fields.Selection([
-        ('reimburse_employee', 'Reimburse Employee'),
-        ('pay_vendor', 'Pay Vendor'),
-    ], string='Clear Mode', default='reimburse_employee', states={'done': [('readonly', True)]})
-    
     use_advance = fields.Boolean(
         string='Clear from Advance',
         default=True
@@ -54,20 +49,6 @@ class HrExpenseSheet(models.Model):
         """Clear advance box if not using advance"""
         if not self.use_advance:
             self.advance_box_id = False
-
-    @api.onchange('clear_mode')
-    def _onchange_clear_mode(self):
-        """Handle clear_mode changes"""
-        if self.clear_mode == 'pay_vendor':
-            # When switching to Pay Vendor mode, ensure use_advance is disabled
-            # since the clearing logic is different
-            self.use_advance = False
-            self.advance_box_id = False
-        elif self.clear_mode == 'reimburse_employee':
-            # When switching back to reimburse, allow use_advance
-            if not self.use_advance:
-                # Re-enable use_advance if it was previously set
-                self.use_advance = True
 
     def action_approve_expense_sheets(self):
         """Override approval to create draft vendor bill when using advance"""
@@ -177,7 +158,7 @@ class HrExpenseSheet(models.Model):
         return bill
 
     def action_clear_advance(self):
-        """Open Register Payment wizard to clear advance instead of creating JE directly"""
+        """Create Journal Entry to clear advance instead of opening Register Payment wizard"""
         self.ensure_one()
         
         if not self.bill_id:
@@ -193,38 +174,11 @@ class HrExpenseSheet(models.Model):
         if not advance_box:
             raise UserError(_("No advance box selected."))
         
-        if not advance_box.journal_id:
-            raise UserError(_("The advance box does not have a journal configured. Please set a journal for the advance box."))
+        if not advance_box.account_id:
+            raise UserError(_("The advance box does not have an account configured. Please set an account for the advance box."))
         
-        # Prepare values for the payment wizard
-        payment_vals = {
-            'date': fields.Date.context_today(self),
-            'journal_id': advance_box.journal_id.id,
-            'partner_id': self.bill_id.partner_id.id,
-            'partner_type': 'supplier',
-            'payment_type': 'outbound',  # Payment to vendor/employee
-            'amount': min(self.bill_id.amount_residual, self.bill_id.amount_total_signed),
-            'currency_id': self.bill_id.currency_id.id,
-            'payment_difference_handling': 'open',
-            'move_ids': [(4, self.bill_id.id, False)],
-        }
-
-        # Create a payment wizard context
-        action = {
-            'name': _('Register Payment on Advance'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.payment.register',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'active_model': 'account.move',
-                'active_ids': [self.bill_id.id],
-                'default_is_advance_clearing': True,  # Flag to identify this is an advance clearing
-                **payment_vals
-            },
-        }
-        
-        return action
+        # Call the existing method from account.move to handle JE creation
+        return self.bill_id._clear_advance_using_advance_box(advance_box)
 
     def action_sheet_paid(self):
         """Override method to handle paid status after advance clearing"""

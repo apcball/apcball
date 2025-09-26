@@ -1,116 +1,138 @@
-You are an Odoo 17 developer.
 Goal
 
-Implement a custom "Clear with Advance" button on Vendor Bills created from employee expenses.
-
-Keep Advance Account (141101) as Current Asset (account type = asset_current).
-
-Standard Odoo "Register Payment" behavior remains unchanged (still limited to Payable/Receivable).
-
-Only the Clear with Advance button bypasses that restriction:
-
-It opens the Register Payment wizard.
-
-Default payment journal = the employee’s Advance Box Journal.
-
-Payment reconciles with the bill using Advance account.
+When running the Clear Advance flow, posting the clearing JE must never fail due to a missing Entry Sequence on the configured clearing journal (usually Miscellaneous Operations).
+If the journal has no sequence_id, the system must create & assign a proper ir.sequence automatically before posting.
 
 Requirements
-1) Extend Vendor Bill (account.move)
 
-Add button Clear with Advance (visible when: move_type = in_invoice, state = posted, partner = employee/vendor, residual > 0).
+UI-safe: If users fix via UI (set Entry Sequence on the journal), flow works.
 
-Button action:
+Code-safe: If not set, the wizard auto-creates a sequence at runtime.
 
-Calls account.payment.register wizard.
+Company-correct: Created sequence company_id matches journal’s company.
 
-Context includes:
+Idempotent: Do nothing if sequence_id already set.
 
-active_model = 'account.move'
+No-gap & date-ranged prefix recommended: ADVCL/%(year)s/%(month)s/.
 
-active_ids = [bill.id]
+Implementation Steps
 
-force_advance_payment = True
+Add a tiny utility to ensure a journal sequence exists.
 
-default_advance_box_id = employee.advance.box.id
+Call it in the Clear Advance wizard right before creating/posting the JE.
 
-2) Detect Employee Advance Box
+(Optional) Add a post_init_hook to backfill existing configs on install/upgrade.
 
-Link Advance Box (employee.advance.box) to employee via address_home_id.
+Code (copy-paste)
 
-When button pressed:
+A) Utility
 
-Auto-detect box of that employee.
+# models/utils_journal.py  (or merge into an existing model file)
+from odoo import api, models
 
-Use box.journal_id as default journal_id for payment wizard.
+class AdvanceJournalUtils(models.AbstractModel):
+    _name = 'hr.expense.advance.journal.utils'
+    _description = 'Utilities for Advance Clearing Journal'
 
-If no box found → raise clear error:
-"No Advance Box configured for this employee."
+    @api.model
+    def ensure_journal_sequence(self, journal):
+        """Ensure journal has an Entry Sequence; create one if missing."""
+        if journal.sequence_id:
+            return journal.sequence_id
 
-3) Override Payment Wizard (account.payment.register)
+        seq = self.env['ir.sequence'].create({
+            'name': f'{journal.name} Entry Sequence',
+            'code': f'ADVCL.{journal.id}',   # unique per journal
+            'prefix': 'ADVCL/%(year)s/%(month)s/',
+            'padding': 5,
+            'implementation': 'no_gap',
+            'use_date_range': True,
+            'company_id': journal.company_id.id,
+        })
+        journal.sequence_id = seq.id
+        return seq
 
-Inherit model.
 
-In default_get or @api.model_create_multi:
+B) Wizard hook
 
-If context force_advance_payment=True:
+# wizard/bill_clear_advance_wizard.py
+from odoo import models, _
+from odoo.exceptions import UserError
 
-Accept Current Asset accounts as eligible lines (not only Receivable/Payable).
+class BillClearAdvanceWizard(models.TransientModel):
+    _name = 'bill.clear.advance.wizard'
+    _description = 'Clear Vendor Bill with Employee Advance'
 
-Auto-fill journal_id from context['default_advance_box_id'].journal_id.
+    def action_confirm(self):
+        self.ensure_one()
+        bill = self._get_bill()                       # your existing getter
+        journal = self._get_clearing_journal(bill)    # your existing resolver
 
-Ensure partner is employee’s partner.
+        # ✅ Guarantee sequence exists before creating the JE
+        self.env['hr.expense.advance.journal.utils'].ensure_journal_sequence(journal)
 
-Do not change behavior if force_advance_payment=False.
+        move = self._create_clearing_move(bill, journal)  # your existing creator
+        # continue with post/reconcile/message...
+        return {'type': 'ir.actions.act_window_close'}
 
-4) Accounting Entries (Example)
 
-Vendor Bill posted:
+C) (Optional) Post-install backfill
 
-Dr Expense 10,000
+# hooks.py
+from odoo import SUPERUSER_ID
+from odoo.api import Environment
 
-Dr VAT 700
+def post_init_hook(cr, registry):
+    env = Environment(cr, SUPERUSER_ID, {})
+    utils = env['hr.expense.advance.journal.utils']
+    # if you store journal in a config model:
+    for cfg in env['hr.expense.config'].search([]):
+        if cfg.clearing_journal_id:
+            utils.ensure_journal_sequence(cfg.clearing_journal_id)
 
-Cr AP (Vendor) 10,700
 
-Cr WHT Payable 300
+D) Manifest
 
-Clear with Advance (via Register Payment):
+# __manifest__.py
+'post_init_hook': 'post_init_hook',
 
-Dr AP (Vendor) 10,700
 
-Cr 141101 Advance (Employee) 10,700
+E) XML (optional if you prefer data-driven)
+Use only when you control the journal record in data; otherwise prefer Python above.
 
-Result: Bill reconciled as Paid, Advance Box reduced.
-
-5) UX/Validation
-
-Wizard must show:
-
-Advance Box auto-selected.
-
-Default journal = Advance Box journal.
-
-Amount = bill residual.
-
-If no Advance Box found for employee: raise error and block.
-
-Keep check printing available via payment wizard.
+<odoo>
+  <record id="seq_advance_clearing" model="ir.sequence">
+    <field name="name">Advance Clearing Sequence</field>
+    <field name="code">ADVCL.DEFAULT</field>
+    <field name="prefix">ADVCL/%(year)s/%(month)s/</field>
+    <field name="padding">5</field>
+    <field name="implementation">no_gap</field>
+    <field name="use_date_range">True</field>
+  </record>
+</odoo>
 
 Acceptance Criteria
 
-Clear with Advance button opens Register Payment wizard, even when advance account type = Current Asset.
+Approving & clearing creates/post JEs without “no sequence configured” error.
 
-Advance Box is auto-detected and pre-filled.
+If the journal already has a sequence → no duplicate sequences created.
 
-On confirmation, payment posted with Dr AP / Cr Advance (141101).
+Sequence names follow ADVCL/YYYY/MM/00001 pattern (or your chosen prefix).
 
-Vendor Bill marked Paid (reconciled).
+Works correctly per company; multi-company respects journal.company.
 
-Standard Register Payment (outside this button) remains unchanged (Receivable/Payable only).
+Admin UI Fallback (for operators)
 
-Errors handled: missing Advance Box, no journal, locked period.
+Accounting → Configuration → Journals → Open the clearing journal → Advanced Settings → Entry Sequence: create:
 
-Works with multi-company, multi-currency, and WHT/VAT flows.
+Name: Advance Clearing Sequence
 
-👉 With this, accountants keep Advance = Current Asset, while still enjoying the Register Payment workflow (audit trail + check printing) when clearing advances.
+Prefix: ADVCL/%(year)s/%(month)s/
+
+Padding: 5
+
+Implementation: No gap
+
+Use subsequences per date range: ✓
+
+Company: (match)

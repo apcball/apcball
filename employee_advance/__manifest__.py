@@ -10,7 +10,7 @@
         - Create draft vendor bills after manager approval
         - Clear advances with payment wizard
         - Support for VAT/WHT reporting
-        - Two clearing modes: Reimburse Employee or Pay Vendor
+        - Clearing mode: Reimburse Employee
         - Settlement functionality for closing advance boxes
     """,
     'author': 'Your Company',
@@ -32,6 +32,7 @@
         'views/wizard_views.xml',
         'views/account_move_views.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'auto_install': False,
     'application': True,

@@ -298,9 +298,8 @@ class AdvanceSettlementWizard(models.TransientModel):
             'ref': self.memo or f'Advance Settlement for {self.employee_id.name}',
             'company_id': self.company_id.id,
         }
-        # Ensure journal has a sequence configured
-        if not getattr(self.journal_id, 'sequence_id', False):
-            raise UserError(_('The selected journal for settlement does not have a sequence configured. Please set a sequence on the journal.'))
+        # Ensure journal has a sequence and create if missing
+        self.env['hr.expense.advance.journal.utils'].ensure_journal_sequence(self.journal_id)
         
         lines = []
         

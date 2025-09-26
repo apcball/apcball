@@ -46,10 +46,8 @@ class AdvanceRefillBaseWizard(models.TransientModel):
         if self.topup_amount <= 0:
             raise UserError(_("Top-up amount must be greater than zero."))
 
-        # Create journal entry
-        # Ensure journal has sequence
-        if not getattr(advance_box.journal_id, 'sequence_id', False):
-            raise UserError(_('The selected journal for advance refill does not have a sequence configured. Please set a sequence on the journal.'))
+        # Ensure journal has sequence and create if missing
+        self.env['hr.expense.advance.journal.utils'].ensure_journal_sequence(advance_box.journal_id)
 
         je_vals = {
             'journal_id': advance_box.journal_id.id,

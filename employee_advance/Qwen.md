@@ -7,9 +7,8 @@ The Employee Advance module provides a complete workflow for managing employee a
 - **Individual Advance Boxes**: Each employee has their own advance box with a dedicated account
 - **Refill-to-Base Functionality**: Automatically calculates top-up amounts to reach a base target
 - **Expense Management**: Submit expenses and clear from advance with proper workflow
-- **Two Clearing Modes**: 
+- **Clearing Mode**: 
   - *Reimburse Employee*: Creates vendor bill to employee's private address
-  - *Pay Vendor*: Allows selecting vendors per expense line and creates separate bills per vendor
 - **Vendor Bill Creation**: Creates draft vendor bills after manager approval
 - **Payment-Based Clearing**: Uses Register Payment wizard with default Advance Box Journal instead of manual journal entries
 - **Settlement Functionality**: Close advance boxes with proper accounting entries when employee leaves or at year-end
@@ -49,7 +48,6 @@ Represents an individual advance box for each employee, including:
 Extended to support advance clearing functionality:
 
 **Additional Fields:**
-- `clear_mode`: Selection field with options 'Reimburse Employee' or 'Pay Vendor'
 - `use_advance`: Boolean to enable advance clearing
 - `advance_box_id`: Reference to the advance box for clearing
 - `bill_id`: Reference to the vendor bill created
@@ -57,40 +55,21 @@ Extended to support advance clearing functionality:
 
 **Methods:**
 - `action_approve_expense_sheets`: Creates vendor bill when approved with advance clearing
-- `action_clear_advance`: Opens Register Payment wizard to clear the advance
-- `_get_vendor_expense_lines`: Groups expense lines by vendor for Pay Vendor mode
-- `_create_vendor_bills_for_vendors`: Creates separate vendor bills for each vendor
+- `action_clear_advance`: Creates Journal Entry to clear the advance (Dr AP / Cr Advance Account)
 - `_create_vendor_bill_for_employee`: Creates vendor bill for employee reimbursement
 
 ### Expense Line (`hr.expense`)
-Extended to support vendor selection:
-
-**Additional Fields:**
-- `vendor_id`: Partner field to select vendor when clear_mode is 'Pay Vendor'
-
-**Methods:**
-- `_onchange_clear_mode`: Clears vendor_id when switching to Reimburse Employee mode
+No additional fields or methods needed after removing Pay Vendor functionality.
 
 ## Workflows
 
-### Expense to Advance Clearing Process (Reimburse Employee Mode)
-1. Employee submits expense sheet with clear_mode set to "Reimburse Employee"
+### Expense to Advance Clearing Process
+1. Employee submits expense sheet 
 2. Employee selects their advance box from available options
 3. Manager approves the expense sheet
 4. System creates a draft vendor bill linked to the employee's private address
 5. Accounting team processes the vendor bill
-6. When clearing the advance, the Register Payment wizard opens with default Advance Box Journal
-7. Payment is created which clears the advance balance
-
-### Pay Vendor Mode Process
-1. Employee submits expense sheet with clear_mode set to "Pay Vendor"
-2. For each expense line, select the appropriate vendor (res.partner with supplier rank)
-3. If no vendor is selected, the expense line goes to the employee bill group
-4. On manager approval, system groups expense lines by (vendor_id or employee_partner, company, currency)
-5. Creates separate draft vendor bills per vendor group
-6. Each bill carries taxes (VAT, WHT), analytic, and expense accounts correctly
-7. Accounting team processes the vendor bills
-8. When clearing advances, use Register Payment wizard for each vendor bill
+6. When clearing the advance, a Journal Entry is created (Dr AP / Cr Advance Account) to clear the advance
 
 ### Refill to Base Process
 1. Navigate to an employee's advance box
@@ -133,9 +112,7 @@ Extended to support vendor selection:
 - Link to Advance wizard for manual linking
 - Advance Info section showing associated advance box and expense sheet
 
-### Expense Line Integration
-- Vendor selection field available when clear_mode is 'Pay Vendor'
-- Vendor field is hidden when clear_mode is 'Reimburse Employee'
+
 
 ### Settlement Views and Menus
 - **Settlement Menu**: New menu item under Expenses → Advance Management
@@ -147,9 +124,8 @@ Extended to support vendor selection:
 
 ### Account Move Extensions
 The `account.move` model is extended with methods for clearing advances:
-- `action_clear_advance_from_bill`: Main method to clear advance from vendor bill (now opens Register Payment wizard)
-- `_open_register_payment_wizard`: Opens the payment wizard with default settings from advance box
-- `_clear_advance_using_advance_box`: Creates clearing JE directly using advance box
+- `action_clear_advance_from_bill`: Main method to clear advance from vendor bill (now creates Journal Entry directly)
+- `_clear_advance_using_advance_box`: Creates clearing JE directly using advance box (Dr AP / Cr Advance Account)
 - `action_post`: Override to handle advance clearing for payments
 
 ### Account Payment Extensions

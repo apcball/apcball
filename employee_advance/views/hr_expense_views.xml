@@ -1,27 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Inherit Expense Line Form View to add Vendor field -->
-    <record id="view_expense_line_form_advance" model="ir.ui.view">
-        <field name="name">hr.expense.line.form.advance</field>
-        <field name="model">hr.expense</field>
-        <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='product_id']" position="after">
-          <field name="vendor_id"
-              domain="[('supplier_rank', '>', 0)]"/>
-            </xpath>
-        </field>
-    </record>
-
-    <!-- Expense Sheet Tree View with Clear Mode -->
-    <record id="view_expense_sheet_tree_advance" model="ir.ui.view">
-        <field name="name">hr.expense.sheet.tree.advance</field>
-        <field name="model">hr.expense.sheet</field>
-        <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_tree"/>
-        <field name="arch" type="xml">
-            <field name="state" position="after">
-                <field name="clear_mode" optional="show"/>
-            </field>
-        </field>
-    </record>
 </odoo>

@@ -14,14 +14,14 @@ class AccountMove(models.Model):
     is_expense_advance_bill = fields.Boolean(string='Is Expense Advance Bill', default=False, copy=False)
 
     def action_clear_advance_from_bill(self):
-        """Method to be called from vendor bill to clear advance - opens Register Payment wizard"""
+        """Method to be called from vendor bill to clear advance - creates Journal Entry instead of opening Register Payment wizard"""
         self.ensure_one()
         
         # If the bill already has explicit metadata set, prefer it
         ExpenseSheet = self.env['hr.expense.sheet']
         expense_sheet = self.expense_sheet_id or ExpenseSheet.search([('bill_id', '=', self.id)], limit=1)
 
-        # If the bill was explicitly flagged as an expense advance bill, allow proceed even if no sheet linked
+        # If the bill was explicitly flagged as an expense advance bill, allow proceed
         is_flagged = self.is_expense_advance_bill or self.env.context.get('force_clear_with_advance')
 
         # Fallback 1: try to find expense sheet by invoice_origin
@@ -42,7 +42,7 @@ class AccountMove(models.Model):
             except Exception:
                 _logger.debug('Failed to parse expense sheet name from bill ref: %s', self.ref)
 
-        # If still not found, but the bill is flagged or context allows, try to detect employee via partner and advance box\n        if not expense_sheet:\n            if not is_flagged:\n                # Try to detect employee from partner using multiple methods\n                employee = self._find_employee_from_partner()\n                if employee:\n                    # Find advance box for the employee\n                    adv_box = self.env['employee.advance.box'].search([('employee_id', '=', employee.id)], limit=1)\n                    if adv_box:\n                        # allow proceed: create a minimal sheet placeholder? prefer to just set the advance box on bill\n                        _logger.info('Detected employee %s from partner %s and found advance box %s for bill %s', employee.name, self.partner_id.name, adv_box.name, self.name)\n                        self.sudo().write({'advance_box_id': adv_box.id})\n                        # Open register payment wizard instead of creating JE directly\n                        return self._open_register_payment_wizard(adv_box)\n\n                # No detection - raise\n                error_msg = _(\n                    \"This vendor bill was not (or could not be detected as) created from an employee expense sheet and cannot be cleared with an advance.\\n\\nOnly vendor bills created from employee expense sheets with the 'Clear from Advance' option can be cleared with advance.\\n\\nYou can use 'Link to Advance' to manually link a box or expense sheet.\"\n                )\n                raise UserError(error_msg)\n            else:\n                # flagged but no sheet: allow manager to provide advance_box_id or proceed with partner->employee detection\n                adv_box = self.advance_box_id\n                if not adv_box:\n                    employee = self._find_employee_from_partner()\n                    if employee:\n                        adv_box = self.env['employee.advance.box'].search([('employee_id', '=', employee.id)], limit=1)\n                if not adv_box:\n                    raise UserError(_('No advance box found for this bill. Please use Link to Advance or set an advance box on the bill.'))\n                return self._open_register_payment_wizard(adv_box)\n
+        # If still not found, but the bill is flagged or context allows, try to detect employee via partner and advance box\n        if not expense_sheet:\n            if not is_flagged:\n                # Try to detect employee from partner using multiple methods\n                employee = self._find_employee_from_partner()\n                if employee:\n                    # Find advance box for the employee\n                    adv_box = self.env['employee.advance.box'].search([('employee_id', '=', employee.id)], limit=1)\n                    if adv_box:\n                        # allow proceed: create a minimal sheet placeholder? prefer to just set the advance box on bill\n                        _logger.info('Detected employee %s from partner %s and found advance box %s for bill %s', employee.name, self.partner_id.name, adv_box.name, self.name)\n                        self.sudo().write({'advance_box_id': adv_box.id})\n                        # Create Journal Entry instead of opening Register Payment wizard\n                        return self._clear_advance_using_advance_box(adv_box)\n\n                # No detection - raise\n                error_msg = _(\n                    \"This vendor bill was not (or could not be detected as) created from an employee expense sheet and cannot be cleared with an advance.\\n\\nOnly vendor bills created from employee expense sheets with the 'Clear from Advance' option can be cleared with advance.\\n\\nYou can use 'Link to Advance' to manually link a box or expense sheet.\"\n                )\n                raise UserError(error_msg)\n            else:\n                # flagged but no sheet: allow manager to provide advance_box_id or proceed with partner->employee detection\n                adv_box = self.advance_box_id\n                if not adv_box:\n                    employee = self._find_employee_from_partner()\n                    if employee:\n                        adv_box = self.env['employee.advance.box'].search([('employee_id', '=', employee.id)], limit=1)\n                if not adv_box:\n                    raise UserError(_('No advance box found for this bill. Please use Link to Advance or set an advance box on the bill.'))\n                return self._clear_advance_using_advance_box(adv_box)\n
 
         # If the expense sheet exists but is not linked to this bill, link it.
         if expense_sheet and expense_sheet.bill_id != self:
@@ -52,14 +52,14 @@ class AccountMove(models.Model):
         # If the expense sheet exists but doesn't have an advance_box_id,
         # check if we detected one separately and use the direct clearing method
         if expense_sheet and not expense_sheet.advance_box_id and self.advance_box_id:
-            return self._open_register_payment_wizard(self.advance_box_id)
+            return self._clear_advance_using_advance_box(self.advance_box_id)
         elif expense_sheet and expense_sheet.advance_box_id:
-            # Open register payment wizard instead of creating JE directly from expense sheet
-            return self._open_register_payment_wizard(expense_sheet.advance_box_id)
+            # Create Journal Entry instead of opening Register Payment wizard from expense sheet
+            return self._clear_advance_using_advance_box(expense_sheet.advance_box_id)
         else:
             # If no expense sheet or no advance box, try using the advance_box_id on the bill itself
             if self.advance_box_id:
-                return self._open_register_payment_wizard(self.advance_box_id)
+                return self._clear_advance_using_advance_box(self.advance_box_id)
             else:
                 raise UserError(_('No advance box linked to this bill or its associated expense sheet.'))
 
@@ -85,59 +85,7 @@ class AccountMove(models.Model):
 
         return None  # No employee found associated with this partner
 
-    def _open_register_payment_wizard(self, advance_box):
-        """Open the Register Payment wizard with default settings from advance box"""
-        self.ensure_one()
-        if self.state != 'posted':
-            raise UserError(_('The vendor bill must be posted before clearing the advance.'))
-        if self.amount_residual <= 0:
-            raise UserError(_('The vendor bill is already fully paid.'))
-
-        # Get the advance box journal as the default payment method
-        advance_journal = advance_box.journal_id
-        if not advance_journal:
-            raise UserError(_('The advance box does not have a journal configured. Please set a journal for the advance box.'))
-        
-        # Validate the advance box account
-        if not advance_box.account_id:
-            raise UserError(_('The advance box does not have an account configured.'))
-
-        # Check if fiscal period is locked before proceeding
-        company_id = advance_box.company_id or self.env.company
-        locked_date = company_id._get_user_fiscal_lock_date()
-        if fields.Date.context_today(self) <= locked_date:
-            raise UserError(_("Cannot create payment before or during the lock date %s.", locked_date))
-
-        # Prepare values for the payment wizard
-        payment_vals = {
-            'journal_id': advance_journal.id,
-            'partner_id': self.partner_id.id,
-            'partner_type': 'supplier',
-            'payment_type': 'outbound',  # Payment to vendor/employee
-            'amount': min(self.amount_residual, self.amount_total_signed),
-            'currency_id': self.currency_id.id,
-            'payment_difference_handling': 'open',
-            'move_ids': [(4, self.id, False)],
-        }
-
-        # Create a payment wizard context with proper flags as per requirements
-        action = {
-            'name': _('Register Payment on Advance'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.payment.register',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'active_model': 'account.move',
-                'active_ids': [self.id],
-                'force_advance_payment': True,  # Required flag from prompt
-                'default_advance_box_id': advance_box.id,  # Required from prompt
-                'default_journal_id': advance_journal.id,  # Pre-fill journal as per requirements
-                **payment_vals
-            },
-        }
-        
-        return action
+    
 
     def _clear_advance_using_advance_box(self, advance_box):
         """Create a clearing JE directly using the advance box when no expense sheet is available."""
@@ -158,8 +106,8 @@ class AccountMove(models.Model):
             raise UserError(_('Invalid clearing journal configured.'))
 
         # Ensure the journal has a sequence configured so posting will generate unique names
-        if not getattr(journal, 'sequence_id', False):
-            raise UserError(_('The configured clearing journal (%s) does not have a sequence configured.\nPlease set a sequence on the journal so posted entries receive unique names.') % (journal.display_name,))
+        # Use the utility to create sequence if missing
+        self.env['hr.expense.advance.journal.utils'].ensure_journal_sequence(journal)
 
         # Determine the payable account from the bill
         payable_account = None
@@ -202,6 +150,27 @@ class AccountMove(models.Model):
         # Ensure we don't set 'name' so the posting will use the journal sequence
         je = self.env['account.move'].create(je_vals)
         je.action_post()
+
+        # Automatically reconcile the journal entry with the original vendor bill
+        # Find payable lines in both the original bill and the new journal entry
+        original_payable_line = self.line_ids.filtered(
+            lambda line: line.account_id.account_type == 'liability_payable' and line.balance < 0
+        )[:1]  # Take the first payable line
+
+        je_payable_line = je.line_ids.filtered(
+            lambda line: line.account_id.id == payable_account.id and line.debit > 0
+        )[:1]  # Take the first payable line from the JE
+
+        if original_payable_line and je_payable_line:
+            # Prepare lines for reconciliation
+            lines_to_reconcile = (original_payable_line + je_payable_line).sorted()
+            if lines_to_reconcile and len(lines_to_reconcile.mapped('account_id')) == 1:
+                try:
+                    # Attempt reconciliation
+                    lines_to_reconcile.reconcile()
+                except Exception as e:
+                    # If reconciliation fails, log but don't fail the entire operation
+                    _logger.warning(f"Could not reconcile advance clearing entry: {e}")
 
         # Log in the chatter
         self.message_post(
