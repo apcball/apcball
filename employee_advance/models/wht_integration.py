@@ -35,6 +35,13 @@ class HrExpenseSheet(models.Model):
             raise UserError(_(
                 "Employee %s does not have a private address. Please set the employee's home address."
             ) % employee.name)
+            
+        # Ensure the partner name matches the employee name to show proper name in vendor field
+        partner = self.env['res.partner'].browse(partner_id)
+        if partner and partner.name != employee.name:
+            # Update the partner's name to match the employee's name for proper vendor display
+            # Only do this if it's likely a user partner that shows user ID instead of employee name
+            partner.write({'name': employee.name})
 
         # Check if advance account is set
         advance_box = self.advance_box_id

@@ -28,6 +28,11 @@
                         invisible="not bill_id or not has_wht_certs"/>
             </header>
             
+            <!-- Completely hide Register Payment button from expense sheet form view -->
+            <xpath expr="//button[@name='action_register_payment']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
             <!-- Add tabs for Bill and Payment information -->
             <notebook position="inside">
                 <page string="Bill Information" invisible="not use_advance">
