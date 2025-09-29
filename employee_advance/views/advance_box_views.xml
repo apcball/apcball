@@ -113,6 +113,7 @@
     <!-- Menu Item -->
     <menuitem id="menu_employee_advance_root"
               name="Employee Advance"
+              parent="account.menu_finance"
               sequence="10"
               groups="base.group_user"/>
     
@@ -120,17 +121,5 @@
               name="Advance Boxes"
               parent="menu_employee_advance_root"
               action="action_employee_advance_box"
-              sequence="10"/>
-
-    <menuitem id="menu_employee_advance_settlement_root"
-              name="Settlement"
-              parent="menu_employee_advance_root"
-              sequence="20"
-              groups="account.group_account_manager"/>
-
-    <menuitem id="menu_employee_advance_settlement"
-              name="Settlement"
-              parent="menu_employee_advance_settlement_root"
-              action="action_employee_advance_settlement"
               sequence="10"/>
 </odoo>
