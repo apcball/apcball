@@ -1,138 +1,36 @@
-Goal
+Implement “Pay to Vendor per expense line” with auto bill-splitting:
 
-When running the Clear Advance flow, posting the clearing JE must never fail due to a missing Entry Sequence on the configured clearing journal (usually Miscellaneous Operations).
-If the journal has no sequence_id, the system must create & assign a proper ir.sequence automatically before posting.
+1) Models:
+   - hr.expense (line): add vendor_id (supplier), constraints to require when needed.
+   - hr.expense.sheet: fields clear_mode (reimburse_employee | pay_vendor | mixed),
+     bill_ids (m2m account.move), is_billed flag.
 
-Requirements
+2) Bill creation (on manager approve or explicit button):
+   - Group expense lines by (vendor_or_employee_partner, company, currency).
+   - Create draft account.move (move_type='in_invoice') per group, copying taxes/analytic/accounts.
+   - invoice_origin/ref = sheet.name; link all created bills back to sheet.bill_ids.
+   - Carry attachments from expense lines to the corresponding bill/line.
+   - Post an Accounting Activity to reviewers (configurable).
 
-UI-safe: If users fix via UI (set Entry Sequence on the journal), flow works.
+3) Clear with Advance:
+   - On posted bills, provide a “Clear with Advance” button that opens account.payment.register
+     with context force_advance_payment=True and default_journal_id=advance_box.journal_id.
+   - Advance account is Current Asset (141101); only this button bypasses the default AR/AP check.
+   - Payment results in Dr AP / Cr 141101 and reconciles the bill (Paid).
+   - Normal Register Payment outside this button remains standard.
 
-Code-safe: If not set, the wizard auto-creates a sequence at runtime.
+4) Batch:
+   - Add a server action/wizard “Create Bills (by Vendor)” for multiple sheets; avoid duplicates using is_billed.
 
-Company-correct: Created sequence company_id matches journal’s company.
+5) Validations:
+   - Enforce company & currency consistency per group.
+   - Require vendor_id for lines in pay_vendor/mixed mode.
+   - Handle locked periods, missing partner private address (employee), missing advance box/journal.
+   - Sequence safety: keep name='/' before posting and retry once on duplicate.
 
-Idempotent: Do nothing if sequence_id already set.
+6) UX:
+   - Smart buttons for Bills/Payments on sheets.
+   - Wizard preview showing how many bills will be generated per vendor/employee.
 
-No-gap & date-ranged prefix recommended: ADVCL/%(year)s/%(month)s/.
-
-Implementation Steps
-
-Add a tiny utility to ensure a journal sequence exists.
-
-Call it in the Clear Advance wizard right before creating/posting the JE.
-
-(Optional) Add a post_init_hook to backfill existing configs on install/upgrade.
-
-Code (copy-paste)
-
-A) Utility
-
-# models/utils_journal.py  (or merge into an existing model file)
-from odoo import api, models
-
-class AdvanceJournalUtils(models.AbstractModel):
-    _name = 'hr.expense.advance.journal.utils'
-    _description = 'Utilities for Advance Clearing Journal'
-
-    @api.model
-    def ensure_journal_sequence(self, journal):
-        """Ensure journal has an Entry Sequence; create one if missing."""
-        if journal.sequence_id:
-            return journal.sequence_id
-
-        seq = self.env['ir.sequence'].create({
-            'name': f'{journal.name} Entry Sequence',
-            'code': f'ADVCL.{journal.id}',   # unique per journal
-            'prefix': 'ADVCL/%(year)s/%(month)s/',
-            'padding': 5,
-            'implementation': 'no_gap',
-            'use_date_range': True,
-            'company_id': journal.company_id.id,
-        })
-        journal.sequence_id = seq.id
-        return seq
-
-
-B) Wizard hook
-
-# wizard/bill_clear_advance_wizard.py
-from odoo import models, _
-from odoo.exceptions import UserError
-
-class BillClearAdvanceWizard(models.TransientModel):
-    _name = 'bill.clear.advance.wizard'
-    _description = 'Clear Vendor Bill with Employee Advance'
-
-    def action_confirm(self):
-        self.ensure_one()
-        bill = self._get_bill()                       # your existing getter
-        journal = self._get_clearing_journal(bill)    # your existing resolver
-
-        # ✅ Guarantee sequence exists before creating the JE
-        self.env['hr.expense.advance.journal.utils'].ensure_journal_sequence(journal)
-
-        move = self._create_clearing_move(bill, journal)  # your existing creator
-        # continue with post/reconcile/message...
-        return {'type': 'ir.actions.act_window_close'}
-
-
-C) (Optional) Post-install backfill
-
-# hooks.py
-from odoo import SUPERUSER_ID
-from odoo.api import Environment
-
-def post_init_hook(cr, registry):
-    env = Environment(cr, SUPERUSER_ID, {})
-    utils = env['hr.expense.advance.journal.utils']
-    # if you store journal in a config model:
-    for cfg in env['hr.expense.config'].search([]):
-        if cfg.clearing_journal_id:
-            utils.ensure_journal_sequence(cfg.clearing_journal_id)
-
-
-D) Manifest
-
-# __manifest__.py
-'post_init_hook': 'post_init_hook',
-
-
-E) XML (optional if you prefer data-driven)
-Use only when you control the journal record in data; otherwise prefer Python above.
-
-<odoo>
-  <record id="seq_advance_clearing" model="ir.sequence">
-    <field name="name">Advance Clearing Sequence</field>
-    <field name="code">ADVCL.DEFAULT</field>
-    <field name="prefix">ADVCL/%(year)s/%(month)s/</field>
-    <field name="padding">5</field>
-    <field name="implementation">no_gap</field>
-    <field name="use_date_range">True</field>
-  </record>
-</odoo>
-
-Acceptance Criteria
-
-Approving & clearing creates/post JEs without “no sequence configured” error.
-
-If the journal already has a sequence → no duplicate sequences created.
-
-Sequence names follow ADVCL/YYYY/MM/00001 pattern (or your chosen prefix).
-
-Works correctly per company; multi-company respects journal.company.
-
-Admin UI Fallback (for operators)
-
-Accounting → Configuration → Journals → Open the clearing journal → Advanced Settings → Entry Sequence: create:
-
-Name: Advance Clearing Sequence
-
-Prefix: ADVCL/%(year)s/%(month)s/
-
-Padding: 5
-
-Implementation: No gap
-
-Use subsequences per date range: ✓
-
-Company: (match)
+7) Reports:
+   - Ensure Thai VAT/WHT modules operate on the generated vendor bills (no JE-only flows).

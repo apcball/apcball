@@ -1,8 +1,8 @@
 from odoo import SUPERUSER_ID
 from odoo.api import Environment
 
-def post_init_hook(cr, registry):
-    env = Environment(cr, SUPERUSER_ID, {})
+def post_init_hook(env):
+    # Using the environment directly as provided by Odoo framework
     utils = env['hr.expense.advance.journal.utils']
     # Get the configured clearing journal and ensure it has a sequence
     clearing_journal_id = env['ir.config_parameter'].sudo().get_param('employee_advance.advance_default_clearing_journal_id')

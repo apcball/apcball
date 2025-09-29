@@ -124,6 +124,12 @@ class HrExpenseSheet(models.Model):
         compute='_compute_has_wht_certs',
         store=True
     )
+    
+    bill_id_has_wht_line = fields.Boolean(
+        string='Bill Has WHT Lines',
+        compute='_compute_bill_id_has_wht_line',
+        store=True
+    )
 
     @api.depends('bill_id', 'bill_id.wht_cert_ids')
     def _compute_has_wht_certs(self):
@@ -133,10 +139,35 @@ class HrExpenseSheet(models.Model):
                 sheet.has_wht_certs = True
             else:
                 sheet.has_wht_certs = False
+    
+    @api.depends('bill_id', 'bill_id.has_wht_line')
+    def _compute_bill_id_has_wht_line(self):
+        """Compute if the associated vendor bill has WHT lines"""
+        for sheet in self:
+            if sheet.bill_id:
+                sheet.bill_id_has_wht_line = sheet.bill_id.has_wht_line
+            else:
+                sheet.bill_id_has_wht_line = False
 
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
+
+    # Add computed field to check if invoice lines have WHT taxes
+    has_wht_line = fields.Boolean(
+        string='Has WHT Lines',
+        compute='_compute_has_wht_line',
+        store=True
+    )
+
+    @api.depends('invoice_line_ids', 'invoice_line_ids.wht_tax_id')
+    def _compute_has_wht_line(self):
+        """Compute if any invoice line has WHT tax"""
+        for move in self:
+            if move.move_type in ['in_invoice', 'in_refund'] and move.invoice_line_ids:
+                move.has_wht_line = any(line.wht_tax_id for line in move.invoice_line_ids)
+            else:
+                move.has_wht_line = False
 
     def _clear_advance_using_advance_box(self, advance_box):
         """Create a clearing JE directly using the advance box when no expense sheet is available with WHT support."""

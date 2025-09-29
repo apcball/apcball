@@ -1,6 +1,6 @@
 {
     'name': 'Employee Advance',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.0.1',
     'category': 'Human Resources',
     'summary': 'Employee Advance Management with Advance Box and Bill Clearing',
     'description': """

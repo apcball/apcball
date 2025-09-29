@@ -25,7 +25,7 @@
                         type="action" 
                         string="Print WHT Certificates" 
                         class="btn-secondary"
-                        invisible="not bill_id or not has_wht_certs"/>
+                        invisible="not bill_id or (not has_wht_certs and not bill_id_has_wht_line)"/>
             </header>
             
             <!-- Completely hide Register Payment button from expense sheet form view -->
@@ -41,9 +41,10 @@
                             <field name="bill_id" readonly="1"/>
                             <field name="payment_ids" readonly="1" widget="many2many_tags"/>
                         </group>
-                        <group string="WHT Certificates" invisible="not bill_id or not has_wht_certs">
+                        <group string="WHT Certificates" invisible="not bill_id or (not has_wht_certs and not bill_id_has_wht_line)">
                             <field name="bill_id" invisible="1"/>
                             <field name="has_wht_certs" invisible="1"/>
+                            <field name="bill_id_has_wht_line" invisible="1"/>
                             <div class="mt-4">
                                 <h3>Withholding Tax Certificates</h3>
                                 <p>WHT certificates associated with this expense's vendor bill are available via the Print WHT Certificates action.</p>

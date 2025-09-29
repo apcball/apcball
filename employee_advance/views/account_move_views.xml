@@ -11,10 +11,10 @@
                         type="action" 
                         string="Print WHT Certificates" 
                         class="btn-secondary"
-                        invisible="not wht_cert_ids"/>
+                        invisible="not wht_cert_ids and not has_wht_line"/>
             </xpath>
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="Withholding Tax Certificates" invisible="not wht_cert_ids">
+                <page string="Withholding Tax Certificates" invisible="not wht_cert_ids and not has_wht_line">
                     <field name="wht_cert_ids" nolabel="1" 
                            context="{'default_move_id': id, 'default_partner_id': partner_id}">
                         <tree string="WHT Certificates" decoration-info="state == 'draft'" decoration-success="state == 'done'" decoration-danger="state == 'cancel'">
@@ -48,12 +48,17 @@
                             </notebook>
                         </form>
                     </field>
+                    <field name="has_wht_line" invisible="1"/>
+                    <div class="alert alert-info" role="alert" invisible="wht_cert_ids">
+                        <p>This bill has WHT taxes applied to invoice lines. You can generate WHT certificates for these taxes.</p>
+                    </div>
                 </page>
                 <page string="Advance Info">
                     <group string="Advance Info">
                         <field name="is_expense_advance_bill" readonly="1"/>
                         <field name="advance_box_id"/>
                         <field name="expense_sheet_id"/>
+                        <field name="has_wht_line" invisible="1"/>
                     </group>
                 </page>
             </xpath>
