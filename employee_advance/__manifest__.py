@@ -1,6 +1,6 @@
 {
     'name': 'Employee Advance',
-    'version': '17.0.1.0.1',
+    'version': '17.0.1.0.2',
     'category': 'Human Resources',
     'summary': 'Employee Advance Management with Advance Box and Bill Clearing',
     'description': """
@@ -26,6 +26,7 @@
     'data': [
         'security/ir.model.access.csv',
         'data/mail_activity_types.xml',
+        'data/batch_actions.xml',
         'views/actions.xml',
         'views/advance_box_views.xml',
         'views/expense_sheet_views.xml',

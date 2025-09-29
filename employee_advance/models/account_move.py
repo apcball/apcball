@@ -85,6 +85,44 @@ class AccountMove(models.Model):
 
         return None  # No employee found associated with this partner
 
+    def action_open_advance_payment_wizard(self):
+        """Open the advance payment wizard with context to bypass default AR/AP checks"""
+        self.ensure_one()
+        
+        # Validate that the bill is posted
+        if self.state != 'posted':
+            raise UserError(_('The vendor bill must be posted before clearing with advance.'))
+        
+        if self.amount_residual <= 0:
+            raise UserError(_('The vendor bill is already fully paid.'))
+        
+        # Find advance box for the partner if possible
+        advance_box = False
+        if self.partner_id:
+            employee = self._find_employee_from_partner()
+            if employee:
+                advance_box = self.env['employee.advance.box'].search([
+                    ('employee_id', '=', employee.id),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+        
+        # Prepare the action to open account.payment.register wizard
+        action = {
+            'name': _('Register Payment'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.payment.register',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'active_model': 'account.move',
+                'active_ids': [self.id],
+                'force_advance_payment': True,
+                'default_advance_box_id': advance_box.id if advance_box else False,
+            }
+        }
+        
+        return action
+
     
 
     def _clear_advance_using_advance_box(self, advance_box):

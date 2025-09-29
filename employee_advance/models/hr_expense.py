@@ -1,8 +1,41 @@
 from odoo import api, fields, models, _
+
 from odoo.exceptions import UserError
 
 class HrExpense(models.Model):
     _inherit = 'hr.expense'
+
+    vendor_id = fields.Many2one(
+        'res.partner',
+        string='Vendor',
+        domain="[('supplier_rank', '>', 0), ('is_company', '=', True)]",
+        help="Vendor for this expense line. Required when using pay_vendor or mixed clear mode."
+    )
+
+    def _validate_vendor_requirements(self):
+        """Validate vendor requirements based on clear_mode"""
+        for expense in self:
+            sheet = expense.sheet_id
+            if sheet and sheet.clear_mode in ['pay_vendor', 'mixed']:
+                if not expense.vendor_id:
+                    raise UserError(_(
+                        "Vendor is required for expense '%s' when using '%s' clear mode."
+                    ) % (expense.name, sheet.clear_mode))
+
+    def write(self, vals):
+        """Override write to validate vendor requirements"""
+        # If clear_mode is being changed or vendor_id is being changed
+        result = super(HrExpense, self).write(vals)
+        
+        # Validate after the write operation
+        for expense in self:
+            if expense.sheet_id and expense.sheet_id.clear_mode in ['pay_vendor', 'mixed']:
+                if not expense.vendor_id:
+                    raise UserError(_(
+                        "Vendor is required for expense '%s' when using '%s' clear mode."
+                    ) % (expense.name, expense.sheet_id.clear_mode))
+        
+        return result
 
 
 class HrExpenseSheet(models.Model):
@@ -46,8 +79,8 @@ class HrExpenseSheet(models.Model):
                     'amount': 0,
                     'expenses': self.env['hr.expense'],
                     'tax_ids': expense.tax_ids.ids,
-                    'analytic_account_id': expense.analytic_account_id.id,
-                    'analytic_tag_ids': expense.analytic_tag_ids.ids
+                    'analytic_account_id': expense.account_analytic_id.id if hasattr(expense, 'account_analytic_id') and expense.account_analytic_id else False,
+                    'analytic_tag_ids': expense.analytic_tag_ids.ids if hasattr(expense, 'analytic_tag_ids') else []
                 }
             
             account_tax_groups[key]['amount'] += expense.total_amount
@@ -85,12 +118,12 @@ class HrExpenseSheet(models.Model):
                 # Use the single expense details
                 single_expense = expense_lines[0]
                 line_vals['name'] = single_expense.name
-                line_vals['quantity'] = single_expense.quantity
-                line_vals['price_unit'] = single_expense.unit_amount  # Use unit_amount to correctly handle taxes
+                line_vals['quantity'] = single_expense.quantity if hasattr(single_expense, 'quantity') else 1
+                line_vals['price_unit'] = single_expense.unit_amount if hasattr(single_expense, 'unit_amount') and single_expense.unit_amount else single_expense.price_unit  # Use appropriate field to correctly handle taxes
                 
-            if group_data['analytic_account_id']:
+            if group_data.get('analytic_account_id'):
                 line_vals['analytic_account_id'] = group_data['analytic_account_id']
-            if group_data['analytic_tag_ids']:
+            if group_data.get('analytic_tag_ids', []):
                 line_vals['analytic_tag_ids'] = [(6, 0, group_data['analytic_tag_ids'])]
             
             bill_vals['invoice_line_ids'].append((0, 0, line_vals))

@@ -115,4 +115,18 @@ class AccountPaymentRegister(models.TransientModel):
 
         # Call the original method to create the payment
         payments = super()._create_payments()
+        
+        # If this is an advance payment, also reconcile with the advance account
+        if self.env.context.get('force_advance_payment') and payments:
+            advance_box_id = self.env.context.get('default_advance_box_id')
+            if advance_box_id:
+                advance_box = self.env['employee.advance.box'].browse(advance_box_id)
+                if advance_box.account_id:
+                    for payment in payments:
+                        # Add a custom flag for advance clearing
+                        payment.write({'is_advance_clearing': True})
+                        # Link to the advance box
+                        for move_line in payment.reconciled_bill_ids:
+                            move_line.move_id.write({'advance_box_id': advance_box.id})
+        
         return payments

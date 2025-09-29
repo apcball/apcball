@@ -115,5 +115,58 @@
         </field>
     </record>
 
+    <!-- Preview Wizard Form View -->
+    <record id="view_expense_sheet_bill_preview_wizard" model="ir.ui.view">
+        <field name="name">hr.expense.sheet.bill.preview.wizard.form</field>
+        <field name="model">hr.expense.sheet.bill.preview.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Bill Creation Preview">
+                <group>
+                    <group>
+                        <field name="sheet_id"/>
+                    </group>
+                </group>
+                <group string="Bill Grouping Preview">
+                    <field name="preview_line_ids" nolabel="1" readonly="1">
+                        <tree string="Preview Lines">
+                            <field name="sequence" widget="handle"/>
+                            <field name="partner_name"/>
+                            <field name="company_name"/>
+                            <field name="currency_name"/>
+                            <field name="expense_count"/>
+                            <field name="total_amount" sum="Total Amount"/>
+                        </tree>
+                    </field>
+                </group>
+                <group string="Expense Details">
+                    <field name="preview_line_ids" nolabel="1" readonly="1">
+                        <tree string="Expense Details" decoration-muted="expense_count == 0">
+                            <field name="partner_name"/>
+                            <field name="expense_count"/>
+                            <field name="total_amount" sum="Total Amount"/>
+                            <field name="expense_names" string="Expenses"/>
+                        </tree>
+                    </field>
+                </group>
+                <footer>
+                    <button name="action_create_bills_from_preview" 
+                            type="object" 
+                            string="Create Bills" 
+                            class="btn-primary"
+                            invisible="not preview_line_ids"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
     
+    <!-- Button to open preview wizard -->
+    <record id="action_expense_sheet_bill_preview_wizard" model="ir.actions.act_window">
+        <field name="name">Preview Bill Creation</field>
+        <field name="res_model">hr.expense.sheet.bill.preview.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="hr_expense.model_hr_expense_sheet"/>
+        <field name="groups_id" eval="[(4, ref('hr_expense.group_hr_expense_user'))]"/>
+    </record>
 </odoo>

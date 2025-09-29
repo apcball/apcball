@@ -7,15 +7,24 @@
         <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='employee_id']" position="after">
+                <field name="clear_mode" invisible="state != 'draft'"/>
                 <field name="use_advance" invisible="state != 'draft'"/>
                 <field name="advance_box_id" 
                        invisible="not use_advance or state != 'draft'"
                        domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>
                 <field name="has_wht_certs" invisible="1"/>
+                <field name="is_billed" invisible="1"/>
             </xpath>
             
-            <!-- Add buttons section if not already present -->
+            <!-- Add buttons section -->
             <header position="inside">
+                <button name="action_create_vendor_bills" 
+                        type="object" 
+                        string="Create Bills (by Vendor)" 
+                        class="btn-primary"
+                        invisible="state != 'approve'"
+                        help="Create vendor bills grouped by vendor, company, and currency"/>
+                
                 <button name="action_clear_advance" 
                         type="object" 
                         string="Clear with Advance" 
@@ -35,10 +44,12 @@
             
             <!-- Add tabs for Bill and Payment information -->
             <notebook position="inside">
-                <page string="Bill Information" invisible="not use_advance">
+                <page string="Bill Information">
                     <group>
                         <group string="Bill Information">
                             <field name="bill_id" readonly="1"/>
+                            <field name="bill_ids" widget="many2many_tags" invisible="not bill_ids" readonly="1"/>
+                            <field name="is_billed" readonly="1"/>
                             <field name="payment_ids" readonly="1" widget="many2many_tags"/>
                         </group>
                         <group string="WHT Certificates" invisible="not bill_id or (not has_wht_certs and not bill_id_has_wht_line)">
@@ -52,7 +63,7 @@
                         </group>
                     </group>
                 </page>
-                <page string="Advance Info" invisible="not use_advance">
+                <page string="Advance Info">
                     <group>
                         <group string="Advance Information">
                             <field name="use_advance" invisible="state != 'draft'"/>
@@ -63,6 +74,19 @@
                     </group>
                 </page>
             </notebook>
+        </field>
+    </record>
+    
+    <!-- Update the expense form view to add vendor field -->
+    <record id="view_expense_form_vendor" model="ir.ui.view">
+        <field name="name">hr.expense.form.vendor</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="vendor_id" 
+                       domain="[('supplier_rank', '&gt;', 0), ('is_company', '=', True)]"/>
+            </xpath>
         </field>
     </record>
     
