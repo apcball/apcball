@@ -11,7 +11,7 @@
                 <field name="use_advance" invisible="state != 'draft'"/>
                 <field name="advance_box_id" 
                        invisible="not use_advance or state != 'draft'"
-                       domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>
+                       domain="[('company_id', '=', company_id)]"/>
                 <field name="has_wht_certs" invisible="1"/>
                 <field name="is_billed" invisible="1"/>
             </xpath>
@@ -69,7 +69,7 @@
                             <field name="use_advance" invisible="state != 'draft'"/>
                             <field name="advance_box_id" 
                                    invisible="not use_advance or state != 'draft'"
-                                   domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"/>
+                                   domain="[('company_id', '=', company_id)]"/>
                         </group>
                     </group>
                 </page>

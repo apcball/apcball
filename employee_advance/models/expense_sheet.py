@@ -41,7 +41,7 @@ class HrExpenseSheet(models.Model):
     advance_box_id = fields.Many2one(
         'employee.advance.box',
         string='Advance Box',
-        domain="[('employee_id', '=', employee_id), ('company_id', '=', company_id)]"
+        domain="[('company_id', '=', company_id)]"
     )
     bill_id = fields.Many2one(
         'account.move',
