@@ -113,7 +113,7 @@
     <!-- Menu Item -->
     <menuitem id="menu_employee_advance_root"
               name="Employee Advance"
-              parent="account.menu_finance"
+              parent="account.menu_finance_payables"
               sequence="10"
               groups="base.group_user"/>
     
