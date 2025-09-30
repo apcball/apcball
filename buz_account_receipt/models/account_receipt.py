@@ -127,6 +127,14 @@ class AccountReceipt(models.Model):
         store=True,
         readonly=True,
     )
+    # Sum of invoice amounts included in this receipt (regardless of paid)
+    amount_invoice_total = fields.Monetary(string="Invoice Total", currency_field="currency_id", compute="_compute_amount_invoice_total", store=True)
+    amount_invoice_total_words = fields.Char(
+        string="Invoice Amount in Words",
+        compute="_compute_amount_invoice_total_words",
+        store=True,
+        readonly=True,
+    )
 
     # Moves already used in receipts (to help filter selection)
     used_move_ids = fields.Many2many('account.move', string='Used Invoices', compute='_compute_used_moves')
@@ -178,6 +186,37 @@ class AccountReceipt(models.Model):
                     rec.amount_total_words = ''
             else:
                 rec.amount_total_words = ''
+
+    @api.depends('line_ids.amount_total', 'currency_id')
+    def _compute_amount_invoice_total(self):
+        for rec in self:
+            rec.amount_invoice_total = sum(rec.line_ids.mapped('amount_total'))
+
+    @api.depends('amount_invoice_total', 'currency_id')
+    def _compute_amount_invoice_total_words(self):
+        try:
+            from num2words import num2words
+        except Exception:
+            num2words = None
+        for rec in self:
+            if rec.amount_invoice_total is not None and rec.currency_id:
+                amount = "%.2f" % rec.amount_invoice_total
+                int_part, dec_part = amount.split('.')
+                baht = int(int_part)
+                satang = int(dec_part)
+                if num2words and rec.currency_id.name == 'THB':
+                    baht_text = num2words(baht, lang='th').replace('เอ็ดบาท', 'หนึ่งบาท')
+                    if satang > 0:
+                        satang_text = num2words(satang, lang='th').replace('เอ็ด', 'หนึ่ง')
+                        rec.amount_invoice_total_words = f"{baht_text}บาท {satang_text}สตางค์"
+                    else:
+                        rec.amount_invoice_total_words = f"{baht_text}บาทถ้วน"
+                elif num2words:
+                    rec.amount_invoice_total_words = num2words(rec.amount_invoice_total, lang='en').title()
+                else:
+                    rec.amount_invoice_total_words = ''
+            else:
+                rec.amount_invoice_total_words = ''
 
     def action_reset_to_draft(self):
         self.write({"state": "draft"})

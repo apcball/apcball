@@ -120,7 +120,7 @@
 
                         <t t-set="line_list" t-value="doc.line_ids"/>
                         <!-- total of invoice amounts (show even if not paid) -->
-                        <t t-set="total_invoice_amount" t-value="sum([l.amount_total for l in doc.line_ids])"/>
+                        <t t-set="total_invoice_amount" t-value="doc.amount_invoice_total"/>
                         <t t-set="groups_of_7" t-value="[line_list[i:i+7] for i in range(0, len(line_list), 7)]"/>
                         <t t-set="page_number" t-value="1"/>
                         <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
@@ -211,14 +211,10 @@
                                         </t>
                                     </div>
                                             <div>
-                                                <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.city"> ตำบล<span t-field="doc.delivery_partner_id.city"/></t>
-                                                <t t-if="not doc.delivery_partner_id or not doc.delivery_partner_id.city and doc.partner_id.city"> ตำบล<span t-field="doc.partner_id.city"/></t>
-                                                <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.state_id"> อำเภอ<span t-field="doc.delivery_partner_id.state_id.name"/></t>
-                                                <t t-if="not doc.delivery_partner_id or not doc.delivery_partner_id.state_id and doc.partner_id.state_id"> อำเภอ<span t-field="doc.partner_id.state_id.name"/></t>
-                                                <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.state_id"> จังหวัด<span t-field="doc.delivery_partner_id.state_id.name"/></t>
-                                                <t t-if="not doc.delivery_partner_id or not doc.delivery_partner_id.state_id and doc.partner_id.state_id"> จังหวัด<span t-field="doc.partner_id.state_id.name"/></t>
-                                                <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.zip"><span t-field="doc.delivery_partner_id.zip"/></t>
-                                                <t t-if="not doc.delivery_partner_id or not doc.delivery_partner_id.zip"><span t-field="doc.partner_id.zip"/></t>
+                                                <!-- ตำบล (ใช้ข้อมูล delivery_partner ก่อน ถ้าไม่มีใช้ partner) -->
+                                                <t t-if="(doc.delivery_partner_id and doc.delivery_partner_id.city) or doc.partner_id.city">
+                                                    ตำบล<span t-esc="(doc.delivery_partner_id and doc.delivery_partner_id.city) or doc.partner_id.city"/>
+                                                </t>
                                             </div>
                                             <div><strong>ชื่อผู้ติดต่อ:</strong>
                                                 <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.phone">
@@ -310,7 +306,7 @@
                                       <!-- ฝั่งซ้าย -->
                                       <div style="text-align: left;">
                                         <span style="font-weight: bold; font-size: 20px;">ตัวอักษร:</span>
-                                                                                <span style="font-size: 20px; font-weight: bold;" t-esc="doc.amount_total_words"/>
+                                                                                <span style="font-size: 20px; font-weight: bold;" t-esc="doc.amount_invoice_total_words"/>
                                       </div>
                                       <!-- ฝั่งขวา -->
                                       <div style="text-align: right;">
@@ -322,7 +318,7 @@
                               
                                                                 <!-- ขวา: ผลลัพธ์ตัวเลขรวม -->
                                                                 <td colspan="3" style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 19px; vertical-align: top; padding: 6px;">
-                                                                    <span t-esc="('{:,.2f}'.format(total_invoice_amount))"/>
+                                                                    <span t-esc="('{:,.2f}'.format(doc.amount_invoice_total))"/>
                                                                 </td>
                               </tr>
                         </tfoot>

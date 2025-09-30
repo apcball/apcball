@@ -8,4 +8,22 @@
         <field name="code">action = records.action_create_receipt_from_invoices()</field>
         <field name="binding_view_types">list,form</field>
     </record>
+
+    <!-- Insert a button into the invoice form to create a receipt from the current invoice(s) -->
+    <record id="view_move_form_add_create_receipt_button" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.create.receipt</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <!-- Show only for customer invoices / credit notes and when posted -->
+                <!-- Use external id reference for type='action' buttons -->
+        <button name="%(buz_account_receipt.action_create_receipt_from_invoices)d"
+            type="action"
+            string="Create Receipt"
+            class="oe_highlight"
+            groups="account.group_account_invoice"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>
