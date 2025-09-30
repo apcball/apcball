@@ -161,13 +161,13 @@
                                 <span t-field="doc.name" style="font-size: 20px;"/>
                             </div>
                             <div class="mb-2">
-                                <strong style="width: 60%; display: inline-block; font-size: 20px;">วันที่ :</strong>
+                                <strong style="width: 60%; display: inline-block; font-size: 20px;">วันที่:</strong>
                                 <span t-field="doc.create_date" t-options='{"widget": "date"}' style="font-size: 20px;"/>
                             </div>
                         </div>
                     </div>
                     <div class="mb-2" style="margin-top: 0; text-align: left;">
-                        <strong style="width: auto; display: inline-block; font-size: 20px; text-align: left;">รหัสลูกค้า/Customer Code:</strong>
+                        <strong style="width: auto; display: inline-block; font-size: 20px; text-align: left;">รหัสลูกค้า:</strong>
                         <span t-field="doc.partner_id.ref" style="font-size: 20px;"/>
                     </div>
 
@@ -179,10 +179,10 @@
                             <!-- ฝั่งซ้าย: ข้อมูลลูกค้า -->
                             <div style="display: table-cell; width: 50%; vertical-align: top; padding-right: 5px;">
                                 <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; box-sizing: border-box;">
-                                    <div><strong>ชื่อลูกค้า / Customer Name:</strong> <span t-field="doc.partner_id.name"/></div>
+                                    <div><strong>ชื่อลูกค้า:</strong> <span t-field="doc.partner_id.name"/></div>
                                     <div><strong>เลขประจำตัวผู้เสียภาษีอากร:</strong> <span t-field="doc.partner_id.vat"/></div>
                                     <div>
-                                        <strong>ที่อยู่ / Address:</strong>
+                                        <strong>ที่อยู่:</strong>
                                         <span t-field="doc.partner_id.street"/>
                                         <t t-if="doc.partner_id.city"> ตำบล<span t-field="doc.partner_id.city"/></t>
                                         <t t-if="doc.partner_id.state_id"> อำเภอ<span t-field="doc.partner_id.state_id.name"/></t>
@@ -190,8 +190,8 @@
                                         <span t-field="doc.partner_id.zip"/>
                                     </div>
                                     <div>
-                                        <strong>โทรศัพท์ / Tel:</strong> <span t-field="doc.partner_id.phone"/>
-                                        <strong style="margin-left: 20px;">โทรสาร / Fax:</strong> <span t-field="doc.partner_id.fax"/>
+                                        <strong>โทรศัพท์:</strong> <span t-field="doc.partner_id.phone"/>
+                                        <strong style="margin-left: 20px;">โทรสาร:</strong> <span t-field="doc.partner_id.fax"/>
                                     </div>
                                 </div>
                             </div>
@@ -199,30 +199,49 @@
                             <!-- ฝั่งขวา: ข้อมูลการจัดส่ง -->
                             <div style="display: table-cell; width: 50%; vertical-align: top; padding-left: 5px;">
                                 <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; box-sizing: border-box;">
-                                    <div><strong>สถานที่ส่งของ / Ship To:</strong> <span t-field="doc.partner_id.street"/></div>
                                     <div>
-                                        <t t-if="doc.partner_id.city">ตำบล<span t-field="doc.partner_id.city"/></t>
-                                        <t t-if="doc.partner_id.state_id">อำเภอ<span t-field="doc.partner_id.state_id.name"/></t>
-                                        <t t-if="doc.partner_id.state_id"> จังหวัด<span t-field="doc.partner_id.state_id.name"/></t>
-                                        <span t-field="doc.partner_id.zip"/>
+                                        <strong>สถานที่ส่งของ:</strong>
+                                        <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.street">
+                                            <span t-field="doc.delivery_partner_id.street"/>
+                                        </t>
+                                        <t t-if="not doc.delivery_partner_id or not doc.delivery_partner_id.street">
+                                            <span t-field="doc.partner_id.street"/>
+                                        </t>
                                     </div>
-                                    <div><strong>ชื่อผู้ติดต่อ / Contact Name:</strong> <span t-field="doc.partner_id.phone"/></div>
+                                            <div>
+                                                <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.city"> ตำบล<span t-field="doc.delivery_partner_id.city"/></t>
+                                                <t t-if="not doc.delivery_partner_id or not doc.delivery_partner_id.city and doc.partner_id.city"> ตำบล<span t-field="doc.partner_id.city"/></t>
+                                                <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.state_id"> อำเภอ<span t-field="doc.delivery_partner_id.state_id.name"/></t>
+                                                <t t-if="not doc.delivery_partner_id or not doc.delivery_partner_id.state_id and doc.partner_id.state_id"> อำเภอ<span t-field="doc.partner_id.state_id.name"/></t>
+                                                <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.state_id"> จังหวัด<span t-field="doc.delivery_partner_id.state_id.name"/></t>
+                                                <t t-if="not doc.delivery_partner_id or not doc.delivery_partner_id.state_id and doc.partner_id.state_id"> จังหวัด<span t-field="doc.partner_id.state_id.name"/></t>
+                                                <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.zip"><span t-field="doc.delivery_partner_id.zip"/></t>
+                                                <t t-if="not doc.delivery_partner_id or not doc.delivery_partner_id.zip"><span t-field="doc.partner_id.zip"/></t>
+                                            </div>
+                                            <div><strong>ชื่อผู้ติดต่อ:</strong>
+                                                <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.phone">
+                                                    <span t-field="doc.delivery_partner_id.phone"/>
+                                                </t>
+                                                <t t-if="not doc.delivery_partner_id or not doc.delivery_partner_id.phone">
+                                                    <span t-field="doc.partner_id.phone"/>
+                                                </t>
+                                            </div>
                                     <!-- Invoice-related data: use first line's move if available -->
-                                    <div><strong>เลขที่ใบสั่งขาย / Sale Order No:</strong>
+                                    <div><strong>เลขที่ใบสั่งขาย:</strong>
                                         <span t-if="doc.line_ids and doc.line_ids[0].move_id" t-esc="doc.line_ids[0].move_id.invoice_origin"/>
                                     </div>
                                     <div style="display: flex; justify-content: space-between;">
                                         <div style="width: 49%;">
-                                            <strong>พนักงานขาย / Sales:</strong>
+                                            <strong>พนักงานขาย:</strong>
                                             <span t-if="doc.line_ids and doc.line_ids[0].move_id" t-esc="doc.line_ids[0].move_id.invoice_user_id and doc.line_ids[0].move_id.invoice_user_id.name or ''"/>
                                         </div>
                                         <div style="width: 49%;">
-                                            <strong>เงื่อนไข / Condition:</strong>
+                                            <strong>เงื่อนไข:</strong>
                                             <span t-if="doc.line_ids and doc.line_ids[0].move_id" t-esc="doc.line_ids[0].move_id.invoice_payment_term_id and doc.line_ids[0].move_id.invoice_payment_term_id.name or ''"/>
                                         </div>
                                     </div>
                                     <div style="margin-top: 10px;">
-                                        <strong>วันครบกำหนด / Due Date:</strong>
+                                        <strong>วันครบกำหนด:</strong>
                                         <span t-if="doc.line_ids and doc.line_ids[0].move_id" t-field="doc.line_ids[0].move_id.invoice_date_due" t-options='{"format": "dd/MM/yyyy"}'/>
                                     </div>
                                 </div>
@@ -288,12 +307,12 @@
                                     <div style="display: flex; justify-content: space-between; width: 100%;">
                                       <!-- ฝั่งซ้าย -->
                                       <div style="text-align: left;">
-                                        <span style="font-weight: bold; font-size: 20px;">ตัวอักษร / Alphabet :</span>
+                                        <span style="font-weight: bold; font-size: 20px;">ตัวอักษร:</span>
                                         <span style="font-size: 20px; font-weight: bold;" t-esc="doc.amount_total_words"/>
                                       </div>
                                       <!-- ฝั่งขวา -->
                                       <div style="text-align: right;">
-                                        <span style="font-weight: bold;">จำนวนเงินรวมทั้งสิ้น / Grand Total</span>
+                                        <span style="font-weight: bold;">จำนวนเงินรวมทั้งสิ้น</span>
                                       </div>
                                     </div>
                                   </td>

@@ -75,11 +75,14 @@ class AccountMove(models.Model):
             
             raise UserError(error_message)
         
-        # Create receipt
+        # Create receipt, set delivery_partner_id from first invoice's shipping partner if available
+        first_move = valid_moves[0]
+        delivery_partner = first_move.partner_shipping_id or first_move.partner_id
         receipt = self.env["account.receipt"].create({
-            "partner_id": valid_moves[0].partner_id.id,
+            "partner_id": first_move.partner_id.id,
             "date": fields.Date.context_today(self),
             "line_ids": [],
+            "delivery_partner_id": delivery_partner.id if delivery_partner else False,
         })
 
         lines_vals = []
@@ -114,6 +117,7 @@ class AccountReceipt(models.Model):
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company)
     currency_id = fields.Many2one("res.currency", required=True, default=lambda self: self.env.company.currency_id)
     note = fields.Text(string="Notes")
+    delivery_partner_id = fields.Many2one('res.partner', string='Delivery Address', help='Delivery address from first invoice used to create this receipt')
 
     line_ids = fields.One2many("account.receipt.line", "receipt_id", string="Lines")
     amount_total = fields.Monetary(string="Total Paid", currency_field="currency_id", compute="_compute_amount_total", store=True)
@@ -123,6 +127,9 @@ class AccountReceipt(models.Model):
         store=True,
         readonly=True,
     )
+
+    # Moves already used in receipts (to help filter selection)
+    used_move_ids = fields.Many2many('account.move', string='Used Invoices', compute='_compute_used_moves')
 
     state = fields.Selection([
         ("draft", "Draft"),
@@ -180,6 +187,35 @@ class AccountReceipt(models.Model):
         self.ensure_one()
         return self.env.ref("buz_account_receipt.action_report_buz_account_receipt").report_action(self)
 
+    @api.model
+    def create(self, vals):
+        rec = super(AccountReceipt, self).create(vals)
+        # If delivery_partner_id not provided, try to fill from first invoice in lines
+        if not rec.delivery_partner_id and rec.line_ids:
+            first_move = rec.line_ids[0].move_id
+            if first_move:
+                rec.delivery_partner_id = first_move.partner_shipping_id or first_move.partner_id
+        return rec
+
+    def write(self, vals):
+        res = super(AccountReceipt, self).write(vals)
+        # After write, ensure receipts with empty delivery_partner_id get filled from first line
+        for rec in self:
+            if not rec.delivery_partner_id and rec.line_ids:
+                first_move = rec.line_ids[0].move_id
+                if first_move:
+                    rec.delivery_partner_id = first_move.partner_shipping_id or first_move.partner_id
+        return res
+
+    def _compute_used_moves(self):
+        """Compute account.move records that are already referenced by any receipt line.
+        This lets the view filter out invoices that were already selected.
+        """
+        # collect all move_ids used in any receipt line
+        all_line_moves = self.env['account.receipt.line'].search([]).mapped('move_id')
+        for rec in self:
+            rec.used_move_ids = all_line_moves
+
 
 class AccountReceiptLine(models.Model):
     _name = "account.receipt.line"
@@ -187,7 +223,18 @@ class AccountReceiptLine(models.Model):
     _order = "invoice_date, id"
 
     receipt_id = fields.Many2one("account.receipt", string="Receipt", required=True, ondelete="cascade")
-    move_id = fields.Many2one("account.move", string="Invoice", domain=[("move_type", "in", ["out_invoice", "out_refund"])], required=True)
+    move_id = fields.Many2one("account.move", string="Invoice", domain="[('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted')]", required=True)
+
+    @api.constrains('move_id', 'receipt_id')
+    def _check_invoice_partner_matches_receipt_partner(self):
+        """Ensure that the invoice's partner matches the receipt's partner"""
+        for line in self:
+            if line.move_id and line.receipt_id:
+                if line.move_id.partner_id != line.receipt_id.partner_id:
+                    raise UserError(
+                        _("The invoice %s belongs to partner %s, but the receipt is for partner %s. "
+                          "Invoices must belong to the same partner as the receipt.") % 
+                         (line.move_id.name, line.move_id.partner_id.name, line.receipt_id.partner_id.name))
 
     move_name = fields.Char(string="Invoice Number", related="move_id.name", store=True)
     invoice_date = fields.Date(string="Invoice Date", related="move_id.invoice_date", store=True)
@@ -196,6 +243,37 @@ class AccountReceiptLine(models.Model):
     amount_total = fields.Monetary(string="Amount Total", currency_field="currency_id")
     amount_residual = fields.Monetary(string="Residual", currency_field="currency_id")
     amount_paid = fields.Monetary(string="Amount Paid", currency_field="currency_id", compute="_compute_paid", store=True)
+
+    @api.onchange('move_id')
+    def _onchange_move_id_set_amounts(self):
+        """When invoice is selected on the line, populate total and residual amounts from the invoice."""
+        for line in self:
+            if line.move_id:
+                # Use signed amounts for refunds to keep consistent signs
+                if line.move_id.move_type == 'out_refund':
+                    line.amount_total = line.move_id.amount_total_signed
+                    line.amount_residual = line.move_id.amount_residual_signed
+                else:
+                    line.amount_total = line.move_id.amount_total
+                    line.amount_residual = line.move_id.amount_residual
+            else:
+                line.amount_total = 0.0
+                line.amount_residual = 0.0
+
+    @api.constrains('move_id')
+    def _check_move_not_in_other_receipt(self):
+        """Prevent selecting an invoice that's already assigned to another receipt (any state)."""
+        for line in self:
+            if line.move_id:
+                # search for other lines with same move in different receipt
+                domain = [
+                    ('move_id', '=', line.move_id.id),
+                    ('id', '!=', line.id),
+                ]
+                existing = self.search(domain)
+                if existing:
+                    # If any other line found, raise error with invoice number
+                    raise UserError(_("The invoice %s is already added to another receipt and cannot be used twice.") % line.move_id.name)
 
     @api.depends("amount_total", "amount_residual")
     def _compute_paid(self):
