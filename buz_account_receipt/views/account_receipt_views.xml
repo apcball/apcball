@@ -64,25 +64,18 @@
           <notebook>
             <page string="Invoice Lines" name="lines">
               <field name="line_ids">
-                <tree editable="bottom" class="table-responsive">
+                <tree editable="bottom">
                   <field name="move_id" domain="[('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted'), ('partner_id', '=', parent.partner_id), ('id', 'not in', parent.used_move_ids)]" string="Invoice"/>
                   <field name="move_name" readonly="1" string="Invoice Number"/>
-                  <field name="invoice_date" readonly="1" string="Date"/>
-                  <field name="amount_total" string="Total"/>
+                  <field name="invoice_date" readonly="1" string="Invoice Date"/>
+                  <field name="amount_total" string="Amount Total"/>
                   <field name="amount_residual" string="Residual"/>
                   <field name="amount_paid" readonly="1" string="Paid"/>
                 </tree>
               </field>
             </page>
             
-            <page string="Additional Information" name="additional_info" invisible="state == 'draft'">
-              <group col="4">
-                <field name="amount_total_words" nolabel="1" readonly="1" 
-                       string="Total Amount in Words"/>
-                <field name="amount_invoice_total_words" nolabel="1" readonly="1" 
-                       string="Invoice Total in Words"/>
-              </group>
-            </page>
+            <!-- Additional Information page removed as requested -->
           </notebook>
         </sheet>
       </form>
