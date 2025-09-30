@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_account_receipt_user,access_buz_account_receipt_user,model_account_receipt,base.group_user,1,1,1,1
+access_buz_account_receipt_line_user,access_buz_account_receipt_line_user,model_account_receipt_line,base.group_user,1,1,1,1

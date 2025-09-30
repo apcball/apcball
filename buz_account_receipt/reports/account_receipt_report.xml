@@ -1,0 +1,51 @@
+
+<odoo>
+
+  <template id="report_buz_account_receipt">
+    <t t-call="web.html_container">
+      <t t-foreach="docs" t-as="o">
+        <div class="page">
+          <h2 style="margin:0 0 8px 0;">ใบเสร็จรับเงิน (Receipt)</h2>
+          <div>
+            <b>เลขที่:</b> <t t-esc="o.name or '-'"/> &#160;&#160;
+            <b>วันที่:</b> <t t-esc="o.date"/> <br/>
+            <b>ลูกค้า:</b> <t t-esc="o.partner_id.display_name"/> <br/>
+            <b>บริษัท:</b> <t t-esc="o.company_id.name"/>
+          </div>
+          <br/>
+          <table class="table table-sm" style="width:100%; border-collapse:collapse;" border="1">
+            <thead>
+              <tr>
+                <th style="text-align:left;">Invoice</th>
+                <th style="text-align:center;">Date</th>
+                <th style="text-align:right;">Amount</th>
+                <th style="text-align:right;">Residual</th>
+                <th style="text-align:right;">Paid</th>
+              </tr>
+            </thead>
+            <tbody>
+              <t t-foreach="o.line_ids" t-as="l">
+                <tr>
+                  <td><t t-esc="l.move_name"/></td>
+                  <td style="text-align:center;"><t t-esc="l.invoice_date"/></td>
+                  <td style="text-align:right;"><t t-esc="format_amount(l.amount_total, o.currency_id)"/></td>
+                  <td style="text-align:right;"><t t-esc="format_amount(l.amount_residual, o.currency_id)"/></td>
+                  <td style="text-align:right;"><t t-esc="format_amount(l.amount_paid, o.currency_id)"/></td>
+                </tr>
+              </t>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" style="text-align:right;"><b>Total Paid</b></td>
+                <td style="text-align:right;"><b><t t-esc="format_amount(o.amount_total, o.currency_id)"/></b></td>
+              </tr>
+            </tfoot>
+          </table>
+          <p style="margin-top:12px;">
+            หมายเหตุ: ใบเสร็จนี้สรุปยอดชำระตามสถานะใบแจ้งหนี้ในระบบ ณ วันที่ออกใบเสร็จ
+          </p>
+        </div>
+      </t>
+    </t>
+  </template>
+</odoo>

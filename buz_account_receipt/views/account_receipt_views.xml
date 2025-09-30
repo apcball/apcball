@@ -1,0 +1,71 @@
+
+<odoo>
+  <record id="view_buz_account_receipt_tree" model="ir.ui.view">
+    <field name="name">buz.account.receipt.tree</field>
+    <field name="model">account.receipt</field>
+    <field name="arch" type="xml">
+      <tree string="Receipts" create="true" edit="false">
+        <field name="name"/>
+        <field name="date"/>
+        <field name="partner_id"/>
+        <field name="amount_total"/>
+        <field name="state"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="view_buz_account_receipt_form" model="ir.ui.view">
+    <field name="name">buz.account.receipt.form</field>
+    <field name="model">account.receipt</field>
+    <field name="arch" type="xml">
+      <form string="Receipt" create="false">
+        <header>
+          <button name="action_reset_to_draft" string="Reset to Draft" type="object"
+                  invisible="state not in ['posted', 'cancel']" class="btn-secondary"/>
+          <button name="action_post" string="Confirm" type="object" invisible="state != 'draft'" class="oe_highlight"/>
+          <button name="action_print_receipt" string="Print Receipt" type="object" invisible="state not in ['draft', 'posted']" class="btn-primary"/>
+          <field name="state" widget="statusbar" statusbar_visible="draft,posted,cancel"/>
+        </header>
+        <sheet>
+          <group>
+            <group>
+              <field name="name" readonly="1"/>
+              <field name="date"/>
+              <field name="partner_id" options="{'no_create': True}"/>
+              <field name="company_id" readonly="1"/>
+              <field name="currency_id" readonly="1"/>
+            </group>
+            <group>
+              <field name="amount_total" readonly="1"/>
+              <field name="note"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Lines">
+              <field name="line_ids">
+                <tree editable="bottom">
+                  <field name="move_id"/>
+                  <field name="move_name" readonly="1"/>
+                  <field name="invoice_date" readonly="1"/>
+                  <field name="amount_total"/>
+                  <field name="amount_residual"/>
+                  <field name="amount_paid" readonly="1"/>
+                </tree>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_buz_account_receipt" model="ir.actions.act_window">
+    <field name="name">Receipts</field>
+    <field name="res_model">account.receipt</field>
+    <field name="view_mode">tree,form</field>
+  </record>
+
+  <menuitem id="menu_buz_account_receipt_history" name="Receipts"
+            parent="account.menu_account_customer"
+            action="action_buz_account_receipt" sequence="20"/>
+</odoo>

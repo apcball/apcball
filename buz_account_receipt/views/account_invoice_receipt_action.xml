@@ -1,0 +1,11 @@
+<odoo>
+    <!-- Action for creating receipt from selected invoices -->
+    <record id="action_create_receipt_from_invoices" model="ir.actions.server">
+        <field name="name">Create Receipt</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="state">code</field>
+        <field name="code">action = records.action_create_receipt_from_invoices()</field>
+        <field name="binding_view_types">list,form</field>
+    </record>
+</odoo>
