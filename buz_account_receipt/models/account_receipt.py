@@ -299,6 +299,33 @@ class AccountReceipt(models.Model):
         for rec in self:
             rec.used_move_ids = all_line_moves
 
+    def action_view_payments(self):
+        """
+        Smart button action to show related payments for this receipt
+        """
+        self.ensure_one()
+        
+        # Get all payments linked to this receipt
+        payments = self.payment_ids
+        
+        action = {
+            'name': _('Payments'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.payment',
+            'view_mode': 'tree,form',
+            'domain': [('id', 'in', payments.ids)],
+            'context': {'create': False, 'edit': True},
+        }
+        
+        # If there's only one payment, open it directly in form view
+        if len(payments) == 1:
+            action.update({
+                'view_mode': 'form',
+                'res_id': payments.id,
+            })
+        
+        return action
+
     def action_register_batch_payment(self):
         """
         Open the standard account.payment.register wizard to register batch payment for all invoices in this receipt.

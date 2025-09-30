@@ -3,7 +3,7 @@
 # Import compatibility layer
 from . import hooks
 
-# Import main modules with error handling
+# Import main modules with error handling for Odoo 17
 try:
     from . import models
 except ImportError as e:
