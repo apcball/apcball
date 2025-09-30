@@ -119,6 +119,8 @@
                         </style>
 
                         <t t-set="line_list" t-value="doc.line_ids"/>
+                        <!-- total of invoice amounts (show even if not paid) -->
+                        <t t-set="total_invoice_amount" t-value="sum([l.amount_total for l in doc.line_ids])"/>
                         <t t-set="groups_of_7" t-value="[line_list[i:i+7] for i in range(0, len(line_list), 7)]"/>
                         <t t-set="page_number" t-value="1"/>
                         <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
@@ -308,7 +310,7 @@
                                       <!-- ฝั่งซ้าย -->
                                       <div style="text-align: left;">
                                         <span style="font-weight: bold; font-size: 20px;">ตัวอักษร:</span>
-                                        <span style="font-size: 20px; font-weight: bold;" t-esc="doc.amount_total_words"/>
+                                                                                <span style="font-size: 20px; font-weight: bold;" t-esc="doc.amount_total_words"/>
                                       </div>
                                       <!-- ฝั่งขวา -->
                                       <div style="text-align: right;">
@@ -320,7 +322,7 @@
                               
                                                                 <!-- ขวา: ผลลัพธ์ตัวเลขรวม -->
                                                                 <td colspan="3" style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 19px; vertical-align: top; padding: 6px;">
-                                                                    <span t-field="doc.amount_total" t-options='{"widget": "float", "precision": 2}'/>
+                                                                    <span t-esc="('{:,.2f}'.format(total_invoice_amount))"/>
                                                                 </td>
                               </tr>
                         </tfoot>

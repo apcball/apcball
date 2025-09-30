@@ -119,6 +119,8 @@
                         </style>
 
                         <t t-set="line_list" t-value="doc.invoice_line_ids"/>
+                        <!-- total of invoice amounts (show even if not paid) -->
+                        <t t-set="total_invoice_amount" t-value="sum([l.move_id.amount_total for l in doc.invoice_line_ids])"/>
                         <t t-set="groups_of_7" t-value="[line_list[i:i+7] for i in range(0, len(line_list), 7)]"/>
                         <t t-set="page_number" t-value="1"/>
                         <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
@@ -199,14 +201,43 @@
                             <!-- ฝั่งขวา: ข้อมูลการจัดส่ง -->
                             <div style="display: table-cell; width: 50%; vertical-align: top; padding-left: 5px;">
                                 <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; box-sizing: border-box;">
-                                    <div><strong>สถานที่ส่งของ / Ship To:</strong> <span t-field="doc.partner_shipping_id.street"/></div>
                                     <div>
-                                        <t t-if="doc.partner_shipping_id.city">ตำบล<span t-field="doc.partner_shipping_id.city"/></t>
-                                        <t t-if="doc.partner_shipping_id.state_id">อำเภอ<span t-field="doc.partner_shipping_id.state_id.name"/></t>
-                                        <t t-if="doc.partner_shipping_id.state_id"> จังหวัด<span t-field="doc.partner_shipping_id.state_id.name"/></t>
-                                        <span t-field="doc.partner_shipping_id.zip"/>
+                                        <strong>สถานที่ส่งของ / Ship To:</strong>
+                                        <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.street">
+                                            <span t-field="doc.delivery_partner_id.street"/>
+                                        </t>
+                                        <t t-if="not doc.delivery_partner_id and doc.partner_shipping_id and doc.partner_shipping_id.street">
+                                            <span t-field="doc.partner_shipping_id.street"/>
+                                        </t>
+                                        <t t-if="not doc.delivery_partner_id and not doc.partner_shipping_id">
+                                            <span t-field="doc.partner_id.street"/>
+                                        </t>
                                     </div>
-                                    <div><strong>ชื่อผู้ติดต่อ / Contact Name:</strong> <span t-field="doc.partner_shipping_id.phone"/></div>
+                                    <div>
+                                        <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.city">ตำบล<span t-field="doc.delivery_partner_id.city"/></t>
+                                        <t t-if="not doc.delivery_partner_id and doc.partner_shipping_id and doc.partner_shipping_id.city">ตำบล<span t-field="doc.partner_shipping_id.city"/></t>
+                                        <t t-if="not doc.delivery_partner_id and not doc.partner_shipping_id and doc.partner_id.city">ตำบล<span t-field="doc.partner_id.city"/></t>
+                                        <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.state_id">อำเภอ<span t-field="doc.delivery_partner_id.state_id.name"/></t>
+                                        <t t-if="not doc.delivery_partner_id and doc.partner_shipping_id and doc.partner_shipping_id.state_id">อำเภอ<span t-field="doc.partner_shipping_id.state_id.name"/></t>
+                                        <t t-if="not doc.delivery_partner_id and not doc.partner_shipping_id and doc.partner_id.state_id">อำเภอ<span t-field="doc.partner_id.state_id.name"/></t>
+                                        <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.state_id"> จังหวัด<span t-field="doc.delivery_partner_id.state_id.name"/></t>
+                                        <t t-if="not doc.delivery_partner_id and doc.partner_shipping_id and doc.partner_shipping_id.state_id"> จังหวัด<span t-field="doc.partner_shipping_id.state_id.name"/></t>
+                                        <t t-if="not doc.delivery_partner_id and not doc.partner_shipping_id and doc.partner_id.state_id"> จังหวัด<span t-field="doc.partner_id.state_id.name"/></t>
+                                        <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.zip"><span t-field="doc.delivery_partner_id.zip"/></t>
+                                        <t t-if="not doc.delivery_partner_id and doc.partner_shipping_id and doc.partner_shipping_id.zip"><span t-field="doc.partner_shipping_id.zip"/></t>
+                                        <t t-if="not doc.delivery_partner_id and not doc.partner_shipping_id and doc.partner_id.zip"><span t-field="doc.partner_id.zip"/></t>
+                                    </div>
+                                    <div><strong>ชื่อผู้ติดต่อ / Contact Name:</strong>
+                                        <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.phone">
+                                            <span t-field="doc.delivery_partner_id.phone"/>
+                                        </t>
+                                        <t t-if="not doc.delivery_partner_id and doc.partner_shipping_id and doc.partner_shipping_id.phone">
+                                            <span t-field="doc.partner_shipping_id.phone"/>
+                                        </t>
+                                        <t t-if="not doc.delivery_partner_id and not doc.partner_shipping_id and doc.partner_id.phone">
+                                            <span t-field="doc.partner_id.phone"/>
+                                        </t>
+                                    </div>
                                     <div><strong>เลขที่ใบสั่งขาย / Sale Order No:</strong> <span t-field="doc.invoice_origin"/></div>
                                     <div style="display: flex; justify-content: space-between;">
                                         <div style="width: 49%;">
@@ -295,9 +326,9 @@
                                   
                               
                                 <!-- ขวา: ผลลัพธ์ตัวเลขรวม -->
-                                <td colspan="3" style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 19px; vertical-align: top; padding: 6px;">
-                                  <span t-field="doc.grand_total" t-options='{"widget": "float", "precision": 2}'/>
-                                </td>
+                                                                <td colspan="3" style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 19px; vertical-align: top; padding: 6px;">
+                                                                    <span t-esc="('{:,.2f}'.format(total_invoice_amount))"/>
+                                                                </td>
                               </tr>
                         </tfoot>
                     </table>
