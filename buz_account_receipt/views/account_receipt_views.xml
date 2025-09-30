@@ -23,6 +23,8 @@
           <button name="action_reset_to_draft" string="Reset to Draft" type="object"
                   invisible="state not in ['posted', 'cancel']" class="btn btn-secondary"/>
           <button name="action_post" string="Confirm" type="object" invisible="state != 'draft'" class="btn btn-success"/>
+          <button name="action_register_batch_payment" string="Register Batch Payment" type="object" 
+                  invisible="state != 'posted' or not line_ids" class="btn btn-primary"/>
           <button name="action_print_receipt" string="Print Receipt" type="object" invisible="state not in ['draft', 'posted']" class="btn btn-primary"/>
           <field name="state" widget="statusbar" statusbar_visible="draft,posted,cancel"/>
         </header>

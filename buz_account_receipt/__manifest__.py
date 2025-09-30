@@ -7,7 +7,7 @@
     "description": "Generate and print a grouped customer receipt (one receipt for multiple invoices).",
     "author": "Ball & Manow",
     "website": "https://example.com",
-    "depends": ["account"],
+    "depends": ["account", "account_payment"],
     "data": [
         "data/sequence.xml",
         "views/account_receipt_views.xml",

@@ -3,6 +3,47 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 
+class AccountPayment(models.Model):
+    _inherit = "account.payment"
+
+    buz_receipt_id = fields.Many2one('account.receipt', string='Receipt', copy=False)
+
+    def action_post(self):
+        # Store receipt reference before posting
+        receipt = self.buz_receipt_id
+        res = super(AccountPayment, self).action_post()
+        
+        # Update receipt's related invoices' amount_residuals to trigger recompute
+        if receipt:
+            # Update receipt amount by recomputing its lines
+            receipt.line_ids._compute_paid()
+            # Trigger recompute of receipt's total amount
+            receipt._compute_amount_total()
+            receipt._compute_amount_invoice_total()
+            
+            # Force a write to trigger all computed fields
+            receipt.write({
+                'amount_total': receipt.amount_total,
+                'amount_invoice_total': receipt.amount_invoice_total
+            })
+            
+        # After posting the payment, we need to ensure the related invoices are reconciled
+        # and the receipt lines are updated accordingly
+        if receipt and self.state == 'posted':
+            # Update the receipt line values based on current invoice state
+            for line in receipt.line_ids:
+                if line.move_id:
+                    # Refresh the amounts based on the current state of the invoice
+                    total = line.move_id.amount_total_signed if line.move_id.move_type == "out_refund" else line.move_id.amount_total
+                    residual = line.move_id.amount_residual_signed if line.move_id.move_type == "out_refund" else line.move_id.amount_residual
+                    line.write({
+                        'amount_total': total,
+                        'amount_residual': residual,
+                    })
+            
+        return res
+
+
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
@@ -139,6 +180,9 @@ class AccountReceipt(models.Model):
     # Moves already used in receipts (to help filter selection)
     used_move_ids = fields.Many2many('account.move', string='Used Invoices', compute='_compute_used_moves')
 
+    # Link to related payments
+    payment_ids = fields.One2many('account.payment', 'buz_receipt_id', string='Payments')
+    
     state = fields.Selection([
         ("draft", "Draft"),
         ("posted", "Posted"),
@@ -255,6 +299,70 @@ class AccountReceipt(models.Model):
         for rec in self:
             rec.used_move_ids = all_line_moves
 
+    def action_register_batch_payment(self):
+        """
+        Open the standard account.payment.register wizard to register batch payment for all invoices in this receipt.
+        """
+        self.ensure_one()
+        
+        # Get all invoices linked to this receipt
+        invoices = self.line_ids.mapped('move_id')
+        
+        if not invoices:
+            raise UserError(_("There are no invoices linked to this receipt to register payment for."))
+        
+        # Validate invoices
+        for invoice in invoices:
+            # Check if invoice is posted
+            if invoice.state != 'posted':
+                raise UserError(_("Invoice %s is not in 'Posted' state. All invoices must be posted to register payment.") % invoice.name)
+            
+            # Check if invoice belongs to the same partner as the receipt
+            if invoice.partner_id != self.partner_id:
+                raise UserError(_("Invoice %s belongs to a different partner than the receipt. All invoices must belong to the same partner as the receipt.") % invoice.name)
+            
+            # Check if invoice is a customer invoice/refund
+            if invoice.move_type not in ['out_invoice', 'out_refund']:
+                raise UserError(_("Invoice %s is not a customer invoice or refund. Only customer invoices and refunds can be used for payment registration.") % invoice.name)
+            
+            # Check if the invoice is not fully paid
+            if invoice.payment_state == 'paid':
+                raise UserError(_("Invoice %s is already fully paid. Cannot register payment for fully paid invoices.") % invoice.name)
+
+        # Prepare context for the payment register wizard
+        # Check if account_payment_batch_process module is installed
+        has_batch_process = 'account.payment.batch' in self.env.registry
+        
+        # Prepare the action to open the payment register wizard
+        action = {
+            'name': _('Register Payment'),
+            'res_model': 'account.payment.register',
+            'view_mode': 'form',
+            'view_id': self.env.ref('account.view_account_payment_register_form').id,
+            'target': 'new',
+            'type': 'ir.actions.act_window',
+            'context': {
+                'active_model': 'account.move',
+                'active_ids': invoices.ids,
+                'default_partner_id': self.partner_id.id,
+                'default_payment_type': 'inbound',
+                'default_journal_ids': self.env['account.journal'].search([('type', 'in', ('bank', 'cash'))]).ids,
+                'default_is_batch_payment': True,  # Flag to indicate this is a batch payment from receipt
+                'default_is_multiline_batch': True,  # Enable multiline batch processing if applicable
+                # Pass receipt ID to link payments back to receipt. Use default_ so created payments inherit it.
+                'buz_receipt_id': self.id,
+                'default_buz_receipt_id': self.id,
+            },
+        }
+        
+        # If account_payment_batch_process module is available, set appropriate context
+        if has_batch_process:
+            action['context']['from_batch_receipt'] = True
+            action['context']['batch_receipt_id'] = self.id
+            action['context']['default_batch_receipt_id'] = self.id
+        
+        return action
+
 
 class AccountReceiptLine(models.Model):
     _name = "account.receipt.line"
@@ -314,7 +422,37 @@ class AccountReceiptLine(models.Model):
                     # If any other line found, raise error with invoice number
                     raise UserError(_("The invoice %s is already added to another receipt and cannot be used twice.") % line.move_id.name)
 
-    @api.depends("amount_total", "amount_residual")
+    @api.depends("amount_total", "amount_residual", "move_id.amount_residual", "move_id.amount_residual_signed")
     def _compute_paid(self):
         for line in self:
-            line.amount_paid = (line.amount_total or 0.0) - (line.amount_residual or 0.0)
+            # Use the move's current residual amount if available, else use stored amount_residual
+            if line.move_id:
+                residual = line.move_id.amount_residual_signed if line.move_id.move_type == 'out_refund' else line.move_id.amount_residual
+                total = line.move_id.amount_total_signed if line.move_id.move_type == 'out_refund' else line.move_id.amount_total
+                line.amount_paid = total - residual
+            else:
+                line.amount_paid = (line.amount_total or 0.0) - (line.amount_residual or 0.0)
+
+
+class AccountMove(models.Model):
+    _inherit = "account.move"
+
+    def write(self, vals):
+        """Override write to update related receipt lines when invoice payment status changes."""
+        res = super(AccountMove, self).write(vals)
+        
+        # If payment state or residual amount changed, update related receipt lines
+        if any(field in vals for field in ['payment_state', 'amount_residual', 'amount_residual_signed', 'amount_total', 'amount_total_signed']):
+            # Find all receipt lines that reference this invoice
+            receipt_lines = self.env['account.receipt.line'].search([('move_id', 'in', self.ids)])
+            if receipt_lines:
+                # Update the receipt lines to reflect the new payment status
+                receipt_lines._compute_paid()
+                
+                # Update the receipts to reflect the new totals
+                receipts = receipt_lines.mapped('receipt_id')
+                for receipt in receipts:
+                    receipt._compute_amount_total()
+                    receipt._compute_amount_invoice_total()
+        
+        return res
