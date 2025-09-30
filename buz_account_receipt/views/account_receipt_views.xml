@@ -89,6 +89,6 @@
   </record>
 
   <menuitem id="menu_buz_account_receipt_history" name="Receipts"
-            parent="account.menu_account_customer"
-            action="action_buz_account_receipt" sequence="20"/>
+            parent="account.menu_finance_receivables"
+            action="action_buz_account_receipt" sequence="11"/>
 </odoo>
