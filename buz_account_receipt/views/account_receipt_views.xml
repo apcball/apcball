@@ -4,11 +4,11 @@
     <field name="name">buz.account.receipt.tree</field>
     <field name="model">account.receipt</field>
     <field name="arch" type="xml">
-      <tree string="Receipts" create="true" edit="false">
+      <tree string="Receipts" create="true" edit="false" decoration-success="state=='posted'" decoration-muted="state=='cancel'" decoration-info="state=='draft'">
         <field name="name"/>
         <field name="date"/>
         <field name="partner_id"/>
-        <field name="amount_total"/>
+        <field name="amount_total" sum="Total Amount"/>
         <field name="state"/>
       </tree>
     </field>
@@ -21,40 +21,67 @@
       <form string="Receipt" create="false">
         <header>
           <button name="action_reset_to_draft" string="Reset to Draft" type="object"
-                  invisible="state not in ['posted', 'cancel']" class="btn-secondary"/>
-          <button name="action_post" string="Confirm" type="object" invisible="state != 'draft'" class="oe_highlight"/>
-          <button name="action_print_receipt" string="Print Receipt" type="object" invisible="state not in ['draft', 'posted']" class="btn-primary"/>
+                  invisible="state not in ['posted', 'cancel']" class="btn btn-secondary"/>
+          <button name="action_post" string="Confirm" type="object" invisible="state != 'draft'" class="btn btn-success"/>
+          <button name="action_print_receipt" string="Print Receipt" type="object" invisible="state not in ['draft', 'posted']" class="btn btn-primary"/>
           <field name="state" widget="statusbar" statusbar_visible="draft,posted,cancel"/>
         </header>
         <sheet>
+          <div class="oe_title">
+            <label for="name" class="o_form_label" style="font-size: 16px;"/>
+            <h1>
+              <field name="name" readonly="1" class="oe_inline" style="font-size: 18px; font-weight: bold;"/>
+            </h1>
+          </div>
+        
           <group>
-            <group>
-              <field name="name" readonly="1"/>
-              <field name="date"/>
-              <field name="partner_id" options="{'no_create': True}"/>
+            <group name="basic_info" string="Receipt Details" col="4">
+              <field name="date" widget="date"/>
+              <field name="partner_id" options="{'no_create': True}" readonly="state != 'draft'"/>
               <field name="company_id" readonly="1"/>
               <field name="currency_id" readonly="1"/>
               <!-- used_move_ids is required in the view because the tree inline domain references parent.used_move_ids -->
               <field name="used_move_ids" invisible="1"/>
             </group>
-            <group>
-              <field name="amount_total" readonly="1"/>
-              <field name="delivery_partner_id"/>
-              <field name="note"/>
+            
+            <group name="amount_info" string="Amounts" col="2">
+              <field name="amount_total" readonly="1" nolabel="1" invisible="state == 'draft'"
+                     widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+              <field name="amount_invoice_total" readonly="1" nolabel="1" invisible="state == 'draft'"
+                     widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
             </group>
           </group>
+          
+          <group>
+            <group name="delivery_info" string="Delivery Information">
+              <field name="delivery_partner_id" readonly="state != 'draft'"/>
+            </group>
+            <group name="notes" string="Notes">
+              <field name="note" readonly="state != 'draft'"/>
+            </group>
+          </group>
+
           <notebook>
-            <page string="Lines">
+            <page string="Invoice Lines" name="lines">
               <field name="line_ids">
-                <tree editable="bottom">
-                  <field name="move_id" domain="[('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted'), ('partner_id', '=', parent.partner_id), ('id', 'not in', parent.used_move_ids)]"/>
-                  <field name="move_name" readonly="1"/>
-                  <field name="invoice_date" readonly="1"/>
-                  <field name="amount_total"/>
-                  <field name="amount_residual"/>
-                  <field name="amount_paid" readonly="1"/>
+                <tree editable="bottom" class="table-responsive">
+                  <field name="move_id" domain="[('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted'), ('partner_id', '=', parent.partner_id), ('id', 'not in', parent.used_move_ids)]" string="Invoice"/>
+                  <field name="move_name" readonly="1" string="Invoice Number"/>
+                  <field name="invoice_date" readonly="1" string="Date"/>
+                  <field name="amount_total" string="Total"/>
+                  <field name="amount_residual" string="Residual"/>
+                  <field name="amount_paid" readonly="1" string="Paid"/>
                 </tree>
               </field>
+            </page>
+            
+            <page string="Additional Information" name="additional_info" invisible="state == 'draft'">
+              <group col="4">
+                <field name="amount_total_words" nolabel="1" readonly="1" 
+                       string="Total Amount in Words"/>
+                <field name="amount_invoice_total_words" nolabel="1" readonly="1" 
+                       string="Invoice Total in Words"/>
+              </group>
             </page>
           </notebook>
         </sheet>

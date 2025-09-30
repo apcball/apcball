@@ -170,7 +170,7 @@
                     </div>
                     <div class="mb-2" style="margin-top: 0; text-align: left;">
                         <strong style="width: auto; display: inline-block; font-size: 20px; text-align: left;">รหัสลูกค้า:</strong>
-                        <span t-field="doc.partner_id.ref" style="font-size: 20px;"/>
+                        <span t-field="doc.partner_id.partner_code" style="font-size: 20px;"/>
                     </div>
 
 
@@ -238,10 +238,6 @@
                                             <span t-if="doc.line_ids and doc.line_ids[0].move_id" t-esc="doc.line_ids[0].move_id.invoice_payment_term_id and doc.line_ids[0].move_id.invoice_payment_term_id.name or ''"/>
                                         </div>
                                     </div>
-                                    <div style="margin-top: 10px;">
-                                        <strong>วันครบกำหนด:</strong>
-                                        <span t-if="doc.line_ids and doc.line_ids[0].move_id" t-field="doc.line_ids[0].move_id.invoice_date_due" t-options='{"format": "dd/MM/yyyy"}'/>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -288,6 +284,10 @@
                                     <span t-field="line.move_id.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
                                 </td>
                                 <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
+                                    <t t-if="line.move_id and line.move_id.invoice_date_due">
+                                        <span t-field="line.move_id.invoice_date_due" t-options='{"format": "dd/MM/yyyy"}'/>
+                                    </t>
+                                    <t t-if="not line.move_id or not line.move_id.invoice_date_due">-</t>
                                 </td>
                                 <td style="border: 1px solid black; text-align: right; vertical-align: middle;">
                                   <span t-field="line.move_id.amount_total" t-options='{"widget": "float", "precision": 2}'/>
