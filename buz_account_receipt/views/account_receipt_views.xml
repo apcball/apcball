@@ -5,11 +5,11 @@
     <field name="model">account.receipt</field>
     <field name="arch" type="xml">
       <tree string="Receipts" create="true" edit="false" decoration-success="state=='posted'" decoration-muted="state=='cancel'" decoration-info="state=='draft'">
-        <field name="name"/>
-        <field name="date"/>
-        <field name="partner_id"/>
-        <field name="amount_total" sum="Total Amount"/>
-        <field name="state"/>
+        <field name="name" string="Receipt Number" widget="text_tag"/>
+        <field name="date" string="Date"/>
+        <field name="partner_id" string="Customer"/>
+        <field name="amount_total" string="Total Amount" sum="Total Amount" widget="monetary"/>
+        <field name="state" string="Status" widget="badge"/>
       </tree>
     </field>
   </record>
@@ -29,19 +29,19 @@
           <field name="state" widget="statusbar" statusbar_visible="draft,posted,cancel"/>
         </header>
         <sheet>
-          <div class="oe_title">
-            <label for="name" class="o_form_label" style="font-size: 16px;"/>
+          <div class="oe_title" style="display: flex; align-items: center;">
+            <label for="name" class="o_form_label" style="font-size: 16px; font-weight: bold; margin-right: 10px;"/>
             <h1>
-              <field name="name" readonly="1" class="oe_inline" style="font-size: 18px; font-weight: bold;"/>
+              <field name="name" readonly="1" class="oe_inline" style="font-size: 20px; font-weight: bold; color: #01040eff;"/>
             </h1>
           </div>
         
-          <group>
-            <group name="basic_info" string="Receipt Details" col="4">
-              <field name="date" widget="date"/>
-              <field name="partner_id" options="{'no_create': True}" readonly="state != 'draft'"/>
-              <field name="company_id" readonly="1"/>
-              <field name="currency_id" readonly="1"/>
+          <group col="4" colspan="4" style="margin-top: 10px; padding: 10px; border-radius: 5px; background-color: #f8f9fa;">
+            <group name="basic_info" string="Receipt Details" colspan="2">
+              <field name="date" widget="date" string="Receipt Date"/>
+              <field name="partner_id" options="{'no_create': True}" readonly="state != 'draft'" string="Customer"/>
+              <field name="company_id" readonly="1" string="Company"/>
+              <field name="currency_id" readonly="1" string="Currency"/>
               <!-- used_move_ids is required in the view because the tree inline domain references parent.used_move_ids -->
               <field name="used_move_ids" invisible="1"/>
             </group>
@@ -54,18 +54,18 @@
             </group>
           </group>
           
-          <div class="oe_button_box" name="button_box">
-            <button name="action_view_payments" type="object" class="oe_stat_button" icon="fa-money">
-              <field string="Payments" name="payment_ids" widget="statinfo"/>
+          <div class="oe_button_box" name="button_box" style="margin: 5px 0;">
+            <button name="action_view_payments" type="object" class="oe_stat_button" icon="fa-money" style="padding: 10px;">
+              <field string="Payments" name="payment_ids" widget="statinfo" style="font-size: 14px;"/>
             </button>
           </div>
           
-          <group>
-            <group name="delivery_info" string="Delivery Information">
-              <field name="delivery_partner_id" readonly="state != 'draft'"/>
+          <group col="4" colspan="4" style="margin-top: 10px;">
+            <group name="delivery_info" string="Delivery Information" colspan="2">
+              <field name="delivery_partner_id" readonly="state != 'draft'" string="Delivery Partner"/>
             </group>
-            <group name="notes" string="Notes">
-              <field name="note" readonly="state != 'draft'"/>
+            <group name="notes" string="Notes" colspan="2">
+              <field name="note" readonly="state != 'draft'" placeholder="Enter any notes about this receipt..."/>
             </group>
           </group>
 
@@ -76,9 +76,9 @@
                   <field name="move_id" domain="[('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted'), ('partner_id', '=', parent.partner_id), ('id', 'not in', parent.used_move_ids)]" string="Invoice"/>
                   <field name="move_name" readonly="1" string="Invoice Number"/>
                   <field name="invoice_date" readonly="1" string="Invoice Date"/>
-                  <field name="amount_total" string="Amount Total"/>
-                  <field name="amount_residual" string="Residual"/>
-                  <field name="amount_paid" readonly="1" string="Paid"/>
+                  <field name="amount_total" string="Amount Total" widget="monetary"/>
+                  <field name="amount_residual" string="Residual" widget="monetary"/>
+                  <field name="amount_paid" readonly="1" string="Paid" widget="monetary"/>
                 </tree>
               </field>
             </page>
