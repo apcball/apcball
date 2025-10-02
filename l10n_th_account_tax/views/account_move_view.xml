@@ -82,6 +82,8 @@
                 <page string="Tax Invoice" name="tax_invoice" invisible="not tax_invoice_ids">
                     <field name="tax_invoice_ids" nolabel="1">
                         <tree editable="bottom" create="0" delete="1">
+                            <field name="partner_id"/>
+                            <field name="vat" string="Tax ID"/>
                             <field name="tax_invoice_number"/>
                             <field name="tax_invoice_date"/>
                             <field name="tax_base_amount"/>
@@ -142,6 +144,7 @@
                                 <field name="report_date" />
                             </div>
                             <field name="partner_id" />
+                            <field name="vat" string="Tax ID" />
                             <field name="account_id" readonly="1" />
                             <field name="tax_line_id" readonly="1" />
                             <field name="tax_base_amount" />
@@ -180,6 +183,7 @@
                 <field name="report_late_mo" />
                 <field name="report_date" />
                 <field name="partner_id" />
+                <field name="vat" string="Tax ID" />
                 <field name="account_id" />
                 <field name="tax_line_id" />
                 <field name="tax_base_amount" />

@@ -42,6 +42,23 @@ class AccountMoveTaxInvoice(models.Model):
         string="Partner",
         ondelete="restrict",
     )
+    vat = fields.Char(
+        string="Tax ID",
+        compute="_compute_vat",
+        inverse="_inverse_vat",
+        store=True,
+        readonly=False,
+    )
+    
+    @api.depends("partner_id.vat")
+    def _compute_vat(self):
+        for rec in self:
+            rec.vat = rec.partner_id.vat
+    
+    def _inverse_vat(self):
+        for rec in self:
+            if rec.partner_id:
+                rec.partner_id.vat = rec.vat
     move_id = fields.Many2one(comodel_name="account.move", index=True, copy=True)
     move_state = fields.Selection(related="move_id.state", store=True)
     payment_id = fields.Many2one(
