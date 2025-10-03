@@ -36,8 +36,8 @@
                         type="object" 
                         string="Clear Advance (WHT)" 
                         class="btn-warning" 
-                        invisible="move_type != 'in_invoice' or state != 'posted' or amount_residual &lt;= 0"
-                        help="Clear advance with withholding tax calculation"/>
+                        invisible="move_type != 'in_invoice' or state != 'posted' or amount_residual &lt;= 0 or not expense_sheet_id"
+                        help="Clear advance with withholding tax calculation (available only for bills from Expense Sheets)"/>
                 
                 <button name="%(l10n_th_account_tax.action_withholding_tax_cert_menu)d" 
                         type="action" 
