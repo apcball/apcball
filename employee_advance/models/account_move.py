@@ -88,10 +88,15 @@ class AccountMove(models.Model):
             # Find WHT move lines for reference
             wht_lines = self.line_ids.filtered(lambda l: l.tax_line_id == self.wht_tax_id)
             
+            # Get WHT partner (vendor) from WHT line, fallback to move partner
+            wht_partner = self.partner_id
+            if wht_lines:
+                wht_partner = wht_lines[0].partner_id or self.partner_id
+            
             # Prepare context with default values
             context = {
                 'default_company_id': self.company_id.id,
-                'default_partner_id': self.partner_id.id,
+                'default_partner_id': wht_partner.id,  # ใช้ vendor partner จาก WHT line
                 'default_date': self.date,
                 'default_move_id': self.id,
                 'default_state': 'draft',

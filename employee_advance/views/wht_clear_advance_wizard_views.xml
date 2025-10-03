@@ -25,10 +25,20 @@
                             <field name="currency_id" readonly="1"/>
                         </group>
                         
-                        <group name="wht_details" string="WHT Details">
+                        <group name="partner_details" string="Partner Information">
                             <field name="partner_id" required="1" 
+                                   options="{'no_quick_create': True}"/>
+                            <field name="wht_partner_id" required="1" 
                                    context="{'default_is_company': True, 'default_supplier_rank': 1}"
                                    options="{'no_quick_create': True}"/>
+                            <label for="wht_partner_id" colspan="2">
+                                <div class="text-info">
+                                    <i class="fa fa-info-circle"/> เลือก Vendor ที่จะออกใบหัก ณ ที่จ่ายให้
+                                </div>
+                            </label>
+                        </group>
+                        
+                        <group name="wht_details" string="WHT Details">
                             <field name="wht_tax_id" required="1"
                                    options="{'no_create': True, 'no_open': True}"/>
                             <field name="wht_tax_rate" readonly="1"/>
@@ -60,6 +70,7 @@
                                    domain="[('type', '=', 'general'), ('company_id', '=', company_id)]"/>
                             <field name="date" required="1"/>
                             <field name="ref" placeholder="Reference for journal entry"/>
+                            <field name="auto_reconcile" widget="boolean_toggle"/>
                         </group>
                     </group>
                     
@@ -91,11 +102,5 @@
         <field name="context">{}</field>
     </record>
 
-    <!-- Menu Item (Optional - for direct access) -->
-    <menuitem id="menu_wht_clear_advance_wizard"
-              name="Clear Advance with WHT"
-              parent="hr_expense.menu_hr_expense_root"
-              action="action_wht_clear_advance_wizard"
-              sequence="50"
-              groups="hr_expense.group_hr_expense_user"/>
+    <!-- Menu Item removed - wizard should only be accessible via buttons -->
 </odoo>

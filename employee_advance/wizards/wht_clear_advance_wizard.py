@@ -42,6 +42,11 @@ class WhtClearAdvanceWizard(models.TransientModel):
         readonly=True,
         help="Amount that will be deducted from advance box (Clear Amount - WHT)"
     )
+    auto_reconcile = fields.Boolean(
+        string='Auto Reconcile',
+        default=True,
+        help="Automatically reconcile the journal entry with matching payable entries"
+    )
     company_id = fields.Many2one(
         'res.company',
         string='Company',
@@ -60,9 +65,15 @@ class WhtClearAdvanceWizard(models.TransientModel):
     # User input fields
     partner_id = fields.Many2one(
         'res.partner',
-        string='Partner',
+        string='Partner (Employee)',
         required=True,
-        help="Vendor or employee to create payable entry for"
+        help="Employee partner for AP clearing entry"
+    )
+    wht_partner_id = fields.Many2one(
+        'res.partner',
+        string='WHT Partner (Vendor)',
+        required=True,
+        help="Partner for withholding tax and certificate (usually the vendor)"
     )
     wht_tax_id = fields.Many2one(
         'account.tax',
@@ -135,6 +146,32 @@ class WhtClearAdvanceWizard(models.TransientModel):
     def _compute_net_amount(self):
         for wizard in self:
             wizard.net_amount = wizard.clear_amount - wizard.wht_amount
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        
+        # Get expense sheet from context
+        expense_sheet_id = self.env.context.get('default_expense_sheet_id')
+        if expense_sheet_id:
+            expense_sheet = self.env['hr.expense.sheet'].browse(expense_sheet_id)
+            if expense_sheet:
+                res['expense_sheet_id'] = expense_sheet.id
+                
+                # Set partner_id (employee) 
+                employee_partner = False
+                if expense_sheet.employee_id.user_id and expense_sheet.employee_id.user_id.partner_id:
+                    employee_partner = expense_sheet.employee_id.user_id.partner_id
+                elif expense_sheet.employee_id.address_home_id:
+                    employee_partner = expense_sheet.employee_id.address_home_id
+                
+                if employee_partner:
+                    res['partner_id'] = employee_partner.id
+                
+                # Set wht_partner_id - ปล่อยให้ User เลือกเอง (ไม่ auto-detect)
+                # res['wht_partner_id'] = False  # ปล่อยว่างให้ User เลือก
+        
+        return res
 
     @api.onchange('advance_box_id')
     def _onchange_advance_box_id(self):
@@ -281,12 +318,15 @@ class WhtClearAdvanceWizard(models.TransientModel):
             'currency_id': self.currency_id.id,
         }))
         
-        # Cr WHT Payable = wht_amount
+        # Cr WHT Payable = wht_amount (ใช้ wht_partner_id เพื่อออก PND ให้ vendor)
         if self.wht_amount > 0:
             move_lines.append((0, 0, {
-                'name': _('WHT Payable - %s') % self.wht_tax_id.name,
+                'name': _('%(tax_name)s - %(vendor_name)s') % {
+                    'tax_name': self.wht_tax_id.name,
+                    'vendor_name': self.wht_partner_id.name
+                },
                 'account_id': wht_account.id,
-                'partner_id': self.partner_id.id,
+                'partner_id': self.wht_partner_id.id,  # ใช้ vendor partner สำหรับ PND
                 'debit': 0.0,
                 'credit': self.wht_amount,
                 'currency_id': self.currency_id.id,
@@ -310,6 +350,10 @@ class WhtClearAdvanceWizard(models.TransientModel):
             
             # Post the journal entry
             move.action_post()
+            
+            # Auto reconcile with related bills/payments if enabled
+            if self.auto_reconcile:
+                self._auto_reconcile(move)
             
             # Link to expense sheet
             self.expense_sheet_id.write({
@@ -345,6 +389,72 @@ class WhtClearAdvanceWizard(models.TransientModel):
         except Exception as e:
             _logger.error("Error creating WHT advance clearing journal entry: %s", str(e))
             raise UserError(_("Failed to create journal entry: %s") % str(e))
+
+    def _auto_reconcile(self, move):
+        """Auto reconcile the journal entry with related payables"""
+        self.ensure_one()
+        
+        try:
+            # Find payable lines from the move (Dr lines with partners)
+            payable_lines = move.line_ids.filtered(
+                lambda l: l.debit > 0 and l.partner_id and l.account_id.account_type == 'liability_payable'
+            )
+            
+            for line in payable_lines:
+                partner = line.partner_id
+                account = line.account_id
+                
+                # Find unreconciled payable lines for the same partner and account
+                domain = [
+                    ('partner_id', '=', partner.id),
+                    ('account_id', '=', account.id),
+                    ('reconciled', '=', False),
+                    ('parent_state', '=', 'posted'),
+                    ('id', '!=', line.id)  # Exclude the current line
+                ]
+                
+                # Look for matching lines (bills, payments, etc.)
+                matching_lines = self.env['account.move.line'].search(domain)
+                
+                # Find lines that can be reconciled (opposite balance)
+                reconcilable_lines = matching_lines.filtered(
+                    lambda l: (l.debit == 0 and l.credit > 0) or  # Credit lines (bills)
+                             (l.credit == 0 and l.debit > 0)      # Other debit lines
+                )
+                
+                if reconcilable_lines:
+                    # Try to reconcile with exact amount match first
+                    for target_line in reconcilable_lines:
+                        if abs(line.debit) == abs(target_line.credit):
+                            # Exact match - reconcile
+                            lines_to_reconcile = line + target_line
+                            try:
+                                lines_to_reconcile.reconcile()
+                                _logger.info("Auto reconciled: %s with %s (amount: %s)", 
+                                           line.name, target_line.name, line.debit)
+                                break
+                            except Exception as e:
+                                _logger.warning("Failed to auto reconcile %s with %s: %s", 
+                                              line.name, target_line.name, str(e))
+                                continue
+                    
+                    # If no exact match, try partial reconciliation
+                    if not line.reconciled and reconcilable_lines:
+                        try:
+                            # Sort by date (newest first) and try to reconcile with the first available
+                            sorted_lines = reconcilable_lines.sorted('date', reverse=True)
+                            target_line = sorted_lines[0]
+                            lines_to_reconcile = line + target_line
+                            lines_to_reconcile.reconcile()
+                            _logger.info("Auto reconciled (partial): %s with %s", 
+                                       line.name, target_line.name)
+                        except Exception as e:
+                            _logger.warning("Failed to auto reconcile (partial) %s: %s", 
+                                          line.name, str(e))
+                            
+        except Exception as e:
+            _logger.warning("Auto reconciliation failed: %s", str(e))
+            # Don't raise error, just log warning as reconciliation is optional
 
     def action_create_and_post(self):
         """Button action to create and post the journal entry"""
