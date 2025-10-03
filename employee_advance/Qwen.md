@@ -27,7 +27,7 @@ This module now includes integration with the Thai Withholding Tax Certificate f
 - Integration with existing Thai tax modules ensures compliance with local requirements
 
 ### 2. UI Elements for WHT Certificates
-- **Expense Sheet Form**: New "Print WHT Certificates" button appears when associated vendor bill has WHT certificates
+- **Expense Sheet Form**: New \"Print WHT Certificates\" button appears when associated vendor bill has WHT certificates
 - **WHT Certificates Section**: Displays associated WHT certificates on expense sheet for easy access
 - **Account Move Form**: Enhanced with WHT certificate access and display
 
@@ -52,6 +52,11 @@ This module now includes integration with the Thai Withholding Tax Certificate f
 ### Data Files
 1. **mail_activity_types.xml**: Activity types for advance management
 2. Various data files from the original module
+
+### Test Files
+1. **test_wht_integration.py**: Tests for WHT certificate integration functionality
+2. **test_wht_fix_verification.py**: Verification tests for WHT-related fixes
+3. **test_updated_integration.py**: Updated integration tests for the module
 
 ## Dependencies
 This module extends functionality from:
@@ -94,3 +99,11 @@ This module extends functionality from:
 - The integration ensures compliance with Thai tax reporting requirements
 - Fixed view issues by implementing a computed field approach for better performance and reliability
 - The implementation maintains backward compatibility while adding new WHT functionality
+- Test files have been added to ensure proper WHT integration and functionality
+
+## Testing
+The module includes comprehensive test coverage:
+- Unit tests for WHT certificate creation and integration
+- Integration tests for advance clearing with WHT
+- Verification tests to ensure WHT-related fixes work properly
+- Updated tests to cover new functionality and ensure no regressions

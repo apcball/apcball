@@ -12,225 +12,255 @@ class AccountMove(models.Model):
     expense_sheet_id = fields.Many2one('hr.expense.sheet', string='Expense Sheet', copy=False)
     advance_box_id = fields.Many2one('employee.advance.box', string='Advance Box', copy=False)
     is_expense_advance_bill = fields.Boolean(string='Is Expense Advance Bill', default=False, copy=False)
-
-    def action_clear_advance_from_bill(self):
-        """Method to be called from vendor bill to clear advance - creates Journal Entry instead of opening Register Payment wizard"""
-        self.ensure_one()
-        
-        # If the bill already has explicit metadata set, prefer it
-        ExpenseSheet = self.env['hr.expense.sheet']
-        expense_sheet = self.expense_sheet_id or ExpenseSheet.search([('bill_id', '=', self.id)], limit=1)
-
-        # If the bill was explicitly flagged as an expense advance bill, allow proceed
-        is_flagged = self.is_expense_advance_bill or self.env.context.get('force_clear_with_advance')
-
-        # Fallback 1: try to find expense sheet by invoice_origin
-        if not expense_sheet and self.invoice_origin:
-            expense_sheet = ExpenseSheet.search([('name', '=', self.invoice_origin)], limit=1)
-
-        # Fallback 2: try to parse the reference field set when creating the bill
-        # The module sets ref = 'Expense Sheet {sheet.name}' when creating bills from sheets.
-        if not expense_sheet and self.ref:
-            try:
-                if 'Expense Sheet' in self.ref:
-                    # Extract the part after 'Expense Sheet' and strip whitespace
-                    sheet_name = self.ref.split('Expense Sheet', 1).pop().strip()
-                    # If the ref included other characters like ':' or '-', clean them
-                    sheet_name = sheet_name.lstrip(':').strip()
-                    if sheet_name:
-                        expense_sheet = ExpenseSheet.search([('name', 'ilike', sheet_name)], limit=1)
-            except Exception:
-                _logger.debug('Failed to parse expense sheet name from bill ref: %s', self.ref)
-
-        # If still not found, but the bill is flagged or context allows, try to detect employee via partner and advance box\n        if not expense_sheet:\n            if not is_flagged:\n                # Try to detect employee from partner using multiple methods\n                employee = self._find_employee_from_partner()\n                if employee:\n                    # Find advance box for the employee\n                    adv_box = self.env['employee.advance.box'].search([('employee_id', '=', employee.id)], limit=1)\n                    if adv_box:\n                        # allow proceed: create a minimal sheet placeholder? prefer to just set the advance box on bill\n                        _logger.info('Detected employee %s from partner %s and found advance box %s for bill %s', employee.name, self.partner_id.name, adv_box.name, self.name)\n                        self.sudo().write({'advance_box_id': adv_box.id})\n                        # Create Journal Entry instead of opening Register Payment wizard\n                        return self._clear_advance_using_advance_box(adv_box)\n\n                # No detection - raise\n                error_msg = _(\n                    \"This vendor bill was not (or could not be detected as) created from an employee expense sheet and cannot be cleared with an advance.\\n\\nOnly vendor bills created from employee expense sheets with the 'Clear from Advance' option can be cleared with advance.\\n\\nYou can use 'Link to Advance' to manually link a box or expense sheet.\"\n                )\n                raise UserError(error_msg)\n            else:\n                # flagged but no sheet: allow manager to provide advance_box_id or proceed with partner->employee detection\n                adv_box = self.advance_box_id\n                if not adv_box:\n                    employee = self._find_employee_from_partner()\n                    if employee:\n                        adv_box = self.env['employee.advance.box'].search([('employee_id', '=', employee.id)], limit=1)\n                if not adv_box:\n                    raise UserError(_('No advance box found for this bill. Please use Link to Advance or set an advance box on the bill.'))\n                return self._clear_advance_using_advance_box(adv_box)\n
-
-        # If the expense sheet exists but is not linked to this bill, link it.
-        if expense_sheet and expense_sheet.bill_id != self:
-            _logger.info('Auto-linking expense sheet %s to bill %s for advance clearing', expense_sheet.name, self.name)
-            expense_sheet.sudo().write({'bill_id': self.id})
-
-        # If the expense sheet exists but doesn't have an advance_box_id,
-        # check if we detected one separately and use the direct clearing method
-        if expense_sheet and not expense_sheet.advance_box_id and self.advance_box_id:
-            return self._clear_advance_using_advance_box(self.advance_box_id)
-        elif expense_sheet and expense_sheet.advance_box_id:
-            # Create Journal Entry instead of opening Register Payment wizard from expense sheet
-            return self._clear_advance_using_advance_box(expense_sheet.advance_box_id)
-        else:
-            # If no expense sheet or no advance box, try using the advance_box_id on the bill itself
-            if self.advance_box_id:
-                return self._clear_advance_using_advance_box(self.advance_box_id)
-            else:
-                raise UserError(_('No advance box linked to this bill or its associated expense sheet.'))
-
-    def _find_employee_from_partner(self):
-        """Find employee associated with the bill partner through various methods"""
-        # Method 1: Try to find employee using user_partner_id
-        employee = self.env['hr.employee'].search([('user_partner_id', '=', self.partner_id.id)], limit=1)
-        if employee:
-            return employee
-
-        # Method 2: Try to find employee by address_home_id (private address)
-        employee = self.env['hr.employee'].search([('address_home_id', '=', self.partner_id.id)], limit=1)
-        if employee:
-            return employee
-
-        # Method 3: Try to find employee by checking if this partner is linked to any employee
-        # Look for employees where the partner matches any of the employee's partner fields
-        all_employees = self.env['hr.employee'].search([])
-        for emp in all_employees:
-            emp_partner = emp._get_employee_partner()  # Use the method from advance_box
-            if emp_partner and emp_partner == self.partner_id.id:
-                return emp
-
-        return None  # No employee found associated with this partner
-
-    def action_open_advance_payment_wizard(self):
-        """Open the advance payment wizard with context to bypass default AR/AP checks"""
-        self.ensure_one()
-        
-        # Validate that the bill is posted
-        if self.state != 'posted':
-            raise UserError(_('The vendor bill must be posted before clearing with advance.'))
-        
-        if self.amount_residual <= 0:
-            raise UserError(_('The vendor bill is already fully paid.'))
-        
-        # Find advance box for the partner if possible
-        advance_box = False
-        if self.partner_id:
-            employee = self._find_employee_from_partner()
-            if employee:
-                advance_box = self.env['employee.advance.box'].search([
-                    ('employee_id', '=', employee.id),
-                    ('company_id', '=', self.company_id.id)
-                ], limit=1)
-        
-        # Prepare the action to open account.payment.register wizard
-        action = {
-            'name': _('Register Payment'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.payment.register',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'active_model': 'account.move',
-                'active_ids': [self.id],
-                'force_advance_payment': True,
-                'default_advance_box_id': advance_box.id if advance_box else False,
-            }
-        }
-        
-        return action
-
     
+    # WHT Certificate support
+    wht_tax_id = fields.Many2one('account.tax', string='WHT Tax', copy=False)
+    wht_base_amount = fields.Monetary(string='WHT Base Amount', currency_field='currency_id', copy=False)
+    wht_amount = fields.Monetary(string='WHT Amount', currency_field='currency_id', copy=False)
+    is_advance_clearing = fields.Boolean(string='Is Advance Clearing Entry', default=False, copy=False)
+    
+    # WHT Certificate count for smart button
+    wht_cert_count = fields.Integer(
+        string='WHT Certificate Count',
+        compute='_compute_wht_cert_count'
+    )
 
-    def _clear_advance_using_advance_box(self, advance_box):
-        """Create a clearing JE directly using the advance box when no expense sheet is available."""
-        # This is a minimal flow similar to HrExpenseSheet.action_clear_advance but without a sheet
-        # Create simple JE and reconcile with bill
+    @api.depends('line_ids')
+    def _compute_wht_cert_count(self):
+        for move in self:
+            count = 0
+            try:
+                # Check if WHT certificate module is installed
+                if 'withholding.tax.cert' in self.env.registry:
+                    WhtCert = self.env['withholding.tax.cert']
+                    count = WhtCert.search_count([
+                        ('move_id', '=', move.id)
+                    ])
+            except Exception:
+                count = 0
+            move.wht_cert_count = count
+
+    def can_create_wht_certificate(self):
+        """Check if WHT certificate can be created from this move"""
         self.ensure_one()
-        if self.state != 'posted':
-            raise UserError(_('The vendor bill must be posted before clearing the advance.'))
-        if self.amount_residual <= 0:
-            raise UserError(_('The vendor bill is already fully paid.'))
-
-        clearing_journal_id = self.env['ir.config_parameter'].sudo().get_param('employee_advance.advance_default_clearing_journal_id')
-        if not clearing_journal_id:
-            raise UserError(_('Please set the default clearing journal in configuration.'))
-
-        journal = self.env['account.journal'].browse(int(clearing_journal_id))
-        if not journal:
-            raise UserError(_('Invalid clearing journal configured.'))
-
-        # Ensure the journal has a sequence configured so posting will generate unique names
-        # Use the utility to create sequence if missing
-        self.env['hr.expense.advance.journal.utils'].ensure_journal_sequence(journal)
-
-        # Determine the payable account from the bill
-        payable_account = None
-        for line in self.line_ids:
-            if line.account_id.account_type == 'liability_payable' and line.balance < 0:
-                payable_account = line.account_id
-                break
-
-        if not payable_account:
-            raise UserError(_('Could not find payable account in the vendor bill.'))
-
-        # Create journal entry to clear advance
-        # Prepare journal entry values without a pre-set 'name' so the journal sequence
-        # will assign a unique name upon posting. Also include company and move_type
-        # to ensure sequences and constraints are applied correctly per company.
-        je_vals = {
-            'journal_id': journal.id,
-            'company_id': journal.company_id.id if journal.company_id else self.company_id.id,
-            'move_type': 'entry',
-            'date': fields.Date.context_today(self),
-            'ref': f'Clear Advance for {self.name}',
-            'line_ids': [
-                (0, 0, {
-                    'account_id': payable_account.id,
-                    'partner_id': self.partner_id.id,
-                    'debit': abs(self.amount_residual),
-                    'credit': 0.0,
-                    'name': f'Clear Advance for {self.name}',
-                }),
-                (0, 0, {
-                    'account_id': advance_box.account_id.id,
-                    'partner_id': self.partner_id.id,
-                    'debit': 0.0,
-                    'credit': abs(self.amount_residual),
-                    'name': f'Clear Advance for {self.name}',
-                }),
-            ]
-        }
-
-        # Ensure we don't set 'name' so the posting will use the journal sequence
-        je = self.env['account.move'].create(je_vals)
-        je.action_post()
-
-        # Automatically reconcile the journal entry with the original vendor bill
-        # Find payable lines in both the original bill and the new journal entry
-        original_payable_line = self.line_ids.filtered(
-            lambda line: line.account_id.account_type == 'liability_payable' and line.balance < 0
-        )[:1]  # Take the first payable line
-
-        je_payable_line = je.line_ids.filtered(
-            lambda line: line.account_id.id == payable_account.id and line.debit > 0
-        )[:1]  # Take the first payable line from the JE
-
-        if original_payable_line and je_payable_line:
-            # Prepare lines for reconciliation
-            lines_to_reconcile = (original_payable_line + je_payable_line).sorted()
-            if lines_to_reconcile and len(lines_to_reconcile.mapped('account_id')) == 1:
-                try:
-                    # Attempt reconciliation
-                    lines_to_reconcile.reconcile()
-                except Exception as e:
-                    # If reconciliation fails, log but don't fail the entire operation
-                    _logger.warning(f"Could not reconcile advance clearing entry: {e}")
-
-        # Log in the chatter
-        self.message_post(
-            body=_("Advance cleared with journal entry %s. Dr %s, Cr %s" %
-                  (je.name, payable_account.code, advance_box.account_id.code))
+        return (
+            self.is_advance_clearing and 
+            self.wht_tax_id and 
+            self.wht_amount > 0 and
+            'withholding.tax.cert' in self.env.registry
         )
 
-        # Trigger recompute of the advance box balance
+    def action_create_wht_certificate(self):
+        """Create WHT certificate or show information"""
+        self.ensure_one()
+        
+        # Check if WHT certificate module is available
+        if 'withholding.tax.cert' not in self.env.registry:
+            # Show a helpful message instead of raising an error
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('WHT Certificate Module Not Available'),
+                    'message': _(
+                        'The Thai Withholding Tax Certificate module is not available.\n\n'
+                        'You can still create WHT certificates manually through:\n'
+                        '• Accounting → Vendors → Withholding Tax Certificates\n'
+                        '• Or install the WHT certificate modules if available\n\n'
+                        'The WHT journal entry has been created successfully with:\n'
+                        '• Base Amount: %s\n'
+                        '• WHT Amount: %s\n'
+                        '• Tax Rate: %s%%'
+                    ) % (
+                        self.wht_base_amount or 0.0,
+                        self.wht_amount or 0.0, 
+                        abs(self.wht_tax_id.amount) if self.wht_tax_id else 0.0
+                    ),
+                    'type': 'info',
+                    'sticky': False,
+                }
+            }
+        
         try:
-            advance_box._trigger_balance_recompute()
-        except Exception:
-            # Don't block clearing if recompute fails; could add logging here
-            pass
+            # Open new WHT certificate form with pre-filled context
+            WhtCert = self.env['withholding.tax.cert']
+            
+            # Find WHT move lines for reference
+            wht_lines = self.line_ids.filtered(lambda l: l.tax_line_id == self.wht_tax_id)
+            
+            # Prepare context with default values
+            context = {
+                'default_company_id': self.company_id.id,
+                'default_partner_id': self.partner_id.id,
+                'default_date': self.date,
+                'default_move_id': self.id,
+                'default_state': 'draft',
+            }
+            
+            # Add WHT information if available
+            if self.wht_tax_id:
+                # Calculate tax rate percentage
+                tax_rate = abs(self.wht_tax_id.amount) if self.wht_tax_id else 0.0
+                
+                # Find corresponding account.withholding.tax record
+                wht_tax_domain = [
+                    ('name', 'ilike', self.wht_tax_id.name),
+                    ('amount', '=', self.wht_tax_id.amount),
+                ]
+                
+                # Try to find the withholding tax record
+                withholding_tax = None
+                if 'account.withholding.tax' in self.env.registry:
+                    withholding_tax = self.env['account.withholding.tax'].search(wht_tax_domain, limit=1)
+                
+                # Prepare WHT line data for the certificate
+                wht_line_vals = {
+                    'base': self.wht_base_amount or 0.0,
+                    'amount': self.wht_amount or 0.0,
+                    'wht_percent': tax_rate,
+                    'wht_cert_income_type': '2',  # Default to type 2 (fees, commission)
+                    'wht_cert_income_desc': _('Advance clearing payment'),
+                }
+                
+                # Add withholding tax if found
+                if withholding_tax:
+                    wht_line_vals['wht_tax_id'] = withholding_tax.id
+                
+                context.update({
+                    # Pre-fill the WHT line
+                    'default_wht_line': [(0, 0, wht_line_vals)],
+                    # Additional reference information
+                    'default_ref': _('Advance Clearing - %s') % (self.ref or self.name),
+                    'default_origin': self.name,
+                    'default_description': _('WHT from advance clearing entry: %s') % self.name,
+                })
+            
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Create WHT Certificate'),
+                'res_model': 'withholding.tax.cert',
+                'view_mode': 'form',
+                'target': 'new',
+                'context': context,
+            }
+            
+        except Exception as e:
+            _logger.warning("Failed to open WHT certificate form: %s", str(e))
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('WHT Certificate Form Unavailable'),
+                    'message': _(
+                        'Could not open WHT certificate form: %s\n\n'
+                        'You can create WHT certificates manually through the Accounting menu.\n'
+                        'The advance clearing journal entry has been created successfully.'
+                    ) % str(e),
+                    'type': 'warning',
+                    'sticky': True,
+                }
+            }
 
-        return je
+    def action_view_wht_certificates(self):
+        """View related WHT certificates"""
+        self.ensure_one()
+        
+        if 'withholding.tax.cert' not in self.env.registry:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('WHT Certificate Module Not Available'),
+                    'message': _('The WHT Certificate module is not installed. Please install the Thai localization modules.'),
+                    'type': 'info',
+                }
+            }
 
-    def action_post(self):
-        """Override to handle advance clearing for payments"""
-        # Don't override the action_post method for general moves
-        # This was causing issues with duplicate processing
-        # Only handle advance clearing in the payment context
-        return super(AccountMove, self).action_post()
+        try:
+            WhtCert = self.env['withholding.tax.cert']
+            certificates = WhtCert.search([('move_id', '=', self.id)])
+
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('WHT Certificates'),
+                'res_model': 'withholding.tax.cert',
+                'view_mode': 'tree,form',
+                'domain': [('id', 'in', certificates.ids)],
+                'target': 'current',
+            }
+        except Exception as e:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Error'),
+                    'message': _('Error accessing WHT certificates: %s') % str(e),
+                    'type': 'warning',
+                }
+            }
+
+    def action_open_wht_clear_advance_wizard_from_bill(self):
+        """Open WHT Clear Advance Wizard from vendor bill"""
+        self.ensure_one()
+        
+        if self.move_type != 'in_invoice':
+            raise UserError(_("This action is only available for vendor bills."))
+        
+        if self.state != 'posted':
+            raise UserError(_("Bill must be posted before clearing with advance."))
+        
+        if self.amount_residual <= 0:
+            raise UserError(_("Bill has no remaining balance to clear."))
+        
+        # Try to find related expense sheet
+        expense_sheet = self.expense_sheet_id
+        if not expense_sheet:
+            # Search by various methods
+            ExpenseSheet = self.env['hr.expense.sheet']
+            if self.invoice_origin:
+                expense_sheet = ExpenseSheet.search([('name', '=', self.invoice_origin)], limit=1)
+            
+            if not expense_sheet and self.ref:
+                # Try to parse from reference
+                if 'Expense Sheet' in self.ref:
+                    sheet_name = self.ref.split('Expense Sheet', 1)[1].strip().lstrip(':').strip()
+                    if sheet_name:
+                        expense_sheet = ExpenseSheet.search([('name', 'ilike', sheet_name)], limit=1)
+        
+        if not expense_sheet:
+            raise UserError(_("No related expense sheet found. This bill must be created from an expense sheet to use advance clearing."))
+        
+        # Get advance box
+        advance_box = expense_sheet.advance_box_id or self.advance_box_id
+        if not advance_box:
+            raise UserError(_("No advance box found. Please configure advance box for the employee."))
+        
+        # Get employee partner
+        employee = expense_sheet.employee_id
+        employee_partner = False
+        if employee.user_id and employee.user_id.partner_id:
+            employee_partner = employee.user_id.partner_id
+        elif employee.address_home_id:
+            employee_partner = employee.address_home_id
+        
+        context = {
+            'default_expense_sheet_id': expense_sheet.id,
+            'default_employee_id': employee.id,
+            'default_advance_box_id': advance_box.id,
+            'default_company_id': self.company_id.id,
+            'default_partner_id': employee_partner.id if employee_partner else self.partner_id.id,
+            'default_clear_amount': self.amount_residual,
+            'default_amount_base': self.amount_residual,
+        }
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Clear Advance with WHT'),
+            'res_model': 'wht.clear.advance.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': context,
+        }
 
 
 class AccountPayment(models.Model):
@@ -238,4 +268,62 @@ class AccountPayment(models.Model):
 
     is_advance_clearing = fields.Boolean(string='Is Advance Clearing', default=False)
     reconciled_bill_ids = fields.One2many('account.move', 'payment_id', string='Reconciled Bills')
+    
+    # WHT Certificate count for smart button
+    wht_cert_count = fields.Integer(
+        string='WHT Certificate Count',
+        compute='_compute_wht_cert_count'
+    )
+
+    @api.depends('line_ids')
+    def _compute_wht_cert_count(self):
+        """Compute the count of WHT certificates related to this payment"""
+        for payment in self:
+            count = 0
+            try:
+                # Check if WHT certificate module is installed
+                if 'l10n.th.account.wht.cert.form' in self.env.registry:
+                    WhtCert = self.env['l10n.th.account.wht.cert.form']
+                    count = WhtCert.search_count([
+                        '|',
+                        ('move_id', '=', payment.move_id.id if payment.move_id else False),
+                        ('move_line_ids', 'in', payment.line_ids.ids)
+                    ])
+            except Exception:
+                count = 0
+            payment.wht_cert_count = count
+
+    def can_create_wht_certificate(self):
+        """Check if WHT certificate can be created for this payment"""
+        self.ensure_one()
+        return (
+            self.is_advance_clearing and 
+            self.move_id and
+            'l10n.th.account.wht.cert.form.wizard' in self.env.registry
+        )
+
+    def action_view_wht_certificates(self):
+        """View related WHT certificates for this payment"""
+        self.ensure_one()
         
+        try:
+            if 'l10n.th.account.wht.cert.form' not in self.env.registry:
+                raise UserError(_("Thai WHT Certificate module is not installed."))
+            WhtCert = self.env['l10n.th.account.wht.cert.form']
+        except Exception:
+            return
+
+        certificates = WhtCert.search([
+            '|',
+            ('move_id', '=', self.move_id.id if self.move_id else False),
+            ('move_line_ids', 'in', self.line_ids.ids)
+        ])
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('WHT Certificates'),
+            'res_model': 'l10n.th.account.wht.cert.form',
+            'view_mode': 'tree,form',
+            'domain': [('id', 'in', certificates.ids)],
+            'target': 'current',
+        }

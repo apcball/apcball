@@ -7,3 +7,5 @@ access_link_advance_wizard_user,link.advance.wizard.user,model_link_advance_wiza
 access_link_advance_wizard_manager,link.advance.wizard.manager,model_link_advance_wizard,base.group_erp_manager,1,1,1,1
 access_advance_settlement_wizard_user,advance.settlement.wizard.user,model_advance_settlement_wizard,base.group_user,1,1,1,1
 access_advance_settlement_wizard_manager,advance.settlement.wizard.manager,model_advance_settlement_wizard,base.group_erp_manager,1,1,1,1
+access_wht_clear_advance_wizard_user,wht.clear.advance.wizard.user,model_wht_clear_advance_wizard,base.group_user,1,1,1,1
+access_wht_clear_advance_wizard_manager,wht.clear.advance.wizard.manager,model_wht_clear_advance_wizard,base.group_erp_manager,1,1,1,1

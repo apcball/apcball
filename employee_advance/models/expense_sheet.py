@@ -53,6 +53,10 @@ class HrExpenseSheet(models.Model):
         string='Payments',
         compute='_compute_payment_ids'
     )
+    can_clear_advance_wht = fields.Boolean(
+        string='Can Clear Advance WHT',
+        compute='_compute_can_clear_advance_wht'
+    )
 
     @api.depends('bill_id')
     def _compute_payment_ids(self):
@@ -69,6 +73,17 @@ class HrExpenseSheet(models.Model):
                 sheet.payment_ids = reconciled_payments
             else:
                 sheet.payment_ids = [(5, 0, 0)]  # Empty
+
+    @api.depends('use_advance', 'advance_box_id', 'state', 'is_billed')
+    def _compute_can_clear_advance_wht(self):
+        """Check if WHT advance clearing is available"""
+        for sheet in self:
+            sheet.can_clear_advance_wht = (
+                sheet.use_advance and 
+                sheet.advance_box_id and 
+                sheet.state == 'approve' and
+                not sheet.is_billed
+            )
 
     @api.onchange('use_advance')
     def _onchange_use_advance(self):
@@ -528,3 +543,40 @@ class HrExpenseSheet(models.Model):
         if self.state != 'done':
             self.write({'state': 'done'})
         return True
+
+    def action_open_wht_clear_advance_wizard(self):
+        """Open WHT Clear Advance Wizard"""
+        self.ensure_one()
+        
+        if not self.use_advance or not self.advance_box_id:
+            raise UserError(_("This expense sheet is not using advance or has no advance box configured."))
+        
+        if self.state != 'approve':
+            raise UserError(_("Expense sheet must be approved before clearing advance with WHT."))
+        
+        # Get default employee partner
+        employee_partner = False
+        if self.employee_id.user_id and self.employee_id.user_id.partner_id:
+            employee_partner = self.employee_id.user_id.partner_id
+        elif self.employee_id.address_home_id:
+            employee_partner = self.employee_id.address_home_id
+        
+        context = {
+            'default_expense_sheet_id': self.id,
+            'default_employee_id': self.employee_id.id,
+            'default_advance_box_id': self.advance_box_id.id,
+            'default_company_id': self.company_id.id,
+            'default_partner_id': employee_partner.id if employee_partner else False,
+            'default_clear_amount': self.total_amount,
+            'default_amount_base': self.total_amount,
+        }
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Clear Advance with WHT'),
+            'res_model': 'wht.clear.advance.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': context,
+        }
+
