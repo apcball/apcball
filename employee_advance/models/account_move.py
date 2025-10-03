@@ -253,7 +253,8 @@ class AccountMove(models.Model):
             'default_employee_id': employee.id,
             'default_advance_box_id': advance_box.id,
             'default_company_id': self.company_id.id,
-            'default_partner_id': employee_partner.id if employee_partner else self.partner_id.id,
+            'default_partner_id': self.partner_id.id,  # ใช้ vendor จาก bill แทน employee
+            'default_wht_partner_id': self.partner_id.id,  # WHT partner ก็เป็น vendor เดียวกัน
             'default_clear_amount': self.amount_residual,
             'default_amount_base': self.amount_residual,
         }

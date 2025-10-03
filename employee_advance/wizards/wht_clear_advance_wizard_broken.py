@@ -6,6 +6,40 @@ _logger = logging.getLogger(__name__)
 
 
 class WhtClearAdvanceWizard(models.TransientModel):
+    _n    @api.constrains('clear_amount', 'wht_amount', 'wht_tax_id', 'amount_base')
+    def _check_amounts(self):
+        for record in self:
+          # Cr WHT Payable = wht_amount (only if WHT is selected)
+        if self.wht_tax_id and self.wht_amount > 0:
+            move_lines.append((0, 0, {
+                'name': _('WHT Payable - %(tax_name)s - %(vendor_name)s') % {
+                    'tax_name': self.wht_tax_id.name,
+                    'vendor_name': self.wht_partner_id.name
+                },
+                'account_id': wht_account.id,
+                'partner_id': self.wht_partner_id.id,  # ใช้ vendor partner สำหรับ PND
+                'debit': 0.0,
+                'credit': self.wht_amount,
+                'currency_id': self.currency_id.id,
+                'tax_line_id': self.wht_tax_id.id,
+                'tax_base_amount': self.amount_base,
+            }))cord.clear_amount <= 0:
+                raise ValidationError(_("Clear amount must be greater than zero."))
+            if record.wht_amount < 0:
+                raise ValidationError(_("WHT amount cannot be negative."))
+            if record.wht_amount >= record.clear_amount:
+                raise ValidationError(_("WHT amount cannot be equal to or greater than clear amount."))
+            
+            # ถ้าเลือก WHT Tax แล้วต้องใส่ Base Amount
+            if record.wht_tax_id and not record.amount_base:
+                raise ValidationError(_("Base Amount is required when WHT Tax is selected."))
+            
+            # ถ้าไม่เลือก WHT Tax ก็ไม่ต้องใส่ Base Amount
+            if not record.wht_tax_id and record.amount_base:
+                record.amount_base = 0.0
+
+
+class WhtClearAdvanceWizard(models.TransientModel):
     _name = 'wht.clear.advance.wizard'
     _description = 'Clear Advance with WHT Wizard'
 
@@ -47,23 +81,29 @@ class WhtClearAdvanceWizard(models.TransientModel):
         default=True,
         help="Automatically reconcile the journal entry with matching payable entries"
     )
-
-    # Company and currency
     company_id = fields.Many2one(
         'res.company',
         string='Company',
         required=True,
+        readonly=True,
         default=lambda self: self.env.company
     )
     currency_id = fields.Many2one(
         'res.currency',
         string='Currency',
-        related='company_id.currency_id',
-        readonly=True
+        required=True,
+        readonly=True,
+        related='company_id.currency_id'
     )
-
-    # Partner information
+    
+    # User input fields
     partner_id = fields.Many2one(
+        'res.partner',
+        string='Partner (Employee)',
+        required=True,
+        help="Employee partner for AP clearing entry"
+    )
+    wht_partner_id = fields.Many2one(
         'res.partner',
         string='Partner (from Bill)',
         required=True,
@@ -75,8 +115,6 @@ class WhtClearAdvanceWizard(models.TransientModel):
         required=True,
         help="Vendor partner for withholding tax certificate (PND) - usually same as partner_id"
     )
-
-    # WHT Tax details
     wht_tax_id = fields.Many2one(
         'account.tax',
         string='WHT Tax',
@@ -84,15 +122,10 @@ class WhtClearAdvanceWizard(models.TransientModel):
         domain="[('type_tax_use', 'in', ['purchase', 'none']), ('amount', '<', 0)]",
         help="Withholding tax to apply (optional - leave blank for no WHT)"
     )
-    wht_tax_rate = fields.Float(
-        string='WHT Tax Rate (%)',
-        compute='_compute_wht_tax_rate',
-        readonly=True,
-        help="Tax rate percentage"
-    )
     amount_base = fields.Monetary(
         string='Base Amount',
         currency_field='currency_id',
+        required=True,
         help="Base amount for WHT calculation"
     )
     wht_amount = fields.Monetary(
@@ -102,74 +135,35 @@ class WhtClearAdvanceWizard(models.TransientModel):
         compute='_compute_wht_amount',
         help="Computed WHT amount (base × tax rate)"
     )
-    
-    # Clearing amounts
     clear_amount = fields.Monetary(
         string='Clear Amount',
         currency_field='currency_id',
         required=True,
         help="Amount to clear from Advance Box before WHT"
     )
-
-    # Journal entry details
     journal_id = fields.Many2one(
         'account.journal',
         string='Journal',
         required=True,
-        domain="[('type', '=', 'general'), ('company_id', '=', company_id)]",
-        help="General journal for the entry"
+        domain=[('type', '=', 'general')],
+        help="General/Miscellaneous journal for the entry"
     )
     date = fields.Date(
         string='Date',
-        required=True,
         default=fields.Date.context_today,
         help="Journal entry date"
     )
     ref = fields.Char(
         string='Reference',
-        help="Reference for the journal entry"
+        help="Optional reference for the journal entry"
     )
-
-    @api.model
-    def default_get(self, fields_list):
-        res = super().default_get(fields_list)
-        
-        # Get expense sheet from context
-        expense_sheet_id = self.env.context.get('default_expense_sheet_id')
-        if expense_sheet_id:
-            expense_sheet = self.env['hr.expense.sheet'].browse(expense_sheet_id)
-            if expense_sheet:
-                res['expense_sheet_id'] = expense_sheet.id
-                
-                # Set employee info
-                if expense_sheet.employee_id:
-                    res['employee_id'] = expense_sheet.employee_id.id
-                    
-                    # Set advance box
-                    advance_box = self.env['employee.advance.box'].search([
-                        ('employee_id', '=', expense_sheet.employee_id.id)
-                    ], limit=1)
-                    if advance_box:
-                        res['advance_box_id'] = advance_box.id
-        
-        # Set partner info from context
-        if self.env.context.get('default_partner_id'):
-            res['partner_id'] = self.env.context.get('default_partner_id')
-        
-        if self.env.context.get('default_wht_partner_id'):
-            res['wht_partner_id'] = self.env.context.get('default_wht_partner_id')
-        elif self.env.context.get('default_partner_id'):
-            # Default WHT partner to same as partner
-            res['wht_partner_id'] = self.env.context.get('default_partner_id')
-        
-        # Set amounts from context
-        if self.env.context.get('default_clear_amount'):
-            res['clear_amount'] = self.env.context.get('default_clear_amount')
-        
-        if self.env.context.get('default_amount_base'):
-            res['amount_base'] = self.env.context.get('default_amount_base')
-        
-        return res
+    
+    # Display fields
+    wht_tax_rate = fields.Float(
+        string='WHT Tax Rate (%)',
+        compute='_compute_wht_tax_rate',
+        readonly=True
+    )
 
     @api.depends('wht_tax_id')
     def _compute_wht_tax_rate(self):
@@ -194,19 +188,36 @@ class WhtClearAdvanceWizard(models.TransientModel):
         for wizard in self:
             wizard.net_amount = wizard.clear_amount - wizard.wht_amount
 
-    @api.constrains('clear_amount', 'wht_amount', 'wht_tax_id', 'amount_base')
-    def _check_amounts(self):
-        for record in self:
-            if record.clear_amount <= 0:
-                raise ValidationError(_("Clear amount must be greater than zero."))
-            if record.wht_amount < 0:
-                raise ValidationError(_("WHT amount cannot be negative."))
-            if record.wht_amount >= record.clear_amount:
-                raise ValidationError(_("WHT amount cannot be equal to or greater than clear amount."))
-            
-            # ถ้าเลือก WHT Tax แล้วต้องใส่ Base Amount
-            if record.wht_tax_id and not record.amount_base:
-                raise ValidationError(_("Base Amount is required when WHT Tax is selected."))
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        
+        # Get default values from context (sent from bill)
+        if self.env.context.get('default_partner_id'):
+            res['partner_id'] = self.env.context.get('default_partner_id')
+        
+        if self.env.context.get('default_wht_partner_id'):
+            res['wht_partner_id'] = self.env.context.get('default_wht_partner_id')
+        
+        # Get expense sheet from context
+        expense_sheet_id = self.env.context.get('default_expense_sheet_id')
+        if expense_sheet_id:
+            expense_sheet = self.env['hr.expense.sheet'].browse(expense_sheet_id)
+            if expense_sheet:
+                res['expense_sheet_id'] = expense_sheet.id
+                
+                # Only set partner_id from employee if not already set from context
+                if not res.get('partner_id'):
+                    employee_partner = False
+                    if expense_sheet.employee_id.user_id and expense_sheet.employee_id.user_id.partner_id:
+                        employee_partner = expense_sheet.employee_id.user_id.partner_id
+                    elif expense_sheet.employee_id.address_home_id:
+                        employee_partner = expense_sheet.employee_id.address_home_id
+                    
+                    if employee_partner:
+                        res['partner_id'] = employee_partner.id
+        
+        return res
 
     @api.onchange('advance_box_id')
     def _onchange_advance_box_id(self):
@@ -230,37 +241,68 @@ class WhtClearAdvanceWizard(models.TransientModel):
             elif self.employee_id.address_home_id:
                 self.partner_id = self.employee_id.address_home_id
 
+    @api.constrains('clear_amount', 'wht_amount')
+    def _check_amounts(self):
+        for record in self:
+            if record.clear_amount <= 0:
+                raise ValidationError(_("Clear amount must be greater than zero."))
+            if record.wht_amount < 0:
+                raise ValidationError(_("WHT amount cannot be negative."))
+            if record.wht_amount >= record.clear_amount:
+                raise ValidationError(_("WHT amount must be less than clear amount."))
+
+    @api.constrains('amount_base')
+    def _check_base_amount(self):
+        for record in self:
+            if record.amount_base <= 0:
+                raise ValidationError(_("Base amount must be greater than zero."))
+
     def _get_advance_account(self):
-        """Get the advance account for the employee"""
-        self.ensure_one()
-        if not self.advance_box_id.account_id:
-            raise UserError(_("No advance account configured for employee %s") % self.employee_id.name)
+        """Get the advance account from advance box"""
+        if not self.advance_box_id or not self.advance_box_id.account_id:
+            raise UserError(_("No advance account configured for the advance box."))
         return self.advance_box_id.account_id
 
     def _get_partner_payable_account(self):
         """Get the payable account for the partner"""
-        self.ensure_one()
-        payable_account = self.partner_id.property_account_payable_id
-        if not payable_account:
-            raise UserError(_("No payable account configured for partner %s") % self.partner_id.name)
-        return payable_account
+        if not self.partner_id:
+            raise UserError(_("Partner is required."))
+        
+        account = self.partner_id.property_account_payable_id
+        if not account:
+            # Fallback to company default payable account
+            account = self.env['account.account'].search([
+                ('account_type', '=', 'liability_payable'),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            if not account:
+                raise UserError(_("No payable account found for partner %s") % self.partner_id.name)
+        return account
 
     def _get_wht_payable_account(self):
-        """Get the WHT payable account"""
-        self.ensure_one()
+        """Get WHT payable account from tax configuration"""
+        if not self.wht_tax_id:
+            raise UserError(_("WHT tax is required."))
         
-        # First try to get from WHT tax configuration
-        if self.wht_tax_id and self.wht_tax_id.invoice_repartition_line_ids:
-            wht_lines = self.wht_tax_id.invoice_repartition_line_ids.filtered(lambda l: l.repartition_type == 'tax')
-            if wht_lines and wht_lines[0].account_id:
-                return wht_lines[0].account_id
+        # Try to get account from tax configuration
+        if self.wht_tax_id.invoice_repartition_line_ids:
+            for repartition_line in self.wht_tax_id.invoice_repartition_line_ids:
+                if repartition_line.account_id and repartition_line.repartition_type == 'tax':
+                    return repartition_line.account_id
         
-        # Fallback: search for WHT payable account
+        # Fallback: look for WHT payable account in chart of accounts
         wht_account = self.env['account.account'].search([
-            ('name', 'ilike', 'withholding'),
-            ('account_type', '=', 'liability_current'),
+            ('code', 'ilike', '2109%'),  # Common WHT payable account code
             ('company_id', '=', self.company_id.id)
         ], limit=1)
+        
+        if not wht_account:
+            # Final fallback: create or use a generic WHT payable account
+            wht_account = self.env['account.account'].search([
+                ('name', 'ilike', 'withholding'),
+                ('account_type', '=', 'liability_current'),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
         
         if not wht_account:
             raise UserError(_("No WHT payable account found. Please configure the WHT tax account or create a WHT payable account."))
@@ -326,10 +368,10 @@ class WhtClearAdvanceWizard(models.TransientModel):
             'currency_id': self.currency_id.id,
         }))
         
-        # Cr WHT Payable = wht_amount (only if WHT is selected)
-        if self.wht_tax_id and self.wht_amount > 0:
+        # Cr WHT Payable = wht_amount (ใช้ wht_partner_id เพื่อออก PND ให้ vendor)
+        if self.wht_amount > 0:
             move_lines.append((0, 0, {
-                'name': _('WHT Payable - %(tax_name)s - %(vendor_name)s') % {
+                'name': _('%(tax_name)s - %(vendor_name)s') % {
                     'tax_name': self.wht_tax_id.name,
                     'vendor_name': self.wht_partner_id.name
                 },

@@ -26,27 +26,37 @@
                         </group>
                         
                         <group name="partner_details" string="Partner Information">
-                            <field name="partner_id" required="1" 
+                            <field name="partner_id" required="1" string="Partner (from Bill)"
                                    options="{'no_quick_create': True}"/>
-                            <field name="wht_partner_id" required="1" 
+                            <field name="wht_partner_id" required="1" string="WHT Partner (Vendor)"
                                    context="{'default_is_company': True, 'default_supplier_rank': 1}"
                                    options="{'no_quick_create': True}"/>
+                            <label for="partner_id" colspan="2">
+                                <div class="text-info">
+                                    <i class="fa fa-info-circle"/> ดึงมาจาก Vendor ในบิล (ใช้สำหรับบัญชี AP)
+                                </div>
+                            </label>
                             <label for="wht_partner_id" colspan="2">
                                 <div class="text-info">
-                                    <i class="fa fa-info-circle"/> เลือก Vendor ที่จะออกใบหัก ณ ที่จ่ายให้
+                                    <i class="fa fa-certificate"/> Vendor สำหรับออกใบหัก ณ ที่จ่าย (PND)
                                 </div>
                             </label>
                         </group>
                         
-                        <group name="wht_details" string="WHT Details">
-                            <field name="wht_tax_id" required="1"
+                        <group name="wht_details" string="WHT Details (Optional)">
+                            <field name="wht_tax_id" 
                                    options="{'no_create': True, 'no_open': True}"/>
-                            <field name="wht_tax_rate" readonly="1"/>
-                            <field name="amount_base" required="1"/>
-                            <field name="wht_amount" readonly="1"/>
-                            <label for="wht_amount" colspan="2">
+                            <field name="wht_tax_rate" readonly="1" invisible="not wht_tax_id"/>
+                            <field name="amount_base" invisible="not wht_tax_id"/>
+                            <field name="wht_amount" readonly="1" invisible="not wht_tax_id"/>
+                            <label for="wht_tax_id" colspan="2">
+                                <div class="text-info">
+                                    <i class="fa fa-info-circle"/> ปล่อยว่างถ้าไม่มีการหัก ณ ที่จ่าย
+                                </div>
+                            </label>
+                            <label for="wht_amount" colspan="2" invisible="not wht_tax_id">
                                 <div class="text-muted">
-                                    WHT will be calculated as: Base Amount × Tax Rate
+                                    WHT จะคำนวณเป็น: Base Amount × Tax Rate
                                 </div>
                             </label>
                         </group>
@@ -79,7 +89,9 @@
                         <div name="journal_preview">
                             <strong>Dr</strong> Partner Payable: <field name="clear_amount" readonly="1" nolabel="1"/> ฿<br/>
                             <strong>Cr</strong> Advance Account: <field name="net_amount" readonly="1" nolabel="1"/> ฿<br/>
-                            <strong>Cr</strong> WHT Payable: <field name="wht_amount" readonly="1" nolabel="1"/> ฿
+                            <div invisible="not wht_tax_id or wht_amount == 0">
+                                <strong>Cr</strong> WHT Payable: <field name="wht_amount" readonly="1" nolabel="1"/> ฿
+                            </div>
                         </div>
                     </div>
                 </sheet>
