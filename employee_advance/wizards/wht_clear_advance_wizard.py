@@ -134,6 +134,14 @@ class WhtClearAdvanceWizard(models.TransientModel):
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
         
+        # Get advance box from context first (from bill action - ถูกต้องที่สุด) 
+        advance_box_id = self.env.context.get('default_advance_box_id')
+        if advance_box_id:
+            res['advance_box_id'] = advance_box_id
+            advance_box = self.env['employee.advance.box'].browse(advance_box_id)
+            _logger.info("DEBUG: Using advance box from context: %s (id: %s, balance: %s)", 
+                       advance_box.display_name, advance_box_id, advance_box.balance)
+        
         # Get expense sheet from context
         expense_sheet_id = self.env.context.get('default_expense_sheet_id')
         if expense_sheet_id:
@@ -145,22 +153,40 @@ class WhtClearAdvanceWizard(models.TransientModel):
                 if expense_sheet.employee_id:
                     res['employee_id'] = expense_sheet.employee_id.id
                     
-                    # Set advance box
-                    advance_box = self.env['employee.advance.box'].search([
-                        ('employee_id', '=', expense_sheet.employee_id.id)
-                    ], limit=1)
-                    if advance_box:
-                        res['advance_box_id'] = advance_box.id
+                    # Set advance box only if not already set from context
+                    if not advance_box_id and expense_sheet.advance_box_id:
+                        res['advance_box_id'] = expense_sheet.advance_box_id.id
+                        _logger.info("DEBUG: Using advance box from expense sheet: %s (id: %s)", 
+                                   expense_sheet.advance_box_id.display_name, expense_sheet.advance_box_id.id)
+                    else:
+                        # Fallback: ค้นหา advance box ของ employee (เดิม)
+                        advance_box = self.env['employee.advance.box'].search([
+                            ('employee_id', '=', expense_sheet.employee_id.id)
+                        ], limit=1)
+                        if advance_box:
+                            res['advance_box_id'] = advance_box.id
+                            _logger.info("DEBUG: Using fallback advance box: %s (id: %s)", 
+                                       advance_box.display_name, advance_box.id)
         
-        # Set partner info from context
-        if self.env.context.get('default_partner_id'):
-            res['partner_id'] = self.env.context.get('default_partner_id')
+        # Set partner info from context - FORCE VENDOR FROM BILL
+        partner_id = self.env.context.get('default_partner_id')
+        wht_partner_id = self.env.context.get('default_wht_partner_id')
         
-        if self.env.context.get('default_wht_partner_id'):
-            res['wht_partner_id'] = self.env.context.get('default_wht_partner_id')
-        elif self.env.context.get('default_partner_id'):
+        _logger.info("DEBUG: default_get context - partner_id: %s, wht_partner_id: %s", partner_id, wht_partner_id)
+        
+        if partner_id:
+            partner = self.env['res.partner'].browse(partner_id)
+            res['partner_id'] = partner_id
+            _logger.info("DEBUG: Setting partner_id from context: %s (name: %s)", partner_id, partner.name)
+        
+        if wht_partner_id:
+            wht_partner = self.env['res.partner'].browse(wht_partner_id)
+            res['wht_partner_id'] = wht_partner_id
+            _logger.info("DEBUG: Setting wht_partner_id from context: %s (name: %s)", wht_partner_id, wht_partner.name)
+        elif partner_id:
             # Default WHT partner to same as partner
-            res['wht_partner_id'] = self.env.context.get('default_partner_id')
+            res['wht_partner_id'] = partner_id
+            _logger.info("DEBUG: Setting wht_partner_id same as partner_id: %s", partner_id)
         
         # Set amounts from context
         if self.env.context.get('default_clear_amount'):
@@ -223,12 +249,9 @@ class WhtClearAdvanceWizard(models.TransientModel):
 
     @api.onchange('employee_id')
     def _onchange_employee_id(self):
-        if self.employee_id:
-            # Set employee as default partner
-            if self.employee_id.user_id and self.employee_id.user_id.partner_id:
-                self.partner_id = self.employee_id.user_id.partner_id
-            elif self.employee_id.address_home_id:
-                self.partner_id = self.employee_id.address_home_id
+        # ปิดการทำงานชั่วคราว - ไม่ให้ override partner_id จาก bill
+        # เพราะต้องการใช้ vendor จาก bill แทนที่จะเป็น employee
+        pass
 
     def _get_advance_account(self):
         """Get the advance account for the employee"""

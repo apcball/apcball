@@ -259,6 +259,12 @@ class AccountMove(models.Model):
             'default_amount_base': self.amount_residual,
         }
         
+        _logger.info("DEBUG: Opening WHT wizard - Bill partner: %s (id: %s)", 
+                     self.partner_id.name, self.partner_id.id)
+        _logger.info("DEBUG: Expense sheet: %s, Advance box: %s (id: %s, balance: %s)", 
+                     expense_sheet.name, advance_box.display_name, advance_box.id, advance_box.balance)
+        _logger.info("DEBUG: Full context being sent: %s", context)
+        
         return {
             'type': 'ir.actions.act_window',
             'name': _('Clear Advance with WHT'),
