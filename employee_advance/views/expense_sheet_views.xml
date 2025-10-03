@@ -7,7 +7,9 @@
         <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='employee_id']" position="after">
-                <field name="clear_mode" invisible="state != 'draft'"/>
+                <field name="is_auto_mode" invisible="1"/>
+                <field name="vendor_summary" invisible="not is_auto_mode"/>
+                <field name="clear_mode" invisible="state != 'draft' or is_auto_mode"/>
                 <field name="use_advance" invisible="state != 'draft'"/>
                 <field name="advance_box_id" 
                        invisible="not use_advance or state != 'draft'"
@@ -87,6 +89,7 @@
     </record>
     
     <!-- Update the expense form view to add vendor field -->
+    <!-- Temporarily disabled vendor field functionality
     <record id="view_expense_form_vendor" model="ir.ui.view">
         <field name="name">hr.expense.form.vendor</field>
         <field name="model">hr.expense</field>
@@ -98,6 +101,7 @@
             </xpath>
         </field>
     </record>
+    -->
     
     <!-- Vendor Bill Form View - Add Clear with Advance button -->
     <!-- Note: This functionality is already provided in account_move_views.xml to avoid duplicate buttons -->

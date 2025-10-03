@@ -46,8 +46,6 @@ class ExpenseSheetBillPreviewWizard(models.TransientModel):
                 partner_id = sheet._get_partner_for_expense(expense)
                 
                 if not partner_id:
-                    if sheet.clear_mode in ['pay_vendor', 'mixed'] and not expense.vendor_id:
-                        continue
                     continue
                 
                 # Get partner name

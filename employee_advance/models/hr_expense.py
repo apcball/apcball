@@ -5,36 +5,22 @@ from odoo.exceptions import UserError
 class HrExpense(models.Model):
     _inherit = 'hr.expense'
 
-    vendor_id = fields.Many2one(
-        'res.partner',
-        string='Vendor',
-        domain="[('supplier_rank', '>', 0), ('is_company', '=', True)]",
-        help="Vendor for this expense line. Required when using pay_vendor or mixed clear mode."
-    )
+    # expense_vendor_id = fields.Many2one(
+    #     'res.partner',
+    #     string='Vendor',
+    #     domain="[('supplier_rank', '>', 0), ('is_company', '=', True)]",
+    #     help="Vendor for this expense line. Required when using pay_vendor or mixed clear mode."
+    # )
 
     def _validate_vendor_requirements(self):
         """Validate vendor requirements based on clear_mode"""
-        for expense in self:
-            sheet = expense.sheet_id
-            if sheet and sheet.clear_mode in ['pay_vendor', 'mixed']:
-                if not expense.vendor_id:
-                    raise UserError(_(
-                        "Vendor is required for expense '%s' when using '%s' clear mode."
-                    ) % (expense.name, sheet.clear_mode))
+        # Temporarily disabled vendor validation
+        pass
 
     def write(self, vals):
         """Override write to validate vendor requirements"""
-        # If clear_mode is being changed or vendor_id is being changed
         result = super(HrExpense, self).write(vals)
-        
-        # Validate after the write operation
-        for expense in self:
-            if expense.sheet_id and expense.sheet_id.clear_mode in ['pay_vendor', 'mixed']:
-                if not expense.vendor_id:
-                    raise UserError(_(
-                        "Vendor is required for expense '%s' when using '%s' clear mode."
-                    ) % (expense.name, expense.sheet_id.clear_mode))
-        
+        # Temporarily disabled vendor validation
         return result
 
 

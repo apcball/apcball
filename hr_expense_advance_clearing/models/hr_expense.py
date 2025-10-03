@@ -84,6 +84,10 @@ class HrExpenseSheet(models.Model):
 
     @api.onchange("employee_id")
     def _onchange_employee_id(self):
+        # Skip processing if in AUTO mode
+        if self.is_auto_mode:
+            return
+            
         if self.employee_id and self.advance_clearing_type != 'none':
             # Auto-find or create advance box
             advance_box = self.env["employee.advance.box"].search([
@@ -102,6 +106,10 @@ class HrExpenseSheet(models.Model):
 
     @api.onchange("advance_clearing_type")
     def _onchange_advance_clearing_type(self):
+        # Skip processing if in AUTO mode
+        if self.is_auto_mode:
+            return
+            
         if self.advance_clearing_type != 'none':
             # Manually trigger the advance box logic
             if self.employee_id:
@@ -124,6 +132,10 @@ class HrExpenseSheet(models.Model):
 
     @api.onchange("use_advance")
     def _onchange_use_advance(self):
+        # Skip processing if in AUTO mode
+        if self.is_auto_mode:
+            return
+            
         if self.use_advance:
             if self.advance_clearing_type == 'none':
                 self.advance_clearing_type = 'full'

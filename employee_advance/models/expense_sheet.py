@@ -12,10 +12,29 @@ class HrExpenseSheet(models.Model):
         ('reimburse_employee', 'Reimburse Employee'),
         ('pay_vendor', 'Pay to Vendor'),
         ('mixed', 'Mixed')
-    ], string='Clear Mode', default='reimburse_employee',
+    ], string='Clear Mode', default='reimburse_employee', compute='_compute_clear_mode', store=True,
        help="Reimburse Employee: Create bills for employee's private address. "
             "Pay to Vendor: Create bills for vendors on each expense line. "
             "Mixed: Both employee and vendor bills will be created.")
+    
+    @api.depends("expense_line_ids", "is_auto_mode")
+    def _compute_clear_mode(self):
+        for sheet in self:
+            if sheet.is_auto_mode:
+                # AUTO mode - automatically determine clear mode
+                has_vendor = False  # any(exp.expense_vendor_id for exp in sheet.expense_line_ids)
+                has_no_vendor = True  # any(not exp.expense_vendor_id for exp in sheet.expense_line_ids)
+                
+                if has_vendor and has_no_vendor:
+                    sheet.clear_mode = 'mixed'
+                elif has_vendor:
+                    sheet.clear_mode = 'pay_vendor'
+                else:
+                    sheet.clear_mode = 'reimburse_employee'
+            else:
+                # Manual mode - keep current value or default
+                if not sheet.clear_mode:
+                    sheet.clear_mode = 'reimburse_employee'
     
     bill_ids = fields.Many2many(
         'account.move',
@@ -43,6 +62,35 @@ class HrExpenseSheet(models.Model):
         string='Advance Box',
         domain="[('company_id', '=', company_id)]"
     )
+    
+    # AUTO mode fields
+    is_auto_mode = fields.Boolean(
+        string="Auto Mode",
+        compute="_compute_auto_mode",
+        help="Indicates if this sheet will use AUTO mode (automatic vendor bill separation)"
+    )
+    
+    vendor_summary = fields.Text(
+        string="Vendor Summary", 
+        compute="_compute_vendor_summary",
+        help="Summary of vendors and processing mode"
+    )
+    
+    @api.depends("expense_line_ids")
+    def _compute_auto_mode(self):
+        for sheet in self:
+            # Check if there are mixed vendors (temporarily disabled)
+            # unique_vendors = set(exp.vendor_id.id if exp.vendor_id else None for exp in sheet.expense_line_ids)
+            sheet.is_auto_mode = False  # len(unique_vendors) > 1
+    
+    @api.depends("expense_line_ids", "is_auto_mode")  
+    def _compute_vendor_summary(self):
+        for sheet in self:
+            if sheet.is_auto_mode:
+                # Temporarily disabled vendor summary
+                sheet.vendor_summary = "🤖 AUTO MODE - ระบบจะดำเนินการอัตโนมัติ"
+            else:
+                sheet.vendor_summary = ""
     bill_id = fields.Many2one(
         'account.move',
         string='Vendor Bill',
@@ -271,10 +319,7 @@ class HrExpenseSheet(models.Model):
             partner_id = self._get_partner_for_expense(expense)
             
             if not partner_id:
-                if self.clear_mode in ['pay_vendor', 'mixed'] and not expense.vendor_id:
-                    raise UserError(_(
-                        "Vendor is required for expense '%s' when using '%s' clear mode."
-                    ) % (expense.name, self.clear_mode))
+                # Temporarily skip vendor validation
                 continue
             
             # Create group key
@@ -306,16 +351,11 @@ class HrExpenseSheet(models.Model):
     def _get_partner_for_expense(self, expense):
         """Get the appropriate partner for an expense based on clear_mode"""
         if self.clear_mode == 'pay_vendor':
-            # Always use vendor_id for pay_vendor mode
-            return expense.vendor_id.id if expense.vendor_id else False
+            # Temporarily disabled - vendor functionality
+            return False
         elif self.clear_mode == 'mixed':
-            # Use vendor_id if exists, otherwise employee's private address
-            if expense.vendor_id:
-                return expense.vendor_id.id
-            else:
-                # Get employee's private address
-                employee = expense.employee_id or self.employee_id
-                return self._get_employee_partner_id(employee)
+            # Temporarily disabled - vendor functionality
+            return False
         else:  # reimburse_employee
             # Always use employee's private address
             employee = expense.employee_id or self.employee_id
@@ -494,18 +534,8 @@ class HrExpenseSheet(models.Model):
 
     def _validate_expense_lines_for_clear_mode(self):
         """Validate expense lines based on clear_mode"""
-        for sheet in self:
-            if sheet.clear_mode in ['pay_vendor', 'mixed']:
-                for expense in sheet.expense_line_ids:
-                    if sheet.clear_mode == 'pay_vendor' and not expense.vendor_id:
-                        raise UserError(_(
-                            "Vendor is required for expense '%s' when using 'Pay to Vendor' clear mode."
-                        ) % expense.name)
-                    elif sheet.clear_mode == 'mixed' and not expense.vendor_id:
-                        # In mixed mode, vendor is required only for vendor expenses
-                        # For employee expenses, we use the employee's private address
-                        # So we don't raise an error here
-                        pass
+        # Temporarily disabled vendor validation
+        pass
 
     def _validate_company_currency_consistency(self):
         """Validate company and currency consistency within sheet"""
