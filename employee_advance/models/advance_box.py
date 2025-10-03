@@ -76,6 +76,9 @@ class EmployeeAdvanceBox(models.Model):
     @api.depends('account_id', 'employee_id')
     def _compute_balance(self):
         for record in self:
+            _logger.info("🔍 BALANCE DEBUG: Computing for advance box %s (employee: %s)", 
+                       record.id, record.employee_id.name)
+            
             if record.account_id and record.employee_id:
                 # Calculate balance from posted journal entries
                 # ใช้ Employee Partner โดยตรงเพื่อให้ match กับ Wizard
@@ -89,6 +92,8 @@ class EmployeeAdvanceBox(models.Model):
                 
                 if employee_partner:
                     partner_id = employee_partner.id
+                    _logger.info("🎯 BALANCE DEBUG: Found employee partner %s (ID: %s)", 
+                               employee_partner.name, partner_id)
                 else:
                     # Fallback ไปใช้ method เดิมถ้าไม่เจอ Employee Partner
                     # Method 1: Check if address_home_id exists
@@ -100,8 +105,11 @@ class EmployeeAdvanceBox(models.Model):
                     # Method 3: Default to employee's work address
                     elif record.employee_id.address_id:
                         partner_id = record.employee_id.address_id.id
+                        
+                    _logger.info("🔄 BALANCE DEBUG: Using fallback partner ID: %s", partner_id)
                 
                 if not partner_id:
+                    _logger.warning("⚠️ BALANCE DEBUG: No partner found, setting balance to 0")
                     record.balance = 0.0
                     continue
                 
@@ -110,30 +118,40 @@ class EmployeeAdvanceBox(models.Model):
                     ('move_id.state', '=', 'posted'),
                     ('partner_id', '=', partner_id),
                 ]
-
-                # Use read_group to aggregate in the database for accuracy and performance
-                grouped = self.env['account.move.line'].read_group(domain, ['debit', 'credit'], [])
-                if grouped:
-                    total_debit = grouped[0].get('debit') or 0.0
-                    total_credit = grouped[0].get('credit') or 0.0
-                else:
-                    total_debit = 0.0
-                    total_credit = 0.0
-
-                # Calculate net balance: debits increase the available advance, credits decrease it
-                record.balance = total_debit - total_credit
+                
+                _logger.info("📋 BALANCE DEBUG: Searching with domain: %s", domain)
+                
+                # ใช้ search แทน read_group เพื่อ debug ง่ายขึ้น
+                lines = self.env['account.move.line'].search(domain)
+                _logger.info("📋 BALANCE DEBUG: Found %d lines", len(lines))
+                
+                total_debit = sum(lines.mapped('debit'))
+                total_credit = sum(lines.mapped('credit'))
+                balance = total_debit - total_credit
+                
+                _logger.info("💰 BALANCE DEBUG: Debit: %s, Credit: %s, Balance: %s", 
+                           total_debit, total_credit, balance)
+                           
+                for line in lines:
+                    _logger.info("  📝 Line: %s | %s | Dr: %s | Cr: %s | Move: %s", 
+                               line.date, line.name, line.debit, line.credit, line.move_id.name)
+                
+                record.balance = balance
             else:
+                _logger.warning("⚠️ BALANCE DEBUG: Missing account or employee")
                 record.balance = 0.0
 
     def _refresh_balance_simple(self):
         """Simple balance refresh without triggering heavy computation - HANG FIX"""
         for record in self:
             try:
-                # Just invalidate and let it recompute naturally
+                _logger.info("💰 BALANCE REFRESH: Starting for box %s", record.id)
+                # Invalidate the cache to force recomputation
                 record.invalidate_recordset(['balance'])
-                # Force a simple read to trigger recomputation (with timeout protection)
-                _ = record.balance
-                _logger.debug("💰 Balance refreshed for advance box: %s", record.name)
+                # Force recomputation by calling the compute method directly
+                record._compute_balance()
+                _logger.info("💰 BALANCE REFRESH: Completed for box %s, new balance: %s", 
+                           record.id, record.balance)
             except Exception as e:
                 _logger.warning("⚠️ Balance refresh failed for %s: %s", record.name, str(e))
                 # Don't fail the entire operation if balance refresh fails
