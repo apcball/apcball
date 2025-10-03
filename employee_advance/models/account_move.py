@@ -235,10 +235,17 @@ class AccountMove(models.Model):
         if not expense_sheet:
             raise UserError(_("No related expense sheet found. This bill must be created from an expense sheet to use advance clearing."))
         
-        # Get advance box
-        advance_box = expense_sheet.advance_box_id or self.advance_box_id
+        # Get advance box - prioritize bill's advance_box_id, then expense_sheet's
+        advance_box = self.advance_box_id or expense_sheet.advance_box_id
         if not advance_box:
-            raise UserError(_("No advance box found. Please configure advance box for the employee."))
+            # Final fallback: search by employee
+            advance_box = self.env['employee.advance.box'].search([
+                ('employee_id', '=', expense_sheet.employee_id.id),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+        
+        if not advance_box:
+            raise UserError(_("No advance box found. Please configure advance box for the employee %s in company %s.") % (expense_sheet.employee_id.name, self.company_id.name))
         
         # Get employee partner
         employee = expense_sheet.employee_id
@@ -272,6 +279,51 @@ class AccountMove(models.Model):
             'view_mode': 'form',
             'target': 'new',
             'context': context,
+        }
+
+    def action_debug_wht_clear_conditions(self):
+        """Debug method to show why WHT Clear button is not visible"""
+        self.ensure_one()
+        
+        conditions = []
+        
+        # Check all conditions
+        if self.move_type != 'in_invoice':
+            conditions.append(f"❌ Move type: {self.move_type} (should be 'in_invoice')")
+        else:
+            conditions.append(f"✅ Move type: {self.move_type}")
+        
+        if self.state != 'posted':
+            conditions.append(f"❌ State: {self.state} (should be 'posted')")
+        else:
+            conditions.append(f"✅ State: {self.state}")
+            
+        if self.amount_residual <= 0:
+            conditions.append(f"❌ Amount residual: {self.amount_residual} (should be > 0)")
+        else:
+            conditions.append(f"✅ Amount residual: {self.amount_residual}")
+            
+        if not self.expense_sheet_id:
+            conditions.append(f"❌ Expense sheet: Not linked")
+        else:
+            conditions.append(f"✅ Expense sheet: {self.expense_sheet_id.name}")
+            
+        if not self.advance_box_id:
+            conditions.append(f"⚠️ Advance box: Not linked")
+        else:
+            conditions.append(f"✅ Advance box: {self.advance_box_id.display_name}")
+        
+        message = "WHT Clear Advance Button Visibility Check:\n\n" + "\n".join(conditions)
+        
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('WHT Clear Debug Info'),
+                'message': message,
+                'type': 'info',
+                'sticky': True,
+            }
         }
 
 

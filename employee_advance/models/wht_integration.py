@@ -264,12 +264,13 @@ class AccountMove(models.Model):
                   (je.name, payable_account.code, advance_box.account_id.code))
         )
 
-        # Trigger recompute of the advance box balance
+        # Trigger recompute of the advance box balance with safe method - HANG FIX
         try:
-            advance_box._trigger_balance_recompute()
-        except Exception:
-            # Don't block clearing if recompute fails; could add logging here
-            pass
+            advance_box._refresh_balance_simple()
+            _logger.info("💰 Advance box balance refreshed after clearing")
+        except Exception as e:
+            # Don't block clearing if recompute fails - HANG FIX
+            _logger.warning("⚠️ Balance refresh failed after clearing, but operation succeeded: %s", str(e))
 
         # If the original bill had withholding tax, we should create WHT certificate(s)
         if has_wht:

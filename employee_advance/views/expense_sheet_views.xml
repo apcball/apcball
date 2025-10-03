@@ -38,7 +38,7 @@
                         type="object" 
                         string="Clear Advance (WHT)" 
                         class="btn-warning"
-                        invisible="not can_clear_advance_wht"
+                        invisible="not use_advance or not advance_box_id or state != 'approve'"
                         help="Clear advance with withholding tax calculation"/>
                         
                 <button name="%(l10n_th_account_tax.action_withholding_tax_cert_menu)d" 
@@ -48,8 +48,13 @@
                         invisible="not bill_id or (not has_wht_certs and not bill_id_has_wht_line)"/>
             </header>
             
-            <!-- Completely hide Register Payment button from expense sheet form view -->
+            <!-- Hide unwanted buttons from expense sheet form view -->
             <xpath expr="//button[@name='action_register_payment']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+            <!-- Hide Post Journal Entries button -->
+            <xpath expr="//button[@name='action_sheet_move_create']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
             
@@ -89,19 +94,31 @@
     </record>
     
     <!-- Update the expense form view to add vendor field -->
-    <!-- Temporarily disabled vendor field functionality
     <record id="view_expense_form_vendor" model="ir.ui.view">
         <field name="name">hr.expense.form.vendor</field>
         <field name="model">hr.expense</field>
         <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='product_id']" position="after">
-                <field name="vendor_id" 
-                       domain="[('supplier_rank', '&gt;', 0), ('is_company', '=', True)]"/>
+                <field name="expense_vendor_id" 
+                       string="Vendor"
+                       domain="[('supplier_rank', '&gt;', 0)]"
+                       placeholder="Leave empty to bill to employee"/>
             </xpath>
         </field>
     </record>
-    -->
+    
+    <!-- Update the expense tree view to show vendor field -->
+    <record id="view_expense_tree_vendor" model="ir.ui.view">
+        <field name="name">hr.expense.tree.vendor</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.view_expenses_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='total_amount']" position="before">
+                <field name="expense_vendor_id" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
     
     <!-- Vendor Bill Form View - Add Clear with Advance button -->
     <!-- Note: This functionality is already provided in account_move_views.xml to avoid duplicate buttons -->

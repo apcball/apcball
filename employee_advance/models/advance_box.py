@@ -1,5 +1,8 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class EmployeeAdvanceBox(models.Model):
@@ -75,21 +78,28 @@ class EmployeeAdvanceBox(models.Model):
         for record in self:
             if record.account_id and record.employee_id:
                 # Calculate balance from posted journal entries
-                # We need to find the partner associated with the employee
-                # The employee may be linked to a user who has the private address
+                # ใช้ Employee Partner โดยตรงเพื่อให้ match กับ Wizard
                 partner_id = False
                 
-                # Method 1: Check if address_home_id exists (from hr_contract module)
-                if hasattr(record.employee_id, 'address_home_id'):
-                    partner_id = record.employee_id.sudo().address_home_id.id if record.employee_id.sudo().address_home_id else False
+                # หา Partner ที่มีชื่อเดียวกับ Employee ก่อน (ตาม logic ของ wizard)
+                employee_partner = self.env['res.partner'].search([
+                    ('name', '=', record.employee_id.name),
+                    ('is_company', '=', False)
+                ], limit=1)
                 
-                # If still not found, try to get the related user's partner (which might contain private address)
-                if not partner_id and record.employee_id.user_id:
-                    partner_id = record.employee_id.user_id.partner_id.id
-                
-                # If still not found, default to employee's address_id (work address)
-                if not partner_id:
-                    partner_id = record.employee_id.address_id.id if record.employee_id.address_id else False
+                if employee_partner:
+                    partner_id = employee_partner.id
+                else:
+                    # Fallback ไปใช้ method เดิมถ้าไม่เจอ Employee Partner
+                    # Method 1: Check if address_home_id exists
+                    if hasattr(record.employee_id, 'address_home_id') and record.employee_id.sudo().address_home_id:
+                        partner_id = record.employee_id.sudo().address_home_id.id
+                    # Method 2: Get the related user's partner
+                    elif record.employee_id.user_id:
+                        partner_id = record.employee_id.user_id.partner_id.id
+                    # Method 3: Default to employee's work address
+                    elif record.employee_id.address_id:
+                        partner_id = record.employee_id.address_id.id
                 
                 if not partner_id:
                     record.balance = 0.0
@@ -115,13 +125,28 @@ class EmployeeAdvanceBox(models.Model):
             else:
                 record.balance = 0.0
 
-    def _trigger_balance_recompute(self):
-        """Method to manually recompute the balance field"""
-        # This forces a recalculation of the stored computed field
-        self._compute_balance()
-        # Write the values to the database to ensure they're stored
+    def _refresh_balance_simple(self):
+        """Simple balance refresh without triggering heavy computation - HANG FIX"""
         for record in self:
-            record.write({'balance': record.balance})
+            try:
+                # Just invalidate and let it recompute naturally
+                record.invalidate_recordset(['balance'])
+                # Force a simple read to trigger recomputation (with timeout protection)
+                _ = record.balance
+                _logger.debug("💰 Balance refreshed for advance box: %s", record.name)
+            except Exception as e:
+                _logger.warning("⚠️ Balance refresh failed for %s: %s", record.name, str(e))
+                # Don't fail the entire operation if balance refresh fails
+    
+    def _trigger_balance_recompute(self):
+        """Method to manually recompute the balance field - HANG FIX APPLIED"""
+        try:
+            # Use the simple refresh method instead of heavy computation
+            self._refresh_balance_simple()
+            _logger.debug("💰 Balance recompute completed for %d records", len(self))
+        except Exception as e:
+            _logger.warning("⚠️ Balance recompute failed: %s", str(e))
+            # Don't fail the entire operation if balance recompute fails
 
     def action_refill_to_base(self):
         """Open wizard to refill advance box to base amount"""

@@ -5,22 +5,23 @@ from odoo.exceptions import UserError
 class HrExpense(models.Model):
     _inherit = 'hr.expense'
 
-    # expense_vendor_id = fields.Many2one(
-    #     'res.partner',
-    #     string='Vendor',
-    #     domain="[('supplier_rank', '>', 0), ('is_company', '=', True)]",
-    #     help="Vendor for this expense line. Required when using pay_vendor or mixed clear mode."
-    # )
+    expense_vendor_id = fields.Many2one(
+        'res.partner',
+        string='Vendor',
+        domain="[('supplier_rank', '>', 0)]",
+        help="Vendor for this expense line. If specified, bill will be created for this vendor. If not specified, bill will be created for employee."
+    )
 
     def _validate_vendor_requirements(self):
         """Validate vendor requirements based on clear_mode"""
-        # Temporarily disabled vendor validation
+        # No specific validation needed - vendor is optional
         pass
 
     def write(self, vals):
         """Override write to validate vendor requirements"""
         result = super(HrExpense, self).write(vals)
-        # Temporarily disabled vendor validation
+        # Call validation if needed
+        self._validate_vendor_requirements()
         return result
 
 

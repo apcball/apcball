@@ -22,8 +22,8 @@ class HrExpenseSheet(models.Model):
         for sheet in self:
             if sheet.is_auto_mode:
                 # AUTO mode - automatically determine clear mode
-                has_vendor = False  # any(exp.expense_vendor_id for exp in sheet.expense_line_ids)
-                has_no_vendor = True  # any(not exp.expense_vendor_id for exp in sheet.expense_line_ids)
+                has_vendor = any(exp.expense_vendor_id for exp in sheet.expense_line_ids)
+                has_no_vendor = any(not exp.expense_vendor_id for exp in sheet.expense_line_ids)
                 
                 if has_vendor and has_no_vendor:
                     sheet.clear_mode = 'mixed'
@@ -79,16 +79,34 @@ class HrExpenseSheet(models.Model):
     @api.depends("expense_line_ids")
     def _compute_auto_mode(self):
         for sheet in self:
-            # Check if there are mixed vendors (temporarily disabled)
-            # unique_vendors = set(exp.vendor_id.id if exp.vendor_id else None for exp in sheet.expense_line_ids)
-            sheet.is_auto_mode = False  # len(unique_vendors) > 1
+            # Check if there are mixed vendors - use AUTO mode when multiple vendors exist
+            unique_vendors = set(exp.expense_vendor_id.id if exp.expense_vendor_id else None for exp in sheet.expense_line_ids)
+            sheet.is_auto_mode = len(unique_vendors) > 1
     
     @api.depends("expense_line_ids", "is_auto_mode")  
     def _compute_vendor_summary(self):
         for sheet in self:
             if sheet.is_auto_mode:
-                # Temporarily disabled vendor summary
-                sheet.vendor_summary = "🤖 AUTO MODE - ระบบจะดำเนินการอัตโนมัติ"
+                # Show vendor summary in AUTO mode
+                vendors_with_employee = []
+                vendors_without_employee = []
+                
+                for exp in sheet.expense_line_ids:
+                    if exp.expense_vendor_id:
+                        vendor_name = exp.expense_vendor_id.name
+                        if vendor_name not in vendors_with_employee:
+                            vendors_with_employee.append(vendor_name)
+                    else:
+                        if sheet.employee_id.name not in vendors_without_employee:
+                            vendors_without_employee.append(sheet.employee_id.name)
+                
+                summary_parts = []
+                if vendors_with_employee:
+                    summary_parts.append(f"Vendors: {', '.join(vendors_with_employee)}")
+                if vendors_without_employee:
+                    summary_parts.append(f"Employee: {', '.join(vendors_without_employee)}")
+                    
+                sheet.vendor_summary = f"🤖 AUTO MODE - แยกบิลตาม: {' | '.join(summary_parts)}"
             else:
                 sheet.vendor_summary = ""
     bill_id = fields.Many2one(
@@ -140,16 +158,13 @@ class HrExpenseSheet(models.Model):
             self.advance_box_id = False
 
     def action_approve_expense_sheets(self):
-        """Override approval to create draft vendor bill when using advance"""
+        """Override approval to create draft vendor bills - enhanced with vendor grouping"""
         res = super(HrExpenseSheet, self).action_approve_expense_sheets()
         
         for sheet in self:
-            # For new clear_mode functionality, create bills based on the clear_mode
-            if sheet.clear_mode and sheet.clear_mode != 'reimburse_employee':
+            if sheet.state == 'approve':
+                # Always use the enhanced vendor bill creation logic
                 sheet.action_create_vendor_bills()
-            # For backwards compatibility, maintain the original behavior for reimburse_employee mode
-            elif sheet.use_advance and sheet.advance_box_id:
-                sheet._create_vendor_bill_and_activity()
         
         return res
 
@@ -274,7 +289,7 @@ class HrExpenseSheet(models.Model):
         return self.bill_id._clear_advance_using_advance_box(advance_box)
 
     def action_create_vendor_bills(self):
-        """Create vendor bills based on clear_mode and expense lines"""
+        """Create vendor bills based on vendor field - group by vendor and create separate bills"""
         self.ensure_one()
         
         # Run validations
@@ -284,15 +299,18 @@ class HrExpenseSheet(models.Model):
         if self.is_billed:
             raise UserError(_("Bills have already been created for this expense sheet."))
         
-        if not self.clear_mode or self.clear_mode == 'reimburse_employee':
-            # For reimburse_employee mode, use the existing functionality
+        # Check if any expenses have vendors - if so, use new grouping logic
+        has_vendors = any(exp.expense_vendor_id for exp in self.expense_line_ids)
+        
+        if not has_vendors and (not self.clear_mode or self.clear_mode == 'reimburse_employee'):
+            # For pure reimburse_employee mode without vendors, use the existing functionality
             if self.use_advance and self.advance_box_id:
                 self._create_vendor_bill_and_activity()
                 self.is_billed = True
             return
         
-        # Create bills based on clear_mode
-        bills = self._create_bills_by_expense_lines()
+        # Create bills based on vendor grouping (new enhanced logic)
+        bills = self._create_bills_by_vendor_grouping()
         
         if bills:
             self.bill_ids = [(4, bill.id) for bill in bills]
@@ -307,8 +325,61 @@ class HrExpenseSheet(models.Model):
             
         return bills
 
+    def _create_bills_by_vendor_grouping(self):
+        """Enhanced: Group expenses by vendor and create separate bills per vendor.
+        If no vendor specified, group under employee name."""
+        bills = self.env['account.move']
+        
+        # Group expense lines by (vendor_or_employee_partner, company, currency)
+        groups = {}
+        
+        for expense in self.expense_line_ids:
+            # Determine the partner: vendor if specified, otherwise employee
+            if expense.expense_vendor_id:
+                partner_id = expense.expense_vendor_id.id
+                partner_name = expense.expense_vendor_id.name
+            else:
+                # Use employee's partner
+                employee = expense.employee_id or self.employee_id
+                partner_id = self._get_employee_partner_id(employee)
+                partner_name = employee.name
+            
+            if not partner_id:
+                raise UserError(_(
+                    "Cannot determine partner for expense '%s'. "
+                    "Please ensure employee has a private address or specify a vendor."
+                ) % expense.name)
+            
+            # Create group key (partner, company, currency)
+            group_key = (
+                partner_id, 
+                expense.company_id.id, 
+                expense.currency_id.id
+            )
+            
+            # Initialize group if not exists
+            if group_key not in groups:
+                groups[group_key] = {
+                    'partner_id': partner_id,
+                    'partner_name': partner_name,
+                    'company_id': expense.company_id.id,
+                    'currency_id': expense.currency_id.id,
+                    'expenses': self.env['hr.expense'],
+                    'is_vendor': bool(expense.expense_vendor_id)
+                }
+            
+            groups[group_key]['expenses'] |= expense
+        
+        # Create bills for each group
+        for group_data in groups.values():
+            bill = self._create_single_bill_for_vendor_group(group_data)
+            if bill:
+                bills |= bill
+        
+        return bills
+
     def _create_bills_by_expense_lines(self):
-        """Group expense lines and create vendor bills per group"""
+        """Legacy: Group expense lines and create vendor bills per group"""
         bills = self.env['account.move']
         
         # Group expense lines by (vendor_or_employee_partner, company, currency)
@@ -319,7 +390,7 @@ class HrExpenseSheet(models.Model):
             partner_id = self._get_partner_for_expense(expense)
             
             if not partner_id:
-                # Temporarily skip vendor validation
+                # Skip expenses without valid partner
                 continue
             
             # Create group key
@@ -348,14 +419,130 @@ class HrExpenseSheet(models.Model):
         
         return bills
 
+    def _create_single_bill_for_vendor_group(self, group_data):
+        """Create a single vendor bill for a vendor group (enhanced version)"""
+        partner_id = group_data['partner_id']
+        partner_name = group_data['partner_name']
+        company_id = group_data['company_id']
+        currency_id = group_data['currency_id']
+        expenses = group_data['expenses']
+        is_vendor = group_data['is_vendor']
+        
+        if not partner_id:
+            return self.env['account.move']
+        
+        # Validate company and currency consistency within the group
+        for expense in expenses:
+            if expense.company_id.id != company_id:
+                raise UserError(_(
+                    "All expenses in a group must belong to the same company. "
+                    "Expense '%s' belongs to a different company."
+                ) % expense.name)
+            if expense.currency_id.id != currency_id:
+                raise UserError(_(
+                    "All expenses in a group must use the same currency. "
+                    "Expense '%s' uses a different currency."
+                ) % expense.name)
+        
+        # Group expenses by account and taxes to create proper invoice lines
+        account_tax_groups = {}
+        for expense in expenses:
+            account = expense.account_id
+            taxes = tuple(expense.tax_ids.ids)
+            key = (account.id, taxes)
+            
+            if key not in account_tax_groups:
+                account_tax_groups[key] = {
+                    'amount': 0,
+                    'expenses': self.env['hr.expense'],
+                    'tax_ids': expense.tax_ids.ids,
+                    'analytic_account_id': expense.account_analytic_id.id if hasattr(expense, 'account_analytic_id') and expense.account_analytic_id else False,
+                    'analytic_tag_ids': expense.analytic_tag_ids.ids if hasattr(expense, 'analytic_tag_ids') else [],
+                    'product_id': expense.product_id.id if expense.product_id else False,
+                    'wht_tax_id': expense.wht_tax_id.id if hasattr(expense, 'wht_tax_id') and expense.wht_tax_id else False
+                }
+            
+            account_tax_groups[key]['amount'] += expense.total_amount
+            account_tax_groups[key]['expenses'] |= expense
+        
+        # Create vendor bill with grouped lines
+        bill_ref = f'Expense Sheet {self.name}'
+        if is_vendor:
+            bill_ref += f' - {partner_name}'
+        else:
+            bill_ref += f' - Employee: {partner_name}'
+            
+        bill_vals = {
+            'move_type': 'in_invoice',
+            'partner_id': partner_id,
+            'invoice_date': fields.Date.context_today(self),
+            'date': fields.Date.context_today(self),
+            'currency_id': currency_id,
+            'company_id': company_id,
+            'ref': bill_ref,
+            'expense_sheet_id': self.id,
+            'invoice_line_ids': []
+        }
+        
+        for (account_id, taxes_tuple), group_data in account_tax_groups.items():
+            line_vals = {
+                'name': ', '.join(group_data['expenses'].mapped('name')),
+                'quantity': 1,
+                'price_unit': group_data['amount'],
+                'account_id': account_id,
+                'tax_ids': [(6, 0, list(set(group_data['tax_ids'])))],
+            }
+            
+            # Handle taxes and amounts properly
+            expense_lines = group_data['expenses']
+            if len(expense_lines) > 1:
+                # Combine amounts from all expenses in this group
+                line_vals['name'] = ', '.join(expense_lines.mapped('name'))
+            else:
+                # Use the single expense details
+                single_expense = expense_lines[0]
+                line_vals['name'] = single_expense.name
+                line_vals['quantity'] = single_expense.quantity if hasattr(single_expense, 'quantity') else 1
+                line_vals['price_unit'] = single_expense.unit_amount if hasattr(single_expense, 'unit_amount') and single_expense.unit_amount else single_expense.price_unit
+                
+            if group_data['analytic_account_id']:
+                line_vals['analytic_account_id'] = group_data['analytic_account_id']
+            if group_data.get('analytic_tag_ids', []):
+                line_vals['analytic_tag_ids'] = [(6, 0, group_data['analytic_tag_ids'])]
+            if group_data.get('product_id'):
+                line_vals['product_id'] = group_data['product_id']
+            if group_data.get('wht_tax_id'):
+                line_vals['wht_tax_id'] = group_data['wht_tax_id']
+            
+            bill_vals['invoice_line_ids'].append((0, 0, line_vals))
+        
+        bill = self.env['account.move'].create(bill_vals)
+        
+        # Link advance box to ALL bills when using advance (not just employee bills)
+        # This allows WHT wizard to find the correct advance box for vendor bills too
+        if self.use_advance and self.advance_box_id:
+            bill.sudo().write({
+                'advance_box_id': self.advance_box_id.id,
+                'is_expense_advance_bill': True
+            })
+        
+        # Carry attachments from expense lines to the bill
+        self._carry_attachments_to_bill(expense_lines, bill)
+        
+        return bill
+
     def _get_partner_for_expense(self, expense):
         """Get the appropriate partner for an expense based on clear_mode"""
         if self.clear_mode == 'pay_vendor':
-            # Temporarily disabled - vendor functionality
-            return False
+            # Use vendor if specified, otherwise skip (will be handled by employee logic)
+            return expense.expense_vendor_id.id if expense.expense_vendor_id else False
         elif self.clear_mode == 'mixed':
-            # Temporarily disabled - vendor functionality
-            return False
+            # Use vendor if specified, otherwise use employee
+            if expense.expense_vendor_id:
+                return expense.expense_vendor_id.id
+            else:
+                employee = expense.employee_id or self.employee_id
+                return self._get_employee_partner_id(employee)
         else:  # reimburse_employee
             # Always use employee's private address
             employee = expense.employee_id or self.employee_id
@@ -575,38 +762,104 @@ class HrExpenseSheet(models.Model):
         return True
 
     def action_open_wht_clear_advance_wizard(self):
-        """Open WHT Clear Advance Wizard"""
+        """Open WHT Clear Advance Wizard - HANG FIX APPLIED v2"""
+        import time
+        import logging
+        
+        _logger = logging.getLogger(__name__)
+        _logger.info("🎯 WIZARD BUTTON CLICKED: Starting Clear Advance (WHT) for expense sheet %s", self.name)
+        
+        start_time = time.time()
         self.ensure_one()
         
-        if not self.use_advance or not self.advance_box_id:
-            raise UserError(_("This expense sheet is not using advance or has no advance box configured."))
+        # Add immediate response for debugging
+        _logger.info("🔍 WIZARD: Method called successfully, processing...")
         
-        if self.state != 'approve':
-            raise UserError(_("Expense sheet must be approved before clearing advance with WHT."))
-        
-        # Get default employee partner
-        employee_partner = False
-        if self.employee_id.user_id and self.employee_id.user_id.partner_id:
-            employee_partner = self.employee_id.user_id.partner_id
-        elif self.employee_id.address_home_id:
-            employee_partner = self.employee_id.address_home_id
-        
-        context = {
-            'default_expense_sheet_id': self.id,
-            'default_employee_id': self.employee_id.id,
-            'default_advance_box_id': self.advance_box_id.id,
-            'default_company_id': self.company_id.id,
-            'default_partner_id': employee_partner.id if employee_partner else False,
-            'default_clear_amount': self.total_amount,
-            'default_amount_base': self.total_amount,
-        }
-        
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Clear Advance with WHT'),
-            'res_model': 'wht.clear.advance.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': context,
-        }
+        try:
+            _logger.info("🔍 WIZARD: Entering try block...")
+            
+            # Quick validations
+            _logger.info("🔍 WIZARD: Checking use_advance: %s", self.use_advance)
+            _logger.info("🔍 WIZARD: Checking advance_box_id: %s", self.advance_box_id.id if self.advance_box_id else 'None')
+            _logger.info("🔍 WIZARD: Checking state: %s", self.state)
+            
+            if not self.use_advance or not self.advance_box_id:
+                raise UserError(_("This expense sheet is not using advance or has no advance box configured."))
+            
+            if self.state != 'approve':
+                raise UserError(_("Expense sheet must be approved before clearing advance with WHT."))
+            
+            # Support cross-employee advance box clearing
+            # ให้สามารถ Clear advance box ของพนักงานคนอื่นได้
+            if self.advance_box_id.employee_id.id != self.employee_id.id:
+                _logger.info("🔄 WIZARD: Cross-employee clearing detected - Current user: %s, Advance box owner: %s", 
+                           self.employee_id.name, self.advance_box_id.employee_id.name)
+                
+                # Use advance box employee's partner information for WHT processing
+                advance_box_partner = False
+                try:
+                    if self.advance_box_id.employee_id.address_home_id:
+                        advance_box_partner = self.advance_box_id.employee_id.address_home_id
+                    elif self.advance_box_id.employee_id.user_id and self.advance_box_id.employee_id.user_id.partner_id:
+                        advance_box_partner = self.advance_box_id.employee_id.user_id.partner_id
+                    _logger.info("� WIZARD: Will use advance box employee partner for WHT: %s", 
+                               advance_box_partner.name if advance_box_partner else 'None')
+                except Exception as e:
+                    _logger.warning("⚠️ WIZARD: Could not resolve advance box employee partner: %s", str(e))
+                    advance_box_partner = None
+                
+                # Override partner info if advance box employee partner is found
+                if advance_box_partner:
+                    employee_partner = advance_box_partner
+            
+            _logger.info("✅ WIZARD: Basic validations passed")
+            
+            # Get default employee partner (with timeout protection)
+            employee_partner = False
+            try:
+                if self.employee_id.user_id and self.employee_id.user_id.partner_id:
+                    employee_partner = self.employee_id.user_id.partner_id
+                elif hasattr(self.employee_id, 'address_home_id') and self.employee_id.address_home_id:
+                    employee_partner = self.employee_id.address_home_id
+                elif self.employee_id.address_id:
+                    employee_partner = self.employee_id.address_id
+                _logger.info("💼 WIZARD: Employee partner resolved: %s", employee_partner.name if employee_partner else 'None')
+            except Exception as e:
+                _logger.warning("⚠️ WIZARD: Could not resolve employee partner: %s", str(e))
+                employee_partner = False
+            
+            # Build context safely - ไม่ส่ง default_partner_id เพื่อให้ wizard หาจาก bill เอง
+            context = {
+                'default_expense_sheet_id': self.id,
+                'default_employee_id': self.employee_id.id,
+                'default_advance_box_id': self.advance_box_id.id,
+                'default_company_id': self.company_id.id,
+                # ไม่ส่ง default_partner_id และ default_wht_partner_id เพื่อให้ wizard หาจาก bill เอง
+                # 'default_partner_id': employee_partner.id if employee_partner else False,
+                # 'default_wht_partner_id': employee_partner.id if employee_partner else False,
+                'default_clear_amount': self.total_amount or 0.0,
+                'default_amount_base': self.total_amount or 0.0,
+            }
+            
+            _logger.info("💡 WIZARD: Not sending default partners - letting wizard find vendor from bill")
+            
+            elapsed = time.time() - start_time
+            _logger.info("🚀 WIZARD: Opening wizard (preparation took %.2f seconds)", elapsed)
+            
+            result = {
+                'type': 'ir.actions.act_window',
+                'name': _('Clear Advance with WHT'),
+                'res_model': 'wht.clear.advance.wizard',
+                'view_mode': 'form',
+                'target': 'new',
+                'context': context,
+            }
+            
+            _logger.info("✅ WIZARD: Method completed successfully, returning action")
+            return result
+            
+        except Exception as e:
+            elapsed = time.time() - start_time
+            _logger.error("❌ WIZARD: Failed to open wizard after %.2f seconds: %s", elapsed, str(e))
+            raise UserError(_("Failed to open Clear Advance (WHT) wizard: %s") % str(e))
 
