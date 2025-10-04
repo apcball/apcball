@@ -77,12 +77,21 @@ class WhtClearAdvanceWizard(models.TransientModel):
     )
 
     # WHT Tax details
-    wht_tax_id = fields.Many2one(
+    # Legacy field - keep for database compatibility 
+    wht_tax_id_legacy = fields.Many2one(
         'account.tax',
-        string='WHT Tax',
+        string='WHT Tax (Legacy)',
         required=False,
-        domain="[('type_tax_use', 'in', ['purchase', 'none']), ('amount', '<', 0)]",
-        help="Withholding tax to apply (optional - leave blank for no WHT)"
+        help="Legacy field for database compatibility - DO NOT USE"
+    )
+    
+    # New field for withholding tax configuration
+    wht_config_id = fields.Many2one(
+        'account.withholding.tax',
+        string='WHT Tax Configuration',
+        required=False,
+        domain="[('company_id', '=', company_id)]",
+        help="Withholding tax configuration to apply (optional - leave blank for no WHT)"
     )
     wht_tax_rate = fields.Float(
         string='WHT Tax Rate (%)',
@@ -120,10 +129,20 @@ class WhtClearAdvanceWizard(models.TransientModel):
         help="General journal for the entry"
     )
     date = fields.Date(
-        string='Date',
+        string='Journal Entry Date',
         required=True,
         default=fields.Date.context_today,
         help="Journal entry date"
+    )
+    accounting_date = fields.Date(
+        string='Accounting Date',
+        required=False,
+        help="Accounting date for the journal entry (if different from entry date). Leave blank to use Journal Entry Date."
+    )
+    show_accounting_date = fields.Boolean(
+        string='Use Different Accounting Date',
+        default=False,
+        help="Check this to specify a different accounting date"
     )
     ref = fields.Char(
         string='Reference',
@@ -244,26 +263,8 @@ class WhtClearAdvanceWizard(models.TransientModel):
                             res['amount_base'] = base_amount
                             res['clear_amount'] = bill.amount_residual  # Use residual amount for clearing
                             
-                            # Auto-detect WHT tax if not already set
-                            if not res.get('wht_tax_id'):
-                                # Find the first WHT tax from invoice lines - verify it's an actual WHT tax
-                                wht_line = bill.invoice_line_ids.filtered('wht_tax_id')[:1]
-                                if wht_line and wht_line.wht_tax_id:
-                                    # Verify this is actually a WHT tax according to Thai localization standards
-                                    wht_tax = wht_line.wht_tax_id
-                                    is_actual_wht = (
-                                        (hasattr(wht_tax, 'l10n_th_is_withholding') and wht_tax.l10n_th_is_withholding) or
-                                        (hasattr(wht_tax, 'l10n_th_tax_type') and wht_tax.l10n_th_tax_type == 'withholding') or
-                                        wht_tax.amount < 0  # WHT typically has negative amount
-                                    )
-                                    
-                                    if is_actual_wht:
-                                        res['wht_tax_id'] = wht_tax.id
-                                        _logger.info("🔍 WIZARD: Auto-detected WHT tax: %s (rate: %s%%)", 
-                                                   wht_tax.name, wht_tax.amount)
-                                    else:
-                                        _logger.info("🔍 WIZARD: Tax found but not a WHT tax: %s (amount: %s%%)", 
-                                                   wht_tax.name, wht_tax.amount)
+                            # Let user select WHT manually for better reliability
+                            _logger.info("🎯 WIZARD: WHT detection complete - user will select manually")
                         else:
                             _logger.info("🔍 WIZARD: No WHT detected in bill")
                             
@@ -379,34 +380,209 @@ class WhtClearAdvanceWizard(models.TransientModel):
             # Return basic defaults to prevent complete failure
             return super().default_get(fields_list)
 
-    @api.depends('wht_tax_id')
+    @api.depends('wht_config_id')
     def _compute_wht_tax_rate(self):
-        """Compute WHT tax rate with hang prevention - only for actual WHT taxes"""
+        """Compute WHT tax rate from withholding tax configuration"""
         for record in self:
             try:
-                if record.wht_tax_id:
-                    # Ensure this is actually a WHT tax, not VAT
-                    if (hasattr(record.wht_tax_id, 'l10n_th_is_withholding') and record.wht_tax_id.l10n_th_is_withholding) or record.wht_tax_id.amount < 0:
-                        record.wht_tax_rate = abs(record.wht_tax_id.amount or 0.0)
-                    else:
-                        # This is not a WHT tax, reset to 0
-                        record.wht_tax_rate = 0.0
-                        record.wht_tax_id = False  # Clear the field
+                if record.wht_config_id:
+                    # Direct rate from withholding tax configuration
+                    record.wht_tax_rate = abs(record.wht_config_id.amount or 0.0)
+                    _logger.info("🎯 WIZARD: WHT rate computed: %s%% from %s", 
+                               record.wht_tax_rate, record.wht_config_id.name)
                 else:
                     record.wht_tax_rate = 0.0
             except Exception as e:
                 _logger.warning("⚠️ WIZARD: Error computing WHT tax rate: %s", str(e))
                 record.wht_tax_rate = 0.0
 
-    @api.depends('amount_base', 'wht_tax_id')
+    def _validate_wht_tax(self, wht_config):
+        """Validate withholding tax configuration"""
+        if not wht_config:
+            return False
+        
+        # For withholding tax configuration, just check if it's active and has valid data
+        try:
+            if wht_config._name == 'account.withholding.tax':
+                # Debug all attributes
+                _logger.info("🔍 WHT config validation for '%s':", wht_config.name)
+                _logger.info("  - active: %s", getattr(wht_config, 'active', 'N/A'))
+                _logger.info("  - amount: %s", getattr(wht_config, 'amount', 'N/A'))
+                _logger.info("  - company_id: %s", getattr(wht_config, 'company_id', 'N/A'))
+                
+                # It's a withholding tax configuration - always valid if active and has amount
+                is_valid = (
+                    getattr(wht_config, 'active', True) and
+                    getattr(wht_config, 'amount', 0) and
+                    getattr(wht_config, 'amount', 0) > 0  # WHT config has positive rates
+                )
+                _logger.info("✅ WHT config '%s' validation result: %s", wht_config.name, is_valid)
+                return is_valid
+            else:
+                _logger.warning("⚠️ Unexpected object type for WHT validation: %s", wht_config._name)
+                return False
+                
+        except Exception as e:
+            _logger.error("❌ Error validating WHT config: %s", str(e))
+            return False
+
+    def _map_withholding_tax_to_account_tax(self, wht_record):
+        """Map withholding tax configuration to account.tax record using name patterns"""
+        if not wht_record or not hasattr(wht_record, 'name'):
+            return None
+            
+        wht_name = wht_record.name or ''
+        wht_amount = getattr(wht_record, 'amount', 0) or 0
+        
+        # Pattern 1: "WHT 3% C S" -> "3% WH C S"
+        import re
+        wht_match = re.match(r'WHT\s+(\d+)%\s+(.+)', wht_name)
+        if wht_match:
+            percentage = wht_match.group(1)
+            suffix = wht_match.group(2).strip()  # "C S"
+            
+            # Try different pattern combinations
+            patterns_to_try = [
+                f"{percentage}% WH {suffix}",      # "3% WH C S"
+                f"{percentage}% WHT {suffix}",     # "3% WHT C S"  
+                f"WH {percentage}% {suffix}",      # "WH 3% C S"
+                f"WHT {percentage}% {suffix}",     # "WHT 3% C S"
+            ]
+            
+            for pattern in patterns_to_try:
+                matching_tax = self.env['account.tax'].search([
+                    ('company_id', '=', wht_record.company_id.id if hasattr(wht_record, 'company_id') else self.env.company.id),
+                    ('name', '=', pattern),
+                    ('amount', '=', -abs(wht_amount)),
+                ], limit=1)
+                
+                if matching_tax:
+                    _logger.info("🔗 Mapped '%s' -> '%s'", wht_name, pattern)
+                    return matching_tax
+        
+        # Pattern 2: Direct name search with variations
+        name_variations = [
+            wht_name,
+            wht_name.replace('WHT', 'WH'),
+            wht_name.replace('WH', 'WHT'),
+        ]
+        
+        for name_var in name_variations:
+            matching_tax = self.env['account.tax'].search([
+                ('company_id', '=', wht_record.company_id.id if hasattr(wht_record, 'company_id') else self.env.company.id),
+                ('name', 'ilike', name_var),
+                ('amount', '<', 0),
+            ], limit=1)
+            
+            if matching_tax:
+                _logger.info("🔗 Direct mapped '%s' -> '%s'", wht_name, matching_tax.name)
+                return matching_tax
+        
+        # Pattern 3: Amount-based matching
+        if wht_amount:
+            amount_match = self.env['account.tax'].search([
+                ('company_id', '=', wht_record.company_id.id if hasattr(wht_record, 'company_id') else self.env.company.id),
+                ('amount', '=', -abs(wht_amount)),
+                ('name', 'ilike', 'WH'),
+            ], limit=1)
+            
+            if amount_match:
+                _logger.info("🔗 Amount mapped '%s' (%s%%) -> '%s'", wht_name, wht_amount, amount_match.name)
+                return amount_match
+        
+        return None
+
+    def _get_wht_tax_domain(self):
+        """Get domain for WHT tax selection - enhanced to match your system's pattern"""
+        
+        # Method 1: Check if Thai localization fields exist on account.tax model
+        try:
+            sample_tax = self.env['account.tax'].search([
+                ('company_id', '=', self.company_id.id if self.company_id else self.env.company.id)
+            ], limit=1)
+            
+            if sample_tax and hasattr(sample_tax, 'l10n_th_is_withholding'):
+                domain = [
+                    ('company_id', '=', self.company_id.id if self.company_id else self.env.company.id),
+                    ('l10n_th_is_withholding', '=', True),
+                ]
+                
+                test_taxes = self.env['account.tax'].search(domain)
+                if test_taxes:
+                    _logger.info("🔍 Found %d Thai WHT taxes using l10n_th_is_withholding: %s", 
+                               len(test_taxes), ', '.join(test_taxes.mapped('name')))
+                    return domain
+        except Exception as e:
+            _logger.warning("⚠️ Error checking Thai localization fields: %s", str(e))
+        
+        # Method 2: Try to match withholding tax configuration by name pattern
+        if 'account.withholding.tax' in self.env.registry:
+            try:
+                withholding_taxes = self.env['account.withholding.tax'].search([
+                    ('company_id', '=', self.company_id.id if self.company_id else self.env.company.id)
+                ])
+                
+                if withholding_taxes:
+                    wht_config_ids = []
+                    
+                    for wht in withholding_taxes:
+                        # Use the enhanced mapping function
+                        mapped_tax = self._map_withholding_tax_to_account_tax(wht)
+                        if mapped_tax:
+                            wht_config_ids.append(mapped_tax.id)
+                    
+                    if wht_config_ids:
+                        wht_config_ids = list(set(wht_config_ids))  # Remove duplicates
+                        tax_names = self.env['account.tax'].browse(wht_config_ids).mapped('name')
+                        _logger.info("🔍 Found %d WHT taxes by pattern matching: %s", 
+                                   len(wht_config_ids), ', '.join(tax_names))
+                        return [
+                            ('company_id', '=', self.company_id.id if self.company_id else self.env.company.id),
+                            ('id', 'in', wht_config_ids)
+                        ]
+                        
+            except Exception as e:
+                _logger.warning("⚠️ Error matching withholding tax patterns: %s", str(e))
+        
+        # Method 3: Enhanced pattern-based matching for your system
+        _logger.info("🔍 Using pattern-based WHT domain for your system")
+        
+        base_domain = [
+            ('company_id', '=', self.company_id.id if self.company_id else self.env.company.id),
+            ('amount', '<', 0),  # WHT must have negative amount
+            ('active', '=', True),
+        ]
+        
+        # Enhanced pattern matching based on your system's naming convention
+        wht_patterns = [
+            '|', '|', '|', '|', '|', '|', '|', '|', '|', '|', '|',
+            ('name', 'like', '% WH C %'),    # "3% WH C S" pattern - Company
+            ('name', 'like', '% WH P %'),    # "3% WH P S" pattern - Personal  
+            ('name', 'like', '% WH T%'),     # "1% WH T" pattern - Transport
+            ('name', 'like', '% WH A%'),     # "2% WH A" pattern - Advertising
+            ('name', 'like', '% WH R%'),     # "5% WH R" pattern - Rent
+            ('name', 'ilike', 'withholding'),
+            ('name', 'ilike', 'หัก ณ ที่จ่าย'),
+            ('name', 'ilike', 'WHT'),
+            ('name', 'ilike', 'PND'),
+            ('name', 'like', '%WH %'),       # General WH pattern
+            ('description', 'ilike', 'withholding'),
+            ('type_tax_use', 'in', ['purchase', 'sale', 'none']),  # Include purchase and sale WHT
+        ]
+        
+        return base_domain + wht_patterns
+
+    @api.depends('amount_base', 'wht_config_id')
     def _compute_wht_amount(self):
-        """Compute WHT amount with hang prevention"""
+        """Compute WHT amount from withholding tax configuration"""
         for wizard in self:
             try:
-                if wizard.wht_tax_id and wizard.amount_base:
-                    # WHT taxes have negative rates, so we negate to get positive WHT amount
-                    tax_amount = wizard.wht_tax_id.amount or 0.0
-                    wizard.wht_amount = abs((wizard.amount_base or 0.0) * (tax_amount / 100))
+                if wizard.wht_config_id and wizard.amount_base:
+                    # Withholding tax configuration has positive rates (e.g., 3.0%)
+                    tax_rate = wizard.wht_config_id.amount or 0.0
+                    wizard.wht_amount = (wizard.amount_base or 0.0) * (tax_rate / 100)
+                    _logger.info("🧮 WIZARD: WHT amount calculated: %s * %s%% = %s", 
+                               wizard.amount_base, tax_rate, wizard.wht_amount)
                 else:
                     # No WHT tax selected or no base amount
                     wizard.wht_amount = 0.0
@@ -424,14 +600,15 @@ class WhtClearAdvanceWizard(models.TransientModel):
                 _logger.warning("⚠️ WIZARD: Error computing net amount: %s", str(e))
                 wizard.net_amount = 0.0
 
-    @api.constrains('clear_amount', 'wht_amount', 'wht_tax_id', 'amount_base')
+    @api.constrains('clear_amount', 'wht_amount', 'wht_config_id', 'amount_base')
     def _check_amounts(self):
-        """Validate amounts with hang prevention"""
+        """Enhanced validation with WHT tax verification"""
         try:
             for record in self:
                 clear_amount = record.clear_amount or 0.0
                 wht_amount = record.wht_amount or 0.0
                 
+                # Basic amount validations
                 if clear_amount <= 0:
                     raise ValidationError(_("Clear amount must be greater than zero."))
                 if wht_amount < 0:
@@ -439,9 +616,44 @@ class WhtClearAdvanceWizard(models.TransientModel):
                 if wht_amount >= clear_amount:
                     raise ValidationError(_("WHT amount cannot be equal to or greater than clear amount."))
                 
-                # ถ้าเลือก WHT Tax แล้วต้องใส่ Base Amount
-                if record.wht_tax_id and not record.amount_base:
-                    raise ValidationError(_("Base Amount is required when WHT Tax is selected."))
+                # Enhanced WHT tax validation
+                if record.wht_config_id:
+                    # Validate that selected tax is actually a WHT tax
+                    if not record._validate_wht_tax(record.wht_config_id):
+                        raise ValidationError(_(
+                            "Invalid WHT Configuration: '%s'\n\n"
+                            "The selected withholding tax configuration is not valid. "
+                            "Valid WHT configurations should:\n"
+                            "• Be active\n"
+                            "• Have a positive rate (e.g., 3.0%%, 5.0%%)\n"
+                            "• Be properly configured in the WHT settings\n\n"
+                            "Please select a proper WHT configuration or leave blank if no WHT applies."
+                        ) % record.wht_config_id.name)
+                    
+                    # Base amount is required when WHT is selected
+                    if not record.amount_base:
+                        raise ValidationError(_(
+                            "Base Amount is required when WHT Tax is selected.\n\n"
+                            "The base amount is used to calculate the WHT amount and should represent "
+                            "the amount before VAT (if any) that the WHT tax will be applied to."
+                        ))
+                    
+                    # Base amount should be reasonable compared to clear amount
+                    if record.amount_base > clear_amount * 2:
+                        raise ValidationError(_(
+                            "Base Amount (%.2f) seems too high compared to Clear Amount (%.2f).\n\n"
+                            "Please verify the base amount. It should typically be equal to or less than "
+                            "the clear amount, representing the amount before VAT."
+                        ) % (record.amount_base, clear_amount))
+                    
+                    # WHT amount should be reasonable (typically 1-10% of base)
+                    if record.amount_base > 0:
+                        wht_percentage = (wht_amount / record.amount_base) * 100
+                        if wht_percentage > 20:  # More than 20% seems unusual for WHT
+                            raise ValidationError(_(
+                                "WHT Amount (%.2f) is %.1f%% of Base Amount (%.2f), which seems unusually high.\n\n"
+                                "Typical WHT rates are 1-10%%. Please verify your WHT tax rate and base amount."
+                            ) % (wht_amount, wht_percentage, record.amount_base))
                     
         except ValidationError:
             # Re-raise validation errors as they should be shown to user
@@ -523,11 +735,47 @@ class WhtClearAdvanceWizard(models.TransientModel):
         _logger.info("DEBUG: Data integrity validation passed - Employee ID: %s, Advance Box ID: %s", 
                     self.employee_id.id, self.advance_box_id.id)
 
+    @api.onchange('wht_config_id')
+    def _onchange_wht_config_id(self):
+        """Validate WHT tax selection and provide user feedback"""
+        if self.wht_config_id:
+            is_valid = self._validate_wht_tax(self.wht_config_id)
+            if not is_valid:
+                return {
+                    'warning': {
+                        'title': _('Invalid WHT Configuration'),
+                        'message': _(
+                            'The selected WHT configuration "%s" is not valid.\n\n'
+                            'Valid WHT configurations should:\n'
+                            '• Be active\n'
+                            '• Have a positive rate (e.g., 3.0%%, 5.0%%)\n'
+                            '• Be properly configured in the WHT settings\n\n'
+                            'Please select a proper WHT configuration or leave blank if no WHT applies.'
+                        ) % self.wht_config_id.name
+                    }
+                }
+            else:
+                # Valid WHT tax selected, auto-fill base amount if not set
+                if not self.amount_base and self.clear_amount:
+                    self.amount_base = self.clear_amount
+
     @api.onchange('employee_id')
     def _onchange_employee_id(self):
         # ปิดการทำงานชั่วคราว - ไม่ให้ override partner_id จาก bill
         # เพราะต้องการใช้ vendor จาก bill แทนที่จะเป็น employee
         pass
+
+    @api.onchange('show_accounting_date')
+    def _onchange_show_accounting_date(self):
+        """Reset accounting_date when checkbox is unchecked"""
+        if not self.show_accounting_date:
+            self.accounting_date = False
+
+    @api.onchange('date')
+    def _onchange_date(self):
+        """Update accounting_date when date changes (if show_accounting_date is enabled)"""
+        if self.show_accounting_date and not self.accounting_date:
+            self.accounting_date = self.date
 
     def _get_advance_account(self):
         """Get the advance account for the employee"""
@@ -545,14 +793,12 @@ class WhtClearAdvanceWizard(models.TransientModel):
         return payable_account
 
     def _get_wht_payable_account(self):
-        """Get the WHT payable account"""
+        """Get the WHT payable account from withholding tax configuration"""
         self.ensure_one()
         
-        # First try to get from WHT tax configuration
-        if self.wht_tax_id and self.wht_tax_id.invoice_repartition_line_ids:
-            wht_lines = self.wht_tax_id.invoice_repartition_line_ids.filtered(lambda l: l.repartition_type == 'tax')
-            if wht_lines and wht_lines[0].account_id:
-                return wht_lines[0].account_id
+        # Get from withholding tax configuration
+        if self.wht_config_id and self.wht_config_id.account_id:
+            return self.wht_config_id.account_id
         
         # Fallback: search for WHT payable account
         wht_account = self.env['account.account'].search([
@@ -562,7 +808,7 @@ class WhtClearAdvanceWizard(models.TransientModel):
         ], limit=1)
         
         if not wht_account:
-            raise UserError(_("No WHT payable account found. Please configure the WHT tax account or create a WHT payable account."))
+            raise UserError(_("No WHT payable account found. Please configure the withholding tax account or create a WHT payable account."))
         
         return wht_account
 
@@ -614,7 +860,7 @@ class WhtClearAdvanceWizard(models.TransientModel):
         
         # Only get WHT account if WHT tax is selected
         wht_account = None
-        if self.wht_tax_id:
+        if self.wht_config_id:
             wht_account = self._get_wht_payable_account()
 
         # Log account information
@@ -671,8 +917,16 @@ class WhtClearAdvanceWizard(models.TransientModel):
         # Cr Advance Box (employee advance account) = clear_amount - wht_amount
         # เครดิต Advance Box = ลดยอด advance box (ไม่ต้องระบุ partner_id)
         advance_credit = self.clear_amount - self.wht_amount
-        _logger.info("  📥 Credit Advance Box: %s (%s) = %s", 
-                   self.advance_box_id.name, advance_account.code, advance_credit)
+        _logger.info("  📥 Credit Advance Box: %s (%s) = %s (clear: %s - wht: %s)", 
+                   self.advance_box_id.name, advance_account.code, advance_credit,
+                   self.clear_amount, self.wht_amount)
+        
+        # Debug balance check
+        total_debit = self.clear_amount
+        total_credit = advance_credit + (self.wht_amount if self.wht_config_id and self.wht_amount > 0 else 0)
+        _logger.info("🔍 BALANCE CHECK: Debit=%s, Credit=%s (advance: %s + wht: %s)", 
+                   total_debit, total_credit, advance_credit, 
+                   self.wht_amount if self.wht_config_id and self.wht_amount > 0 else 0)
         
         # Use the same method as advance box to ensure consistency in partner matching
         advance_partner_id = self.advance_box_id._get_employee_partner()
@@ -732,12 +986,12 @@ class WhtClearAdvanceWizard(models.TransientModel):
         
         # Cr WHT Payable = wht_amount (only if WHT is selected)
         # เครดิต หัก ณ ที่จ่าย = จ่ายภาษี WHT แทนพนักงาน
-        if self.wht_tax_id and self.wht_amount > 0:
+        if self.wht_config_id and self.wht_amount > 0:
             _logger.info("  📥 Credit WHT Payable: %s (%s) = %s", 
-                       self.wht_tax_id.name, wht_account.code, self.wht_amount)
+                       self.wht_config_id.name, wht_account.code, self.wht_amount)
             move_lines.append((0, 0, {
                 'name': _('WHT Payable - %(tax_name)s - %(vendor_name)s') % {
-                    'tax_name': self.wht_tax_id.name,
+                    'tax_name': self.wht_config_id.name,
                     'vendor_name': self.wht_partner_id.name
                 },
                 'account_id': wht_account.id,
@@ -745,7 +999,7 @@ class WhtClearAdvanceWizard(models.TransientModel):
                 'debit': 0.0,
                 'credit': self.wht_amount,
                 'currency_id': self.currency_id.id,
-                'tax_line_id': self.wht_tax_id.id,
+                # Remove tax_line_id since we use withholding config, not account.tax
                 'tax_base_amount': self.amount_base,  # Using base amount excluding VAT
             }))
         else:
@@ -753,42 +1007,28 @@ class WhtClearAdvanceWizard(models.TransientModel):
             
         _logger.info("📋 TOTAL JOURNAL ENTRY: %d lines", len(move_lines))
         
-        move_lines.append((0, 0, {
-            'name': _('Clear from advance box - %s') % self.advance_box_id.employee_id.name,
-            'account_id': advance_account.id,
-            'partner_id': advance_partner_id,  # ใช้ advance box employee partner
-            'debit': 0.0,
-            'credit': advance_credit,
-            'currency_id': self.currency_id.id,
-        }))
+        # Debug: Calculate totals before creating move
+        debug_total_debit = sum(line[2]['debit'] for line in move_lines)
+        debug_total_credit = sum(line[2]['credit'] for line in move_lines)
+        _logger.info("🔍 PRE-CREATE TOTALS: Debit=%s, Credit=%s, Difference=%s", 
+                   debug_total_debit, debug_total_credit, debug_total_debit - debug_total_credit)
         
-        # Cr WHT Payable = wht_amount (only if WHT is selected)
-        # เครดิต หัก ณ ที่จ่าย = จ่ายภาษี WHT แทนพนักงาน
-        if self.wht_tax_id and self.wht_amount > 0:
-            _logger.info("  📥 Credit WHT Payable: %s (%s) = %s", 
-                       self.wht_tax_id.name, wht_account.code, self.wht_amount)
-            move_lines.append((0, 0, {
-                'name': _('WHT Payable - %(tax_name)s - %(vendor_name)s') % {
-                    'tax_name': self.wht_tax_id.name,
-                    'vendor_name': self.wht_partner_id.name
-                },
-                'account_id': wht_account.id,
-                'partner_id': self.wht_partner_id.id,  # ใช้ vendor partner สำหรับ PND
-                'debit': 0.0,
-                'credit': self.wht_amount,
-                'currency_id': self.currency_id.id,
-                'tax_line_id': self.wht_tax_id.id,
-                'tax_base_amount': self.amount_base,
-            }))
-        else:
-            _logger.info("  ℹ️ No WHT applied")
-            
-        _logger.info("📋 TOTAL JOURNAL ENTRY: %d lines", len(move_lines))
+        # Debug: Show each line
+        for i, line in enumerate(move_lines, 1):
+            line_data = line[2]
+            _logger.info("  Line %d: %s | Debit: %s | Credit: %s | Account: %s", 
+                       i, line_data['name'], line_data['debit'], line_data['credit'],
+                       self.env['account.account'].browse(line_data['account_id']).code)
+
+        # Determine the date to use for journal entry
+        journal_entry_date = self.accounting_date or self.date
+        _logger.info("📅 Journal Entry Dates - Entry Date: %s, Accounting Date: %s, Using: %s", 
+                   self.date, self.accounting_date or 'Not set', journal_entry_date)
 
         # Create journal entry
         move_vals = {
             'journal_id': self.journal_id.id,
-            'date': self.date,
+            'date': journal_entry_date,  # Use accounting_date if specified, otherwise use date
             'ref': self.ref or _('Clear Advance with WHT - %s') % self.expense_sheet_id.name,
             'move_type': 'entry',
             'line_ids': move_lines,
@@ -801,26 +1041,10 @@ class WhtClearAdvanceWizard(models.TransientModel):
             move = self.env['account.move'].create(move_vals)
             _logger.info("DEBUG: Journal entry created: %s", move.name)
             
-            # Debug: Show move lines before posting
-            _logger.info("📋 MOVE LINES BEFORE POST:")
-            for line in move.line_ids:
-                _logger.info("  Line: %s | Account: %s | Partner: %s | Debit: %s | Credit: %s", 
-                           line.name, line.account_id.code, 
-                           line.partner_id.name if line.partner_id else 'None',
-                           line.debit, line.credit)
-            
             # Post the journal entry
             _logger.info("DEBUG: Posting journal entry")
             move.action_post()
             _logger.info("DEBUG: Journal entry posted successfully")
-            
-            # Debug: Show move lines after posting
-            _logger.info("📋 MOVE LINES AFTER POST:")
-            for line in move.line_ids:
-                _logger.info("  Line: %s | Account: %s | Partner: %s | Debit: %s | Credit: %s", 
-                           line.name, line.account_id.code, 
-                           line.partner_id.name if line.partner_id else 'None',
-                           line.debit, line.credit)
             
             # Link to expense sheet BEFORE auto reconcile to avoid issues
             _logger.info("DEBUG: Linking to expense sheet")
@@ -877,11 +1101,11 @@ class WhtClearAdvanceWizard(models.TransientModel):
             }
             
             # Add WHT context only if WHT is selected
-            if self.wht_tax_id:
+            if self.wht_config_id:
                 move_data.update({
-                    'wht_tax_id': self.wht_tax_id.id,
-                    'wht_base_amount': self.amount_base,
-                    'wht_amount': self.wht_amount,
+                    # Don't save wht_config_id to account.move - it doesn't have this field
+                    # 'wht_config_id': self.wht_config_id.id,  # Removed - causes error
+                    # Keep only standard fields that account.move supports
                 })
             
             move.write(move_data)
@@ -1126,7 +1350,7 @@ class WhtClearAdvanceWizard(models.TransientModel):
             # Don't fail validation just because balance check failed
 
     def _auto_detect_wht_from_bill(self):
-        """Auto-detect WHT information from the related bill"""
+        """Enhanced auto-detect WHT information from the related bill with improved validation"""
         self.ensure_one()
         
         # Find the related bill
@@ -1144,65 +1368,75 @@ class WhtClearAdvanceWizard(models.TransientModel):
             _logger.info("🔍 No bill found for WHT detection")
             return False
         
-        # Check if the bill has WHT
-        has_wht = any(line.wht_tax_id for line in bill.invoice_line_ids)
-        if not has_wht:
-            # Also check if any taxes are WHT taxes
-            all_invoice_taxes = bill.invoice_line_ids.mapped('tax_ids')
-            has_wht = any(
-                tax.amount < 0 and (hasattr(tax, 'l10n_th_is_withholding') and tax.l10n_th_is_withholding)
-                for tax in all_invoice_taxes
-            )
+        # Enhanced WHT detection with multiple methods
+        wht_taxes_found = []
+        detected_base_amount = 0.0
         
-        if has_wht:
-            _logger.info("🔍 Detected WHT in bill, calculating base amount...")
-            # Calculate base amount excluding VAT for WHT
-            base_amount = bill._get_wht_base_amount_excluding_vat()
-            _logger.info("🔍 Calculated base amount (excl. VAT): %s", base_amount)
+        # Method 1: Check invoice lines with wht_config_id field
+        wht_lines = bill.invoice_line_ids.filtered('wht_config_id')
+        for line in wht_lines:
+            if line.wht_config_id and self._validate_wht_tax(line.wht_config_id):
+                wht_taxes_found.append({
+                    'tax': line.wht_config_id,
+                    'base_amount': bill._get_base_amount_excluding_vat_for_line(line),
+                    'line': line
+                })
+        
+        # Method 2: Check all taxes in tax_ids for WHT taxes
+        if not wht_taxes_found:
+            for line in bill.invoice_line_ids:
+                for tax in line.tax_ids:
+                    if self._validate_wht_tax(tax):
+                        wht_taxes_found.append({
+                            'tax': tax,
+                            'base_amount': bill._get_base_amount_excluding_vat_for_line(line),
+                            'line': line
+                        })
+                        break  # Only take first WHT tax per line
+        
+        # Method 3: Fallback - check move lines for WHT tax_line_id
+        if not wht_taxes_found:
+            wht_move_lines = bill.line_ids.filtered(lambda l: l.tax_line_id and self._validate_wht_tax(l.tax_line_id))
+            for line in wht_move_lines:
+                wht_taxes_found.append({
+                    'tax': line.tax_line_id,
+                    'base_amount': abs(line.tax_base_amount) if line.tax_base_amount else 0.0,
+                    'line': line
+                })
+        
+        if wht_taxes_found:
+            _logger.info("🔍 Detected %d WHT tax(es) in bill", len(wht_taxes_found))
             
-            # Auto-detect the first WHT tax if not already set
-            if not self.wht_tax_id:
-                wht_line = bill.invoice_line_ids.filtered('wht_tax_id')[:1]
-                if wht_line and wht_line.wht_tax_id:
-                    self.wht_tax_id = wht_line.wht_tax_id.id
-                    _logger.info("🔍 Auto-detected WHT tax: %s", wht_line.wht_tax_id.name)
+            # Use the first WHT tax found
+            first_wht = wht_taxes_found[0]
+            selected_tax = first_wht['tax']
             
-            # Update base amount
-            self.amount_base = base_amount
-            # Recalculate WHT amount based on new base
-            if self.wht_tax_id:
-                self.wht_amount = abs(base_amount * (self.wht_tax_id.amount / 100))
+            # Calculate total base amount from all WHT lines (excluding VAT)
+            total_base_amount = sum(wht['base_amount'] for wht in wht_taxes_found)
+            
+            _logger.info("🔍 Selected WHT tax: %s (rate: %s%%, base: %s)", 
+                       selected_tax.name, selected_tax.amount, total_base_amount)
+            
+            # Update wizard fields
+            if not self.wht_config_id:
+                self.wht_config_id = selected_tax.id
+                _logger.info("🔍 Auto-set WHT tax: %s", selected_tax.name)
+            
+            # Update base amount and recalculate WHT
+            self.amount_base = total_base_amount
+            
+            # Verify the selected tax is valid
+            if self._validate_wht_tax(self.wht_config_id):
+                self.wht_amount = abs(total_base_amount * (self.wht_config_id.amount / 100))
+                _logger.info("🔍 Calculated WHT amount: %s", self.wht_amount)
+            else:
+                _logger.warning("🔍 Selected WHT tax failed validation")
+                return False
             
             return True
         else:
-            _logger.info("🔍 No WHT detected in bill")
+            _logger.info("🔍 No valid WHT taxes detected in bill")
             return False
 
-    def action_pre_fill_wht_info(self):
-        """Pre-fill WHT information by detecting from the bill"""
-        self.ensure_one()
-        
-        detection_result = self._auto_detect_wht_from_bill()
-        
-        if detection_result:
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('WHT Information Detected'),
-                    'message': _('WHT information has been automatically detected and filled.'),
-                    'type': 'success',
-                    'sticky': False,
-                }
-            }
-        else:
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('No WHT Detected'),
-                    'message': _('No WHT information was found in the related bill. Please fill manually if applicable.'),
-                    'type': 'info',
-                    'sticky': False,
-                }
-            }
+
+

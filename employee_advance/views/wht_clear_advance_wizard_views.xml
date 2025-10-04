@@ -44,21 +44,34 @@
                         </group>
                         
                         <group name="wht_details" string="WHT Details (Optional)">
-                            <field name="wht_tax_id" 
+                            <field name="wht_config_id" 
                                    options="{'no_create': True, 'no_open': True}"/>
-                            <field name="wht_tax_rate" readonly="1" invisible="not wht_tax_id"/>
-                            <field name="amount_base" invisible="not wht_tax_id"/>
-                            <field name="wht_amount" readonly="1" invisible="not wht_tax_id"/>
-                            <label for="wht_tax_id" colspan="2">
-                                <div class="text-info">
-                                    <i class="fa fa-info-circle"/> ปล่อยว่างถ้าไม่มีการหัก ณ ที่จ่าย
+                            <field name="wht_tax_rate" readonly="1" invisible="not wht_config_id"/>
+                            <field name="amount_base" invisible="not wht_config_id"/>
+                            <field name="wht_amount" readonly="1" invisible="not wht_config_id"/>
+                            <label for="wht_config_id" colspan="2">
+                                <div class="alert alert-info" role="alert">
+                                    <i class="fa fa-info-circle"/> <strong>การเลือก WHT Configuration ที่ถูกต้อง:</strong><br/>
+                                    <ul class="mb-1">
+                                        <li>เลือกจาก Withholding Tax Configuration ที่ตั้งค่าไว้</li>
+                                        <li>เช่น WHT 3% C S, WHT 5% C S เป็นต้น</li>
+                                        <li>คลิก <strong>"Show Available WHT Taxes"</strong> เพื่อดูรายการที่มีให้เลือก</li>
+                                        <li>หากไม่มีการหัก ณ ที่จ่าย ให้ปล่อยฟิลด์นี้ว่างไว้</li>
+                                    </ul>
+                                    <small class="text-muted">
+                                        <i class="fa fa-lightbulb-o"/> ระบบจะใช้อัตราและ account จาก configuration โดยตรง
+                                    </small>
                                 </div>
                             </label>
-                            <label for="wht_amount" colspan="2" invisible="not wht_tax_id">
-                                <div class="text-muted">
-                                    WHT จะคำนวณเป็น: Base Amount × Tax Rate
+                            <label for="wht_amount" colspan="2" invisible="not wht_config_id">
+                                <div class="text-success">
+                                    <i class="fa fa-calculator"/> การคำนวณ: Base Amount × Tax Rate = WHT Amount
                                 </div>
                             </label>
+                            <div colspan="2" class="alert alert-warning" role="alert" invisible="not wht_config_id">
+                                <strong>คำเตือน:</strong> ตรวจสอบให้แน่ใจว่าเลือก <strong>WHT Configuration</strong> ที่ถูกต้อง 
+                                เพราะจะส่งผลต่อการคำนวณยอดเงินและใบหัก ณ ที่จ่าย
+                            </div>
                         </group>
                     </group>
                     
@@ -79,6 +92,11 @@
                             <field name="journal_id" required="1"
                                    domain="[('type', '=', 'general'), ('company_id', '=', company_id)]"/>
                             <field name="date" required="1"/>
+                            <field name="show_accounting_date" widget="boolean_toggle"/>
+                            <field name="accounting_date" 
+                                   invisible="show_accounting_date == False"
+                                   required="show_accounting_date == True"
+                                   placeholder="Accounting date for the journal entry"/>
                             <field name="ref" placeholder="Reference for journal entry"/>
                             <field name="auto_reconcile" widget="boolean_toggle"/>
                         </group>
@@ -89,7 +107,7 @@
                         <div name="journal_preview">
                             <strong>Dr</strong> Partner Payable: <field name="clear_amount" readonly="1" nolabel="1"/> ฿<br/>
                             <strong>Cr</strong> Advance Account: <field name="net_amount" readonly="1" nolabel="1"/> ฿<br/>
-                            <div invisible="not wht_tax_id or wht_amount == 0">
+                            <div invisible="not wht_config_id or wht_amount == 0">
                                 <strong>Cr</strong> WHT Payable: <field name="wht_amount" readonly="1" nolabel="1"/> ฿
                             </div>
                         </div>
@@ -97,8 +115,6 @@
                 </sheet>
                 
                 <footer>
-                    <button name="action_pre_fill_wht_info" string="Auto-detect WHT" 
-                            type="object" class="btn-secondary"/>
                     <button name="create_journal_entry" string="Create &amp; Post Journal Entry" 
                             type="object" class="oe_highlight"/>
                     <button string="Cancel" class="btn-secondary" special="cancel"/>
