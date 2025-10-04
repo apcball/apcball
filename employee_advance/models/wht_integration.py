@@ -119,6 +119,204 @@ class HrExpenseSheet(models.Model):
 
         return bill
 
+    def _check_bill_has_wht(self, bill):
+        """Check if the bill has WHT lines or WHT tax on any line"""
+        if not bill:
+            return False
+        
+        # Check if any line has wht_tax_id or if the move has wht_move_ids
+        has_wht = any(
+            hasattr(line, 'wht_tax_id') and line.wht_tax_id 
+            for line in bill.invoice_line_ids
+        )
+        
+        # Also check if there are existing WHT moves
+        if not has_wht and hasattr(bill, 'wht_move_ids'):
+            has_wht = bool(bill.wht_move_ids)
+        
+        # If no WHT found at line level, check for any line with WHT tax in tax_ids
+        if not has_wht:
+            has_wht = any(
+                tax.amount < 0 and 'wht' in tax.name.lower() 
+                for line in bill.invoice_line_ids 
+                for tax in line.tax_ids
+            )
+        
+        return has_wht
+
+
+    def _get_base_amount_excluding_vat(self, invoice_line):
+        """Calculate base amount excluding VAT for WHT calculation (base amount that VAT was calculated on)"""
+        # Calculate the base amount before VAT was added
+        # This is important for WHT calculation since WHT should be calculated on base amount
+        # If there are VAT taxes, we need to remove them to get the base
+        price_unit = invoice_line.price_unit
+        quantity = invoice_line.quantity
+        subtotal = price_unit * quantity
+        
+        # Get all VAT taxes (positive amount for purchases)
+        vat_taxes = invoice_line.tax_ids.filtered(lambda t: t.amount > 0)
+        
+        # If there are VAT taxes, calculate the base amount before VAT
+        if vat_taxes:
+            # Calculate the tax amount to subtract
+            # We need to calculate the base amount before tax, not including tax
+            # Use the same method Odoo uses to calculate the base
+            tax_compute_all = vat_taxes.compute_all(
+                price_unit=price_unit,
+                currency=invoice_line.currency_id,
+                quantity=quantity,
+                product=invoice_line.product_id,
+                partner=invoice_line.partner_id
+            )
+            
+            # The base amount for tax calculation is in 'base' field of the first tax
+            # However, for WHT we want the amount that VAT was calculated on
+            # This is the amount before VAT was added
+            base_amount = tax_compute_all['total_excluded']  # Amount before VAT (tax included)
+        else:
+            # If no VAT, the base amount is just the subtotal
+            base_amount = subtotal
+        
+        return base_amount
+
+    def _create_wht_journal_entries(self, bill, advance_box):
+        """Create WHT journal entries based on WHT lines in the bill"""
+        if not bill or not self._check_bill_has_wht(bill):
+            return None
+
+        # Find WHT lines in the bill
+        wht_lines = bill.invoice_line_ids.filtered(lambda l: l.wht_tax_id)
+        
+        if not wht_lines:
+            # Look for lines that have taxes that are withholding taxes
+            wht_tax_taxes = bill.invoice_line_ids.mapped('tax_ids').filtered(
+                lambda t: t.amount < 0 and (t.l10n_th_is_withholding or 'wht' in t.name.lower() or t.type_tax_use == 'none')
+            )
+            wht_lines = bill.invoice_line_ids.filtered(
+                lambda l: any(tax in wht_tax_taxes for tax in l.tax_ids)
+            )
+        
+        if not wht_lines:
+            return None
+
+        # Get the clearing journal from configuration
+        clearing_journal_id = self.env['ir.config_parameter'].sudo().get_param('employee_advance.advance_default_clearing_journal_id')
+        if not clearing_journal_id:
+            raise UserError(_('Please set the default clearing journal in configuration.'))
+        
+        journal = self.env['account.journal'].browse(int(clearing_journal_id))
+        if not journal:
+            raise UserError(_('Invalid clearing journal configured.'))
+        
+        # Ensure the journal has a sequence configured
+        self.env['hr.expense.advance.journal.utils'].ensure_journal_sequence(journal)
+
+        # Track total WHT amounts
+        wht_entries = []
+        total_wht_amount = 0.0
+        
+        for line in wht_lines:
+            # Calculate base amount excluding VAT for this line
+            base_amount = self._get_base_amount_excluding_vat(line)
+            
+            # Get WHT tax (could be from line.wht_tax_id or from line.tax_ids)
+            wht_tax = line.wht_tax_id
+            if not wht_tax:
+                # Get the first WHT tax from the line's taxes
+                wht_tax = line.tax_ids.filtered(
+                    lambda t: t.amount < 0 and (t.l10n_th_is_withholding or 'wht' in t.name.lower())
+                )[:1]
+            
+            if not wht_tax:
+                continue  # Skip if no WHT tax found
+                
+            # Calculate WHT amount based on base amount excluding VAT
+            wht_amount = abs(base_amount * (wht_tax.amount / 100))
+            total_wht_amount += wht_amount
+
+            # Get WHT payable account from tax configuration
+            wht_payable_account = None
+            wht_tax_repartition = wht_tax.invoice_repartition_line_ids.filtered(
+                lambda r: r.repartition_type == 'tax' and r.account_id
+            )
+            if wht_tax_repartition:
+                wht_payable_account = wht_tax_repartition[0].account_id
+            else:
+                # Fallback: look for common WHT payable account names
+                wht_payable_account = self.env['account.account'].search([
+                    ('name', 'ilike', 'withholding'),
+                    ('account_type', '=', 'liability_current'),
+                    ('company_id', '=', bill.company_id.id)
+                ], limit=1)
+            
+            if not wht_payable_account:
+                raise UserError(_(
+                    "No WHT payable account found for tax %s. Please configure the WHT tax account."
+                ) % wht_tax.name)
+
+            # Add the WHT journal entry lines
+            wht_entries.append((0, 0, {
+                'name': f'WHT Payable - {wht_tax.name} for {line.name}',
+                'account_id': wht_payable_account.id,
+                'partner_id': bill.partner_id.id,
+                'debit': 0.0,
+                'credit': wht_amount,
+                'tax_line_id': wht_tax.id,
+                'tax_base_amount': base_amount,
+            }))
+
+        if not wht_entries:
+            return None  # No WHT entries to create
+
+        # Get payable account from the bill
+        payable_account = None
+        for line in bill.line_ids:
+            if line.account_id.account_type == 'liability_payable' and line.balance < 0:
+                payable_account = line.account_id
+                break
+
+        if not payable_account:
+            raise UserError(_('Could not find payable account in the vendor bill.'))
+
+        # Create journal entry to record WHT
+        je_vals = {
+            'journal_id': journal.id,
+            'company_id': journal.company_id.id if journal.company_id else bill.company_id.id,
+            'move_type': 'entry',
+            'date': fields.Date.context_today(bill),
+            'ref': f'WHT for Advance Clearing of {bill.name}',
+            'line_ids': [
+                # Dr. Payable Account (increase payable account due to WHT)
+                (0, 0, {
+                    'account_id': payable_account.id,
+                    'partner_id': bill.partner_id.id,
+                    'debit': wht_amount,  # The amount increases due to WHT deduction
+                    'credit': 0.0,
+                    'name': f'WHT deduction for {bill.name}',
+                }),
+            ] + wht_entries  # Add WHT payable lines
+        }
+
+        # Create the journal entry
+        wht_je = self.env['account.move'].create(je_vals)
+        wht_je.action_post()
+
+        # Log in the bill's chatter
+        bill.message_post(
+            body=_("WHT journal entries created: %s. Total WHT: %.2f") % 
+                  (wht_je.name, total_wht_amount)
+        )
+
+        # Also create WHT certificates if possible
+        try:
+            if hasattr(bill, 'create_wht_cert_from_advance_clearing'):
+                bill.create_wht_cert_from_advance_clearing()
+        except Exception as e:
+            _logger.warning(f"Could not create WHT certificates: {e}")
+
+        return wht_je
+
     has_wht_certs = fields.Boolean(
         string='Has WHT Certificates',
         compute='_compute_has_wht_certs',

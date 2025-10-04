@@ -97,6 +97,8 @@
                 </sheet>
                 
                 <footer>
+                    <button name="action_pre_fill_wht_info" string="Auto-detect WHT" 
+                            type="object" class="btn-secondary"/>
                     <button name="create_journal_entry" string="Create &amp; Post Journal Entry" 
                             type="object" class="oe_highlight"/>
                     <button string="Cancel" class="btn-secondary" special="cancel"/>

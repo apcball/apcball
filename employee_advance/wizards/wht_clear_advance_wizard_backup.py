@@ -226,13 +226,13 @@ class WhtClearAdvanceWizard(models.TransientModel):
                         vendor_from_bill = bill.partner_id
                         _logger.info("🏪 WIZARD: Found vendor from active bill: %s", vendor_from_bill.name)
                         
-                        # Smart WHT detection - automatically check if bill has WHT using the specific wht_tax_id field
+                        # Smart WHT detection - automatically check if bill has WHT
                         has_wht = any(line.wht_tax_id for line in bill.invoice_line_ids)
                         if not has_wht:
-                            # Also check if any taxes are WHT taxes (negative amount indicates withholding tax)
+                            # Also check if any taxes are WHT taxes
                             all_invoice_taxes = bill.invoice_line_ids.mapped('tax_ids')
                             has_wht = any(
-                                tax.amount < 0 and hasattr(tax, 'l10n_th_is_withholding') and tax.l10n_th_is_withholding
+                                tax.amount < 0 and (hasattr(tax, 'l10n_th_is_withholding') and tax.l10n_th_is_withholding)
                                 for tax in all_invoice_taxes
                             )
                         
@@ -246,24 +246,11 @@ class WhtClearAdvanceWizard(models.TransientModel):
                             
                             # Auto-detect WHT tax if not already set
                             if not res.get('wht_tax_id'):
-                                # Find the first WHT tax from invoice lines - verify it's an actual WHT tax
+                                # Find the first WHT tax from invoice lines
                                 wht_line = bill.invoice_line_ids.filtered('wht_tax_id')[:1]
                                 if wht_line and wht_line.wht_tax_id:
-                                    # Verify this is actually a WHT tax according to Thai localization standards
-                                    wht_tax = wht_line.wht_tax_id
-                                    is_actual_wht = (
-                                        (hasattr(wht_tax, 'l10n_th_is_withholding') and wht_tax.l10n_th_is_withholding) or
-                                        (hasattr(wht_tax, 'l10n_th_tax_type') and wht_tax.l10n_th_tax_type == 'withholding') or
-                                        wht_tax.amount < 0  # WHT typically has negative amount
-                                    )
-                                    
-                                    if is_actual_wht:
-                                        res['wht_tax_id'] = wht_tax.id
-                                        _logger.info("🔍 WIZARD: Auto-detected WHT tax: %s (rate: %s%%)", 
-                                                   wht_tax.name, wht_tax.amount)
-                                    else:
-                                        _logger.info("🔍 WIZARD: Tax found but not a WHT tax: %s (amount: %s%%)", 
-                                                   wht_tax.name, wht_tax.amount)
+                                    res['wht_tax_id'] = wht_line.wht_tax_id.id
+                                    _logger.info("🔍 WIZARD: Auto-detected WHT tax: %s", wht_line.wht_tax_id.name)
                         else:
                             _logger.info("🔍 WIZARD: No WHT detected in bill")
                             
@@ -381,17 +368,11 @@ class WhtClearAdvanceWizard(models.TransientModel):
 
     @api.depends('wht_tax_id')
     def _compute_wht_tax_rate(self):
-        """Compute WHT tax rate with hang prevention - only for actual WHT taxes"""
+        """Compute WHT tax rate with hang prevention"""
         for record in self:
             try:
                 if record.wht_tax_id:
-                    # Ensure this is actually a WHT tax, not VAT
-                    if (hasattr(record.wht_tax_id, 'l10n_th_is_withholding') and record.wht_tax_id.l10n_th_is_withholding) or record.wht_tax_id.amount < 0:
-                        record.wht_tax_rate = abs(record.wht_tax_id.amount or 0.0)
-                    else:
-                        # This is not a WHT tax, reset to 0
-                        record.wht_tax_rate = 0.0
-                        record.wht_tax_id = False  # Clear the field
+                    record.wht_tax_rate = abs(record.wht_tax_id.amount or 0.0)
                 else:
                     record.wht_tax_rate = 0.0
             except Exception as e:

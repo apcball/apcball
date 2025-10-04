@@ -255,6 +255,20 @@ class AccountMove(models.Model):
         elif employee.address_home_id:
             employee_partner = employee.address_home_id
         
+        # Check if the bill has WHT and if so, calculate the base amounts for each line
+        has_wht = any(line.wht_tax_id for line in self.invoice_line_ids)
+        if not has_wht:
+            # Also check if any taxes are WHT taxes
+            all_invoice_taxes = self.invoice_line_ids.mapped('tax_ids')
+            has_wht = any(
+                tax.amount < 0 and (hasattr(tax, 'l10n_th_is_withholding') and tax.l10n_th_is_withholding)
+                for tax in all_invoice_taxes
+            )
+        
+        base_amount = 0.0
+        if has_wht:
+            base_amount = self._get_wht_base_amount_excluding_vat()
+        
         context = {
             'default_expense_sheet_id': expense_sheet.id,
             'default_employee_id': employee.id,
@@ -263,13 +277,15 @@ class AccountMove(models.Model):
             'default_partner_id': self.partner_id.id,  # ใช้ vendor จาก bill แทน employee
             'default_wht_partner_id': self.partner_id.id,  # WHT partner ก็เป็น vendor เดียวกัน
             'default_clear_amount': self.amount_residual,
-            'default_amount_base': self.amount_residual,
+            'default_amount_base': base_amount if has_wht else self.amount_residual,
+            'default_has_wht': has_wht,
         }
         
         _logger.info("DEBUG: Opening WHT wizard - Bill partner: %s (id: %s)", 
                      self.partner_id.name, self.partner_id.id)
         _logger.info("DEBUG: Expense sheet: %s, Advance box: %s (id: %s, balance: %s)", 
                      expense_sheet.name, advance_box.display_name, advance_box.id, advance_box.balance)
+        _logger.info("DEBUG: WHT status - has_wht: %s, base_amount: %s", has_wht, base_amount)
         _logger.info("DEBUG: Full context being sent: %s", context)
         
         return {
@@ -280,6 +296,261 @@ class AccountMove(models.Model):
             'target': 'new',
             'context': context,
         }
+    
+    def _get_wht_base_amount_excluding_vat(self):
+        """Calculate total base amount excluding VAT for WHT calculation from all invoice lines"""
+        total_base_amount = 0.0
+        
+        for line in self.invoice_line_ids:
+            # Calculate the base amount for this line excluding VAT
+            base_amount = self._get_base_amount_excluding_vat_for_line(line)
+            total_base_amount += base_amount
+            
+        return total_base_amount
+
+    def _get_base_amount_excluding_vat_for_line(self, invoice_line):
+        """Calculate base amount excluding VAT for a specific invoice line for WHT calculation"""
+        # Get the original line amount (total including tax)
+        price_unit = invoice_line.price_unit
+        quantity = invoice_line.quantity
+        subtotal = price_unit * quantity
+
+        # Get all VAT taxes (positive amount for purchases) - these are the taxes we need to exclude
+        vat_taxes = invoice_line.tax_ids.filtered(lambda t: t.amount > 0)
+        
+        # If there are VAT taxes, we need to calculate the base amount before VAT
+        if vat_taxes:
+            # Use the same method Odoo uses to calculate the base amount before tax
+            tax_compute_all = vat_taxes.compute_all(
+                price_unit=price_unit,
+                currency=invoice_line.currency_id,
+                quantity=quantity,
+                product=invoice_line.product_id,
+                partner=invoice_line.partner_id
+            )
+            
+            # The base amount is the amount before VAT was added
+            base_amount = tax_compute_all['total_excluded']  # Amount before any taxes
+        else:
+            # If no VAT taxes, the base amount is just the subtotal
+            base_amount = subtotal
+            
+        return base_amount
+    
+    def action_clear_advance_from_bill_smart(self):
+        """Smart clearing method that automatically detects WHT and creates appropriate entries"""
+        self.ensure_one()
+        
+        if self.move_type != 'in_invoice':
+            raise UserError(_("This action is only available for vendor bills."))
+        
+        if self.state != 'posted':
+            raise UserError(_("Bill must be posted before clearing with advance."))
+        
+        if self.amount_residual <= 0:
+            raise UserError(_("Bill has no remaining balance to clear."))
+        
+        # Find related expense sheet
+        ExpenseSheet = self.env['hr.expense.sheet']
+        expense_sheet = self.expense_sheet_id or ExpenseSheet.search([('bill_id', '=', self.id)], limit=1)
+        
+        if not expense_sheet:
+            # Search by other methods if not directly linked
+            if self.invoice_origin:
+                expense_sheet = ExpenseSheet.search([('name', '=', self.invoice_origin)], limit=1)
+            
+            if not expense_sheet and self.ref and 'Expense Sheet' in self.ref:
+                sheet_name = self.ref.split('Expense Sheet', 1)[1].strip().lstrip(':').strip()
+                if sheet_name:
+                    expense_sheet = ExpenseSheet.search([('name', 'ilike', sheet_name)], limit=1)
+        
+        if not expense_sheet:
+            raise UserError(_("No related expense sheet found. This bill must be created from an expense sheet to use advance clearing."))
+        
+        # Get advance box
+        advance_box = self.advance_box_id or expense_sheet.advance_box_id
+        if not advance_box:
+            advance_box = self.env['employee.advance.box'].search([
+                ('employee_id', '=', expense_sheet.employee_id.id),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+        
+        if not advance_box:
+            raise UserError(_("No advance box found for employee %s.") % expense_sheet.employee_id.name)
+        
+        # Check if bill has WHT
+        has_wht = any(line.wht_tax_id for line in self.invoice_line_ids)
+        if not has_wht:
+            # Also check if any taxes are WHT taxes
+            all_invoice_taxes = self.invoice_line_ids.mapped('tax_ids')
+            has_wht = any(
+                tax.amount < 0 and (hasattr(tax, 'l10n_th_is_withholding') and tax.l10n_th_is_withholding)
+                for tax in all_invoice_taxes
+            )
+        
+        # Create the main clearing journal entry
+        clearing_journal_id = self.env['ir.config_parameter'].sudo().get_param('employee_advance.advance_default_clearing_journal_id')
+        if not clearing_journal_id:
+            raise UserError(_('Please set the default clearing journal in configuration.'))
+        
+        journal = self.env['account.journal'].browse(int(clearing_journal_id))
+        if not journal:
+            raise UserError(_('Invalid clearing journal configured.'))
+        
+        # Get payable account from the bill
+        payable_account = None
+        for line in self.line_ids:
+            if line.account_id.account_type == 'liability_payable' and line.balance < 0:
+                payable_account = line.account_id
+                break
+        
+        if not payable_account:
+            raise UserError(_('Could not find payable account in the vendor bill.'))
+        
+        # Prepare main clearing entry - base amount for the clearing
+        main_je_lines = [
+            (0, 0, {
+                'account_id': payable_account.id,
+                'partner_id': self.partner_id.id,
+                'debit': abs(self.amount_residual),
+                'credit': 0.0,
+                'name': f'Clear Advance for {self.name}',
+            }),
+            (0, 0, {
+                'account_id': advance_box.account_id.id,
+                'partner_id': self.partner_id.id,
+                'debit': 0.0,
+                'credit': abs(self.amount_residual),
+                'name': f'Clear Advance for {self.name}',
+            }),
+        ]
+        
+        # If the bill has WHT, add WHT entries directly to main JE
+        wht_amount_total = 0.0
+        if has_wht:
+            # Calculate total WHT amount for this bill based on base amounts excluding VAT
+            wht_taxes = self.invoice_line_ids.filtered('wht_tax_id').mapped('wht_tax_id')
+            wht_lines = self.invoice_line_ids.filtered(lambda l: l.wht_tax_id)
+            
+            for line in wht_lines:
+                # Calculate base amount excluding VAT for this line
+                base_amount = self._get_base_amount_excluding_vat_for_line(line)
+                wht_amount = abs(base_amount * (line.wht_tax_id.amount / 100))
+                wht_amount_total += wht_amount
+                
+                # Get WHT payable account
+                wht_payable_account = None
+                wht_tax_repartition = line.wht_tax_id.invoice_repartition_line_ids.filtered(
+                    lambda r: r.repartition_type == 'tax' and r.account_id
+                )
+                if wht_tax_repartition:
+                    wht_payable_account = wht_tax_repartition[0].account_id
+                else:
+                    # Fallback: look for common WHT payable account names
+                    wht_payable_account = self.env['account.account'].search([
+                        ('name', 'ilike', 'withholding'),
+                        ('account_type', '=', 'liability_current'),
+                        ('company_id', '=', self.company_id.id)
+                    ], limit=1)
+                
+                if wht_payable_account:
+                    # Add WHT payable line - increase the payable liability by the WHT amount
+                    # This is because WHT reduces the vendor liability since we pay the tax instead of the vendor
+                    main_je_lines.insert(0,  # Insert at beginning to maintain proper accounting structure
+                        (0, 0, {
+                            'account_id': payable_account.id,
+                            'partner_id': self.partner_id.id,
+                            'debit': wht_amount,
+                            'credit': 0.0,
+                            'name': f'WHT deduction on invoice line: {line.name}',
+                        })
+                    )
+                    # Add WHT payable credit line
+                    main_je_lines.append(
+                        (0, 0, {
+                            'account_id': wht_payable_account.id,
+                            'partner_id': self.partner_id.id,  # Use bill partner for WHT certificate
+                            'debit': 0.0,
+                            'credit': wht_amount,
+                            'name': f'WHT Payable - {line.wht_tax_id.name}',
+                            'tax_line_id': line.wht_tax_id.id,
+                            'tax_base_amount': base_amount,
+                        })
+                    )
+        
+        # Prepare the main JE
+        je_vals = {
+            'journal_id': journal.id,
+            'company_id': journal.company_id.id if journal.company_id else self.company_id.id,
+            'move_type': 'entry',
+            'date': fields.Date.context_today(self),
+            'ref': f'Clear Advance for {self.name}' + (f' (WHT: {wht_amount_total})' if has_wht else ''),
+            'line_ids': main_je_lines
+        }
+        
+        # Create and post the main clearing journal entry
+        main_je = self.env['account.move'].create(je_vals)
+        main_je.action_post()
+        
+        # Auto reconcile the advance clearing entry with the original bill
+        original_payable_line = self.line_ids.filtered(
+            lambda line: line.account_id.account_type == 'liability_payable' and line.balance < 0
+        )[:1]
+        
+        # Find the corresponding payable line in the newly created JE
+        je_payable_line = main_je.line_ids.filtered(
+            lambda line: line.account_id.id == payable_account.id and line.debit > 0
+        )[:1]
+        
+        if original_payable_line and je_payable_line:
+            lines_to_reconcile = (original_payable_line + je_payable_line).sorted()
+            if lines_to_reconcile and len(lines_to_reconcile.mapped('account_id')) == 1:
+                try:
+                    lines_to_reconcile.reconcile()
+                except Exception as e:
+                    _logger.warning(f"Could not reconcile advance clearing entry: {e}")
+        
+        # Log and refresh balance
+        self.message_post(
+            body=_("Advance cleared with journal entry %s. Dr %s, Cr %s. WHT processing: %s (Amount: %.2f)" %
+                  (main_je.name, payable_account.code, advance_box.account_id.code, 
+                   "Yes" if has_wht else "No", wht_amount_total))
+        )
+        
+        try:
+            advance_box._refresh_balance_simple()
+            _logger.info("💰 Advance box balance refreshed after clearing")
+        except Exception as e:
+            _logger.warning("⚠️ Balance refresh failed after clearing, but operation succeeded: %s", str(e))
+        
+        # After main JE, make sure WHT certificates can be created
+        if has_wht and wht_amount_total > 0:
+            try:
+                # Create WHT entries for tax tracking
+                for line in wht_lines:
+                    base_amount = self._get_base_amount_excluding_vat_for_line(line)
+                    wht_amount = abs(base_amount * (line.wht_tax_id.amount / 100))
+                    
+                    self.env['account.withholding.move'].create({
+                        'move_id': main_je.id,
+                        'partner_id': self.partner_id.id,
+                        'amount_income': base_amount,
+                        'amount_wht': wht_amount,
+                        'wht_tax_id': line.wht_tax_id.id,
+                        'wht_cert_income_type': line.wht_tax_id.wht_cert_income_type or '5',
+                        'company_id': self.company_id.id,
+                    })
+                
+                # Try to create WHT certificates
+                if hasattr(main_je, '_preapare_wht_certs'):
+                    try:
+                        main_je.create_wht_cert()
+                    except:
+                        _logger.info("WHT certificates created separately or not required")
+            except Exception as e:
+                _logger.warning(f"Could not create WHT tracking entries: {e}")
+        
+        return main_je
 
     def action_debug_wht_clear_conditions(self):
         """Debug method to show why WHT Clear button is not visible"""
@@ -326,6 +597,52 @@ class AccountMove(models.Model):
             }
         }
 
+
+    def _auto_reconcile_wht_entries(self):
+        """Auto reconcile WHT entries based on base amount excluding VAT"""
+        self.ensure_one()
+        
+        if self.move_type != 'entry' or not self.line_ids:
+            return False
+        
+        # Look for WHT lines in this journal entry
+        wht_lines = self.line_ids.filtered(lambda l: l.tax_line_id and l.tax_line_id.amount < 0)
+        
+        if not wht_lines:
+            # If no WHT tax lines, try to find lines that have WHT-related accounts
+            wht_accounts = self.env['account.account'].search([
+                ('name', 'ilike', '%withholding%'),
+                ('company_id', '=', self.company_id.id)
+            ])
+            wht_lines = self.line_ids.filtered(lambda l: l.account_id in wht_accounts)
+        
+        if not wht_lines:
+            return False
+        
+        # For each WHT line, try to find corresponding payable/receivable entries to reconcile
+        reconciled_count = 0
+        for wht_line in wht_lines:
+            # Find payable lines with the same partner to reconcile against the WHT
+            related_payable_lines = self.line_ids.filtered(
+                lambda l: (l.partner_id.id == wht_line.partner_id.id and 
+                          l.account_id.account_type == 'liability_payable' and 
+                          l.id != wht_line.id)
+            )
+            
+            for payable_line in related_payable_lines:
+                try:
+                    # For WHT, we typically reconcile the liability reduction (the payable line)
+                    # against the payment or other journal entry lines
+                    lines_to_reconcile = payable_line + wht_line
+                    if lines_to_reconcile and len(lines_to_reconcile.mapped('account_id')) == 1:
+                        lines_to_reconcile.reconcile()
+                        reconciled_count += 1
+                        _logger.info(f"WHT auto-reconciliation successful for lines in move {self.name}")
+                        break  # Don't try to reconcile the same WHT line multiple times
+                except Exception as e:
+                    _logger.warning(f"Could not reconcile WHT line {wht_line.id} with payable {payable_line.id}: {str(e)}")
+        
+        return True
 
 class AccountPayment(models.Model):
     _inherit = 'account.payment'
