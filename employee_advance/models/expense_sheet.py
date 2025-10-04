@@ -555,17 +555,51 @@ class HrExpenseSheet(models.Model):
             
         partner_id = False
         
-        # Method 1: Check if address_home_id exists (from hr_contract module)
-        if hasattr(employee, 'address_home_id'):
-            partner_id = employee.sudo().address_home_id.id if employee.sudo().address_home_id else False
+        # Method 1: Check if address_home_id exists (from hr_contract module) - Primary method
+        if hasattr(employee, 'address_home_id') and employee.sudo().address_home_id:
+            partner_id = employee.sudo().address_home_id.id
         
-        # If still not found, try to get the related user's partner (which might contain private address)
-        if not partner_id and employee.user_id:
+        # Method 2: Get the related user's partner (which might contain private address)
+        if not partner_id and employee.user_id and employee.user_id.partner_id:
             partner_id = employee.user_id.partner_id.id
         
-        # If still not found, default to employee's address_id (work address)
+        # Method 3: Default to employee's address_id (work address)
+        if not partner_id and employee.address_id:
+            partner_id = employee.address_id.id
+        
+        # If still no partner found, try to create/find partner by employee name
         if not partner_id:
-            partner_id = employee.address_id.id if employee.address_id else False
+            try:
+                # ลองหา Partner ที่มีชื่อเดียวกับ Employee ก่อน
+                employee_partner = self.env['res.partner'].search([
+                    ('name', '=', employee.name),
+                    ('is_company', '=', False)
+                ], limit=1)
+                
+                if employee_partner:
+                    partner_id = employee_partner.id
+                else:
+                    # สร้าง Partner ใหม่สำหรับ Employee
+                    employee_partner = self.env['res.partner'].create({
+                        'name': employee.name,
+                        'is_company': False,
+                        'employee': True,
+                        'supplier_rank': 0,
+                        'customer_rank': 0,
+                    })
+                    partner_id = employee_partner.id
+                    
+            except Exception as e:
+                # Final fallback using all methods
+                try:
+                    if hasattr(employee, 'address_home_id') and employee.sudo().address_home_id:
+                        partner_id = employee.sudo().address_home_id.id
+                    elif employee.user_id:
+                        partner_id = employee.user_id.partner_id.id
+                    elif employee.address_id:
+                        partner_id = employee.address_id.id
+                except Exception:
+                    partner_id = False
         
         return partner_id
 

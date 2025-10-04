@@ -47,28 +47,13 @@ class AdvanceRefillBaseWizard(models.TransientModel):
             raise UserError(_("Please set the advance account for the selected advance box."))
         if not advance_box.journal_id:
             raise UserError(_("Please set the journal for advance transactions."))
-        # ใช้ logic เดียวกันกับการคำนวณ balance ใน advance_box._compute_balance
-        partner_id = False
+        # Use the same partner resolution method as advance box and other wizards for consistency
+        partner_id = advance_box._get_employee_partner()
         
-        # หา Partner ที่มีชื่อเดียวกับ Employee ก่อน (ตาม logic ของ balance calculation)
-        employee_partner = self.env['res.partner'].search([
-            ('name', '=', advance_box.employee_id.name),
-            ('is_company', '=', False)
-        ], limit=1)
-        
-        if employee_partner:
-            partner_id = employee_partner.id
-            _logger.info("💰 REFILL DEBUG: Found employee partner %s (ID: %s)", 
-                       employee_partner.name, partner_id)
-        else:
-            # Fallback ไปใช้ method เดิม
-            partner_result = advance_box._get_employee_partner()
-            if isinstance(partner_result, int):
-                partner_id = partner_result
-            else:
-                partner_id = partner_result.id if partner_result else False
-                
-            _logger.info("🔄 REFILL DEBUG: Using fallback partner ID: %s", partner_id)
+        if not partner_id:
+            raise UserError(_("Please set the employee's private address or ensure employee partner exists."))
+            
+        _logger.info("💰 REFILL DEBUG: Using partner ID: %s", partner_id)
         
         if not partner_id:
             raise UserError(_("Please set the employee's private address."))

@@ -1,5 +1,8 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class AdvanceSettlementWizard(models.TransientModel):
@@ -291,6 +294,45 @@ class AdvanceSettlementWizard(models.TransientModel):
         self.ensure_one()
         
         partner_id = self.box_id._get_employee_partner()
+        if not partner_id:
+            # If we still don't have a partner, try to create/find partner by employee name
+            try:
+                employee = self.box_id.employee_id
+                if employee:
+                    # ลองหา Partner ที่มีชื่อเดียวกับ Employee ก่อน
+                    employee_partner = self.env['res.partner'].search([
+                        ('name', '=', employee.name),
+                        ('is_company', '=', False)
+                    ], limit=1)
+                    
+                    if employee_partner:
+                        partner_id = employee_partner.id
+                    else:
+                        # สร้าง Partner ใหม่สำหรับ Employee
+                        employee_partner = self.env['res.partner'].create({
+                            'name': employee.name,
+                            'is_company': False,
+                            'employee': True,
+                            'supplier_rank': 0,
+                            'customer_rank': 0,
+                        })
+                        partner_id = employee_partner.id
+                        
+            except Exception as e:
+                _logger.warning("⚠️ Could not create/find employee partner: %s", str(e))
+                # Final fallback using all methods
+                try:
+                    employee = self.box_id.employee_id
+                    if hasattr(employee, 'address_home_id') and employee.sudo().address_home_id:
+                        partner_id = employee.sudo().address_home_id.id
+                    elif employee.user_id:
+                        partner_id = employee.user_id.partner_id.id
+                    elif employee.address_id:
+                        partner_id = employee.address_id.id
+                except Exception as e2:
+                    _logger.warning("⚠️ Final fallback also failed: %s", str(e2))
+                    raise ValidationError(_("Cannot find or create employee partner for advance settlement."))
+        
         move_vals = {
             'journal_id': self.journal_id.id,
             'move_type': 'entry',

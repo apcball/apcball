@@ -80,33 +80,8 @@ class EmployeeAdvanceBox(models.Model):
                        record.id, record.employee_id.name)
             
             if record.account_id and record.employee_id:
-                # Calculate balance from posted journal entries
-                # ใช้ Employee Partner โดยตรงเพื่อให้ match กับ Wizard
-                partner_id = False
-                
-                # หา Partner ที่มีชื่อเดียวกับ Employee ก่อน (ตาม logic ของ wizard)
-                employee_partner = self.env['res.partner'].search([
-                    ('name', '=', record.employee_id.name),
-                    ('is_company', '=', False)
-                ], limit=1)
-                
-                if employee_partner:
-                    partner_id = employee_partner.id
-                    _logger.info("🎯 BALANCE DEBUG: Found employee partner %s (ID: %s)", 
-                               employee_partner.name, partner_id)
-                else:
-                    # Fallback ไปใช้ method เดิมถ้าไม่เจอ Employee Partner
-                    # Method 1: Check if address_home_id exists
-                    if hasattr(record.employee_id, 'address_home_id') and record.employee_id.sudo().address_home_id:
-                        partner_id = record.employee_id.sudo().address_home_id.id
-                    # Method 2: Get the related user's partner
-                    elif record.employee_id.user_id:
-                        partner_id = record.employee_id.user_id.partner_id.id
-                    # Method 3: Default to employee's work address
-                    elif record.employee_id.address_id:
-                        partner_id = record.employee_id.address_id.id
-                        
-                    _logger.info("🔄 BALANCE DEBUG: Using fallback partner ID: %s", partner_id)
+                # Use the same partner resolution method as _get_employee_partner to ensure consistency
+                partner_id = record._get_employee_partner()
                 
                 if not partner_id:
                     _logger.warning("⚠️ BALANCE DEBUG: No partner found, setting balance to 0")
@@ -209,17 +184,60 @@ class EmployeeAdvanceBox(models.Model):
         self.ensure_one()
         partner_id = False
         
-        # Method 1: Check if address_home_id exists (from hr_contract module)
-        if hasattr(self.employee_id, 'address_home_id'):
-            partner_id = self.employee_id.sudo().address_home_id.id if self.employee_id.sudo().address_home_id else False
+        # Method 1: Check if address_home_id exists (from hr_contract module) - Primary method
+        if hasattr(self.employee_id, 'address_home_id') and self.employee_id.sudo().address_home_id:
+            partner_id = self.employee_id.sudo().address_home_id.id
+            _logger.info("🎯 ADVANCE BOX PARTNER: Found via address_home_id: %s", partner_id)
         
-        # If still not found, try to get the related user's partner (which might contain private address)
-        if not partner_id and self.employee_id.user_id:
+        # Method 2: Get the related user's partner (which might contain private address)
+        if not partner_id and self.employee_id.user_id and self.employee_id.user_id.partner_id:
             partner_id = self.employee_id.user_id.partner_id.id
+            _logger.info("🎯 ADVANCE BOX PARTNER: Found via user.partner: %s", partner_id)
         
-        # If still not found, default to employee's address_id (work address)
+        # Method 3: Default to employee's address_id (work address)
+        if not partner_id and self.employee_id.address_id:
+            partner_id = self.employee_id.address_id.id
+            _logger.info("🎯 ADVANCE BOX PARTNER: Found via address_id: %s", partner_id)
+        
+        # If still no partner found, try to create/find partner by employee name
         if not partner_id:
-            partner_id = self.employee_id.address_id.id if self.employee_id.address_id else False
+            try:
+                # ลองหา Partner ที่มีชื่อเดียวกับ Employee ก่อน
+                employee_partner = self.env['res.partner'].search([
+                    ('name', '=', self.employee_id.name),
+                    ('is_company', '=', False)
+                ], limit=1)
+                
+                if employee_partner:
+                    partner_id = employee_partner.id
+                    _logger.info("🎯 ADVANCE BOX PARTNER: Found existing partner %s (%s) for employee %s", 
+                               partner_id, employee_partner.name, self.employee_id.name)
+                else:
+                    # สร้าง Partner ใหม่สำหรับ Employee
+                    employee_partner = self.env['res.partner'].create({
+                        'name': self.employee_id.name,
+                        'is_company': False,
+                        'employee': True,
+                        'supplier_rank': 0,
+                        'customer_rank': 0,
+                    })
+                    partner_id = employee_partner.id
+                    _logger.info("🎯 ADVANCE BOX PARTNER: Created new partner %s (%s) for employee %s", 
+                               partner_id, employee_partner.name, self.employee_id.name)
+                    
+            except Exception as e:
+                _logger.warning("⚠️ Could not create/find employee partner by name: %s", str(e))
+                # Final fallback using all methods
+                try:
+                    if hasattr(self.employee_id, 'address_home_id') and self.employee_id.sudo().address_home_id:
+                        partner_id = self.employee_id.sudo().address_home_id.id
+                    elif self.employee_id.user_id:
+                        partner_id = self.employee_id.user_id.partner_id.id
+                    elif self.employee_id.address_id:
+                        partner_id = self.employee_id.address_id.id
+                    _logger.info("🔄 ADVANCE BOX PARTNER: Using fallback partner %s", partner_id)
+                except Exception as e2:
+                    _logger.warning("⚠️ All fallbacks failed: %s", str(e2))
         
         return partner_id
 

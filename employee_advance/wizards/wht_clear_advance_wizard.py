@@ -626,51 +626,51 @@ class WhtClearAdvanceWizard(models.TransientModel):
         _logger.info("  📥 Credit Advance Box: %s (%s) = %s", 
                    self.advance_box_id.name, advance_account.code, advance_credit)
         
-        # ใช้ Employee โดยตรงแทน User ID เพื่อให้ match กับ Advance Box
-        advance_partner_id = False
-        try:
-            employee = self.advance_box_id.employee_id
-            if employee:
-                # สร้าง Partner ใหม่สำหรับ Employee หากไม่มี หรือใช้ Employee เป็น Partner โดยตรง
-                # ไม่ใช้ User ID เพื่อหลีกเลี่ยงปัญหา mismatch
-                
-                # ลองหา Partner ที่มีชื่อเดียวกับ Employee ก่อน
-                employee_partner = self.env['res.partner'].search([
-                    ('name', '=', employee.name),
-                    ('is_company', '=', False)
-                ], limit=1)
-                
-                if employee_partner:
-                    advance_partner_id = employee_partner.id
-                    _logger.info("🎯 EMPLOYEE PARTNER: Found existing partner %s (%s) for employee %s", 
-                               advance_partner_id, employee_partner.name, employee.name)
-                else:
-                    # สร้าง Partner ใหม่สำหรับ Employee
-                    employee_partner = self.env['res.partner'].create({
-                        'name': employee.name,
-                        'is_company': False,
-                        'employee': True,
-                        'supplier_rank': 0,
-                        'customer_rank': 0,
-                    })
-                    advance_partner_id = employee_partner.id
-                    _logger.info("🎯 EMPLOYEE PARTNER: Created new partner %s (%s) for employee %s", 
-                               advance_partner_id, employee_partner.name, employee.name)
-                    
-        except Exception as e:
-            _logger.warning("⚠️ Could not create/find employee partner: %s", str(e))
-            # Fallback ไปใช้ method เดิม
+        # Use the same method as advance box to ensure consistency in partner matching
+        advance_partner_id = self.advance_box_id._get_employee_partner()
+        
+        if not advance_partner_id:
+            # If we still don't have a partner, try to create/find partner by employee name
             try:
                 employee = self.advance_box_id.employee_id
-                if hasattr(employee, 'address_home_id') and employee.sudo().address_home_id:
-                    advance_partner_id = employee.sudo().address_home_id.id
-                elif employee.user_id:
-                    advance_partner_id = employee.user_id.partner_id.id
-                elif employee.address_id:
-                    advance_partner_id = employee.address_id.id
-                _logger.info("🔄 FALLBACK: Using partner %s", advance_partner_id)
-            except Exception as e2:
-                _logger.warning("⚠️ Fallback also failed: %s", str(e2))
+                if employee:
+                    # ลองหา Partner ที่มีชื่อเดียวกับ Employee ก่อน
+                    employee_partner = self.env['res.partner'].search([
+                        ('name', '=', employee.name),
+                        ('is_company', '=', False)
+                    ], limit=1)
+                    
+                    if employee_partner:
+                        advance_partner_id = employee_partner.id
+                        _logger.info("🎯 EMPLOYEE PARTNER: Found existing partner %s (%s) for employee %s", 
+                                   advance_partner_id, employee_partner.name, employee.name)
+                    else:
+                        # สร้าง Partner ใหม่สำหรับ Employee
+                        employee_partner = self.env['res.partner'].create({
+                            'name': employee.name,
+                            'is_company': False,
+                            'employee': True,
+                            'supplier_rank': 0,
+                            'customer_rank': 0,
+                        })
+                        advance_partner_id = employee_partner.id
+                        _logger.info("🎯 EMPLOYEE PARTNER: Created new partner %s (%s) for employee %s", 
+                                   advance_partner_id, employee_partner.name, employee.name)
+                        
+            except Exception as e:
+                _logger.warning("⚠️ Could not create/find employee partner: %s", str(e))
+                # Final fallback using all methods
+                try:
+                    employee = self.advance_box_id.employee_id
+                    if hasattr(employee, 'address_home_id') and employee.sudo().address_home_id:
+                        advance_partner_id = employee.sudo().address_home_id.id
+                    elif employee.user_id:
+                        advance_partner_id = employee.user_id.partner_id.id
+                    elif employee.address_id:
+                        advance_partner_id = employee.address_id.id
+                    _logger.info("🔄 FINAL FALLBACK: Using partner %s", advance_partner_id)
+                except Exception as e2:
+                    _logger.warning("⚠️ Final fallback also failed: %s", str(e2))
         
         move_lines.append((0, 0, {
             'name': _('Clear from advance box - %s') % self.advance_box_id.employee_id.name,
