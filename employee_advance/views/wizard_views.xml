@@ -6,19 +6,120 @@
         <field name="model">advance.refill.base.wizard</field>
         <field name="arch" type="xml">
             <form string="Refill Advance to Base">
-                <group>
+                <header>
+                    <div class="text-center">
+                        <h3>Refill Advance to Base</h3>
+                        <p class="text-muted">Refill the advance box to the target amount</p>
+                    </div>
+                </header>
+                
+                <!-- Financial Summary Card -->
+                <div class="row mt16 o_kanban_card">
+                    <div class="col-12">
+                        <div class="card o_kanban_card_body d-flex">
+                            <div class="row">
+                                <div class="col-4 text-center">
+                                    <h4 class="text-muted">Current Balance</h4>
+                                    <field name="current_balance" 
+                                           widget="monetary" 
+                                           options="{'currency_field': 'currency_id'}" 
+                                           class="fw-bold fs-3 text-success"
+                                           readonly="1"/>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <h4 class="text-muted">Target Amount</h4>
+                                    <field name="base_amount_ref" 
+                                           widget="monetary" 
+                                           options="{'currency_field': 'currency_id'}" 
+                                           class="fw-bold fs-3 text-primary"
+                                           readonly="1"/>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <h4 class="text-muted">Refill Amount</h4>
+                                    <field name="topup_amount" 
+                                           widget="monetary" 
+                                           options="{'currency_field': 'currency_id'}" 
+                                           class="fw-bold fs-3 text-warning"
+                                           readonly="1"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <notebook>
+                    <page string="Refill Information" name="refill_info">
+                        <group col="2">
+                            <group string="Current Status">
+                                <field name="current_balance" 
+                                       widget="monetary" 
+                                       options="{'currency_field': 'currency_id'}" 
+                                       readonly="1"/>
+                                <label for="current_balance" string="Current balance in the advance box"/>
+                            </group>
+                            <group string="Target Configuration">
+                                <field name="base_amount_ref" 
+                                       widget="monetary" 
+                                       options="{'currency_field': 'currency_id'}" 
+                                       readonly="1"/>
+                                <label for="base_amount_ref" string="Target amount to refill to"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Refill Calculation">
+                            <div class="alert alert-info" role="alert">
+                                <i class="fa fa-info-circle" aria-hidden="true"/> 
+                                <div class="d-flex align-items-center">
+                                    <span class="me-2">Top-up amount =</span>
+                                    <field name="base_amount_ref" 
+                                           widget="monetary" 
+                                           options="{'currency_field': 'currency_id'}" 
+                                           readonly="1" 
+                                           class="me-2"/>
+                                    <span class="me-2">-</span>
+                                    <field name="current_balance" 
+                                           widget="monetary" 
+                                           options="{'currency_field': 'currency_id'}" 
+                                           readonly="1" 
+                                           class="me-2"/>
+                                    <span class="me-2">=</span>
+                                    <field name="topup_amount" 
+                                           widget="monetary" 
+                                           options="{'currency_field': 'currency_id'}" 
+                                           readonly="1" 
+                                           class="fw-bold"/>
+                                </div>
+                            </div>
+                        </group>
+                    </page>
+                    
+                    <page string="Confirmation" name="confirmation">
+                        <group string="Refill Summary">
+                            <div class="alert alert-success" role="alert">
+                                <i class="fa fa-check-circle" aria-hidden="true"/> 
+                                Refilling advance box with amount:
+                                <field name="topup_amount" 
+                                       widget="monetary" 
+                                       options="{'currency_field': 'currency_id'}" 
+                                       readonly="1" 
+                                       class="fw-bold"/>
+                            </div>
+                            <div class="text-center">
+                                <p class="lead">Are you sure you want to proceed with this refill?</p>
+                            </div>
+                        </group>
+                    </page>
+                </notebook>
+                
+                <div class="oe_hidden">
                     <field name="advance_box_id" invisible="1"/>
-                    <group>
-                        <field name="current_balance"/>
-                        <field name="base_amount_ref"/>
-                        <field name="topup_amount"/>
-                        <field name="currency_id" invisible="1"/>
-                    </group>
-                </group>
+                    <field name="currency_id" invisible="1"/>
+                </div>
+                
                 <footer>
                     <button name="action_confirm" 
                             type="object" 
-                            string="Confirm" 
+                            string="Confirm Refill" 
                             class="btn-primary"/>
                     <button string="Cancel" 
                             class="btn-secondary" 
@@ -68,45 +169,120 @@
         <field name="model">advance.settlement.wizard</field>
         <field name="arch" type="xml">
             <form string="Settle Advance Box">
-                <group>
+                <header>
+                    <div class="text-center">
+                        <h3>Advance Settlement</h3>
+                        <p class="text-muted">Settle the advance for employee: <field name="employee_id" class="fw-bold" readonly="1"/></p>
+                    </div>
+                </header>
+                
+                <!-- Financial Summary Card -->
+                <div class="row mt16 o_kanban_card">
+                    <div class="col-12">
+                        <div class="card o_kanban_card_body d-flex">
+                            <div class="row">
+                                <div class="col-4 text-center">
+                                    <h4 class="text-muted">Current Balance</h4>
+                                    <field name="current_balance" 
+                                           widget="monetary" 
+                                           options="{'currency_field': 'currency_id'}" 
+                                           class="fw-bold fs-3"
+                                           readonly="1"/>
+                                    <div class="text-success">
+                                        <i class="fa fa-info-circle"/> Balance Status
+                                    </div>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <h4 class="text-muted">Settlement Amount</h4>
+                                    <field name="target_amount" 
+                                           widget="monetary" 
+                                           options="{'currency_field': 'currency_id'}" 
+                                           class="fw-bold fs-3"
+                                           readonly="1"/>
+                                    <div class="text-muted">
+                                        <field name="amount_mode" class="text-capitalize"/>
+                                    </div>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <h4 class="text-muted">Status</h4>
+                                    <div class="alert alert-info" role="alert">
+                                        <i class="fa fa-info-circle" aria-hidden="true"/> Settlement
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <notebook>
+                    <page string="Settlement Details" name="settlement_details">
+                        <group col="2">
+                            <group>
+                                <field name="settlement_date"/>
+                                <field name="memo"/>
+                            </group>
+                            <group>
+                                <field name="amount_mode" widget="radio"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Amount Settings" invisible="amount_mode != 'partial'">
+                            <group col="2">
+                                <field name="amount_to_settle" required="amount_mode == 'partial'"/>
+                                <div/>
+                            </group>
+                        </group>
+                    </page>
+                    
+                    <page string="Financial Setup" name="financial_setup">
+                        <group col="2">
+                            <group string="Transaction Details">
+                                <field name="scenario" widget="radio"/>
+                                <field name="journal_id" 
+                                       domain="[('company_id', '=', company_id)]" 
+                                       required="scenario in ('pay_employee', 'employee_refund', 'write_off')"/>
+                            </group>
+                            <group string="Write-off Details" invisible="scenario != 'write_off'">
+                                <field name="writeoff_policy" invisible="scenario != 'write_off'"/>
+                                <field name="writeoff_account_id" 
+                                       invisible="scenario != 'write_off'" 
+                                       required="writeoff_policy in ('expense', 'other_income')"/>
+                            </group>
+                        </group>
+                    </page>
+                    
+                    <page string="Options" name="options">
+                        <group col="2">
+                            <group>
+                                <field name="auto_reconcile"/>
+                            </group>
+                            <group>
+                                <field name="create_activity"/>
+                            </group>
+                        </group>
+                        
+                        <div invisible="not create_activity">
+                            <group string="Activity Details">
+                                <field name="activity_user_id"/>
+                                <field name="activity_type_id"/>
+                                <field name="activity_note"/>
+                            </group>
+                        </div>
+                    </page>
+                </notebook>
+                
+                <div class="oe_hidden">
                     <field name="box_id" invisible="1"/>
-                    <field name="employee_id" readonly="1"/>
-                    <field name="current_balance" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                    <label for="current_balance" string="Current Balance - Positive = Company owes employee; Negative = Employee owes company"/>
-                </group>
-                <group>
-                    <field name="settlement_date"/>
-                    <field name="memo"/>
-                </group>
-                <group>
-                    <field name="journal_id" domain="[('company_id', '=', company_id)]" required="scenario in ('pay_employee', 'employee_refund', 'write_off')"/>
-                    <field name="amount_mode"/>
-                    <field name="amount_to_settle" invisible="amount_mode == 'full'" required="amount_mode == 'partial'"/>
-                </group>
-                <group>
-                    <field name="scenario"/>
-                    <field name="writeoff_policy" invisible="scenario != 'write_off'"/>
-                    <field name="writeoff_account_id" invisible="scenario != 'write_off'" required="writeoff_policy in ('expense', 'other_income')"/>
-                </group>
-                <group>
-                    <field name="auto_reconcile"/>
-                </group>
-                <group>
-                    <field name="create_activity"/>
-                    <field name="activity_user_id" invisible="not create_activity"/>
-                    <field name="activity_type_id" invisible="not create_activity"/>
-                    <field name="activity_note" invisible="not create_activity"/>
-                </group>
-                <group>
-                    <field name="target_amount" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                     <field name="company_id" invisible="1"/>
                     <field name="currency_id" invisible="1"/>
-                </group>
+                </div>
+                
                 <footer>
                     <button name="action_settle_advance" 
                             type="object" 
                             string="Settle Advance" 
-                            class="btn-primary"/>
+                            class="btn-primary"
+                            context="{'default_advance_box_id': box_id}"/>
                     <button string="Cancel" 
                             class="btn-secondary" 
                             special="cancel"/>
