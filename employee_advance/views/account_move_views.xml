@@ -5,26 +5,13 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
-            <!-- Add smart buttons for WHT certificates -->
+            <!-- Smart button for viewing WHT certificates -->
             <div name="button_box" position="inside">
-                <button name="action_create_wht_certificate" 
-                        type="object" 
-                        class="oe_stat_button" 
-                        icon="fa-plus-circle"
-                        invisible="not is_advance_clearing or not wht_tax_id or wht_amount &lt;= 0"
-                        help="Open form to create WHT Certificate for this advance clearing">
-                    <div class="o_field_widget o_stat_info">
-                        <span class="o_stat_text">Add WHT</span>
-                        <span class="o_stat_text">Certificate</span>
-                    </div>
-                </button>
-                
-                <!-- Hidden: Duplicate with our Add WHT Certificate button -->
                 <button name="action_view_wht_certificates" 
                         type="object" 
                         class="oe_stat_button" 
                         icon="fa-certificate"
-                        invisible="1">
+                        invisible="wht_cert_count == 0">
                     <field name="wht_cert_count" widget="statinfo" string="WHT Certificates"/>
                 </button>
             </div>
@@ -111,6 +98,7 @@
                         <field name="advance_box_id"/>
                         <field name="expense_sheet_id"/>
                         <field name="has_wht_line" invisible="1"/>
+                        <field name="has_wht_certs_available" invisible="1"/>
                     </group>
                     <group string="WHT Information" invisible="not is_advance_clearing">
                         <field name="is_advance_clearing" readonly="1"/>

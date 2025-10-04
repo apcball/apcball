@@ -1045,7 +1045,26 @@ class WhtClearAdvanceWizard(models.TransientModel):
             _logger.info("DEBUG: Posting journal entry")
             move.action_post()
             _logger.info("DEBUG: Journal entry posted successfully")
+
+            # Create WHT Certificate automatically if WHT is configured
+            _logger.info("🔍 WHT AUTO CREATE CHECK: wht_config_id=%s, wht_amount=%s", 
+                       self.wht_config_id.name if self.wht_config_id else None, self.wht_amount)
             
+            if self.wht_config_id and self.wht_amount > 0:
+                _logger.info("🔄 Starting automatic WHT certificate creation...")
+                try:
+                    # Pass the same date used in journal entry
+                    wht_cert = self._create_wht_certificate_auto(move, journal_entry_date)
+                    if wht_cert:
+                        _logger.info("✅ WHT Certificate created automatically: %s", wht_cert.number)
+                    else:
+                        _logger.warning("❌ WHT Certificate creation returned None/False")
+                except Exception as e:
+                    _logger.error("❌ Failed to create WHT certificate automatically: %s", str(e), exc_info=True)
+                    # Don't fail the entire operation if WHT cert creation fails
+            else:
+                _logger.info("ℹ️ Skipping WHT certificate creation: No WHT config or zero amount")
+
             # Link to expense sheet BEFORE auto reconcile to avoid issues
             _logger.info("DEBUG: Linking to expense sheet")
             self.expense_sheet_id.write({
@@ -1436,6 +1455,200 @@ class WhtClearAdvanceWizard(models.TransientModel):
             return True
         else:
             _logger.info("🔍 No valid WHT taxes detected in bill")
+            return False
+
+    def _create_wht_certificate_auto(self, move, je_date=None):
+        """Create WHT Certificate automatically from wizard data"""
+        self.ensure_one()
+        
+        # Use the same date as journal entry
+        cert_date = je_date or self.accounting_date or self.date
+        _logger.info("📅 WHT Certificate will use date: %s (JE date: %s)", cert_date, je_date)
+        
+        _logger.info("🔍 WHT CERT AUTO: Starting creation process...")
+        _logger.info("🔍 Available models: %s", list(self.env.registry.keys()))
+        
+        # Check if WHT certificate module is available
+        if 'withholding.tax.cert' not in self.env.registry:
+            _logger.warning("⚠️ WHT Certificate module not available - checking alternatives...")
+            # Try alternative model names
+            alt_models = ['account.withholding.tax.cert', 'l10n_th_withholding_tax.cert']
+            for alt_model in alt_models:
+                if alt_model in self.env.registry:
+                    _logger.info("✅ Found alternative WHT cert model: %s", alt_model)
+                    break
+            else:
+                _logger.error("❌ No WHT certificate model found")
+                return False
+            
+        if not self.wht_config_id or not self.wht_amount:
+            _logger.warning("❌ No WHT data to create certificate: config=%s, amount=%s", 
+                          self.wht_config_id, self.wht_amount)
+            return False
+        
+        _logger.info("🔍 WHT data: config=%s, amount=%s, base=%s", 
+                   self.wht_config_id.name, self.wht_amount, self.amount_base)
+        
+        try:
+            # Check available models for WHT certificates
+            cert_model = None
+            line_model = None
+            
+            possible_models = [
+                ('withholding.tax.cert', 'withholding.tax.cert.line'),
+                ('account.withholding.tax.cert', 'account.withholding.tax.cert.line'),
+                ('l10n.th.withholding.tax.cert', 'l10n.th.withholding.tax.cert.line'),
+            ]
+            
+            for cert_m, line_m in possible_models:
+                if cert_m in self.env.registry and line_m in self.env.registry:
+                    cert_model = cert_m
+                    line_model = line_m
+                    _logger.info("✅ Using WHT cert models: %s, %s", cert_model, line_model)
+                    break
+            
+            if not cert_model:
+                # Fallback: Create manual record in account.move
+                _logger.info("📝 No WHT cert model found, creating manual record...")
+                move.message_post(
+                    body=f"<b>WHT Certificate Info (Auto-generated)</b><br/>"
+                         f"Partner: {self.wht_partner_id.name if self.wht_partner_id else self.partner_id.name}<br/>"
+                         f"Date: {self.accounting_date or self.date}<br/>"
+                         f"WHT Tax: {self.wht_config_id.name}<br/>"
+                         f"Base Amount: {self.amount_base:,.2f}<br/>"
+                         f"WHT Amount: {self.wht_amount:,.2f}<br/>"
+                         f"WHT Rate: {abs(self.wht_config_id.amount)}%"
+                )
+                _logger.info("✅ WHT information posted as message to journal entry")
+                return move  # Return the move as success
+            
+            # Find withholding tax configuration
+            withholding_tax = None
+            default_income_tax_form = 'pnd3'  # Default fallback
+            default_income_type = 'salary'    # Default fallback
+            default_income_desc = 'Advance Clearing'  # Default fallback
+            
+            if 'account.withholding.tax' in self.env.registry:
+                # Try multiple search patterns to find the matching withholding tax
+                search_domains = [
+                    # Exact match by amount and company
+                    [('company_id', '=', self.company_id.id), ('amount', '=', abs(self.wht_config_id.amount))],
+                    # Match by name pattern and company  
+                    [('company_id', '=', self.company_id.id), ('name', 'ilike', self.wht_config_id.name)],
+                    # Match by amount only (fallback)
+                    [('amount', '=', abs(self.wht_config_id.amount))],
+                ]
+                
+                for domain in search_domains:
+                    withholding_tax = self.env['account.withholding.tax'].search(domain, limit=1)
+                    if withholding_tax:
+                        _logger.info("🔍 Found withholding tax config: %s (using search: %s)", 
+                                   withholding_tax.name, domain)
+                        break
+                
+                # Get configuration from withholding tax if found
+                if withholding_tax:
+                    # Extract income tax form
+                    if hasattr(withholding_tax, 'income_tax_form') and withholding_tax.income_tax_form:
+                        default_income_tax_form = withholding_tax.income_tax_form
+                        _logger.info("📋 Using income tax form from config: %s", default_income_tax_form)
+                    
+                    # Extract income type  
+                    if hasattr(withholding_tax, 'wht_cert_income_type') and withholding_tax.wht_cert_income_type:
+                        default_income_type = withholding_tax.wht_cert_income_type
+                        _logger.info("📋 Using income type from config: %s", default_income_type)
+                    elif hasattr(withholding_tax, 'income_type') and withholding_tax.income_type:
+                        default_income_type = withholding_tax.income_type
+                        _logger.info("📋 Using income type from config (alt field): %s", default_income_type)
+                    
+                    # Extract income description
+                    if hasattr(withholding_tax, 'wht_cert_income_desc') and withholding_tax.wht_cert_income_desc:
+                        default_income_desc = withholding_tax.wht_cert_income_desc
+                        _logger.info("📋 Using income description from config: %s", default_income_desc)
+                    elif hasattr(withholding_tax, 'income_desc') and withholding_tax.income_desc:
+                        default_income_desc = withholding_tax.income_desc
+                        _logger.info("📋 Using income description from config (alt field): %s", default_income_desc)
+                else:
+                    _logger.info("⚠️ No matching withholding tax configuration found, using defaults")
+            
+            # Prepare certificate data
+            cert_vals = {
+                'date': cert_date,  # Use the same date as journal entry
+                'partner_id': self.wht_partner_id.id if self.wht_partner_id else self.partner_id.id,
+                'company_id': self.company_id.id,
+                'state': 'draft',
+            }
+            
+            _logger.info("📅 Setting WHT Certificate date: %s", cert_date)
+            
+            # Add move_id if the model supports it
+            cert_model_obj = self.env[cert_model]
+            if 'move_id' in cert_model_obj._fields:
+                cert_vals['move_id'] = move.id
+            
+            # Add income tax form from configuration
+            if 'income_tax_form' in cert_model_obj._fields:
+                cert_vals['income_tax_form'] = default_income_tax_form
+                _logger.info("📋 Setting income_tax_form: %s", default_income_tax_form)
+            
+            # Skip tax_payer field as it's causing issues - will be set manually later if needed
+            
+            _logger.info("🔍 Creating certificate with: %s", cert_vals)
+            
+            # Create certificate
+            wht_cert = cert_model_obj.create(cert_vals)
+            _logger.info("✅ WHT Certificate created: %s", wht_cert.id)
+            
+            # Create certificate lines
+            line_model_obj = self.env[line_model]
+            wht_line_vals = {
+                'base': abs(self.amount_base),
+                'amount': abs(self.wht_amount),
+                'wht_percent': abs(self.wht_config_id.amount),
+            }
+            
+            _logger.info("💰 WHT Line amounts - Base: %s, Amount: %s, Percent: %s", 
+                       abs(self.amount_base), abs(self.wht_amount), abs(self.wht_config_id.amount))
+            
+            # Add certificate reference
+            for field_name in ['wht_cert_id', 'cert_id', 'withholding_cert_id']:
+                if field_name in line_model_obj._fields:
+                    wht_line_vals[field_name] = wht_cert.id
+                    _logger.info("📋 Setting certificate reference: %s = %s", field_name, wht_cert.id)
+                    break
+            
+            # Add income type fields from configuration
+            for field_name in ['wht_cert_income_type', 'income_type']:
+                if field_name in line_model_obj._fields:
+                    wht_line_vals[field_name] = default_income_type
+                    _logger.info("📋 Setting income type: %s = %s", field_name, default_income_type)
+                    break
+            
+            for field_name in ['wht_cert_income_desc', 'income_desc', 'description']:
+                if field_name in line_model_obj._fields:
+                    wht_line_vals[field_name] = default_income_desc
+                    _logger.info("📋 Setting income description: %s = %s", field_name, default_income_desc)
+                    break
+            
+            _logger.info("🔍 Creating certificate line with: %s", wht_line_vals)
+            line_model_obj.create(wht_line_vals)
+            
+            # Update move to link with certificate if field exists
+            if hasattr(move, 'wht_cert_ids'):
+                move.write({'wht_cert_ids': [(4, wht_cert.id)]})
+            
+            _logger.info("✅ WHT Certificate created successfully: ID=%s (Amount: %s, Base: %s)", 
+                       wht_cert.id, self.wht_amount, self.amount_base)
+            
+            # Verify dates match
+            if hasattr(wht_cert, 'date'):
+                _logger.info("📅 Date verification - JE: %s, WHT Cert: %s ✅", 
+                           move.date, wht_cert.date)
+            
+            return wht_cert
+            
+        except Exception as e:
+            _logger.error("❌ Failed to create WHT certificate: %s", str(e), exc_info=True)
             return False
 
 

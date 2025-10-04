@@ -1006,3 +1006,5 @@ class HrExpenseSheet(models.Model):
             _logger.error("❌ WIZARD: Failed to open wizard after %.2f seconds: %s", elapsed, str(e))
             raise UserError(_("Failed to open Clear Advance (WHT) wizard: %s") % str(e))
 
+
+

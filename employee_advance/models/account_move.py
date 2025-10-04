@@ -40,6 +40,48 @@ class AccountMove(models.Model):
                 count = 0
             move.wht_cert_count = count
 
+    has_wht_certs_available = fields.Boolean(
+        string='Has WHT Certs Available',
+        compute='_compute_has_wht_certs_available',
+        help='True if WHT certificates can be created for this bill'
+    )
+
+    @api.depends('is_advance_clearing', 'wht_tax_id', 'wht_amount', 'has_wht_line', 'move_type')
+    def _compute_has_wht_certs_available(self):
+        """Compute if WHT certificates are available for this move"""
+        for move in self:
+            has_wht_certificates_available = False
+            
+            # Check for advance clearing entries with WHT
+            if move.is_advance_clearing and move.wht_tax_id and move.wht_amount > 0:
+                has_wht_certificates_available = True
+            
+            # Check for regular bills with WHT lines
+            elif move.move_type == 'in_invoice' and move.has_wht_line:
+                has_wht_certificates_available = True
+            
+            # Check for bills with WHT taxes (using safer approach)
+            elif move.move_type == 'in_invoice':
+                try:
+                    # Check for WHT taxes by name pattern (safer than field that might not exist)
+                    for line in move.invoice_line_ids:
+                        for tax in line.tax_ids:
+                            # Check common WHT tax patterns
+                            if any(pattern in tax.name.lower() for pattern in ['wht', 'withholding', 'หัก ณ ที่จ่าย']):
+                                has_wht_certificates_available = True
+                                break
+                            # Check for negative tax amounts (typical for WHT)
+                            if tax.amount < 0:
+                                has_wht_certificates_available = True
+                                break
+                        if has_wht_certificates_available:
+                            break
+                except Exception:
+                    # Fallback to False if any error occurs
+                    has_wht_certificates_available = False
+            
+            move.has_wht_certs_available = has_wht_certificates_available
+
     def can_create_wht_certificate(self):
         """Check if WHT certificate can be created from this move"""
         self.ensure_one()
