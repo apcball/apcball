@@ -485,11 +485,26 @@ class AccountMove(models.Model):
     def _prepare_withholding_move(self, wht_ml, pit_no_wht=False):
         """Prepare dict for account.withholding.move"""
         if pit_no_wht:
+            # For PIT case where there is no actual withholding on payment JE,
+            # the income should be the line balance (the base amount),
+            # and withholding amount is 0.
             amount_income = abs(wht_ml.balance)
             amount_wht = 0.0
         else:
-            amount_income = wht_ml.tax_base_amount
-            amount_wht = abs(wht_ml.balance)
+            # For regular withholding tax:
+            # The income base should be calculated from the withholding tax amount
+            # If balance is the base amount and we need to calculate the withholding
+            if abs(wht_ml.balance) > abs(wht_ml.tax_base_amount):
+                # balance is the income base, calculate withholding from tax rate
+                amount_income = abs(wht_ml.balance)
+                if wht_ml.wht_tax_id and wht_ml.wht_tax_id.amount:
+                    amount_wht = amount_income * (wht_ml.wht_tax_id.amount / 100)
+                else:
+                    amount_wht = abs(wht_ml.tax_base_amount)
+            else:
+                # tax_base_amount is the income base
+                amount_income = abs(wht_ml.tax_base_amount) 
+                amount_wht = abs(wht_ml.balance)
 
         return {
             "partner_id": wht_ml.partner_id.id,
