@@ -12,6 +12,9 @@
         - Support for VAT/WHT reporting
         - Clearing mode: Reimburse Employee
         - Settlement functionality for closing advance boxes
+        - NEW: Separate bills for same employee with different dates
+        - NEW: Group by partner and date for proper accounting separation
+        - NEW: Use expense sheet date as accounting date in bills
     """,
     'author': 'Your Company',
     'website': 'https://www.yourcompany.com',

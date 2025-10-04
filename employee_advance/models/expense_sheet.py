@@ -299,17 +299,8 @@ class HrExpenseSheet(models.Model):
         if self.is_billed:
             raise UserError(_("Bills have already been created for this expense sheet."))
         
-        # Check if any expenses have vendors - if so, use new grouping logic
-        has_vendors = any(exp.expense_vendor_id for exp in self.expense_line_ids)
-        
-        if not has_vendors and (not self.clear_mode or self.clear_mode == 'reimburse_employee'):
-            # For pure reimburse_employee mode without vendors, use the existing functionality
-            if self.use_advance and self.advance_box_id:
-                self._create_vendor_bill_and_activity()
-                self.is_billed = True
-            return
-        
-        # Create bills based on vendor grouping (new enhanced logic)
+        # Always use the date-based grouping logic to separate bills by date
+        # regardless of whether it's vendor or employee reimbursement
         bills = self._create_bills_by_vendor_grouping()
         
         if bills:
@@ -326,11 +317,11 @@ class HrExpenseSheet(models.Model):
         return bills
 
     def _create_bills_by_vendor_grouping(self):
-        """Enhanced: Group expenses by vendor and create separate bills per vendor.
-        If no vendor specified, group under employee name."""
+        """Enhanced: Group expenses by vendor and expense line date, and create separate bills per vendor/expense date.
+        If no vendor specified, group under employee name and expense line date."""
         bills = self.env['account.move']
         
-        # Group expense lines by (vendor_or_employee_partner, company, currency)
+        # Group expense lines by (vendor_or_employee_partner, company, currency, expense_line_date)
         groups = {}
         
         for expense in self.expense_line_ids:
@@ -350,11 +341,15 @@ class HrExpenseSheet(models.Model):
                     "Please ensure employee has a private address or specify a vendor."
                 ) % expense.name)
             
-            # Create group key (partner, company, currency)
+            # Get expense line date for grouping
+            expense_date = expense.date or fields.Date.context_today(self)
+            
+            # Create group key (partner, company, currency, expense_line_date)
             group_key = (
                 partner_id, 
                 expense.company_id.id, 
-                expense.currency_id.id
+                expense.currency_id.id,
+                expense_date
             )
             
             # Initialize group if not exists
@@ -364,6 +359,7 @@ class HrExpenseSheet(models.Model):
                     'partner_name': partner_name,
                     'company_id': expense.company_id.id,
                     'currency_id': expense.currency_id.id,
+                    'expense_line_date': expense_date,
                     'expenses': self.env['hr.expense'],
                     'is_vendor': bool(expense.expense_vendor_id)
                 }
@@ -372,11 +368,124 @@ class HrExpenseSheet(models.Model):
         
         # Create bills for each group
         for group_data in groups.values():
-            bill = self._create_single_bill_for_vendor_group(group_data)
+            bill = self._create_single_bill_for_vendor_group_date(group_data)
             if bill:
                 bills |= bill
         
         return bills
+
+    def _create_single_bill_for_vendor_group_date(self, group_data):
+        """Create a single vendor bill for a vendor group with specific date (enhanced version)"""
+        partner_id = group_data['partner_id']
+        partner_name = group_data['partner_name']
+        company_id = group_data['company_id']
+        currency_id = group_data['currency_id']
+        expense_line_date = group_data['expense_line_date']
+        expenses = group_data['expenses']
+        is_vendor = group_data['is_vendor']
+        
+        if not partner_id:
+            return self.env['account.move']
+        
+        # Validate company and currency consistency within the group
+        for expense in expenses:
+            if expense.company_id.id != company_id:
+                raise UserError(_(
+                    "All expenses in a group must belong to the same company. "
+                    "Expense '%s' belongs to a different company."
+                ) % expense.name)
+            if expense.currency_id.id != currency_id:
+                raise UserError(_(
+                    "All expenses in a group must use the same currency. "
+                    "Expense '%s' uses a different currency."
+                ) % expense.name)
+        
+        # Group expenses by account and taxes to create proper invoice lines
+        account_tax_groups = {}
+        for expense in expenses:
+            account = expense.account_id
+            taxes = tuple(expense.tax_ids.ids)
+            key = (account.id, taxes)
+            
+            if key not in account_tax_groups:
+                account_tax_groups[key] = {
+                    'amount': 0,
+                    'expenses': self.env['hr.expense'],
+                    'tax_ids': expense.tax_ids.ids,
+                    'analytic_account_id': expense.account_analytic_id.id if hasattr(expense, 'account_analytic_id') and expense.account_analytic_id else False,
+                    'analytic_tag_ids': expense.analytic_tag_ids.ids if hasattr(expense, 'analytic_tag_ids') else [],
+                    'product_id': expense.product_id.id if expense.product_id else False,
+                    'wht_tax_id': expense.wht_tax_id.id if hasattr(expense, 'wht_tax_id') and expense.wht_tax_id else False
+                }
+            
+            account_tax_groups[key]['amount'] += expense.total_amount
+            account_tax_groups[key]['expenses'] |= expense
+        
+        # Create vendor bill with grouped lines
+        bill_ref = f'Expense Sheet {self.name}'
+        if is_vendor:
+            bill_ref += f' - {partner_name} - Date: {expense_line_date}'
+        else:
+            bill_ref += f' - Employee: {partner_name} - Date: {expense_line_date}'
+            
+        bill_vals = {
+            'move_type': 'in_invoice',
+            'partner_id': partner_id,
+            'invoice_date': expense_line_date,  # Use expense line date as invoice date
+            'date': expense_line_date,  # Use expense line date as accounting date
+            'currency_id': currency_id,
+            'company_id': company_id,
+            'ref': bill_ref,
+            'expense_sheet_id': self.id,
+            'invoice_line_ids': []
+        }
+        
+        for (account_id, taxes_tuple), group_data in account_tax_groups.items():
+            line_vals = {
+                'name': ', '.join(group_data['expenses'].mapped('name')),
+                'quantity': 1,
+                'price_unit': group_data['amount'],
+                'account_id': account_id,
+                'tax_ids': [(6, 0, list(set(group_data['tax_ids'])))],
+            }
+            
+            # Handle taxes and amounts properly
+            expense_lines = group_data['expenses']
+            if len(expense_lines) > 1:
+                # Combine amounts from all expenses in this group
+                line_vals['name'] = ', '.join(expense_lines.mapped('name'))
+            else:
+                # Use the single expense details
+                single_expense = expense_lines[0]
+                line_vals['name'] = single_expense.name
+                line_vals['quantity'] = single_expense.quantity if hasattr(single_expense, 'quantity') else 1
+                line_vals['price_unit'] = single_expense.unit_amount if hasattr(single_expense, 'unit_amount') and single_expense.unit_amount else single_expense.price_unit
+                
+            if group_data['analytic_account_id']:
+                line_vals['analytic_account_id'] = group_data['analytic_account_id']
+            if group_data.get('analytic_tag_ids', []):
+                line_vals['analytic_tag_ids'] = [(6, 0, group_data['analytic_tag_ids'])]
+            if group_data.get('product_id'):
+                line_vals['product_id'] = group_data['product_id']
+            if group_data.get('wht_tax_id'):
+                line_vals['wht_tax_id'] = group_data['wht_tax_id']
+            
+            bill_vals['invoice_line_ids'].append((0, 0, line_vals))
+        
+        bill = self.env['account.move'].create(bill_vals)
+        
+        # Link advance box to ALL bills when using advance (not just employee bills)
+        # This allows WHT wizard to find the correct advance box for vendor bills too
+        if self.use_advance and self.advance_box_id:
+            bill.sudo().write({
+                'advance_box_id': self.advance_box_id.id,
+                'is_expense_advance_bill': True
+            })
+        
+        # Carry attachments from expense lines to the bill
+        self._carry_attachments_to_bill(expense_lines, bill)
+        
+        return bill
 
     def _create_bills_by_expense_lines(self):
         """Legacy: Group expense lines and create vendor bills per group"""

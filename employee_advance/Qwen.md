@@ -17,6 +17,18 @@ This module implements a complete workflow for employee advances:
 - Clearing mode: Reimburse Employee
 - Settlement functionality for closing advance boxes
 - Integration with Thai withholding tax (WHT) certificate functionality
+- NEW: Separate bills for same employee with different dates
+- NEW: Group by partner and date for proper accounting separation
+- NEW: Use expense sheet date as accounting date in bills
+
+## New Features: Date-Based Expense Grouping
+This module now includes enhanced functionality for separate bills based on expense line dates:
+- **NEW**: Same employee with expenses from different dates (in same or different sheets) will have separate bills
+- **NEW**: Expenses are grouped by partner, company, currency, AND expense line date
+- **NEW**: Accounting date in bills uses expense line date (not expense sheet date)
+- **NEW**: Separate vendor bills created for same employee/partner with different expense dates
+- **NEW**: Grouping key: (partner_id, company_id, currency_id, expense_line_date)
+- **NEW**: Date-based grouping now applied to all expense types regardless of vendor/employee classification
 
 ## New Features: WHT Certificate Integration
 This module now includes integration with the Thai Withholding Tax Certificate functionality:
@@ -71,6 +83,8 @@ This module extends functionality from:
 3. `create_wht_cert_from_advance_clearing()`: Creates WHT certificates for advance transactions
 4. `has_wht_certs` (field): Computed field to track if associated vendor bill has WHT certificates
 5. `_compute_has_wht_certs()`: Computes if associated vendor bill has WHT certificates
+6. `_create_bills_by_vendor_grouping()`: Enhanced to include date in grouping key (partner, company, currency, date)
+7. `_create_single_bill_for_vendor_group_date()`: New method to handle date-specific bill creation
 
 ## Integration Points
 1. **WHT Tax Transfer**: When creating vendor bills from expense sheets, WHT taxes are properly transferred
