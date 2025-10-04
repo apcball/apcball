@@ -19,26 +19,85 @@ class AccountMoveLine(models.Model):
     wht_tax_id = fields.Many2one(
         comodel_name="account.withholding.tax",
         string="WHT",
-        compute="_compute_wht_tax_id",
         check_company=True,
-        store=True,
-        readonly=False,
     )
 
-    @api.depends("product_id", "partner_id")
-    def _compute_wht_tax_id(self):
-        for rec in self:
-            # From invoice, default from product
-            if rec.move_id.move_type in ("out_invoice", "out_refund", "in_receipt"):
-                rec.wht_tax_id = rec.product_id.wht_tax_id
-            elif rec.move_id.move_type in ("in_invoice", "in_refund", "out_receipt"):
-                partner_id = rec.partner_id or rec.move_id.partner_id
-                if partner_id and partner_id.company_type == "company":
-                    rec.wht_tax_id = rec.product_id.supplier_company_wht_tax_id
-                    continue
-                rec.wht_tax_id = rec.product_id.supplier_wht_tax_id
+
+
+    def _get_wht_tax_from_product(self):
+        """Get WHT tax from product based on move type and partner type"""
+        if not self.product_id or not self.move_id:
+            return False
+            
+        # From invoice, default from product
+        if self.move_id.move_type in ("out_invoice", "out_refund", "in_receipt"):
+            return self.product_id.wht_tax_id
+        elif self.move_id.move_type in ("in_invoice", "in_refund", "out_receipt"):
+            partner_id = self.partner_id or self.move_id.partner_id
+            if partner_id and partner_id.company_type == "company":
+                return self.product_id.supplier_company_wht_tax_id
             else:
-                rec.wht_tax_id = False
+                return self.product_id.supplier_wht_tax_id
+        else:
+            return False
+
+    @api.onchange("product_id", "partner_id")
+    def _onchange_product_id_wht_tax(self):
+        """Update WHT tax when product or partner changes"""
+        import logging
+        _logger = logging.getLogger(__name__)
+        
+        _logger.warning(f"🔍 WHT ONCHANGE TRIGGERED - Product: {self.product_id.name if self.product_id else 'None'}")
+        
+        if not self.product_id:
+            self.wht_tax_id = False
+            return
+            
+        # ถ้าไม่มี move_id ยัง (กรณีสร้างใหม่) ให้ใช้ default bill type
+        move_type = self.move_id.move_type if self.move_id else "in_invoice"
+        _logger.warning(f"🔍 Move type: {move_type}")
+        
+        # สำหรับ vendor bill ใช้ company type ของ vendor
+        if move_type in ("in_invoice", "in_refund", "out_receipt"):
+            partner_id = self.partner_id or (self.move_id.partner_id if self.move_id else False)
+            partner_type = partner_id.company_type if partner_id else "person"
+            _logger.warning(f"🔍 Partner: {partner_id.name if partner_id else 'None'}, Type: {partner_type}")
+            
+            if partner_id and partner_id.company_type == "company":
+                # ใช้ Company Vendor Withholding Tax
+                wht_tax = self.product_id.supplier_company_wht_tax_id
+                _logger.warning(f"🔍 Company vendor - WHT: {wht_tax.name if wht_tax else 'None'}")
+                self.wht_tax_id = wht_tax
+            else:
+                # ใช้ Individual Vendor Withholding Tax
+                wht_tax = self.product_id.supplier_wht_tax_id
+                _logger.warning(f"🔍 Individual vendor - WHT: {wht_tax.name if wht_tax else 'None'}")
+                self.wht_tax_id = wht_tax
+        # สำหรับ customer invoice
+        elif move_type in ("out_invoice", "out_refund", "in_receipt"):
+            wht_tax = self.product_id.wht_tax_id
+            _logger.warning(f"🔍 Customer invoice - WHT: {wht_tax.name if wht_tax else 'None'}")
+            self.wht_tax_id = wht_tax
+        
+        _logger.warning(f"🔍 Final WHT set to: {self.wht_tax_id.name if self.wht_tax_id else 'None'}")
+
+    @api.model_create_multi  
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        # Set WHT tax after creation if not already set
+        for line in lines:
+            if not line.wht_tax_id and line.product_id:
+                line._onchange_product_id_wht_tax()
+        return lines
+    
+    def write(self, vals):
+        result = super().write(vals)
+        # Trigger WHT update when product or partner changes
+        if 'product_id' in vals or 'partner_id' in vals:
+            for line in self:
+                if line.product_id:
+                    line._onchange_product_id_wht_tax()
+        return result
 
     def _get_wht_amount(self, currency, wht_date):
         """Calculate withholding tax and base amount based on currency.
