@@ -34,12 +34,13 @@
                         class="btn-primary"
                         invisible="not bill_id or bill_id.state != 'posted' or bill_id.amount_residual &lt;= 0 or not advance_box_id"/>
                         
-                <button name="action_open_wht_clear_advance_wizard" 
-                        type="object" 
-                        string="Clear Advance (WHT)" 
-                        class="btn-warning"
-                        invisible="not use_advance or not advance_box_id or state != 'approve'"
-                        help="Clear advance with withholding tax calculation"/>
+        <!-- Hidden on expense sheet; moved to bill view -->
+        <button name="action_open_wht_clear_advance_wizard" 
+            type="object" 
+            string="Clear Advance (WHT)" 
+            class="btn-warning"
+            invisible="1"
+            help="Clear advance with withholding tax calculation"/>
                         
                 <button name="%(l10n_th_account_tax.action_withholding_tax_cert_menu)d" 
                         type="action" 
