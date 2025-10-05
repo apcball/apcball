@@ -901,6 +901,60 @@ class HrExpenseSheet(models.Model):
             self.write({'state': 'done'})
         return True
 
+    def action_open_mark_as_done_confirmation(self):
+        """Open confirmation wizard before marking expense sheet as done"""
+        # Create a transient record for the wizard
+        wizard = self.env['mark.as.done.confirmation.wizard'].create({
+            'expense_sheet_id': self.id,
+        })
+        
+        return {
+            'name': _('Confirm Mark as Done'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'mark.as.done.confirmation.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'res_id': wizard.id,
+            'context': self.env.context,
+        }
+
+    def action_mark_as_done_without_confirmation(self):
+        """Mark expense sheet as done manually when all bills are paid (internal method)"""
+        for sheet in self:
+            if sheet.state in ['post', 'approve'] and sheet.payment_state in ['paid', 'not_paid', 'partial']:
+                # Check if all related bills are paid (or there are no bills to pay)
+                all_bills_paid = True
+                if sheet.bill_ids:
+                    for bill in sheet.bill_ids:
+                        if bill.payment_state not in ['paid', 'reversed', 'cancelled'] and bill.amount_residual > 0:
+                            all_bills_paid = False
+                            break
+                elif sheet.bill_id:  # Check the single bill_id field too
+                    if sheet.bill_id.payment_state not in ['paid', 'reversed', 'cancelled'] and sheet.bill_id.amount_residual > 0:
+                        all_bills_paid = False
+                
+                # If all bills are paid (or no bills exist), mark as done
+                if all_bills_paid:
+                    # Update both state and payment_state to reflect the paid status
+                    sheet.write({'state': 'done', 'payment_state': 'paid'})
+                    # Log in chatter
+                    sheet.message_post(body=_("Expense sheet manually marked as done and payment status set to paid after verifying all bills are settled."))
+                else:
+                    raise UserError(_("Cannot mark as done: Some bills are not fully paid yet."))
+            else:
+                # Allow marking as done if state is already 'post' and needs manual completion
+                if sheet.state in ['post']:
+                    # Also update payment_state to 'paid' to reflect the correct status
+                    sheet.write({'state': 'done', 'payment_state': 'paid'})
+                    sheet.message_post(body=_("Expense sheet manually marked as done and payment status set to paid."))
+                else:
+                    raise UserError(_("Cannot mark as done: Expense sheet must be in 'Posted' or 'Approved' state."))
+        return True
+
+    def action_mark_as_done(self):
+        """Public method that opens confirmation wizard"""
+        return self.action_open_mark_as_done_confirmation()
+
     def action_open_wht_clear_advance_wizard(self):
         """Open WHT Clear Advance Wizard - HANG FIX APPLIED v2"""
         import time

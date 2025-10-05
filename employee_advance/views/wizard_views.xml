@@ -1,348 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Advance Refill Base Wizard Form View -->
-    <record id="view_advance_refill_base_wizard_form" model="ir.ui.view">
-        <field name="name">advance.refill.base.wizard.form</field>
-        <field name="model">advance.refill.base.wizard</field>
+    <!-- Mark as Done Confirmation Wizard View -->
+    <record id="mark_as_done_confirmation_wizard_form" model="ir.ui.view">
+        <field name="name">mark.as.done.confirmation.wizard.form</field>
+        <field name="model">mark.as.done.confirmation.wizard</field>
         <field name="arch" type="xml">
-            <form string="Refill Advance to Base">
-                <header>
-                    <div class="text-center">
-                        <h3>Refill Advance to Base</h3>
-                        <p class="text-muted">Refill the advance box to the target amount</p>
+            <form string="Confirm Mark as Done">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="expense_sheet_id" readonly="1" 
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </h1>
+                        <h2>Mark Expense Sheet as Done Confirmation</h2>
                     </div>
-                </header>
-                
-                <!-- Financial Summary Card -->
-                <div class="row mt16 o_kanban_card">
-                    <div class="col-12">
-                        <div class="card o_kanban_card_body d-flex">
-                            <div class="row">
-                                <div class="col-4 text-center">
-                                    <h4 class="text-muted">Current Balance</h4>
-                                    <field name="current_balance" 
-                                           widget="monetary" 
-                                           options="{'currency_field': 'currency_id'}" 
-                                           class="fw-bold fs-3 text-success"
-                                           readonly="1"/>
-                                </div>
-                                <div class="col-4 text-center">
-                                    <h4 class="text-muted">Target Amount</h4>
-                                    <field name="base_amount_ref" 
-                                           widget="monetary" 
-                                           options="{'currency_field': 'currency_id'}" 
-                                           class="fw-bold fs-3 text-primary"
-                                           readonly="1"/>
-                                </div>
-                                <div class="col-4 text-center">
-                                    <h4 class="text-muted">Refill Amount</h4>
-                                    <field name="topup_amount" 
-                                           widget="monetary" 
-                                           options="{'currency_field': 'currency_id'}" 
-                                           class="fw-bold fs-3 text-warning"
-                                           readonly="1"/>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <notebook>
-                    <page string="Refill Information" name="refill_info">
-                        <group col="2">
-                            <group string="Current Status">
-                                <field name="current_balance" 
-                                       widget="monetary" 
-                                       options="{'currency_field': 'currency_id'}" 
-                                       readonly="1"/>
-                                <label for="current_balance" string="Current balance in the advance box"/>
-                            </group>
-                            <group string="Target Configuration">
-                                <field name="base_amount_ref" 
-                                       widget="monetary" 
-                                       options="{'currency_field': 'currency_id'}" 
-                                       readonly="1"/>
-                                <label for="base_amount_ref" string="Target amount to refill to"/>
-                            </group>
-                        </group>
-                        
-                        <group string="Refill Calculation">
-                            <div class="alert alert-info" role="alert">
-                                <i class="fa fa-info-circle" aria-hidden="true"/> 
-                                <div class="d-flex align-items-center">
-                                    <span class="me-2">Top-up amount =</span>
-                                    <field name="base_amount_ref" 
-                                           widget="monetary" 
-                                           options="{'currency_field': 'currency_id'}" 
-                                           readonly="1" 
-                                           class="me-2"/>
-                                    <span class="me-2">-</span>
-                                    <field name="current_balance" 
-                                           widget="monetary" 
-                                           options="{'currency_field': 'currency_id'}" 
-                                           readonly="1" 
-                                           class="me-2"/>
-                                    <span class="me-2">=</span>
-                                    <field name="topup_amount" 
-                                           widget="monetary" 
-                                           options="{'currency_field': 'currency_id'}" 
-                                           readonly="1" 
-                                           class="fw-bold"/>
-                                </div>
-                            </div>
-                        </group>
-                    </page>
                     
-                    <page string="Confirmation" name="confirmation">
-                        <group string="Refill Summary">
-                            <div class="alert alert-success" role="alert">
-                                <i class="fa fa-check-circle" aria-hidden="true"/> 
-                                Refilling advance box with amount:
-                                <field name="topup_amount" 
-                                       widget="monetary" 
-                                       options="{'currency_field': 'currency_id'}" 
-                                       readonly="1" 
-                                       class="fw-bold"/>
-                            </div>
-                            <div class="text-center">
-                                <p class="lead">Are you sure you want to proceed with this refill?</p>
-                            </div>
-                        </group>
-                    </page>
-                </notebook>
-                
-                <div class="oe_hidden">
-                    <field name="advance_box_id" invisible="1"/>
-                    <field name="currency_id" invisible="1"/>
-                </div>
-                
-                <footer>
-                    <button name="action_confirm" 
-                            type="object" 
-                            string="Confirm Refill" 
-                            class="btn-primary"/>
-                    <button string="Cancel" 
-                            class="btn-secondary" 
-                            special="cancel"/>
-                </footer>
-            </form>
-        </field>
-    </record>
-    
-    <!-- Wizard Action -->
-    <record id="action_advance_refill_base_wizard" model="ir.actions.act_window">
-        <field name="name">Refill Advance to Base</field>
-        <field name="res_model">advance.refill.base.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-    </record>
-
-    <!-- Link to Advance Wizard View -->
-    <record id="view_link_advance_wizard_form" model="ir.ui.view">
-        <field name="name">link.advance.wizard.form</field>
-        <field name="model">link.advance.wizard</field>
-        <field name="arch" type="xml">
-            <form string="Link to Advance">
-                <group>
-                    <field name="move_id" invisible="1"/>
-                    <field name="advance_box_id"/>
-                    <field name="expense_sheet_id"/>
-                </group>
-                <footer>
-                    <button name="action_link" type="object" string="Link" class="btn-primary"/>
-                    <button string="Cancel" class="btn-secondary" special="cancel"/>
-                </footer>
-            </form>
-        </field>
-    </record>
-
-    <record id="action_link_advance_wizard" model="ir.actions.act_window">
-        <field name="name">Link to Advance</field>
-        <field name="res_model">link.advance.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-    </record>
-
-    <!-- Advance Settlement Wizard View -->
-    <record id="view_advance_settlement_wizard_form" model="ir.ui.view">
-        <field name="name">advance.settlement.wizard.form</field>
-        <field name="model">advance.settlement.wizard</field>
-        <field name="arch" type="xml">
-            <form string="Settle Advance Box">
-                <header>
-                    <div class="text-center">
-                        <h3>Advance Settlement</h3>
-                        <p class="text-muted">Settle the advance for employee: <field name="employee_id" class="fw-bold" readonly="1"/></p>
-                    </div>
-                </header>
-                
-                <!-- Financial Summary Card -->
-                <div class="row mt16 o_kanban_card">
-                    <div class="col-12">
-                        <div class="card o_kanban_card_body d-flex">
-                            <div class="row">
-                                <div class="col-4 text-center">
-                                    <h4 class="text-muted">Current Balance</h4>
-                                    <field name="current_balance" 
-                                           widget="monetary" 
-                                           options="{'currency_field': 'currency_id'}" 
-                                           class="fw-bold fs-3"
-                                           readonly="1"/>
-                                    <div class="text-success">
-                                        <i class="fa fa-info-circle"/> Balance Status
-                                    </div>
-                                </div>
-                                <div class="col-4 text-center">
-                                    <h4 class="text-muted">Settlement Amount</h4>
-                                    <field name="target_amount" 
-                                           widget="monetary" 
-                                           options="{'currency_field': 'currency_id'}" 
-                                           class="fw-bold fs-3"
-                                           readonly="1"/>
-                                    <div class="text-muted">
-                                        <field name="amount_mode" class="text-capitalize"/>
-                                    </div>
-                                </div>
-                                <div class="col-4 text-center">
-                                    <h4 class="text-muted">Status</h4>
-                                    <div class="alert alert-info" role="alert">
-                                        <i class="fa fa-info-circle" aria-hidden="true"/> Settlement
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <notebook>
-                    <page string="Settlement Details" name="settlement_details">
-                        <group col="2">
-                            <group>
-                                <field name="settlement_date"/>
-                                <field name="memo"/>
-                            </group>
-                            <group>
-                                <field name="amount_mode" widget="radio"/>
-                            </group>
-                        </group>
-                        
-                        <group string="Amount Settings" invisible="amount_mode != 'partial'">
-                            <group col="2">
-                                <field name="amount_to_settle" required="amount_mode == 'partial'"/>
-                                <div/>
-                            </group>
-                        </group>
-                    </page>
-                    
-                    <page string="Financial Setup" name="financial_setup">
-                        <group col="2">
-                            <group string="Transaction Details">
-                                <field name="scenario" widget="radio"/>
-                                <field name="journal_id" 
-                                       domain="[('company_id', '=', company_id)]" 
-                                       required="scenario in ('pay_employee', 'employee_refund', 'write_off')"/>
-                            </group>
-                            <group string="Write-off Details" invisible="scenario != 'write_off'">
-                                <field name="writeoff_policy" invisible="scenario != 'write_off'"/>
-                                <field name="writeoff_account_id" 
-                                       invisible="scenario != 'write_off'" 
-                                       required="writeoff_policy in ('expense', 'other_income')"/>
-                            </group>
-                        </group>
-                    </page>
-                    
-                    <page string="Options" name="options">
-                        <group col="2">
-                            <group>
-                                <field name="auto_reconcile"/>
-                            </group>
-                            <group>
-                                <field name="create_activity"/>
-                            </group>
-                        </group>
-                        
-                        <div invisible="not create_activity">
-                            <group string="Activity Details">
-                                <field name="activity_user_id"/>
-                                <field name="activity_type_id"/>
-                                <field name="activity_note"/>
-                            </group>
-                        </div>
-                    </page>
-                </notebook>
-                
-                <div class="oe_hidden">
-                    <field name="box_id" invisible="1"/>
-                    <field name="company_id" invisible="1"/>
-                    <field name="currency_id" invisible="1"/>
-                </div>
-                
-                <footer>
-                    <button name="action_settle_advance" 
-                            type="object" 
-                            string="Settle Advance" 
-                            class="btn-primary"
-                            context="{'default_advance_box_id': box_id}"/>
-                    <button string="Cancel" 
-                            class="btn-secondary" 
-                            special="cancel"/>
-                </footer>
-            </form>
-        </field>
-    </record>
-
-    <!-- Preview Wizard Form View -->
-    <record id="view_expense_sheet_bill_preview_wizard" model="ir.ui.view">
-        <field name="name">hr.expense.sheet.bill.preview.wizard.form</field>
-        <field name="model">hr.expense.sheet.bill.preview.wizard</field>
-        <field name="arch" type="xml">
-            <form string="Bill Creation Preview">
-                <group>
                     <group>
-                        <field name="sheet_id"/>
+                        <div class="alert alert-warning" role="alert">
+                            <h4><i class="fa fa-exclamation-triangle"/> Important Confirmation Required</h4>
+                            <p>Before marking this expense sheet as done, please ensure that:</p>
+                            <ul>
+                                <li>All vendor bills have been created and posted</li>
+                                <li>All payments have been processed</li>
+                                <li>All advance clearings have been completed</li>
+                                <li>Any necessary withholding tax certificates have been created</li>
+                            </ul>
+                        </div>
+                        
+                        <group name="confirmation_details" string="Confirmation Details">
+                            <field name="employee_id" readonly="1"/>
+                            <field name="total_amount" readonly="1" widget="monetary" 
+                                   string="Expense Sheet Total"/>
+                            <field name="bills_count" readonly="1" 
+                                   string="Number of Bills Created"/>
+                            <field name="advance_cleared" readonly="1" 
+                                   widget="boolean_toggle"/>
+                        </group>
+                        
+                        <div class="alert alert-info" role="alert">
+                            <p><i class="fa fa-info-circle"/> Once marked as done, this expense sheet will be locked and cannot be modified.</p>
+                        </div>
                     </group>
-                </group>
-                <group string="Bill Grouping Preview">
-                    <field name="preview_line_ids" nolabel="1" readonly="1">
-                        <tree string="Preview Lines">
-                            <field name="sequence" widget="handle"/>
-                            <field name="partner_name"/>
-                            <field name="company_name"/>
-                            <field name="currency_name"/>
-                            <field name="expense_count"/>
-                            <field name="total_amount" sum="Total Amount"/>
-                        </tree>
-                    </field>
-                </group>
-                <group string="Expense Details">
-                    <field name="preview_line_ids" nolabel="1" readonly="1">
-                        <tree string="Expense Details" decoration-muted="expense_count == 0">
-                            <field name="partner_name"/>
-                            <field name="expense_count"/>
-                            <field name="total_amount" sum="Total Amount"/>
-                            <field name="expense_names" string="Expenses"/>
-                        </tree>
-                    </field>
-                </group>
+                    
+                    <notebook>
+                        <page string="Expense Details" name="expense_details">
+                            <field name="expense_line_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="product_id"/>
+                                    <field name="price_unit"/>
+                                    <field name="quantity"/>
+                                    <field name="tax_ids" widget="many2many_tags"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                
                 <footer>
-                    <button name="action_create_bills_from_preview" 
+                    <div class="alert alert-danger" role="alert" style="display: inline-block;">
+                        <strong><i class="fa fa-lock"/> This action cannot be undone</strong>
+                    </div>
+                    <button name="action_confirm_mark_as_done" 
                             type="object" 
-                            string="Create Bills" 
-                            class="btn-primary"
-                            invisible="not preview_line_ids"/>
-                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                            string="Confirm &amp; Mark as Done" 
+                            class="btn-danger"
+                            help="Confirm that all processing is complete and mark this expense sheet as done"/>
+                    <button string="Cancel" 
+                            class="btn-secondary" 
+                            special="cancel"/>
                 </footer>
             </form>
         </field>
     </record>
     
-    <!-- Button to open preview wizard -->
-    <record id="action_expense_sheet_bill_preview_wizard" model="ir.actions.act_window">
-        <field name="name">Preview Bill Creation</field>
-        <field name="res_model">hr.expense.sheet.bill.preview.wizard</field>
+    <!-- Action to open the wizard -->
+    <record id="action_mark_as_done_confirmation_wizard" model="ir.actions.act_window">
+        <field name="name">Confirm Mark as Done</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">mark.as.done.confirmation.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
         <field name="binding_model_id" ref="hr_expense.model_hr_expense_sheet"/>
-        <field name="groups_id" eval="[(4, ref('hr_expense.group_hr_expense_user'))]"/>
     </record>
 </odoo>

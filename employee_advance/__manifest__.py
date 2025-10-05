@@ -37,8 +37,9 @@
         'views/hr_expense_views.xml',
         'views/res_config_settings_views.xml',
         'views/wizard_views.xml',
-        'views/wht_clear_advance_wizard_views.xml',
         'views/account_move_views.xml',
+        'wizards/mark_as_done_confirmation_wizard.xml',  # Add the wizard view
+        'views/wht_clear_advance_wizard_views.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'installable': True,

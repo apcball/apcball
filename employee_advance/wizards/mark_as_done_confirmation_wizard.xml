@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mark as Done Confirmation Wizard View -->
+    <record id="mark_as_done_confirmation_wizard_form" model="ir.ui.view">
+        <field name="name">mark.as.done.confirmation.wizard.form</field>
+        <field name="model">mark.as.done.confirmation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Confirm Mark as Done">
+                <group>
+                    <p class="text-center">
+                        <strong>Please confirm that all bills have been processed completely.</strong>
+                    </p>
+                    <p class="text-center">
+                        Are you sure you want to mark this expense sheet as done?
+                    </p>
+                </group>
+                <footer>
+                    <button name="action_confirm_mark_as_done" 
+                            type="object" 
+                            string="Confirm" 
+                            class="btn-primary"/>
+                    <button string="Cancel" 
+                            class="btn-secondary" 
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Action to open the wizard -->
+    <record id="action_mark_as_done_confirmation_wizard" model="ir.actions.act_window">
+        <field name="name">Confirm Mark as Done</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">mark.as.done.confirmation.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>
