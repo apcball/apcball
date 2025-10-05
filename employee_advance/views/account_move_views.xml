@@ -53,45 +53,6 @@
 
             </xpath>
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="Withholding Tax Certificates" invisible="not wht_cert_ids and not has_wht_line">
-                    <field name="wht_cert_ids" nolabel="1" 
-                           context="{'default_move_id': id, 'default_partner_id': partner_id}">
-                        <tree string="WHT Certificates" decoration-info="state == 'draft'" decoration-success="state == 'done'" decoration-danger="state == 'cancel'">
-                            <field name="number"/>
-                            <field name="date"/>
-                            <field name="partner_id"/>
-                            <field name="income_tax_form"/>
-                            <field name="state"/>
-                        </tree>
-                        <form string="Withholding Tax Certificate">
-                            <group>
-                                <field name="number"/>
-                                <field name="date"/>
-                                <field name="state"/>
-                                <field name="partner_id"/>
-                                <field name="income_tax_form"/>
-                                <field name="tax_payer"/>
-                            </group>
-                            <notebook>
-                                <page string="Lines">
-                                    <field name="wht_line">
-                                        <tree editable="bottom">
-                                            <field name="wht_cert_income_type"/>
-                                            <field name="wht_cert_income_desc"/>
-                                            <field name="base"/>
-                                            <field name="amount"/>
-                                            <field name="wht_percent"/>
-                                        </tree>
-                                    </field>
-                                </page>
-                            </notebook>
-                        </form>
-                    </field>
-                    <field name="has_wht_line" invisible="1"/>
-                    <div class="alert alert-info" role="alert" invisible="wht_cert_ids">
-                        <p>This bill has WHT taxes applied to invoice lines. You can generate WHT certificates for these taxes.</p>
-                    </div>
-                </page>
                 <page string="Advance Info">
                     <group string="Advance Info">
                         <field name="is_expense_advance_bill" readonly="1"/>
