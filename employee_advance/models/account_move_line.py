@@ -18,7 +18,7 @@ class AccountMoveLine(models.Model):
             box_partner = box._get_employee_partner()
             if box_partner and box_partner == partner_id:
                 # Trigger recompute of the balance
-                box._trigger_balance_recompute()
+                box._refresh_balance_simple()
 
     def create(self, vals_list):
         """Override create to update advance box balance when relevant lines are created"""
@@ -38,7 +38,7 @@ class AccountMoveLine(models.Model):
         for line, old_account, old_partner in old_values:
             # Invalidate for old values
             self._invalidate_advance_box_balance(old_account, old_partner)
-            # Invalidate for new/current values
+            # Invalidate for new values
             self._invalidate_advance_box_balance(line.account_id, line.partner_id)
 
         return result

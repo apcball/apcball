@@ -105,6 +105,15 @@
                        domain="[('supplier_rank', '&gt;', 0)]"
                        placeholder="Leave empty to bill to employee"/>
             </xpath>
+         <xpath expr="//field[@name='tax_ids']" position="after">
+          <field name="wht_tax_id" 
+              string="WHT Tax"
+              placeholder="Select WHT tax if applicable"/>
+          <!-- Use analytic_distribution (JSON) widget on Odoo 17 instead of old analytic_account_id / analytic_tag_ids -->
+          <field name="analytic_distribution" 
+              string="Analytic Distribution"
+              widget="analytic_distribution"/>
+         </xpath>
         </field>
     </record>
     

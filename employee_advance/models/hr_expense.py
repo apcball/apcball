@@ -12,6 +12,20 @@ class HrExpense(models.Model):
         help="Vendor for this expense line. If specified, bill will be created for this vendor. If not specified, bill will be created for employee."
     )
 
+    wht_tax_id = fields.Many2one(
+        comodel_name="account.withholding.tax",
+        string="WHT",
+        compute="_compute_wht_tax_id",
+        store=True,
+        readonly=False,
+        tracking=True,
+    )
+
+    @api.depends("product_id")
+    def _compute_wht_tax_id(self):
+        for rec in self:
+            rec.wht_tax_id = rec.product_id.supplier_wht_tax_id or False
+
     def _validate_vendor_requirements(self):
         """Validate vendor requirements based on clear_mode"""
         # No specific validation needed - vendor is optional
@@ -54,20 +68,22 @@ class HrExpenseSheet(models.Model):
                 "Employee %s does not have a private address. Please set the employee's home address."
             ) % employee.name)
         
-        # Group expenses by account and taxes to create proper invoice lines
+        # Group expenses by account, taxes, analytic account, analytic tags, and WHT tax to create proper invoice lines
         account_tax_groups = {}
         for expense in employee_lines:
             account = expense.account_id
             taxes = tuple(expense.tax_ids.ids)
-            key = (account.id, taxes)
+            analytic_distribution = expense.analytic_distribution or {}
+            wht_tax = expense.wht_tax_id.id if hasattr(expense, 'wht_tax_id') and expense.wht_tax_id else False
+            key = (account.id, taxes, tuple(sorted(analytic_distribution.keys())), wht_tax)
             
             if key not in account_tax_groups:
                 account_tax_groups[key] = {
                     'amount': 0,
                     'expenses': self.env['hr.expense'],
                     'tax_ids': expense.tax_ids.ids,
-                    'analytic_account_id': expense.account_analytic_id.id if hasattr(expense, 'account_analytic_id') and expense.account_analytic_id else False,
-                    'analytic_tag_ids': expense.analytic_tag_ids.ids if hasattr(expense, 'analytic_tag_ids') else []
+                    'analytic_distribution': analytic_distribution,
+                    'wht_tax_id': wht_tax
                 }
             
             account_tax_groups[key]['amount'] += expense.total_amount
@@ -86,7 +102,7 @@ class HrExpenseSheet(models.Model):
             'invoice_line_ids': []
         }
         
-        for (account_id, taxes_tuple), group_data in account_tax_groups.items():
+        for (account_id, taxes_tuple, analytic_keys, wht_tax), group_data in account_tax_groups.items():
             line_vals = {
                 'name': ', '.join(group_data['expenses'].mapped('name')),
                 'quantity': 1,
@@ -108,10 +124,10 @@ class HrExpenseSheet(models.Model):
                 line_vals['quantity'] = single_expense.quantity if hasattr(single_expense, 'quantity') else 1
                 line_vals['price_unit'] = single_expense.unit_amount if hasattr(single_expense, 'unit_amount') and single_expense.unit_amount else single_expense.price_unit  # Use appropriate field to correctly handle taxes
                 
-            if group_data.get('analytic_account_id'):
-                line_vals['analytic_account_id'] = group_data['analytic_account_id']
-            if group_data.get('analytic_tag_ids', []):
-                line_vals['analytic_tag_ids'] = [(6, 0, group_data['analytic_tag_ids'])]
+            if group_data['analytic_distribution']:
+                line_vals['analytic_distribution'] = group_data['analytic_distribution']
+            if group_data.get('wht_tax_id'):
+                line_vals['wht_tax_id'] = group_data['wht_tax_id']
             
             bill_vals['invoice_line_ids'].append((0, 0, line_vals))
         
