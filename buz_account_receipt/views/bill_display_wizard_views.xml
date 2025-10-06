@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Bill Display Wizard Form View -->
+    <record id="view_bill_display_wizard_form" model="ir.ui.view">
+        <field name="name">bill.display.wizard.form</field>
+        <field name="model">bill.display.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Available Bills">
+                <group>
+                    <group string="Vendor Information">
+                        <field name="partner_id" readonly="1"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                    <group string="Summary">
+                        <field name="total_bills" readonly="1"/>
+                        <field name="total_amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}" readonly="1"/>
+                        <field name="total_residual" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}" readonly="1"/>
+                    </group>
+                </group>
+                
+                <group string="Available Bills">
+                    <field name="bill_ids" nolabel="1">
+                        <tree string="Bills" editable="bottom" create="false" delete="false">
+                            <field name="selected" widget="boolean_toggle"/>
+                            <field name="bill_number" readonly="1"/>
+                            <field name="bill_date" readonly="1"/>
+                            <field name="bill_type" readonly="1"/>
+                            <field name="amount_total" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}" readonly="1"/>
+                            <field name="amount_residual" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}" readonly="1"/>
+                            <field name="payment_state" widget="badge" 
+                                   decoration-info="payment_state=='not_paid'" 
+                                   decoration-warning="payment_state=='partial'" 
+                                   decoration-success="payment_state=='paid'" 
+                                   readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                            <button name="action_view_bill" type="object" string="View" icon="fa-eye" title="View Bill"/>
+                        </tree>
+                    </field>
+                </group>
+                
+                <footer>
+                    <button name="action_select_bill" string="Select Bill" type="object" class="btn-primary"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Bill Display Wizard Tree View (for reference) -->
+    <record id="view_bill_display_wizard_tree" model="ir.ui.view">
+        <field name="name">bill.display.wizard.tree</field>
+        <field name="model">bill.display.wizard</field>
+        <field name="arch" type="xml">
+            <tree string="Bill Display Wizards">
+                <field name="partner_id"/>
+                <field name="total_bills"/>
+                <field name="total_residual"/>
+            </tree>
+        </field>
+    </record>
+</odoo>

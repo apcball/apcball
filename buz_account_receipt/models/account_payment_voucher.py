@@ -523,57 +523,36 @@ class AccountPaymentVoucherLine(models.Model):
                 line.payment_state = 'not_paid'
 
     def action_register_payment_line(self):
-        """Open the standard payment wizard for the invoice/refund in this line."""
+        """Open bill in popup window for verification."""
         self.ensure_one()
         
-        # Get the bill/refund from this line
-        bill = self.move_id
-        if not bill:
-            raise UserError(_("No bill/refund found for this line."))
-        
-        # Validate the bill
-        if bill.state != 'posted':
-            raise UserError(_("Bill %s is not in 'Posted' state. Only posted bills can be used for payment registration.") % bill.name)
-        
-        if bill.move_type not in ['in_invoice', 'in_refund']:
-            raise UserError(_("Bill %s is not a vendor bill or refund. Only vendor bills and refunds can be used for payment registration.") % bill.name)
-        
-        if bill.payment_state == 'paid':
-            raise UserError(_("Bill %s is already fully paid. Cannot register payment for fully paid bills.") % bill.name)
-        
-        # Prepare context for the payment register wizard
-        ctx = {
-            'active_model': 'account.move',
-            'active_ids': [bill.id],
-            'default_communication': f"Payment Voucher {self.voucher_id.name}",
-            'default_payment_date': self.voucher_id.date,
-            'default_payment_type': 'outbound',  # For vendor payments
-            'default_partner_type': 'supplier',
-            # Pass the voucher line ID so we can link the payment after creation
-            'buz_voucher_line_id': self.id,
-        }
-        
-        # Try to get and set default journal if available
-        default_journal = self.env['account.journal'].search([
-            ('type', 'in', ('bank', 'cash')),
-            ('company_id', '=', self.voucher_id.company_id.id)
-        ], limit=1)
-        
-        if default_journal:
-            ctx['default_journal_id'] = default_journal.id
+        if not self.move_id:
+            raise UserError(_("Please select a bill first."))
             
-        # Prepare the action to open the payment register wizard
-        action = {
-            'name': _('Register Payment'),
-            'res_model': 'account.payment.register',
-            'view_mode': 'form',
-            'view_id': self.env.ref('account.view_account_payment_register_form').id,
-            'target': 'new',
-            'type': 'ir.actions.act_window',
-            'context': ctx,
-        }
+        # Validate the bill
+        if self.move_id.state != 'posted':
+            raise UserError(_("Bill %s is not in 'Posted' state.") % self.move_id.name)
         
-        return action
+        if self.move_id.move_type not in ['in_invoice', 'in_refund']:
+            raise UserError(_("Selected document is not a vendor bill or refund."))
+            
+        # Open the bill in popup window
+        return {
+            'name': _('Bill Details - %s') % self.move_id.name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'view_mode': 'form',
+            'res_id': self.move_id.id,
+            'target': 'new',
+            'context': {
+                'default_move_type': self.move_id.move_type,
+                'create': False,
+                'edit': False,
+            },
+            'flags': {
+                'mode': 'readonly',
+            }
+        }
 
     @api.constrains('wht_rate')
     def _check_wht_rate(self):
