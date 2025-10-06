@@ -126,85 +126,17 @@ class AccountPaymentVoucher(models.Model):
         return action
 
     def action_confirm(self):
-        """Confirm the voucher and create payments for each vendor"""
+        """Confirm the voucher without automatically registering payments - payments must be registered separately"""
         for voucher in self:
             if voucher.state != 'draft':
                 continue
                 
-            # Group lines by partner
-            partner_groups = {}
-            for line in voucher.line_ids:
-                partner_id = line.partner_id.id
-                if partner_id not in partner_groups:
-                    partner_groups[partner_id] = []
-                partner_groups[partner_id].append(line)
-
-            # For each partner, create a single outbound payment
-            for partner_id, lines in partner_groups.items():
-                partner = self.env['res.partner'].browse(partner_id)
-                
-                # Calculate total net amount to pay for this partner
-                total_net_amount = sum(line.amount_to_pay_net for line in lines)
-                
-                if total_net_amount <= 0:
-                    continue  # Skip if nothing to pay
-                
-                # Get the default bank journal from configuration
-                default_bank_journal = self.env['ir.config_parameter'].sudo().get_param('buz.default_bank_journal_id')
-                journal_id = int(default_bank_journal) if default_bank_journal else None
-                
-                if not journal_id:
-                    journal = self.env['account.journal'].search([
-                        ('type', 'in', ('bank', 'cash')), 
-                        ('company_id', '=', voucher.company_id.id)
-                    ], limit=1)
-                    if not journal:
-                        raise UserError(_("No bank or cash journal found. Please configure the default bank journal in settings."))
-                    journal_id = journal.id
-                
-                # Create outbound payment for this partner
-                payment = self.env['account.payment'].create({
-                    'payment_type': 'outbound',
-                    'partner_type': 'supplier',
-                    'partner_id': partner.id,
-                    'amount': total_net_amount,
-                    'date': voucher.date,
-                    'journal_id': journal_id,
-                    'ref': f"PV {voucher.name}",
-                    'company_id': voucher.company_id.id,
-                    'currency_id': voucher.currency_id.id,
-                })
-                
-                # Post the payment
-                payment.action_post()
-                
-                # Get unpaid vendor bills from the lines
-                unpaid_bills = self.env['account.move']
-                for line in lines:
-                    if line.move_id.amount_residual != 0:
-                        unpaid_bills |= line.move_id
-                
-                # Reconcile the payment with the bills
-                if unpaid_bills:
-                    self._reconcile_payment_with_bills(payment, unpaid_bills)
-                
-                # Handle WHT if any lines have WHT
-                wht_lines = [line for line in lines if line.wht_amount > 0]
-                if wht_lines:
-                    self._create_wht_entries(wht_lines, payment, partner)
-                    
-                    # Check if we should auto-generate WHT certificates
-                    auto_generate_wht_cert = self.env['ir.config_parameter'].sudo().get_param(
-                        'buz.auto_generate_wht_cert', default=True
-                    )
-                    if auto_generate_wht_cert:
-                        self._create_wht_certificates(wht_lines, payment, partner)
-                
-                # Add payment to chatter
-                voucher.message_post(body=_("Payment %s created for vendor %s") % (payment.name, partner.name))
-
-            # Set voucher state to confirmed
+            # Just change the state to confirmed without creating payments
+            # Payments will need to be registered separately via each line's action_register_payment_line
             voucher.state = 'confirmed'
+            
+            # Add confirmation message to chatter
+            voucher.message_post(body=_("Voucher confirmed. Payments must be registered separately."))
         return True
 
     def _reconcile_payment_with_bills(self, payment, bills):
@@ -278,7 +210,7 @@ class AccountPaymentVoucher(models.Model):
             
         wht_entry = self.env['account.move'].create({
             'journal_id': wht_journal.id,
-            'date': self.date,
+            'date': payment.date if payment else self.date,
             'ref': f'WHT for PV {self.name}',
             'company_id': self.company_id.id,
         })
@@ -299,7 +231,7 @@ class AccountPaymentVoucher(models.Model):
                 'account_id': expense_account.id,
                 'debit': line.wht_amount,
                 'credit': 0.0,
-                'partner_id': partner.id,
+                'partner_id': partner.id if partner else line.move_id.partner_id.id,
                 'name': f'WHT for PV {self.name}',
             })
             
@@ -309,7 +241,7 @@ class AccountPaymentVoucher(models.Model):
                 'account_id': wht_payable_account.id,
                 'debit': 0.0,
                 'credit': line.wht_amount,
-                'partner_id': partner.id,
+                'partner_id': partner.id if partner else line.move_id.partner_id.id,
                 'name': f'WHT for PV {self.name}',
             })
         
@@ -566,18 +498,28 @@ class AccountPaymentVoucherLine(models.Model):
             if line.wht_base_amount < 0:
                 raise UserError(_("WHT base amount must be positive"))
 
-    @api.depends('payment_ids.state')
+    @api.depends('move_id.payment_state', 'payment_ids.state')
     def _compute_payment_state(self):
         for line in self:
-            if line.payment_ids:
-                # Check if all linked payments are posted/reconciled
-                if all(payment.state == 'posted' for payment in line.payment_ids):
-                    line.payment_state = 'paid'
-                elif any(payment.state == 'draft' for payment in line.payment_ids):
-                    line.payment_state = 'in_payment'
+            if line.move_id:
+                # Derive payment state from the bill itself for accuracy
+                bill_payment_state = line.move_id.payment_state
+                if bill_payment_state:
+                    line.payment_state = bill_payment_state
                 else:
-                    line.payment_state = 'paid'  # Default to paid if all are confirmed/posted
+                    # Fallback to payment-based logic if bill state is not available
+                    if line.payment_ids:
+                        # Check if all linked payments are posted/reconciled
+                        if all(payment.state == 'posted' for payment in line.payment_ids):
+                            line.payment_state = 'paid'
+                        elif any(payment.state == 'draft' for payment in line.payment_ids):
+                            line.payment_state = 'in_payment'
+                        else:
+                            line.payment_state = 'paid'  # Default to paid if all are confirmed/posted
+                    else:
+                        line.payment_state = 'not_paid'
             else:
+                # If no bill is associated, default to not_paid
                 line.payment_state = 'not_paid'
 
     def action_register_payment_line(self):

@@ -446,6 +446,12 @@ class AccountReceipt(models.Model):
         if len(currencies) > 1:
             raise UserError(_("You can only create a receipt voucher for receipts with the same currency."))
 
+        # Check if any of the selected receipts are already used in a voucher
+        existing_voucher_lines = self.env['account.receipt.voucher.line'].search([('receipt_id', 'in', valid_receipts.ids)])
+        if existing_voucher_lines:
+            used_receipt_names = [line.receipt_id.name for line in existing_voucher_lines]
+            raise UserError(_("The following receipts are already used in receipt vouchers and cannot be added again: %s") % ", ".join(used_receipt_names))
+
         # Create a receipt voucher
         voucher = self.env['account.receipt.voucher'].create({
             'line_ids': []
@@ -596,6 +602,20 @@ class AccountReceipt(models.Model):
             action['context']['default_batch_receipt_id'] = self.id
         
         return action
+
+    @api.depends()
+    def _compute_used_in_voucher(self):
+        """Compute whether a receipt has been used in any receipt voucher"""
+        for receipt in self:
+            existing_line = self.env['account.receipt.voucher.line'].search([('receipt_id', '=', receipt.id)], limit=1)
+            receipt.used_in_voucher = bool(existing_line)
+
+    used_in_voucher = fields.Boolean(
+        string="Used in Voucher",
+        compute="_compute_used_in_voucher",
+        store=True,
+        help="Indicates if this receipt has been used in a receipt voucher"
+    )
 
 
 class AccountReceiptLine(models.Model):

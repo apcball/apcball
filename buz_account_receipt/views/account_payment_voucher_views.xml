@@ -41,11 +41,11 @@
                     <button name="action_confirm" type="object" string="Confirm" 
                             class="oe_highlight" 
                             invisible="state != 'draft'"
-                            confirm="Are you sure you want to confirm this voucher? This will create and post all related payments."/>
+                            confirm="Are you sure you want to confirm this voucher? This will only change the document status and will not register payments."/>
                     <button name="action_reset_to_draft" type="object" string="Reset to Draft" 
                             class="oe_highlight" 
                             invisible="state != 'confirmed'"
-                            confirm="Are you sure you want to reset this voucher to draft? This will cancel all related payments and journal entries."/>
+                            confirm="Are you sure you want to reset this voucher to draft?"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
