@@ -4,7 +4,7 @@
         <field name="model">res.config.settings</field>
         <field name="inherit_id" ref="account.res_config_settings_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//div[hasclass('settings')]" position="inside">
+            <xpath expr="//form" position="inside">
                 <div class="app_settings_block" data-string="Receipt Settings" string="Receipt Settings" invisible="not context.get('default_buz_account_receipt_settings')">
                     <h2>Receipt Settings</h2>
                     <div class="row mt16 o_settings_container">

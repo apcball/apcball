@@ -1,7 +1,7 @@
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
-from odoo.addons.base.models.res_config_settings import ResConfigSettings
+from odoo.addons.base.models.res_config import ResConfigSettings
 
 
 class BuzAccountReceiptSettings(ResConfigSettings):
@@ -553,6 +553,93 @@ class AccountReceiptLine(models.Model):
 
 class AccountMove(models.Model):
     _inherit = "account.move"
+
+    def action_create_receipt_from_invoices(self):
+        """
+        Creates a receipt from selected invoices that have the same partner
+        """
+        # Check if we're dealing with selected records from the context
+        active_ids = self.env.context.get('active_ids')
+        active_model = self.env.context.get('active_model')
+        
+        if active_model == 'account.move' and active_ids and len(active_ids) > 1:
+            # Multiple invoices selected from the list view
+            moves = self.browse(active_ids)
+        else:
+            # Single invoice or called directly
+            moves = self
+
+        # Check if all invoices belong to the same partner
+        partners = set(moves.mapped('partner_id'))
+        if len(partners) > 1:
+            raise UserError(_("You can only create a receipt for invoices from the same customer."))
+        
+        # Check if all invoices belong to the same company
+        companies = set(moves.mapped('company_id'))
+        if len(companies) > 1:
+            raise UserError(_("You can only create a receipt for invoices from the same company."))
+        
+        # Filter invoices to include only posted ones with proper types
+        # NOTE: We do NOT filter by payment_state to allow receipts for partially paid or unpaid invoices
+        # This enables batch payment registration for invoices that are not fully paid yet
+        valid_moves = moves.filtered(lambda m: m.state == 'posted' and 
+                                     m.move_type in ['out_invoice', 'out_refund'])
+        
+        # Check if any of the selected invoices are already used in another receipt (any state: draft, posted, or cancelled)
+        existing_receipt_lines = self.env['account.receipt.line'].search([('move_id', 'in', valid_moves.ids)])
+        if existing_receipt_lines:
+            used_invoice_numbers = [line.move_id.name for line in existing_receipt_lines]
+            raise UserError(_("The following invoices are already used in receipts and cannot be added again: %s") % ", ".join(used_invoice_numbers))
+
+        if not valid_moves:
+            # Filter to see what types of invoices were selected
+            invalid_state_moves = moves.filtered(lambda m: m.state != 'posted')
+            invalid_type_moves = moves.filtered(lambda m: m.move_type not in ['out_invoice', 'out_refund'])
+            
+            error_message = _("No valid invoices found for receipt creation. ")
+            
+            if invalid_state_moves:
+                error_message += _("%d invoice(s) are not in 'Posted' state. ") % len(invalid_state_moves)
+            if invalid_type_moves:
+                error_message += _("%d invoice(s) are not of type 'Customer Invoice' or 'Customer Credit Note'. ") % len(invalid_type_moves)
+                
+            error_message += _("Please select only posted invoices of type 'Customer Invoice' or 'Customer Credit Note'.")
+            
+            raise UserError(error_message)
+        
+        # Create receipt, set delivery_partner_id from first invoice's shipping partner if available
+        first_move = valid_moves[0]
+        delivery_partner = first_move.partner_shipping_id or first_move.partner_id
+        receipt = self.env["account.receipt"].create({
+            "partner_id": first_move.partner_id.id,
+            "date": fields.Date.context_today(self),
+            "line_ids": [],
+            "delivery_partner_id": delivery_partner.id if delivery_partner else False,
+        })
+
+        lines_vals = []
+        for mv in valid_moves:
+            # sign handling for refunds: show signed totals consistently
+            total = mv.amount_total_signed if mv.move_type == "out_refund" else mv.amount_total
+            residual = mv.amount_residual_signed if mv.move_type == "out_refund" else mv.amount_residual
+            lines_vals.append((0, 0, {
+                "move_id": mv.id,
+                "amount_total": total,
+                "amount_residual": residual,
+            }))
+        receipt.write({"line_ids": lines_vals})
+
+        # Check if auto-post is enabled via configuration
+        auto_post_enabled = self.env['ir.config_parameter'].sudo().get_param('buz_account_receipt.auto_post_receipts', default=True)
+        if auto_post_enabled:
+            receipt.action_post()
+        
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "account.receipt",
+            "view_mode": "form",
+            "res_id": receipt.id,
+        }
 
     def write(self, vals):
         """Override write to update related receipt lines when invoice payment status changes."""
