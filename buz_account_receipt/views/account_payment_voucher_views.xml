@@ -24,6 +24,7 @@
                 <field name="name"/>
                 <field name="date"/>
                 <field name="amount_total_net"/>
+                <field name="payment_state" widget="badge" decoration-info="payment_state=='not_paid'" decoration-warning="payment_state=='partial'" decoration-success="payment_state=='paid'" decoration-danger="payment_state=='overpaid'"/>
                 <field name="state"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </tree>
@@ -69,6 +70,16 @@
                             <field name="currency_id" invisible="1"/>
                         </group>
                     </group>
+                    <!-- Payment Status and Amount Information -->
+                    <group col="4" colspan="4" name="payment_status_info" string="Payment Information" invisible="state == 'draft'">
+                        <group name="payment_status_group" string="Payment Status" colspan="2">
+                            <field name="payment_state" readonly="1" string="Payment Status" widget="badge" decoration-info="payment_state=='not_paid'" decoration-warning="payment_state=='partial'" decoration-success="payment_state=='paid'" decoration-danger="payment_state=='overpaid'"/>
+                        </group>
+                        <group name="payment_amounts" string="Amounts" colspan="2" col="2">
+                            <field name="amount_paid" readonly="1" string="Paid Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+                            <field name="amount_residual" readonly="1" string="Residual Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+                        </group>
+                    </group>
                     <notebook>
                         <page string="Payment Lines">
                             <field name="line_ids">
@@ -100,9 +111,10 @@
     </record>
 
     <!-- Payment Voucher Menu -->
-    <menuitem id="menu_payment_voucher" 
+    <menuitem id="menu_buz_account_receipt_02"
               name="Payment Vouchers" 
               parent="account.menu_finance_payables" 
+              action="action_account_payment_voucher_tree"
               sequence="10"/>
 
 </odoo>

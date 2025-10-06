@@ -108,9 +108,10 @@
     </record>
 
     <!-- Receipt Voucher Menu -->
-    <menuitem id="menu_receipt_voucher" 
+    <menuitem id="menu_buz_account_receipt_01" 
               name="Receipt Vouchers" 
               parent="account.menu_finance_receivables" 
+              action="action_account_receipt_voucher_tree"
               sequence="20"/>
 
 </odoo>
