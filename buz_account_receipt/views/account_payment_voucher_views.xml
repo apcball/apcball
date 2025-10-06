@@ -37,14 +37,21 @@
         <field name="arch" type="xml">
             <form string="Payment Voucher">
                 <header>
-                    <button name="action_confirm" type="object" string="Register Payments" 
+                    <button name="action_confirm" type="object" string="Confirm" 
                             class="oe_highlight" 
                             invisible="state != 'draft'"
-                            confirm="Are you sure you want to register all payments for this voucher?"/>
+                            confirm="Are you sure you want to confirm this voucher? This will create and post all related payments."/>
+                    <button name="action_reset_to_draft" type="object" string="Reset to Draft" 
+                            class="oe_highlight" 
+                            invisible="state != 'confirmed'"
+                            confirm="Are you sure you want to reset this voucher to draft? This will cancel all related payments and journal entries."/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_open_related_payments" type="object" class="oe_stat_button" icon="fa-money">
+                            <field name="payment_count" string="Payments" widget="statinfo"/>
+                        </button>
                         <button name="action_view_payments" type="object" class="oe_stat_button" icon="fa-pencil-square-o">
                             <field name="amount_total_net" string="Net Amount" widget="statinfo"/>
                         </button>
@@ -73,6 +80,8 @@
                                     <field name="wht_tax_id"/>
                                     <field name="wht_amount" readonly="1"/>
                                     <field name="amount_to_pay_net" readonly="1"/>
+                                    <field name="payment_state"/>
+                                    <button name="action_register_payment_line" type="object" string="Register Payment" icon="fa-credit-card"/>
                                 </tree>
                             </field>
                         </page>

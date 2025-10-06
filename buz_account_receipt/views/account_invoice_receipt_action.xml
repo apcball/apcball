@@ -50,12 +50,25 @@ if active_model == 'account.move' and active_ids:
             }) for move in partner_moves_list]
         })
         
+        # Force the receipt to recalculate its amounts and make sure it's saved
+        receipt._compute_amount_total()
+        receipt._compute_amount_invoice_total()
+        
+        # Use the computed total from the receipt object, or calculate manually to avoid timing issues
+        receipt_total = sum(
+            (move.amount_residual_signed if move.move_type == 'out_refund' else move.amount_residual)
+            for move in partner_moves_list
+        )
+        
         # Add the receipt to the voucher
+        voucher_line_vals = {
+            'receipt_id': receipt.id,
+            'amount_to_receive': receipt_total
+        }
+        
+        # Write the voucher line
         voucher.write({
-            'line_ids': [(0, 0, {
-                'receipt_id': receipt.id,
-                'amount_to_receive': receipt.amount_total
-            })]
+            'line_ids': [(0, 0, voucher_line_vals)]
         })
     
     # Open the created receipt voucher

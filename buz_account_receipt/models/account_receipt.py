@@ -52,6 +52,31 @@ class AccountPayment(models.Model):
                         'amount_total': total,
                         'amount_residual': residual,
                     })
+        
+        # Check if payment was created from a receipt voucher line or payment voucher line
+        voucher_line_id = self.env.context.get('buz_voucher_line_id')
+        if voucher_line_id:
+            # First try account.receipt.voucher.line (AR)
+            try:
+                voucher_line = self.env['account.receipt.voucher.line'].browse(voucher_line_id)
+                if voucher_line.exists():
+                    # Link the payment to the voucher line
+                    voucher_line.write({
+                        'payment_ids': [(4, self.id, 0)]  # Add the payment to the many2many field
+                    })
+            except Exception:
+                # If there's an error with the first model, try the second one
+                try:
+                    # Try account.payment.voucher.line (AP)
+                    voucher_line = self.env['account.payment.voucher.line'].browse(voucher_line_id)
+                    if voucher_line.exists():
+                        # Link the payment to the voucher line
+                        voucher_line.write({
+                            'payment_ids': [(4, self.id, 0)]  # Add the payment to the many2many field
+                        })
+                except Exception:
+                    # If there's an error, just continue (don't break the payment process)
+                    pass
             
         return res
 
@@ -254,7 +279,7 @@ class AccountReceipt(models.Model):
                           "All invoice lines must belong to the same company as the receipt.") % 
                          (line.move_id.name, line.move_id.company_id.name, receipt.company_id.name))
 
-    @api.depends("line_ids.amount_paid")
+    @api.depends("line_ids.amount_to_collect")
     def _compute_amount_total(self):
         for rec in self:
             rec.amount_total = sum(rec.line_ids.mapped("amount_to_collect"))
@@ -532,296 +557,6 @@ class AccountReceiptLine(models.Model):
                 residual = line.move_id.amount_residual_signed if line.move_id.move_type == 'out_refund' else line.move_id.amount_residual
                 total = line.move_id.amount_total_signed if line.move_id.move_type == 'out_refund' else line.move_id.amount_total
                 # The amount_paid shown for the line is what's being collected in this receipt
-                line.amount_paid = line.amount_to_collect
-            else:
-                line.amount_paid = (line.amount_total or 0.0) - (line.amount_residual or 0.0)
-
-
-class AccountReceipt(models.Model):
-    _name = "account.receipt"
-    _description = "Grouped Customer Receipt"
-    _order = "date desc, id desc"
-
-    name = fields.Char(string="Receipt Number", readonly=True, copy=False, default="/")
-    date = fields.Date(string="Receipt Date", default=fields.Date.context_today, required=True)
-    partner_id = fields.Many2one("res.partner", string="Customer", required=True, domain=[("customer_rank", ">", 0)])
-    company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company)
-    currency_id = fields.Many2one("res.currency", required=True, default=lambda self: self.env.company.currency_id)
-    note = fields.Text(string="Notes")
-    delivery_partner_id = fields.Many2one('res.partner', string='Delivery Address', help='Delivery address from first invoice used to create this receipt')
-
-    line_ids = fields.One2many("account.receipt.line", "receipt_id", string="Lines")
-    amount_total = fields.Monetary(string="Total Paid", currency_field="currency_id", compute="_compute_amount_total", store=True)
-    amount_total_words = fields.Char(
-        string="Amount in Words",
-        compute="_compute_amount_total_words",
-        store=True,
-        readonly=True,
-    )
-    # Sum of invoice amounts included in this receipt (regardless of paid)
-    amount_invoice_total = fields.Monetary(string="Invoice Total", currency_field="currency_id", compute="_compute_amount_invoice_total", store=True)
-    amount_invoice_total_words = fields.Char(
-        string="Invoice Amount in Words",
-        compute="_compute_amount_invoice_total_words",
-        store=True,
-        readonly=True,
-    )
-
-    # Moves already used in receipts (to help filter selection)
-    used_move_ids = fields.Many2many('account.move', string='Used Invoices', compute='_compute_used_moves')
-
-    # Link to related payments
-    payment_ids = fields.One2many('account.payment', 'buz_receipt_id', string='Payments')
-    
-    state = fields.Selection([
-        ("draft", "Draft"),
-        ("posted", "Posted"),
-        ("cancel", "Cancelled"),
-    ], default="draft", tracking=True)
-
-    @api.constrains('line_ids', 'company_id')
-    def _check_receipt_lines_company(self):
-        """Ensure all receipt lines belong to the same company as the receipt"""
-        for receipt in self:
-            for line in receipt.line_ids:
-                if line.move_id and line.move_id.company_id != receipt.company_id:
-                    raise UserError(
-                        _("The invoice %s belongs to company %s, but the receipt is for company %s. "
-                          "All invoice lines must belong to the same company as the receipt.") % 
-                         (line.move_id.name, line.move_id.company_id.name, receipt.company_id.name))
-
-    @api.depends("line_ids.amount_paid")
-    def _compute_amount_total(self):
-        for rec in self:
-            rec.amount_total = sum(rec.line_ids.mapped("amount_to_collect"))
-
-    def action_post(self):
-        for rec in self:
-            if not rec.line_ids:
-                raise UserError(_("No lines to post."))
-            if rec.name == "/":
-                rec.name = self.env["ir.sequence"].next_by_code("buz.account.receipt") or "/"
-            rec.state = "posted"
-        return True
-
-    @api.depends('amount_total', 'currency_id')
-    def _compute_amount_total_words(self):
-        # Convert amount_total to words (Thai for THB, fallback to English)
-        try:
-            from num2words import num2words
-        except Exception:
-            num2words = None
-        for rec in self:
-            if rec.amount_total is not None and rec.currency_id:
-                amount = "%.2f" % rec.amount_total
-                int_part, dec_part = amount.split('.')
-                baht = int(int_part)
-                satang = int(dec_part)
-                if num2words and rec.currency_id.name == 'THB':
-                    baht_text = num2words(baht, lang='th').replace('เอ็ดบาท', 'หนึ่งบาท')
-                    if satang > 0:
-                        satang_text = num2words(satang, lang='th').replace('เอ็ด', 'หนึ่ง')
-                        rec.amount_total_words = f"{baht_text}บาท {satang_text}สตางค์"
-                    else:
-                        rec.amount_total_words = f"{baht_text}บาทถ้วน"
-                elif num2words:
-                    rec.amount_total_words = num2words(rec.amount_total, lang='en').title()
-                else:
-                    # num2words not installed; fallback to empty string
-                    rec.amount_total_words = ''
-            else:
-                rec.amount_total_words = ''
-
-    @api.depends('line_ids.amount_total', 'currency_id')
-    def _compute_amount_invoice_total(self):
-        for rec in self:
-            rec.amount_invoice_total = sum(rec.line_ids.mapped('amount_total'))
-
-    @api.depends('amount_invoice_total', 'currency_id')
-    def _compute_amount_invoice_total_words(self):
-        try:
-            from num2words import num2words
-        except Exception:
-            num2words = None
-        for rec in self:
-            if rec.amount_invoice_total is not None and rec.currency_id:
-                amount = "%.2f" % rec.amount_invoice_total
-                int_part, dec_part = amount.split('.')
-                baht = int(int_part)
-                satang = int(dec_part)
-                if num2words and rec.currency_id.name == 'THB':
-                    baht_text = num2words(baht, lang='th').replace('เอ็ดบาท', 'หนึ่งบาท')
-                    if satang > 0:
-                        satang_text = num2words(satang, lang='th').replace('เอ็ด', 'หนึ่ง')
-                        rec.amount_invoice_total_words = f"{baht_text}บาท {satang_text}สตางค์"
-                    else:
-                        rec.amount_invoice_total_words = f"{baht_text}บาทถ้วน"
-                elif num2words:
-                    rec.amount_invoice_total_words = num2words(rec.amount_invoice_total, lang='en').title()
-                else:
-                    rec.amount_invoice_total_words = ''
-            else:
-                rec.amount_invoice_total_words = ''
-
-    def action_reset_to_draft(self):
-        self.write({"state": "draft"})
-        return True
-
-    def action_print_receipt(self):
-        self.ensure_one()
-        return self.env.ref("buz_account_receipt.action_report_buz_account_receipt").report_action(self)
-
-    @api.model
-    def create(self, vals):
-        rec = super(AccountReceipt, self).create(vals)
-        # If delivery_partner_id not provided, try to fill from first invoice in lines
-        if not rec.delivery_partner_id and rec.line_ids:
-            first_move = rec.line_ids[0].move_id
-            if first_move:
-                rec.delivery_partner_id = first_move.partner_shipping_id or first_move.partner_id
-        
-        # Check if auto-post is enabled via configuration
-        auto_post_enabled = self.env['ir.config_parameter'].sudo().get_param('buz_account_receipt.auto_post_receipts', default=True)
-        if auto_post_enabled and rec.line_ids:  # Only auto-post if there are lines
-            rec.action_post()
-        
-        return rec
-
-    def write(self, vals):
-        res = super(AccountReceipt, self).write(vals)
-        # After write, ensure receipts with empty delivery_partner_id get filled from first line
-        for rec in self:
-            if not rec.delivery_partner_id and rec.line_ids:
-                first_move = rec.line_ids[0].move_id
-                if first_move:
-                    rec.delivery_partner_id = first_move.partner_shipping_id or first_move.partner_id
-        return res
-
-    def _compute_used_moves(self):
-        """Compute account.move records that are already referenced by any receipt line.
-        This lets the view filter out invoices that were already selected.
-        """
-        # collect all move_ids used in any receipt line
-        all_line_moves = self.env['account.receipt.line'].search([]).mapped('move_id')
-        for rec in self:
-            rec.used_move_ids = all_line_moves
-
-    def action_view_payments(self):
-        """
-        Smart button action to show related payments for this receipt
-        """
-        self.ensure_one()
-        
-        # Get all payments linked to this receipt
-        payments = self.payment_ids
-        
-        action = {
-            'name': _('Payments'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.payment',
-            'view_mode': 'tree,form',
-            'domain': [('id', 'in', payments.ids)],
-            'context': {'create': False, 'edit': True},
-        }
-        
-        # If there's only one payment, open it directly in form view
-        if len(payments) == 1:
-            action.update({
-                'view_mode': 'form',
-                'res_id': payments.id,
-            })
-        
-        return action
-
-    def action_register_batch_payment(self):
-        """
-        Open the standard account.payment.register wizard to register batch payment for all invoices in this receipt.
-        """
-        self.ensure_one()
-        
-        # Get all invoices linked to this receipt that have residual amounts (not fully paid)
-        invoices = self.line_ids.filtered(lambda line: line.amount_residual != 0).mapped('move_id')
-        
-        if not invoices:
-            raise UserError(_("There are no invoices with outstanding amounts linked to this receipt to register payment for."))
-        
-        # Validate invoices
-        for invoice in invoices:
-            # Check if invoice is posted
-            if invoice.state != 'posted':
-                raise UserError(_("Invoice %s is not in 'Posted' state. All invoices must be posted to register payment.") % invoice.name)
-            
-            # Check if invoice belongs to the same partner as the receipt
-            if invoice.partner_id != self.partner_id:
-                raise UserError(_("Invoice %s belongs to a different partner than the receipt. All invoices must belong to the same partner as the receipt.") % invoice.name)
-            
-            # Check if invoice is a customer invoice/refund
-            if invoice.move_type not in ['out_invoice', 'out_refund']:
-                raise UserError(_("Invoice %s is not a customer invoice or refund. Only customer invoices and refunds can be used for payment registration.") % invoice.name)
-            
-            # Check if the invoice is not fully paid
-            if invoice.payment_state == 'paid':
-                raise UserError(_("Invoice %s is already fully paid. Cannot register payment for fully paid invoices.") % invoice.name)
-
-        # Prepare context for the payment register wizard
-        # Check if account_payment_batch_process module is installed
-        has_batch_process = 'account.payment.batch' in self.env.registry
-        
-        # Prepare the action to open the payment register wizard
-        action = {
-            'name': _('Register Payment'),
-            'res_model': 'account.payment.register',
-            'view_mode': 'form',
-            'view_id': self.env.ref('account.view_account_payment_register_form').id,
-            'target': 'new',
-            'type': 'ir.actions.act_window',
-            'context': {
-                'active_model': 'account.move',
-                'active_ids': invoices.ids,
-                'default_partner_id': self.partner_id.id,
-                'default_payment_type': 'inbound',
-                'default_journal_ids': self.env['account.journal'].search([('type', 'in', ('bank', 'cash'))]).ids,
-                'default_is_batch_payment': True,  # Flag to indicate this is a batch payment from receipt
-                'default_is_multiline_batch': True,  # Enable multiline batch processing if applicable
-                # Pass receipt ID to link payments back to receipt. Use default_ so created payments inherit it.
-                'buz_receipt_id': self.id,
-                'default_buz_receipt_id': self.id,
-            },
-        }
-        
-        # If account_payment_batch_process module is available, set appropriate context
-        if has_batch_process:
-            action['context']['from_batch_receipt'] = True
-            action['context']['batch_receipt_id'] = self.id
-            action['context']['default_batch_receipt_id'] = self.id
-        
-        return action
-
-    @api.constrains('move_id')
-    def _check_move_not_in_other_receipt(self):
-        """Prevent selecting an invoice that's already assigned to another receipt (any state)."""
-        for line in self:
-            if line.move_id:
-                # search for other lines with same move in different receipt
-                domain = [
-                    ('move_id', '=', line.move_id.id),
-                    ('id', '!=', line.id),
-                ]
-                existing = self.search(domain)
-                if existing:
-                    # If any other line found, raise error with invoice number
-                    raise UserError(_("The invoice %s is already added to another receipt and cannot be used twice.") % line.move_id.name)
-
-    @api.depends("amount_total", "amount_residual", "amount_to_collect", "move_id.amount_residual", "move_id.amount_residual_signed")
-    def _compute_paid(self):
-        for line in self:
-            # Use the move's current residual amount if available, else use stored amount_residual
-            if line.move_id:
-                residual = line.move_id.amount_residual_signed if line.move_id.move_type == 'out_refund' else line.move_id.amount_residual
-                total = line.move_id.amount_total_signed if line.move_id.move_type == 'out_refund' else line.move_id.amount_total
-                # Calculate the cumulative amount paid as total - current residual
-                cumulative_paid = total - residual
-                # The amount paid in this specific receipt is what's being collected in this receipt
                 line.amount_paid = line.amount_to_collect
             else:
                 line.amount_paid = (line.amount_total or 0.0) - (line.amount_residual or 0.0)

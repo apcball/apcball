@@ -27,6 +27,12 @@ class AccountPaymentVoucher(models.Model):
     amount_total_gross = fields.Monetary(string="Total Gross", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_wht = fields.Monetary(string="Total WHT", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_net = fields.Monetary(string="Total Net", currency_field="currency_id", compute="_compute_amount_totals", store=True)
+    
+    # Payment count field
+    payment_count = fields.Integer(
+        compute="_compute_payment_count",
+        string="Payments"
+    )
 
     @api.model
     def create(self, vals):
@@ -47,6 +53,37 @@ class AccountPaymentVoucher(models.Model):
             voucher.amount_total_gross = sum(line.amount_to_pay_gross for line in voucher.line_ids)
             voucher.amount_total_wht = sum(line.wht_amount for line in voucher.line_ids)
             voucher.amount_total_net = sum(line.amount_to_pay_net for line in voucher.line_ids)
+
+    @api.depends('line_ids.payment_ids')
+    def _compute_payment_count(self):
+        for rec in self:
+            rec.payment_count = len(rec.mapped('line_ids.payment_ids'))
+
+    def action_open_related_payments(self):
+        """
+        Smart button action to show related payments for this voucher
+        """
+        self.ensure_one()
+        
+        # Get all payments linked to lines under this voucher
+        payments = self.mapped('line_ids.payment_ids')
+        
+        action = {
+            'name': _('Payments'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.payment',
+            'view_mode': 'tree,form',
+            'domain': [('id', 'in', payments.ids)],
+        }
+        
+        # If there's only one payment, open it directly in form view
+        if len(payments) == 1:
+            action.update({
+                'view_mode': 'form',
+                'res_id': payments.id,
+            })
+        
+        return action
 
     def action_confirm(self):
         """Confirm the voucher and create payments for each vendor"""
@@ -309,6 +346,74 @@ class AccountPaymentVoucher(models.Model):
         
         return action
 
+    def action_reset_to_draft(self):
+        """Reset the voucher to draft and reverse any linked payments"""
+        for voucher in self:
+            if voucher.state != "confirmed":
+                continue
+                
+            # Find payments related to this voucher by looking at the reference
+            # Payments are created with ref = f"PV {voucher.name}"
+            payments = self.env["account.payment"].search([("ref", "like", f"PV {voucher.name}")])
+            
+            # Also find payments linked to voucher lines via payment_ids
+            line_payments = self.env["account.payment"]
+            for line in voucher.line_ids:
+                line_payments |= line.payment_ids
+            
+            # Combine both sets of payments
+            all_payments = payments | line_payments
+            
+            # Process each payment to unreconcile and cancel it
+            for payment in all_payments:
+                if payment.state == "posted":
+                    # Try to unreconcile first
+                    try:
+                        # Find all move lines that are reconciled with this payment
+                        reconciled_lines = self.env["account.move.line"]
+                        for line in payment.move_id.line_ids:
+                            if line.reconciled:
+                                reconciled_lines |= line
+                                
+                        # Unreconcile if any lines are reconciled
+                        if reconciled_lines:
+                            reconciled_lines.remove_move_reconcile()
+                    except Exception:
+                        # If unreconciliation fails, just continue
+                        pass
+                    
+                    # Cancel the payment
+                    try:
+                        # First unreconcile again to ensure we can cancel
+                        for line in payment.move_id.line_ids:
+                            if line.reconciled:
+                                line.remove_move_reconcile()
+                        # Now cancel the move
+                        payment.move_id.button_draft()
+                        payment.move_id.button_cancel()
+                        # Cancel the payment
+                        payment.action_cancel()
+                    except Exception as e:
+                        # Add error message to chatter
+                        voucher.message_post(body=_("Could not cancel payment %s: %s") % (payment.name, str(e)))
+            
+            # Find all related journal entries and cancel them
+            related_moves = self.env["account.move"].search([("ref", "like", f"PV {voucher.name}")])
+            for move in related_moves:
+                if move.state == "posted":
+                    try:
+                        move.button_draft()
+                        move.button_cancel()
+                    except Exception as e:
+                        voucher.message_post(body=_("Could not cancel journal entry %s: %s") % (move.name, str(e)))
+                        
+            # Reset voucher state to draft
+            voucher.state = "draft"
+            
+            # Post a message about the reset
+            voucher.message_post(body=_("Voucher reset to draft. All related payments and journal entries have been cancelled."))
+        
+        return True
 
 class AccountPaymentVoucherLine(models.Model):
     _name = "account.payment.voucher.line"
@@ -356,6 +461,22 @@ class AccountPaymentVoucherLine(models.Model):
     )
     
     currency_id = fields.Many2one(related="voucher_id.currency_id", store=True, readonly=True)
+    
+    # Link to related payments
+    payment_ids = fields.Many2many(
+        'account.payment',
+        'account_payment_voucher_line_payment_rel',
+        'voucher_line_id', 'payment_id',
+        string='Related Payments',
+        readonly=True,
+    )
+    
+    # Payment status for the line
+    payment_state = fields.Selection([
+        ('not_paid', 'Not Paid'),
+        ('in_payment', 'In Payment'),
+        ('paid', 'Paid')
+    ], compute="_compute_payment_state", store=True)
 
     @api.onchange('move_id')
     def _onchange_move_id(self):
@@ -404,6 +525,73 @@ class AccountPaymentVoucherLine(models.Model):
                 raise UserError(_("Amount to pay must be positive"))
             if line.wht_base_amount < 0:
                 raise UserError(_("WHT base amount must be positive"))
+
+    @api.depends('payment_ids.state')
+    def _compute_payment_state(self):
+        for line in self:
+            if line.payment_ids:
+                # Check if all linked payments are posted/reconciled
+                if all(payment.state == 'posted' for payment in line.payment_ids):
+                    line.payment_state = 'paid'
+                elif any(payment.state == 'draft' for payment in line.payment_ids):
+                    line.payment_state = 'in_payment'
+                else:
+                    line.payment_state = 'paid'  # Default to paid if all are confirmed/posted
+            else:
+                line.payment_state = 'not_paid'
+
+    def action_register_payment_line(self):
+        """Open the standard payment wizard for the invoice/refund in this line."""
+        self.ensure_one()
+        
+        # Get the bill/refund from this line
+        bill = self.move_id
+        if not bill:
+            raise UserError(_("No bill/refund found for this line."))
+        
+        # Validate the bill
+        if bill.state != 'posted':
+            raise UserError(_("Bill %s is not in 'Posted' state. Only posted bills can be used for payment registration.") % bill.name)
+        
+        if bill.move_type not in ['in_invoice', 'in_refund']:
+            raise UserError(_("Bill %s is not a vendor bill or refund. Only vendor bills and refunds can be used for payment registration.") % bill.name)
+        
+        if bill.payment_state == 'paid':
+            raise UserError(_("Bill %s is already fully paid. Cannot register payment for fully paid bills.") % bill.name)
+        
+        # Prepare context for the payment register wizard
+        ctx = {
+            'active_model': 'account.move',
+            'active_ids': [bill.id],
+            'default_communication': f"Payment Voucher {self.voucher_id.name}",
+            'default_payment_date': self.voucher_id.date,
+            'default_payment_type': 'outbound',  # For vendor payments
+            'default_partner_type': 'supplier',
+            # Pass the voucher line ID so we can link the payment after creation
+            'buz_voucher_line_id': self.id,
+        }
+        
+        # Try to get and set default journal if available
+        default_journal = self.env['account.journal'].search([
+            ('type', 'in', ('bank', 'cash')),
+            ('company_id', '=', self.voucher_id.company_id.id)
+        ], limit=1)
+        
+        if default_journal:
+            ctx['default_journal_id'] = default_journal.id
+            
+        # Prepare the action to open the payment register wizard
+        action = {
+            'name': _('Register Payment'),
+            'res_model': 'account.payment.register',
+            'view_mode': 'form',
+            'view_id': self.env.ref('account.view_account_payment_register_form').id,
+            'target': 'new',
+            'type': 'ir.actions.act_window',
+            'context': ctx,
+        }
+        
+        return action
 
     @api.constrains('wht_rate')
     def _check_wht_rate(self):
