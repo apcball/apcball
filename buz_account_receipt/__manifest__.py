@@ -10,13 +10,19 @@
     "depends": ["account", "account_payment"],
     "data": [
         "data/sequence.xml",
+        "security/ir.model.access.csv",
         "views/account_receipt_views.xml",
+        "views/account_receipt_voucher_views.xml",
+        "views/account_payment_voucher_views.xml",
         "views/account_invoice_receipt_action.xml",
         "views/res_partner_receipt_action.xml",
         "views/res_config_settings_views.xml",
         "reports/payment_receipt_report.xml",
         "reports/payment_receipt_template.xml",
-        "security/ir.model.access.csv"
+        "reports/receipt_voucher_report.xml",
+        "reports/receipt_voucher_template.xml",
+        "reports/payment_voucher_report.xml",
+        "reports/payment_voucher_template.xml"
     ],
     "installable": True,
     "application": False,

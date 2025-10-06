@@ -1,29 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Action for creating receipt from selected invoices -->
-    <record id="action_create_receipt_from_invoices" model="ir.actions.server">
-        <field name="name">Create Receipt</field>
+
+    <!-- Server Action for Creating Receipt Voucher from Invoices -->
+    <record id="action_create_receipt_voucher_from_invoices" model="ir.actions.server">
+        <field name="name">Create Receipt Voucher</field>
         <field name="model_id" ref="account.model_account_move"/>
         <field name="binding_model_id" ref="account.model_account_move"/>
         <field name="state">code</field>
-        <field name="code">action = records.action_create_receipt_from_invoices()</field>
-        <field name="binding_view_types">list,form</field>
-    </record>
+        <field name="code">
+# Create a receipt voucher from selected invoices
+active_ids = env.context.get('active_ids')
+active_model = env.context.get('active_model')
 
-    <!-- Insert a button into the invoice form to create a receipt from the current invoice(s) -->
-    <record id="view_move_form_add_create_receipt_button" model="ir.ui.view">
-        <field name="name">account.move.form.inherit.create.receipt</field>
-        <field name="model">account.move</field>
-        <field name="inherit_id" ref="account.view_move_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//header" position="inside">
-                <!-- Show only for customer invoices / credit notes and when posted -->
-                <!-- Use external id reference for type='action' buttons -->
-        <button name="%(buz_account_receipt.action_create_receipt_from_invoices)d"
-            type="action"
-            string="Create Receipt"
-            class="oe_highlight"
-            groups="account.group_account_invoice"/>
-            </xpath>
+if active_model == 'account.move' and active_ids:
+    moves = env[active_model].browse(active_ids)
+    
+    # Filter to only valid invoices (posted, customer invoices or refunds)
+    valid_moves = moves.filtered(
+        lambda m: m.state == 'posted' and m.move_type in ['out_invoice', 'out_refund']
+    )
+    
+    if not valid_moves:
+        raise UserError("No valid invoices selected. Please select posted customer invoices or refunds.")
+    
+    # Create a receipt voucher
+    voucher = env['account.receipt.voucher'].create({
+        'line_ids': []
+    })
+    
+    # Add receipts to the voucher for each selected invoice
+    # Group by partner to create receipts for each partner
+    partner_moves = {}
+    for move in valid_moves:
+        partner_id = move.partner_id.id
+        if partner_id not in partner_moves:
+            partner_moves[partner_id] = []
+        partner_moves[partner_id].append(move)
+    
+    # Create receipts for each partner and add to the voucher
+    for partner_id, partner_moves_list in partner_moves.items():
+        # Create receipt for this partner
+        receipt = env['account.receipt'].create({
+            'partner_id': partner_id,
+            'line_ids': [(0, 0, {
+                'move_id': move.id,
+                'amount_total': move.amount_total_signed if move.move_type == 'out_refund' else move.amount_total,
+                'amount_residual': move.amount_residual_signed if move.move_type == 'out_refund' else move.amount_residual,
+                'amount_to_collect': move.amount_residual_signed if move.move_type == 'out_refund' else move.amount_residual
+            }) for move in partner_moves_list]
+        })
+        
+        # Add the receipt to the voucher
+        voucher.write({
+            'line_ids': [(0, 0, {
+                'receipt_id': receipt.id,
+                'amount_to_receive': receipt.amount_total
+            })]
+        })
+    
+    # Open the created receipt voucher
+    action = {
+        'type': 'ir.actions.act_window',
+        'res_model': 'account.receipt.voucher',
+        'view_mode': 'form',
+        'res_id': voucher.id,
+        'target': 'current'
+    }
         </field>
     </record>
+
+    <!-- Server Action for Creating Payment Voucher from Bills -->
+    <record id="action_create_payment_voucher_from_bills" model="ir.actions.server">
+        <field name="name">Create Payment Voucher</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="state">code</field>
+        <field name="code">
+# Create a payment voucher from selected vendor bills
+active_ids = env.context.get('active_ids')
+active_model = env.context.get('active_model')
+
+if active_model == 'account.move' and active_ids:
+    moves = env[active_model].browse(active_ids)
+    
+    # Filter to only valid bills (posted, vendor invoices or refunds)
+    valid_moves = moves.filtered(
+        lambda m: m.state == 'posted' and m.move_type in ['in_invoice', 'in_refund']
+    )
+    
+    if not valid_moves:
+        raise UserError("No valid bills selected. Please select posted vendor invoices or refunds.")
+    
+    # Create a payment voucher
+    voucher = env['account.payment.voucher'].create({
+        'line_ids': []
+    })
+    
+    # Add each selected bill as a line in the voucher
+    for move in valid_moves:
+        voucher.write({
+            'line_ids': [(0, 0, {
+                'partner_id': move.partner_id.id,
+                'move_id': move.id,
+                'amount_to_pay_gross': abs(move.amount_residual_signed),  # Use absolute value for refunds
+                'wht_base_amount': abs(move.amount_residual_signed),  # Set WHT base to gross amount by default
+            })]
+        })
+    
+    # Open the created payment voucher
+    action = {
+        'type': 'ir.actions.act_window',
+        'res_model': 'account.payment.voucher',
+        'view_mode': 'form',
+        'res_id': voucher.id,
+        'target': 'current'
+    }
+        </field>
+    </record>
+
 </odoo>

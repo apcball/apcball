@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<!-- Payment Voucher Report Template -->
+<template id="report_account_payment_voucher">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="o">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <div class="oe_structure"/>
+                    <div class="row">
+                        <div class="col-6">
+                            <h3>Payment Voucher</h3>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-right">
+                                <strong>Voucher No:</strong> <span t-field="o.name"/>
+                                <br/>
+                                <strong>Date:</strong> <span t-field="o.date"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt32">
+                        <div class="col-6">
+                            <address t-field="o.partner_id"
+                                     t-options='{"widget": "contact", "fields": ["address", "name", "phone", "fax"], "no_marker": true}'/>
+                        </div>
+                        <div class="col-6">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Gross Total:</strong></td>
+                                    <td class="text-right">
+                                        <span t-field="o.amount_total_gross" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>WHT Total:</strong></td>
+                                    <td class="text-right">
+                                        <span t-field="o.amount_total_wht" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Net Total:</strong></td>
+                                    <td class="text-right">
+                                        <span t-field="o.amount_total_net" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="row mt32">
+                        <div class="col-12">
+                            <table class="table table-sm o_main_table">
+                                <thead>
+                                    <tr>
+                                        <th>Vendor</th>
+                                        <th>Bill</th>
+                                        <th>Date</th>
+                                        <th>Gross</th>
+                                        <th>WHT %</th>
+                                        <th>WHT Amt</th>
+                                        <th>Net Pay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="o.line_ids" t-as="line">
+                                        <td>
+                                            <span t-field="line.partner_id.name"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="line.move_id.name"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="line.move_id.invoice_date"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="line.amount_to_pay_gross" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                        <td>
+                                            <span t-esc="line.wht_rate * 100"/>%
+                                        </td>
+                                        <td>
+                                            <span t-field="line.wht_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                        <td>
+                                            <span t-field="line.amount_to_pay_net" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="row mt32">
+                        <div class="col-12">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Total Gross</strong></td>
+                                    <td class="text-right">
+                                        <span t-field="o.amount_total_gross" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total WHT</strong></td>
+                                    <td class="text-right">
+                                        <span t-field="o.amount_total_wht" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Net</strong></td>
+                                    <td class="text-right">
+                                        <span t-field="o.amount_total_net" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="row mt32">
+                        <div class="col-6">
+                            <p>
+                                <strong>Note:</strong> <span t-field="o.note"/>
+                            </p>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <p><strong>Payment Method:</strong> Transfer / Check</p>
+                                <p>_______________________</p>
+                                <p>Authorized Signature</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="oe_structure"/>
+                </div>
+            </t>
+        </t>
+    </t>
+</template>
+</odoo>

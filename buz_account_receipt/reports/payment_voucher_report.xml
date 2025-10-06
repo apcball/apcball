@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Payment Voucher Report Action -->
+    <record id="action_report_account_payment_voucher" model="ir.actions.report">
+        <field name="name">Payment Voucher</field>
+        <field name="model">account.payment.voucher</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_account_receipt.report_account_payment_voucher</field>
+        <field name="report_file">buz_account_receipt.report_account_payment_voucher</field>
+        <field name="print_report_name">'Payment Voucher - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_account_payment_voucher"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>
