@@ -13,6 +13,7 @@
         "views/account_receipt_views.xml",
         "views/account_invoice_receipt_action.xml",
         "views/res_partner_receipt_action.xml",
+        "views/res_config_settings_views.xml",
         "reports/payment_receipt_report.xml",
         "reports/payment_receipt_template.xml",
         "security/ir.model.access.csv"

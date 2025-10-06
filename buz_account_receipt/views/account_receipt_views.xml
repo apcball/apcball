@@ -78,6 +78,7 @@
                   <field name="invoice_date" readonly="1" string="Invoice Date"/>
                   <field name="amount_total" string="Amount Total" widget="monetary"/>
                   <field name="amount_residual" string="Residual" widget="monetary"/>
+                  <field name="amount_to_collect" string="Amount to Collect" widget="monetary"/>
                   <field name="amount_paid" readonly="1" string="Paid" widget="monetary"/>
                 </tree>
               </field>

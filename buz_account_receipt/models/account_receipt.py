@@ -1,6 +1,18 @@
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
+from odoo.addons.base.models.res_config_settings import ResConfigSettings
+
+
+class BuzAccountReceiptSettings(ResConfigSettings):
+    _inherit = 'res.config.settings'
+
+    buz_receipt_autopost = fields.Boolean(
+        string="Auto-Post Receipts",
+        default=True,
+        config_parameter='buz_account_receipt.auto_post_receipts',
+        help="If checked, receipts will be automatically posted upon creation"
+    )
 
 
 class AccountPayment(models.Model):
@@ -52,11 +64,42 @@ class ResPartner(models.Model):
         Creates a receipt from this partner's invoices 
         """
         self.ensure_one()
-        # Create a receipt for this partner with no initial lines
+        # Get all posted invoices for this partner
+        invoices = self.env['account.move'].search([
+            ('partner_id', '=', self.id),
+            ('move_type', 'in', ['out_invoice', 'out_refund']),
+            ('state', '=', 'posted'),
+            ('company_id', '=', self.env.company.id),  # Ensure invoices are from the same company as the current session
+        ])
+        
+        # Create a receipt for this partner
         receipt = self.env["account.receipt"].create({
             "partner_id": self.id,
             "date": fields.Date.context_today(self),
+            "company_id": self.env.company.id,
         })
+        
+        # Add invoices to the receipt as lines
+        lines_vals = []
+        for invoice in invoices:
+            if invoice.move_type == 'out_refund':
+                total = invoice.amount_total_signed
+                residual = invoice.amount_residual_signed
+            else:
+                total = invoice.amount_total
+                residual = invoice.amount_residual
+            lines_vals.append((0, 0, {
+                "move_id": invoice.id,
+                "amount_total": total,
+                "amount_residual": residual,
+                "amount_to_collect": residual,  # Default to residual amount
+            }))
+        receipt.write({"line_ids": lines_vals})
+        
+        # Check if auto-post is enabled via configuration
+        auto_post_enabled = self.env['ir.config_parameter'].sudo().get_param('buz_account_receipt.auto_post_receipts', default=True)
+        if auto_post_enabled:
+            receipt.action_post()
         
         return {
             "type": "ir.actions.act_window",
@@ -90,7 +133,14 @@ class AccountMove(models.Model):
         if len(partners) > 1:
             raise UserError(_("You can only create a receipt for invoices from the same customer."))
         
-        # Filter invoices to include only posted ones (removing payment_state restriction to allow receipts before payment)
+        # Check if all invoices belong to the same company
+        companies = set(moves.mapped('company_id'))
+        if len(companies) > 1:
+            raise UserError(_("You can only create a receipt for invoices from the same company."))
+        
+        # Filter invoices to include only posted ones with proper types
+        # NOTE: We do NOT filter by payment_state to allow receipts for partially paid or unpaid invoices
+        # This enables batch payment registration for invoices that are not fully paid yet
         valid_moves = moves.filtered(lambda m: m.state == 'posted' and 
                                      m.move_type in ['out_invoice', 'out_refund'])
         
@@ -138,7 +188,11 @@ class AccountMove(models.Model):
             }))
         receipt.write({"line_ids": lines_vals})
 
-        receipt.action_post()
+        # Check if auto-post is enabled via configuration
+        auto_post_enabled = self.env['ir.config_parameter'].sudo().get_param('buz_account_receipt.auto_post_receipts', default=True)
+        if auto_post_enabled:
+            receipt.action_post()
+        
         return {
             "type": "ir.actions.act_window",
             "res_model": "account.receipt",
@@ -189,10 +243,21 @@ class AccountReceipt(models.Model):
         ("cancel", "Cancelled"),
     ], default="draft", tracking=True)
 
+    @api.constrains('line_ids', 'company_id')
+    def _check_receipt_lines_company(self):
+        """Ensure all receipt lines belong to the same company as the receipt"""
+        for receipt in self:
+            for line in receipt.line_ids:
+                if line.move_id and line.move_id.company_id != receipt.company_id:
+                    raise UserError(
+                        _("The invoice %s belongs to company %s, but the receipt is for company %s. "
+                          "All invoice lines must belong to the same company as the receipt.") % 
+                         (line.move_id.name, line.move_id.company_id.name, receipt.company_id.name))
+
     @api.depends("line_ids.amount_paid")
     def _compute_amount_total(self):
         for rec in self:
-            rec.amount_total = sum(rec.line_ids.mapped("amount_paid"))
+            rec.amount_total = sum(rec.line_ids.mapped("amount_to_collect"))
 
     def action_post(self):
         for rec in self:
@@ -278,6 +343,12 @@ class AccountReceipt(models.Model):
             first_move = rec.line_ids[0].move_id
             if first_move:
                 rec.delivery_partner_id = first_move.partner_shipping_id or first_move.partner_id
+        
+        # Check if auto-post is enabled via configuration
+        auto_post_enabled = self.env['ir.config_parameter'].sudo().get_param('buz_account_receipt.auto_post_receipts', default=True)
+        if auto_post_enabled and rec.line_ids:  # Only auto-post if there are lines
+            rec.action_post()
+        
         return rec
 
     def write(self, vals):
@@ -332,11 +403,11 @@ class AccountReceipt(models.Model):
         """
         self.ensure_one()
         
-        # Get all invoices linked to this receipt
-        invoices = self.line_ids.mapped('move_id')
+        # Get all invoices linked to this receipt that have residual amounts (not fully paid)
+        invoices = self.line_ids.filtered(lambda line: line.amount_residual != 0).mapped('move_id')
         
         if not invoices:
-            raise UserError(_("There are no invoices linked to this receipt to register payment for."))
+            raise UserError(_("There are no invoices with outstanding amounts linked to this receipt to register payment for."))
         
         # Validate invoices
         for invoice in invoices:
@@ -409,6 +480,12 @@ class AccountReceiptLine(models.Model):
                         _("The invoice %s belongs to partner %s, but the receipt is for partner %s. "
                           "Invoices must belong to the same partner as the receipt.") % 
                          (line.move_id.name, line.move_id.partner_id.name, line.receipt_id.partner_id.name))
+                # Additional validation: ensure invoice and receipt are from the same company
+                if line.move_id.company_id != line.receipt_id.company_id:
+                    raise UserError(
+                        _("The invoice %s belongs to company %s, but the receipt is for company %s. "
+                          "Invoices and receipts must belong to the same company.") % 
+                         (line.move_id.name, line.move_id.company_id.name, line.receipt_id.company_id.name))
 
     move_name = fields.Char(string="Invoice Number", related="move_id.name", store=True)
     invoice_date = fields.Date(string="Invoice Date", related="move_id.invoice_date", store=True)
@@ -417,6 +494,12 @@ class AccountReceiptLine(models.Model):
     amount_total = fields.Monetary(string="Amount Total", currency_field="currency_id")
     amount_residual = fields.Monetary(string="Residual", currency_field="currency_id")
     amount_paid = fields.Monetary(string="Amount Paid", currency_field="currency_id", compute="_compute_paid", store=True)
+    amount_to_collect = fields.Monetary(
+        string="Amount to Collect", 
+        currency_field="currency_id",
+        help="Amount expected to be received in this receipt (default: residual amount)",
+        default=lambda self: 0.0
+    )
 
     @api.onchange('move_id')
     def _onchange_move_id_set_amounts(self):
@@ -430,9 +513,13 @@ class AccountReceiptLine(models.Model):
                 else:
                     line.amount_total = line.move_id.amount_total
                     line.amount_residual = line.move_id.amount_residual
+                
+                # Set amount_to_collect to the residual amount by default
+                line.amount_to_collect = line.amount_residual
             else:
                 line.amount_total = 0.0
                 line.amount_residual = 0.0
+                line.amount_to_collect = 0.0
 
     @api.constrains('move_id')
     def _check_move_not_in_other_receipt(self):
@@ -449,14 +536,17 @@ class AccountReceiptLine(models.Model):
                     # If any other line found, raise error with invoice number
                     raise UserError(_("The invoice %s is already added to another receipt and cannot be used twice.") % line.move_id.name)
 
-    @api.depends("amount_total", "amount_residual", "move_id.amount_residual", "move_id.amount_residual_signed")
+    @api.depends("amount_total", "amount_residual", "amount_to_collect", "move_id.amount_residual", "move_id.amount_residual_signed")
     def _compute_paid(self):
         for line in self:
             # Use the move's current residual amount if available, else use stored amount_residual
             if line.move_id:
                 residual = line.move_id.amount_residual_signed if line.move_id.move_type == 'out_refund' else line.move_id.amount_residual
                 total = line.move_id.amount_total_signed if line.move_id.move_type == 'out_refund' else line.move_id.amount_total
-                line.amount_paid = total - residual
+                # Calculate the cumulative amount paid as total - current residual
+                cumulative_paid = total - residual
+                # The amount paid in this specific receipt is what's being collected in this receipt
+                line.amount_paid = line.amount_to_collect
             else:
                 line.amount_paid = (line.amount_total or 0.0) - (line.amount_residual or 0.0)
 
