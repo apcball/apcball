@@ -77,6 +77,25 @@ class AccountPayment(models.Model):
                 except Exception:
                     # If there's an error, just continue (don't break the payment process)
                     pass
+
+        # Also check if payment should be linked to a receipt directly
+        receipt_id = self.env.context.get('buz_receipt_id')
+        if receipt_id:
+            try:
+                receipt = self.env['account.receipt'].browse(receipt_id)
+                if receipt.exists():
+                    # Link the payment to the receipt
+                    self.write({
+                        'buz_receipt_id': receipt.id
+                    })
+                    # Update receipt's related invoices' amount_residuals to trigger recompute
+                    receipt.line_ids._compute_paid()
+                    # Trigger recompute of receipt's total amount
+                    receipt._compute_amount_total()
+                    receipt._compute_amount_invoice_total()
+            except Exception:
+                # If there's an error, just continue (don't break the payment process)
+                pass
             
         return res
 

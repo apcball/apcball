@@ -101,6 +101,16 @@ class AccountReceiptVoucher(models.Model):
                     'currency_id': voucher.currency_id.id,
                 })
                 
+                # Link this payment to all the receipts that have lines in this voucher group
+                for line in lines:
+                    if line.receipt_id:
+                        payment.write({'buz_receipt_id': line.receipt_id.id})
+                        # Update receipt's related invoices' amount_residuals to trigger recompute
+                        line.receipt_id.line_ids._compute_paid()
+                        # Trigger recompute of receipt's total amount
+                        line.receipt_id._compute_amount_total()
+                        line.receipt_id._compute_amount_invoice_total()
+                
                 # Post the payment
                 payment.action_post()
                 
@@ -383,6 +393,8 @@ class AccountReceiptVoucherLine(models.Model):
             'default_payment_type': 'inbound',
             # Pass the voucher line ID so we can link the payment after creation
             'buz_voucher_line_id': self.id,
+            # Pass the receipt ID as well, so payment can be linked to receipt too
+            'buz_receipt_id': receipt.id,
         }
         
         # Try to get and set default journal if available
