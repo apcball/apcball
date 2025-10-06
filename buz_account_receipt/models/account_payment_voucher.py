@@ -28,6 +28,18 @@ class AccountPaymentVoucher(models.Model):
     amount_total_wht = fields.Monetary(string="Total WHT", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_net = fields.Monetary(string="Total Net", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     
+    # Payment status based on amount paid
+    payment_state = fields.Selection([
+        ('not_paid', 'Not Paid'),
+        ('partial', 'Partially Paid'),
+        ('paid', 'Paid'),
+        ('overpaid', 'Over Paid'),
+    ], string='Payment Status', compute='_compute_payment_state', store=True, copy=False)
+    
+    # Amount fields
+    amount_paid = fields.Monetary(string='Paid Amount', compute='_compute_amount_paid', store=True)
+    amount_residual = fields.Monetary(string='Residual Amount', compute='_compute_amount_residual', store=True)
+    
     # Payment count field
     payment_count = fields.Integer(
         compute="_compute_payment_count",
@@ -53,6 +65,34 @@ class AccountPaymentVoucher(models.Model):
             voucher.amount_total_gross = sum(line.amount_to_pay_gross for line in voucher.line_ids)
             voucher.amount_total_wht = sum(line.wht_amount for line in voucher.line_ids)
             voucher.amount_total_net = sum(line.amount_to_pay_net for line in voucher.line_ids)
+
+    @api.depends('amount_total_net')
+    def _compute_payment_state(self):
+        for voucher in self:
+            if voucher.state == 'draft':
+                voucher.payment_state = 'not_paid'
+            elif voucher.amount_paid == 0:
+                voucher.payment_state = 'not_paid'
+            elif voucher.amount_paid < voucher.amount_total_net:
+                voucher.payment_state = 'partial'
+            elif voucher.amount_paid == voucher.amount_total_net:
+                voucher.payment_state = 'paid'
+            else:
+                voucher.payment_state = 'overpaid'
+
+    @api.depends('line_ids.payment_ids.state', 'line_ids.payment_ids.amount')
+    def _compute_amount_paid(self):
+        for voucher in self:
+            total_paid = 0
+            for line in voucher.line_ids:
+                for payment in line.payment_ids:
+                    if payment.state == 'posted':
+                        total_paid += payment.amount
+            voucher.amount_paid = total_paid
+
+    def _compute_amount_residual(self):
+        for voucher in self:
+            voucher.amount_residual = voucher.amount_total_net - voucher.amount_paid
 
     @api.depends('line_ids.payment_ids')
     def _compute_payment_count(self):

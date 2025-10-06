@@ -286,6 +286,18 @@ class AccountReceipt(models.Model):
         ("posted", "Posted"),
         ("cancel", "Cancelled"),
     ], default="draft", tracking=True)
+    
+    # Payment status based on amount paid
+    payment_state = fields.Selection([
+        ('not_paid', 'Not Paid'),
+        ('partial', 'Partially Paid'),
+        ('paid', 'Paid'),
+        ('overpaid', 'Over Paid'),
+    ], string='Payment Status', compute='_compute_payment_state', store=True, copy=False)
+    
+    # Amount fields
+    amount_paid = fields.Monetary(string='Paid Amount', compute='_compute_amount_paid', store=True)
+    amount_residual = fields.Monetary(string='Residual Amount', compute='_compute_amount_residual', store=True)
 
     @api.constrains('line_ids', 'company_id')
     def _check_receipt_lines_company(self):
@@ -302,6 +314,29 @@ class AccountReceipt(models.Model):
     def _compute_amount_total(self):
         for rec in self:
             rec.amount_total = sum(rec.line_ids.mapped("amount_to_collect"))
+
+    @api.depends('amount_total')
+    def _compute_payment_state(self):
+        for receipt in self:
+            if receipt.state == 'draft':
+                receipt.payment_state = 'not_paid'
+            elif receipt.amount_paid == 0:
+                receipt.payment_state = 'not_paid'
+            elif receipt.amount_paid < receipt.amount_total:
+                receipt.payment_state = 'partial'
+            elif receipt.amount_paid == receipt.amount_total:
+                receipt.payment_state = 'paid'
+            else:
+                receipt.payment_state = 'overpaid'
+
+    @api.depends('line_ids.amount_paid')
+    def _compute_amount_paid(self):
+        for receipt in self:
+            receipt.amount_paid = sum(receipt.line_ids.mapped('amount_paid'))
+
+    def _compute_amount_residual(self):
+        for receipt in self:
+            receipt.amount_residual = receipt.amount_total - receipt.amount_paid
 
     def action_post(self):
         for rec in self:

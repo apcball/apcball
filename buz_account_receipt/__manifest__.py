@@ -12,6 +12,7 @@
         "data/sequence.xml",
         "security/ir.model.access.csv",
         "views/account_move_views.xml",
+    "views/account_menu_payables.xml",
         "views/account_receipt_views.xml",
         "views/account_receipt_voucher_views.xml",
         "views/account_payment_voucher_views.xml",

@@ -52,6 +52,12 @@
               <field name="amount_invoice_total" readonly="1" nolabel="1" invisible="state == 'draft'"
                      widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
             </group>
+            
+            <group name="payment_info" string="Payment Information" colspan="2" invisible="state == 'draft'">
+              <field name="payment_state" readonly="1" string="Payment Status" widget="badge" decoration-info="payment_state=='not_paid'" decoration-warning="payment_state=='partial'" decoration-success="payment_state=='paid'" decoration-danger="payment_state=='overpaid'"/>
+              <field name="amount_paid" readonly="1" string="Paid Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+              <field name="amount_residual" readonly="1" string="Residual Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+            </group>
           </group>
           
           <div class="oe_button_box" name="button_box" style="margin: 5px 0;">
