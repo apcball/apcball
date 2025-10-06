@@ -521,6 +521,21 @@ class AccountReceiptLine(models.Model):
                 line.amount_residual = 0.0
                 line.amount_to_collect = 0.0
 
+    @api.depends("amount_total", "amount_residual", "amount_to_collect", "move_id.amount_residual", "move_id.amount_residual_signed")
+    def _compute_paid(self):
+        """Compute the paid amount for each receipt line. This uses the current invoice residual
+        to derive the cumulative paid amount; for this receipt we expose the amount_to_collect
+        as the paid amount for display and totals calculations."""
+        for line in self:
+            if line.move_id:
+                # For refunds, use signed residuals/totals
+                residual = line.move_id.amount_residual_signed if line.move_id.move_type == 'out_refund' else line.move_id.amount_residual
+                total = line.move_id.amount_total_signed if line.move_id.move_type == 'out_refund' else line.move_id.amount_total
+                # The amount_paid shown for the line is what's being collected in this receipt
+                line.amount_paid = line.amount_to_collect
+            else:
+                line.amount_paid = (line.amount_total or 0.0) - (line.amount_residual or 0.0)
+
 
 class AccountReceipt(models.Model):
     _name = "account.receipt"
