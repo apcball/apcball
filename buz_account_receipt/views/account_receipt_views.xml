@@ -97,6 +97,18 @@
     </field>
   </record>
 
+  <!-- Server Action for Creating Receipt Voucher from Receipts -->
+  <record id="action_create_receipt_voucher_from_receipts" model="ir.actions.server">
+    <field name="name">Create Receipt Voucher</field>
+    <field name="model_id" ref="model_account_receipt"/>
+    <field name="binding_model_id" ref="model_account_receipt"/>
+    <field name="state">code</field>
+    <field name="code">
+records = env['account.receipt'].browse(env.context.get('active_ids', []))
+action = records.action_create_receipt_voucher_from_receipts()
+    </field>
+  </record>
+
   <record id="action_buz_account_receipt" model="ir.actions.act_window">
     <field name="name">Receipts</field>
     <field name="res_model">account.receipt</field>

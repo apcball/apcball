@@ -415,6 +415,63 @@ class AccountReceipt(models.Model):
         return self.env.ref("buz_account_receipt.action_report_buz_account_receipt").report_action(self)
 
     @api.model
+    def action_create_receipt_voucher_from_receipts(self):
+        """
+        Creates a receipt voucher from selected receipts
+        """
+        # Check if we're dealing with selected records from the context
+        active_ids = self.env.context.get('active_ids')
+        active_model = self.env.context.get('active_model')
+        
+        if active_model == 'account.receipt' and active_ids and len(active_ids) > 0:
+            # Multiple receipts selected from the list view
+            receipts = self.browse(active_ids)
+        else:
+            # Single receipt or called directly
+            receipts = self
+
+        # Filter to only valid receipts (posted receipts)
+        valid_receipts = receipts.filtered(lambda r: r.state == 'posted')
+        
+        if not valid_receipts:
+            raise UserError(_("No valid receipts selected. Please select posted receipts."))
+
+        # Check if all receipts belong to the same company
+        companies = set(valid_receipts.mapped('company_id'))
+        if len(companies) > 1:
+            raise UserError(_("You can only create a receipt voucher for receipts from the same company."))
+
+        # Check if all receipts have the same currency
+        currencies = set(valid_receipts.mapped('currency_id'))
+        if len(currencies) > 1:
+            raise UserError(_("You can only create a receipt voucher for receipts with the same currency."))
+
+        # Create a receipt voucher
+        voucher = self.env['account.receipt.voucher'].create({
+            'line_ids': []
+        })
+        
+        # Add each selected receipt as a line in the voucher
+        for receipt in valid_receipts:
+            voucher_line_vals = {
+                'receipt_id': receipt.id,
+                'amount_to_receive': receipt.amount_total
+            }
+            
+            voucher.write({
+                'line_ids': [(0, 0, voucher_line_vals)]
+            })
+
+        # Open the created receipt voucher
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.receipt.voucher',
+            'view_mode': 'form',
+            'res_id': voucher.id,
+            'target': 'current'
+        }
+
+    @api.model
     def create(self, vals):
         rec = super(AccountReceipt, self).create(vals)
         # If delivery_partner_id not provided, try to fill from first invoice in lines
