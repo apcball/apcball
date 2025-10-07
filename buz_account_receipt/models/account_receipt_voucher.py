@@ -111,20 +111,72 @@ class AccountReceiptVoucher(models.Model):
             # For each partner, create a single inbound payment
             for partner_id, lines in partner_groups.items():
                 partner = self.env['res.partner'].browse(partner_id)
+                commercial_partner = partner.commercial_partner_id  # Use commercial partner to handle multi-branch
+                
+                # Convert lines list to recordset
+                lines_recordset = self.env['account.receipt.voucher.line'].browse([line.id for line in lines])
                 
                 # Collect all invoices from receipts associated with this partner
                 moves = self.env['account.move']
-                for line in lines:
+                receipts_for_partner = self.env['account.receipt']
+                for line in lines_recordset:
                     moves |= line.receipt_id.line_ids.move_id
+                    receipts_for_partner |= line.receipt_id
                 
                 # Filter to only invoices that still have unpaid amounts
-                unpaid_moves = moves.filtered(lambda m: m.amount_residual != 0)
+                # Use commercial_partner_id and amount_residual_signed to properly handle multi-branch and signed amounts
+                unpaid_moves = moves.filtered(
+                    lambda m: m.state == 'posted' and 
+                    m.commercial_partner_id == commercial_partner and
+                    m.amount_residual_signed != 0  # Use signed residual amount
+                )
                 
-                if not unpaid_moves:
-                    raise UserError(_("No unpaid invoices found for partner %s in this voucher") % partner.name)
+                # Check if payments already exist from receipts (outstanding payments)
+                existing_payments = self.env['account.payment'].search([
+                    ('partner_id', '=', partner.id),
+                    ('state', '=', 'posted'),
+                    ('payment_type', '=', 'inbound'),
+                    '|',
+                    ('receipt_ids', 'in', receipts_for_partner.ids),
+                    ('id', 'in', lines_recordset.mapped('payment_ids').ids)
+                ])
+                
+                # If there are existing payments and no unpaid invoices, just link them to the voucher lines
+                if existing_payments and not unpaid_moves:
+                    for line in lines_recordset:
+                        # Link existing payments to voucher line
+                        line.write({'payment_ids': [(6, 0, existing_payments.ids)]})
+                    
+                    # Try to reconcile existing payments with ALL invoices in receipts (even if already paid)
+                    all_invoices = moves.filtered(
+                        lambda m: m.state == 'posted' and 
+                        m.commercial_partner_id == commercial_partner and
+                        m.move_type in ('out_invoice', 'out_refund')
+                    )
+                    
+                    if all_invoices:
+                        for payment in existing_payments:
+                            try:
+                                self._reconcile_payment_with_invoices(payment, all_invoices)
+                                voucher.message_post(
+                                    body=_("Payment %s reconciled with invoices for partner %s") % (payment.name, partner.name)
+                                )
+                            except Exception as e:
+                                _logger.warning("Failed to reconcile payment %s: %s" % (payment.name, str(e)))
+                    
+                    # Add message to chatter
+                    payment_names = ', '.join(existing_payments.mapped('name'))
+                    voucher.message_post(
+                        body=_("Existing payments linked for partner %s: %s") % (partner.name, payment_names)
+                    )
+                    continue  # Skip to next partner
+                
+                # If no unpaid invoices and no existing payments, raise error
+                if not unpaid_moves and not existing_payments:
+                    raise UserError(_("No unpaid invoices or existing payments found for partner %s in this voucher") % partner.name)
                 
                 # Calculate total amount to receive for this partner
-                total_amount = sum(line.amount_to_receive for line in lines)
+                total_amount = sum(line.amount_to_receive for line in lines_recordset)
                 
                 # Create inbound payment for this partner
                 payment = self.env['account.payment'].create({
@@ -143,17 +195,31 @@ class AccountReceiptVoucher(models.Model):
                 })
                 
                 # Link this payment to all the receipts that have lines in this voucher group
-                for line in lines:
+                receipts_to_link = self.env['account.receipt']
+                for line in lines_recordset:
                     if line.receipt_id:
-                        payment.write({'buz_receipt_id': line.receipt_id.id})
+                        receipts_to_link |= line.receipt_id
                         # Update receipt's related invoices' amount_residuals to trigger recompute
                         line.receipt_id.line_ids._compute_paid()
                         # Trigger recompute of receipt's total amount
                         line.receipt_id._compute_amount_total()
                         line.receipt_id._compute_amount_invoice_total()
                 
+                # Link payment to receipts using M2M
+                if receipts_to_link:
+                    for receipt in receipts_to_link:
+                        receipt.write({
+                            'payment_ids': [(4, payment.id)]
+                        })
+                
                 # Post the payment
                 payment.action_post()
+                
+                # Link payment to voucher lines
+                for line in lines_recordset:
+                    line.write({
+                        'payment_ids': [(4, payment.id)]
+                    })
                 
                 # Reconcile the payment with the invoices
                 self._reconcile_payment_with_invoices(payment, unpaid_moves)
@@ -167,38 +233,70 @@ class AccountReceiptVoucher(models.Model):
 
     def _reconcile_payment_with_invoices(self, payment, invoices):
         """Reconcile the payment with the provided invoices"""
-        # This is a simplified reconciliation approach
-        # In a real implementation, you would need to handle partial payments properly
+        import logging
+        _logger = logging.getLogger(__name__)
         
-        # Get the payment's receivable move line
-        payment_move_line = payment.move_id.line_ids.filtered(
-            lambda line: line.account_id.account_type == 'asset_receivable'
-        )
-        
-        if not payment_move_line:
-            _logger.warning("No receivable line found for payment %s" % payment.name)
+        if not payment or not invoices:
+            _logger.warning("Payment or invoices missing for reconciliation")
             return
         
-        # Get the invoice move lines that are receivable 
-        invoice_move_lines = self.env['account.move.line']
-        for invoice in invoices:
-            invoice_move_lines |= invoice.line_ids.filtered(
-                lambda line: line.account_id.account_type == 'asset_receivable'
-            )
-        # Also include customer refunds (which have a different account type)
-        for invoice in invoices:
-            invoice_move_lines |= invoice.line_ids.filtered(
-                lambda line: line.account_id.account_type == 'liability_payable'
-            )
-        
-        # Add the payment reconciliation to each invoice line
-        lines_to_reconcile = (payment_move_line + invoice_move_lines).filtered(
-            lambda line: line.reconciled is False
+        # Get the payment's move lines (both outstanding and receivable)
+        payment_move_lines = payment.move_id.line_ids.filtered(
+            lambda line: line.account_id.account_type in ('asset_receivable', 'liability_payable') or
+                        line.account_id.reconcile is True
         )
         
-        # Perform the reconciliation
-        if len(lines_to_reconcile) > 1:
-            lines_to_reconcile.reconcile()
+        if not payment_move_lines:
+            _logger.warning("No reconcilable lines found for payment %s" % payment.name)
+            return
+        
+        # Get the invoice move lines that are receivable and not fully reconciled
+        invoice_move_lines = self.env['account.move.line']
+        for invoice in invoices:
+            # Get receivable lines for customer invoices
+            inv_lines = invoice.line_ids.filtered(
+                lambda line: line.account_id.account_type == 'asset_receivable' and 
+                            not line.reconciled and
+                            line.account_id.reconcile is True
+            )
+            invoice_move_lines |= inv_lines
+            
+            # Also check for customer refunds (credit notes)
+            if invoice.move_type == 'out_refund':
+                refund_lines = invoice.line_ids.filtered(
+                    lambda line: line.account_id.account_type == 'liability_payable' and
+                                not line.reconciled and
+                                line.account_id.reconcile is True
+                )
+                invoice_move_lines |= refund_lines
+        
+        if not invoice_move_lines:
+            _logger.info("No unreconciled invoice lines found to reconcile with payment %s" % payment.name)
+            return
+        
+        # Try to reconcile
+        try:
+            # Get all unreconciled lines from both payment and invoices
+            lines_to_reconcile = (payment_move_lines + invoice_move_lines).filtered(
+                lambda line: not line.reconciled
+            )
+            
+            # Group by account and partner for reconciliation
+            if len(lines_to_reconcile) > 1:
+                # Filter to only lines on the same account and partner
+                accounts = lines_to_reconcile.mapped('account_id')
+                for account in accounts:
+                    if not account.reconcile:
+                        continue
+                    
+                    account_lines = lines_to_reconcile.filtered(lambda l: l.account_id == account)
+                    if len(account_lines) > 1:
+                        _logger.info("Attempting to reconcile %d lines on account %s" % (len(account_lines), account.code))
+                        account_lines.reconcile()
+                        _logger.info("Successfully reconciled lines on account %s" % account.code)
+        except Exception as e:
+            _logger.error("Error during reconciliation: %s" % str(e))
+            # Don't raise the error, just log it so the voucher can still be confirmed
 
     def action_register_payments(self):
         """Button action to confirm and register payments"""
@@ -409,7 +507,7 @@ class AccountReceiptVoucherLine(models.Model):
                 line.payment_state = 'not_paid'
 
     def action_register_payment_line(self):
-        """Open the standard payment wizard for invoices in the related receipt."""
+        """Open the standard payment wizard for invoices in the related receipt, or show existing payments."""
         self.ensure_one()
         
         # Retrieve the related account.receipt record
@@ -419,12 +517,73 @@ class AccountReceiptVoucherLine(models.Model):
         
         # Extract all invoices from that receipt that are posted and still have residual amounts
         invoices = receipt.line_ids.filtered(
-            lambda line: line.move_id.state == 'posted' and line.move_id.amount_residual_signed != 0
+            lambda line: line.move_id.state == 'posted' and abs(line.move_id.amount_residual_signed) >= 0.01
         ).mapped('move_id')
         
-        if not invoices:
-            raise UserError(_("There are no posted invoices with outstanding amounts in this receipt to register payment for."))
+        # Check if payments already exist for this receipt or voucher line
+        existing_payments = self.env['account.payment'].search([
+            ('partner_id', '=', receipt.partner_id.id),
+            ('state', '=', 'posted'),
+            ('payment_type', '=', 'inbound'),
+            '|',
+            ('receipt_ids', 'in', [receipt.id]),
+            ('id', 'in', self.payment_ids.ids)
+        ])
         
+        # If no unpaid invoices but payments exist, try to reconcile them automatically
+        if not invoices and existing_payments:
+            # Get all invoices from the receipt (even if partially paid)
+            all_invoices = receipt.line_ids.filtered(
+                lambda line: line.move_id.state == 'posted'
+            ).mapped('move_id')
+            
+            if all_invoices:
+                # Try to reconcile existing payments with invoices
+                reconciled_any = False
+                for payment in existing_payments:
+                    try:
+                        self.voucher_id._reconcile_payment_with_invoices(payment, all_invoices)
+                        reconciled_any = True
+                    except Exception as e:
+                        _logger.warning("Failed to auto-reconcile payment %s: %s" % (payment.name, str(e)))
+                
+                if reconciled_any:
+                    # Link payments to this voucher line if not already linked
+                    self.write({'payment_ids': [(6, 0, existing_payments.ids)]})
+                    
+                    # Force recompute payment_state on all invoices
+                    all_invoices._compute_amount()
+                    
+                    # Flush to database to ensure payment state is updated
+                    all_invoices.flush_recordset()
+                    
+                    return {
+                        'type': 'ir.actions.client',
+                        'tag': 'display_notification',
+                        'params': {
+                            'title': _('Success'),
+                            'message': _('Payments reconciled successfully'),
+                            'type': 'success',
+                            'sticky': False,
+                        }
+                    }
+            
+            # If reconciliation failed or no invoices, show the payments
+            return {
+                'name': _('Existing Payments'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'account.payment',
+                'view_mode': 'tree,form',
+                'domain': [('id', 'in', existing_payments.ids)],
+                'context': {'create': False},
+                'target': 'current',
+            }
+        
+        # If no unpaid invoices and no existing payments, raise error
+        if not invoices and not existing_payments:
+            raise UserError(_("There are no posted invoices with outstanding amounts in this receipt and no existing payments found."))
+        
+        # If there are unpaid invoices, open payment wizard
         # Prepare context for the payment register wizard
         ctx = {
             'active_model': 'account.move',
@@ -459,6 +618,58 @@ class AccountReceiptVoucherLine(models.Model):
         }
         
         return action
+
+    def action_reconcile_existing_payments(self):
+        """Reconcile existing outstanding payments with invoices in the receipt."""
+        self.ensure_one()
+        
+        # Get the receipt
+        receipt = self.receipt_id
+        if not receipt:
+            raise UserError(_("No receipt found for this line."))
+        
+        # Get existing payments
+        existing_payments = self.payment_ids.filtered(lambda p: p.state == 'posted')
+        
+        if not existing_payments:
+            raise UserError(_("No posted payments found to reconcile."))
+        
+        # Get all invoices from the receipt
+        invoices = receipt.line_ids.mapped('move_id').filtered(
+            lambda m: m.state == 'posted' and m.move_type in ('out_invoice', 'out_refund')
+        )
+        
+        if not invoices:
+            raise UserError(_("No posted invoices found in this receipt to reconcile."))
+        
+        # Reconcile each payment with the invoices
+        reconciled_count = 0
+        for payment in existing_payments:
+            try:
+                # Use the existing reconciliation method from voucher
+                self.voucher_id._reconcile_payment_with_invoices(payment, invoices)
+                reconciled_count += 1
+                
+                # Log in chatter
+                self.voucher_id.message_post(
+                    body=_("Payment %s reconciled with invoices from receipt %s") % (payment.name, receipt.name)
+                )
+            except Exception as e:
+                _logger.warning("Failed to reconcile payment %s: %s" % (payment.name, str(e)))
+        
+        if reconciled_count > 0:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Success'),
+                    'message': _('%d payment(s) reconciled successfully.') % reconciled_count,
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        else:
+            raise UserError(_("Failed to reconcile payments. Please check the payment and invoice details."))
 
     @api.constrains('receipt_id', 'voucher_id')
     def _check_duplicate_receipt(self):

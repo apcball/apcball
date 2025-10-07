@@ -19,6 +19,53 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="buz_enforce_single_currency_per_receipt"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="buz_enforce_single_currency_per_receipt" string="Enforce Single Currency per Receipt"/>
+                                <div class="text-muted">
+                                    All invoices in a receipt must have the same currency
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="buz_allow_outstanding_fallback"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="buz_allow_outstanding_fallback" string="Allow Outstanding Payment Fallback"/>
+                                <div class="text-muted">
+                                    When no unpaid invoices exist, allow creating on-account payments
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="buz_default_bank_journal_id"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="buz_default_bank_journal_id" string="Default Bank Journal"/>
+                                <div class="text-muted">
+                                    Default journal to use for creating on-account payments
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="ar_outstanding_as_paid"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="ar_outstanding_as_paid" string="Consider Outstanding Receipts as Paid"/>
+                                <div class="text-muted">
+                                    When enabled, customer invoices reconciled with Outstanding Receipts 
+                                    will show as "Paid" status immediately.
+                                    When disabled, invoices will remain "In Payment" until reconciled 
+                                    with bank statements (standard Odoo behavior).
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </xpath>

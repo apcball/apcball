@@ -18,10 +18,10 @@
               <tr>
                 <th style="text-align:left;">Invoice</th>
                 <th style="text-align:center;">Date</th>
-                <th style="text-align:right;">Amount</th>
-                <th style="text-align:right;">Residual</th>
-                <th style="text-align:right;">To Collect</th>
-                <th style="text-align:right;">Paid</th>
+                <th style="text-align:right;">Total</th>
+                <th style="text-align:right;">Paid-to-Date</th>
+                <th style="text-align:right;">To Collect (This Receipt)</th>
+                <th style="text-align:right;">Residual After Payment</th>
               </tr>
             </thead>
             <tbody>
@@ -30,16 +30,22 @@
                   <td><t t-esc="l.move_name"/></td>
                   <td style="text-align:center;"><t t-esc="l.invoice_date"/></td>
                   <td style="text-align:right;"><t t-esc="format_amount(l.amount_total, o.currency_id)"/></td>
-                  <td style="text-align:right;"><t t-esc="format_amount(l.amount_residual, o.currency_id)"/></td>
+                  <td style="text-align:right;"><t t-esc="format_amount(l.amount_total - l.amount_residual, o.currency_id)"/></td>
                   <td style="text-align:right;"><t t-esc="format_amount(l.amount_to_collect, o.currency_id)"/></td>
-                  <td style="text-align:right;"><t t-esc="format_amount(l.amount_paid, o.currency_id)"/></td>
+                  <td style="text-align:right;"><t t-esc="format_amount(l.amount_residual - l.amount_to_collect, o.currency_id)"/></td>
                 </tr>
               </t>
             </tbody>
             <tfoot>
               <tr>
-                <td colspan="5" style="text-align:right;"><b>Total Paid</b></td>
+                <td colspan="4" style="text-align:right;"><b>This Payment (Sum Amount to Collect)</b></td>
                 <td style="text-align:right;"><b><t t-esc="format_amount(o.amount_total, o.currency_id)"/></b></td>
+                <td style="text-align:right;"></td>
+              </tr>
+              <tr>
+                <td colspan="4" style="text-align:right;"><b>Cumulative Paid</b></td>
+                <td style="text-align:right;"><b><t t-esc="format_amount(o.amount_paid, o.currency_id)"/></b></td>
+                <td style="text-align:right;"></td>
               </tr>
             </tfoot>
           </table>

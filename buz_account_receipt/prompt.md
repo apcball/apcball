@@ -1,139 +1,192 @@
-Feature: Line-level Payment Registration + Payment Summary Smart Button
-Context
+You are an Odoo 17 developer. Improve the existing buz_account_receipt module (AR side) to make grouped receipts production-ready and RV-ready.
 
-The existing account.receipt.voucher aggregates multiple account.receipt records (one per customer).
-Now we want to add line-level payment registration and a smart button summarizing all generated payments linked to the voucher.
+Goals
 
-1. Line-level Payment Registration
-Model: account.receipt.voucher.line
+Keep account.receipt as a grouped receipt for one customer (from multiple invoices).
 
-Add a button “Register Payment” (action_register_payment_line) on each line in the form view.
+Make the receipt reflect “amount to collect this round”, not historical paid.
 
-When clicked:
+Enable batch payment from the receipt (unpaid only), and allow outstanding payment fallback if nothing is due.
 
-Retrieve the related account.receipt record (field: receipt_id).
+Be RV-ready: expose helpers and relations so an external account.receipt.voucher (RV) can drive payments per customer.
 
-Extract all invoices from that receipt (receipt.line_ids.mapped('move_id')) that are posted and still have residual amounts (amount_residual_signed != 0).
+Robust UX: clean validations, sequences, reporting, multi-currency, refunds.
 
-Call Odoo’s standard payment wizard (account.payment.register) with:
+Scope of Work
+1) Models: account.receipt & account.receipt.line
 
-ctx = {
-    'active_model': 'account.move',
-    'active_ids': move_ids,
-    'default_communication': f"Receipt {receipt.name}",
-    'default_payment_date': parent_voucher.date,
-    'default_journal_id': config_journal_id,  # optional default
-    'default_payment_type': 'inbound',
-}
+Keep receipt partner/company one-to-one:
 
+Enforce same partner, same company for all lines.
 
-Return action from account.action_account_payment_from_invoices with updated context.
+Optional config to enforce single currency.
 
-After the payment is created and posted, link it back to the voucher via a relational field.
+Fields (header):
 
-Add relational field on line:
-payment_ids = fields.Many2many(
-    'account.payment',
-    'account_receipt_voucher_line_payment_rel',
-    'voucher_line_id', 'payment_id',
-    string='Related Payments',
-    readonly=True,
-)
+name (sequence REC/%(year)s/%(seq)s), company_id, partner_id, currency_id (related to company), date (default today), note, state in ('draft','posted').
 
-Optional:
+amount_total (computed) = sum of line amount_to_collect.
 
-If multiple payments were made for the same line, all of them should be listed here.
+Fields (line):
 
-2. Smart Button: Payment Summary on Voucher
-Model: account.receipt.voucher
+move_id (posted, out_invoice/out_refund), amount_total_signed (related), amount_residual_signed (related).
 
-Add a computed field:
+amount_paid_to_date = amount_total_signed - amount_residual_signed (computed).
 
-payment_count = fields.Integer(
-    compute="_compute_payment_count",
-    string="Payments"
-)
+amount_to_collect (monetary, default = residual, user-editable).
 
+Computations:
 
-Compute:
+Use *_signed amounts for proper sign and multi-currency.
 
-@api.depends('line_ids.payment_ids')
-def _compute_payment_count(self):
-    for rec in self:
-        rec.payment_count = len(rec.mapped('line_ids.payment_ids'))
+Posting:
 
+Add system param buz.receipt_autopost (default True). If true → assign sequence + set state=posted on create; else allow edit in draft.
 
-Add smart button in form view header:
+2) Create from Invoice List (Server Action)
 
-Label: “Payments”
+Action “Create Receipt” on customer invoices list:
 
-Icon: “fa-money” or “fa-credit-card”
+Filters: state='posted', move_type in ('out_invoice','out_refund'), same partner & company.
 
-Counter: payment_count
+Initialize lines with amount_to_collect = amount_residual_signed.
 
-Action:
+Respect config buz.receipt_autopost.
 
-def action_open_related_payments(self):
-    payments = self.mapped('line_ids.payment_ids')
-    return {
-        'name': 'Payments',
-        'type': 'ir.actions.act_window',
-        'res_model': 'account.payment',
-        'view_mode': 'tree,form',
-        'domain': [('id', 'in', payments.ids)],
-    }
+Return form view of the new receipt.
 
-3. Behavior Summary
-Action	Effect
-Click “Register Payment” on RV line	Opens standard payment wizard pre-filled for invoices in that Receipt
-Complete payment	Creates standard account.payment record and reconciles invoices
-After posting	Payment automatically linked to that RV line (via payment_ids)
-Smart Button “Payments”	Opens list of all payments created from lines under this RV
-Payment count	Updates automatically when new payments are linked
-4. Optional Enhancements
+3) Batch Payment on Receipt
 
-Add field payment_state on each line (computed from linked account.payment):
+Header button: “Register Batch Payment”:
 
-payment_state = fields.Selection([
-    ('not_paid','Not Paid'),
-    ('in_payment','In Payment'),
-    ('paid','Paid')
-], compute="_compute_payment_state", store=True)
+If there are unpaid invoices: open standard wizard account.action_account_payment_from_invoices with context:
 
+active_model='account.move', active_ids=[invoice_ids with residual>0]
 
-On compute, check if all linked payments are posted/reconciled → mark “Paid”.
+default_payment_type='inbound'
 
-In the RV tree view, add column Payment Count or icon indicator per line.
+default_payment_date=receipt.date
 
-5. Example User Flow (AR)
+default_communication=f"Receipt {receipt.name}"
 
-User creates RV containing 3 receipts (customers A, B, C).
+If no unpaid invoices: open/create an on-account (outstanding) inbound payment for this partner:
 
-Each line shows: Receipt, Partner, Amount, and a “Register Payment” button.
+Prefill partner_id, amount=receipt.amount_total, date=receipt.date, ref=f"Receipt {receipt.name}".
 
-Accountant clicks “Register Payment” on line 1 → opens wizard for that customer’s invoices → posts payment.
+Post it and let the user reconcile later (or just open the payment form with defaults).
 
-Payment is created and automatically linked to that line.
+4) RV-Ready Hooks (Public Methods)
 
-Smart button on RV shows “Payments (3)” after all 3 lines are paid.
+Add small, documented helpers so an external RV module can orchestrate payments cleanly:
 
-Clicking the smart button opens all payment records related to the RV.
+receipt_get_unpaid_moves(self) -> account.move: return posted invoices in this receipt with residual > 0.
 
-6. Optional: Apply Same Design to AP (Payment Voucher)
+receipt_build_payment_context(self, journal_id=None, memo_suffix=None) -> dict: return standard context for account.payment.register.
 
-In account.payment.voucher.line, implement same logic:
+receipt_link_payments(self, payments: account.payment): persist links for audit (see §5).
 
-Button “Register Payment” → create outbound payment (payment_type='outbound', partner_type='supplier').
+(Optional) receipt_reconcile_with_payment(self, payment: account.payment): auto-reconcile payment receivable line with receivable lines from underlying invoices (partial-friendly).
 
-Link payments via payment_ids.
+5) Traceability: Link to Payments
 
-Smart button on PV form → open all related payments.
+Add M2M on account.receipt (and/or lines) to payments:
 
-7. Acceptance Criteria
+payment_ids = fields.Many2many('account.payment', 'account_receipt_payment_rel', 'receipt_id','payment_id', readonly=True)
 
-✅ Each RV line can individually trigger its own payment registration
-✅ Payment wizard opens with correct invoices for that receipt’s customer
-✅ Once payment is posted, linked to RV line and visible under smart button
-✅ RV smart button shows correct count and list of related payments
-✅ Works with multi-customer RVs (each line independent)
-✅ Optional: same logic applied for AP Payment Voucher (outbound)
+Computed payment_count on header.
+
+Add smart button “Payments (N)” on the receipt form → open tree/form of linked payments.
+
+When batch payment wizard completes (or on manual link via RV), call receipt_link_payments().
+
+6) Validations & UX
+
+Remove current restriction payment_state in ('paid','in_payment') from selection logic (it blocks batch payments).
+
+During creation:
+
+Block cross-company.
+
+Enforce same partner.
+
+(Config) Enforce single currency.
+
+Disable “Register Batch Payment” if state != posted (when autopost off) or there’s literally nothing to collect and outstanding fallback is disabled (config)!
+
+7) Configuration
+
+buz.receipt_autopost (bool, default True).
+
+buz.enforce_single_currency_per_receipt (bool, default True).
+
+buz.default_bank_journal_id (int, nullable; used as default in payment context).
+
+buz.allow_outstanding_fallback (bool, default True).
+
+8) Reports (QWeb)
+
+Update Receipt (PDF):
+
+Header: Receipt No., Date, Customer, Company.
+
+Table columns: Invoice, Date, Total, Paid-to-Date, To Collect (This Receipt), Residual After Payment (theoretical).
+
+Totals: This Payment (sum amount_to_collect) and Cumulative Paid.
+
+Footer: Payment method/memo placeholder.
+
+Ensure multi-currency labels are consistent; display signs correctly for refunds.
+
+9) Security, Menus, Actions
+
+Keep menu under Customers → Receipts (tree, form, search).
+
+Access: Accounting Users/Managers.
+
+Add search filters: by partner, date, state, amount>0, has payments.
+
+10) Tests (minimal but useful)
+
+Create receipt from invoices (mixed invoice+refund) → check totals using signed amounts.
+
+Batch payment:
+
+With unpaid invoices → opens register wizard context with correct active_ids.
+
+With no unpaid invoices & allow_outstanding_fallback=True → creates/opens on-account payment.
+
+Linkage:
+
+After creating payment(s), payment_count > 0 and smart button shows them.
+
+Multi-currency:
+
+Signed amounts are correct; no crash.
+
+Autopost toggle:
+
+When off, keep in draft → allow editing amount_to_collect → post → sequence assigned.
+
+Acceptance Criteria
+
+Creating a receipt from invoice list requires same partner & company, uses residual to set amount_to_collect, and posts immediately if buz.receipt_autopost=True.
+
+Register Batch Payment includes only invoices with residual>0; otherwise opens/creates an outstanding inbound payment (config-controlled).
+
+Receipts show a Payments smart button with the correct count and open the linked payments.
+
+Public helper methods exist and are used successfully by an external RV module (no tight coupling).
+
+QWeb shows “This Payment” totals from amount_to_collect and prints refund signs correctly using signed fields.
+
+No cross-company creation; optional single-currency enforcement works.
+
+Unit tests pass for the flows above.
+
+Nice-to-Have (optional)
+
+Add chatter logs when payments are linked/unlinked.
+
+Add a “Duplicate receipt” action that re-pulls residuals (handy for re-issuing).
+
+Add a constraint to prevent amount_to_collect > amount_residual_signed per line (with small tolerance).

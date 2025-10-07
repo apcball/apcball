@@ -14,6 +14,34 @@
     </field>
   </record>
 
+  <record id="view_buz_account_receipt_search" model="ir.ui.view">
+    <field name="name">buz.account.receipt.search</field>
+    <field name="model">account.receipt</field>
+    <field name="arch" type="xml">
+      <search string="Receipts">
+        <field name="name" string="Receipt Number"/>
+        <field name="partner_id" string="Customer"/>
+        <field name="date" string="Date"/>
+        <field name="state" string="Status"/>
+        <field name="amount_total" string="Total Amount"/>
+        
+        <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+        <filter name="posted" string="Posted" domain="[('state', '=', 'posted')]"/>
+        <separator/>
+        <filter name="positive_amount" string="Amount > 0" domain="[('amount_total', '>', 0)]"/>
+        <filter name="has_payments" string="Has Payments" domain="[('payment_count', '>', 0)]"/>
+        <separator/>
+        <filter name="this_month" string="This Month" domain="[('date', '>=', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d')), ('date', '&lt;=', (context_today() + relativedelta(day=31)).strftime('%Y-%m-%d'))]"/>
+        
+        <group expand="0" string="Group By">
+          <filter name="group_by_partner" string="Customer" domain="[]" context="{'group_by': 'partner_id'}"/>
+          <filter name="group_by_date" string="Date" domain="[]" context="{'group_by': 'date'}"/>
+          <filter name="group_by_state" string="Status" domain="[]" context="{'group_by': 'state'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
   <record id="view_buz_account_receipt_form" model="ir.ui.view">
     <field name="name">buz.account.receipt.form</field>
     <field name="model">account.receipt</field>
@@ -24,7 +52,7 @@
                   invisible="state not in ['posted', 'cancel']" class="btn btn-secondary"/>
           <button name="action_post" string="Confirm" type="object" invisible="state != 'draft'" class="btn btn-success"/>
           <button name="action_register_batch_payment" string="Register Batch Payment" type="object" 
-                  invisible="state != 'posted' or not line_ids" class="btn btn-primary"/>
+                  invisible="state != 'posted'" class="btn btn-primary"/>
           <button name="action_print_receipt" string="Print Receipt" type="object" invisible="state not in ['draft', 'posted']" class="btn btn-primary"/>
           <field name="state" widget="statusbar" statusbar_visible="draft,posted,cancel"/>
         </header>
@@ -62,7 +90,7 @@
           
           <div class="oe_button_box" name="button_box" style="margin: 5px 0;">
             <button name="action_view_payments" type="object" class="oe_stat_button" icon="fa-money" style="padding: 10px;">
-              <field string="Payments" name="payment_ids" widget="statinfo" style="font-size: 14px;"/>
+              <field string="Payments" name="payment_count" widget="statinfo" style="font-size: 14px;"/>
             </button>
           </div>
           
@@ -82,10 +110,11 @@
                   <field name="move_id" domain="[('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted'), ('partner_id', '=', parent.partner_id), ('id', 'not in', parent.used_move_ids)]" string="Invoice"/>
                   <field name="move_name" readonly="1" string="Invoice Number"/>
                   <field name="invoice_date" readonly="1" string="Invoice Date"/>
-                  <field name="amount_total" string="Amount Total" widget="monetary"/>
-                  <field name="amount_residual" string="Residual" widget="monetary"/>
-                  <field name="amount_to_collect" string="Amount to Collect" widget="monetary"/>
-                  <field name="amount_paid" readonly="1" string="Paid" widget="monetary"/>
+                  <field name="amount_total_signed" readonly="1" string="Invoice Total (Signed)" widget="monetary" optional="hide"/>
+                  <field name="amount_residual_signed" readonly="1" string="Residual (Signed)" widget="monetary" optional="hide"/>
+                  <field name="amount_paid_to_date" readonly="1" string="Paid to Date" widget="monetary"/>
+                  <field name="amount_to_collect" string="To Collect (This Receipt)" widget="monetary"/>
+                  <field name="currency_id" invisible="1"/>
                 </tree>
               </field>
             </page>
@@ -93,7 +122,25 @@
             <!-- Additional Information page removed as requested -->
           </notebook>
         </sheet>
+        <!-- Chatter -->
+        <div class="oe_chatter">
+          <field name="message_follower_ids" groups="base.group_user"/>
+          <field name="activity_ids"/>
+          <field name="message_ids"/>
+        </div>
       </form>
+    </field>
+  </record>
+
+  <!-- Server Action for Creating Receipt from Selected Invoices -->
+  <record id="action_create_receipt_from_invoices" model="ir.actions.server">
+    <field name="name">Create Receipt</field>
+    <field name="model_id" ref="model_account_move"/>
+    <field name="binding_model_id" ref="model_account_move"/>
+    <field name="state">code</field>
+    <field name="code">
+records = env['account.move'].browse(env.context.get('active_ids', []))
+action = records.action_create_receipt_from_invoices()
     </field>
   </record>
 
@@ -113,6 +160,7 @@ action = records.action_create_receipt_voucher_from_receipts()
     <field name="name">Receipts</field>
     <field name="res_model">account.receipt</field>
     <field name="view_mode">tree,form</field>
+    <field name="search_view_id" ref="view_buz_account_receipt_search"/>
   </record>
 
   <menuitem id="menu_buz_account_receipt_history" name="Receipts"

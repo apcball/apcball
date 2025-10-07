@@ -280,7 +280,6 @@ class AccountMove(models.Model):
 class AccountReceipt(models.Model):
     _name = "account.receipt"
     _description = "Grouped Customer Receipt"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = "date desc, id desc"
 
     name = fields.Char(string="Receipt Number", readonly=True, copy=False, default="/")
@@ -733,10 +732,8 @@ class AccountReceipt(models.Model):
                 
                 payment = self.env['account.payment'].create(payment_vals)
                 
-                # Link the payment to the receipt using M2M
-                self.write({
-                    'payment_ids': [(4, payment.id)]
-                })
+                # Link the payment to the receipt
+                payment.write({'buz_receipt_id': self.id})
                 
                 # Open the payment form view for user to finalize
                 return {
