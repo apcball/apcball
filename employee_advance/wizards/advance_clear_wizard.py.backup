@@ -108,7 +108,8 @@ class AdvanceClearWizard(models.TransientModel):
         'employee.advance.box',
         string='Advance Box',
         required=True,
-        help='Employee advance box to clear against'
+        help='Employee advance box to clear against',
+        ondelete='cascade'
     )
     communication = fields.Char(
         string='Memo',

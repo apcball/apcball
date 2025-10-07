@@ -10,7 +10,7 @@ class AccountMove(models.Model):
 
     # Metadata to support advance clearing and manual linking
     expense_sheet_id = fields.Many2one('hr.expense.sheet', string='Expense Sheet', copy=False)
-    advance_box_id = fields.Many2one('employee.advance.box', string='Advance Box', copy=False)
+    advance_box_id = fields.Many2one('employee.advance.box', string='Advance Box', copy=False, ondelete='set null')
     is_expense_advance_bill = fields.Boolean(string='Is Expense Advance Bill', default=False, copy=False)
     
     # WHT Certificate support
