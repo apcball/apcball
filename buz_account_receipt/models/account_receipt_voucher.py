@@ -399,6 +399,22 @@ class AccountReceiptVoucher(models.Model):
         
         return True
 
+    def unlink(self):
+        """Clear related payment M2M links on voucher lines before deleting the voucher.
+
+        Deleting a voucher may cascade-delete its voucher lines at the database level,
+        which can cause a FK constraint if the M2M relation table still references
+        those lines. We proactively clear the M2M rows using direct SQL.
+        """
+        # Collect all line IDs from all vouchers being deleted
+        line_ids = self.mapped('line_ids').ids
+        if line_ids:
+            # Use SQL to directly clear the M2M relation table
+            self.env.cr.execute("""
+                DELETE FROM account_receipt_voucher_line_payment_rel 
+                WHERE voucher_line_id IN %s
+            """, (tuple(line_ids),))
+        return super(AccountReceiptVoucher, self).unlink()
 
     def action_view_payments(self):
         """
@@ -434,7 +450,7 @@ class AccountReceiptVoucherLine(models.Model):
     _description = "AR Receipt Voucher Line"
 
     voucher_id = fields.Many2one("account.receipt.voucher", string="Receipt Voucher", required=True, ondelete="cascade")
-    receipt_id = fields.Many2one("account.receipt", string="Receipt", required=True, domain="[('state', '=', 'posted')]")
+    receipt_id = fields.Many2one("account.receipt", string="Receipt", required=True, domain="[('state', '=', 'posted')]", ondelete='cascade')
     partner_id = fields.Many2one("res.partner", string="Partner", related="receipt_id.partner_id", store=True)
     
     # Amount to receive for this receipt in the voucher
@@ -683,3 +699,19 @@ class AccountReceiptVoucherLine(models.Model):
                 ])
                 if duplicate_lines:
                     raise UserError(_("Receipt %s is already included in this voucher.") % line.receipt_id.name)
+
+    def unlink(self):
+        """Ensure Many2many links to payments are removed before deleting voucher lines.
+
+        Postgres will prevent deleting a record that is referenced by a foreign key
+        from the M2M relation table. We explicitly clear the relation rows so the
+        voucher line can be removed.
+        """
+        # Store IDs and clear M2M relations before deletion
+        if self:
+            # Use SQL to directly clear the M2M relation table
+            self.env.cr.execute("""
+                DELETE FROM account_receipt_voucher_line_payment_rel 
+                WHERE voucher_line_id IN %s
+            """, (tuple(self.ids),))
+        return super(AccountReceiptVoucherLine, self).unlink()

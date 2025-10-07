@@ -8,7 +8,7 @@ class BillDisplayWizard(models.TransientModel):
 
     # Fields to display bill information in popup
     partner_id = fields.Many2one('res.partner', string='Vendor', readonly=True)
-    voucher_line_id = fields.Many2one('account.payment.voucher.line', string='Voucher Line', readonly=True)
+    voucher_line_id = fields.Many2one('account.payment.voucher.line', string='Voucher Line', readonly=True, ondelete='cascade')
     
     # Related bills for the partner
     bill_ids = fields.One2many('bill.display.wizard.line', 'wizard_id', string='Available Bills')

@@ -7,7 +7,7 @@ class BillRegisterPaymentWizard(models.TransientModel):
     _description = 'Bill Register Payment Wizard for Payment Voucher'
 
     # Voucher line reference
-    voucher_line_id = fields.Many2one('account.payment.voucher.line', string='Voucher Line', readonly=True)
+    voucher_line_id = fields.Many2one('account.payment.voucher.line', string='Voucher Line', readonly=True, ondelete='cascade')
     
     # Bill information
     move_id = fields.Many2one('account.move', string='Bill/Refund', readonly=True)

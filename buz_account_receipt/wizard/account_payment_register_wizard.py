@@ -7,7 +7,7 @@ class AccountPaymentRegisterWizard(models.TransientModel):
     _description = 'Account Payment Register Wizard for Payment Voucher'
 
     # Fields to display bill information
-    voucher_line_id = fields.Many2one('account.payment.voucher.line', string='Voucher Line', readonly=True)
+    voucher_line_id = fields.Many2one('account.payment.voucher.line', string='Voucher Line', readonly=True, ondelete='cascade')
     partner_id = fields.Many2one('res.partner', string='Vendor', readonly=True)
     move_id = fields.Many2one('account.move', string='Bill/Refund', readonly=True)
     move_name = fields.Char(related='move_id.name', string='Bill Number', readonly=True)
