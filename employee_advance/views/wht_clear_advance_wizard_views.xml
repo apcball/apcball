@@ -99,6 +99,11 @@
                                    placeholder="Accounting date for the journal entry"/>
                             <field name="ref" placeholder="Reference for journal entry"/>
                             <field name="auto_reconcile" widget="boolean_toggle"/>
+                            <label for="auto_reconcile" colspan="2">
+                                <div class="text-info">
+                                    <i class="fa fa-info-circle"/> Auto Reconcile is enabled by default
+                                </div>
+                            </label>
                         </group>
                     </group>
                     

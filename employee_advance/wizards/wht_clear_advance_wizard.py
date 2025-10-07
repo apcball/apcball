@@ -44,8 +44,8 @@ class WhtClearAdvanceWizard(models.TransientModel):
     )
     auto_reconcile = fields.Boolean(
         string='Auto Reconcile',
-        default=False,  # Disabled by default to prevent hanging - HANG FIX APPLIED
-        help="Automatically reconcile the journal entry with matching payable entries (may cause delays). Disabled by default for performance."
+        default=True,  # Enabled by default as requested
+        help="Automatically reconcile the journal entry with matching payable entries."
     )
 
     # Company and currency
