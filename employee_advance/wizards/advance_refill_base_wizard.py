@@ -12,7 +12,8 @@ class AdvanceRefillBaseWizard(models.TransientModel):
     advance_box_id = fields.Many2one(
         'employee.advance.box',
         string='Advance Box',
-        required=True
+        required=True,
+        ondelete='cascade'
     )
     current_balance = fields.Monetary(
         string='Current Balance',

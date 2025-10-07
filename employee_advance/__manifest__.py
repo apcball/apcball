@@ -40,7 +40,10 @@
         'views/account_move_views.xml',
         'wizards/mark_as_done_confirmation_wizard.xml',  # Add the wizard view
         'views/wht_clear_advance_wizard_views.xml',
+        'views/advance_refill_base_wizard_views.xml',  # Refill wizard view
+        'views/advance_settlement_wizard_views.xml',   # Settlement wizard view
     ],
+    'pre_init_hook': 'pre_init_hook',
     'post_init_hook': 'post_init_hook',
     'installable': True,
     'auto_install': False,

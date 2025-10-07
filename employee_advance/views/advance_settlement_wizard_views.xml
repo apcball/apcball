@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Advance Settlement Wizard Form View -->
+    <record id="view_advance_settlement_wizard_form" model="ir.ui.view">
+        <field name="name">advance.settlement.wizard.form</field>
+        <field name="model">advance.settlement.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Settle Advance">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Settle Advance Box</h1>
+                        <p>Process final settlement for employee advance box</p>
+                    </div>
+
+                    <group>
+                        <group string="Advance Box Information">
+                            <field name="box_id" readonly="1" options="{'no_create': True}"/>
+                            <field name="employee_id" readonly="1"/>
+                            <field name="current_balance" readonly="1" widget="monetary" 
+                                   options="{'currency_field': 'currency_id'}"/>
+                            <field name="direction" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        
+                        <group string="Settlement Configuration">
+                            <field name="settlement_date" required="1"/>
+                            <field name="scenario" required="1"/>
+                            <field name="amount_mode" required="1"/>
+                            <field name="amount_to_settle" 
+                                   widget="monetary" 
+                                   options="{'currency_field': 'currency_id'}"
+                                   invisible="amount_mode == 'full'"
+                                   required="amount_mode == 'partial'"/>
+                            <field name="target_amount" readonly="1" 
+                                   widget="monetary" 
+                                   options="{'currency_field': 'currency_id'}"/>
+                        </group>
+                    </group>
+
+                    <!-- Settlement Scenario Information -->
+                    <div class="alert alert-info mt16" role="alert" invisible="not scenario">
+                        <h4><i class="fa fa-info-circle"/> Settlement Information</h4>
+                        <div invisible="scenario != 'pay_employee'">
+                            <p><strong>Pay Employee:</strong> Create payment to employee (Dr 141101 / Cr Bank)</p>
+                            <p>This is used when the employee has positive advance balance and company needs to pay them.</p>
+                        </div>
+                        <div invisible="scenario != 'employee_refund'">
+                            <p><strong>Employee Refund:</strong> Employee returns money to company (Dr Bank / Cr 141101)</p>
+                            <p>This is used when the employee has negative balance and needs to return money to company.</p>
+                        </div>
+                        <div invisible="scenario != 'write_off'">
+                            <p><strong>Write-off/Reclass:</strong> Clear balance through write-off or reclassification</p>
+                            <p>This is used when balance needs to be written off or moved to another account.</p>
+                        </div>
+                    </div>
+
+                    <notebook>
+                        <page string="Payment Details" name="payment_details" 
+                              invisible="scenario not in ('pay_employee', 'employee_refund')">
+                            <group>
+                                <group string="Payment Information">
+                                    <field name="journal_id" 
+                                           domain="[('type', 'in', ('bank', 'cash')), ('company_id', '=', company_id)]"
+                                           required="scenario in ('pay_employee', 'employee_refund')"/>
+                                    <field name="memo"/>
+                                    <field name="auto_reconcile"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Write-off Details" name="writeoff_details" 
+                              invisible="scenario != 'write_off'">
+                            <group>
+                                <group string="Write-off Configuration">
+                                    <field name="writeoff_policy" required="scenario == 'write_off'"/>
+                                    <field name="writeoff_account_id" 
+                                           domain="[('deprecated', '=', False), ('company_id', '=', company_id)]"
+                                           required="scenario == 'write_off' and writeoff_policy != 'none'"/>
+                                    <field name="memo"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Activity" name="activity">
+                            <group>
+                                <group string="Create Follow-up Activity">
+                                    <field name="create_activity"/>
+                                    <field name="activity_user_id" 
+                                           invisible="not create_activity"
+                                           required="create_activity"/>
+                                    <field name="activity_type_id" 
+                                           invisible="not create_activity"
+                                           required="create_activity"/>
+                                </group>
+                            </group>
+                            <group invisible="not create_activity">
+                                <field name="activity_note" placeholder="Additional notes for the activity..."
+                                       invisible="not create_activity"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                
+                <footer>
+                    <button name="action_settle_advance" 
+                            type="object" 
+                            string="Create Settlement" 
+                            class="btn-primary"
+                            help="Process the advance settlement"/>
+                    <button string="Cancel" 
+                            class="btn-secondary" 
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action to open the wizard -->
+    <record id="action_advance_settlement_wizard" model="ir.actions.act_window">
+        <field name="name">Settle Advance</field>
+        <field name="res_model">advance.settlement.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

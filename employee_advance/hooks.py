@@ -4,6 +4,28 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
+def pre_init_hook(env):
+    """Clean up wizard tables before module upgrade to prevent constraint errors"""
+    cr = env.cr
+    try:
+        # Clean up advance_refill_base_wizard table if it exists
+        cr.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'advance_refill_base_wizard')")
+        if cr.fetchone()[0]:
+            cr.execute("DELETE FROM advance_refill_base_wizard")
+            _logger.info("🧹 Cleaned up advance_refill_base_wizard table")
+        
+        # Clean up advance_settlement_wizard table if it exists  
+        cr.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'advance_settlement_wizard')")
+        if cr.fetchone()[0]:
+            cr.execute("DELETE FROM advance_settlement_wizard")
+            _logger.info("🧹 Cleaned up advance_settlement_wizard table")
+            
+        cr.commit()
+        _logger.info("✅ Wizard cleanup completed successfully")
+    except Exception as e:
+        _logger.warning("⚠️ Wizard cleanup failed: %s", str(e))
+        cr.rollback()
+
 def post_init_hook(env):
     # Using the environment directly as provided by Odoo framework
     utils = env['hr.expense.advance.journal.utils']

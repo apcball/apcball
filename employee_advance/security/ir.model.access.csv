@@ -5,3 +5,7 @@ access_mark_as_done_confirmation_wizard_user,mark.as.done.confirmation.wizard.us
 access_mark_as_done_confirmation_wizard_manager,mark.as.done.confirmation.wizard.manager,model_mark_as_done_confirmation_wizard,base.group_erp_manager,1,1,1,1
 access_wht_clear_advance_wizard_user,wht.clear.advance.wizard.user,model_wht_clear_advance_wizard,base.group_user,1,1,1,1
 access_wht_clear_advance_wizard_manager,wht.clear.advance.wizard.manager,model_wht_clear_advance_wizard,base.group_erp_manager,1,1,1,1
+access_advance_refill_base_wizard_user,advance.refill.base.wizard.user,model_advance_refill_base_wizard,base.group_user,1,1,1,1
+access_advance_refill_base_wizard_manager,advance.refill.base.wizard.manager,model_advance_refill_base_wizard,base.group_erp_manager,1,1,1,1
+access_advance_settlement_wizard_user,advance.settlement.wizard.user,model_advance_settlement_wizard,base.group_user,1,1,1,1
+access_advance_settlement_wizard_manager,advance.settlement.wizard.manager,model_advance_settlement_wizard,base.group_erp_manager,1,1,1,1

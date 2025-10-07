@@ -216,7 +216,7 @@ class HrExpenseSheet(models.Model):
             bill_line_vals = {
                 'name': expense.name,
                 'quantity': expense.quantity,
-                'price_unit': expense.price_unit,
+                'price_unit': self._calculate_expense_base_amount(expense),
                 'tax_ids': [(6, 0, expense.tax_ids.ids)],
                 'account_id': expense.account_id.id,
             }
@@ -374,6 +374,27 @@ class HrExpenseSheet(models.Model):
         
         return bills
 
+    def _calculate_expense_base_amount(self, expense):
+        """Calculate expense amount before tax for included tax expenses"""
+        if not expense.tax_ids:
+            return self._calculate_expense_base_amount(expense)
+        
+        # For included tax, calculate the base amount (excluding tax)
+        # price_unit = base_amount * (1 + tax_rate)
+        # base_amount = price_unit / (1 + tax_rate)
+        
+        total_tax_rate = 0
+        for tax in expense.tax_ids:
+            if tax.amount_type == 'percent':
+                total_tax_rate += tax.amount / 100
+        
+        if total_tax_rate > 0:
+            base_amount = self._calculate_expense_base_amount(expense) / (1 + total_tax_rate)
+        else:
+            base_amount = self._calculate_expense_base_amount(expense)
+            
+        return base_amount
+
     def _create_single_bill_for_vendor_group_date(self, group_data):
         """Create a single vendor bill for a vendor group with specific date (enhanced version)"""
         partner_id = group_data['partner_id']
@@ -421,7 +442,8 @@ class HrExpenseSheet(models.Model):
                     'product_id': expense.product_id.id if expense.product_id else False
                 }
             
-            account_tax_groups[key]['amount'] += expense.total_amount
+            # Use price_unit (before tax) to avoid VAT duplication when tax_ids are applied
+            account_tax_groups[key]['amount'] += self._calculate_expense_base_amount(expense)
             account_tax_groups[key]['expenses'] |= expense
         
         # Create vendor bill with grouped lines
@@ -462,7 +484,8 @@ class HrExpenseSheet(models.Model):
                 single_expense = expense_lines[0]
                 line_vals['name'] = single_expense.name
                 line_vals['quantity'] = single_expense.quantity if hasattr(single_expense, 'quantity') else 1
-                line_vals['price_unit'] = single_expense.unit_amount if hasattr(single_expense, 'unit_amount') and single_expense.unit_amount else single_expense.price_unit
+                # Always use price_unit (before tax) when tax_ids are applied to avoid VAT duplication
+                line_vals['price_unit'] = self._calculate_expense_base_amount(single_expense)
                 
             if group_data['analytic_distribution']:
                 line_vals['analytic_distribution'] = group_data['analytic_distribution']
@@ -573,7 +596,8 @@ class HrExpenseSheet(models.Model):
                     'product_id': expense.product_id.id if expense.product_id else False
                 }
             
-            account_tax_groups[key]['amount'] += expense.total_amount
+            # Use price_unit (before tax) to avoid VAT duplication when tax_ids are applied
+            account_tax_groups[key]['amount'] += self._calculate_expense_base_amount(expense)
             account_tax_groups[key]['expenses'] |= expense
         
         # Create vendor bill with grouped lines
@@ -756,7 +780,8 @@ class HrExpenseSheet(models.Model):
                     'product_id': expense.product_id.id if expense.product_id else False
                 }
             
-            account_tax_groups[key]['amount'] += expense.total_amount
+            # Use price_unit (before tax) to avoid VAT duplication when tax_ids are applied
+            account_tax_groups[key]['amount'] += self._calculate_expense_base_amount(expense)
             account_tax_groups[key]['expenses'] |= expense
         # Create vendor bill with grouped lines
         bill_vals = {
@@ -790,7 +815,8 @@ class HrExpenseSheet(models.Model):
                 single_expense = expense_lines[0]
                 line_vals['name'] = single_expense.name
                 line_vals['quantity'] = single_expense.quantity if hasattr(single_expense, 'quantity') else 1
-                line_vals['price_unit'] = single_expense.unit_amount if hasattr(single_expense, 'unit_amount') and single_expense.unit_amount else single_expense.price_unit  # Use appropriate field to correctly handle taxes
+                # Always use price_unit (before tax) when tax_ids are applied to avoid VAT duplication
+                line_vals['price_unit'] = self._calculate_expense_base_amount(single_expense)
                 
             if group_data['analytic_distribution']:
                 line_vals['analytic_distribution'] = group_data['analytic_distribution']

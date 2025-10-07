@@ -14,7 +14,8 @@ class AdvanceSettlementWizard(models.TransientModel):
         'employee.advance.box',
         string='Advance Box',
         required=True,
-        readonly=True
+        readonly=True,
+        ondelete='cascade'
     )
     employee_id = fields.Many2one(
         'hr.employee',

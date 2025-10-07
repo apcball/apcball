@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Advance Refill Base Wizard Form View -->
+    <record id="view_advance_refill_base_wizard_form" model="ir.ui.view">
+        <field name="name">advance.refill.base.wizard.form</field>
+        <field name="model">advance.refill.base.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Refill to Base Amount">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Refill Advance to Base Amount</h1>
+                        <p>Fill up the advance box to reach the target base amount</p>
+                    </div>
+                    
+                    <group>
+                        <group string="Advance Box Information">
+                            <field name="advance_box_id" readonly="1" options="{'no_create': True}"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Amount Details">
+                            <field name="current_balance" readonly="1" widget="monetary" 
+                                   options="{'currency_field': 'currency_id'}"/>
+                            <field name="base_amount_ref" readonly="1" widget="monetary" 
+                                   options="{'currency_field': 'currency_id'}"/>
+                            <field name="topup_amount" readonly="1" widget="monetary" 
+                                   options="{'currency_field': 'currency_id'}" 
+                                   class="text-success fw-bold"/>
+                        </group>
+                    </group>
+
+                    <div class="alert alert-info mt16" role="alert">
+                        <h4><i class="fa fa-info-circle"/> Refill Information</h4>
+                        <p>This will create a journal entry to top up the advance box from 
+                           <strong><field name="current_balance" readonly="1" widget="monetary" class="fw-bold"/></strong> 
+                           to <strong><field name="base_amount_ref" readonly="1" widget="monetary" class="fw-bold"/></strong>
+                        </p>
+                        <p>Amount to be added: <strong><field name="topup_amount" readonly="1" widget="monetary" class="text-success fw-bold"/></strong></p>
+                    </div>
+                </sheet>
+                
+                <footer>
+                    <button name="action_confirm" 
+                            type="object" 
+                            string="Confirm Refill" 
+                            class="btn-primary"
+                            help="Create journal entry to refill the advance box"/>
+                    <button string="Cancel" 
+                            class="btn-secondary" 
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action to open the wizard -->
+    <record id="action_advance_refill_base_wizard" model="ir.actions.act_window">
+        <field name="name">Refill to Base Amount</field>
+        <field name="res_model">advance.refill.base.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>
