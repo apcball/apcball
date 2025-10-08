@@ -132,17 +132,7 @@
     </field>
   </record>
 
-  <!-- Server Action for Creating Receipt from Selected Invoices -->
-  <record id="action_create_receipt_from_invoices" model="ir.actions.server">
-    <field name="name">Create Receipt</field>
-    <field name="model_id" ref="model_account_move"/>
-    <field name="binding_model_id" ref="model_account_move"/>
-    <field name="state">code</field>
-    <field name="code">
-records = env['account.move'].browse(env.context.get('active_ids', []))
-action = records.action_create_receipt_from_invoices()
-    </field>
-  </record>
+
 
   <!-- Server Action for Creating Receipt Voucher from Receipts -->
   <record id="action_create_receipt_voucher_from_receipts" model="ir.actions.server">

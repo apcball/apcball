@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main Menu -->
+    <!-- Make root menu visible to all internal users (base.group_user). If you prefer restricting to module group, change back to buz_internal_consumption.group_ic_user -->
+    <menuitem id="menu_ic_root" name="Internal Consumption" sequence="10"
+              groups="base.group_user"/>
+
+    <!-- Requests Submenu -->
+    <menuitem id="menu_ic_requests" name="Requests" parent="menu_ic_root" sequence="10"/>
+    
+    <!-- Requests Actions -->
+    <menuitem id="menu_ic_request_action" name="Requests" parent="menu_ic_requests" 
+              action="buz_internal_consumption.action_ic_request" sequence="10"/>
+
+    <!-- Configuration Submenu -->
+    <menuitem id="menu_ic_configuration" name="Configuration" parent="menu_ic_root" sequence="20"
+              groups="base.group_system"/>
+    
+    <!-- Settings -->
+    <menuitem id="menu_ic_settings" name="Settings" parent="menu_ic_configuration" 
+              action="base.action_res_company_form" sequence="10"/>
+</odoo>
