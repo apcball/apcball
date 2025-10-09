@@ -1,5 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_ic_request_user,access.ic.request.user,model_ic_request,base.group_user,1,1,1,0
-access_ic_request_line_user,access.ic.request.line.user,model_ic_request_line,base.group_user,1,1,1,0
-access_ic_request_manager,access.ic.request.manager,model_ic_request,base.group_system,1,1,1,1
-access_ic_request_line_manager,access.ic.request.line.manager,model_ic_request_line,base.group_system,1,1,1,1
