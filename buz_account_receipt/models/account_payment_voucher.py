@@ -66,19 +66,30 @@ class AccountPaymentVoucher(models.Model):
             voucher.amount_total_wht = sum(line.wht_amount for line in voucher.line_ids)
             voucher.amount_total_net = sum(line.amount_to_pay_net for line in voucher.line_ids)
 
-    @api.depends('amount_total_net')
+    @api.depends('amount_total_net', 'line_ids.payment_state')
     def _compute_payment_state(self):
         for voucher in self:
             if voucher.state == 'draft':
                 voucher.payment_state = 'not_paid'
-            elif voucher.amount_paid == 0:
-                voucher.payment_state = 'not_paid'
-            elif voucher.amount_paid < voucher.amount_total_net:
-                voucher.payment_state = 'partial'
-            elif voucher.amount_paid == voucher.amount_total_net:
-                voucher.payment_state = 'paid'
             else:
-                voucher.payment_state = 'overpaid'
+                # Get the payment states of all lines in the voucher
+                line_payment_states = voucher.line_ids.mapped('payment_state')
+                
+                # If all lines are 'paid', set the voucher as 'paid'
+                if all(state == 'paid' for state in line_payment_states if state):
+                    voucher.payment_state = 'paid'
+                # If all lines are 'not_paid', set the voucher as 'not_paid'  
+                elif all(state == 'not_paid' for state in line_payment_states if state):
+                    voucher.payment_state = 'not_paid'
+                # If there's a mix of states or some lines are partially paid, set as 'partial'
+                elif 'partial' in line_payment_states or any(state not in ['paid', 'not_paid'] for state in line_payment_states):
+                    voucher.payment_state = 'partial'
+                # Check if any line is in 'in_payment' state
+                elif 'in_payment' in line_payment_states:
+                    voucher.payment_state = 'partial'
+                else:
+                    # Default to paid if all lines are paid
+                    voucher.payment_state = 'paid'
 
     @api.depends('line_ids.payment_ids.state', 'line_ids.payment_ids.amount')
     def _compute_amount_paid(self):

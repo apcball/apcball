@@ -749,6 +749,141 @@ class AccountReceipt(models.Model):
             except Exception as e:
                 raise UserError(_("Could not reconcile payment %s with invoices: %s") % (payment.name, str(e)))
 
+    def action_register_batch_payment(self):
+        """
+        Open the standard account.payment.register wizard to register batch payment for all invoices in this receipt.
+        """
+        self.ensure_one()
+        
+        # Check state condition
+        if self.state != 'posted':
+            raise UserError(_("Register Batch Payment is only available for posted receipts."))
+        
+        # Get all invoices linked to this receipt that have residual amounts (not fully paid)
+        invoices = self.line_ids.filtered(lambda line: line.amount_residual != 0).mapped('move_id')
+        
+        # Check if there are unpaid invoices
+        if invoices:
+            # Validate invoices
+            for invoice in invoices:
+                # Check if invoice is posted
+                if invoice.state != 'posted':
+                    raise UserError(_("Invoice %s is not in 'Posted' state. All invoices must be posted to register payment.") % invoice.name)
+                
+                # Check if invoice belongs to the same partner as the receipt
+                if invoice.partner_id != self.partner_id:
+                    raise UserError(_("Invoice %s belongs to a different partner than the receipt. All invoices must belong to the same partner as the receipt.") % invoice.name)
+                
+                # Check if invoice is a customer invoice/refund
+                if invoice.move_type not in ['out_invoice', 'out_refund']:
+                    raise UserError(_("Invoice %s is not a customer invoice or refund. Only customer invoices and refunds can be used for payment registration.") % invoice.name)
+                
+                # Check if the invoice is not fully paid
+                if invoice.payment_state == 'paid':
+                    raise UserError(_("Invoice %s is already fully paid. Cannot register payment for fully paid invoices.") % invoice.name)
+
+            # Prepare context for the payment register wizard
+            # Check if account_payment_batch_process module is installed
+            has_batch_process = 'account.payment.batch' in self.env.registry
+            
+            # Prepare the action to open the payment register wizard
+            action = {
+                'name': _('Register Payment'),
+                'res_model': 'account.payment.register',
+                'view_mode': 'form',
+                'view_id': self.env.ref('account.view_account_payment_register_form').id,
+                'target': 'new',
+                'type': 'ir.actions.act_window',
+                'context': {
+                    'active_model': 'account.move',
+                    'active_ids': invoices.ids,
+                    'default_partner_id': self.partner_id.id,
+                    'default_payment_type': 'inbound',
+                    'default_payment_date': self.date,
+                    'default_communication': f"Receipt {self.name}",
+                    'default_journal_ids': self.env['account.journal'].search([('type', 'in', ('bank', 'cash'))]).ids,
+                    'default_is_batch_payment': True,  # Flag to indicate this is a batch payment from receipt
+                    'default_is_multiline_batch': True,  # Enable multiline batch processing if applicable
+                    # Pass receipt ID to link payments back to receipt. Use default_ so created payments inherit it.
+                    'buz_receipt_id': self.id,
+                    'default_buz_receipt_id': self.id,
+                },
+            }
+            
+            # If account_payment_batch_process module is available, set appropriate context
+            if has_batch_process:
+                action['context']['from_batch_receipt'] = True
+                action['context']['batch_receipt_id'] = self.id
+                action['context']['default_batch_receipt_id'] = self.id
+            
+            return action
+        else:
+            # No unpaid invoices - check if outstanding fallback is enabled
+            allow_outstanding_fallback = self.env['ir.config_parameter'].sudo().get_param(
+                'buz_account_receipt.allow_outstanding_fallback', default=True
+            )
+            
+            if allow_outstanding_fallback and self.amount_total > 0:
+                # Create an on-account inbound payment for this partner
+                # Find default journal if specified in settings
+                default_journal_id = self.env['ir.config_parameter'].sudo().get_param(
+                    'buz_account_receipt.default_bank_journal_id'
+                )
+                journal = None
+                if default_journal_id:
+                    try:
+                        journal = self.env['account.journal'].browse(int(default_journal_id))
+                        if not journal.exists():
+                            journal = None
+                    except ValueError:
+                        journal = None
+                
+                # If no default journal or it doesn't exist, let user select
+                if not journal:
+                    journal = self.env['account.journal'].search([
+                        ('type', 'in', ('bank', 'cash')),
+                        ('company_id', '=', self.company_id.id)
+                    ], limit=1)
+                
+                # Create the payment record
+                payment_vals = {
+                    'payment_type': 'inbound',
+                    'partner_type': 'customer',
+                    'partner_id': self.partner_id.id,
+                    'amount': self.amount_total,
+                    'date': self.date,
+                    'ref': f"Receipt {self.name}",
+                    'company_id': self.company_id.id,
+                    'currency_id': self.currency_id.id,
+                    'payment_method_line_id': journal.inbound_payment_method_line_ids[0].id if journal and journal.inbound_payment_method_line_ids else None,
+                }
+                
+                if journal:
+                    payment_vals['journal_id'] = journal.id
+                
+                payment = self.env['account.payment'].create(payment_vals)
+                
+                # Link the payment to the receipt using M2M
+                self.write({
+                    'payment_ids': [(4, payment.id)]
+                })
+                
+                # Open the payment form view for user to finalize
+                return {
+                    'name': _('Register Payment'),
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'account.payment',
+                    'view_mode': 'form',
+                    'res_id': payment.id,
+                    'target': 'new',
+                    'context': {
+                        'default_buz_receipt_id': self.id,
+                        'buz_receipt_id': self.id
+                    }
+                }
+            else:
+                raise UserError(_("There are no invoices with outstanding amounts linked to this receipt to register payment for."))
+
     @api.depends()
     def _compute_used_in_voucher(self):
         """Compute whether a receipt has been used in any receipt voucher"""
@@ -951,6 +1086,38 @@ class AccountReceiptLine(models.Model):
                 line.amount_paid = actual_paid_on_invoice
             else:
                 line.amount_paid = (line.amount_total or 0.0) - (line.amount_residual or 0.0)
+
+    def action_register_payment_line(self):
+        """Open invoice in popup window for verification."""
+        self.ensure_one()
+        
+        if not self.move_id:
+            raise UserError(_("Please select an invoice first."))
+            
+        # Validate the invoice
+        if self.move_id.state != 'posted':
+            raise UserError(_("Invoice %s is not in 'Posted' state.") % self.move_id.name)
+        
+        if self.move_id.move_type not in ['out_invoice', 'out_refund']:
+            raise UserError(_("Selected document is not a customer invoice or refund."))
+            
+        # Open the invoice in popup window
+        return {
+            'name': _('Invoice Details - %s') % self.move_id.name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'view_mode': 'form',
+            'res_id': self.move_id.id,
+            'target': 'new',
+            'context': {
+                'default_move_type': self.move_id.move_type,
+                'create': False,
+                'edit': False,
+            },
+            'flags': {
+                'mode': 'readonly',
+            }
+        }
 
 
 class AccountMove(models.Model):
