@@ -1,51 +1,160 @@
-# MRP Stock Request (BUZ)
+# MRP Stock Request - Multi-MO Material Issuing
 
-This module enables the creation of stock requests from manufacturing orders to request missing components, which automatically generates internal transfers to fulfill those requests.
+## Overview
+
+This module allows issuing raw materials once and allocating/consuming them across multiple Manufacturing Orders (MOs). This streamlines the material management process by:
+
+- **Direct creation from MO screen** - Production teams can request missing components with one click
+- Preparing a single Stock Request from multiple MOs that calculates shortages
+- Creating one Internal Transfer to issue all materials at once  
+- Allocating issued materials to specific MOs with lot/serial tracking
+- Full traceability between Requests ↔ Pickings ↔ Moves ↔ MOs
 
 ## Features
 
-- **Request Missing Components**: Create stock requests directly from Manufacturing Orders to cover missing raw materials or components.
-- **Automatic Internal Transfers**: Stock requests automatically generate internal transfers assigned to warehouse teams, ensuring timely fulfillment.
-- **Track Stock Request**: Monitor requests through stages for better control.
-- **Integration with MO & Work Orders**: Fully integrated with Manufacturing Orders and Work Orders for a smooth production workflow.
+### 🚀 Quick Access from Manufacturing Order
+- **"Stock Request" button** directly on MO form (header)
+- **Auto-calculates missing components** when created from MO
+- **Smart button** shows count of stock requests linked to the MO
+- Production teams don't need to navigate to separate menus
 
-## Key Functionality
+### Multi-MO Support
+- Select multiple Manufacturing Orders for a single Stock Request
+- Aggregate material requirements across all selected MOs
+- Calculate shortages based on available stock
 
-### 1. Stock Request Creation
-The Manufacturing Order now includes a new **Stock Request** button. With one click, production teams can request missing components directly from the MO screen.
+### Material Issuing
+- One-click "Prepare from MOs" to auto-calculate required materials
+- Create Internal Transfers to move materials to production buffer location
+- Support for UoM conversions and product variants
 
-### 2. Stock Request Form
-The Stock Request form captures product details, quantities, and source/destination locations. It ensures warehouse teams have clear information to prepare the required materials.
+### Allocation & Consumption
+- After materials are issued (picking validated), use the "Allocate to MO" wizard
+- Specify which MO receives which quantities
+- Full lot/serial number tracking support
+- Respect serial number constraints (1 unit per serial)
 
-### 3. Manufacturing Order and Stock Request Connection
-A smart button in the Manufacturing Order links directly to related Stock Requests. This allows production managers to quickly review and track material requests.
+### Traceability
+- Track issued vs allocated quantities per product
+- Smart buttons linking Requests ↔ Pickings ↔ MOs
+- Chatter logs for all major actions
+- Compute fields showing qty requested, issued, allocated, remaining, and available to allocate
 
-### 4. Stock Request and Internal Transfer Connection
-The Stock Request form includes a smart button linking to its generated Internal Transfer. This ensures full traceability between the request and its warehouse fulfillment.
+## Installation
 
-### 5. Internal Transfer
-Internal Transfers are automatically created for requested items. The warehouse team can validate them to deliver materials to production lines.
-
-## Usage
-
-### Creating a Stock Request
-1. Go to a Manufacturing Order that is in "Confirmed" or "In Progress" state
-2. Click on the "Create Stock Request" button in the header
-3. Fill in the request details (source/destination locations are pre-filled)
-4. Optionally click "Prepare from MO" to auto-populate the request lines with components from the MO
-5. Save and confirm the request to create the internal transfer
-
-### Processing Stock Requests
-1. Navigate to Inventory > MRP Stock Request > Stock Requests
-2. Review and process requests as needed
-3. Confirm requests to create internal transfers
-4. Warehouse teams can then process the internal transfers from the stock operations
+1. Copy this module to your Odoo addons directory
+2. Update the apps list: Settings → Apps → Update Apps List
+3. Search for "MRP Stock Request" and click Install
 
 ## Configuration
-- Go to Settings > Manufacturing > Stock Requests to configure default locations
-- Set up security groups for access control
 
-## Technical Details
-- The module extends the `mrp.production` model with a computed field for counting related stock requests
-- Stock requests are linked to both manufacturing orders and internal transfers for traceability
-- Multi-company support is implemented with proper record rules
+### Settings
+
+The module respects standard Odoo settings and adds optional configurations via System Parameters:
+
+**Shortage Calculation Policy**:
+- Key: `mrp_stock_request.shortage_policy`
+- Values: `subtract_done` (default) or `subtract_done_and_reserved`
+
+**Auto-done on Issue**:
+- Key: `mrp_stock_request.auto_done_on_issue`  
+- Values: `False` (default) or `True`
+
+### Locations
+
+When creating a Stock Request, you must specify:
+- **Source Location**: Where materials will be taken from
+- **Destination Location**: Buffer location near production
+- **Operation Type**: Internal transfer type to use
+
+## Usage Workflow
+
+### Quick Start: From Manufacturing Order (Recommended)
+
+1. **Open Manufacturing Order**
+   - Navigate to any confirmed MO (e.g., WH/MO/00009)
+   - Check the "Components" tab to see missing materials
+
+2. **Click "Stock Request" Button**
+   - Button appears in the header (next to Check availability, etc.)
+   - System automatically:
+     - Creates new stock request
+     - Links it to the current MO
+     - Calculates missing components
+     - Pre-fills locations
+     - Opens the request for review
+
+3. **Review Auto-Calculated Lines**
+   - System shows only products with shortages
+   - Requested qty = Required - Already Consumed
+   - Edit if needed
+
+4. **Confirm Request**
+   - Click "Confirm" to create internal transfer
+   - Navigate to transfer via smart button
+
+5. **Process Transfer**
+   - Warehouse team validates the picking
+   - Materials moved to production location
+
+6. **Allocate to MO**
+   - Return to stock request
+   - Click "Allocate to MO"
+   - System pre-fills available quantities
+   - Confirm allocation
+
+### Advanced: Multiple MOs
+
+**Create from Menu:**
+1. Go to Manufacturing → Operations → Stock Requests → Create
+2. Select multiple Manufacturing Orders
+3. Configure source/destination locations
+4. Click "Prepare from MOs"
+
+**Add MOs to Existing Request:**
+1. Open draft stock request
+2. Add more MOs to "mo_ids" field
+3. Click "Prepare from MOs" again
+4. System recalculates aggregated shortages
+
+### Traditional Workflow
+
+### 1. Create Stock Request
+
+**From MO Button (Fastest):**
+1. Open a Manufacturing Order
+2. Click "Stock Request" button
+3. Request auto-created with missing components
+
+**From Menu:**
+1. Go to Manufacturing → Operations → Stock Requests → Create
+2. Select multiple MOs
+3. Configure locations
+
+### 2. Prepare Materials
+
+1. Click "Prepare from MOs" (if not auto-done)
+2. System calculates shortages
+3. Lines auto-created
+
+### 3. Confirm Request
+
+1. Review/edit lines
+2. Click "Confirm"
+3. Internal Transfer created
+
+### 4. Validate Transfer
+
+1. Process the picking
+2. Issued quantities updated
+
+### 5. Allocate to MOs
+
+1. Click "Allocate to MO"
+2. Select MO, qty, lot/serial
+3. Confirm allocation
+4. Materials consumed
+
+## License
+
+LGPL-3

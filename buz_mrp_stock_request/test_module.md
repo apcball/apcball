@@ -1,31 +1,29 @@
-# Test script to verify the module functionality
+# Test Module Documentation
 
-This module implements the following complete workflow:
+## Module: buz_mrp_stock_request
 
-1. Manufacturing Orders have a "Create Stock Request" button in the header
-2. When clicked, it opens a new Stock Request form with MO pre-filled
-3. The "Prepare from MO" button can auto-populate components that are short in quantity
-4. When the Stock Request is confirmed, it creates an Internal Transfer
-5. The Stock Request and Internal Transfer have bidirectional links
-6. A smart button exists on Manufacturing Orders to view related Stock Requests
-7. A smart button exists on Internal Transfers to view related Stock Requests
+This module provides integration between Manufacturing Orders and Internal Transfers through a Stock Request mechanism.
 
-The module includes:
+### Test Cases
 
-- Models: mrp.stock.request and mrp.stock.request.line
-- Views: Tree, Form, and Kanban views for Stock Requests
-- Security: Groups, access rights, and record rules for multi-company support
-- Sequence: For generating reference numbers
-- Integration: With mrp.production and stock.picking models
-- Settings: Configuration options in Manufacturing settings
+1. Create a manufacturing order
+2. Create a stock request from the MO
+3. Use the "Prepare from MO" feature to auto-populate components
+4. Confirm the stock request to create an internal transfer
+5. Check that the internal transfer is properly linked
+6. Verify status synchronization between SRQ and picking
+7. Test the approval workflow (if enabled)
+8. Verify multi-company access controls
+9. Test the sequence numbering
+10. Verify the smart button functionality in MO
 
-Key features implemented:
+### Key Features Tested
+- Stock request creation from MO
+- Internal transfer generation
+- Status synchronization
+- Auto-population from MO
 - Multi-company support
-- Email integration with followers and activities
-- State management (Draft, Requested, Done, Cancelled)
-- Auto-creation of internal transfers
-- Smart buttons for navigation
-- Automatic quantity calculation based on available stock
-- Proper constraints and validation
-
-The implementation is production-ready and follows Odoo 17 community standards.
+- Approval workflow
+- Security access rights
+- Sequence generation
+- Traceability between MO, SRQ, and Picking
