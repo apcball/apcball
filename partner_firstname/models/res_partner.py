@@ -1,10 +1,11 @@
 # Copyright 2013 Nicolas Bessi (Camptocamp SA)
 # Copyright 2014 Agile Business Group (<http://www.agilebg.com>)
 # Copyright 2015 Grupo ESOC (<http://www.grupoesoc.es>)
+# Copyright 2024 Simone Rubino - Aion Tech
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 import logging
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 from .. import exceptions
 
@@ -26,32 +27,71 @@ class ResPartner(models.Model):
         readonly=False,
     )
 
+    @api.model
+    def name_fields_in_vals(self, vals):
+        """Method to check if any name fields are in `vals`."""
+        return vals.get("firstname") or vals.get("lastname")
+
     @api.model_create_multi
     def create(self, vals_list):
-        """Add inverted names at creation if unavailable."""
-        context = dict(self.env.context)
+        """Add inverted names at creation if unavailable. Also, remove the full name
+        from `vals` and context if the partner is an individual and is being created
+        with any name fields, as the name must be computed from the provided name parts;
+        otherwise, the name fields will be computed from the `name` again, when calling
+        its inverse method.
+
+        Note that, to avoid deleting the 'default_name' context for all partners when
+        it's not appropriate, we must call `create` for each partner individually with
+        the correct context.
+        """
+        created_partners = self.browse()
         for vals in vals_list:
-            name = vals.get("name", context.get("default_name"))
+            partner_context = dict(self.env.context)
+            if (
+                not vals.get("is_company")
+                and self.name_fields_in_vals(vals)
+                and "name" in vals
+            ):
+                del vals["name"]
+                partner_context.pop("default_name", None)
+            else:
+                name = vals.get("name", partner_context.get("default_name"))
+                if name is not None:
+                    # Calculate the split fields
+                    inverted = self._get_inverse_name(
+                        self._get_whitespace_cleaned_name(name),
+                        vals.get(
+                            "is_company", self.default_get(["is_company"])["is_company"]
+                        ),
+                    )
+                    for key, value in inverted.items():
+                        if not vals.get(key) or partner_context.get("copy"):
+                            vals[key] = value
 
-            if name is not None:
-                # Calculate the splitted fields
-                inverted = self._get_inverse_name(
-                    self._get_whitespace_cleaned_name(name),
-                    vals.get(
-                        "is_company", self.default_get(["is_company"])["is_company"]
-                    ),
-                )
-                for key, value in inverted.items():
-                    if not vals.get(key) or context.get("copy"):
-                        vals[key] = value
+                    # Remove the combined fields
+                    vals.pop("name", None)
+                    partner_context.pop("default_name", None)
+            # pylint: disable=W8121
+            created_partners |= super(
+                ResPartner, self.with_context(partner_context)
+            ).create([vals])
+        return created_partners
 
-                # Remove the combined fields
-                if "name" in vals:
-                    del vals["name"]
-                if "default_name" in context:
-                    del context["default_name"]
-        # pylint: disable=W8121
-        return super(ResPartner, self.with_context(context)).create(vals_list)
+    def get_extra_default_copy_values(self, order):
+        """Method to add '(copy)' suffix to lastname or firstname, depending on name
+        order configuration.
+        """
+        if order == "first_last":
+            return {
+                "lastname": _("%s (copy)", self.lastname)
+                if self.lastname
+                else _("(copy)")
+            }
+        return {
+            "firstname": _("%s (copy)", self.firstname)
+            if self.firstname
+            else _("(copy)")
+        }
 
     def copy(self, default=None):
         """Ensure partners are copied right.
@@ -60,12 +100,19 @@ class ResPartner(models.Model):
         ignored in :meth:`~.create` because it also copies explicitly firstname
         and lastname fields.
         """
+        default = default or {}
+        if not self.is_company:
+            order = self._get_names_order()
+            extra_default_values = self.get_extra_default_copy_values(order)
+            default.update(extra_default_values)
         return super(ResPartner, self.with_context(copy=True)).copy(default)
 
     @api.model
     def default_get(self, fields_list):
         """Invert name when getting default values."""
-        if "firstname" in fields_list or "lastname" in fields_list:
+        if (
+            "firstname" in fields_list or "lastname" in fields_list
+        ) and "name" not in fields_list:
             fields_list.append("name")
         result = super().default_get(fields_list)
 
@@ -215,46 +262,35 @@ class ResPartner(models.Model):
         When installing it, this method parses those names and saves them
         correctly into the database. This can be called later too if needed.
         """
-        # Find records with empty firstname and lastname
-        records = self.search([("firstname", "=", False), ("lastname", "=", False)])
+        # Find records with empty firstname and lastname, but ensure name is not empty
+        records = self.search([
+            ("firstname", "=", False), 
+            ("lastname", "=", False),
+            ("name", "!=", False),
+            ("name", "!=", ""),
+            ("name", "!=", " "),
+        ])
 
-        # Process each record individually to handle edge cases
-        updated_count = 0
+        # Process each record individually to avoid any issues with empty names
+        processed_count = 0
         for record in records:
-            try:
-                # Check if the record has a valid name to split
-                if record.name and record.name.strip():
-                    # Force calculation for records with valid names
-                    record._inverse_name()
-                    updated_count += 1
-                else:
-                    # Handle records with empty or whitespace-only names
-                    if record.is_company:
-                        # For companies, set the lastname to a default value
-                        record.write({'lastname': record.name or 'Unknown Company'})
-                    else:
-                        # For individuals, set lastname to avoid constraint violation
-                        record.write({'lastname': 'Unknown'})
-                    updated_count += 1
-                    _logger.warning(
-                        "Partner %d had empty name, set default lastname: %s",
-                        record.id,
-                        record.lastname
-                    )
-            except Exception as e:
-                _logger.error(
-                    "Error processing partner %d during firstname module installation: %s",
-                    record.id,
-                    str(e)
+            # Skip if somehow the name is now empty or only whitespace after the search
+            if not record.name or not record.name.strip():
+                continue
+                
+            # Get the name parts according to the inverse name logic
+            parts = record._get_inverse_name(record.name.strip(), record.is_company)
+            
+            # Only update if we have actual name parts to set
+            if parts.get('firstname') or parts.get('lastname'):
+                # Use a direct SQL update to avoid triggering constraints during installation
+                self.env.cr.execute(
+                    "UPDATE res_partner SET firstname=%s, lastname=%s WHERE id=%s",
+                    (parts.get('firstname'), parts.get('lastname'), record.id)
                 )
-                # Set a fallback to prevent installation failure
-                try:
-                    record.write({'lastname': 'Unknown'})
-                    updated_count += 1
-                except Exception:
-                    _logger.error("Failed to set fallback name for partner %d", record.id)
-                    
-        _logger.info("%d partners updated installing module.", updated_count)
+                processed_count += 1
+
+        _logger.info("%d partners updated installing module.", processed_count)
 
     # Disabling SQL constraint givint a more explicit error using a Python
     # contstraint

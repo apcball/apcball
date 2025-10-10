@@ -4,9 +4,9 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 {
-    "name": "buz Partner first name and last name",
+    "name": "Partner first name and last name",
     "summary": "Split first name and last name for non company partners",
-    "version": "17.0.1.0.1",
+    "version": "17.0.1.1.0",
     "author": "Camptocamp, "
     "Grupo ESOC Ingeniería de Servicios, "
     "Tecnativa, "
