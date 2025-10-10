@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Stock Request Views -->
+    <record id="view_mrp_stock_request_tree" model="ir.ui.view">
+        <field name="name">mrp.stock.request.tree</field>
+        <field name="model">mrp.stock.request</field>
+        <field name="arch" type="xml">
+            <tree string="Stock Requests">
+                <field name="name"/>
+                <field name="production_id"/>
+                <field name="picking_id"/>
+                <field name="picking_state"/>
+                <field name="source_location_id"/>
+                <field name="dest_location_id"/>
+                <field name="requested_by"/>
+                <field name="state"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_mrp_stock_request_form" model="ir.ui.view">
+        <field name="name">mrp.stock.request.form</field>
+        <field name="model">mrp.stock.request</field>
+        <field name="arch" type="xml">
+            <form string="Stock Request">
+                <header>
+                    <button name="action_prepare_from_mo" type="object" string="Prepare from MO" 
+                            class="oe_highlight" invisible="state != 'draft' or not production_id" 
+                            help="Auto-populate request lines from the Manufacturing Order components"/>
+                    <button name="action_confirm" type="object" string="Confirm" 
+                            class="oe_highlight" invisible="state != 'draft'" 
+                            help="Confirm the request to create the internal transfer"/>
+                    <button name="action_cancel" type="object" string="Cancel" 
+                            invisible="state not in ['draft', 'requested']" 
+                            confirm="Are you sure you want to cancel this request?"/>
+                    <button name="action_draft" type="object" string="Set to Draft" 
+                            invisible="state != 'cancel'" 
+                            groups="buz_mrp_stock_request.group_mrp_stock_request_manager"/>
+                    <button name="action_open_picking" type="object" string="Open Transfer" 
+                            invisible="not picking_id or state not in ['requested', 'done']"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,requested,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_picking" type="object" 
+                                class="oe_stat_button" icon="fa-exchange"
+                                invisible="not picking_id">
+                            <field name="picking_id" string="Transfer"/>
+                            <field name="picking_state" invisible="1"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="production_id" 
+                                   domain="[('company_id', '=', company_id)]"
+                                   context="{'form_view_ref': 'mrp.mrp_production_form_view'}"/>
+                            <field name="requested_by"/>
+                        </group>
+                        <group>
+                            <field name="company_id" invisible="1"/>
+                            <field name="source_location_id" 
+                                   domain="[('usage', '=', 'internal'), ('company_id', '=', company_id)]"/>
+                            <field name="dest_location_id" 
+                                   domain="[('usage', '=', 'internal'), ('company_id', '=', company_id)]"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Request Lines">
+                            <field name="request_line_ids">
+                                <tree editable="bottom">
+                                    <field name="product_id" 
+                                           domain="[('type', '=', 'product')]"
+                                           options="{'no_create_edit': True}"/>
+                                    <field name="product_uom" 
+                                           options="{'no_create': True, 'no_open': True}"/>
+                                    <field name="product_qty" widget="float"/>
+                                    <field name="description"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Stock Request Kanban View -->
+    <record id="view_mrp_stock_request_kanban" model="ir.ui.view">
+        <field name="name">mrp.stock.request.kanban</field>
+        <field name="model">mrp.stock.request</field>
+        <field name="arch" type="xml">
+            <kanban string="Stock Requests">
+                <field name="name"/>
+                <field name="production_id"/>
+                <field name="state"/>
+                <field name="requested_by"/>
+                <field name="picking_state"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_top">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title"><field name="name"/></strong>
+                                    <div class="o_kanban_record_subtitle">
+                                        <t t-esc="record.production_id.value"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <ul>
+                                    <li>Requested by: <field name="requested_by"/></li>
+                                    <li t-if="record.state.raw_value === 'requested'">Transfer: <field name="picking_state"/></li>
+                                </ul>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="oe_kanban_bottom_left">
+                                    <field name="state" widget="label_selection"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Actions and Menus -->
+    <record id="action_mrp_stock_request" model="ir.actions.act_window">
+        <field name="name">Stock Requests</field>
+        <field name="res_model">mrp.stock.request</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Stock Request!
+            </p><p>
+                A Stock Request allows you to create internal transfers to supply
+                manufacturing orders with needed components.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_mrp_stock_requests_root" name="MRP Stock Request" 
+              sequence="100" web_icon="buz_mrp_stock_request,static/description/icon.png"/>
+    <menuitem id="menu_mrp_stock_requests" name="Stock Requests" 
+              parent="menu_mrp_stock_requests_root" action="action_mrp_stock_request" 
+              sequence="1"/>
+</odoo>

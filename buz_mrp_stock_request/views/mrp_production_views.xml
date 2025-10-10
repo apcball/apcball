@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Manufacturing Order Form View -->
+    <record id="view_mrp_production_stock_request_form" model="ir.ui.view">
+        <field name="name">mrp.production.stock.request.form</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <header position="inside">
+                <button name="%(action_mrp_stock_request)d" type="action" 
+                        string="Create Stock Request" 
+                        invisible="state not in ['confirmed', 'progress']"
+                        context="{'default_production_id': id, 
+                                  'default_company_id': company_id,
+                                  'default_source_location_id': location_src_id,
+                                  'default_dest_location_id': location_dest_id}"/>
+            </header>
+            
+            <div name="button_box" position="inside">
+                <button class="oe_stat_button" type="object" 
+                        name="action_view_stock_requests" 
+                        icon="fa-exchange" invisible="not id">
+                    <field string="Stock Requests" name="mrp_stock_request_count" widget="statinfo"/>
+                </button>
+            </div>
+        </field>
+    </record>
+    
+    <!-- Add a field to count stock requests related to an MO -->
+    <record id="view_mrp_production_stock_request_tree_ext" model="ir.ui.view">
+        <field name="name">mrp.production.stock.request.tree.ext</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_tree_view"/>
+        <field name="arch" type="xml">
+            <field name="state" position="after">
+                <field name="mrp_stock_request_count" invisible="1"/>
+            </field>
+        </field>
+    </record>
+</odoo>

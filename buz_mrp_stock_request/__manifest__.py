@@ -1,0 +1,27 @@
+{
+    "name": "MRP Stock Request (BUZ)",
+    "version": "17.0.1.0.0",
+    "license": "LGPL-3",
+    "author": "OpenERP SA, Odoo Community, BUZ",
+    "website": "https://www.odoo.com",
+    "category": "Manufacturing",
+    "depends": [
+        "mrp",
+        "stock",
+        "mail",
+    ],
+    "data": [
+        "security/mrp_stock_request_security.xml",
+        "security/ir.model.access.csv",
+        "data/sequence_data.xml",
+        "views/mrp_stock_request_views.xml",
+        "views/mrp_production_views.xml",
+        "views/stock_picking_views.xml",
+        "views/res_config_settings_views.xml",
+    ],
+    "demo": [
+    ],
+    "installable": True,
+    "auto_install": False,
+    "application": False,
+}
