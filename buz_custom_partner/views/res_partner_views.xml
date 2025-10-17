@@ -4,15 +4,16 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
+            
+            <!-- แทรก fields ใต้ VAT -->
             <xpath expr="//field[@name='vat']" position="after">
-                <field name="partner_code" placeholder="Enter Partner Code"/>
+                <field name="partner_code" readonly="1" placeholder="Auto-generated" />
+                <field name="old_code_partner" placeholder="Enter Old Partner Code"/>
+                <field name="office" placeholder="Enter Office"/>
+                <field name="partner_group" placeholder="Enter Partner Group"/>
+                <field name="partner_type" placeholder="Enter Partner Type"/>
             </xpath>
-            <xpath expr="//field[@name='partner_code']" position="after">
-                <field name="office" placeholder="Enter Office"/>  <!-- ฟิลด์ใหม่ -->
-                <field name="partner_group" placeholder="Enter Partner Group"/>  <!-- ฟิลด์ใหม่ -->
-                <field name="partner_type" placeholder="Enter Partner Type"/>  <!-- ฟิลด์ใหม่ -->
-            </xpath>
-            <!-- ลบการเพิ่มฟิลด์ old_partner_code ออก -->
+
         </field>
     </record>
 </odoo>
