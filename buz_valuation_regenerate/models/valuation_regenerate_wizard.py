@@ -178,31 +178,101 @@ class ValuationRegenerateWizard(models.TransientModel):
         svls_to_delete = self._find_svl_to_delete(products)
         moves_to_delete = self._find_moves_to_delete(svls_to_delete) if self.rebuild_account_moves else []
         
+        # Collect stock moves that need to be reprocessed
+        # These are the moves that created the SVLs we're about to delete
+        stock_moves_to_reprocess = svls_to_delete.mapped('stock_move_id').filtered(lambda m: m)
+        
+        _logger.info(
+            f"Regeneration scope: {len(svls_to_delete)} SVLs, "
+            f"{len(moves_to_delete)} Journal Entries, "
+            f"{len(stock_moves_to_reprocess)} Stock Moves to reprocess"
+        )
+        
         # Create backup of existing data
         backup_log = self._create_backup_log(svls_to_delete, moves_to_delete)
         
-        # Delete journal entries first (before SVLs since JEs are linked to SVLs)
-        if self.rebuild_account_moves:
-            moves_to_delete.unlink()
+        # Store data before deletion for CSV report (read data before records are deleted)
+        old_svls_data = []
+        for svl in svls_to_delete:
+            old_svls_data.append({
+                'product_name': svl.product_id.display_name,
+                'date': svl.create_date,
+                'value': svl.value,
+                'quantity': svl.quantity,
+                'unit_cost': svl.unit_cost,
+                'description': svl.description or '',
+            })
+        
+        old_moves_data = []
+        for move in moves_to_delete:
+            old_moves_data.append({
+                'name': move.name,
+                'date': move.date,
+                'ref': move.ref,
+            })
+        
+        try:
+            # Delete journal entries first (before SVLs since JEs are linked to SVLs)
+            if self.rebuild_account_moves and moves_to_delete:
+                # Unreconcile all lines in these moves first
+                _logger.info(f"Unreconciling {len(moves_to_delete)} journal entries before deletion...")
+                for move in moves_to_delete:
+                    if move.state == 'posted':
+                        # Find all reconciled lines
+                        reconciled_lines = move.line_ids.filtered(lambda l: l.reconciled)
+                        if reconciled_lines:
+                            # Unreconcile them
+                            reconciled_lines.remove_move_reconcile()
+                        # Reset to draft
+                        move.button_draft()
+                
+                # Use no recomputation context to prevent triggers during deletion
+                moves_to_delete.with_context(no_recompute=True).unlink()
+                # Flush and invalidate cache to prevent reference errors
+                self.env.flush_all()
+                self.env.invalidate_all()
+                
+            # Delete SVLs
+            if self.rebuild_valuation_layers and svls_to_delete:
+                # Unlink account moves from SVLs if not already handled
+                _logger.info(f"Unlinking account moves from {len(svls_to_delete)} SVLs...")
+                svl_account_moves = svls_to_delete.mapped('account_move_id').filtered(lambda m: m)
+                if svl_account_moves and not self.rebuild_account_moves:
+                    # If we're not rebuilding account moves, we need to handle them separately
+                    _logger.warning(f"Found {len(svl_account_moves)} account moves linked to SVLs that will be orphaned")
+                    # Unlink the relationship
+                    svls_to_delete.write({'account_move_id': False})
+                
+                # Use no recomputation context to prevent triggers during deletion
+                svls_to_delete.with_context(no_recompute=True).unlink()
+                # Flush and invalidate cache to prevent reference errors
+                self.env.flush_all()
+                self.env.invalidate_all()
             
-        # Delete SVLs
-        if self.rebuild_valuation_layers:
-            svls_to_delete.unlink()
-        
-        # Recompute valuation layers and journal entries
-        new_svl_ids = []
-        new_move_ids = []
-        
-        if self.rebuild_valuation_layers or self.rebuild_account_moves:
-            new_svl_ids, new_move_ids = self._recompute_valuation(products)
-        
-        # Post new moves if required
-        if self.post_new_moves and new_move_ids:
-            new_moves = self.env['account.move'].browse(new_move_ids)
-            new_moves.action_post()
-        
-        # Create log entry
-        self._create_execution_log(backup_log, svls_to_delete, moves_to_delete, new_svl_ids, new_move_ids)
+            # Recompute valuation layers and journal entries
+            new_svl_ids = []
+            new_move_ids = []
+            
+            if self.rebuild_valuation_layers or self.rebuild_account_moves:
+                new_svl_ids, new_move_ids = self._recompute_valuation(products, stock_moves_to_reprocess)
+            
+            # Post new moves if required
+            if self.post_new_moves and new_move_ids:
+                new_moves = self.env['account.move'].browse(new_move_ids)
+                new_moves.action_post()
+            
+            # Create log entry with pre-saved data
+            self._create_execution_log(backup_log, old_svls_data, old_moves_data, new_svl_ids, new_move_ids)
+            
+        except Exception as e:
+            # Log the error
+            _logger.error(f"Error during valuation regeneration: {str(e)}", exc_info=True)
+            # Mark the log as failed
+            backup_log.write({
+                'notes': f"Error: {str(e)}\n\nOriginal notes:\n{self.notes or ''}",
+            })
+            # Re-raise to trigger rollback
+            raise
         
         # Return success message
         message = f"Valuation regeneration completed successfully. {len(new_svl_ids)} SVLs created, {len(new_move_ids)} Journal Entries created."
@@ -231,11 +301,17 @@ class ValuationRegenerateWizard(models.TransientModel):
             csv_data = self._generate_csv_report(old_svls, old_moves, new_svl_ids, new_move_ids)
             self._attach_csv_to_log(backup_log, csv_data)
 
-    def _generate_csv_report(self, old_svls, old_moves, new_svl_ids, new_move_ids):
-        """Generate a CSV report comparing old and new data"""
+    def _generate_csv_report(self, old_svls_data, old_moves_data, new_svl_ids, new_move_ids):
+        """Generate a CSV report comparing old and new data
+        
+        Args:
+            old_svls_data: List of dicts with SVL data (already read before deletion)
+            old_moves_data: List of dicts with move data (already read before deletion)
+            new_svl_ids: List of new SVL IDs
+            new_move_ids: List of new move IDs
+        """
         import io
         import csv
-        from odoo.tools.safe_eval import safe_eval
         
         output = io.StringIO()
         writer = csv.writer(output)
@@ -247,19 +323,19 @@ class ValuationRegenerateWizard(models.TransientModel):
             'Description', 'Status'
         ])
         
-        # Add old SVLs info
-        for svl in old_svls:
+        # Add old SVLs info from pre-saved data
+        for svl_data in old_svls_data:
             writer.writerow([
                 'SVL',
-                svl.product_id.display_name,
-                svl.create_date,
-                svl.value,
+                svl_data.get('product_name', ''),
+                svl_data.get('date', ''),
+                svl_data.get('value', 0),
                 '',  # New value
-                svl.quantity,
+                svl_data.get('quantity', 0),
                 '',  # New quantity
-                svl.unit_cost,
+                svl_data.get('unit_cost', 0),
                 '',  # New unit cost
-                svl.description or '',
+                svl_data.get('description', ''),
                 'Deleted'
             ])
         
@@ -280,19 +356,19 @@ class ValuationRegenerateWizard(models.TransientModel):
                 'Created'
             ])
             
-        # Add old moves info
-        for move in old_moves:
+        # Add old moves info from pre-saved data
+        for move_data in old_moves_data:
             writer.writerow([
                 'Journal Entry',
                 '',  # Product not applicable to JE
-                move.date,
-                sum(move.line_ids.mapped('balance')),
+                move_data.get('date', ''),
+                '',  # Old value (not stored)
                 '',  # New value
                 '',  # Quantity not applicable
                 '',  # New quantity
                 '',  # Unit cost not applicable
                 '',  # New unit cost
-                move.name or move.ref or '',
+                move_data.get('name', '') or move_data.get('ref', ''),
                 'Deleted'
             ])
         
@@ -317,10 +393,16 @@ class ValuationRegenerateWizard(models.TransientModel):
     
     def _attach_csv_to_log(self, log_record, csv_data):
         """Attach the CSV report to the log record"""
+        import base64
+        
+        # Convert string to base64
+        csv_bytes = csv_data.encode('utf-8')
+        csv_base64 = base64.b64encode(csv_bytes)
+        
         attachment = self.env['ir.attachment'].create({
             'name': f'valuation_regeneration_report_{log_record.id}.csv',
             'type': 'binary',
-            'datas': csv_data.encode('utf-8'),
+            'datas': csv_base64,
             'res_model': 'valuation.regenerate.log',
             'res_id': log_record.id,
         })
@@ -462,20 +544,28 @@ class ValuationRegenerateWizard(models.TransientModel):
         
         return log_model.create(vals)
 
-    def _recompute_valuation(self, products):
-        """Recompute valuation layers and journal entries for the selected products"""
+    def _recompute_valuation(self, products, stock_moves_to_reprocess):
+        """Recompute valuation layers and journal entries for the selected products
+        
+        Args:
+            products: Products to reprocess
+            stock_moves_to_reprocess: Stock moves that had SVLs deleted and need regeneration
+        """
         new_svl_ids = []
         new_move_ids = []
         
         for product in products:
+            # Filter stock moves for this product
+            product_moves = stock_moves_to_reprocess.filtered(lambda m: m.product_id == product)
+            
             # Determine the costing method to use
             cost_method = self._get_costing_method(product)
             
             if cost_method == 'fifo':
-                svl_ids = self._recompute_fifo_valuation(product)
+                svl_ids = self._recompute_fifo_valuation(product, product_moves)
                 new_svl_ids.extend(svl_ids)
             elif cost_method == 'avco':
-                svl_ids = self._recompute_avco_valuation(product)
+                svl_ids = self._recompute_avco_valuation(product, product_moves)
                 new_svl_ids.extend(svl_ids)
             # Add other cost methods if needed
         
@@ -495,24 +585,50 @@ class ValuationRegenerateWizard(models.TransientModel):
         else:  # auto
             return product.categ_id.property_cost_method or 'fifo'
     
-    def _recompute_fifo_valuation(self, product):
-        """Recompute FIFO valuation for a specific product"""
+    def _recompute_fifo_valuation(self, product, stock_moves_to_reprocess):
+        """Recompute FIFO valuation for a specific product
+        
+        Args:
+            product: Product to reprocess
+            stock_moves_to_reprocess: Specific stock moves to regenerate SVLs for
+        """
         svl_obj = self.env['stock.valuation.layer']
         new_svl_ids = []
         
-        # Get stock moves for the product within the date range
-        moves_domain = [
-            ('product_id', '=', product.id),
-            ('state', '=', 'done'),
-            ('company_id', '=', self.company_id.id),
-        ]
+        # Use provided stock moves or search for all moves in date range
+        if stock_moves_to_reprocess:
+            # Use the specific moves that had their SVLs deleted
+            stock_moves = stock_moves_to_reprocess.sorted(lambda m: (m.date, m.id))
+            _logger.info(
+                f"FIFO Regeneration for product {product.display_name}: "
+                f"Reprocessing {len(stock_moves)} specific stock moves"
+            )
+        else:
+            # Fallback: search for moves in date range
+            moves_domain = [
+                ('product_id', '=', product.id),
+                ('state', '=', 'done'),
+                ('company_id', '=', self.company_id.id),
+            ]
+            
+            if self.date_from:
+                moves_domain.append(('date', '>=', self.date_from))
+            if self.date_to:
+                moves_domain.append(('date', '<=', self.date_to))
+            
+            stock_moves = self.env['stock.move'].search(moves_domain, order='date, id')
+            
+            # Log for debugging
+            _logger.info(f"FIFO Regeneration for product {product.display_name}: Found {len(stock_moves)} stock moves in date range")
+            if not stock_moves:
+                _logger.warning(
+                    f"No stock moves found for product {product.display_name}. "
+                    f"Date range: {self.date_from} to {self.date_to}"
+                )
         
-        if self.date_from:
-            moves_domain.append(('date', '>=', self.date_from))
-        if self.date_to:
-            moves_domain.append(('date', '<=', self.date_to))
-        
-        stock_moves = self.env['stock.move'].search(moves_domain, order='date, id')
+        if not stock_moves:
+            _logger.warning(f"No stock moves to process for product {product.display_name}")
+            return new_svl_ids
         
         # FIFO Inventory Queue: stores incoming stock layers
         # Format: [{'qty': remaining_qty, 'unit_cost': cost, 'origin_move': move, 'date': date}, ...]
@@ -521,10 +637,21 @@ class ValuationRegenerateWizard(models.TransientModel):
         # Process each stock move to create appropriate SVLs
         for move in stock_moves:
             # Skip moves that don't affect valuation
-            if not move._should_be_valued():
+            # NOTE: We regenerate even if current valuation is manual_periodic, 
+            # because these moves originally had SVLs (which we just deleted)
+            if move.state != 'done':
+                _logger.info(f"Skipping move {move.id} {move.name}: state is {move.state}, not 'done'")
                 continue
+            if move.product_id.type != 'product':
+                _logger.info(f"Skipping move {move.id} {move.name}: product type is {move.product_id.type}, not 'product'")
+                continue
+            # Don't check valuation method here - we're regenerating SVLs that existed before
+            
+            _logger.info(f"Processing move {move.id} {move.name}: state={move.state}, valuation={move.product_id.valuation}, type={move.product_id.type}")
             
             move_qty = move.product_uom._compute_quantity(move.product_uom_qty, product.uom_id)
+            
+            _logger.info(f"Move {move.id} quantity: {move_qty}, is_in={move._is_in()}, is_out={move._is_out()}")
             
             # Determine move direction and create SVL accordingly
             if move._is_in():
@@ -554,12 +681,10 @@ class ValuationRegenerateWizard(models.TransientModel):
                 new_svl = svl_obj.create(svl_vals)
                 new_svl_ids.append(new_svl.id)
                 
-                # Add to FIFO queue
+                # Add to FIFO queue (only store values, not record references)
                 fifo_queue.append({
                     'qty': move_qty,
                     'unit_cost': svl_vals['unit_cost'],
-                    'origin_move': move,
-                    'origin_svl': new_svl,
                     'date': move.date,
                 })
                 
@@ -585,7 +710,6 @@ class ValuationRegenerateWizard(models.TransientModel):
                         layers_consumed.append({
                             'qty': qty_consumed,
                             'unit_cost': oldest_layer['unit_cost'],
-                            'origin_svl': oldest_layer['origin_svl'],
                         })
                         
                         total_value += value_consumed
@@ -601,7 +725,6 @@ class ValuationRegenerateWizard(models.TransientModel):
                         layers_consumed.append({
                             'qty': qty_consumed,
                             'unit_cost': oldest_layer['unit_cost'],
-                            'origin_svl': oldest_layer['origin_svl'],
                         })
                         
                         total_value += value_consumed
@@ -627,12 +750,8 @@ class ValuationRegenerateWizard(models.TransientModel):
                 new_svl = svl_obj.create(svl_vals)
                 new_svl_ids.append(new_svl.id)
                 
-                # Update remaining qty in consumed origin SVLs
-                for layer_info in layers_consumed:
-                    origin_svl = layer_info['origin_svl']
-                    if origin_svl:
-                        new_remaining = origin_svl.remaining_qty - layer_info['qty']
-                        origin_svl.write({'remaining_qty': max(0, new_remaining)})
+                # Note: We don't update remaining_qty on origin_svl because those are old SVLs
+                # that have been deleted. The FIFO queue tracking is done in memory only.
                 
                 # Create journal entry if needed
                 if self.rebuild_account_moves:
@@ -640,24 +759,34 @@ class ValuationRegenerateWizard(models.TransientModel):
         
         return new_svl_ids
     
-    def _recompute_avco_valuation(self, product):
-        """Recompute AVCO valuation for a specific product"""
+    def _recompute_avco_valuation(self, product, stock_moves_to_reprocess):
+        """Recompute AVCO valuation for a specific product
+        
+        Args:
+            product: Product to reprocess
+            stock_moves_to_reprocess: Specific stock moves to regenerate SVLs for
+        """
         svl_obj = self.env['stock.valuation.layer']
         new_svl_ids = []
         
-        # Get stock moves for the product within the date range
-        moves_domain = [
-            ('product_id', '=', product.id),
-            ('state', '=', 'done'),
-            ('company_id', '=', self.company_id.id),
-        ]
-        
-        if self.date_from:
-            moves_domain.append(('date', '>=', self.date_from))
-        if self.date_to:
-            moves_domain.append(('date', '<=', self.date_to))
-        
-        stock_moves = self.env['stock.move'].search(moves_domain, order='date, id')
+        # Use provided stock moves or search for all moves in date range
+        if stock_moves_to_reprocess:
+            # Use the specific moves that had their SVLs deleted
+            stock_moves = stock_moves_to_reprocess.sorted(lambda m: (m.date, m.id))
+        else:
+            # Fallback: search for moves in date range
+            moves_domain = [
+                ('product_id', '=', product.id),
+                ('state', '=', 'done'),
+                ('company_id', '=', self.company_id.id),
+            ]
+            
+            if self.date_from:
+                moves_domain.append(('date', '>=', self.date_from))
+            if self.date_to:
+                moves_domain.append(('date', '<=', self.date_to))
+            
+            stock_moves = self.env['stock.move'].search(moves_domain, order='date, id')
         
         # Calculate running totals for AVCO (Average Cost)
         total_qty = 0.0
@@ -670,8 +799,13 @@ class ValuationRegenerateWizard(models.TransientModel):
         # Process each stock move to create appropriate SVLs with AVCO
         for move in stock_moves:
             # Skip moves that don't affect valuation
-            if not move._should_be_valued():
+            # NOTE: We regenerate even if current valuation is manual_periodic,
+            # because these moves originally had SVLs (which we just deleted)
+            if move.state != 'done':
                 continue
+            if move.product_id.type != 'product':
+                continue
+            # Don't check valuation method here - we're regenerating SVLs that existed before
             
             move_qty = move.product_uom._compute_quantity(move.product_uom_qty, product.uom_id)
             
@@ -773,21 +907,6 @@ class ValuationRegenerateWizard(models.TransientModel):
         
         return total_adjustment
 
-
-
-
-class ValuationRegenerateWizardLinePreview(models.TransientModel):
-    _name = 'valuation.regenerate.wizard.line.preview'
-    _description = 'Valuation Regenerate Wizard Line Preview'
-
-    wizard_id = fields.Many2one('valuation.regenerate.wizard', string='Wizard')
-    svl_id = fields.Many2one('stock.valuation.layer', string='Stock Valuation Layer')
-    move_id = fields.Many2one('account.move', string='Journal Entry')
-    product_id = fields.Many2one('product.product', string='Product')
-    date = fields.Date('Date')
-    old_value = fields.Float('Old Value')
-    old_unit_cost = fields.Float('Old Unit Cost')
-    description = fields.Char('Description')
     def _create_journal_entry_for_svl(self, svl):
         """Create a journal entry corresponding to a stock valuation layer"""
         if not self.rebuild_account_moves or not svl or svl.value == 0:
