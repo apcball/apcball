@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add button to product form view -->
+    <record id="view_product_product_form_inherit_valuation_regenerate" model="ir.ui.view">
+        <field name="name">product.product.form.inherit.valuation.regenerate</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_variant_easy_edit_view"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button class="oe_stat_button" 
+                        name="action_open_valuation_regenerate_wizard" 
+                        icon="fa-refresh" 
+                        string="Re-Generate Valuation" 
+                        type="object"
+                        context="{'default_product_ids': [active_id], 'default_company_id': company_id, 'default_mode': 'product'}"
+                        groups="buz_valuation_regenerate.group_valuation_regenerate_manager"/>
+            </div>
+        </field>
+    </record>
+</odoo>

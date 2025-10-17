@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menu data for Valuation Regeneration -->
+    <data>
+        <!-- Menu items defined in menus.xml, but can add additional data here if needed -->
+    </data>
+</odoo>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menu items for Valuation Tools -->
+    <menuitem id="menu_valuation_tools_root"
+              name="Valuation Tools"
+              parent="stock.menu_stock_inventory_control"
+              sequence="100"
+              groups="buz_valuation_regenerate.group_valuation_regenerate_manager"/>
+
+    <menuitem id="menu_valuation_regenerate_wizard"
+              name="Re-Generate Valuation"
+              parent="menu_valuation_tools_root"
+              action="action_valuation_regenerate_wizard"
+              sequence="10"
+              groups="buz_valuation_regenerate.group_valuation_regenerate_manager"/>
+
+    <menuitem id="menu_valuation_regenerate_logs"
+              name="Valuation Regeneration Logs"
+              parent="menu_valuation_tools_root"
+              action="action_valuation_regenerate_log"
+              sequence="20"
+              groups="buz_valuation_regenerate.group_valuation_regenerate_manager"/>
+</odoo>
