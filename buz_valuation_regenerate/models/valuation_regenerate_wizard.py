@@ -668,7 +668,6 @@ class ValuationRegenerateWizard(models.TransientModel):
                     'remaining_qty': move_qty,
                     'stock_move_id': move.id,
                     'description': f"FIFO In: {move.reference or move.name}",
-                    'create_date': move.date,
                 }
                 
                 # Apply landed costs if applicable
@@ -680,6 +679,15 @@ class ValuationRegenerateWizard(models.TransientModel):
                 
                 new_svl = svl_obj.create(svl_vals)
                 new_svl_ids.append(new_svl.id)
+                
+                # Update create_date to match the original move date
+                # We need to use SQL because create_date is a magic field
+                self.env.cr.execute(
+                    "UPDATE stock_valuation_layer SET create_date = %s WHERE id = %s",
+                    (move.date, new_svl.id)
+                )
+                # Invalidate cache so the updated date is reflected
+                new_svl.invalidate_recordset(['create_date'])
                 
                 # Add to FIFO queue (only store values, not record references)
                 fifo_queue.append({
@@ -744,11 +752,18 @@ class ValuationRegenerateWizard(models.TransientModel):
                     'remaining_qty': 0,
                     'stock_move_id': move.id,
                     'description': f"FIFO Out: {move.reference or move.name} (consumed {len(layers_consumed)} layer(s))",
-                    'create_date': move.date,
                 }
                 
                 new_svl = svl_obj.create(svl_vals)
                 new_svl_ids.append(new_svl.id)
+                
+                # Update create_date to match the original move date
+                self.env.cr.execute(
+                    "UPDATE stock_valuation_layer SET create_date = %s WHERE id = %s",
+                    (move.date, new_svl.id)
+                )
+                # Invalidate cache so the updated date is reflected
+                new_svl.invalidate_recordset(['create_date'])
                 
                 # Note: We don't update remaining_qty on origin_svl because those are old SVLs
                 # that have been deleted. The FIFO queue tracking is done in memory only.
@@ -880,6 +895,14 @@ class ValuationRegenerateWizard(models.TransientModel):
             # Create the new SVL
             new_svl = svl_obj.create(svl_vals)
             new_svl_ids.append(new_svl.id)
+            
+            # Update create_date to match the original move date
+            self.env.cr.execute(
+                "UPDATE stock_valuation_layer SET create_date = %s WHERE id = %s",
+                (move.date, new_svl.id)
+            )
+            # Invalidate cache so the updated date is reflected
+            new_svl.invalidate_recordset(['create_date'])
             
             # Generate corresponding journal entries if required
             if self.rebuild_account_moves:
