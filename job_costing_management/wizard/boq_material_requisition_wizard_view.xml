@@ -27,7 +27,7 @@
                     <notebook>
                         <page string="BOQ Lines">
                             <field name="line_ids">
-                                <tree editable="bottom" decoration-warning="quantity_status == 'exceed'" decoration-muted="quantity_status == 'complete'">
+                                <tree editable="bottom" decoration-warning="quantity_status == 'exceed'" decoration-muted="quantity_status == 'complete'" searchable="True">
                                     <field name="selected"/>
                                     <field name="product_id" options="{'no_create': True}" required="1"/>
                                     <field name="description"/>

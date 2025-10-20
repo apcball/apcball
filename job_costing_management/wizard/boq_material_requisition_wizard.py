@@ -71,7 +71,7 @@ class BOQMaterialRequisitionWizard(models.TransientModel):
                     'requested_quantity': line.remaining_qty,  # Default to remaining quantity
                     'uom_id': line.uom_id.id if line.uom_id else line.product_id.uom_id.id,
                     'estimated_cost': line.unit_cost,
-                    'selected': True,  # Select all by default
+                    'selected': False,  # Do not select by default
                 }))
             
             if not line_vals:
@@ -150,7 +150,7 @@ class BOQMaterialRequisitionWizardLine(models.TransientModel):
     _description = 'BOQ Material Requisition Wizard Line'
 
     wizard_id = fields.Many2one('boq.material.requisition.wizard', string='Wizard', required=True, ondelete='cascade')
-    selected = fields.Boolean(string='Select', default=True)
+    selected = fields.Boolean(string='Select', default=False)
     
     # BOQ line information
     boq_line_id = fields.Many2one('boq.line', string='BOQ Line', required=True)
