@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Security Groups -->
+    <record id="group_buz_warranty_user" model="res.groups">
+        <field name="name">Warranty User</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+    </record>
+
+    <record id="group_buz_warranty_manager" model="res.groups">
+        <field name="name">Warranty Manager</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="implied_ids" eval="[(4, ref('group_buz_warranty_user'))]"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+
+    <!-- Record Rules -->
+    <!-- Warranty Template Rules -->
+    <record id="rule_warranty_template_company" model="ir.rule">
+        <field name="name">Warranty Template Company Rule</field>
+        <field name="model_id" ref="model_buz_warranty_template"/>
+        <field name="domain_force">[('company_id', '=', user.company_id.id)]</field>
+        <field name="groups" eval="[(4, ref('group_buz_warranty_user'))]"/>
+    </record>
+
+    <!-- Warranty Contract Rules -->
+    <record id="rule_warranty_contract_company" model="ir.rule">
+        <field name="name">Warranty Contract Company Rule</field>
+        <field name="model_id" ref="model_buz_warranty_contract"/>
+        <field name="domain_force">[('company_id', '=', user.company_id.id)]</field>
+        <field name="groups" eval="[(4, ref('group_buz_warranty_user'))]"/>
+    </record>
+
+    <!-- Warranty Claim Rules -->
+    <record id="rule_warranty_claim_company" model="ir.rule">
+        <field name="name">Warranty Claim Company Rule</field>
+        <field name="model_id" ref="model_buz_warranty_claim"/>
+        <field name="domain_force">[('company_id', '=', user.company_id.id)]</field>
+        <field name="groups" eval="[(4, ref('group_buz_warranty_user'))]"/>
+    </record>
+
+    <!-- Claim Cost Line Rules -->
+    <record id="rule_claim_cost_line_company" model="ir.rule">
+        <field name="name">Claim Cost Line Company Rule</field>
+        <field name="model_id" ref="model_buz_claim_cost_line"/>
+        <field name="domain_force">[('claim_id.company_id', '=', user.company_id.id)]</field>
+        <field name="groups" eval="[(4, ref('group_buz_warranty_user'))]"/>
+    </record>
+</odoo>

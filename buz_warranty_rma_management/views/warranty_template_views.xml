@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Warranty Template Tree View -->
+    <record id="view_warranty_template_tree" model="ir.ui.view">
+        <field name="name">buz.warranty.template.tree</field>
+        <field name="model">buz.warranty.template</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="product_tmpl_id"/>
+                <field name="coverage_type"/>
+                <field name="duration_months"/>
+                <field name="contract_count" widget="statinfo"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Warranty Template Form View -->
+    <record id="view_warranty_template_form" model="ir.ui.view">
+        <field name="name">buz.warranty.template.form</field>
+        <field name="model">buz.warranty.template</field>
+        <field name="arch" type="xml">
+            <form string="Warranty Template">
+                <header>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_contracts"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-files-o">
+                            <field name="contract_count" widget="statinfo" string="Warranty Contracts"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="product_tmpl_id"/>
+                            <field name="coverage_type"/>
+                        </group>
+                        <group>
+                            <field name="duration_months"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="sell_product_id" invisible="coverage_type != 'extended'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Terms and Conditions">
+                            <field name="terms"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Warranty Template Search View -->
+    <record id="view_warranty_template_search" model="ir.ui.view">
+        <field name="name">buz.warranty.template.search</field>
+        <field name="model">buz.warranty.template</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="product_tmpl_id"/>
+                <field name="coverage_type"/>
+                <group expand="0" string="Group By">
+                    <filter string="Product Template" name="group_by_product" context="{'group_by': 'product_tmpl_id'}"/>
+                    <filter string="Coverage Type" name="group_by_coverage" context="{'group_by': 'coverage_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>

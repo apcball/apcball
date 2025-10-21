@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Warranty Claim Tree View -->
+    <record id="view_warranty_claim_tree" model="ir.ui.view">
+        <field name="name">buz.warranty.claim.tree</field>
+        <field name="model">buz.warranty.claim</field>
+        <field name="arch" type="xml">
+            <tree string="Warranty Claims">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="lot_id"/>
+                <field name="reason"/>
+                <field name="is_in_warranty"/>
+                <field name="state"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Warranty Claim Form View -->
+    <record id="view_warranty_claim_form" model="ir.ui.view">
+        <field name="name">buz.warranty.claim.form</field>
+        <field name="model">buz.warranty.claim</field>
+        <field name="arch" type="xml">
+            <form string="Warranty Claim">
+                <header>
+                    <button name="action_submit"
+                            type="object"
+                            string="Submit"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_receive_rma"
+                            type="object"
+                            string="Receive RMA"
+                            class="btn-secondary"
+                            invisible="state != 'under_review'"/>
+                    <button name="action_create_repair"
+                            type="object"
+                            string="Create Repair"
+                            class="btn-secondary"
+                            invisible="state not in ['rma_in', 'under_review']"/>
+                    <button name="action_create_replacement"
+                            type="object"
+                            string="Create Replacement"
+                            class="btn-secondary"
+                            invisible="state not in ['repairing', 'under_review']"/>
+                    <button name="action_return_to_customer"
+                            type="object"
+                            string="Return to Customer"
+                            class="btn-secondary"
+                            invisible="state not in ['repairing', 'rma_in']"/>
+                    <button name="action_create_invoice"
+                            type="object"
+                            string="Create Invoice"
+                            class="btn-info"
+                            invisible="(is_in_warranty == True) or (state not in ['ready_to_return', 'replacing'])"/>
+                    <button name="action_mark_done"
+                            type="object"
+                            string="Mark Done"
+                            class="btn-success"
+                            invisible="state not in ['ready_to_return', 'replacing', 'repairing']"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,under_review,rma_in,repairing,replacing,ready_to_return,done,cancel"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                    </div>
+                    <group>
+                        <group name="warranty_info" string="Warranty &amp; Serial">
+                            <field name="contract_id"/>
+                            <field name="partner_id"/>
+                            <field name="product_id"/>
+                            <field name="lot_id"/>
+                            <field name="start_date" readonly="1"/>
+                            <field name="end_date" readonly="1"/>
+                            <field name="is_in_warranty" readonly="1"/>
+                        </group>
+                        <group name="rma_info" string="RMA &amp; Logistics">
+                            <field name="reason"/>
+                            <field name="rma_in_picking_id"/>
+                            <field name="repair_id"/>
+                            <field name="replacement_out_picking_id"/>
+                            <field name="return_to_customer_picking_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Details">
+                            <group>
+                                <field name="description"/>
+                                <field name="manager_note"/>
+                            </group>
+                        </page>
+                        <page string="Costs &amp; Invoice" name="costs_invoice">
+                            <field name="claim_cost_line_ids">
+                                <tree editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="name"/>
+                                    <field name="quantity"/>
+                                    <field name="price_unit"/>
+                                    <field name="tax_ids" widget="many2many_tags" options="{'no_create_edit': True}"/>
+                                    <field name="subtotal" sum="Total"/>
+                                </tree>
+                            </field>
+                            <field name="invoice_id" class="oe_inline"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Warranty Claim Kanban View -->
+    <record id="view_warranty_claim_kanban" model="ir.ui.view">
+        <field name="name">buz.warranty.claim.kanban</field>
+        <field name="model">buz.warranty.claim</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="state"/>
+                <field name="reason"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_top">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title"><field name="name"/></strong>
+                                    <div class="o_kanban_record_subtitle">
+                                        <field name="partner_id"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <ul>
+                                    <li>Product: <field name="product_id"/></li>
+                                    <li>Reason: <field name="reason"/></li>
+                                    <li>State: <field name="state"/></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Warranty Claim Search View -->
+    <record id="view_warranty_claim_search" model="ir.ui.view">
+        <field name="name">buz.warranty.claim.search</field>
+        <field name="model">buz.warranty.claim</field>
+        <field name="arch" type="xml">
+            <search string="Warranty Claims">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="lot_id"/>
+                <field name="reason"/>
+                <field name="state"/>
+                <filter name="in_warranty" string="In Warranty" domain="[('is_in_warranty', '=', True)]"/>
+                <filter name="out_of_warranty" string="Out of Warranty" domain="[('is_in_warranty', '=', False)]"/>
+                <filter name="active_claims" string="Active" domain="[('state', 'not in', ['done', 'cancel'])]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Customer" name="group_by_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Product" name="group_by_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Reason" name="group_by_reason" context="{'group_by': 'reason'}"/>
+                    <filter string="Status" name="group_by_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>

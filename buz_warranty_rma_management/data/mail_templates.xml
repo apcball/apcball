@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Warranty Expiry Reminder Email Template -->
+    <record id="email_template_warranty_expiry_reminder" model="mail.template">
+        <field name="name">Warranty Expiry Reminder</field>
+        <field name="model_id" ref="model_buz_warranty_contract"/>
+        <field name="subject">Warranty Expiry Reminder for Contract {{ object.name }}</field>
+        <field name="body_html" type="html">
+            <div style="margin: 0px; padding: 0px;">
+                <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                    Dear <t t-out="object.partner_id.name"/>,
+                    <br/><br/>
+                    We would like to inform you that your warranty contract (<t t-out="object.name"/>) 
+                    for product <t t-out="object.product_id.name"/> with serial/lot number <t t-out="object.lot_id.name"/> 
+                    is going to expire on <t t-out="object.end_date"/>.
+                    <br/><br/>
+                    After the expiry date, any repair or replacement services will be chargeable as per our standard rates.
+                    <br/><br/>
+                    If you need to extend your warranty coverage, please contact our customer service team.
+                    <br/><br/>
+                    Thank you for choosing our products.
+                    <br/><br/>
+                    Best regards,<br/>
+                    Customer Service Team
+                </p>
+            </div>
+        </field>
+        <field name="email_from">${(object.user_id.email or user.email)|safe}</field>
+        <field name="email_to">${object.partner_id.email|safe}</field>
+        <field name="partner_to">${object.partner_id.id}</field>
+        <field name="lang">${object.partner_id.lang}</field>
+    </record>
+
+    <!-- Cron Job for Warranty Expiry Reminders -->
+    <record id="ir_cron_warranty_expiry_reminder" model="ir.cron">
+        <field name="name">Warranty Expiry Reminder</field>
+        <field name="model_id" ref="model_buz_warranty_contract"/>
+        <field name="state">code</field>
+        <field name="code">model.reminder_cron_job()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="doall" eval="False"/>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View สำหรับธุรกรรม E-Tax -->
+    <record id="view_etax_transaction_form" model="ir.ui.view">
+        <field name="name">etax.transaction.form</field>
+        <field name="model">etax.transaction</field>
+        <field name="arch" type="xml">
+            <form string="ธุรกรรม E-Tax" >
+                <header>
+                    <button name="send_to_etax" type="object" string="ส่งไป E-Tax" 
+                            class="oe_highlight" 
+                            invisible="state not in ['draft', 'error']"/>
+                    <button name="action_download_pdf" type="object" string="ดาวน์โหลด PDF" 
+                            invisible="not pdf_url"/>
+                    <button name="action_download_xml" type="object" string="ดาวน์โหลด XML" 
+                            invisible="not xml_url"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,sending,sent"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <!-- <field name="document_id" readonly="1"/> -->
+                            <field name="invoice_id" readonly="state == 'sent'"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group>
+                            <field name="document_type" readonly="state == 'sent'"/>
+                            <field name="etax_config_id" readonly="state == 'sent'"/>
+                            <field name="sale_order_ref" readonly="state == 'sent'"/>
+                            
+                            <field name="document_date" readonly="state == 'sent'"/>
+                            <field name="payment_term" style="width:50px;" readonly="state == 'sent'"/>
+                            <field name="payment_due_date" readonly="state == 'sent'"/>
+                        </group>
+                        <group>
+                            <field name="partner_id" readonly="state == 'sent'"/>
+                            <field name="partner_tax_id" readonly="state == 'sent'"/>
+                            <field name="partner_branch_id" readonly="state == 'sent'"/>
+                            <field name="transaction_code" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="รายการสินค้า">
+                            <field name="line_ids" readonly="state == 'sent'">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id"/>
+                                    <field name="name"/>
+                                    <field name="quantity"/>
+                                    <field name="price_unit"/>
+                                    <field name="discount"/>
+                                    <field name="tax_ids" widget="many2many_tags"/>
+                                    <field name="price_subtotal"/>
+                                </tree>
+                            </field>
+                            <div invisible="not (document_type == '81' or document_type == '80')" required="document_type == '81' or document_type == '80'">
+                                <group class="oe_subtotal_footer oe_right" readonly="state == 'sent'">
+                                    <field name="original_amount"/>
+                                    <field name="amount_untaxed" readonly="1"/>
+                                    <field name="difference_amount" readonly="1"/>
+                                    <field name="amount_tax" readonly="1"/>
+                                    <field name="amount_total" class="oe_subtotal_footer_range"/>
+                                </group>
+                            </div>
+                            <div invisible="not (document_type == '380')" required="document_type == '380'">
+                                <group class="oe_subtotal_footer oe_right" readonly="state == 'sent'">
+                                    <field name="amount_untaxed" 
+                                        string="รวมเป็นเงิน"
+                                        invisible="not (document_type == '380')"/>
+                                    <field name="amount_disc" readonly="1"/>
+                                    <field name="net_amount" readonly="1"/>
+                                    <field name="amount_vat" readonly="1"/>
+                                    <field name="net_amount_total" class="oe_subtotal_footer_range"/>
+                                </group>
+                            </div>
+                            <div invisible="not (document_type == 'T04')" required="document_type == 'T04'">
+                                <group class="oe_subtotal_footer oe_right" readonly="state == 'sent'">
+                                    <field name="amount_untaxed" 
+                                        string="รวมเป็นเงิน"
+                                        invisible="not (document_type == 'T04')"/>
+                                    <field name="amount_disc" readonly="1"/>
+                                    <field name="net_amount" readonly="1"
+                                        string="ยอดหลังหักส่วนลด"
+                                        invisible="not (document_type == 'T04')"/>
+                                    <field name="deposit" readonly="1"/>
+                                    <field name="total_after_deposit" readonly="1"/>
+                                    <field name="amount_vat" readonly="1"/>
+                                    <field name="net_amount_total" class="oe_subtotal_footer_range"/>
+                                </group>
+                            </div>
+                        </page>
+                        <page string="ข้อมูลอ้างอิง">
+                            <group>
+                                <group>
+                                    <field name="currency_id" style="width:100px;" readonly="state == 'sent'"/>
+                                </group>
+                                <group>
+                                    <field name="pdf_url" readonly="1"/>
+                                    <field name="xml_url" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="หมายเหตุ">
+                            <div invisible="document_type != '81'" required="document_type == '81'">
+                                <label for="remark_cdn" string="เหตุผลในการลดหนี้ : "/>
+                                <field name="remark_cdn" />
+                                <br/>
+                            </div>
+
+                            <div invisible="document_type != '80'" required="document_type == '80'">
+                                <label for="remark_dbn" string="เหตุผลในการเพิ่มหนี้ : "/>
+                                <field name="remark_dbn"/>
+                                <br/>
+                            </div>
+                            
+                            <label for="notes" string="เหตุผล : "/>
+                            <field name="notes" placeholder="เหตุผล"/>
+                        </page>
+                        <page string="ผลตอบกลับจาก API" invisible="not api_response">
+                            <group>
+                                <field name="api_response" readonly="1"/>
+                                <field name="error_message" readonly="1" invisible="not error_message"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Tree View สำหรับธุรกรรม E-Tax -->
+    <record id="view_etax_transaction_tree" model="ir.ui.view">
+        <field name="name">etax.transaction.tree</field>
+        <field name="model">etax.transaction</field>
+        <field name="arch" type="xml">
+            <!-- <tree string="ธุรกรรม E-Tax" decoration-success="state=='sent'" decoration-danger="state=='error'"> -->
+            <tree string="ธุรกรรม E-Tax">
+                <!-- <field name="document_id"/> -->
+                <field name="document_type"/>
+                <field name="invoice_id"/>
+                <field name="sale_order_ref"/>
+                <field name="partner_id"/>
+                <field name="document_date"/>
+                <field name="invoice_total"/>
+                <field name="transaction_code"/>
+                <field name="state" widget="badge" 
+                    decoration-info="state=='draft'" 
+                    decoration-warning="state=='sending'" 
+                    decoration-success="state=='sent'" 
+                    decoration-danger="state=='error'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Search View สำหรับธุรกรรม E-Tax -->
+    <record id="view_etax_transaction_search" model="ir.ui.view">
+        <field name="name">etax.transaction.search</field>
+        <field name="model">etax.transaction</field>
+        <field name="arch" type="xml">
+            <search>
+                <!-- <field name="document_id"/> -->
+                <field name="partner_id"/>
+                <field name="transaction_code"/>
+                <separator/>
+                <filter name="draft" string="ร่าง" domain="[('state','=','draft')]"/>
+                <filter name="sent" string="ส่งแล้ว" domain="[('state','=','sent')]"/>
+                <filter name="error" string="ข้อผิดพลาด" domain="[('state','=','error')]"/>
+                <separator/>
+                <filter name="today" string="วันนี้" domain="[('document_date','>=',datetime.datetime.now().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="จัดกลุ่มโดย">
+                    <filter name="group_partner" string="ลูกค้า" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_state" string="สถานะ" context="{'group_by': 'state'}"/>
+                    <filter name="group_document_type" string="ประเภทเอกสาร" context="{'group_by': 'document_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action สำหรับธุรกรรม E-Tax -->
+    <record id="action_etax_transaction" model="ir.actions.act_window">
+        <field name="name">ธุรกรรม E-Tax</field>
+        <field name="res_model">etax.transaction</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                สร้างธุรกรรม E-Tax ใหม่
+            </p>
+            <p>
+                จัดการการส่งใบกำกับภาษีอิเล็กทรอนิกส์ไปยัง E-Tax
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu หลักสำหรับ E-Tax -->
+    <!-- <menuitem id="menu_etax_root"
+              name="E-Tax"
+              parent="account.menu_finance"
+              sequence="20"/> -->
+
+    <menuitem id="menu_etax_transaction"
+              name="E-Tax"
+              parent="account.menu_finance_receivables"
+              action="action_etax_transaction"
+              sequence="1"/>
+
+    <!-- Form View สำหรับรายการสินค้า E-Tax -->
+    <record id="view_etax_transaction_line_form" model="ir.ui.view">
+        <field name="name">etax.transaction.line.form</field>
+        <field name="model">etax.transaction.line</field>
+        <field name="arch" type="xml">
+            <form string="รายการสินค้า E-Tax">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="product_id"/>
+                            <field name="name"/>
+                            <field name="quantity"/>
+                            <field name="uom_id"/>
+                        </group>
+                        <group>
+                            <field name="price_unit"/>
+                            <field name="tax_ids" widget="many2many_tags"/>
+                            <field name="price_subtotal"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

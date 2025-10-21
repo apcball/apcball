@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_warranty_template_user,buz.warranty.template.user,model_buz_warranty_template,group_buz_warranty_user,1,1,1,0
+access_buz_warranty_template_manager,buz.warranty.template.manager,model_buz_warranty_template,group_buz_warranty_manager,1,1,1,1
+access_buz_warranty_contract_user,buz.warranty.contract.user,model_buz_warranty_contract,group_buz_warranty_user,1,1,1,0
+access_buz_warranty_contract_manager,buz.warranty.contract.manager,model_buz_warranty_contract,group_buz_warranty_manager,1,1,1,1
+access_buz_warranty_claim_user,buz.warranty.claim.user,model_buz_warranty_claim,group_buz_warranty_user,1,1,1,0
+access_buz_warranty_claim_manager,buz.warranty.claim.manager,model_buz_warranty_claim,group_buz_warranty_manager,1,1,1,1
+access_buz_claim_cost_line_user,buz.claim.cost.line.user,model_buz_claim_cost_line,group_buz_warranty_user,1,1,1,0
+access_buz_claim_cost_line_manager,buz.claim.cost.line.manager,model_buz_claim_cost_line,group_buz_warranty_manager,1,1,1,1
+access_res_config_settings_warranty_user,res.config.settings.user,base.model_res_config_settings,group_buz_warranty_user,1,1,1,0
+access_res_config_settings_warranty_manager,res.config.settings.manager,base.model_res_config_settings,group_buz_warranty_manager,1,1,1,1

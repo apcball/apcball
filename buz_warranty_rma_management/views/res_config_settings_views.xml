@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Simple settings view without inheritance to ensure module installs -->
+    <record id="view_settings_form_warranty" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.warranty</field>
+        <field name="model">res.config.settings</field>
+        <field name="arch" type="xml">
+            <form string="Warranty Settings">
+                <group>
+                    <group string="Warranty Operations">
+                        <field name="buz_default_rma_in_type_id"/>
+                        <field name="buz_default_rma_return_type_id"/>
+                        <field name="buz_default_replacement_type_id"/>
+                        <field name="buz_default_repair_location_id"/>
+                    </group>
+                    <group string="Warranty Reminders">
+                        <field name="buz_reminder_days_before_expiry"/>
+                    </group>
+                </group>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_warranty_config_settings" model="ir.actions.act_window">
+        <field name="name">Warranty Settings</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="view_id" ref="view_settings_form_warranty"/>
+        <field name="context">{'module': 'buz_warranty_rma_management'}</field>
+    </record>
+</odoo>

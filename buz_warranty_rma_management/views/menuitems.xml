@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Actions -->
+    <record id="action_warranty_template_list" model="ir.actions.act_window">
+        <field name="name">Warranty Templates</field>
+        <field name="res_model">buz.warranty.template</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new warranty template
+            </p>
+            <p>
+                Manage warranty templates for your products.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_warranty_contract_list" model="ir.actions.act_window">
+        <field name="name">Warranty Contracts</field>
+        <field name="res_model">buz.warranty.contract</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new warranty contract
+            </p>
+            <p>
+                Manage warranty contracts for products and serial numbers.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_warranty_claim_list" model="ir.actions.act_window">
+        <field name="name">Warranty Claims</field>
+        <field name="res_model">buz.warranty.claim</field>
+        <field name="view_mode">tree,kanban,form,pivot,graph</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new warranty claim
+            </p>
+            <p>
+                Process warranty claims and RMA workflows.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_warranty_config_settings" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'buz_warranty_rma_management'}</field>
+    </record>
+
+    <!-- Reporting Views -->
+    <record id="action_warranty_claim_report" model="ir.actions.act_window">
+        <field name="name">Claims Analysis</field>
+        <field name="res_model">buz.warranty.claim</field>
+        <field name="view_mode">pivot,graph,tree,form</field>
+        <field name="context">{"search_default_group_by_product_id": 1, "search_default_group_by_reason": 1}</field>
+        <field name="help" type="html">
+            <p>
+                Analyze warranty claims by product, reason, and other dimensions.
+            </p>
+        </field>
+    </record>
+
+    <!-- Warranty Management Menu -->
+    <menuitem id="menu_warranty_root"
+              name="Warranty"
+              sequence="10"
+              web_icon="buz_warranty_rma_management,static/description/icon.png"/>
+
+    <!-- Configuration Menu -->
+    <menuitem id="menu_warranty_config"
+              name="Configuration"
+              parent="menu_warranty_root"
+              sequence="1"/>
+
+    <!-- Operations Menu -->
+    <menuitem id="menu_warranty_operations"
+              name="Operations"
+              parent="menu_warranty_root"
+              sequence="2"/>
+
+    <!-- Reporting Menu -->
+    <menuitem id="menu_warranty_reporting"
+              name="Reporting"
+              parent="menu_warranty_root"
+              sequence="3"/>
+
+    <!-- Warranty Templates -->
+    <menuitem id="menu_warranty_template"
+              name="Warranty Templates"
+              parent="menu_warranty_config"
+              action="action_warranty_template_list"
+              sequence="10"/>
+
+    <!-- Settings -->
+    <menuitem id="menu_warranty_settings"
+              name="Settings"
+              parent="menu_warranty_config"
+              action="action_warranty_config_settings"
+              sequence="20"/>
+
+    <!-- Contracts -->
+    <menuitem id="menu_warranty_contract"
+              name="Warranty Contracts"
+              parent="menu_warranty_operations"
+              action="action_warranty_contract_list"
+              sequence="10"/>
+
+    <!-- Claims -->
+    <menuitem id="menu_warranty_claim"
+              name="Warranty Claims"
+              parent="menu_warranty_operations"
+              action="action_warranty_claim_list"
+              sequence="20"/>
+
+    <menuitem id="menu_warranty_claim_report"
+              name="Claims Analysis"
+              parent="menu_warranty_reporting"
+              action="action_warranty_claim_report"
+              sequence="10"/>
+</odoo>
