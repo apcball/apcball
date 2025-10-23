@@ -629,10 +629,57 @@ class MrpStockRequest(models.Model):
         return action
 
     def action_cancel(self):
-        """Cancel the request and related pickings if not done."""
+        """Cancel the request and create return picking for issued materials."""
         for request in self:
             if request.state == "done":
                 raise UserError(_("Cannot cancel a request that is done."))
+
+            # Handle done pickings - create return pickings for issued materials
+            done_pickings = request.picking_ids.filtered(lambda p: p.state == "done")
+            return_pickings = self.env['stock.picking']
+            
+            for picking in done_pickings:
+                # Check if materials are still available (not allocated)
+                unallocated_lines = []
+                for line in request.line_ids:
+                    if line.qty_available_to_allocate > 0:
+                        unallocated_lines.append({
+                            'product_id': line.product_id,
+                            'qty': line.qty_available_to_allocate,
+                            'uom_id': line.uom_id,
+                        })
+                
+                if unallocated_lines:
+                    # Create return picking
+                    picking_type = request.location_id.warehouse_id.int_type_id or self.env['stock.picking.type'].search([
+                        ('code', '=', 'internal'),
+                        ('warehouse_id', '=', request.location_id.warehouse_id.id)
+                    ], limit=1)
+                    
+                    return_picking_vals = {
+                        'picking_type_id': picking_type.id,
+                        'location_id': request.location_dest_id.id,  # From issued location
+                        'location_dest_id': request.location_id.id,  # Back to warehouse
+                        'origin': _('Return: %s') % request.name,
+                        'move_ids': [],
+                    }
+                    
+                    # Create moves for unallocated materials
+                    for line_data in unallocated_lines:
+                        move_vals = {
+                            'name': _('Return: %s') % line_data['product_id'].name,
+                            'product_id': line_data['product_id'].id,
+                            'product_uom_qty': line_data['qty'],
+                            'product_uom': line_data['uom_id'].id,
+                            'location_id': request.location_dest_id.id,
+                            'location_dest_id': request.location_id.id,
+                        }
+                        return_picking_vals['move_ids'].append((0, 0, move_vals))
+                    
+                    if return_picking_vals['move_ids']:
+                        return_picking = self.env['stock.picking'].create(return_picking_vals)
+                        return_picking.action_confirm()
+                        return_pickings |= return_picking
 
             # Cancel pickings that are not done
             pickings_to_cancel = request.picking_ids.filtered(lambda p: p.state not in ["done", "cancel"])
@@ -641,8 +688,14 @@ class MrpStockRequest(models.Model):
 
             request.write({"state": "cancel"})
 
+            # Post message with return picking info
+            message = _("Stock request cancelled.")
+            if return_pickings:
+                message += _("\n\nReturn picking(s) created: %s") % ", ".join(return_pickings.mapped('name'))
+                message += _("\nPlease validate the return picking(s) to return materials to warehouse.")
+            
             request.message_post(
-                body=_("Stock request cancelled."),
+                body=message,
                 subtype_id=self.env.ref("mail.mt_note").id
             )
 
