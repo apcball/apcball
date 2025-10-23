@@ -1,6 +1,7 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare, float_round, float_is_zero
+from odoo.tools.translate import _
 
 
 class MrpProduction(models.Model):
@@ -338,11 +339,10 @@ class MrpStockRequest(models.Model):
         for request in self:
             request.qty_issued_total = sum(request.line_ids.mapped("qty_issued"))
             request.qty_remaining_total = sum(request.line_ids.mapped("qty_remaining"))
-    @api.depends("line_ids.qty_issued", "line_ids.qty_remaining")
-    def _compute_totals(self):
-        for request in self:
-            request.qty_issued_total = sum(request.line_ids.mapped("qty_issued"))
-            request.qty_remaining_total = sum(request.line_ids.mapped("qty_remaining"))
+            
+            # Auto-update state to done when all materials are allocated
+            if request.state == 'requested' and request.qty_remaining_total == 0.0 and request.qty_issued_total > 0.0:
+                request.state = 'done'
 
     @api.constrains("mo_ids", "company_id")
     def _check_company_consistency(self):
@@ -700,13 +700,21 @@ class MrpStockRequest(models.Model):
             )
 
     def action_draft(self):
-        """Reset to draft state."""
+        """Reset to draft state. Cancel request first if needed."""
         for request in self:
             if request.state == "done":
                 raise UserError(_("Cannot reset to draft a request that is done."))
             
-            if request.picking_ids.filtered(lambda p: p.state not in ["draft", "cancel"]):
-                raise UserError(_("Cannot reset to draft when pickings are in progress or done."))
+            # If there are pickings in progress or done, must cancel first
+            active_pickings = request.picking_ids.filtered(lambda p: p.state not in ["draft", "cancel"])
+            if active_pickings:
+                raise UserError(_(
+                    "Cannot reset to draft when pickings are in progress or done.\n\n"
+                    "Please cancel the request first, which will:\n"
+                    "• Cancel pickings in draft/waiting/confirmed state\n"
+                    "• Create return pickings for issued materials that haven't been allocated\n\n"
+                    "After canceling, you can then reset to draft if needed."
+                ))
 
         self.write({"state": "draft"})
 
