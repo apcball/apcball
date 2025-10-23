@@ -16,6 +16,8 @@
         "data/sequence_data.xml",
         "views/mrp_stock_request_views.xml",
         "views/mrp_stock_request_wizard_views.xml",
+        "views/mrp_stock_request_allocate_multi_wizard_views.xml",
+        "views/mrp_production_allocate_wizard_views.xml",
         "views/mrp_production_views.xml",
         "views/stock_picking_views.xml",
         "views/res_config_settings_views.xml",

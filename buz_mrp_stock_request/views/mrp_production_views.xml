@@ -6,6 +6,12 @@
         <field name="model">mrp.production</field>
         <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
         <field name="arch" type="xml">
+            <!-- Add invisible fields for computations -->
+            <field name="product_id" position="after">
+                <field name="has_available_to_allocate" invisible="1"/>
+                <field name="available_allocations_count" invisible="1"/>
+            </field>
+            
             <!-- Add Stock Request button in header -->
             <button name="button_mark_done" position="before">
                 <button name="action_create_stock_request" type="object" 
@@ -13,6 +19,11 @@
                         class="btn-secondary"
                         invisible="state not in ['confirmed', 'progress', 'to_close']"
                         help="Create a stock request for missing raw materials"/>
+                <button name="action_allocate_materials_quick" type="object" 
+                        string="Allocate Materials" 
+                        class="btn-primary"
+                        invisible="not has_available_to_allocate"
+                        help="Allocate available materials from stock requests to this MO"/>
             </button>
             
             <!-- Add smart button for existing stock requests -->
@@ -27,7 +38,7 @@
         </field>
     </record>
     
-    <!-- Add field to MO tree view -->
+    <!-- Add fields to MO tree view -->
     <record id="view_mrp_production_stock_request_tree_ext" model="ir.ui.view">
         <field name="name">mrp.production.stock.request.tree.ext</field>
         <field name="model">mrp.production</field>
@@ -36,6 +47,8 @@
             <field name="state" position="after">
                 <field name="mrp_stock_request_count" column_invisible="1"/>
                 <field name="stock_request_ids" column_invisible="1"/>
+                <field name="has_available_to_allocate" column_invisible="1"/>
+                <field name="available_allocations_count" column_invisible="1"/>
             </field>
         </field>
     </record>

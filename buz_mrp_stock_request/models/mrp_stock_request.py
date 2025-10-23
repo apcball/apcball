@@ -17,10 +17,39 @@ class MrpProduction(models.Model):
         "request_id",
         string="Stock Requests",
     )
+    has_available_to_allocate = fields.Boolean(
+        string="Has Materials to Allocate",
+        compute="_compute_has_available_to_allocate",
+        help="Indicates if there are materials available to allocate from stock requests",
+    )
+    available_allocations_count = fields.Integer(
+        string="Available Allocations Count",
+        compute="_compute_has_available_to_allocate",
+    )
 
     def _compute_mrp_stock_request_count(self):
         for mo in self:
             mo.mrp_stock_request_count = len(mo.stock_request_ids)
+
+    def _compute_has_available_to_allocate(self):
+        """Check if there are materials available to allocate to this MO."""
+        for mo in self:
+            count = 0
+            has_available = False
+            # Check all linked stock requests
+            for request in mo.stock_request_ids:
+                if request.state in ['requested', 'done']:
+                    # Check if any line has available quantity
+                    for line in request.line_ids:
+                        if float_compare(
+                            line.qty_available_to_allocate,
+                            0.0,
+                            precision_rounding=line.uom_id.rounding
+                        ) > 0:
+                            has_available = True
+                            count += 1
+            mo.has_available_to_allocate = has_available
+            mo.available_allocations_count = count
 
     def action_view_stock_requests(self):
         """
@@ -95,6 +124,49 @@ class MrpProduction(models.Model):
             ], limit=1)
         
         return picking_type
+
+    def action_allocate_materials_quick(self):
+        """Open quick allocation wizard for this MO with pre-filtered materials."""
+        self.ensure_one()
+        
+        import logging
+        _logger = logging.getLogger(__name__)
+        _logger.info("=== Quick allocation for MO: %s", self.name)
+        _logger.info("=== has_available_to_allocate: %s", self.has_available_to_allocate)
+        _logger.info("=== Stock requests: %s", self.stock_request_ids.mapped('name'))
+        
+        # Check if there are materials available to allocate
+        if not self.has_available_to_allocate:
+            raise UserError(_("No materials available to allocate to this Manufacturing Order."))
+        
+        # Check if there are stock requests with materials
+        available_materials = []
+        for request in self.stock_request_ids:
+            if request.state in ['requested', 'done']:
+                for line in request.line_ids:
+                    if line.qty_available_to_allocate > 0:
+                        available_materials.append(f"{line.product_id.name}: {line.qty_available_to_allocate}")
+        
+        _logger.info("=== Available materials: %s", available_materials)
+        
+        if not available_materials:
+            raise UserError(_("No materials found to allocate. Please check that stock requests have been issued."))
+        
+        # Create wizard and populate it
+        wizard = self.env['mrp.production.allocate.wizard'].create({
+            'mo_id': self.id,
+        })
+        wizard._populate_wizard()
+        
+        # Open the wizard
+        return {
+            "name": _("Allocate Materials to %s") % self.name,
+            "type": "ir.actions.act_window",
+            "view_mode": "form",
+            "res_model": "mrp.production.allocate.wizard",
+            "res_id": wizard.id,
+            "target": "new",
+        }
 
 
 class StockPicking(models.Model):
@@ -482,8 +554,13 @@ class MrpStockRequest(models.Model):
                 line._compute_qty_issued()
 
     def action_allocate_wizard(self):
-        """Open allocation wizard."""
+        """Open allocation wizard - smart selection based on MO count."""
         self.ensure_one()
+        
+        import logging
+        _logger = logging.getLogger(__name__)
+        _logger.info("=== action_allocate_wizard called for: %s", self.name)
+        _logger.info("=== Stock Request MOs: %s (count: %d)", self.mo_ids.mapped('name'), len(self.mo_ids))
 
         if not self.picking_ids.filtered(lambda p: p.state == 'done'):
             raise UserError(_("No materials have been issued yet. Please validate the picking first."))
@@ -501,16 +578,37 @@ class MrpStockRequest(models.Model):
         if not has_available:
             raise UserError(_("No quantities available to allocate."))
 
-        return {
-            "name": _("Allocate Materials to MO"),
-            "type": "ir.actions.act_window",
-            "view_mode": "form",
-            "res_model": "mrp.stock.request.allocate.wizard",
-            "target": "new",
-            "context": {
-                "default_request_id": self.id,
-            },
-        }
+        # Smart wizard selection based on number of MOs
+        mo_count = len(self.mo_ids)
+        _logger.info("=== MO count: %d, using %s wizard", mo_count, "multi" if mo_count > 1 else "single")
+        
+        if mo_count > 1:
+            # Multiple MOs: Create wizard first, then populate
+            wizard = self.env['mrp.stock.request.allocate.multi.wizard'].create({
+                'request_id': self.id,
+            })
+            
+            # Now open the wizard
+            return {
+                "name": _("Allocate Materials to Manufacturing Orders"),
+                "type": "ir.actions.act_window",
+                "view_mode": "form",
+                "res_model": "mrp.stock.request.allocate.multi.wizard",
+                "res_id": wizard.id,
+                "target": "new",
+            }
+        else:
+            # Single MO or no specific MO: Use original wizard
+            return {
+                "name": _("Allocate Materials to MO"),
+                "type": "ir.actions.act_window",
+                "view_mode": "form",
+                "res_model": "mrp.stock.request.allocate.wizard",
+                "target": "new",
+                "context": {
+                    "default_request_id": self.id,
+                },
+            }
 
     def action_open_pickings(self):
         """Return action to open related pickings."""

@@ -31,9 +31,15 @@ class MrpStockRequestAllocateWizard(models.TransientModel):
         res = super().default_get(fields_list)
         
         request_id = self.env.context.get('default_request_id')
+        default_mo_id = self.env.context.get('default_mo_id')  # Get MO from context if provided
+        
         if request_id:
             request = self.env['mrp.stock.request'].browse(request_id)
             res['request_id'] = request_id
+            
+            # If no MO specified but request has only one MO, auto-select it
+            if not default_mo_id and len(request.mo_ids) == 1:
+                default_mo_id = request.mo_ids[0].id
             
             # Create wizard lines for products with available quantities
             wizard_lines = []
@@ -43,13 +49,13 @@ class MrpStockRequestAllocateWizard(models.TransientModel):
                     0.0,
                     precision_rounding=req_line.uom_id.rounding
                 ) > 0:
-                    # Create one line per request line (user can duplicate for multiple MOs)
-                    # product_id and uom_id will auto-populate from request_line_id (related fields)
+                    # Create one line per request line
+                    # Auto-select MO if: 1) provided in context, OR 2) request has only one MO
                     wizard_lines.append((0, 0, {
                         'request_line_id': req_line.id,
                         'available_to_allocate': req_line.qty_available_to_allocate,
                         'qty_to_consume': req_line.qty_available_to_allocate,  # Pre-fill with available qty
-                        'mo_id': False,  # User must select
+                        'mo_id': default_mo_id if default_mo_id else False,  # Auto-select if available
                     }))
             
             if wizard_lines:
