@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_inherit_warranty" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.warranty</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Warranty Management" string="Warranty Management" 
+                     name="buz_warranty_management" groups="buz_warranty_management.group_warranty_manager">
+                    <block title="RMA Configuration" name="rma_settings_container">
+                        <setting string="RMA Operations" help="Configure operation types and locations for RMA process">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="warranty_rma_in_picking_type_id" string="RMA IN Picking Type" class="col-lg-3 o_light_label"/>
+                                    <field name="warranty_rma_in_picking_type_id" class="oe_inline"/>
+                                </div>
+                                <div class="row">
+                                    <label for="warranty_repair_location_id" string="Repair Location" class="col-lg-3 o_light_label"/>
+                                    <field name="warranty_repair_location_id" class="oe_inline"/>
+                                </div>
+                                <div class="row">
+                                    <label for="warranty_replacement_out_picking_type_id" string="Replacement OUT Type" class="col-lg-3 o_light_label"/>
+                                    <field name="warranty_replacement_out_picking_type_id" class="oe_inline"/>
+                                </div>
+                                <div class="row">
+                                    <label for="warranty_scrap_location_id" string="Scrap Location" class="col-lg-3 o_light_label"/>
+                                    <field name="warranty_scrap_location_id" class="oe_inline"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Warranty Accounting" help="Configure accounts and default products">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="warranty_expense_account_id" string="Warranty Expense Account" class="col-lg-3 o_light_label"/>
+                                    <field name="warranty_expense_account_id" class="oe_inline"/>
+                                </div>
+                                <div class="row">
+                                    <label for="warranty_default_service_product_id" string="Default Service Product" class="col-lg-3 o_light_label"/>
+                                    <field name="warranty_default_service_product_id" class="oe_inline"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

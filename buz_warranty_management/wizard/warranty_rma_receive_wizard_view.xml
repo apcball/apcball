@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_warranty_rma_receive_wizard_form" model="ir.ui.view">
+        <field name="name">warranty.rma.receive.wizard.form</field>
+        <field name="model">warranty.rma.receive.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create RMA IN">
+                <group>
+                    <group>
+                        <field name="claim_id" readonly="1"/>
+                        <field name="partner_id" readonly="1"/>
+                        <field name="product_id"/>
+                        <field name="lot_id"/>
+                    </group>
+                    <group>
+                        <field name="qty"/>
+                        <field name="picking_type_id" required="1"/>
+                        <field name="location_dest_id" required="1"/>
+                        <field name="generate_return_label"/>
+                    </group>
+                </group>
+                <group>
+                    <field name="notes" placeholder="Enter notes about the returned item..."/>
+                </group>
+                <footer>
+                    <button string="Create RMA IN" name="action_create_rma_picking" 
+                            type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

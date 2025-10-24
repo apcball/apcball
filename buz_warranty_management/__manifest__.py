@@ -9,8 +9,14 @@
         * Product-level warranty configuration
         * Automatic warranty card creation on delivery
         * Warranty claim management (under & out-of-warranty)
+        * RMA workflows with stock operations
+        * Claim lines for parts and consumables tracking
+        * RMA IN/OUT pickings with serial/lot support
+        * Replacement issue with SO integration
+        * Quick invoice generation from claim lines
         * Out-of-warranty quotation generation
-        * Warranty certificate printing
+        * Warranty certificate and RMA slip printing
+        * Configurable locations, accounts, and operation types
         * Dashboard and reporting
     """,
     'author': 'Buzzit',
@@ -19,8 +25,10 @@
     'depends': [
         'sale',
         'stock',
+        'stock_account',
         'account',
         'mail',
+        'uom',
     ],
     'data': [
         'security/security.xml',
@@ -29,9 +37,14 @@
         'views/product_template_views.xml',
         'views/warranty_card_views.xml',
         'views/warranty_claim_views.xml',
+        'views/res_config_settings_views.xml',
         'wizard/warranty_out_wizard_view.xml',
+        'wizard/warranty_rma_receive_wizard_view.xml',
+        'wizard/warranty_replacement_issue_wizard_view.xml',
+        'wizard/warranty_invoice_wizard_view.xml',
         'report/report_warranty_certificate.xml',
         'report/report_warranty_claim_form.xml',
+        'report/report_warranty_rma_slip.xml',
         'views/menu.xml',
     ],
     'demo': [],

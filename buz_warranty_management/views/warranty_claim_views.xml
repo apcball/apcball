@@ -45,6 +45,23 @@
                            statusbar_visible="draft,under_review,approved,done"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_rma_in_pickings" type="object" 
+                                class="oe_stat_button" icon="fa-truck"
+                                invisible="rma_in_count == 0">
+                            <field name="rma_in_count" widget="statinfo" string="RMA IN"/>
+                        </button>
+                        <button name="action_view_replacement_out_pickings" type="object" 
+                                class="oe_stat_button" icon="fa-truck"
+                                invisible="replacement_out_count == 0">
+                            <field name="replacement_out_count" widget="statinfo" string="Replacements"/>
+                        </button>
+                        <button name="action_view_invoices" type="object" 
+                                class="oe_stat_button" icon="fa-file-text-o"
+                                invisible="invoice_count == 0">
+                            <field name="invoice_count" widget="statinfo" string="Invoices"/>
+                        </button>
+                    </div>
                     <div class="alert alert-danger" role="alert" 
                          invisible="is_under_warranty == True">
                         <strong>Warning:</strong> This claim is OUT OF WARRANTY. 
@@ -79,9 +96,41 @@
                             <field name="quotation_id"/>
                         </group>
                     </group>
+                    <group>
+                        <group>
+                            <button name="action_create_rma_in" string="Create RMA IN" 
+                                    type="object" class="btn-primary oe_highlight"
+                                    icon="fa-download"/>
+                            <button name="action_issue_replacement" string="Issue Replacement" 
+                                    type="object" class="btn-success"
+                                    icon="fa-upload"/>
+                        </group>
+                        <group>
+                            <button name="action_create_invoice" string="Create Invoice" 
+                                    type="object" class="btn-warning"
+                                    invisible="is_under_warranty == True"
+                                    icon="fa-file-text"/>
+                        </group>
+                    </group>
                     <notebook>
                         <page string="Problem Description">
                             <field name="description" nolabel="1" placeholder="Describe the problem..."/>
+                        </page>
+                        <page string="Claim Lines" name="claim_lines">
+                            <field name="claim_line_ids">
+                                <tree editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="description"/>
+                                    <field name="qty"/>
+                                    <field name="uom_id"/>
+                                    <field name="lot_id"/>
+                                    <field name="need_replacement" widget="boolean"/>
+                                    <field name="is_consumable" widget="boolean" readonly="1"/>
+                                    <field name="unit_cost"/>
+                                    <field name="unit_price"/>
+                                    <field name="currency_id" invisible="1"/>
+                                </tree>
+                            </field>
                         </page>
                         <page string="Internal Notes">
                             <field name="internal_notes" nolabel="1" placeholder="Internal notes for team members..."/>
@@ -117,6 +166,10 @@
                 <separator/>
                 <filter string="Draft" name="draft" domain="[('status', '=', 'draft')]"/>
                 <filter string="Under Review" name="under_review" domain="[('status', '=', 'under_review')]"/>
+                <filter string="Awaiting Return" name="awaiting_return" domain="[('status', '=', 'awaiting_return')]"/>
+                <filter string="Received" name="received" domain="[('status', '=', 'received')]"/>
+                <filter string="Diagnosing" name="diagnosing" domain="[('status', '=', 'diagnosing')]"/>
+                <filter string="Ready to Issue" name="ready_to_issue" domain="[('status', '=', 'ready_to_issue')]"/>
                 <filter string="Approved" name="approved" domain="[('status', '=', 'approved')]"/>
                 <filter string="Done" name="done" domain="[('status', '=', 'done')]"/>
                 <group expand="0" string="Group By">

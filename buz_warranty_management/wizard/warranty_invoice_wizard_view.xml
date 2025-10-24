@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_warranty_invoice_wizard_form" model="ir.ui.view">
+        <field name="name">warranty.invoice.wizard.form</field>
+        <field name="model">warranty.invoice.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Invoice">
+                <group>
+                    <group>
+                        <field name="claim_id" readonly="1"/>
+                        <field name="partner_id" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="journal_id" required="1"/>
+                        <field name="invoice_date" required="1"/>
+                    </group>
+                </group>
+                
+                <notebook>
+                    <page string="Invoice Lines">
+                        <field name="line_ids">
+                            <tree editable="bottom">
+                                <field name="product_id"/>
+                                <field name="description"/>
+                                <field name="qty"/>
+                                <field name="unit_price"/>
+                                <field name="currency_id" invisible="1"/>
+                            </tree>
+                        </field>
+                    </page>
+                    <page string="Notes">
+                        <field name="notes" placeholder="Enter additional invoice notes..."/>
+                    </page>
+                </notebook>
+                
+                <footer>
+                    <button string="Create Invoice" name="action_create_invoice" 
+                            type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

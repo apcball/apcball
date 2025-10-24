@@ -57,6 +57,11 @@ class WarrantyClaim(models.Model):
     status = fields.Selection([
         ('draft', 'Draft'),
         ('under_review', 'Under Review'),
+        ('awaiting_return', 'Awaiting Return'),
+        ('received', 'Received'),
+        ('diagnosing', 'Diagnosing'),
+        ('awaiting_parts', 'Awaiting Parts'),
+        ('ready_to_issue', 'Ready to Issue'),
         ('approved', 'Approved'),
         ('done', 'Done'),
         ('rejected', 'Rejected'),
@@ -80,6 +85,57 @@ class WarrantyClaim(models.Model):
         string='Warranty End Date',
         related='warranty_card_id.end_date',
         readonly=True
+    )
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='Currency',
+        default=lambda self: self.env.company.currency_id,
+        required=True
+    )
+    claim_line_ids = fields.One2many(
+        'warranty.claim.line',
+        'claim_id',
+        string='Claim Lines',
+        help='Parts and consumables used in repair'
+    )
+    rma_in_picking_ids = fields.Many2many(
+        'stock.picking',
+        'warranty_claim_rma_in_rel',
+        'claim_id',
+        'picking_id',
+        string='RMA IN Pickings',
+        readonly=True,
+        help='Customer return pickings'
+    )
+    replacement_out_picking_ids = fields.Many2many(
+        'stock.picking',
+        'warranty_claim_replacement_out_rel',
+        'claim_id',
+        'picking_id',
+        string='Replacement OUT Pickings',
+        readonly=True,
+        help='Replacement delivery pickings'
+    )
+    invoice_ids = fields.Many2many(
+        'account.move',
+        'warranty_claim_invoice_rel',
+        'claim_id',
+        'invoice_id',
+        string='Invoices',
+        readonly=True,
+        domain="[('move_type', '=', 'out_invoice')]"
+    )
+    rma_in_count = fields.Integer(
+        string='RMA IN Count',
+        compute='_compute_picking_counts'
+    )
+    replacement_out_count = fields.Integer(
+        string='Replacement OUT Count',
+        compute='_compute_picking_counts'
+    )
+    invoice_count = fields.Integer(
+        string='Invoice Count',
+        compute='_compute_invoice_count'
     )
 
     @api.depends('warranty_card_id', 'warranty_card_id.end_date', 'claim_date')
@@ -148,3 +204,79 @@ class WarrantyClaim(models.Model):
     def action_print_claim_form(self):
         self.ensure_one()
         return self.env.ref('buz_warranty_management.action_report_warranty_claim_form').report_action(self)
+
+    @api.depends('rma_in_picking_ids', 'replacement_out_picking_ids')
+    def _compute_picking_counts(self):
+        for record in self:
+            record.rma_in_count = len(record.rma_in_picking_ids)
+            record.replacement_out_count = len(record.replacement_out_picking_ids)
+
+    @api.depends('invoice_ids')
+    def _compute_invoice_count(self):
+        for record in self:
+            record.invoice_count = len(record.invoice_ids)
+
+    def action_create_rma_in(self):
+        self.ensure_one()
+        return {
+            'name': _('Create RMA IN'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'warranty.rma.receive.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_claim_id': self.id,
+                'default_partner_id': self.partner_id.id,
+                'default_product_id': self.product_id.id,
+                'default_lot_id': self.lot_id.id,
+            }
+        }
+
+    def action_issue_replacement(self):
+        self.ensure_one()
+        return {
+            'name': _('Issue Replacement'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'warranty.replacement.issue.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_claim_id': self.id,
+                'default_partner_id': self.partner_id.id,
+            }
+        }
+
+    def action_create_invoice(self):
+        self.ensure_one()
+        return {
+            'name': _('Create Invoice'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'warranty.invoice.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_claim_id': self.id,
+                'default_partner_id': self.partner_id.id,
+            }
+        }
+
+    def action_view_rma_in_pickings(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('stock.action_picking_tree_all')
+        action['domain'] = [('id', 'in', self.rma_in_picking_ids.ids)]
+        action['context'] = {}
+        return action
+
+    def action_view_replacement_out_pickings(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('stock.action_picking_tree_all')
+        action['domain'] = [('id', 'in', self.replacement_out_picking_ids.ids)]
+        action['context'] = {}
+        return action
+
+    def action_view_invoices(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('account.action_move_out_invoice_type')
+        action['domain'] = [('id', 'in', self.invoice_ids.ids)]
+        action['context'] = {}
+        return action
