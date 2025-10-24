@@ -13,7 +13,11 @@
                     <group>
                         <group string="Warranty Configuration">
                             <field name="auto_warranty"/>
-                            <field name="warranty_duration" invisible="auto_warranty == False"/>
+                            <label for="warranty_duration" string="Warranty Period" invisible="auto_warranty == False"/>
+                            <div invisible="auto_warranty == False">
+                                <field name="warranty_duration" class="oe_inline" style="width: 60px;"/>
+                                <field name="warranty_period_unit" class="oe_inline" style="width: 120px;"/>
+                            </div>
                             <field name="warranty_type" invisible="auto_warranty == False"/>
                         </group>
                         <group string="Out-of-Warranty Settings">

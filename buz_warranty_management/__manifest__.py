@@ -1,6 +1,6 @@
 {
     'name': 'Warranty Management',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Sales/Warranty',
     'summary': 'Complete Warranty Management System with Claims and Certificate Generation',
     'description': """
@@ -19,7 +19,7 @@
         * Configurable locations, accounts, and operation types
         * Dashboard and reporting
     """,
-    'author': 'Buzzit',
+    'author': 'apcball',
     'website': 'https://www.buzzit.co.th',
     'license': 'LGPL-3',
     'depends': [

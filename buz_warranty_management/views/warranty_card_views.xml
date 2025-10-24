@@ -57,7 +57,11 @@
                         </group>
                         <group string="Warranty Period">
                             <field name="start_date"/>
-                            <field name="warranty_duration"/>
+                            <label for="warranty_duration" string="Warranty Duration"/>
+                            <div>
+                                <field name="warranty_duration" class="oe_inline" style="width: 60px;"/>
+                                <field name="warranty_period_unit" class="oe_inline" style="width: 120px;"/>
+                            </div>
                             <field name="end_date"/>
                             <field name="days_remaining" widget="integer"/>
                             <field name="is_expired" widget="boolean"/>

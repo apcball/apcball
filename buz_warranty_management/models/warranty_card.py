@@ -74,8 +74,13 @@ class WarrantyCard(models.Model):
         readonly=True
     )
     warranty_duration = fields.Integer(
-        string='Duration (Months)',
+        string='Duration',
         related='product_id.product_tmpl_id.warranty_duration',
+        readonly=True
+    )
+    warranty_period_unit = fields.Selection(
+        string='Period Unit',
+        related='product_id.product_tmpl_id.warranty_period_unit',
         readonly=True
     )
     claim_ids = fields.One2many(
@@ -97,13 +102,18 @@ class WarrantyCard(models.Model):
         compute='_compute_days_remaining'
     )
 
-    @api.depends('start_date', 'product_id.product_tmpl_id.warranty_duration')
+    @api.depends('start_date', 'product_id.product_tmpl_id.warranty_duration', 'product_id.product_tmpl_id.warranty_period_unit')
     def _compute_end_date(self):
         for record in self:
             if record.start_date:
                 if record.product_id and record.product_id.product_tmpl_id.warranty_duration:
                     duration = record.product_id.product_tmpl_id.warranty_duration
-                    record.end_date = record.start_date + relativedelta(months=duration)
+                    unit = record.product_id.product_tmpl_id.warranty_period_unit or 'month'
+                    
+                    if unit == 'year':
+                        record.end_date = record.start_date + relativedelta(years=duration)
+                    else:  # month
+                        record.end_date = record.start_date + relativedelta(months=duration)
                 else:
                     # Default to 12 months if no duration specified
                     record.end_date = record.start_date + relativedelta(months=12)

@@ -62,7 +62,11 @@
                                 <td><span t-field="o.product_id"/></td>
                                 <td><span t-field="o.lot_id"/></td>
                                 <td><span t-field="o.warranty_type"/></td>
-                                <td><span t-field="o.warranty_duration"/> Months</td>
+                                <td>
+                                    <span t-field="o.warranty_duration"/>
+                                    <span t-if="o.warranty_period_unit == 'year'"> Year(s)</span>
+                                    <span t-else=""> Month(s)</span>
+                                </td>
                             </tr>
                         </tbody>
                     </table>

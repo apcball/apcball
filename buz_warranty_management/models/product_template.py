@@ -5,10 +5,14 @@ class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
     warranty_duration = fields.Integer(
-        string='Warranty Duration (Months)',
+        string='Warranty Duration',
         default=0,
-        help='Warranty period in months from delivery date'
+        help='Warranty period from delivery date'
     )
+    warranty_period_unit = fields.Selection([
+        ('month', 'Month(s)'),
+        ('year', 'Year(s)'),
+    ], string='Period Unit', default='month', help='Unit for warranty duration')
     warranty_condition = fields.Text(
         string='Warranty Terms & Conditions',
         help='Terms and conditions applicable to this warranty'
