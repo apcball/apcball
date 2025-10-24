@@ -144,10 +144,6 @@ class ValuationRegenerateWizard(models.TransientModel):
         products_with_issues = self.env['product.product']
         
         for product in products_with_moves:
-            # Check if product has automated valuation
-            if product.categ_id.property_valuation != 'real_time':
-                continue
-            
             # Get SVLs for this product in the locations
             product_moves = stock_moves.filtered(lambda m: m.product_id == product)
             svls = self.env['stock.valuation.layer'].search([
@@ -161,7 +157,7 @@ class ValuationRegenerateWizard(models.TransientModel):
             if self.date_to:
                 svls = svls.filtered(lambda s: s.create_date <= self.date_to)
             
-            # Check for missing SVLs
+            # Check for missing SVLs (this applies to all products regardless of valuation method)
             moves_with_svl = svls.mapped('stock_move_id')
             moves_without_svl = product_moves - moves_with_svl
             
@@ -173,7 +169,7 @@ class ValuationRegenerateWizard(models.TransientModel):
                 products_with_issues |= product
                 continue
             
-            # Check for SVLs with zero or incorrect values
+            # Check for SVLs with zero or incorrect values (this applies to all products)
             zero_value_svls = svls.filtered(lambda s: s.quantity != 0 and s.value == 0)
             if zero_value_svls:
                 _logger.info(
@@ -183,8 +179,8 @@ class ValuationRegenerateWizard(models.TransientModel):
                 products_with_issues |= product
                 continue
             
-            # Check for missing account moves if enabled and automated valuation
-            if self.check_missing_account_moves and product.valuation == 'real_time':
+            # Check for missing account moves if enabled (only applies to real_time valuation)
+            if self.check_missing_account_moves and product.categ_id.property_valuation == 'real_time':
                 svls_without_accounting = svls.filtered(
                     lambda s: s.value != 0 and not s.account_move_id
                 )
