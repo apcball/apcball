@@ -30,6 +30,24 @@ class ValuationRegenerateWizard(models.TransientModel):
     categ_ids = fields.Many2many('product.category', string='Categories')
     domain_str = fields.Char('Domain Filter', help='Domain as string e.g. [\'|\', (\'categ_id\', \'=\', 1), (\'type\', \'=\', \'product\')]')
     
+    # Location filter
+    location_ids = fields.Many2many(
+        'stock.location', 
+        string='Locations',
+        domain="[('usage', 'in', ['internal', 'transit'])]",
+        help='Filter by specific stock locations. Leave empty to process all locations.'
+    )
+    auto_detect_products = fields.Boolean(
+        'Auto-detect Products with Valuation Issues',
+        default=False,
+        help='Automatically find and select products with potential valuation issues in selected locations'
+    )
+    check_missing_account_moves = fields.Boolean(
+        'Check Missing Account Moves',
+        default=False,
+        help='Include check for SVLs without account moves (disable for manual valuation)'
+    )
+    
     # Date range
     date_from = fields.Date('Date From')
     date_to = fields.Date('Date To')
@@ -66,6 +84,120 @@ class ValuationRegenerateWizard(models.TransientModel):
             self.categ_ids = False
         if self.mode != 'domain':
             self.domain_str = False
+    
+    @api.onchange('company_id')
+    def _onchange_company_id(self):
+        # Clear location_ids when company changes
+        if self.location_ids:
+            self.location_ids = False
+        # Update location domain based on company
+        return {
+            'domain': {
+                'location_ids': [
+                    ('usage', 'in', ['internal', 'transit']),
+                    '|',
+                    ('company_id', '=', False),
+                    ('company_id', '=', self.company_id.id)
+                ]
+            }
+        }
+    
+    def _auto_detect_products_with_issues(self):
+        """Auto-detect products with potential valuation issues in selected locations
+        
+        Returns:
+            recordset of product.product with potential issues
+        """
+        self.ensure_one()
+        
+        if not self.location_ids:
+            return self.env['product.product']
+        
+        _logger.info(f"Auto-detecting products with valuation issues in {len(self.location_ids)} location(s)...")
+        
+        # Find all stock moves in selected locations within date range
+        domain = [
+            ('state', '=', 'done'),
+            ('company_id', '=', self.company_id.id),
+            ('product_id.type', '=', 'product'),
+            '|',
+            ('location_id', 'in', self.location_ids.ids),
+            ('location_dest_id', 'in', self.location_ids.ids),
+        ]
+        
+        if self.date_from:
+            domain.append(('date', '>=', self.date_from))
+        if self.date_to:
+            domain.append(('date', '<=', self.date_to))
+        
+        stock_moves = self.env['stock.move'].search(domain)
+        
+        if not stock_moves:
+            _logger.info("No stock moves found in selected locations")
+            return self.env['product.product']
+        
+        # Get unique products from these moves
+        products_with_moves = stock_moves.mapped('product_id')
+        _logger.info(f"Found {len(products_with_moves)} products with moves in selected locations")
+        
+        # Check for products with potential valuation issues
+        products_with_issues = self.env['product.product']
+        
+        for product in products_with_moves:
+            # Check if product has automated valuation
+            if product.categ_id.property_valuation != 'real_time':
+                continue
+            
+            # Get SVLs for this product in the locations
+            product_moves = stock_moves.filtered(lambda m: m.product_id == product)
+            svls = self.env['stock.valuation.layer'].search([
+                ('product_id', '=', product.id),
+                ('company_id', '=', self.company_id.id),
+                ('stock_move_id', 'in', product_moves.ids),
+            ])
+            
+            if self.date_from:
+                svls = svls.filtered(lambda s: s.create_date >= self.date_from)
+            if self.date_to:
+                svls = svls.filtered(lambda s: s.create_date <= self.date_to)
+            
+            # Check for missing SVLs
+            moves_with_svl = svls.mapped('stock_move_id')
+            moves_without_svl = product_moves - moves_with_svl
+            
+            if moves_without_svl:
+                _logger.info(
+                    f"Product {product.display_name}: "
+                    f"Found {len(moves_without_svl)} moves without SVL"
+                )
+                products_with_issues |= product
+                continue
+            
+            # Check for SVLs with zero or incorrect values
+            zero_value_svls = svls.filtered(lambda s: s.quantity != 0 and s.value == 0)
+            if zero_value_svls:
+                _logger.info(
+                    f"Product {product.display_name}: "
+                    f"Found {len(zero_value_svls)} SVLs with zero value but non-zero quantity"
+                )
+                products_with_issues |= product
+                continue
+            
+            # Check for missing account moves if enabled and automated valuation
+            if self.check_missing_account_moves and product.valuation == 'real_time':
+                svls_without_accounting = svls.filtered(
+                    lambda s: s.value != 0 and not s.account_move_id
+                )
+                if svls_without_accounting:
+                    _logger.info(
+                        f"Product {product.display_name}: "
+                        f"Found {len(svls_without_accounting)} SVLs without account moves"
+                    )
+                    products_with_issues |= product
+                    continue
+        
+        _logger.info(f"Auto-detection complete: Found {len(products_with_issues)} products with issues")
+        return products_with_issues
 
     def action_compute_plan(self):
         """Compute the plan for regeneration without actually modifying data"""
@@ -78,6 +210,25 @@ class ValuationRegenerateWizard(models.TransientModel):
         # Validate date range
         if self.date_from and self.date_to and self.date_from > self.date_to:
             raise ValidationError("Date from must be earlier than or equal to date to.")
+        
+        # Auto-detect products with valuation issues if enabled
+        if self.auto_detect_products and self.location_ids:
+            detected_products = self._auto_detect_products_with_issues()
+            if detected_products:
+                self.product_ids = [(6, 0, detected_products.ids)]
+                _logger.info(f"Auto-detected {len(detected_products)} products with potential valuation issues")
+            else:
+                # No products found with issues
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'No Issues Found',
+                        'message': f'No products with valuation issues found in selected locations.',
+                        'type': 'success',
+                        'sticky': False
+                    }
+                }
         
         # Clear existing preview lines
         self.line_preview_ids.unlink()
@@ -119,6 +270,10 @@ class ValuationRegenerateWizard(models.TransientModel):
         if self.rebuild_account_moves:
             message += f" and {len(moves_to_delete)} Journal Entry(ies)"
         message += f" for {len(products)} product(s)."
+        
+        # Add auto-detect info to message if used
+        if self.auto_detect_products and self.location_ids:
+            message += f"\n\nAuto-detected {len(products)} product(s) with valuation issues in selected locations."
         
         if not svls_to_delete and not moves_to_delete:
             return {
@@ -412,7 +567,11 @@ class ValuationRegenerateWizard(models.TransientModel):
         """Get products based on the selected scope"""
         if self.mode == 'product':
             if not self.product_ids:
-                raise ValidationError("Please select at least one product.")
+                # Allow empty products if auto-detect is enabled (will be populated by auto-detect)
+                if not self.auto_detect_products:
+                    raise ValidationError("Please select at least one product, or enable 'Auto-detect Products'.")
+                # Return empty recordset, will be populated by auto-detect
+                return self.env['product.product']
             # For product mode, return selected products
             # Filter by company if product has company_id set
             return self.product_ids.filtered(
@@ -463,6 +622,16 @@ class ValuationRegenerateWizard(models.TransientModel):
         
         # Only include SVLs that are related to valuation (not manual)
         svls = self.env['stock.valuation.layer'].search(domain)
+        
+        # Filter by location if specified
+        if self.location_ids:
+            # Filter SVLs by checking their related stock moves' locations
+            svls = svls.filtered(lambda svl: 
+                svl.stock_move_id and (
+                    svl.stock_move_id.location_id.id in self.location_ids.ids or
+                    svl.stock_move_id.location_dest_id.id in self.location_ids.ids
+                )
+            )
         
         # Filter to only include SVLs that can be regenerated
         # Exclude manually created SVLs or those from other sources if needed
@@ -531,6 +700,7 @@ class ValuationRegenerateWizard(models.TransientModel):
             'scope_products': [(6, 0, self._get_products_to_process().ids)],
             'scope_date_from': self.date_from,
             'scope_date_to': self.date_to,
+            'scope_location_ids': [(6, 0, self.location_ids.ids)] if self.location_ids else False,
             'rebuild_valuation_layers': self.rebuild_valuation_layers,
             'rebuild_account_moves': self.rebuild_account_moves,
             'include_landed_cost_layers': self.include_landed_cost_layers,
@@ -599,6 +769,14 @@ class ValuationRegenerateWizard(models.TransientModel):
         if stock_moves_to_reprocess:
             # Use the specific moves that had their SVLs deleted
             stock_moves = stock_moves_to_reprocess.sorted(lambda m: (m.date, m.id))
+            
+            # Filter by location if specified
+            if self.location_ids:
+                stock_moves = stock_moves.filtered(lambda m:
+                    m.location_id.id in self.location_ids.ids or
+                    m.location_dest_id.id in self.location_ids.ids
+                )
+            
             _logger.info(
                 f"FIFO Regeneration for product {product.display_name}: "
                 f"Reprocessing {len(stock_moves)} specific stock moves"
@@ -615,6 +793,14 @@ class ValuationRegenerateWizard(models.TransientModel):
                 moves_domain.append(('date', '>=', self.date_from))
             if self.date_to:
                 moves_domain.append(('date', '<=', self.date_to))
+            
+            # Add location filter if specified
+            if self.location_ids:
+                moves_domain.append(
+                    '|',
+                    ('location_id', 'in', self.location_ids.ids),
+                    ('location_dest_id', 'in', self.location_ids.ids)
+                )
             
             stock_moves = self.env['stock.move'].search(moves_domain, order='date, id')
             
@@ -788,6 +974,13 @@ class ValuationRegenerateWizard(models.TransientModel):
         if stock_moves_to_reprocess:
             # Use the specific moves that had their SVLs deleted
             stock_moves = stock_moves_to_reprocess.sorted(lambda m: (m.date, m.id))
+            
+            # Filter by location if specified
+            if self.location_ids:
+                stock_moves = stock_moves.filtered(lambda m:
+                    m.location_id.id in self.location_ids.ids or
+                    m.location_dest_id.id in self.location_ids.ids
+                )
         else:
             # Fallback: search for moves in date range
             moves_domain = [
@@ -800,6 +993,14 @@ class ValuationRegenerateWizard(models.TransientModel):
                 moves_domain.append(('date', '>=', self.date_from))
             if self.date_to:
                 moves_domain.append(('date', '<=', self.date_to))
+            
+            # Add location filter if specified
+            if self.location_ids:
+                moves_domain.append(
+                    '|',
+                    ('location_id', 'in', self.location_ids.ids),
+                    ('location_dest_id', 'in', self.location_ids.ids)
+                )
             
             stock_moves = self.env['stock.move'].search(moves_domain, order='date, id')
         

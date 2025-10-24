@@ -25,6 +25,13 @@
                             <field name="date_to"/>
                         </group>
                     </group>
+                    <group>
+                        <field name="location_ids" widget="many2many_tags" placeholder="All locations (leave empty for all)"/>
+                    </group>
+                    <group invisible="not location_ids">
+                        <field name="auto_detect_products"/>
+                        <field name="check_missing_account_moves" invisible="not auto_detect_products"/>
+                    </group>
                     
                     <notebook>
                         <page string="Scope" name="scope">

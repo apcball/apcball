@@ -16,6 +16,7 @@ class ValuationRegenerateLog(models.Model):
     scope_products = fields.Many2many('product.product', string='Target Products', readonly=True)
     scope_date_from = fields.Date('Date From', readonly=True)
     scope_date_to = fields.Date('Date To', readonly=True)
+    scope_location_ids = fields.Many2many('stock.location', string='Target Locations', readonly=True)
     
     # Options used
     rebuild_valuation_layers = fields.Boolean('Rebuilt Valuation Layers', readonly=True)
