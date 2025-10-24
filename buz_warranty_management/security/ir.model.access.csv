@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_warranty_card_user,warranty.card.user,model_warranty_card,group_warranty_user,1,0,0,0
+access_warranty_card_manager,warranty.card.manager,model_warranty_card,group_warranty_manager,1,1,1,1
+access_warranty_claim_user,warranty.claim.user,model_warranty_claim,group_warranty_user,1,1,1,0
+access_warranty_claim_manager,warranty.claim.manager,model_warranty_claim,group_warranty_manager,1,1,1,1
+access_warranty_out_wizard_user,warranty.out.wizard.user,model_warranty_out_wizard,group_warranty_user,1,1,1,1
+access_warranty_out_wizard_manager,warranty.out.wizard.manager,model_warranty_out_wizard,group_warranty_manager,1,1,1,1

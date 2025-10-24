@@ -1,177 +1,333 @@
-คุณคือผู้ช่วยสร้างโค้ด Odoo 17 ที่ต้อง “เขียนโค้ดไฟล์ทั้งโมดูลให้รันได้จริง” (พร้อม ZIP) ตามสเปกด้านล่างนี้ โดยไม่พึ่งโมดูลจากภายนอก:
+# Prompt Engineering: Odoo 17 Module - buz\_warranty\_management
 
-สรุปเป้าหมาย
-	•	โมดูลเดียว ครอบคลุม:
-ทะเบียนประกันสินค้า (Warranty Template/Contract) → การเคลม (Claim) → งานคลัง RMA/ซ่อม/เปลี่ยน → ออกบิลนอกประกัน → ปิดเคลม
-	•	ทำงาน หลังบ้านเท่านั้น (ไม่ใช้ Web Portal)
-	•	รองรับ Serial/Lot และ Multi-company
+## 🎯 Objective
 
-โครงโมดูล
-	•	ชื่อ: buz_warranty_rma_management
-	•	เวอร์ชัน: 17.0.1.0.0, ใบอนุญาต: LGPL-3
-	•	Depends: stock, repair, sale_management, account, mail
-	•	โฟลเดอร์/ไฟล์ที่ต้องมี:
-    buz_warranty_rma_management/
+Implement a complete **Warranty Management System** for Odoo 17 Community that integrates seamlessly with Sales, Stock, and Accounting. The goal is to allow configuration of warranty policies at the product level, automatic warranty creation on delivery, claim management (with both under and out-of-warranty handling), and the ability to generate warranty certificates.
+
+---
+
+## 🧩 Core Features
+
+### 1. Warranty Setup (Product Level)
+
+- Add a new tab `Warranty Information` to `product.template`.
+- New fields:
+  - `warranty_duration`: Integer (months)
+  - `warranty_condition`: Text (terms & conditions)
+  - `warranty_type`: Selection (Replacement / Repair / Refund)
+  - `auto_warranty`: Boolean (auto-create warranty card on delivery)
+  - `service_product_id`: Many2one to `product.product` (service used in repairs or out-of-warranty jobs)
+  - `allow_out_of_warranty`: Boolean
+
+---
+
+### 2. Automatic Warranty Card Creation
+
+- On `stock.picking` validation (state = done):
+  - If any delivered product has `auto_warranty=True`, create `warranty.card` records.
+  - Fields:
+    - `name`: Sequence (WARR/YYYY/#####)
+    - `partner_id`: Customer
+    - `product_id`, `lot_id`, `sale_order_id`, `picking_id`
+    - `start_date`: delivery date
+    - `end_date`: start\_date + warranty\_duration
+    - `state`: draft → active → expired
+  - Generate a **Warranty Certificate PDF (QWeb)** automatically and attach to warranty record.
+
+---
+
+### 3. Warranty Claim Management
+
+- Model: `warranty.claim`
+- Workflow:
+
+  1. Customer reports issue → create claim record.
+  2. System checks if still under warranty (based on warranty card end date).
+  3. If within warranty → repair/replace free.
+  4. If expired → system offers wizard to create a **Quotation (SO)** with `service_product_id` and entered cost.
+  5. Once repair is complete, update warranty history and mark claim as resolved.
+- Fields:
+
+  - `warranty_card_id`, `partner_id`, `product_id`, `lot_id`
+  - `claim_date`, `claim_type` (Repair/Replace/Refund)
+  - `is_under_warranty` (computed)
+  - `status`: draft / under_review / approved / done / rejected
+  - `cost_estimate`, `quotation_id`, `repair_id`
+
+#### 3.1 RMA & Stock Operations (New)
+
+Add full **RMA flow** with stock movements to support picking parts from warehouse for replacement/claim and billing when needed.
+
+- **New Operation Types / Locations (configurable in Settings):**
+
+  - `warranty_rma_in_picking_type_id` (Customer Return → Repair/Warranty Location)
+  - `warranty_repair_location_id` (internal location for diagnosis/repair)
+  - `warranty_replacement_out_picking_type_id` (Replacement Delivery → Customer)
+  - `warranty_scrap_location_id` (for defective returns)
+- **Claim Lines:** `warranty.claim.line`
+
+  - Fields: `product_id`, `description`, `qty`, `uom_id`, `lot_id`, `need_replacement` (bool), `is_consumable` (bool), `unit_cost`, `unit_price`
+  - Link to stock moves via `move_ids` (M2m) for traceability
+- **Wizards:**
+
+  - `warranty.claim.rma.receive.wizard`: create **RMA IN** picking (customer → repair location) with optional lot capture & return label.
+  - `warranty.claim.replacement.issue.wizard`: create **Replacement OUT** picking (repair location → customer). Supports:
+    - Under-warranty: zero-price delivery (no SO) or zero-price SO for portal tracking.
+    - Out-of-warranty: generate SO lines from claim lines (parts + labor) → confirm → delivery.
+  - `warranty.claim.invoice.wizard`: convert claim lines (parts/labor) to **Draft Invoice** directly (for quick-charge jobs) or attach to existing SO.
+- **Accounting/Costing Rules:**
+
+  - Under-warranty replacement: stock valuation hits **Warranty Expense** (configurable account) via category or account mapping (uses `stock_account`). Option to set `valuation_layer_analytic_tag_id` = "Warranty".
+  - Out-of-warranty: normal SO/Invoice with prices from `unit_price`; cost flows FIFO as usual.
+  - Consumables used during repair can be expensed directly using **stock rules to expense location** or via SO with zero price (if under warranty).
+- **Serial/Lot Handling:**
+
+  - Capture original lot on card and on RMA IN.
+  - Replacement OUT may assign new lot; system writes lot link into claim and card history.
+- **Statuses Extended:** `warranty.claim.status`
+
+  - `draft` → `awaiting_return` → `received` → `diagnosing` → `awaiting_parts` → `ready_to_issue` → `done` / `rejected`.
+- **Buttons / Smart Buttons:**
+
+  - On Claim: `Create RMA IN`, `Issue Replacement`, `Create Invoice`, `Create SO` (if OOW).
+  - On Warranty Card: `Claims`, `RMA Pickings`, `Invoices`.
+
+---
+
+### 4. Out-of-Warranty Flow
+
+- If `is_under_warranty=False`:
+  - A button **"Create Quotation"** triggers wizard `warranty.claim.out.wizard`.
+  - Wizard asks for:
+    - Service Product
+    - Repair Cost
+  - Creates a new Sale Order for customer → confirm → generate invoice.
+
+---
+
+### 5. Warranty Dashboard
+
+- Dashboard menu for warranty team:
+  - Filters for Active / Expired / Near-expiry (within 30 days)
+  - Smart Buttons:
+    - From Partner → Warranty Cards
+    - From Product → Warranty Cards
+  - KPIs: Total warranties, active %, claimed %, expired %
+
+---
+
+### 6. Reports
+
+- **Warranty Certificate (QWeb)**: Printable warranty document.
+- **Warranty Claim Form**: For repair documentation.
+- **Warranty Summary Report**: By product, customer, or month.
+
+---
+
+## 🧠 Model Structure
+
+### Model: `warranty.card`
+
+| Field         | Type      | Description                 |
+| ------------- | --------- | --------------------------- |
+| name          | Char      | Warranty number             |
+| partner_id    | Many2one  | Customer                    |
+| product_id    | Many2one  | Product                     |
+| lot_id        | Many2one  | Serial number               |
+| start_date    | Date      | Warranty start date         |
+| end_date      | Date      | Warranty end date           |
+| sale_order_id | Many2one  | Sale order reference        |
+| picking_id    | Many2one  | Delivery order reference    |
+| state         | Selection | draft / active / expired    |
+| condition     | Text      | Warranty conditions         |
+| claim_count   | Integer   | Smart button link to claims |
+
+### Model: `warranty.claim`
+
+| Field             | Type      | Description                                       |
+| ----------------- | --------- | ------------------------------------------------- |
+| warranty_card_id  | Many2one  | Linked warranty card                              |
+| partner_id        | Many2one  | Customer                                          |
+| product_id        | Many2one  | Product                                           |
+| claim_type        | Selection | Repair / Replace / Refund                         |
+| is_under_warranty | Boolean   | Computed from card date                           |
+| claim_date        | Date      | Date reported                                     |
+| status            | Selection | draft / under_review / approved / done / rejected |
+| description       | Text      | Problem details                                   |
+| quotation_id      | Many2one  | Out-of-warranty sale order                        |
+| repair_id         | Many2one  | Repair order reference                            |
+
+### Model: `warranty.claim.line` (New)
+
+| Field            | Type      | Description                |
+| ---------------- | --------- | -------------------------- |
+| claim_id         | Many2one  | Parent claim               |
+| product_id       | Many2one  | Part/Item used             |
+| description      | Char      | Notes                      |
+| qty              | Float     | Quantity                   |
+| uom_id           | Many2one  | UoM                        |
+| lot_id           | Many2one  | Lot/Serial (optional)      |
+| need_replacement | Boolean   | Mark as replacement item   |
+| is_consumable    | Boolean   | If true, expense directly  |
+| unit_cost        | Monetary  | For internal cost tracking |
+| unit_price       | Monetary  | For customer billing       |
+| move_ids         | Many2many | Related stock moves        |
+
+### Settings/Config (New)
+
+- `res.config.settings` fields:
+  - `warranty_rma_in_picking_type_id`
+  - `warranty_repair_location_id`
+  - `warranty_replacement_out_picking_type_id`
+  - `warranty_scrap_location_id`
+  - `warranty_expense_account_id`
+  - `warranty_default_service_product_id`
+
+## ⚙️ Dependencies
+
+- `sale`
+- `stock`
+- `stock_account`
+- `account`
+- `repair` (optional)
+- `uom`
+- `mail`
+
+---
+
+## 📁 Module Structure
+
+```
+buz_warranty_management/
 ├── __init__.py
 ├── __manifest__.py
-├── README.md
-├── SECURITY.md (อธิบายสิทธิ์)
+├── models/
+│   ├── __init__.py
+│   ├── warranty_card.py
+│   ├── warranty_claim.py
+│   ├── warranty_claim_line.py
+│   └── res_config_settings.py
+├── wizard/
+│   ├── __init__.py
+│   ├── warranty_out_wizard.py                 # OOW quotation
+│   ├── warranty_rma_receive_wizard.py         # Create RMA IN picking
+│   ├── warranty_replacement_issue_wizard.py   # Create Replacement OUT picking / SO lines
+│   └── warranty_invoice_wizard.py             # Quick invoice from claim lines
+├── views/
+│   ├── menu.xml
+│   ├── warranty_card_views.xml
+│   ├── warranty_claim_views.xml
+│   ├── warranty_claim_line_views.xml
+│   ├── product_template_views.xml
+│   ├── res_config_settings_views.xml
+│   ├── warranty_out_wizard_view.xml
+│   ├── warranty_rma_receive_wizard_view.xml
+│   └── warranty_replacement_issue_wizard_view.xml
+├── report/
+│   ├── report_warranty_certificate.xml
+│   ├── report_warranty_claim_form.xml
+│   └── report_warranty_rma_slip.xml
+├── security/
+│   ├── ir.model.access.csv
+│   ├── security.xml
 ├── data/
 │   ├── sequence.xml
-│   ├── mail_templates.xml
-├── security/
-│   ├── security.xml
-│   └── ir.model.access.csv
+│   ├── warranty_data.xml
+│   ├── stock_picking_types.xml   # precreate operation types (optional)
+│   └── mail_templates.xml
+├── README.md
+└── QWEN.md
+```
+
+buz_warranty_management/
+├── __init__.py
+├── __manifest__.py
 ├── models/
-│   ├── warranty_template.py
-│   ├── warranty_contract.py
+│   ├── __init__.py
+│   ├── warranty_card.py
 │   ├── warranty_claim.py
-│   ├── claim_cost_line.py
-│   ├── res_config_settings.py
-│   ├── stock_picking_inherit.py
-│   └── repair_order_inherit.py
+├── wizard/
+│   ├── __init__.py
+│   ├── warranty_out_wizard.py
 ├── views/
-│   ├── menuitems.xml
-│   ├── warranty_template_views.xml
-│   ├── warranty_contract_views.xml
+│   ├── menu.xml
+│   ├── warranty_card_views.xml
 │   ├── warranty_claim_views.xml
-│   ├── claim_cost_line_views.xml
-│   ├── repair_views_inherit.xml
-│   ├── stock_picking_inherit.xml
-│   └── res_config_settings_views.xml
-├── report/ (ถ้ามี PDF)
-├── tests/
-│   └── test_warranty_rma_flow.py
-└── i18n/th.po (เตรียม key หลัก)
+│   ├── product_template_views.xml
+│   ├── warranty_out_wizard_view.xml
+├── report/
+│   ├── report_warranty_certificate.xml
+│   ├── report_warranty_claim_form.xml
+├── security/
+│   ├── ir.model.access.csv
+│   ├── security.xml
+├── data/
+│   ├── sequence.xml
+│   ├── warranty_data.xml
+├── README.md
+└── QWEN.md
 
-แบบข้อมูล (Models)
+```
 
-1) buz.warranty.template
-	•	ใช้เป็น แม่แบบประกัน สำหรับ Product (Free/Extended)
-	•	Fields:
-	•	name, code (unique), product_tmpl_id (m2o: product.template)
-	•	coverage_type (selection: free, extended)
-	•	duration_months (int), terms (text)
-	•	sell_product_id (m2o: product.product, ใช้ออกบิล extended)
-	•	company_id
-	•	Constraint: duration_months > 0
-	•	Smart button: จำนวนสัญญาที่สร้างจาก template นี้
+---
 
-2) buz.warranty.contract
-	•	สัญญาประกัน ผูกกับลูกค้า + สินค้าจริง (Serial/Lot)
-	•	Fields:
-	•	name (sequence: WCT/%(year)s/%(seq)s)
-	•	partner_id, product_id, lot_id (required), company_id
-	•	template_id (m2o: buz.warranty.template)
-	•	start_date, end_date (คำนวณจาก template.duration)
-	•	state (active, expired, cancel)
-	•	invoice_id (ถ้าเป็น extended ที่ต้องชำระ)
-	•	note
-	•	Compute/Onchange:
-	•	กำหนด end_date อัตโนมัติจาก start_date + duration_months
-	•	state เป็น expired เมื่อเกิน end_date
-	•	Action:
-	•	action_renew() สร้าง invoice จาก template.sell_product_id และขยายอายุเมื่อชำระ
-	•	Constraint:
-	•	ห้ามสร้างสัญญา ทับซ้อน (lot เดียว, ช่วงเวลาทับกับ active)
-	•	lot ต้องเคยถูกส่งมอบ (ตรวจ stock move outgoing)
+## 🚀 Implementation Steps
 
-3) buz.warranty.claim
-	•	คำร้องเคลม (หัวใจของ workflow)
-	•	Fields:
-	•	name (sequence: WCL/%(year)s/%(seq)s)
-	•	contract_id (m2o: buz.warranty.contract) → auto-fill partner_id, product_id, lot_id
-	•	partner_id, product_id, lot_id, company_id
-	•	reason (selection: defect, repair, replacement, refund, others)
-	•	description (text), manager_note (text)
-	•	is_in_warranty (compute จาก contract.end_date >= today)
-	•	RMA/Logistics refs:
-	•	rma_in_picking_id (m2o: stock.picking)  – รับของกลับเข้าคลังซ่อม
-	•	repair_id (m2o: repair.order)           – ใบซ่อม
-	•	replacement_out_picking_id (m2o)          – ส่งของใหม่
-	•	return_to_customer_picking_id (m2o)       – ส่งของกลับลูกค้า
-	•	Billing:
-	•	claim_cost_line_ids (o2m: buz.claim.cost.line)
-	•	invoice_id (m2o: account.move)
-	•	state (selection):
-draft → under_review → rma_in → repairing → replacing → ready_to_return → done → cancel
-	•	Constraints:
-	•	ป้องกันเปิดเคลมซ้อนสำหรับ contract/lot เดิม ที่ยังไม่ done/cancel
-	•	Actions (server actions):
-	•	action_submit() → under_review
-	•	action_receive_rma() → สร้าง Incoming Picking (ดูค่าจาก Settings) ใส่ move 1 ชิ้น ระบุ lot, จาก location ลูกค้า → location ซ่อม
-	•	action_create_repair() → สร้าง repair.order (ผูก lot) → repairing
-	•	action_create_replacement() → สร้าง Outgoing Picking ส่งของใหม่ (เลือก replacement_product_id/lot ตอน validate) → replacing
-	•	action_return_to_customer() → สร้าง Outgoing Picking ส่งของ (หลังซ่อม/เดิม) → ready_to_return
-	•	action_create_invoice() → สร้าง SO/Invoice จาก claim_cost_line_ids (ใช้ VAT จาก product)
-	•	action_mark_done() → ปิดเคลม (ต้องไม่มีเอกสารคลังค้าง และถ้าเป็น out-of-warranty มี invoice แล้ว)
-	•	อัปเดตสถานะอัตโนมัติ:
-	•	เมื่อ rma_in_picking_id.state = done → state = rma_in
-	•	เมื่อ repair_id.state = done → state = ready_to_return (ถ้าไม่ต้องเปลี่ยน)
-	•	เมื่อ replacement_out_picking_id หรือ return_to_customer_picking_id = done → state = done
+1. **Define Models:** `warranty.card`, `warranty.claim`, `warranty.claim.line` + settings.
+2. **Extend Product Template:** Add warranty fields.
+3. **Stock Picking Hooks:**
+   - Auto-create warranty cards on Delivery Done.
+   - RMA IN creation from claim; Replacement OUT from claim/wizard.
+4. **Claim Workflow:** Add statuses + transitions; tie stock moves/repair.
+5. **Wizards:** RMA Receive, Replacement Issue, Out-of-Warranty Quotation, Quick Invoice.
+6. **Reports:** Warranty Certificate, Claim Form, **RMA Slip**.
+7. **Menu & Security:** Define menus under `Warranty Management`.
+8. **Accounting Rules:** Map under-warranty costs to expense; OOW via SO/Invoice.
 
-4) buz.claim.cost.line
-	•	รายการค่าใช้จ่าย/อะไหล่สำหรับวางบิล (นอกประกัน/บางส่วน)
-	•	Fields: claim_id, product_id, name, quantity, price_unit, tax_ids, subtotal (compute), currency_id
+---
 
-5) Settings: res.config.settings
-	•	คีย์เก็บค่าใน ir.config_parameter:
-	•	buz.default_rma_in_type_id           (m2o: stock.picking.type – Inbound)
-	•	buz.default_rma_return_type_id       (m2o: stock.picking.type – Outbound to customer)
-	•	buz.default_replacement_type_id      (m2o: stock.picking.type – Outbound replacement)
-	•	buz.default_repair_location_id       (m2o: stock.location – โซนซ่อม)
-	•	(optional) buz.reminder_days_before_expiry สำหรับแจ้งเตือนสัญญา
-	•	สร้าง เมล์เทมเพลต แจ้งเตือนหมดอายุสัญญา และ cron รายวัน
+## 🧰 Optional Enhancements
 
-6) Inherit
-	•	stock.picking: เพิ่มฟิลด์ buz_claim_id (m2o: buz.warranty.claim) + smart button ย้อนกลับจาก Claim
-	•	repair.order: เพิ่ม buz_claim_id + domain lot/product ให้ตรงกับ claim
+- Portal view for customers to check their warranties.
+- Auto email when warranty is near expiration.
+- Barcode scanning for quick warranty lookup.
+- Integration with `buz_account_receipt` for billing out-of-warranty claims.
 
-Views/UI
-	•	เมนูหลัก Warranty
-	•	Configuration: Warranty Templates, Settings
-	•	Operations: Contracts, Claims
-	•	Reporting: Claims Analysis (Pivot/Graph) – by product, lot, reason, TAT
-	•	ฟอร์ม Template/Contract: กระชับ ใช้งานง่าย, Smart buttons
-	•	ฟอร์ม Claim:
-	•	แท็บ “Warranty & Serial”: product, lot, สัญญา, วันที่คุ้มครอง, is_in_warranty
-	•	แท็บ “RMA & Logistics”: ปุ่ม/ลิงก์ pickings/repair, เหตุผล/บันทึก
-	•	แท็บ “Costs & Invoice”: tree claim_cost_line_ids + Smart button เปิด invoice
-	•	Header buttons: Submit, Receive RMA, Create Repair, Create Replacement, Return to Customer, Create Invoice, Mark Done
-	•	เงื่อนไขแสดงปุ่มตาม state
+---
 
-Sequences
-	•	WCT/ สำหรับ Contract, WCL/ สำหรับ Claim
+## 🧑‍💻 Prompt Template (to use with AI code generator)
 
-Mail/Cron
-	•	Template แจ้งเตือนก่อนหมดอายุ X วัน (อ่านจาก settings) ส่งให้ partner + ผู้ดูแล
-	•	Cron รายวัน loop contracts active ที่จะหมดอายุภายใน X วัน
+**Prompt:**
 
-Security
-	•	กลุ่ม:
-	•	group_buz_warranty_user (อ่าน/สร้าง/เขียนบางส่วน)
-	•	group_buz_warranty_manager (จัดการทั้งหมด + settings)
-	•	ir.model.access.csv ครอบคลุมทุกโมเดลใหม่ + inherit ที่จำเป็น
-	•	Record rules เคารพ company_id
+> Generate a full Odoo 17 Community module named `buz_warranty_management` with the following specs:
+> 
+> ### Functional Scope
+> - Product-level warranty configuration fields (duration, type, conditions, auto flag, default service product).
+> - Auto-create `warranty.card` records when Delivery Orders are validated; start date = delivery done date; end date = start + months.
+> - Warranty Claim management (`warranty.claim`) with statuses and portal chatter.
+> - **RMA & Stock Flows:**
+>   - RMA IN (customer → repair location) via wizard, capturing serial/lot.
+>   - Replacement OUT (repair location → customer) via wizard; supports under-warranty (zero price) and out-of-warranty (SO/Invoice) flows.
+>   - Claim lines with parts/consumables and linkage to stock moves.
+> - **Billing:**
+>   - Out-of-warranty quotation/invoice creation from claim lines (parts + labor).
+>   - Quick Invoice wizard independent of SO (option).
+> - **Accounting:** Under-warranty cost recognition to Warranty Expense (configurable), FIFO cost flow for OOW; optional analytic tag `Warranty` on SVLs.
+> - **Reports:** Warranty Certificate, Claim Form, RMA Slip.
+> - **Settings:** Operation types/locations/accounts defaults in `res.config.settings`.
+> - **Security:** Groups for Warranty User/Manager; record rules for multi-company.
+>
+> ### Technical
+> - Dependencies: `sale`, `stock`, `stock_account`, `account`, `repair` (optional), `uom`, `mail`.
+> - Add models: `warranty.card`, `warranty.claim`, `warranty.claim.line`.
+> - Add wizards: `warranty_out_wizard`, `warranty_rma_receive_wizard`, `warranty_replacement_issue_wizard`, `warranty_invoice_wizard`.
+> - Views: product template tab; claim form/tree/kanban with smart buttons; RMA/Replacement wizards; settings view.
+> - Hooks: extend `stock.picking` (create cards), methods to spawn pickings/SO/Invoice; computed fields & constraints.
+> - Reports: QWeb templates (Thai/EN labels), attach PDF to card and claim.
+> - Data: sequences, operation types (optional), mail templates.
+> - Tests: basic flow tests (create card, claim, RMA, replacement, invoice).
+> - OCA style & i18n (th, en_US).
+>
+> Deliver: full module tree with working code, manifests, and sample data ready to install.
 
-Tests (จำเป็น)
-
-tests/test_warranty_rma_flow.py ครอบคลุม:
-	1.	Create warranty contract (in-warranty) → create claim → action_receive_rma() → validate inbound → state=rma_in
-	2.	action_create_repair() → set repair done → action_return_to_customer() → validate outbound → state=done
-	3.	Out-of-warranty: ใส่ claim_cost_line_ids → action_create_invoice() → invoice posted → action_mark_done()
-	4.	Replacement flow: action_create_replacement() → validate outbound (เลือก lot ใหม่) → done
-	5.	Constraints: ห้ามเปิดเคลมซ้อนสำหรับสัญญา/lot เดิมที่ยังเปิดอยู่, ห้ามสร้าง contract ซ้อนช่วงเวลา
-
-README.md (ให้สร้างให้ครบ)
-	•	ภาพรวม, Dependencies, ขั้นตอนติดตั้ง
-	•	วิธีตั้งค่า Settings
-	•	ตัวอย่าง 3 flow: Repair / Replacement / Out-of-warranty billing
-	•	Tips: Multi-company, Serial domain, การกำหนด taxes, Pricelist (ถ้าใช้)
-
-คุณภาพโค้ดที่ต้องการ
-	•	โค้ด รันได้จริง บน Odoo 17: ไม่มี missing ref, ไม่มี view xpath พัง
-	•	ใช้ API Odoo มาตรฐาน: create/write/onchange/compute/constraints
-	•	ตรวจ error cases ด้วย UserError ที่อ่านง่าย
-	•	เคารพ security (groups, access, rules)
-	•	จัดระเบียบไฟล์และคอมเมนต์สั้น ๆ ชัดเจน
+```

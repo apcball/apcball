@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Warranty Card Sequence -->
+    <record id="sequence_warranty_card" model="ir.sequence">
+        <field name="name">Warranty Card</field>
+        <field name="code">warranty.card</field>
+        <field name="prefix">WARR/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <!-- Warranty Claim Sequence -->
+    <record id="sequence_warranty_claim" model="ir.sequence">
+        <field name="name">Warranty Claim</field>
+        <field name="code">warranty.claim</field>
+        <field name="prefix">WCL/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <!-- Scheduled Action: Update Expired Warranties -->
+    <record id="cron_update_expired_warranties" model="ir.cron">
+        <field name="name">Warranty: Update Expired Status</field>
+        <field name="model_id" ref="model_warranty_card"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_update_expired_warranties()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+
+</odoo>
