@@ -251,6 +251,89 @@ class ValuationRegenerateWizard(models.TransientModel):
                     )
                     products_with_issues |= product
                     continue
+            
+            # Check for back-date issues (วันที่ไม่สอดคล้องกัน)
+            # Case 1: SVL create_date ไม่ตรงกับ stock move date
+            svls_with_date_mismatch = svls.filtered(
+                lambda s: s.stock_move_id and s.create_date and s.stock_move_id.date and
+                abs((s.create_date.date() - fields.Date.to_date(s.stock_move_id.date)).days) > 1
+            )
+            if svls_with_date_mismatch:
+                _logger.info(
+                    f"Product {product.display_name}: "
+                    f"Found {len(svls_with_date_mismatch)} SVLs with date mismatch (back-date issue)"
+                )
+                products_with_issues |= product
+                continue
+            
+            # Case 2: Check SVL ordering vs move ordering (FIFO/AVCO specific)
+            if product.categ_id.property_cost_method in ['fifo', 'average']:
+                # Get SVLs sorted by create_date
+                svls_by_create = svls.sorted(lambda s: s.create_date or fields.Datetime.now())
+                # Get moves sorted by date
+                product_moves_by_date = product_moves.sorted(lambda m: (m.date, m.id))
+                
+                # Check if the order matches
+                svl_move_ids = [s.stock_move_id.id for s in svls_by_create if s.stock_move_id]
+                move_ids = product_moves_by_date.ids
+                
+                # Compare the order (allowing for some tolerance)
+                if len(svl_move_ids) > 1 and len(move_ids) > 1:
+                    # Check if there are any SVLs that are significantly out of order
+                    for i, svl in enumerate(svls_by_create):
+                        if not svl.stock_move_id:
+                            continue
+                        
+                        # Find the position of this move in the sorted moves
+                        try:
+                            move_position = move_ids.index(svl.stock_move_id.id)
+                            
+                            # Check if there's a significant order mismatch
+                            # (more than 3 positions difference suggests back-dating)
+                            if abs(i - move_position) > 3:
+                                _logger.info(
+                                    f"Product {product.display_name}: "
+                                    f"Found SVL order mismatch (position {i} vs {move_position}) - possible back-date issue"
+                                )
+                                products_with_issues |= product
+                                break
+                        except ValueError:
+                            # Move not found in list, skip
+                            continue
+                    
+                    if product in products_with_issues:
+                        continue
+            
+            # Case 3: Check for out-of-sequence valuation
+            # For FIFO: check if outgoing moves use costs from later incoming moves
+            if product.categ_id.property_cost_method == 'fifo':
+                svls_sorted = svls.sorted(lambda s: (s.create_date or fields.Datetime.now(), s.id))
+                
+                for svl in svls_sorted:
+                    if not svl.stock_move_id:
+                        continue
+                    
+                    # Check if this is an outgoing move
+                    if svl.quantity < 0:
+                        # Get the date of this outgoing
+                        out_date = fields.Date.to_date(svl.stock_move_id.date)
+                        
+                        # Find any incoming SVLs that were created later but have earlier dates
+                        later_incoming = svls.filtered(
+                            lambda s: s.quantity > 0 and 
+                            s.create_date > svl.create_date and
+                            s.stock_move_id and
+                            fields.Date.to_date(s.stock_move_id.date) < out_date
+                        )
+                        
+                        if later_incoming:
+                            _logger.info(
+                                f"Product {product.display_name}: "
+                                f"Found FIFO sequence issue - {len(later_incoming)} incoming SVL(s) "
+                                f"created later but dated earlier (back-date issue)"
+                            )
+                            products_with_issues |= product
+                            break
         
         _logger.info(f"Auto-detection complete: Found {len(products_with_issues)} products with issues")
         return products_with_issues

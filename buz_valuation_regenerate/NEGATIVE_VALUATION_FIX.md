@@ -155,7 +155,102 @@ if self.auto_detect_products and self.location_ids and not self.auto_detect_ran:
 - ทำ auto-detect และสร้าง preview ในครั้งเดียว
 - ไม่ต้องกด Compute Plan ซ้ำอีก
 
-### 5. แก้ไข JavaScript Error
+### 5. เพิ่มการตรวจจับ Back-date Issues
+**ไฟล์:** `models/valuation_regenerate_wizard.py`
+
+#### Case 1: SVL Date Mismatch
+```python
+# Check for back-date issues (วันที่ไม่สอดคล้องกัน)
+# Case 1: SVL create_date ไม่ตรงกับ stock move date
+svls_with_date_mismatch = svls.filtered(
+    lambda s: s.stock_move_id and s.create_date and s.stock_move_id.date and
+    abs((s.create_date.date() - s.stock_move_id.date).days) > 1
+)
+if svls_with_date_mismatch:
+    _logger.info(
+        f"Product {product.display_name}: "
+        f"Found {len(svls_with_date_mismatch)} SVLs with date mismatch (back-date issue)"
+    )
+    products_with_issues |= product
+    continue
+```
+
+**อธิบาย:**
+- ตรวจสอบว่า SVL create_date กับ stock move date ห่างกันมากกว่า 1 วัน
+- กรณีนี้เกิดขึ้นเมื่อมีการ back-date stock move หลังจาก SVL ถูกสร้างไปแล้ว
+- หรือมีการแก้ไข date ของ move ย้อนหลัง
+
+#### Case 2: SVL Ordering Mismatch
+```python
+# Case 2: Check SVL ordering vs move ordering (FIFO/AVCO specific)
+if product.categ_id.property_cost_method in ['fifo', 'average']:
+    # Get SVLs sorted by create_date
+    svls_by_create = svls.sorted(lambda s: s.create_date or fields.Datetime.now())
+    # Get moves sorted by date
+    product_moves_by_date = product_moves.sorted(lambda m: (m.date, m.id))
+    
+    # Check if there are any SVLs that are significantly out of order
+    for i, svl in enumerate(svls_by_create):
+        if not svl.stock_move_id:
+            continue
+        
+        # Find the position of this move in the sorted moves
+        move_position = move_ids.index(svl.stock_move_id.id)
+        
+        # Check if there's a significant order mismatch
+        # (more than 3 positions difference suggests back-dating)
+        if abs(i - move_position) > 3:
+            _logger.info(
+                f"Product {product.display_name}: "
+                f"Found SVL order mismatch - possible back-date issue"
+            )
+            products_with_issues |= product
+            break
+```
+
+**อธิบาย:**
+- ตรวจสอบลำดับของ SVL vs ลำดับของ stock moves
+- สำหรับ FIFO/AVCO ลำดับต้องตรงกันเพื่อให้ cost calculation ถูกต้อง
+- ถ้าลำดับไม่ตรงกันเกิน 3 ตำแหน่ง แสดงว่าน่าจะมี back-date
+- เช่น: Move A (date: 1/1) → Move B (date: 5/1) → Move C (date: 3/1 - back-dated)
+
+#### Case 3: Out-of-Sequence FIFO Valuation
+```python
+# Case 3: Check for out-of-sequence valuation
+# For FIFO: check if outgoing moves use costs from later incoming moves
+if product.categ_id.property_cost_method == 'fifo':
+    for svl in svls_sorted:
+        # Check if this is an outgoing move
+        if svl.quantity < 0:
+            # Get the date of this outgoing
+            out_date = svl.stock_move_id.date
+            
+            # Find any incoming SVLs that were created later but have earlier dates
+            later_incoming = svls.filtered(
+                lambda s: s.quantity > 0 and 
+                s.create_date > svl.create_date and
+                s.stock_move_id and
+                s.stock_move_id.date < out_date
+            )
+            
+            if later_incoming:
+                _logger.info(
+                    f"Product {product.display_name}: "
+                    f"Found FIFO sequence issue - incoming SVL(s) created later but dated earlier"
+                )
+                products_with_issues |= product
+                break
+```
+
+**อธิบาย:**
+- สำหรับ FIFO เท่านั้น
+- ตรวจสอบว่า outgoing move ใช้ cost จาก incoming ที่มาทีหลัง
+- เช่น: 
+  - Outgoing A (date: 5/1, created: 5/1 10:00) ใช้ cost จาก Incoming X
+  - Incoming Y (date: 3/1, created: 6/1 14:00) - back-dated หลังจาก Outgoing A
+  - ทำให้ FIFO calculation ผิด เพราะ Incoming Y ควรมาก่อน Outgoing A
+
+### 6. แก้ไข JavaScript Error
 **ปัญหา:** `TypeError: Cannot read properties of undefined (reading 'map')`
 
 **สาเหตุ:**
@@ -207,6 +302,10 @@ if self.auto_detect_products and self.location_ids and not self.auto_detect_ran:
 - ✅ SVL ที่ขาดหายไป
 - ✅ SVL ที่มี value = 0 แต่ quantity ≠ 0
 - ✅ SVL ที่ไม่มี account move (ถ้าเปิดใช้)
+- ✅ **Back-date issues (วันที่ไม่สอดคล้องกัน) - New in v1.4.0**
+  - SVL create_date ไม่ตรงกับ stock move date (ห่างกันมากกว่า 1 วัน)
+  - SVL ordering ไม่ตรงกับ move ordering (สำหรับ FIFO/AVCO)
+  - Out-of-sequence valuation (FIFO outgoing ใช้ cost จาก incoming ที่มาทีหลัง)
 
 ## ข้อควรระวัง
 
@@ -244,6 +343,33 @@ Expected: Product A ไม่ถูกดึงกลับมาใน auto-det
 Expected: Product selection และ preview ถูกล้าง
 ```
 
+### Test Case 4: Back-date Detection - Date Mismatch
+```
+Product: Any product
+Scenario: SVL มี create_date = 2024-01-10, แต่ stock move date = 2024-01-01
+Expected: Product ถูกดึงเข้ามาใน auto-detect (date mismatch > 1 day)
+```
+
+### Test Case 5: Back-date Detection - Order Mismatch
+```
+Product: FIFO product
+Scenario: 
+- Move A (date: 2024-01-01) → SVL created
+- Move B (date: 2024-01-05) → SVL created  
+- Move C (date: 2024-01-03) → SVL created (back-dated)
+Expected: Product ถูกดึงเข้ามาใน auto-detect (order mismatch > 3 positions)
+```
+
+### Test Case 6: Back-date Detection - FIFO Sequence Issue
+```
+Product: FIFO product
+Scenario:
+- Incoming X (date: 2024-01-01, created: 2024-01-01 10:00)
+- Outgoing A (date: 2024-01-05, created: 2024-01-05 10:00) uses cost from Incoming X
+- Incoming Y (date: 2024-01-03, created: 2024-01-06 10:00) - back-dated after Outgoing A
+Expected: Product ถูกดึงเข้ามาใน auto-detect (FIFO sequence violation)
+```
+
 ## Log และ Monitoring
 
 ### Log Messages:
@@ -253,6 +379,15 @@ Product [3FG-PSS106-PM470-05]: Found negative valuation - Qty: -1.0, Value: -434
 
 # เมื่อข้าม product ที่ทำแล้ว
 Product [3FG-PSS106-PM470-05]: Skipping - recently processed
+
+# เมื่อพบ back-date issue - Date Mismatch
+Product [ABC-123]: Found 2 SVLs with date mismatch (back-date issue)
+
+# เมื่อพบ back-date issue - Order Mismatch
+Product [ABC-123]: Found SVL order mismatch (position 5 vs 1) - possible back-date issue
+
+# เมื่อพบ back-date issue - FIFO Sequence
+Product [ABC-123]: Found FIFO sequence issue - 3 incoming SVL(s) created later but dated earlier (back-date issue)
 
 # เมื่อ auto-detect เสร็จ
 Auto-detection complete: Found 5 products with issues
