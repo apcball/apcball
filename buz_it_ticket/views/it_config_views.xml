@@ -12,7 +12,7 @@
                             <group>
                                 <field name="name"/>
                                 <field name="category"/>
-                                <field name="priority"/>
+                                <field name="sla_level"/>
                                 <field name="subtype"/>
                             </group>
                             <group>
@@ -34,7 +34,7 @@
                 <tree string="SLA Policies">
                     <field name="name"/>
                     <field name="category"/>
-                    <field name="priority"/>
+                    <field name="sla_level"/>
                     <field name="response_time_hours"/>
                     <field name="resolve_time_hours"/>
                     <field name="active"/>

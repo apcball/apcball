@@ -60,11 +60,11 @@ class ItTicketSummaryWizard(models.TransientModel):
                 ('access', 'Access Request'),
                 ('purchase', 'Purchase Request'),
             ]
-            wizard.priority_selection = [
-                ('0', 'Low'),
-                ('1', 'Normal'),
-                ('2', 'High'),
-                ('3', 'Urgent'),
+            wizard.sla_level_selection = [
+                ('standard', 'Standard (มาตรฐาน)'),
+                ('important', 'Important (สำคัญ)'),
+                ('urgent', 'Urgent (เร่งด่วน)'),
+                ('critical', 'Critical (วิกฤต)'),
             ]
             wizard.state_selection = [
                 ('draft', 'Draft'),
@@ -116,7 +116,7 @@ class ItTicketSummaryWizard(models.TransientModel):
                 'category': ticket.category,
                 'employee_name': ticket.employee_id.name,
                 'department_name': ticket.department_id.name if ticket.department_id else None,
-                'priority': ticket.priority,
+                'sla_level': ticket.sla_level,
                 'state': ticket.state,
                 'create_date': ticket.create_date.strftime('%Y-%m-%d'),
                 'ttr_respond': '%.2f' % ticket.ttr_respond if ticket.ttr_respond else None,
@@ -187,7 +187,7 @@ class ItTicketSummaryWizard(models.TransientModel):
                 'date_to': self.date_to.strftime('%Y-%m-%d'),
                 'category': self.category,
                 'category_selection': dict(self.category_selection),
-                'priority_selection': dict(self.priority_selection),
+                'priority_selection': dict(self.sla_level_selection),
                 'state_selection': dict(self.state_selection),
             },
             'tickets': ticket_data,

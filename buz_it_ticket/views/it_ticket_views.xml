@@ -84,7 +84,7 @@
                         <group>
                             <group>
                                 <field name="category" required="1" />
-                                <field name="priority" />
+                                <field name="sla_level" string="Priority" />
                                 <field name="employee_id" required="1" />
                                 <field name="manager_id" />
                                 <field name="department_id" />
@@ -94,7 +94,7 @@
                                 <field name="company_id" groups="base.group_multi_company" />
                                 <field name="user_id" readonly="1" />
                                 <field name="create_date" readonly="1" />
-                                <field name="sla_policy_id" />
+                                <field name="sla_policy_id" invisible="1" />
                                 <field name="deadline_sla" />
                                 <field name="sla_breached" widget="boolean_toggle" />
                             </group>
@@ -184,7 +184,7 @@
                     <field name="category" />
                     <field name="employee_id" />
                     <field name="department_id" />
-                    <field name="priority" />
+                    <field name="sla_level" />
                     <field name="state" />
                     <field name="it_responsible_id" />
                     <field name="create_date" />
@@ -203,7 +203,7 @@
                     <field name="name" />
                     <field name="category" />
                     <field name="employee_id" />
-                    <field name="priority" />
+                    <field name="sla_level" />
                     <field name="state" />
                     <field name="deadline_sla" />
                     <field name="sla_breached" />
@@ -230,7 +230,7 @@
                                 </div>
                                 <div class="o_kanban_record_bottom">
                                     <div class="oe_kanban_bottom_left">
-                                        <field name="priority" widget="priority" />
+                                        <field name="sla_level" />
                                         <t t-if="record.deadline_sla.raw_value">
                                             <t t-if="record.sla_breached.raw_value">
                                                 <span class="badge badge-danger">
@@ -269,7 +269,7 @@
                     <field name="employee_id" />
                     <field name="category" />
                     <field name="state" />
-                    <field name="priority" />
+                    <field name="sla_level" />
                     <field name="department_id" />
                     <field name="it_responsible_id" />
                     
@@ -289,13 +289,13 @@
                     <filter string="Closed" name="state_closed" domain="[('state', '=', 'closed')]" />
                     
                     <separator />
-                    <filter string="Urgent" name="priority_urgent" domain="[('priority', '=', '3')]" />
-                    <filter string="High" name="priority_high" domain="[('priority', '=', '2')]" />
+                    <filter string="Critical" name="sla_level_critical" domain="[('sla_level', '=', 'critical')]" />
+                    <filter string="Urgent" name="sla_level_urgent" domain="[('sla_level', '=', 'urgent')]" />
                     
                     <group expand="0" string="Group By">
                         <filter string="Category" name="group_category" context="{'group_by': 'category'}" />
                         <filter string="State" name="group_state" context="{'group_by': 'state'}" />
-                        <filter string="Priority" name="group_priority" context="{'group_by': 'priority'}" />
+                        <filter string="Priority" name="group_sla_level" context="{'group_by': 'sla_level'}" />
                         <filter string="Department" name="group_department" context="{'group_by': 'department_id'}" />
                         <filter string="IT Responsible" name="group_it_responsible" context="{'group_by': 'it_responsible_id'}" />
                         <filter string="Create Date" name="group_create_date" context="{'group_by': 'create_date:month'}" />
@@ -312,7 +312,7 @@
                 <graph string="IT Tickets Analysis">
                     <field name="category" />
                     <field name="state" />
-                    <field name="priority" />
+                    <field name="sla_level" />
                 </graph>
             </field>
         </record>
@@ -324,7 +324,7 @@
             <field name="arch" type="xml">
                 <pivot string="IT Tickets Analysis">
                     <field name="category" type="row" />
-                    <field name="priority" type="row" />
+                    <field name="sla_level" type="row" />
                     <field name="state" type="col" />
                 </pivot>
             </field>

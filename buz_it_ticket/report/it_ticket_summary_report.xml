@@ -141,7 +141,7 @@
                                     <td><span t-esc="dict(data['form']['category_selection'])[ticket['category']]"/></td>
                                     <td><span t-esc="ticket['employee_name']"/></td>
                                     <td><span t-esc="ticket['department_name'] or ''"/></td>
-                                    <td><span t-esc="dict(data['form']['priority_selection'])[ticket['priority']]"/></td>
+                                    <td><span t-esc="dict(data['form']['priority_selection'])[ticket['sla_level']]"/></td>
                                     <td><span t-esc="dict(data['form']['state_selection'])[ticket['state']]"/></td>
                                     <td><span t-esc="ticket['create_date']"/></td>
                                     <td><span t-esc="ticket['ttr_respond'] or ''"/></td>

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Issue/Repair Ticket Form View -->
+        <!-- IT Request Ticket Form View -->
         <record id="view_it_ticket_issue_form" model="ir.ui.view">
             <field name="name">it.ticket.issue.form</field>
             <field name="model">it.ticket</field>
             <field name="arch" type="xml">
-                <form string="Issue/Repair Ticket">
+                <form string="IT Request Ticket">
                     <header>
-                        <!-- Issue/Repair specific buttons -->
+                        <!-- IT Request specific buttons -->
                         <button name="action_issue_submit" string="Submit Issue" type="object" 
                                 invisible="state != 'draft'" class="btn-primary" />
                         <button name="action_issue_start_work" string="Start Work" type="object" 
@@ -50,7 +50,7 @@
                         <group>
                             <group>
                                 <field name="category" readonly="1" required="1" />
-                                <field name="priority" />
+                                <field name="sla_level" string="Priority" />
                                 <field name="employee_id" required="1" />
                                 <field name="manager_id" />
                                 <field name="department_id" />
@@ -60,10 +60,30 @@
                                 <field name="company_id" groups="base.group_multi_company" />
                                 <field name="user_id" readonly="1" />
                                 <field name="create_date" readonly="1" />
-                                <field name="sla_policy_id" />
+                                <field name="sla_policy_id" invisible="1" />
                                 <field name="deadline_sla" />
                                 <field name="sla_breached" widget="boolean_toggle" />
                             </group>
+                        </group>
+                        
+                        <!-- Issue Specific Information -->
+                        <group string="Issue Details" invisible="category != 'issue'">
+                            <group>
+                                <field name="requester_email" required="category == 'issue'"
+                                       placeholder="Enter your email address" />
+                                <field name="line_id" required="category == 'issue'"
+                                       placeholder="Enter your LINE ID" />
+                            </group>
+                            <group>
+                                <field name="computer_name" required="category == 'issue'"
+                                       placeholder="Enter computer name or hostname" />
+                            </group>
+                        </group>
+                        
+                        <group string="Symptoms/Issues (อาการเสีย)" invisible="category != 'issue'">
+                            <field name="symptoms" required="category == 'issue'"
+                                   placeholder="Please describe the symptoms or issues in detail..."
+                                   nolabel="1" />
                         </group>
                         
                         <notebook>
@@ -159,7 +179,7 @@
                         <group>
                             <group>
                                 <field name="category" readonly="1" required="1" />
-                                <field name="priority" />
+                                <field name="sla_level" string="Priority" />
                                 <field name="employee_id" required="1" />
                                 <field name="manager_id" />
                                 <field name="department_id" />
@@ -169,7 +189,7 @@
                                 <field name="company_id" groups="base.group_multi_company" />
                                 <field name="user_id" readonly="1" />
                                 <field name="create_date" readonly="1" />
-                                <field name="sla_policy_id" />
+                                <field name="sla_policy_id" invisible="1" />
                                 <field name="deadline_sla" />
                                 <field name="sla_breached" widget="boolean_toggle" />
                             </group>
@@ -289,7 +309,7 @@
                         <group>
                             <group>
                                 <field name="category" readonly="1" required="1" />
-                                <field name="priority" />
+                                <field name="sla_level" string="Priority" />
                                 <field name="employee_id" required="1" />
                                 <field name="manager_id" />
                                 <field name="department_id" />
@@ -299,7 +319,7 @@
                                 <field name="company_id" groups="base.group_multi_company" />
                                 <field name="user_id" readonly="1" />
                                 <field name="create_date" readonly="1" />
-                                <field name="sla_policy_id" />
+                                <field name="sla_policy_id" invisible="1" />
                                 <field name="deadline_sla" />
                                 <field name="sla_breached" widget="boolean_toggle" />
                             </group>

@@ -19,10 +19,20 @@ class ItTicket(models.Model):
         employee = self.env['hr.employee'].search([('user_id', '=', self.env.uid)], limit=1)
         return employee if employee else False
 
+    @api.model
+    def _default_requester_email(self):
+        """Get default email from employee"""
+        employee = self._default_employee_id()
+        if employee and employee.work_email:
+            return employee.work_email
+        elif employee and employee.user_id and employee.user_id.email:
+            return employee.user_id.email
+        return ''
+
     # Basic fields
     name = fields.Char('Ticket Number', copy=False, readonly=True)
     category = fields.Selection([
-        ('issue', 'Issue/Repair'),
+        ('issue', 'IT Request'),
         ('access', 'Access Request'),
         ('purchase', 'Purchase Request'),
     ], string='Category', required=True, default='issue')
@@ -58,12 +68,12 @@ class ItTicket(models.Model):
     it_responsible_id = fields.Many2one('res.users', 'IT Responsible')
     
     # Priority and classification
-    priority = fields.Selection([
-        ('0', 'Low'),
-        ('1', 'Normal'),
-        ('2', 'High'),
-        ('3', 'Urgent'),
-    ], string='Priority', default='1', tracking=True)
+    sla_level = fields.Selection([
+        ('standard', 'Standard (มาตรฐาน)'),
+        ('important', 'Important (สำคัญ)'),
+        ('urgent', 'Urgent (เร่งด่วน)'),
+        ('critical', 'Critical (วิกฤต)'),
+    ], string='Priority', default='important', tracking=True)
     
     # Organization
     company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company, required=True)
@@ -94,6 +104,12 @@ class ItTicket(models.Model):
                                         domain=[('product_id', '!=', False)])
     purchase_id = fields.Many2one('purchase.order', 'Purchase Order')
     
+    # Issue specific fields
+    requester_email = fields.Char('Email', required=True, default=lambda self: self._default_requester_email())
+    line_id = fields.Char('ID LINE', required=True)
+    symptoms = fields.Text('Symptoms/Issues (อาการเสีย)', required=True)
+    computer_name = fields.Char('Computer Name', required=True)
+    
     # ISO fields
     iso_doc_code = fields.Char('ISO Document Code')
     revision = fields.Char('Revision')
@@ -109,6 +125,30 @@ class ItTicket(models.Model):
                 ticket.manager_id = ticket.employee_id.parent_id
             else:
                 ticket.manager_id = False
+
+    @api.constrains('category', 'requester_email', 'line_id', 'symptoms', 'computer_name')
+    def _check_issue_required_fields(self):
+        """Check that required fields are filled for Issue tickets"""
+        for ticket in self:
+            if ticket.category == 'issue':
+                if not ticket.requester_email:
+                    raise ValidationError(_('Email is required for Issue tickets'))
+                if not ticket.line_id:
+                    raise ValidationError(_('ID LINE is required for Issue tickets'))
+                if not ticket.symptoms:
+                    raise ValidationError(_('Symptoms/Issues is required for Issue tickets'))
+                if not ticket.computer_name:
+                    raise ValidationError(_('Computer Name is required for Issue tickets'))
+
+    @api.onchange('sla_level', 'category')
+    def _onchange_sla_level(self):
+        """Automatically set SLA Policy based on SLA Level and Category"""
+        if self.sla_level and self.category:
+            sla_policy = self.env['it.sla.policy'].get_sla_policy(
+                self.category, self.sla_level
+            )
+            if sla_policy:
+                self.sla_policy_id = sla_policy
 
     @api.model
     def create(self, vals):
@@ -145,7 +185,7 @@ class ItTicket(models.Model):
             self.activity_schedule(
                 'mail.mail_activity_data_todo',
                 summary=_('New Issue Ticket: %s') % self.name,
-                note=_('A new issue ticket has been submitted. Priority: %s\n\n%s') % (self.priority, self.description or ''),
+                note=_('A new issue ticket has been submitted. SLA Level: %s\n\n%s') % (self.sla_level, self.description or ''),
                 user_id=self.it_responsible_id.id
             )
         
@@ -493,10 +533,10 @@ class ItTicket(models.Model):
 
     # SLA methods
     def _set_sla_policy(self):
-        """Set SLA policy and deadline based on category and priority"""
+        """Set SLA policy and deadline based on category and SLA level"""
         self.ensure_one()
         sla_policy = self.env['it.sla.policy'].get_sla_policy(
-            self.category, self.priority
+            self.category, self.sla_level
         )
         if sla_policy:
             self.sla_policy_id = sla_policy
@@ -610,3 +650,14 @@ class ItTicket(models.Model):
             'view_mode': 'form',
             'target': 'current',
         }
+
+    def get_form_view_id(self):
+        """Return the appropriate form view ID based on ticket category"""
+        self.ensure_one()
+        if self.category == 'issue':
+            return self.env.ref('buz_it_ticket.view_it_ticket_issue_form').id
+        elif self.category == 'access':
+            return self.env.ref('buz_it_ticket.view_it_ticket_access_form').id
+        elif self.category == 'purchase':
+            return self.env.ref('buz_it_ticket.view_it_ticket_purchase_form').id
+        return False

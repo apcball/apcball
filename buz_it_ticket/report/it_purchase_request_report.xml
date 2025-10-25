@@ -41,7 +41,7 @@
                             <th>Position:</th>
                             <td><span t-field="o.employee_id.job_id.name"/></td>
                             <th>Priority:</th>
-                            <td><span t-field="o.priority"/></td>
+                            <td><span t-field="o.sla_level"/></td>
                         </tr>
                         <tr>
                             <th>IT Responsible:</th>

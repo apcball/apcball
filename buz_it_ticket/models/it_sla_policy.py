@@ -6,7 +6,7 @@ from odoo import models, fields, api, _
 class ItSlaPolicy(models.Model):
     _name = 'it.sla.policy'
     _description = 'IT SLA Policy'
-    _order = 'category, priority'
+    _order = 'category, sla_level'
 
     name = fields.Char('Policy Name', required=True)
     category = fields.Selection([
@@ -15,12 +15,12 @@ class ItSlaPolicy(models.Model):
         ('purchase', 'Purchase Request'),
     ], string='Category', required=True)
     
-    priority = fields.Selection([
-        ('0', 'Low'),
-        ('1', 'Normal'),
-        ('2', 'High'),
-        ('3', 'Urgent'),
-    ], string='Priority', required=True, default='1')
+    sla_level = fields.Selection([
+        ('standard', 'Standard (มาตรฐาน)'),
+        ('important', 'Important (สำคัญ)'),
+        ('urgent', 'Urgent (เร่งด่วน)'),
+        ('critical', 'Critical (วิกฤต)'),
+    ], string='SLA Level', required=True, default='important')
     
     subtype = fields.Char('Subtype', help='Optional subtype for more specific SLA rules')
     
@@ -36,18 +36,18 @@ class ItSlaPolicy(models.Model):
                                  required=True)
     
     _sql_constraints = [
-        ('unique_category_priority_subtype', 'unique(category, priority, subtype, company_id)',
-         'SLA Policy must be unique per category, priority, subtype and company'),
+        ('unique_category_sla_level_subtype', 'unique(category, sla_level, subtype, company_id)',
+         'SLA Policy must be unique per category, SLA level, subtype and company'),
     ]
     
     @api.model
-    def get_sla_policy(self, category, priority, subtype=None):
+    def get_sla_policy(self, category, sla_level, subtype=None):
         """
-        Get the appropriate SLA policy for the given category, priority, and subtype
+        Get the appropriate SLA policy for the given category, SLA level, and subtype
         """
         domain = [
             ('category', '=', category),
-            ('priority', '=', priority),
+            ('sla_level', '=', sla_level),
             ('active', '=', True),
             ('company_id', 'in', [self.env.company.id, False]),
         ]

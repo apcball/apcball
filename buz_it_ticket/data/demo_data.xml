@@ -146,7 +146,7 @@
             <field name="state">closed</field>
             <field name="employee_id" ref="demo_employee_employee"/>
             <field name="it_responsible_id" ref="demo_user_it_staff"/>
-            <field name="priority">1</field>
+            <field name="sla_level">important</field>
             <field name="department_id" ref="demo_department_sales"/>
             <field name="description"><p>My computer is running very slow and takes a long time to start up. I've tried restarting multiple times but the issue persists.</p><p>This is affecting my productivity as I need to wait several minutes for applications to open.</p></field>
             <field name="sla_policy_id" ref="sla_issue_normal"/>
@@ -168,7 +168,7 @@
             <field name="state">in_progress</field>
             <field name="employee_id" ref="demo_employee_employee"/>
             <field name="it_responsible_id" ref="demo_user_it_staff"/>
-            <field name="priority">2</field>
+            <field name="sla_level">urgent</field>
             <field name="department_id" ref="demo_department_sales"/>
             <field name="description"><p>I cannot connect to the VPN from home. I've tried multiple times but keep getting connection timeout errors.</p><p>I need to work remotely today for an important client meeting.</p></field>
             <field name="sla_policy_id" ref="sla_issue_high"/>
@@ -184,7 +184,7 @@
             <field name="state">closed</field>
             <field name="employee_id" ref="demo_employee_employee"/>
             <field name="it_responsible_id" ref="demo_user_it_staff"/>
-            <field name="priority">1</field>
+            <field name="sla_level">important</field>
             <field name="department_id" ref="demo_department_sales"/>
             <field name="description"><p>I need access to the ERP system for sales order management and customer tracking.</p></field>
             <field name="access_template_id" ref="access_template_new_employee"/>
@@ -221,7 +221,7 @@
             <field name="state">approved</field>
             <field name="employee_id" ref="demo_employee_employee"/>
             <field name="it_responsible_id" ref="demo_user_it_staff"/>
-            <field name="priority">2</field>
+            <field name="sla_level">urgent</field>
             <field name="department_id" ref="demo_department_sales"/>
             <field name="description"><p>I need VPN access to work remotely while traveling next week.</p></field>
             <field name="sla_policy_id" ref="sla_access_high"/>
@@ -244,7 +244,7 @@
             <field name="state">received</field>
             <field name="employee_id" ref="demo_employee_employee"/>
             <field name="it_responsible_id" ref="demo_user_it_staff"/>
-            <field name="priority">1</field>
+            <field name="sla_level">important</field>
             <field name="department_id" ref="demo_department_sales"/>
             <field name="description"><p>I need a new laptop as my current one is outdated and cannot run the latest software required for my job.</p></field>
             <field name="sla_policy_id" ref="sla_purchase_normal"/>
@@ -275,7 +275,7 @@
             <field name="state">po_created</field>
             <field name="employee_id" ref="demo_employee_employee"/>
             <field name="it_responsible_id" ref="demo_user_it_staff"/>
-            <field name="priority">1</field>
+            <field name="sla_level">important</field>
             <field name="department_id" ref="demo_department_sales"/>
             <field name="description"><p>I need an additional monitor for my dual monitor setup to improve productivity.</p></field>
             <field name="sla_policy_id" ref="sla_purchase_normal"/>

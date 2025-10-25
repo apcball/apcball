@@ -25,7 +25,7 @@
                         </tr>
                         <tr>
                             <td style="padding:5px;"><strong>Priority:</strong></td>
-                            <td style="padding:5px;">${object.priority}</td>
+                            <td style="padding:5px;">${object.sla_level}</td>
                         </tr>
                         <tr>
                             <td style="padding:5px;"><strong>Description:</strong></td>

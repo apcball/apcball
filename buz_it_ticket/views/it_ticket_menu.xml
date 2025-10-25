@@ -10,7 +10,7 @@
         <menuitem id="menu_it_ticket_all" name="All Tickets" parent="menu_it_tickets" 
                   action="action_it_ticket" sequence="10"/>
         
-        <menuitem id="menu_it_ticket_issue" name="Issue/Repair" parent="menu_it_tickets" 
+        <menuitem id="menu_it_ticket_issue" name="IT Request" parent="menu_it_tickets"
                   action="action_it_ticket_issue" sequence="20"/>
         
         <menuitem id="menu_it_ticket_access" name="Access Requests" parent="menu_it_tickets" 

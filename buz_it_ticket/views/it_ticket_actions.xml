@@ -18,14 +18,14 @@
         </record>
         
         <record id="action_it_ticket_issue" model="ir.actions.act_window">
-            <field name="name">Issue/Repair Tickets</field>
+            <field name="name">IT Request Tickets</field>
             <field name="res_model">it.ticket</field>
             <field name="view_mode">tree,form</field>
             <field name="domain">[('category', '=', 'issue')]</field>
             <field name="context">{'default_category': 'issue'}</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
-                    Create your first issue ticket!
+                    Create your first IT request ticket!
                 </p>
                 <p>
                     Report issues or repair requests through IT tickets.

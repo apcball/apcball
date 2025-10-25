@@ -7,13 +7,14 @@
             <field name="model">it.ticket</field>
             <field name="arch" type="xml">
                 <kanban default_group_by="state" class="o_kanban_small_column">
-                    <field name="priority"/>
+                    <field name="sla_level"/>
                     <field name="sla_breached"/>
                     <field name="deadline_sla"/>
                     <field name="it_responsible_id"/>
+                    <field name="category"/>
                     <templates>
                         <t t-name="kanban-box">
-                            <div>
+                            <div t-attf-class="oe_kanban_card oe_kanban_global_click #{record.sla_breached.raw_value ? 'oe_kanban_color_4' : ''}">
                                 <div class="o_kanban_record_top">
                                     <div class="o_kanban_record_headings">
                                         <strong class="o_kanban_record_title">
@@ -34,7 +35,7 @@
                                 </div>
                                 <div class="o_kanban_record_bottom">
                                     <div class="oe_kanban_bottom_left">
-                                        <field name="priority" widget="priority"/>
+                                        <field name="sla_level" />
                                     </div>
                                     <div class="oe_kanban_bottom_right">
                                         <field name="it_responsible_id" widget="many2one_avatar"/>

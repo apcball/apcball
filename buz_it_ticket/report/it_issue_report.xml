@@ -39,7 +39,7 @@
                         </tr>
                         <tr>
                             <th>Priority:</th>
-                            <td><span t-field="o.priority"/></td>
+                            <td><span t-field="o.sla_level"/></td>
                             <th>IT Responsible:</th>
                             <td><span t-field="o.it_responsible_id.name"/></td>
                         </tr>
@@ -49,7 +49,23 @@
                             <th>Resolved Date:</th>
                             <td><span t-field="o.resolved_at"/></td>
                         </tr>
+                        <tr>
+                            <th>Email:</th>
+                            <td><span t-field="o.requester_email"/></td>
+                            <th>ID LINE:</th>
+                            <td><span t-field="o.line_id"/></td>
+                        </tr>
+                        <tr>
+                            <th>Computer Name:</th>
+                            <td colspan="3"><span t-field="o.computer_name"/></td>
+                        </tr>
                     </table>
+
+                    <!-- Symptoms/Issues -->
+                    <h3>Symptoms/Issues (อาการเสีย)</h3>
+                    <div class="border p-3 mb-3">
+                        <span t-field="o.symptoms"/>
+                    </div>
 
                     <!-- Issue Description -->
                     <h3>Issue Description</h3>

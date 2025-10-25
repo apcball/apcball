@@ -34,6 +34,12 @@ Features:
         'web',
         # 'stock',  # Optional for equipment receiving
     ],
+    'migration': {
+        '17.0.1.0.0': [
+            'migrations/17.0.1.0.0/pre-migrate_priority_to_sla.py',
+            'migrations/17.0.1.0.0/pre-migrate_issue_fields.py',
+        ],
+    },
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',

@@ -45,7 +45,7 @@
                         </tr>
                         <tr>
                             <th>Priority:</th>
-                            <td><span t-field="o.priority"/></td>
+                            <td><span t-field="o.sla_level"/></td>
                             <th>IT Responsible:</th>
                             <td><span t-field="o.it_responsible_id.name"/></td>
                         </tr>
