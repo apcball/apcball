@@ -16,13 +16,16 @@
     - Filter by company
     - Filter by stock locations (new in v1.1.0)
     - Auto-detect products with valuation issues in selected locations (new in v1.2.0)
+    - Detect negative valuation issues (new in v1.4.0)
+    - Prevent re-detection of recently processed products (new in v1.4.0)
+    - Clear selection button for easy restart (new in v1.4.0)
     - Dry-run mode for preview
     - Backup and restore functionality
     - Support for FIFO and AVCO costing methods
     - Support for Landed Costs
     - Compatible with stock_valuation_layer_usage module (new in v1.3.0)
     """,
-    "version": "17.0.1.3.0",
+    "version": "17.0.1.4.0",
     'author': 'apcball',
     "category": "Inventory/Inventory",
     "license": "LGPL-3",

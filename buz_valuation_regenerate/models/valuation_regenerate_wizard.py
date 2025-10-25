@@ -1,6 +1,6 @@
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import logging
 
@@ -41,6 +41,11 @@ class ValuationRegenerateWizard(models.TransientModel):
         'Auto-detect Products with Valuation Issues',
         default=False,
         help='Automatically find and select products with potential valuation issues in selected locations'
+    )
+    auto_detect_ran = fields.Boolean(
+        'Auto-detect Has Run',
+        default=False,
+        help='Internal flag to track if auto-detect has already run'
     )
     check_missing_account_moves = fields.Boolean(
         'Check Missing Account Moves',
@@ -102,6 +107,25 @@ class ValuationRegenerateWizard(models.TransientModel):
             }
         }
     
+    def action_clear_selection(self):
+        """Clear selected products and preview lines"""
+        self.ensure_one()
+        self.write({
+            'product_ids': [(5, 0, 0)],  # Clear all products
+            'line_preview_ids': [(5, 0, 0)],  # Clear all preview lines
+            'auto_detect_ran': False,  # Reset auto-detect flag
+        })
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Selection Cleared',
+                'message': 'Product selection and preview have been cleared. You can now run Compute Plan again.',
+                'type': 'success',
+                'sticky': False
+            }
+        }
+    
     def _auto_detect_products_with_issues(self):
         """Auto-detect products with potential valuation issues in selected locations
         
@@ -143,7 +167,20 @@ class ValuationRegenerateWizard(models.TransientModel):
         # Check for products with potential valuation issues
         products_with_issues = self.env['product.product']
         
+        # Get products that have been recently regenerated (within last 5 minutes) to exclude them
+        recent_logs = self.env['valuation.regenerate.log'].search([
+            ('company_id', '=', self.company_id.id),
+            ('executed_at', '>=', fields.Datetime.now() - timedelta(minutes=5)),
+            ('dry_run', '=', False),
+        ])
+        recently_processed_products = recent_logs.mapped('scope_products')
+        
         for product in products_with_moves:
+            # Skip products that were recently processed
+            if product in recently_processed_products:
+                _logger.info(f"Product {product.display_name}: Skipping - recently processed")
+                continue
+            
             # Get SVLs for this product in the locations
             product_moves = stock_moves.filtered(lambda m: m.product_id == product)
             svls = self.env['stock.valuation.layer'].search([
@@ -156,6 +193,29 @@ class ValuationRegenerateWizard(models.TransientModel):
                 svls = svls.filtered(lambda s: s.create_date >= self.date_from)
             if self.date_to:
                 svls = svls.filtered(lambda s: s.create_date <= self.date_to)
+            
+            # Check for negative valuation (ค่า value ติดลบ)
+            # This checks the cumulative value across all SVLs
+            total_value = sum(svls.mapped('value'))
+            total_qty = sum(svls.mapped('quantity'))
+            
+            if total_qty != 0 and total_value < 0:
+                _logger.info(
+                    f"Product {product.display_name}: "
+                    f"Found negative valuation - Qty: {total_qty}, Value: {total_value}"
+                )
+                products_with_issues |= product
+                continue
+            
+            # Check for individual SVLs with negative value when quantity is positive
+            negative_value_svls = svls.filtered(lambda s: s.quantity > 0 and s.value < 0)
+            if negative_value_svls:
+                _logger.info(
+                    f"Product {product.display_name}: "
+                    f"Found {len(negative_value_svls)} SVLs with negative value but positive quantity"
+                )
+                products_with_issues |= product
+                continue
             
             # Check for missing SVLs (this applies to all products regardless of valuation method)
             moves_with_svl = svls.mapped('stock_move_id')
@@ -208,13 +268,21 @@ class ValuationRegenerateWizard(models.TransientModel):
             raise ValidationError("Date from must be earlier than or equal to date to.")
         
         # Auto-detect products with valuation issues if enabled
-        if self.auto_detect_products and self.location_ids:
+        if self.auto_detect_products and self.location_ids and not self.auto_detect_ran:
             detected_products = self._auto_detect_products_with_issues()
             if detected_products:
-                self.product_ids = [(6, 0, detected_products.ids)]
+                self.write({
+                    'product_ids': [(6, 0, detected_products.ids)],
+                    'auto_detect_products': False,
+                    'auto_detect_ran': True,
+                })
                 _logger.info(f"Auto-detected {len(detected_products)} products with potential valuation issues")
+                
+                # Continue with normal compute plan flow
+                # This allows the preview to be generated in the same action
             else:
                 # No products found with issues
+                self.auto_detect_products = False
                 return {
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
@@ -267,9 +335,9 @@ class ValuationRegenerateWizard(models.TransientModel):
             message += f" and {len(moves_to_delete)} Journal Entry(ies)"
         message += f" for {len(products)} product(s)."
         
-        # Add auto-detect info to message if used
-        if self.auto_detect_products and self.location_ids:
-            message += f"\n\nAuto-detected {len(products)} product(s) with valuation issues in selected locations."
+        # Add auto-detect info to message if it was used
+        if self.auto_detect_ran:
+            message = f"✓ Auto-detected {len(products)} product(s) with valuation issues.\n\n" + message
         
         if not svls_to_delete and not moves_to_delete:
             return {

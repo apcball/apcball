@@ -8,6 +8,7 @@
             <form string="Re-Generate Valuation Layers">
                 <header>
                     <button name="action_compute_plan" string="Compute Plan (Preview)" type="object" class="oe_highlight" />
+                    <button name="action_clear_selection" string="Clear Selection" type="object" class="btn-secondary" invisible="not product_ids"/>
                     <button name="action_apply_regeneration" string="Apply Regeneration" type="object" 
                             class="btn-danger" 
                             invisible="dry_run"
