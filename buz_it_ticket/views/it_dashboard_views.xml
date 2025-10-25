@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Dashboard Actions with Pivot and Graph Views -->
+        <record id="action_it_ticket_dashboard_pivot" model="ir.actions.act_window">
+            <field name="name">IT Dashboard</field>
+            <field name="res_model">it.ticket</field>
+            <field name="view_mode">pivot,graph,tree,kanban</field>
+            <field name="view_id" ref="view_it_ticket_pivot"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    IT Ticket Dashboard
+                </p>
+                <p>
+                    View IT ticket statistics and trends using pivot tables and graphs.
+                </p>
+            </field>
+        </record>
+        
+        <record id="action_it_ticket_dashboard_graph" model="ir.actions.act_window">
+            <field name="name">IT Statistics</field>
+            <field name="res_model">it.ticket</field>
+            <field name="view_mode">graph,pivot,tree,kanban</field>
+            <field name="view_id" ref="view_it_ticket_graph"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    IT Statistics Dashboard
+                </p>
+                <p>
+                    View IT ticket statistics with interactive charts.
+                </p>
+            </field>
+        </record>
+        
+        <!-- Dashboard Kanban View -->
+        <record id="view_it_ticket_dashboard_kanban" model="ir.ui.view">
+            <field name="name">it.ticket.dashboard.kanban</field>
+            <field name="model">it.ticket</field>
+            <field name="arch" type="xml">
+                <kanban class="o_kanban_dashboard o_it_ticket_dashboard">
+                    <field name="name"/>
+                    <field name="category"/>
+                    <field name="state"/>
+                    <field name="employee_id"/>
+                    <field name="it_responsible_id"/>
+                    <field name="sla_breached"/>
+                    <field name="create_date"/>
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div class="oe_kanban_global_click o_kanban_record_has_image_fill o_it_ticket_dashboard_ticket">
+                                <div class="o_kanban_record_top">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <field name="name"/>
+                                        </strong>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_record_body">
+                                    <div class="o_kanban_tags_section">
+                                        <field name="category"/>
+                                    </div>
+                                    <div class="o_kanban_manage_button_section">
+                                        <a class="o_kanban_manage_toggle_button" href="#" tabindex="-1">
+                                            <i class="fa fa-ellipsis-v" role="img" aria-label="Manage" title="Manage"/>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+    </data>
+</odoo>

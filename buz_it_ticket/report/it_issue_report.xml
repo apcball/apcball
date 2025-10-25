@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Issue Report Template -->
+        <template id="report_it_issue_document">
+            <t t-call="web.external_layout">
+                <t t-set="o" t-value="o.with_context({'lang': o.employee_id.user_id.lang or o.env.user.lang})"/>
+                <div class="page">
+                    <div class="oe_structure"/>
+
+                    <!-- Header -->
+                    <div class="row">
+                        <div class="col-6">
+                            <h2>IT Issue Report</h2>
+                            <p class="text-muted">ISO Document: <span t-field="o.iso_doc_code"/></p>
+                        </div>
+                        <div class="col-6 text-right">
+                            <h4><span t-field="o.name"/></h4>
+                            <p class="text-muted">Revision: <span t-field="o.revision"/></p>
+                        </div>
+                    </div>
+
+                    <hr/>
+
+                    <!-- Ticket Information -->
+                    <h3>Ticket Information</h3>
+                    <table class="table table-sm">
+                        <tr>
+                            <th width="20%">Ticket Number:</th>
+                            <td width="30%"><span t-field="o.name"/></td>
+                            <th width="20%">Report Date:</th>
+                            <td width="30%"><span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M')"/></td>
+                        </tr>
+                        <tr>
+                            <th>Requester:</th>
+                            <td><span t-field="o.employee_id.name"/></td>
+                            <th>Department:</th>
+                            <td><span t-field="o.department_id.name"/></td>
+                        </tr>
+                        <tr>
+                            <th>Priority:</th>
+                            <td><span t-field="o.priority"/></td>
+                            <th>IT Responsible:</th>
+                            <td><span t-field="o.it_responsible_id.name"/></td>
+                        </tr>
+                        <tr>
+                            <th>Create Date:</th>
+                            <td><span t-field="o.create_date"/></td>
+                            <th>Resolved Date:</th>
+                            <td><span t-field="o.resolved_at"/></td>
+                        </tr>
+                    </table>
+
+                    <!-- Issue Description -->
+                    <h3>Issue Description</h3>
+                    <div class="border p-3">
+                        <span t-field="o.description"/>
+                    </div>
+
+                    <!-- Resolution Process -->
+                    <h3>Resolution Process</h3>
+                    <table class="table table-sm">
+                        <tr>
+                            <th width="20%">Submitted:</th>
+                            <td width="30%"><span t-field="o.create_date"/></td>
+                            <th width="20%">Response Time:</th>
+                            <td width="30%"><span t-esc=" '%.2f' % o.ttr_respond"/> hours</td>
+                        </tr>
+                        <tr>
+                            <th>Work Started:</th>
+                            <td><span t-field="o.responded_at"/></td>
+                            <th>Resolution Time:</th>
+                            <td><span t-esc=" '%.2f' % o.ttr_resolve"/> hours</td>
+                        </tr>
+                        <tr>
+                            <th>SLA Policy:</th>
+                            <td><span t-field="o.sla_policy_id.name"/></td>
+                            <th>SLA Breached:</th>
+                            <td><span t-field="o.sla_breached"/></td>
+                        </tr>
+                    </table>
+
+                    <!-- Resolution Details -->
+                    <h3>Resolution Details</h3>
+                    <div class="border p-3">
+                        <p><strong>Actions Taken:</strong></p>
+                        <t t-foreach="o.message_ids.filtered(lambda m: m.message_type == 'notification')" t-as="message">
+                            <div class="mb-2">
+                                <strong><span t-field="message.date"/> - <span t-field="message.author_id.name"/>:</strong>
+                                <div t-field="message.body" class="mt-1"/>
+                            </div>
+                        </t>
+                    </div>
+
+                    <!-- Attachments -->
+                    <t t-if="o.attachment_ids">
+                        <h3>Attachments</h3>
+                        <ul>
+                            <t t-foreach="o.attachment_ids" t-as="attachment">
+                                <li><span t-field="attachment.name"/></li>
+                            </t>
+                        </ul>
+                    </t>
+
+                    <!-- Signatures -->
+                    <div class="row mt-5">
+                        <div class="col-6">
+                            <div class="border-top pt-3">
+                                <p class="text-center">_________________________</p>
+                                <p class="text-center"><strong>IT Staff</strong></p>
+                                <p class="text-center"><span t-field="o.it_responsible_id.name"/></p>
+                                <p class="text-center"><span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d')"/></p>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border-top pt-3">
+                                <p class="text-center">_________________________</p>
+                                <p class="text-center"><strong>Requester</strong></p>
+                                <p class="text-center"><span t-field="o.employee_id.name"/></p>
+                                <p class="text-center"><span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d')"/></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="text-center mt-5">
+                        <p class="text-muted">Printed by: <span t-field="o.printed_by.name"/> on <span t-field="o.printed_at"/> (Print Count: <span t-field="o.printed_count"/>)</p>
+                    </div>
+                </div>
+            </t>
+        </template>
+        
+        <!-- Issue Report Action -->
+        <record id="action_report_it_issue" model="ir.actions.report">
+            <field name="name">Issue Report</field>
+            <field name="model">it.ticket</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">buz_it_ticket.report_it_issue_document</field>
+            <field name="report_file">IT_Issue_<span t-field="o.name"/>.pdf</field>
+            <field name="binding_model_id" ref="model_it_ticket"/>
+            <field name="binding_type">report</field>
+        </record>
+    </data>
+</odoo>

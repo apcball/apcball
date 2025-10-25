@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Demo Users -->
+        <record id="demo_user_it_manager" model="res.users">
+            <field name="name">IT Manager</field>
+            <field name="login">it_manager@demo.com</field>
+            <field name="password">demo</field>
+            <field name="groups_id" eval="[(4, ref('buz_it_ticket.group_it_manager'))]"/>
+            <field name="company_id" ref="base.main_company"/>
+            <field name="company_ids" eval="[(4, ref('base.main_company'))]"/>
+        </record>
+        
+        <record id="demo_user_it_staff" model="res.users">
+            <field name="name">IT Staff</field>
+            <field name="login">it_staff@demo.com</field>
+            <field name="password">demo</field>
+            <field name="groups_id" eval="[(4, ref('buz_it_ticket.group_it_user'))]"/>
+            <field name="company_id" ref="base.main_company"/>
+            <field name="company_ids" eval="[(4, ref('base.main_company'))]"/>
+        </record>
+        
+        <record id="demo_user_employee" model="res.users">
+            <field name="name">Employee</field>
+            <field name="login">employee@demo.com</field>
+            <field name="password">demo</field>
+            <field name="groups_id" eval="[(4, ref('buz_it_ticket.group_it_requester'))]"/>
+            <field name="company_id" ref="base.main_company"/>
+            <field name="company_ids" eval="[(4, ref('base.main_company'))]"/>
+        </record>
+        
+        <record id="demo_user_manager" model="res.users">
+            <field name="name">Department Manager</field>
+            <field name="login">manager@demo.com</field>
+            <field name="password">demo</field>
+            <field name="groups_id" eval="[(4, ref('buz_it_ticket.group_it_approver'))]"/>
+            <field name="company_id" ref="base.main_company"/>
+            <field name="company_ids" eval="[(4, ref('base.main_company'))]"/>
+        </record>
+        
+        <!-- Demo Departments -->
+        <record id="demo_department_it" model="hr.department">
+            <field name="name">IT Department</field>
+        </record>
+        
+        <record id="demo_department_sales" model="hr.department">
+            <field name="name">Sales Department</field>
+        </record>
+        
+        <!-- Demo Jobs -->
+        <record id="demo_job_it_manager" model="hr.job">
+            <field name="name">IT Manager</field>
+        </record>
+        
+        <record id="demo_job_it_staff" model="hr.job">
+            <field name="name">IT Staff</field>
+        </record>
+        
+        <record id="demo_job_employee" model="hr.job">
+            <field name="name">Employee</field>
+        </record>
+        
+        <record id="demo_job_manager" model="hr.job">
+            <field name="name">Department Manager</field>
+        </record>
+        
+        <!-- Demo Employees -->
+        <record id="demo_employee_it_manager" model="hr.employee">
+            <field name="name">IT Manager</field>
+            <field name="user_id" ref="demo_user_it_manager"/>
+            <field name="department_id" ref="demo_department_it"/>
+            <field name="job_id" ref="demo_job_it_manager"/>
+        </record>
+        
+        <record id="demo_employee_it_staff" model="hr.employee">
+            <field name="name">IT Staff</field>
+            <field name="user_id" ref="demo_user_it_staff"/>
+            <field name="department_id" ref="demo_department_it"/>
+            <field name="job_id" ref="demo_job_it_staff"/>
+            <field name="parent_id" ref="demo_employee_it_manager"/>
+        </record>
+        
+        <record id="demo_employee_employee" model="hr.employee">
+            <field name="name">Employee</field>
+            <field name="user_id" ref="demo_user_employee"/>
+            <field name="department_id" ref="demo_department_sales"/>
+            <field name="job_id" ref="demo_job_employee"/>
+            <field name="parent_id" ref="demo_employee_manager"/>
+        </record>
+        
+        <record id="demo_employee_manager" model="hr.employee">
+            <field name="name">Department Manager</field>
+            <field name="user_id" ref="demo_user_manager"/>
+            <field name="department_id" ref="demo_department_sales"/>
+            <field name="job_id" ref="demo_job_manager"/>
+        </record>
+        
+        <!-- Demo Vendor for Purchase -->
+        <record id="demo_vendor_it" model="res.partner">
+            <field name="name">IT Equipment Supplier</field>
+            <field name="supplier_rank">1</field>
+            <field name="is_company">True</field>
+            <field name="street">123 Tech Street</field>
+            <field name="city">Bangkok</field>
+            <field name="country_id" ref="base.th"/>
+        </record>
+        
+        <!-- Demo Products for Purchase -->
+        <record id="demo_product_laptop" model="product.product">
+            <field name="name">Laptop Computer</field>
+            <field name="default_code">LAPTOP-001</field>
+            <field name="type">product</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="purchase_ok">True</field>
+            <field name="standard_price">1500.00</field>
+            <field name="description">Standard business laptop with 16GB RAM, 512GB SSD</field>
+        </record>
+        
+        <record id="demo_product_monitor" model="product.product">
+            <field name="name">Monitor 24"</field>
+            <field name="default_code">MON-24</field>
+            <field name="type">product</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="purchase_ok">True</field>
+            <field name="standard_price">300.00</field>
+            <field name="description">24-inch LED monitor</field>
+        </record>
+        
+        <record id="demo_product_keyboard" model="product.product">
+            <field name="name">Mechanical Keyboard</field>
+            <field name="default_code">KB-MECH</field>
+            <field name="type">product</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="purchase_ok">True</field>
+            <field name="standard_price">120.00</field>
+            <field name="description">Mechanical keyboard with backlight</field>
+        </record>
+        
+        <!-- Demo Issue Tickets -->
+        <record id="demo_ticket_issue_1" model="it.ticket">
+            <field name="name">ISS/2024/00001</field>
+            <field name="category">issue</field>
+            <field name="state">closed</field>
+            <field name="employee_id" ref="demo_employee_employee"/>
+            <field name="it_responsible_id" ref="demo_user_it_staff"/>
+            <field name="priority">1</field>
+            <field name="department_id" ref="demo_department_sales"/>
+            <field name="description"><p>My computer is running very slow and takes a long time to start up. I've tried restarting multiple times but the issue persists.</p><p>This is affecting my productivity as I need to wait several minutes for applications to open.</p></field>
+            <field name="sla_policy_id" ref="sla_issue_normal"/>
+            <field name="responded_at" eval="(datetime.datetime.now() - datetime.timedelta(hours=2)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="resolved_at" eval="(datetime.datetime.now() - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="ttr_respond">2.0</field>
+            <field name="ttr_resolve">8.5</field>
+            <field name="sla_breached">False</field>
+            <field name="iso_doc_code">IT-ISS-001</field>
+            <field name="revision">A</field>
+            <field name="printed_count">1</field>
+            <field name="printed_by" ref="base.user_admin"/>
+            <field name="printed_at" eval="(datetime.datetime.now() - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+        
+        <record id="demo_ticket_issue_2" model="it.ticket">
+            <field name="name">ISS/2024/00002</field>
+            <field name="category">issue</field>
+            <field name="state">in_progress</field>
+            <field name="employee_id" ref="demo_employee_employee"/>
+            <field name="it_responsible_id" ref="demo_user_it_staff"/>
+            <field name="priority">2</field>
+            <field name="department_id" ref="demo_department_sales"/>
+            <field name="description"><p>I cannot connect to the VPN from home. I've tried multiple times but keep getting connection timeout errors.</p><p>I need to work remotely today for an important client meeting.</p></field>
+            <field name="sla_policy_id" ref="sla_issue_high"/>
+            <field name="responded_at" eval="(datetime.datetime.now() - datetime.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="ttr_respond">1.0</field>
+            <field name="sla_breached">False</field>
+        </record>
+        
+        <!-- Demo Access Tickets -->
+        <record id="demo_ticket_access_1" model="it.ticket">
+            <field name="name">ACS/2024/00001</field>
+            <field name="category">access</field>
+            <field name="state">closed</field>
+            <field name="employee_id" ref="demo_employee_employee"/>
+            <field name="it_responsible_id" ref="demo_user_it_staff"/>
+            <field name="priority">1</field>
+            <field name="department_id" ref="demo_department_sales"/>
+            <field name="description"><p>I need access to the ERP system for sales order management and customer tracking.</p></field>
+            <field name="access_template_id" ref="access_template_new_employee"/>
+            <field name="sla_policy_id" ref="sla_access_normal"/>
+            <field name="responded_at" eval="(datetime.datetime.now() - datetime.timedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="resolved_at" eval="(datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="ttr_respond">8.0</field>
+            <field name="ttr_resolve">24.0</field>
+            <field name="sla_breached">False</field>
+            <field name="iso_doc_code">IT-ACC-001</field>
+            <field name="revision">A</field>
+            <field name="printed_count">1</field>
+            <field name="printed_by" ref="base.user_admin"/>
+            <field name="printed_at" eval="(datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+        
+        <record id="demo_ticket_access_1_line_1" model="it.ticket.line">
+            <field name="ticket_id" ref="demo_ticket_access_1"/>
+            <field name="access_type">email</field>
+            <field name="name">Company Email Account</field>
+            <field name="access_payload">{"domain": "company.com", "mailbox_size": "10GB"}</field>
+        </record>
+        
+        <record id="demo_ticket_access_1_line_2" model="it.ticket.line">
+            <field name="ticket_id" ref="demo_ticket_access_1"/>
+            <field name="access_type">erp</field>
+            <field name="name">ERP User Access</field>
+            <field name="access_payload">{"modules": ["sales", "purchase", "inventory"], "role": "user"}</field>
+        </record>
+        
+        <record id="demo_ticket_access_2" model="it.ticket">
+            <field name="name">ACS/2024/00002</field>
+            <field name="category">access</field>
+            <field name="state">approved</field>
+            <field name="employee_id" ref="demo_employee_employee"/>
+            <field name="it_responsible_id" ref="demo_user_it_staff"/>
+            <field name="priority">2</field>
+            <field name="department_id" ref="demo_department_sales"/>
+            <field name="description"><p>I need VPN access to work remotely while traveling next week.</p></field>
+            <field name="sla_policy_id" ref="sla_access_high"/>
+            <field name="responded_at" eval="(datetime.datetime.now() - datetime.timedelta(hours=3)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="ttr_respond">3.0</field>
+            <field name="sla_breached">False</field>
+        </record>
+        
+        <record id="demo_ticket_access_2_line_1" model="it.ticket.line">
+            <field name="ticket_id" ref="demo_ticket_access_2"/>
+            <field name="access_type">vpn</field>
+            <field name="name">Remote VPN Access</field>
+            <field name="access_payload">{"type": "ssl_vpn", "duration": "12h", "2fa_required": true}</field>
+        </record>
+        
+        <!-- Demo Purchase Tickets -->
+        <record id="demo_ticket_purchase_1" model="it.ticket">
+            <field name="name">PRC/2024/00001</field>
+            <field name="category">purchase</field>
+            <field name="state">received</field>
+            <field name="employee_id" ref="demo_employee_employee"/>
+            <field name="it_responsible_id" ref="demo_user_it_staff"/>
+            <field name="priority">1</field>
+            <field name="department_id" ref="demo_department_sales"/>
+            <field name="description"><p>I need a new laptop as my current one is outdated and cannot run the latest software required for my job.</p></field>
+            <field name="sla_policy_id" ref="sla_purchase_normal"/>
+            <field name="responded_at" eval="(datetime.datetime.now() - datetime.timedelta(days=5)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="resolved_at" eval="(datetime.datetime.now() - datetime.timedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="ttr_respond">16.0</field>
+            <field name="ttr_resolve">120.0</field>
+            <field name="sla_breached">False</field>
+            <field name="iso_doc_code">IT-PUR-001</field>
+            <field name="revision">A</field>
+            <field name="printed_count">1</field>
+            <field name="printed_by" ref="base.user_admin"/>
+            <field name="printed_at" eval="(datetime.datetime.now() - datetime.timedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+        
+        <record id="demo_ticket_purchase_1_line_1" model="it.ticket.line">
+            <field name="ticket_id" ref="demo_ticket_purchase_1"/>
+            <field name="product_id" ref="demo_product_laptop"/>
+            <field name="name">Laptop Computer</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="quantity">1</field>
+            <field name="estimated_cost">1500.00</field>
+        </record>
+        
+        <record id="demo_ticket_purchase_2" model="it.ticket">
+            <field name="name">PRC/2024/00002</field>
+            <field name="category">purchase</field>
+            <field name="state">po_created</field>
+            <field name="employee_id" ref="demo_employee_employee"/>
+            <field name="it_responsible_id" ref="demo_user_it_staff"/>
+            <field name="priority">1</field>
+            <field name="department_id" ref="demo_department_sales"/>
+            <field name="description"><p>I need an additional monitor for my dual monitor setup to improve productivity.</p></field>
+            <field name="sla_policy_id" ref="sla_purchase_normal"/>
+            <field name="responded_at" eval="(datetime.datetime.now() - datetime.timedelta(days=3)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="ttr_respond">12.0</field>
+            <field name="sla_breached">False</field>
+        </record>
+        
+        <record id="demo_ticket_purchase_2_line_1" model="it.ticket.line">
+            <field name="ticket_id" ref="demo_ticket_purchase_2"/>
+            <field name="product_id" ref="demo_product_monitor"/>
+            <field name="name">Monitor 24"</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="quantity">1</field>
+            <field name="estimated_cost">300.00</field>
+        </record>
+        
+        <record id="demo_ticket_purchase_2_line_2" model="it.ticket.line">
+            <field name="ticket_id" ref="demo_ticket_purchase_2"/>
+            <field name="product_id" ref="demo_product_keyboard"/>
+            <field name="name">Mechanical Keyboard</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="quantity">1</field>
+            <field name="estimated_cost">120.00</field>
+        </record>
+    </data>
+</odoo>

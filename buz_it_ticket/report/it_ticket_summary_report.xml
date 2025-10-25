@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Ticket Summary Report Template -->
+        <template id="report_it_ticket_summary_document">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <div class="oe_structure"/>
+                    
+                    <!-- Header -->
+                    <div class="row">
+                        <div class="col-12 text-center">
+                            <h2>IT Ticket Summary Report</h2>
+                            <p class="text-muted">
+                                Period: <span t-esc="data['form']['date_from']"/> to <span t-esc="data['form']['date_to']"/>
+                                <t t-if="data['form']['category'] and data['form']['category'] != 'all'">
+                                    | Category: <span t-esc="dict(data['form']['category_selection'])[data['form']['category']]"/>
+                                </t>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <hr/>
+                    
+                    <!-- Summary Statistics -->
+                    <h3>Summary Statistics</h3>
+                    <div class="row">
+                        <div class="col-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h4 class="card-title"><span t-esc="len(data['tickets'])"/></h4>
+                                    <p class="card-text">Total Tickets</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h4 class="card-title"><span t-esc="len([t for t in data['tickets'] if t['state'] == 'closed'])"/></h4>
+                                    <p class="card-text">Closed Tickets</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h4 class="card-title"><span t-esc="len([t for t in data['tickets'] if t['sla_breached']])"/></h4>
+                                    <p class="card-text">SLA Breaches</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h4 class="card-title"><span t-esc="sum(t['purchase_line_total'] for t in data['tickets'] if t['category'] == 'purchase')"/></h4>
+                                    <p class="card-text">Total Purchase Cost</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tickets by Category -->
+                    <h3>Tickets by Category</h3>
+                    <table class="table table-bordered">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Category</th>
+                                <th>Total</th>
+                                <th>Open</th>
+                                <th>In Progress</th>
+                                <th>Closed</th>
+                                <th>SLA Breached</th>
+                                <th>Avg Response Time (hrs)</th>
+                                <th>Avg Resolution Time (hrs)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="data['category_stats']" t-as="cat">
+                                <tr>
+                                    <td><span t-esc="cat['name']"/></td>
+                                    <td class="text-right"><span t-esc="cat['total']"/></td>
+                                    <td class="text-right"><span t-esc="cat['open']"/></td>
+                                    <td class="text-right"><span t-esc="cat['in_progress']"/></td>
+                                    <td class="text-right"><span t-esc="cat['closed']"/></td>
+                                    <td class="text-right"><span t-esc="cat['sla_breached']"/></td>
+                                    <td class="text-right"><span t-esc="cat['avg_response']"/></td>
+                                    <td class="text-right"><span t-esc="cat['avg_resolution']"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Tickets by Department -->
+                    <h3>Tickets by Department</h3>
+                    <table class="table table-bordered">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Department</th>
+                                <th>Total</th>
+                                <th>Issue</th>
+                                <th>Access</th>
+                                <th>Purchase</th>
+                                <th>Purchase Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="data['department_stats']" t-as="dept">
+                                <tr>
+                                    <td><span t-esc="dept['name'] or 'No Department'"/></td>
+                                    <td class="text-right"><span t-esc="dept['total']"/></td>
+                                    <td class="text-right"><span t-esc="dept['issue']"/></td>
+                                    <td class="text-right"><span t-esc="dept['access']"/></td>
+                                    <td class="text-right"><span t-esc="dept['purchase']"/></td>
+                                    <td class="text-right"><span t-esc="dept['purchase_cost']"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Detailed Ticket List -->
+                    <h3>Detailed Ticket List</h3>
+                    <table class="table table-sm">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Ticket #</th>
+                                <th>Category</th>
+                                <th>Requester</th>
+                                <th>Department</th>
+                                <th>Priority</th>
+                                <th>State</th>
+                                <th>Create Date</th>
+                                <th>Response Time</th>
+                                <th>Resolution Time</th>
+                                <th>SLA Breached</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="data['tickets']" t-as="ticket">
+                                <tr>
+                                    <td><span t-esc="ticket['name']"/></td>
+                                    <td><span t-esc="dict(data['form']['category_selection'])[ticket['category']]"/></td>
+                                    <td><span t-esc="ticket['employee_name']"/></td>
+                                    <td><span t-esc="ticket['department_name'] or ''"/></td>
+                                    <td><span t-esc="dict(data['form']['priority_selection'])[ticket['priority']]"/></td>
+                                    <td><span t-esc="dict(data['form']['state_selection'])[ticket['state']]"/></td>
+                                    <td><span t-esc="ticket['create_date']"/></td>
+                                    <td><span t-esc="ticket['ttr_respond'] or ''"/></td>
+                                    <td><span t-esc="ticket['ttr_resolve'] or ''"/></td>
+                                    <td>
+                                        <t t-if="ticket['sla_breached']">
+                                            <span class="text-danger">Yes</span>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="text-success">No</span>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Footer -->
+                    <div class="text-center mt-5">
+                        <p class="text-muted">Generated on <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/></p>
+                    </div>
+                </div>
+            </t>
+        </template>
+        
+        <!-- Ticket Summary Report Wizard -->
+        <record id="view_it_ticket_summary_wizard" model="ir.ui.view">
+            <field name="name">IT Ticket Summary Wizard</field>
+            <field name="model">it.ticket.summary.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Generate Ticket Summary">
+                    <group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group>
+                            <field name="category"/>
+                            <field name="department_id"/>
+                        </group>
+                    </group>
+                    <footer>
+                        <button name="generate_report" string="Generate Report" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+        
+        <!-- Ticket Summary Report Action -->
+        <record id="action_report_it_ticket_summary" model="ir.actions.report">
+            <field name="name">Ticket Summary Report</field>
+            <field name="model">it.ticket.summary.wizard</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">buz_it_ticket.report_it_ticket_summary_document</field>
+            <field name="report_file">IT_Ticket_Summary.pdf</field>
+        </record>
+        
+        <!-- Ticket Summary Window Action -->
+        <record id="action_it_ticket_summary_wizard" model="ir.actions.act_window">
+            <field name="name">Ticket Summary Report</field>
+            <field name="res_model">it.ticket.summary.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>
