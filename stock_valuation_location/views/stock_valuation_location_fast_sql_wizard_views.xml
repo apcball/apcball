@@ -1,0 +1,23 @@
+<odoo>
+    <record id="view_stock_valuation_location_fast_sql_wizard_form" model="ir.ui.view">
+        <field name="name">stock.valuation.location.fast.sql.wizard.form</field>
+        <field name="model">stock.valuation.location.fast.sql.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Fast SQL Recompute">
+                <group>
+                    <field name="dry_run"/>
+                    <field name="limit"/>
+                    <field name="timeout"/>
+                    <field name="lock_key" groups="stock_valuation_location.group_svl_location_admin"/>
+                </group>
+                <group string="Result" invisible="not result_msg">
+                    <field name="result_msg" nolabel="1"/>
+                </group>
+                <footer>
+                    <button name="action_run" string="Run" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

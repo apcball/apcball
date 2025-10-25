@@ -1,0 +1,15 @@
+<odoo>
+  <!-- Wizard action & menu (optional) -->
+  <record id="action_fast_sql_wizard" model="ir.actions.act_window">
+    <field name="name">SVL Location — Fast SQL</field>
+    <field name="res_model">stock.valuation.location.fast.sql.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+
+  <menuitem id="menu_inventory_valuation_fast_sql"
+            name="SVL Location — Fast SQL"
+            parent="stock.menu_stock_inventory_control"
+            action="action_fast_sql_wizard"
+            groups="stock_valuation_location.group_svl_location_admin"/>
+</odoo>

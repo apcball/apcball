@@ -1,0 +1,198 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║     📋 STOCK VALUATION LOCATION - QUICK REFERENCE CARD                    ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🔍 MONITORING COMMANDS (คำสั่งตรวจสอบ)                                  ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+# ดู log แบบ real-time (แสดงเฉพาะที่เกี่ยวข้อง)
+tail -f /var/log/odoo/instance1.log | grep "SVL location"
+
+# ดู log ทั้งหมด แบบ real-time
+tail -f /var/log/odoo/instance1.log
+
+# ดู log 100 บรรทัดล่าสุด
+tail -100 /var/log/odoo/instance1.log
+
+# ค้นหา error ใน log
+grep -i "error\|exception" /var/log/odoo/instance1.log | tail -20
+
+# ค้นหา SVL location related logs
+grep "SVL location" /var/log/odoo/instance1.log | tail -50
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🗄️  DATABASE COMMANDS (คำสั่ง Database)                                 ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+# เข้า PostgreSQL (ต้องใส่ชื่อ database)
+sudo -u postgres psql -d your_database_name
+
+# ตรวจสอบจำนวน SVL records
+sudo -u postgres psql -d your_db -c \
+  "SELECT COUNT(*) FROM stock_valuation_layer WHERE stock_move_id IS NOT NULL;"
+
+# ตรวจสอบ SVL ที่มี location
+sudo -u postgres psql -d your_db -c \
+  "SELECT COUNT(*) FROM stock_valuation_layer WHERE location_id IS NOT NULL;"
+
+# ตรวจสอบ active queries
+sudo -u postgres psql -d your_db -c \
+  "SELECT pid, now() - query_start AS duration, state, left(query, 50)
+   FROM pg_stat_activity 
+   WHERE state = 'active' AND datname = 'your_db';"
+
+# ตรวจสอบ locks
+sudo -u postgres psql -d your_db -c \
+  "SELECT locktype, relation::regclass, mode, granted, pid 
+   FROM pg_locks 
+   WHERE relation::regclass::text = 'stock_valuation_layer';"
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🔧 ODOO COMMANDS (คำสั่ง Odoo)                                          ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+# ตรวจสอบสถานะ Odoo service
+sudo systemctl status odoo17
+
+# หยุด Odoo
+sudo systemctl stop odoo17
+
+# เริ่ม Odoo
+sudo systemctl start odoo17
+
+# Restart Odoo
+sudo systemctl restart odoo17
+
+# ดู Odoo log แบบ real-time
+sudo journalctl -u odoo17 -f
+
+# Upgrade module
+cd /opt/instance1/odoo17
+./odoo-bin -c /etc/instance1.conf -d your_db \
+  -u stock_valuation_location --stop-after-init
+
+# เข้า Odoo shell
+cd /opt/instance1/odoo17
+./odoo-bin shell -c /etc/instance1.conf -d your_db
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🧪 TESTING COMMANDS (คำสั่งทดสอบ)                                       ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+# Run performance test ใน Odoo shell
+cd /opt/instance1/odoo17
+./odoo-bin shell -c /etc/instance1.conf -d your_db
+
+# ใน shell พิมพ์:
+>>> exec(open('custom-addons/stock_valuation_location/test_performance.py').read())
+
+# หรือทดสอบแบบง่าย
+>>> count = env["stock.valuation.layer"].search_count([("stock_move_id", "!=", False)])
+>>> print(f"Total SVL with moves: {count}")
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 💾 BACKUP & RESTORE COMMANDS (คำสั่ง Backup และ Restore)                ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+# Backup database
+sudo -u postgres pg_dump -Fc your_db > backup_$(date +%Y%m%d_%H%M%S).dump
+
+# Restore database
+sudo systemctl stop odoo17
+sudo -u postgres pg_restore -d your_db -c backup_file.dump
+sudo systemctl start odoo17
+
+# ตรวจสอบขนาด backup
+ls -lh backup_*.dump
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🔍 SYSTEM MONITORING (ตรวจสอบระบบ)                                      ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+# ตรวจสอบ Memory
+free -h
+
+# ตรวจสอบ CPU
+top -bn1 | head -20
+
+# ตรวจสอบ Disk usage
+df -h
+
+# ตรวจสอบ process ของ Odoo
+ps aux | grep odoo | grep -v grep
+
+# ตรวจสอบ PostgreSQL process
+ps aux | grep postgres | grep -v grep
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 📂 IMPORTANT FILE PATHS (ตำแหน่งไฟล์สำคัญ)                              ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+Odoo Binary:       /opt/instance1/odoo17/odoo-bin
+Odoo Config:       /etc/instance1.conf
+Odoo Log:          /var/log/odoo/instance1.log
+PostgreSQL Log:    /var/log/postgresql/postgresql-16-main.log
+Module Path:       /opt/instance1/odoo17/custom-addons/stock_valuation_location
+
+Documentation:
+  - SUMMARY.txt         Quick overview
+  - README_TH.md        Complete guide (Thai)
+  - ACTION_PLAN.md      Quick start guide
+  - FIX_SUMMARY.md      Technical details (English)
+  - upgrade_module.sh   Upgrade script
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🚀 QUICK START (เริ่มใช้งานด่วน)                                       ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+1. BACKUP
+   sudo -u postgres pg_dump -Fc your_db > backup.dump
+
+2. UPGRADE
+   cd /opt/instance1/odoo17
+   ./odoo-bin -c /etc/instance1.conf -d your_db \
+     -u stock_valuation_location --stop-after-init
+   sudo systemctl restart odoo17
+
+3. MONITOR
+   tail -f /var/log/odoo/instance1.log | grep "SVL location"
+
+4. RECOMPUTE (ใน Odoo UI)
+   - ข้อมูลน้อย: Inventory → Configuration → Recompute SVL Location (ORM)
+   - ข้อมูลเยอะ: Inventory → Configuration → SVL Location — Fast SQL
+
+5. VERIFY
+   Inventory → Reporting → Stock Valuation → ดูคอลัมน์ Location
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🐛 TROUBLESHOOTING (แก้ปัญหา)                                           ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+Problem: Server hang/slow
+→ Check: tail -f /var/log/odoo/instance1.log
+→ Check: top (CPU/Memory usage)
+→ Fix: Reduce batch_size or limit
+
+Problem: Query timeout
+→ Check log for "timeout" or "statement_timeout"
+→ Fix: Increase timeout parameter in wizard
+
+Problem: Advisory lock busy
+→ Check: Another recompute is running
+→ Wait or: sudo systemctl restart odoo17
+
+Problem: Out of memory
+→ Check: free -h
+→ Fix: Reduce batch_size to 500 or lower
+
+Problem: Module errors
+→ Check: tail -100 /var/log/odoo/instance1.log
+→ Fix: Check Python syntax and dependencies
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║  💡 TIP: Bookmark this file for quick reference!                          ║
+║      Location: custom-addons/stock_valuation_location/QUICK_REF.txt       ║
+╚════════════════════════════════════════════════════════════════════════════╝

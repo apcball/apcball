@@ -1,35 +1,20 @@
-#
-#    Bemade Inc.
-#
-#    Copyright (C) 2023-June Bemade Inc. (<https://www.bemade.org>).
-#    Author: Marc Durepos (Contact : marc@bemade.org)
-#
-#    This program is under the terms of the GNU Lesser General Public License,
-#    version 3.
-#
-#    For full license details, see https://www.gnu.org/licenses/lgpl-3.0.en.html.
-#
-#    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-#    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-#    DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-#    ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-#    DEALINGS IN THE SOFTWARE.
-#
 {
     "name": "buz Stock Valuation Location",
-    "version": "17.0.1.0.0",
-    "summary": "Add Location Information to Stock Valuation",
+    "version": "17.0.1.0.1",
+    "summary": "Add Location Information to Stock Valuation (Performance Fixed)",
     "category": "Inventory/Accounting",
-    "author": "Bemade Inc.",
-    "website": "http://www.bemade.org",
+    "author": "Apcball",
+    "website": "https://mogdev.work",
     "license": "LGPL-3",
     "depends": ["stock_account"],
     "data": [
         "security/stock_valuation_location_groups.xml",
+        "security/ir.model.access.csv",
         "views/stock_valuation_layer_views.xml",
-        "data/stock_valuation_recompute_action.xml"
+        "views/stock_valuation_location_fast_sql_wizard_views.xml",
+        "views/stock_valuation_location_menu.xml",
+        "data/stock_valuation_recompute_action.xml",
+        "data/ir_cron_recompute_location.xml",
     ],
     "assets": {},
     "installable": True,

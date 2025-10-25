@@ -1,30 +1,37 @@
-<?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
-    <record id="stock_valuation_layer_tree_inherit" model="ir.ui.view">
-        <field name="name">stock.valuation.layer.tree.inherit</field>
-        <field name="inherit_id" ref="stock_account.stock_valuation_layer_tree" />
-        <field name="model">stock.valuation.layer</field>
-        <field name="arch" type="xml">
-            <tree position="attributes">
-                <attribute name="create">false</attribute>
-                <attribute name="delete">false</attribute>
-                <attribute name="edit">false</attribute>
-                <attribute name="js_class">stock_valuation_layer_list</attribute>
-            </tree>
-            <field name="product_id" position="before">
-                <button name="action_recompute_stock_valuation_location" 
-                    type="object" 
-                    string="Recompute Location" 
-                    class="btn-primary"
-                    groups="stock_valuation_location.group_stock_valuation_location_recompute"/>
-            </field>
-            <field name="company_id" position="after">
-                <field name="location_id" />
-            </field>
-        </field>
-    </record>
+  <record id="view_stock_valuation_layer_form_inherit_loc" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.form.location</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="inherit_id" ref="stock_account.stock_valuation_layer_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='product_id']" position="after">
+        <field name="location_id"/>
+      </xpath>
+    </field>
+  </record>
 
+  <record id="view_stock_valuation_layer_tree_inherit_loc" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.tree.location</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="inherit_id" ref="stock_account.stock_valuation_layer_tree"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='product_id']" position="after">
+        <field name="location_id"/>
+      </xpath>
+    </field>
+  </record>
 
-
+  <record id="view_stock_valuation_layer_search_inherit_loc" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.search.location</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="inherit_id" ref="stock_account.view_inventory_valuation_search"/>
+    <field name="arch" type="xml">
+      <xpath expr="//search" position="inside">
+        <field name="location_id"/>
+        <filter string="Location" name="location_filter" domain="[('location_id','=',self)]"/>
+        <filter string="Group By Location" name="group_by_location" context="{'group_by':'location_id'}"/>
+      </xpath>
+    </field>
+  </record>
 
 </odoo>
