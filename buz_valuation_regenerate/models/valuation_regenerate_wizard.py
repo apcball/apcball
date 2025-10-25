@@ -394,8 +394,12 @@ class ValuationRegenerateWizard(models.TransientModel):
                     # Unlink the relationship
                     svls_to_delete.write({'account_move_id': False})
                 
-                # Use no recomputation context to prevent triggers during deletion
-                svls_to_delete.with_context(no_recompute=True).unlink()
+                # Use no recomputation context and valuation_regeneration context
+                # to prevent triggers during deletion and cleanup usage records
+                svls_to_delete.with_context(
+                    no_recompute=True,
+                    valuation_regeneration=True
+                ).unlink()
                 # Flush and invalidate cache to prevent reference errors
                 self.env.flush_all()
                 self.env.invalidate_all()
@@ -859,7 +863,8 @@ class ValuationRegenerateWizard(models.TransientModel):
                         svl_vals['value'] += landed_cost_adjustment
                         svl_vals['unit_cost'] = svl_vals['value'] / move_qty if move_qty else 0
                 
-                new_svl = svl_obj.create(svl_vals)
+                # Create SVL with valuation_regeneration context
+                new_svl = svl_obj.with_context(valuation_regeneration=True).create(svl_vals)
                 new_svl_ids.append(new_svl.id)
                 
                 # Update create_date to match the original move date
@@ -936,7 +941,8 @@ class ValuationRegenerateWizard(models.TransientModel):
                     'description': f"FIFO Out: {move.reference or move.name} (consumed {len(layers_consumed)} layer(s))",
                 }
                 
-                new_svl = svl_obj.create(svl_vals)
+                # Create SVL with valuation_regeneration context
+                new_svl = svl_obj.with_context(valuation_regeneration=True).create(svl_vals)
                 new_svl_ids.append(new_svl.id)
                 
                 # Update create_date to match the original move date
@@ -1090,7 +1096,7 @@ class ValuationRegenerateWizard(models.TransientModel):
                     average_cost = 0.0
             
             # Create the new SVL
-            new_svl = svl_obj.create(svl_vals)
+            new_svl = svl_obj.with_context(valuation_regeneration=True).create(svl_vals)
             new_svl_ids.append(new_svl.id)
             
             # Update create_date to match the original move date

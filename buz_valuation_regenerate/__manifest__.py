@@ -7,6 +7,9 @@
     It includes a wizard interface with dry-run capabilities, backup functionality, 
     and support for Landed Costs scenarios.
     
+    This module is compatible with stock_valuation_layer_usage module and will properly
+    handle usage tracking during regeneration.
+    
     Features:
     - Filter by products, categories, or custom domain
     - Filter by date range
@@ -17,8 +20,9 @@
     - Backup and restore functionality
     - Support for FIFO and AVCO costing methods
     - Support for Landed Costs
+    - Compatible with stock_valuation_layer_usage module (new in v1.3.0)
     """,
-    "version": "17.0.1.2.0",
+    "version": "17.0.1.3.0",
     'author': 'apcball',
     "category": "Inventory/Inventory",
     "license": "LGPL-3",

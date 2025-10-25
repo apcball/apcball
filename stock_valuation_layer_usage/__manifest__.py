@@ -3,12 +3,12 @@
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
 {
     "name": "buz Stock Valuation Layer Usage",
-    "version": "17.0.1.1.0",
+    "version": "17.0.1.2.0",
     "category": "Warehouse Management",
     "development_status": "Alpha",
     "license": "AGPL-3",
     "summary": "Trace where has the stock valuation been used in, including "
-    "the quantities taken.",
+    "the quantities taken. Compatible with buz_valuation_regenerate module.",
     "author": "ForgeFlow,Odoo Community Association (OCA)",
     "website": "https://github.com/OCA/stock-logistics-workflow",
     "depends": ["sale", "stock_account_product_run_fifo_hook"],

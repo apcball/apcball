@@ -82,14 +82,21 @@ class StockValuationLayer(models.Model):
         recs = self.browse()
         for val in values:
             rec = super().create([val])
-            taken_data = rec.env.context.get("taken_data", [{}])[0]
+            
+            # Skip usage tracking if we're in a valuation regeneration context
+            # or if explicitly disabled by context
+            if self.env.context.get('skip_usage_tracking', False):
+                recs |= rec
+                continue
+            
+            taken_data = rec.env.context.get('taken_data', [{}])[0]
             # There are cases in which the transformation
             # comes from a return process,
             # such as sales returns or production unbuilds.
             # To maintain traceability,
             # the initial output layers are added as origin.
             if not taken_data and rec.quantity > 0:
-                all_parents = self.env["stock.move"]
+                all_parents = self.env['stock.move']
                 next_parents = rec.stock_move_id.move_orig_ids.filtered(
                     lambda m, all_parents=all_parents: m not in all_parents
                 )
@@ -138,7 +145,13 @@ class StockValuationLayer(models.Model):
 
     def write(self, values):
         res = super().write(values)
+        
+        # Skip usage tracking if we're in a valuation regeneration context
+        # or if explicitly disabled by context
+        if self.env.context.get('skip_usage_tracking', False):
+            return res
+        
         for rec in self:
-            if self.env.context.get("taken_data"):
-                self._process_taken_data(self.env.context.get("taken_data"), rec)
+            if self.env.context.get('taken_data'):
+                self._process_taken_data(self.env.context.get('taken_data'), rec)
         return res
