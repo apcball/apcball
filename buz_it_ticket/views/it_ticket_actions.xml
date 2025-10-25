@@ -20,7 +20,7 @@
         <record id="action_it_ticket_issue" model="ir.actions.act_window">
             <field name="name">Issue/Repair Tickets</field>
             <field name="res_model">it.ticket</field>
-            <field name="view_mode">kanban,tree,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="domain">[('category', '=', 'issue')]</field>
             <field name="context">{'default_category': 'issue'}</field>
             <field name="help" type="html">
@@ -36,7 +36,7 @@
         <record id="action_it_ticket_access" model="ir.actions.act_window">
             <field name="name">Access Request Tickets</field>
             <field name="res_model">it.ticket</field>
-            <field name="view_mode">kanban,tree,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="domain">[('category', '=', 'access')]</field>
             <field name="context">{'default_category': 'access'}</field>
             <field name="help" type="html">
@@ -52,7 +52,7 @@
         <record id="action_it_ticket_purchase" model="ir.actions.act_window">
             <field name="name">Purchase Request Tickets</field>
             <field name="res_model">it.ticket</field>
-            <field name="view_mode">kanban,tree,form</field>
+            <field name="view_mode">tree,form</field>
             <field name="domain">[('category', '=', 'purchase')]</field>
             <field name="context">{'default_category': 'purchase'}</field>
             <field name="help" type="html">
