@@ -792,11 +792,11 @@ class ValuationRegenerateWizard(models.TransientModel):
             
             # Add location filter if specified
             if self.location_ids:
-                moves_domain.append(
+                moves_domain.extend([
                     '|',
                     ('location_id', 'in', self.location_ids.ids),
                     ('location_dest_id', 'in', self.location_ids.ids)
-                )
+                ])
             
             stock_moves = self.env['stock.move'].search(moves_domain, order='date, id')
             
@@ -992,11 +992,11 @@ class ValuationRegenerateWizard(models.TransientModel):
             
             # Add location filter if specified
             if self.location_ids:
-                moves_domain.append(
+                moves_domain.extend([
                     '|',
                     ('location_id', 'in', self.location_ids.ids),
                     ('location_dest_id', 'in', self.location_ids.ids)
-                )
+                ])
             
             stock_moves = self.env['stock.move'].search(moves_domain, order='date, id')
         
