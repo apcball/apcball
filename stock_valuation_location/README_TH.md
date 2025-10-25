@@ -61,37 +61,29 @@ sudo systemctl start odoo17
 
 ### ขั้นตอนที่ 4: Recompute Location Data
 
-เลือกวิธีตามจำนวนข้อมูล:
-
-#### 📊 สำหรับข้อมูลน้อย (< 100,000 records) - ใช้ ORM Recompute
-
-1. Login เข้า Odoo
-2. ไปที่ **Inventory → Configuration → Recompute SVL Location (ORM)**
-3. คลิก **Execute**
-4. รอจนเสร็จ (จะแสดง notification)
-
-#### 📊 สำหรับข้อมูลมาก (> 100,000 records) - ใช้ SQL Fast Path
+**สำหรับ Database ขนาดใหญ่ (300k+ records) - ใช้ SQL Fast Path เท่านั้น**
 
 **ขั้นตอนที่ 4.1: ทดสอบด้วย Dry Run**
 1. ไปที่ **Inventory → Configuration → SVL Location — Fast SQL**
 2. ตั้งค่า:
    - ✅ **Dry run**: เปิด (ทดสอบก่อน)
-   - **Limit**: 10000
+   - **Limit**: 20000 (แนะนำสำหรับ 369k records)
    - **Timeout**: 300
 3. คลิก **Run**
 4. ดูจำนวน "Affected rows" - นี่คือจำนวน records ที่จะได้รับผลกระทบ
 
 **ขั้นตอนที่ 4.2: Run จริงทีละ Batch**
 1. เปลี่ยน **Dry run** เป็น **ปิด**
-2. ตั้ง **Limit** = 10000-50000 (ขึ้นกับขนาด server)
+2. ตั้ง **Limit** = 20000 (ขึ้นกับขนาด server)
 3. คลิก **Run** ซ้ำๆ จนกว่า **Affected rows = 0**
 
 **ตัวอย่าง:**
 ```
-Run ครั้งที่ 1: Affected rows: 50000 ← ยังไม่เสร็จ ต้อง run ต่อ
-Run ครั้งที่ 2: Affected rows: 50000 ← ยังไม่เสร็จ ต้อง run ต่อ  
-Run ครั้งที่ 3: Affected rows: 25000 ← ใกล้เสร็จแล้ว
-Run ครั้งที่ 4: Affected rows: 0     ← เสร็จสมบูรณ์ ✅
+Run ครั้งที่ 1: Affected rows: 20000 ← ยังไม่เสร็จ ต้อง run ต่อ
+Run ครั้งที่ 2: Affected rows: 20000 ← ยังไม่เสร็จ ต้อง run ต่อ  
+...
+Run ครั้งที่ 18: Affected rows: 9362 ← ใกล้เสร็จแล้ว
+Run ครั้งที่ 19: Affected rows: 0    ← เสร็จสมบูรณ์ ✅
 ```
 
 ## 📊 Performance Comparison
@@ -168,25 +160,28 @@ WHERE relation::regclass::text = 'stock_valuation_layer';
 
 ### สำหรับ Database ขนาดต่างๆ
 
-#### 🏢 Small Database (< 50,000 records)
-```
-Method:      ORM Recompute
-Batch Size:  1000 (default)
-Time:        1-5 นาที
-Best Time:   ทำได้ทุกเวลา
-```
-
-#### 🏭 Medium Database (50,000 - 500,000 records)
+#### � Medium Database (50,000 - 300,000 records)
 ```
 Method:      SQL Fast Path
 Limit:       10000-20000
 Timeout:     300 seconds
-Run Times:   10-50 ครั้ง
-Time:        10-30 นาที
+Run Times:   10-30 ครั้ง
+Time:        15-45 นาที
 Best Time:   นอกเวลาทำงาน
 ```
 
-#### 🌆 Large Database (> 500,000 records)
+#### � Large Database (> 300,000 records) ⭐ เช่น 369k records
+```
+Method:      SQL Fast Path
+Limit:       20000-50000 (แนะนำ 20000)
+Timeout:     300-600 seconds
+Run Times:   15-25 ครั้ง
+Time:        30-60 นาที
+Best Time:   กลางคืน หรือวันหยุด
+Example:     369k records = ~19 runs with limit 20000
+```
+
+#### �️ Very Large Database (> 1,000,000 records)
 ```
 Method:      SQL Fast Path
 Limit:       50000
@@ -196,21 +191,15 @@ Time:        1-3 ชั่วโมง
 Best Time:   กลางคืน หรือวันหยุด
 ```
 
-### Cron Job Settings (Optional)
+### หมายเหตุสำคัญ
 
-⚠️ **ไม่แนะนำให้เปิด Cron จนกว่าจะทดสอบแล้ว**
+⚠️ **ORM Recompute และ Cron ถูกลบออกแล้ว**
 
-ถ้าต้องการเปิด:
-1. ไปที่ **Settings → Technical → Scheduled Actions**
-2. หา "SVL Location ORM Recompute"
-3. ตั้งค่า:
-   - **Active**: เปิด
-   - **Interval**: 24 hours (หรือมากกว่า)
-   - Edit code เปลี่ยน batch_size เป็น 500:
-     ```python
-     model.action_recompute_stock_valuation_location(batch_size=500)
-     ```
-4. ตั้ง Execute Time ให้ run ตอนกลางคืน
+เหตุผล:
+- ไม่เหมาะสำหรับ database ขนาดใหญ่ (300k+ records)
+- มีความเสี่ยงต่อ memory overflow และ timeout
+- SQL Fast Path มีประสิทธิภาพดีกว่ามากสำหรับข้อมูลจำนวนมาก
+- แนะนำใช้ SQL Fast Path manual เท่านั้น
 
 ## 🐛 Troubleshooting
 

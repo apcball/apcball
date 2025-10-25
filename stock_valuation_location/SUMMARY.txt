@@ -95,17 +95,13 @@
     ./odoo-bin -c odoo.conf -d your_db -u stock_valuation_location --stop-after-init
     sudo systemctl restart odoo17
 
-3️⃣  RECOMPUTE DATA (เลือก 1 วิธี)
+3️⃣  RECOMPUTE DATA (SQL Fast Path สำหรับ Database ใหญ่)
     
-    📊 ข้อมูลน้อย (< 100k records)
-    → ใช้ ORM Recompute ผ่าน UI
-      Inventory → Configuration → Recompute SVL Location (ORM)
-    
-    📊 ข้อมูลเยอะ (> 100k records)  
-    → ใช้ SQL Fast Path ผ่าน UI
-      Inventory → Configuration → SVL Location — Fast SQL
+    📊 สำหรับ 369k+ records - ใช้ SQL Fast Path เท่านั้น
+    → Inventory → Configuration → SVL Location — Fast SQL
       • Dry run: เปิด → Run (ดูจำนวน)
-      • Dry run: ปิด → Limit: 10000 → Run ซ้ำจนเสร็จ
+      • Dry run: ปิด → Limit: 20000 → Run ซ้ำจนเสร็จ
+      • ใช้เวลาประมาณ 30-60 นาที สำหรับ 369k records
 
 4️⃣  VERIFY
     Inventory → Reporting → Stock Valuation

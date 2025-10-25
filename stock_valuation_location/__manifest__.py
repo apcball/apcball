@@ -13,8 +13,7 @@
         "views/stock_valuation_layer_views.xml",
         "views/stock_valuation_location_fast_sql_wizard_views.xml",
         "views/stock_valuation_location_menu.xml",
-        "data/stock_valuation_recompute_action.xml",
-        "data/ir_cron_recompute_location.xml",
+        # ORM Recompute and Cron removed - use SQL Fast Path for large databases
     ],
     "assets": {},
     "installable": True,

@@ -6,9 +6,11 @@ class StockValuationLocationFastSQLWizard(models.TransientModel):
     _description = "Fast SQL Recompute (SVL.location_id)"
 
     dry_run = fields.Boolean(default=True, help="If enabled, does not update. Only show affected count.")
-    limit = fields.Integer(default=10000, help="0 means no limit. Recommended: 10000-50000 for incremental updates.")
+    # Defaults tuned for large databases (e.g. 300k+ SVL records)
+    limit = fields.Integer(default=20000, help="0 means no limit. Recommended: 20000 for large DBs; adjust down if low memory.")
     lock_key = fields.Integer(default=827174, help="Advisory lock key to avoid concurrent runs.")
-    timeout = fields.Integer(default=300, help="Query timeout in seconds (default: 300 = 5 minutes)")
+    # Use a larger default timeout to allow bigger batches to complete on slower systems
+    timeout = fields.Integer(default=600, help="Query timeout in seconds (default: 600 = 10 minutes)")
 
     result_msg = fields.Text(readonly=True)
 
