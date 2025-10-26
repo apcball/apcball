@@ -37,6 +37,39 @@ class WarrantyRMAReceiveWizard(models.TransientModel):
         string='Generate Return Label',
         default=True
     )
+    main_product_already_rma = fields.Boolean(
+        string='Main Product Already in RMA',
+        readonly=True,
+        help='Indicates if the main product is already in an existing RMA picking'
+    )
+
+    def _check_main_product_in_existing_rma(self, claim):
+        """Check if the main product is already in existing RMA pickings"""
+        if not claim.product_id:
+            return False
+        
+        # Check all RMA IN pickings for this claim
+        for picking in claim.rma_in_picking_ids:
+            for move in picking.move_ids:
+                if move.product_id == claim.product_id:
+                    return True
+        return False
+
+    def _get_existing_rma_info(self, claim):
+        """Get information about existing RMA pickings for the main product"""
+        if not claim.product_id:
+            return []
+        
+        existing_rmas = []
+        for picking in claim.rma_in_picking_ids:
+            for move in picking.move_ids:
+                if move.product_id == claim.product_id:
+                    existing_rmas.append({
+                        'picking_name': picking.name,
+                        'state': picking.state,
+                        'qty': move.product_uom_qty,
+                    })
+        return existing_rmas
 
     @api.model
     def default_get(self, fields_list):
@@ -51,17 +84,94 @@ class WarrantyRMAReceiveWizard(models.TransientModel):
         if location_id:
             res['location_dest_id'] = int(location_id)
         
-        # Load default line from claim product if available
+        # Handle claim and check main product status
         if 'claim_id' in self._context:
             claim = self.env['warranty.claim'].browse(self._context['claim_id'])
-            if claim.product_id:
-                res['line_ids'] = [(0, 0, {
-                    'product_id': claim.product_id.id,
-                    'lot_id': claim.lot_id.id,
-                    'qty': 1.0,
-                })]
+            
+            # Check if main product is already in existing RMA
+            main_product_in_rma = self._check_main_product_in_existing_rma(claim)
+            res['main_product_already_rma'] = main_product_in_rma
         
         return res
+
+    def action_fetch_claim_products(self):
+        """Fetch the main product from the warranty claim (the product customer is returning)"""
+        self.ensure_one()
+        
+        if not self.claim_id:
+            raise UserError(_('No warranty claim selected.'))
+        
+        # Get existing product IDs to avoid duplicates
+        existing_product_ids = self.line_ids.mapped('product_id').ids
+        lines_to_add = []
+        added_count = 0
+        skipped_count = 0
+        
+        # Add main product if not already in RMA and not already in lines
+        if self.claim_id.product_id and not self.main_product_already_rma:
+            if self.claim_id.product_id.id not in existing_product_ids:
+                # Ensure product is active and available
+                if self.claim_id.product_id.active:
+                    line_data = {
+                        'product_id': self.claim_id.product_id.id,
+                        'qty': 1.0,
+                        'is_auto_populated': True,
+                        'reason': 'Main product from warranty claim',
+                    }
+                    # Only add lot_id if it exists and is valid for this product
+                    if self.claim_id.lot_id and self.claim_id.lot_id.product_id == self.claim_id.product_id:
+                        line_data['lot_id'] = self.claim_id.lot_id.id
+                    
+                    lines_to_add.append((0, 0, line_data))
+                    added_count += 1
+                else:
+                    skipped_count += 1
+            else:
+                skipped_count += 1
+        elif self.main_product_already_rma:
+            skipped_count += 1
+        
+        # Add all lines at once
+        if lines_to_add:
+            self.line_ids = lines_to_add
+        
+        # Show appropriate message
+        if added_count > 0:
+            message = _('Successfully added the main product from the warranty claim.')
+            if skipped_count > 0:
+                message += _(' %d product(s) were skipped (already in RMA or duplicate).') % skipped_count
+            self.env['bus.bus']._sendone(
+                self.env.user.partner_id,
+                'simple_notification',
+                {
+                    'title': _('Product Fetched'),
+                    'message': message,
+                    'type': 'info',
+                    'sticky': False,
+                }
+            )
+        elif self.main_product_already_rma:
+            self.env['bus.bus']._sendone(
+                self.env.user.partner_id,
+                'simple_notification',
+                {
+                    'title': _('Product Not Added'),
+                    'message': _('The main product is already in an existing RMA picking.'),
+                    'type': 'warning',
+                    'sticky': False,
+                }
+            )
+        else:
+            raise UserError(_('No main product found in this warranty claim.'))
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'warranty.rma.receive.wizard',
+            'view_mode': 'form',
+            'res_id': self.id,
+            'target': 'new',
+            'context': self.env.context,
+        }
 
     def action_create_rma_picking(self):
         self.ensure_one()
@@ -74,6 +184,16 @@ class WarrantyRMAReceiveWizard(models.TransientModel):
         
         if not self.line_ids:
             raise UserError(_('Please add at least one return line.'))
+        
+        # Validate all lines before creating picking
+        for line in self.line_ids:
+            if not line.product_id:
+                raise UserError(_('All return lines must have a product selected.'))
+            if line.qty <= 0:
+                raise UserError(_('Quantity must be greater than 0 for all return lines.'))
+            # Validate lot/serial number if product requires tracking
+            if line.product_id.tracking != 'none' and not line.lot_id:
+                raise UserError(_('Product %s requires a lot/serial number.') % line.product_id.name)
         
         # Get customer location
         customer_location = self.partner_id.property_stock_customer
@@ -168,4 +288,9 @@ class WarrantyRMAReceiveLine(models.TransientModel):
     reason = fields.Text(
         string='Return Reason',
         help='Reason for returning this specific part'
+    )
+    is_auto_populated = fields.Boolean(
+        string='Auto Populated',
+        readonly=True,
+        help='Indicates if this line was automatically populated from the claim'
     )

@@ -1,0 +1,146 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+#	*buz_warranty_management
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-10-26 08:20+0000\n"
+"PO-Revision-Date: 2024-10-26 08:20+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. module: buz_warranty_management
+#: model:ir.model.fields,field_description:warranty.rma.receive.wizard,main_product_already_rma
+msgid "Main Product Already in RMA"
+msgstr "สินค้าหลักอยู่ใน RMA แล้ว"
+
+#. module: buz_warranty_management
+#: model:ir.model.fields,field_description:warranty.rma.receive.line,is_auto_populated
+msgid "Auto Populated"
+msgstr "เพิ่มอัตโนมัติ"
+
+#. module: buz_warranty_management
+#: model:ir.model.fields,help:warranty.rma.receive.wizard,main_product_already_rma
+msgid "Indicates if the main product is already in an existing RMA picking"
+msgstr "แสดงว่าสินค้าหลักอยู่ใน RMA ที่มีอยู่แล้วหรือไม่"
+
+#. module: buz_warranty_management
+#: model:ir.model.fields,help:warranty.rma.receive.line,is_auto_populated
+msgid "Indicates if this line was automatically populated from the claim"
+msgstr "แสดงว่ารายการนี้ถูกเพิ่มอัตโนมัติจากเคลม์หรือไม่"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Warning:"
+msgstr "คำเตือน:"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "The main product from this claim is already in an existing RMA picking."
+msgstr "สินค้าหลักจากเคลม์นี้อยู่ใน RMA ที่มีอยู่แล้ว"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "No duplicate product will be added."
+msgstr "จะไม่มีการเพิ่มสินค้าซ้ำ"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Auto"
+msgstr "อัตโนมัติ"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Main product from warranty claim"
+msgstr "สินค้าหลักจากเคลม์รับประกัน"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Return Items"
+msgstr "รายการสินค้าที่รับคืน"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Return Reason"
+msgstr "เหตุผลที่รับคืน"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Reason for return..."
+msgstr "เหตุผลที่รับคืน..."
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Create RMA IN"
+msgstr "สร้าง RMA รับเข้า"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Cancel"
+msgstr "ยกเลิก"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Create RMA IN"
+msgstr "สร้าง RMA รับเข้า"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Notes"
+msgstr "บันทึกช่วย"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Enter notes about the returned items..."
+msgstr "บันทึกข้อมูลเกี่ยวกับสินค้าที่รับคืน..."
+
+#. module: buz_warranty_management
+#: model:ir.model,name:warranty.rma.receive.wizard
+msgid "Warranty RMA Receive Wizard"
+msgstr "ตัวช่วยสร้าง RMA รับเข้า"
+
+#. module: buz_warranty_management
+#: model:ir.model,name:warranty.rma.receive.line
+msgid "Warranty RMA Receive Line"
+msgstr "รายการ RMA รับเข้า"
+
+#. module: buz_warranty_management
+#: model:ir.model.fields,field_description:warranty.rma.receive.line,reason
+msgid "Return Reason"
+msgstr "เหตุผลที่รับคืน"
+
+#. module: buz_warranty_management
+#: model:ir.model.fields,help:warranty.rma.receive.line,reason
+msgid "Reason for returning this specific part"
+msgstr "เหตุผลที่รับคืนสำหรับชิ้นส่วนนี้"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Generate Return Label"
+msgstr "สร้างป้ายสำหรับสินค้ารับคืน"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Destination Location"
+msgstr "สถานที่เก็บ"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Picking Type"
+msgstr "ประเภทที่รับสินค้า"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Customer"
+msgstr "ลูกค้า"
+
+#. module: buz_warranty_management
+#: model:ir.ui.view,arch_db:view_warranty_rma_receive_wizard_form
+msgid "Warranty Claim"
+msgstr "เคลม์รับประกัน"
