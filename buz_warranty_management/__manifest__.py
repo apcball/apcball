@@ -43,6 +43,8 @@
         'views/product_template_views.xml',
         'views/warranty_card_views.xml',
         'views/warranty_claim_views.xml',
+        'views/warranty_dashboard_views.xml',
+        'views/res_partner_views.xml',
         'views/res_config_settings_views.xml',
         'wizard/warranty_out_wizard_view.xml',
         'wizard/warranty_rma_receive_wizard_view.xml',

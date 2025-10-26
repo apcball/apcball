@@ -1,6 +1,6 @@
 from odoo import models, fields, api
 from dateutil.relativedelta import relativedelta
-from datetime import date
+from datetime import date, timedelta
 
 
 class WarrantyCard(models.Model):
@@ -90,7 +90,8 @@ class WarrantyCard(models.Model):
     )
     claim_count = fields.Integer(
         string='Claim Count',
-        compute='_compute_claim_count'
+        compute='_compute_claim_count',
+        search='_search_claim_count'
     )
     is_expired = fields.Boolean(
         string='Is Expired',
@@ -99,7 +100,18 @@ class WarrantyCard(models.Model):
     )
     days_remaining = fields.Integer(
         string='Days Remaining',
-        compute='_compute_days_remaining'
+        compute='_compute_days_remaining',
+        search='_search_days_remaining'
+    )
+    days_since_expiry = fields.Integer(
+        string='Days Since Expiry',
+        compute='_compute_days_since_expiry',
+        search='_search_days_since_expiry'
+    )
+    last_claim_date = fields.Date(
+        string='Last Claim Date',
+        compute='_compute_last_claim_date',
+        search='_search_last_claim_date'
     )
 
     @api.depends('start_date', 'product_id.product_tmpl_id.warranty_duration', 'product_id.product_tmpl_id.warranty_period_unit')
@@ -141,6 +153,26 @@ class WarrantyCard(models.Model):
             else:
                 record.days_remaining = 0
 
+    @api.depends('end_date')
+    def _compute_days_since_expiry(self):
+        """Compute days since expiry for expired warranties"""
+        today = fields.Date.today()
+        for record in self:
+            if record.end_date and record.end_date < today:
+                record.days_since_expiry = (today - record.end_date).days
+            else:
+                record.days_since_expiry = 0
+
+    @api.depends('claim_ids')
+    def _compute_last_claim_date(self):
+        """Compute the date of the last claim"""
+        for record in self:
+            if record.claim_ids:
+                last_claim = record.claim_ids.sorted('claim_date', reverse=True)[0]
+                record.last_claim_date = last_claim.claim_date
+            else:
+                record.last_claim_date = False
+
     def action_activate(self):
         self.write({'state': 'active'})
 
@@ -167,3 +199,89 @@ class WarrantyCard(models.Model):
         ])
         active_warranties.write({'state': 'expired'})
         return True
+
+    @api.model
+    def _search_claim_count(self, operator, value):
+        """Search method for claim_count field"""
+        # Search warranty cards with specific number of claims
+        if operator in ('=', '!=', '>', '>=', '<', '<='):
+            warranty_cards = self.env['warranty.card'].search([])
+            result_ids = []
+            for w in warranty_cards:
+                claim_count = len(w.claim_ids)
+                if operator == '=' and claim_count == value:
+                    result_ids.append(w.id)
+                elif operator == '!=' and claim_count != value:
+                    result_ids.append(w.id)
+                elif operator == '>' and claim_count > value:
+                    result_ids.append(w.id)
+                elif operator == '>=' and claim_count >= value:
+                    result_ids.append(w.id)
+                elif operator == '<' and claim_count < value:
+                    result_ids.append(w.id)
+                elif operator == '<=' and claim_count <= value:
+                    result_ids.append(w.id)
+            return [('id', 'in', result_ids)]
+        return [('id', '=', False)]
+
+    @api.model
+    def _search_days_remaining(self, operator, value):
+        """Search method for days_remaining field"""
+        # Search warranty cards with specific days remaining
+        today = fields.Date.today()
+        if operator in ('=', '!=', '>', '>=', '<', '<='):
+            if operator == '=':
+                target_start = today + timedelta(days=value)
+                target_end = today + timedelta(days=value+1)
+                return [('end_date', '>=', today), ('end_date', '<', target_start)]
+            elif operator == '>':
+                target_date = today + timedelta(days=value)
+                return [('end_date', '>', target_date)]
+            elif operator == '>=':
+                target_date = today + timedelta(days=value)
+                return [('end_date', '>=', target_date)]
+            elif operator == '<':
+                target_date = today + timedelta(days=value)
+                return [('end_date', '>=', today), ('end_date', '<', target_date)]
+            elif operator == '<=':
+                target_date = today + timedelta(days=value)
+                return [('end_date', '<=', target_date)]
+            elif operator == '!=':
+                target_start = today + timedelta(days=value)
+                target_end = today + timedelta(days=value+1)
+                return ['|', ('end_date', '<', today), ('end_date', '>=', target_start)]
+        return [('id', '=', False)]
+
+    @api.model
+    def _search_days_since_expiry(self, operator, value):
+        """Search method for days_since_expiry field"""
+        # Search warranty cards with specific days since expiry
+        today = fields.Date.today()
+        if operator in ('=', '!=', '>', '>=', '<', '<='):
+            if operator == '=':
+                target_start = today - timedelta(days=value)
+                target_end = today - timedelta(days=value-1)
+                return [('end_date', '<', today), ('end_date', '>=', target_start), ('end_date', '<', target_end)]
+            elif operator == '>':
+                target_date = today - timedelta(days=value)
+                return [('end_date', '<', target_date)]
+            elif operator == '>=':
+                target_date = today - timedelta(days=value)
+                return [('end_date', '<=', target_date)]
+            elif operator == '<':
+                target_date = today - timedelta(days=value)
+                return [('end_date', '>=', target_date)]
+            elif operator == '<=':
+                target_date = today - timedelta(days=value)
+                return [('end_date', '>=', target_date)]
+            elif operator == '!=':
+                target_start = today - timedelta(days=value)
+                target_end = today - timedelta(days=value-1)
+                return ['|', ('end_date', '>=', today), ('end_date', '<', target_start), ('end_date', '>=', target_end)]
+        return [('id', '=', False)]
+
+    @api.model
+    def _search_last_claim_date(self, operator, value):
+        """Search method for last_claim_date field"""
+        # Search warranty cards with last claim date
+        return [('claim_ids.claim_date', operator, value)]

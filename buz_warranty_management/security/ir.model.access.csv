@@ -1,4 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_warranty_dashboard_user,warranty.dashboard.user,model_warranty_dashboard,group_warranty_user,1,0,0,0
+access_warranty_dashboard_manager,warranty.dashboard.manager,model_warranty_dashboard,group_warranty_manager,1,1,1,1
 access_warranty_card_user,warranty.card.user,model_warranty_card,group_warranty_user,1,0,0,0
 access_warranty_card_manager,warranty.card.manager,model_warranty_card,group_warranty_manager,1,1,1,1
 access_warranty_claim_user,warranty.claim.user,model_warranty_claim,group_warranty_user,1,1,1,0

@@ -2,13 +2,20 @@
 <odoo>
     
     <!-- Main Menu -->
-    <menuitem id="menu_warranty_root" 
-              name="Warranty" 
+    <menuitem id="menu_warranty_root"
+              name="Warranty"
               sequence="60"
               web_icon="buz_warranty_management,static/description/icon.png"/>
 
+    <!-- Warranty Dashboard Menu -->
+    <menuitem id="menu_warranty_dashboard"
+              name="Dashboard"
+              parent="menu_warranty_root"
+              action="action_warranty_dashboard"
+              sequence="5"/>
+
     <!-- Warranty Cards Menu -->
-    <menuitem id="menu_warranty_cards" 
+    <menuitem id="menu_warranty_cards"
               name="Warranty Cards"
               parent="menu_warranty_root"
               action="action_warranty_card"

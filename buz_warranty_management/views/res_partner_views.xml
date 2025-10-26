@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Partner Form View Inherit -->
+    <record id="view_partner_form_warranty_inherit" model="ir.ui.view">
+        <field name="name">res.partner.form.warranty.inherit</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add warranty card count field -->
+            <xpath expr="//field[@name='category_id']" position="after">
+                <field name="warranty_card_count" invisible="1"/>
+            </xpath>
+            
+            <!-- Add smart button in button box -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_warranty_cards" type="object"
+                        class="oe_stat_button" icon="fa-shield"
+                        invisible="warranty_card_count == 0"
+                        groups="buz_warranty_management.group_warranty_user">
+                    <field name="warranty_card_count" widget="statinfo" string="Warranty Cards"/>
+                </button>
+            </xpath>
+            
+        </field>
+    </record>
+    
+</odoo>
