@@ -16,6 +16,10 @@
                             string="Force Refresh"
                             class="btn-secondary"
                             confirm="This will force a complete refresh of all dashboard data. Continue?"/>
+                    <button name="action_rebuild_cache" type="object"
+                            string="Rebuild Cache"
+                            class="btn-warning"
+                            confirm="This will completely rebuild the dashboard cache from scratch. Use this if the dashboard is showing errors. Continue?"/>
                     <field name="cache_status" widget="badge"
                            invisible="cache_status == False"/>
                 </header>
@@ -276,9 +280,146 @@
                         </div>
                     </div>
                     
-                    <!-- Embedded Lists Section -->
+                    <!-- Charts Section -->
                     <notebook>
-                        <page string="Active Warranties" name="active_warranties">
+                        <!-- Overview Charts Tab -->
+                        <page string="Overview Charts" name="overview_charts">
+                            <div class="row">
+                                <!-- Warranty Status Pie Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-pie-chart me-2"/> Warranty Status
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="warranty_status_chart" 
+                                                   widget="pie_chart"
+                                                   chartId="warranty_status_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Claims Trend Line Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-line-chart me-2"/> Claims Trend
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="claims_trend_chart" 
+                                                   widget="line_chart"
+                                                   chartId="claims_trend_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-3">
+                                <!-- Monthly Comparison Bar Chart -->
+                                <div class="col-md-12">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-bar-chart me-2"/> Monthly Comparison
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="monthly_comparison_chart" 
+                                                   widget="bar_chart"
+                                                   chartId="monthly_comparison_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </page>
+                        
+                        <!-- Product &amp; Customer Analytics Tab -->
+                        <page string="Product &amp; Customer Analytics" name="product_customer_charts">
+                            <div class="row">
+                                <!-- Top Products Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-cube me-2"/> Top Products
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="top_products_chart" 
+                                                   widget="bar_chart"
+                                                   chartId="top_products_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Top Customers Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-users me-2"/> Top Customers
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="top_customers_chart" 
+                                                   widget="bar_chart"
+                                                   chartId="top_customers_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </page>
+                        
+                        <!-- Claims Analytics Tab -->
+                        <page string="Claims Analytics" name="claims_charts">
+                            <div class="row">
+                                <!-- Claim Types Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-wrench me-2"/> Claim Types
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="claim_types_chart" 
+                                                   widget="line_chart"
+                                                   chartId="claim_types_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Warranty Expiry Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-clock-o me-2"/> Upcoming Expiries
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="warranty_expiry_chart" 
+                                                   widget="bar_chart"
+                                                   chartId="warranty_expiry_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </page>
+                        
+                        <!-- Warranty Lists Tab -->
+                        <page string="Warranty Lists" name="warranty_lists">
                             <field name="active_warranty_ids" nolabel="1">
                                 <tree>
                                     <field name="name"/>
@@ -326,23 +467,13 @@
         </field>
     </record>
     
-    <!-- Warranty Dashboard Action -->
-    <record id="action_warranty_dashboard" model="ir.actions.act_window">
+    <!-- Warranty Dashboard Action - Opens singleton record -->
+        <!-- Warranty Dashboard Action -->
+    <record id="action_warranty_dashboard" model="ir.actions.server">
         <field name="name">Warranty Dashboard</field>
-        <field name="res_model">warranty.dashboard</field>
-        <field name="view_mode">form</field>
-        <field name="view_id" ref="view_warranty_dashboard_form"/>
-        <field name="target">current</field>
-        <field name="context">{'form_view_initial_mode': 'edit'}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                Welcome to the Warranty Dashboard
-            </p>
-            <p>
-                This dashboard provides real-time insights into your warranty portfolio,
-                including active warranties, expired warranties, and claims statistics.
-            </p>
-        </field>
+        <field name="model_id" ref="model_warranty_dashboard"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_dashboard()</field>
     </record>
     
     <!-- Active Warranties Tree View -->

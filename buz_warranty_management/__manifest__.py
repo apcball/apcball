@@ -35,7 +35,12 @@
         'web.assets_backend': [
             'buz_warranty_management/static/src/scss/warranty_styles.scss',
             'buz_warranty_management/static/src/scss/dashboard_indicators.scss',
+            'buz_warranty_management/static/src/scss/dashboard_charts.scss',
+            'buz_warranty_management/static/src/lib/chart.min.js',
+            'buz_warranty_management/static/src/js/chart_simple.js',
+            'buz_warranty_management/static/src/js/dashboard_charts.js',
             'buz_warranty_management/static/src/js/dashboard_auto_refresh.js',
+            'buz_warranty_management/static/src/xml/dashboard_charts.xml',
         ],
     },
     'data': [
