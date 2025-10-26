@@ -7,14 +7,116 @@
         <field name="model">warranty.dashboard</field>
         <field name="arch" type="xml">
             <form string="Warranty Dashboard" create="false" edit="false" delete="false">
+                <header>
+                    <button name="action_refresh_cache" type="object"
+                            string="Refresh Now"
+                            class="btn-primary"
+                            invisible="cache_status == 'updating'"/>
+                    <button name="action_force_refresh" type="object"
+                            string="Force Refresh"
+                            class="btn-secondary"
+                            confirm="This will force a complete refresh of all dashboard data. Continue?"/>
+                    <field name="cache_status" widget="badge"
+                           invisible="cache_status == False"/>
+                </header>
+                
                 <sheet>
                     <div class="oe_title mb-4">
-                        <h1 class="text-center">
-                            <i class="fa fa-tachometer me-2"/> Warranty Management Dashboard
+                        <h1 class="text-center d-flex align-items-center justify-content-center">
+                            <i class="fa fa-tachometer me-2"/>
+                            Warranty Management Dashboard
+                            <span class="ms-3 badge"
+                                  t-att-class="'badge-' + (cache_status == 'valid' and 'success' or cache_status == 'expired' and 'warning' or cache_status == 'error' and 'danger' or 'info')"
+                                  invisible="cache_status == False">
+                                <span invisible="cache_status != 'valid'">
+                                    <i class="fa fa-check-circle me-1"/> Live
+                                </span>
+                                <span invisible="cache_status != 'expired'">
+                                    <i class="fa fa-clock-o me-1"/> Stale
+                                </span>
+                                <span invisible="cache_status != 'error'">
+                                    <i class="fa fa-exclamation-triangle me-1"/> Error
+                                </span>
+                                <span invisible="cache_status != 'updating'">
+                                    <i class="fa fa-spinner fa-spin me-1"/> Updating
+                                </span>
+                            </span>
                         </h1>
-                        <p class="text-center text-muted">
-                            Real-time overview of warranty performance and metrics
-                        </p>
+                        
+                        <!-- Last Update Information -->
+                        <div class="text-center text-muted mb-3">
+                            <div class="row align-items-center justify-content-center">
+                                <div class="col-auto">
+                                    <i class="fa fa-clock me-1"/>
+                                    <span>Last updated: </span>
+                                    <field name="last_update" widget="relative"/>
+                                </div>
+                                <div class="col-auto" invisible="update_duration == 0">
+                                    <i class="fa fa-tachometer me-1"/>
+                                    <span>Update took: </span>
+                                    <field name="update_duration" widget="duration"/>s
+                                </div>
+                            </div>
+                            
+                            <!-- Auto-refresh Countdown -->
+                            <div class="mt-2" invisible="cache_status != 'valid'">
+                                <small class="text-muted">
+                                    <i class="fa fa-refresh me-1"/>
+                                    Next auto-refresh in:
+                                    <span class="auto-refresh-countdown">--:--</span>
+                                </small>
+                            </div>
+                            
+                            <!-- Updating Indicator -->
+                            <div class="mt-2" invisible="cache_status != 'updating'">
+                                <div class="progress" style="height: 4px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar" style="width: 100%"></div>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="fa fa-spinner fa-spin me-1"/>
+                                    Updating dashboard data...
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Cache Status Alert -->
+                    <div class="row mb-3"
+                         invisible="cache_status in ['valid', False]">
+                        <div class="col-12">
+                            <div class="alert d-flex align-items-center"
+                                 t-att-class="'alert-' + (cache_status == 'expired' and 'warning' or cache_status == 'error' and 'danger' or 'info')">
+                                <i class="fa fa-exclamation-triangle me-3 fa-2x"/>
+                                <div class="flex-grow-1">
+                                    <h5 class="alert-heading mb-1">
+                                        <span invisible="cache_status != 'expired'">Data is Stale</span>
+                                        <span invisible="cache_status != 'error'">Update Error</span>
+                                        <span invisible="cache_status != 'updating'">Updating...</span>
+                                    </h5>
+                                    <p class="mb-0">
+                                        <span invisible="cache_status != 'expired'">
+                                            Dashboard data was last updated <field name="last_update" widget="relative"/>.
+                                            Click "Refresh Now" to see the latest data.
+                                        </span>
+                                        <span invisible="cache_status != 'error'">
+                                            There was an error updating the dashboard.
+                                            Last successful update was <field name="last_update" widget="relative"/>.
+                                        </span>
+                                        <span invisible="cache_status != 'updating'">
+                                            Dashboard is currently being updated. This should complete shortly.
+                                        </span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <button name="action_refresh_cache" type="object"
+                                            class="btn btn-primary"
+                                            invisible="cache_status == 'updating'">
+                                        <i class="fa fa-refresh me-1"/> Refresh Now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- KPI Cards Section -->
@@ -130,6 +232,50 @@
                         </div>
                     </div>
                     
+                    <!-- Additional Metrics Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-chart-line me-2"/> Additional Metrics
+                                        <small class="text-muted ms-2">
+                                            (Updated <field name="last_update" widget="relative"/>)
+                                        </small>
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="text-center">
+                                                <h4 class="text-info">
+                                                    <field name="claims_this_month"/>
+                                                </h4>
+                                                <p class="mb-0">Claims This Month</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="text-center">
+                                                <h4 class="text-secondary">
+                                                    <field name="claims_last_month"/>
+                                                </h4>
+                                                <p class="mb-0">Claims Last Month</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="text-center">
+                                                <h4 class="text-warning">
+                                                    <field name="trigger_count"/>
+                                                </h4>
+                                                <p class="mb-0">Updates Today</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Embedded Lists Section -->
                     <notebook>
                         <page string="Active Warranties" name="active_warranties">
@@ -185,6 +331,7 @@
         <field name="name">Warranty Dashboard</field>
         <field name="res_model">warranty.dashboard</field>
         <field name="view_mode">form</field>
+        <field name="view_id" ref="view_warranty_dashboard_form"/>
         <field name="target">current</field>
         <field name="context">{'form_view_initial_mode': 'edit'}</field>
         <field name="help" type="html">

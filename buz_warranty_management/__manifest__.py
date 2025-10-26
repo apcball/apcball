@@ -34,6 +34,8 @@
     'assets': {
         'web.assets_backend': [
             'buz_warranty_management/static/src/scss/warranty_styles.scss',
+            'buz_warranty_management/static/src/scss/dashboard_indicators.scss',
+            'buz_warranty_management/static/src/js/dashboard_auto_refresh.js',
         ],
     },
     'data': [
@@ -53,6 +55,7 @@
         'report/report_warranty_certificate.xml',
         'report/report_warranty_claim_form.xml',
         'report/report_warranty_rma_slip.xml',
+        'data/warranty_dashboard_cron.xml',
         'views/menu.xml',
     ],
     'demo': [],

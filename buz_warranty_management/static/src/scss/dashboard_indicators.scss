@@ -1,0 +1,54 @@
+.o_form_view {
+    .badge {
+        font-size: 0.8em;
+        
+        &.badge-success {
+            background-color: #28a745;
+        }
+        
+        &.badge-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        &.badge-danger {
+            background-color: #dc3545;
+        }
+        
+        &.badge-info {
+            background-color: #17a2b8;
+        }
+    }
+    
+    .auto-refresh-countdown {
+        font-family: monospace;
+        font-weight: bold;
+    }
+    
+    .card {
+        .position-absolute {
+            .badge {
+                font-size: 0.7em;
+                opacity: 0.8;
+                
+                &:hover {
+                    opacity: 1;
+                }
+            }
+        }
+    }
+    
+    .progress {
+        height: 4px;
+        
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+    }
+    
+    .alert {
+        .btn {
+            white-space: nowrap;
+        }
+    }
+}

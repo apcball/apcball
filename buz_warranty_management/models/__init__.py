@@ -5,5 +5,6 @@ from . import warranty_card
 from . import warranty_claim
 from . import warranty_claim_line
 from . import warranty_dashboard
+from . import warranty_dashboard_cache
 from . import stock_picking
 from . import res_config_settings

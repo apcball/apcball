@@ -296,6 +296,34 @@ class WarrantyClaim(models.Model):
         action['context'] = {}
         return action
 
+    @api.model
+    def create(self, vals):
+        """Trigger cache update on new claim"""
+        record = super().create(vals)
+        # Trigger cache update
+        self.env['warranty.dashboard.cache']._trigger_update('warranty_claim_created', record)
+        return record
+    
+    def write(self, vals):
+        """Trigger cache update on claim changes"""
+        # Check if critical fields changed
+        critical_fields = ['status', 'claim_type', 'warranty_card_id']
+        has_critical_change = any(field in vals for field in critical_fields)
+        
+        result = super().write(vals)
+        
+        if has_critical_change:
+            # Trigger cache update
+            self.env['warranty.dashboard.cache']._trigger_update('warranty_claim_updated', self)
+        
+        return result
+    
+    def unlink(self):
+        """Trigger cache update on claim deletion"""
+        # Trigger cache update before deletion
+        self.env['warranty.dashboard.cache']._trigger_update('warranty_claim_deleted', self)
+        return super().unlink()
+
     def has_replacement_lines(self):
         """Check if claim has lines marked for replacement"""
         self.ensure_one()

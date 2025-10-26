@@ -191,13 +191,46 @@ class WarrantyCard(models.Model):
         return self.env.ref('buz_warranty_management.action_report_warranty_certificate').report_action(self)
 
     @api.model
+    def create(self, vals):
+        """Trigger cache update on new warranty card"""
+        record = super().create(vals)
+        # Trigger cache update
+        self.env['warranty.dashboard.cache']._trigger_update('warranty_card_created', record)
+        return record
+    
+    def write(self, vals):
+        """Trigger cache update on warranty card changes"""
+        # Check if critical fields changed
+        critical_fields = ['state', 'end_date', 'partner_id', 'product_id']
+        has_critical_change = any(field in vals for field in critical_fields)
+        
+        result = super().write(vals)
+        
+        if has_critical_change:
+            # Trigger cache update
+            self.env['warranty.dashboard.cache']._trigger_update('warranty_card_updated', self)
+        
+        return result
+    
+    def unlink(self):
+        """Trigger cache update on warranty card deletion"""
+        # Trigger cache update before deletion
+        self.env['warranty.dashboard.cache']._trigger_update('warranty_card_deleted', self)
+        return super().unlink()
+
+    @api.model
     def cron_update_expired_warranties(self):
         today = fields.Date.today()
         active_warranties = self.search([
             ('state', '=', 'active'),
             ('end_date', '<', today)
         ])
-        active_warranties.write({'state': 'expired'})
+        
+        if active_warranties:
+            active_warranties.write({'state': 'expired'})
+            # Trigger cache update for batch operation
+            self.env['warranty.dashboard.cache']._trigger_update('warranty_cards_expired')
+        
         return True
 
     @api.model
