@@ -7,7 +7,7 @@
         Warranty Management System
         ===========================
         * Product-level warranty configuration
-        * Automatic warranty card creation on delivery
+        * Manual warranty card creation from Sale Order
         * Warranty claim management (under & out-of-warranty)
         * RMA workflows with stock operations
         * Claim lines for parts and consumables tracking
@@ -43,6 +43,7 @@
         'security/ir.model.access.csv',
         'data/sequence.xml',
         'views/product_template_views.xml',
+        'views/sale_order_views.xml',
         'views/warranty_card_views.xml',
         'views/warranty_claim_views.xml',
         'views/warranty_dashboard_views.xml',

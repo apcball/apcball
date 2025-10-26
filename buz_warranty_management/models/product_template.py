@@ -22,11 +22,6 @@ class ProductTemplate(models.Model):
         ('repair', 'Repair'),
         ('refund', 'Refund'),
     ], string='Warranty Type', default='repair')
-    auto_warranty = fields.Boolean(
-        string='Auto Create Warranty',
-        default=False,
-        help='Automatically create warranty card when product is delivered'
-    )
     service_product_id = fields.Many2one(
         'product.product',
         string='Service Product',

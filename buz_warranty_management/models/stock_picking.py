@@ -6,7 +6,8 @@ class StockPicking(models.Model):
 
     def button_validate(self):
         res = super(StockPicking, self).button_validate()
-        self._create_warranty_cards()
+        # Automatic warranty card creation disabled
+        # self._create_warranty_cards()
         return res
 
     def _create_warranty_cards(self):
@@ -22,8 +23,9 @@ class StockPicking(models.Model):
             for move_line in picking.move_line_ids:
                 product = move_line.product_id
                 
-                if not product.product_tmpl_id.auto_warranty:
-                    continue
+                # auto_warranty check removed - warranty creation is now manual
+                # if not product.product_tmpl_id.auto_warranty:
+                #     continue
                 
                 if product.product_tmpl_id.warranty_duration <= 0:
                     continue
