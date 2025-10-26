@@ -16,20 +16,10 @@ class WarrantyRMAReceiveWizard(models.TransientModel):
         string='Customer',
         required=True
     )
-    product_id = fields.Many2one(
-        'product.product',
-        string='Product',
-        required=True
-    )
-    lot_id = fields.Many2one(
-        'stock.lot',
-        string='Lot/Serial Number',
-        domain="[('product_id', '=', product_id)]"
-    )
-    qty = fields.Float(
-        string='Quantity',
-        default=1.0,
-        required=True
+    line_ids = fields.One2many(
+        'warranty.rma.receive.line',
+        'wizard_id',
+        string='Return Lines'
     )
     picking_type_id = fields.Many2one(
         'stock.picking.type',
@@ -61,6 +51,16 @@ class WarrantyRMAReceiveWizard(models.TransientModel):
         if location_id:
             res['location_dest_id'] = int(location_id)
         
+        # Load default line from claim product if available
+        if 'claim_id' in self._context:
+            claim = self.env['warranty.claim'].browse(self._context['claim_id'])
+            if claim.product_id:
+                res['line_ids'] = [(0, 0, {
+                    'product_id': claim.product_id.id,
+                    'lot_id': claim.lot_id.id,
+                    'qty': 1.0,
+                })]
+        
         return res
 
     def action_create_rma_picking(self):
@@ -71,6 +71,9 @@ class WarrantyRMAReceiveWizard(models.TransientModel):
         
         if not self.location_dest_id:
             raise UserError(_('Please configure Repair Location in Warranty settings.'))
+        
+        if not self.line_ids:
+            raise UserError(_('Please add at least one return line.'))
         
         # Get customer location
         customer_location = self.partner_id.property_stock_customer
@@ -86,21 +89,29 @@ class WarrantyRMAReceiveWizard(models.TransientModel):
         }
         picking = self.env['stock.picking'].create(picking_vals)
         
-        # Create move
-        move_vals = {
-            'name': f'RMA: {self.product_id.name}',
-            'product_id': self.product_id.id,
-            'product_uom_qty': self.qty,
-            'product_uom': self.product_id.uom_id.id,
-            'picking_id': picking.id,
-            'location_id': customer_location.id,
-            'location_dest_id': self.location_dest_id.id,
-        }
-        
-        if self.lot_id:
-            move_vals['lot_ids'] = [(6, 0, [self.lot_id.id])]
-        
-        self.env['stock.move'].create(move_vals)
+        # Create moves for each line
+        for line in self.line_ids:
+            move_vals = {
+                'name': f'RMA: {line.product_id.name}',
+                'product_id': line.product_id.id,
+                'product_uom_qty': line.qty,
+                'product_uom': line.product_id.uom_id.id,
+                'picking_id': picking.id,
+                'location_id': customer_location.id,
+                'location_dest_id': self.location_dest_id.id,
+            }
+            
+            if line.lot_id:
+                move_vals['lot_ids'] = [(6, 0, [line.lot_id.id])]
+            
+            move = self.env['stock.move'].create(move_vals)
+            
+            # Link to claim lines if matching product exists
+            claim_lines = self.claim_id.claim_line_ids.filtered(
+                lambda l: l.product_id == line.product_id
+            )
+            if claim_lines:
+                claim_lines[0].write({'move_ids': [(4, move.id)]})
         
         # Link picking to claim
         self.claim_id.write({
@@ -122,3 +133,39 @@ class WarrantyRMAReceiveWizard(models.TransientModel):
             'view_mode': 'form',
             'target': 'current',
         }
+
+
+class WarrantyRMAReceiveLine(models.TransientModel):
+    _name = 'warranty.rma.receive.line'
+    _description = 'Warranty RMA Receive Line'
+
+    wizard_id = fields.Many2one(
+        'warranty.rma.receive.wizard',
+        required=True,
+        ondelete='cascade'
+    )
+    product_id = fields.Many2one(
+        'product.product',
+        string='Product',
+        required=True
+    )
+    lot_id = fields.Many2one(
+        'stock.lot',
+        string='Lot/Serial Number',
+        domain="[('product_id', '=', product_id)]"
+    )
+    qty = fields.Float(
+        string='Quantity',
+        default=1.0,
+        required=True
+    )
+    uom_id = fields.Many2one(
+        'uom.uom',
+        string='Unit of Measure',
+        related='product_id.uom_id',
+        readonly=True
+    )
+    reason = fields.Text(
+        string='Return Reason',
+        help='Reason for returning this specific part'
+    )

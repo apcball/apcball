@@ -9,21 +9,33 @@
                     <group>
                         <field name="claim_id" readonly="1"/>
                         <field name="partner_id" readonly="1"/>
-                        <field name="product_id"/>
-                        <field name="lot_id"/>
                     </group>
                     <group>
-                        <field name="qty"/>
                         <field name="picking_type_id" required="1"/>
                         <field name="location_dest_id" required="1"/>
                         <field name="generate_return_label"/>
                     </group>
                 </group>
-                <group>
-                    <field name="notes" placeholder="Enter notes about the returned item..."/>
-                </group>
+                
+                <notebook>
+                    <page string="Return Items">
+                        <field name="line_ids">
+                            <tree editable="bottom">
+                                <field name="product_id"/>
+                                <field name="qty"/>
+                                <field name="uom_id" readonly="1"/>
+                                <field name="lot_id"/>
+                                <field name="reason" placeholder="Reason for return..."/>
+                            </tree>
+                        </field>
+                    </page>
+                    <page string="Notes">
+                        <field name="notes" placeholder="Enter notes about the returned items..."/>
+                    </page>
+                </notebook>
+                
                 <footer>
-                    <button string="Create RMA IN" name="action_create_rma_picking" 
+                    <button string="Create RMA IN" name="action_create_rma_picking"
                             type="object" class="btn-primary"/>
                     <button string="Cancel" class="btn-secondary" special="cancel"/>
                 </footer>

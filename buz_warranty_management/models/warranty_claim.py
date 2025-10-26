@@ -165,6 +165,14 @@ class WarrantyClaim(models.Model):
     def action_done(self):
         self.write({'status': 'done'})
 
+    def action_receive_items(self):
+        """Mark items as received and ready for review"""
+        self.write({'status': 'under_review'})
+        self.message_post(
+            body=_('Items received and ready for review'),
+            subject=_('Items Received')
+        )
+
     def action_create_out_warranty_quotation(self):
         self.ensure_one()
         if self.is_under_warranty:
@@ -227,8 +235,6 @@ class WarrantyClaim(models.Model):
             'context': {
                 'default_claim_id': self.id,
                 'default_partner_id': self.partner_id.id,
-                'default_product_id': self.product_id.id,
-                'default_lot_id': self.lot_id.id,
             }
         }
 

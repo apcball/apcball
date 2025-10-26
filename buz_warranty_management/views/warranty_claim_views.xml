@@ -26,92 +26,172 @@
         <field name="arch" type="xml">
             <form string="Warranty Claim">
                 <header>
-                    <button name="action_review" string="Under Review" type="object" 
-                            invisible="status != 'draft'" class="oe_highlight"/>
-                    <button name="action_approve" string="Approve" type="object" 
-                            invisible="status != 'under_review'" class="oe_highlight"/>
-                    <button name="action_done" string="Mark as Done" type="object" 
-                            invisible="status != 'approved'" class="oe_highlight"/>
-                    <button name="action_reject" string="Reject" type="object" 
-                            invisible="status not in ['draft', 'under_review']"/>
-                    <button name="action_create_out_warranty_quotation" string="Create Quotation" 
-                            type="object" class="btn-warning"
-                            invisible="is_under_warranty == True or quotation_id != False"/>
-                    <button name="action_view_quotation" string="View Quotation" type="object" 
-                            class="btn-primary"
-                            invisible="quotation_id == False"/>
-                    <button name="action_print_claim_form" string="Print Claim Form" type="object"/>
-                    <field name="status" widget="statusbar" 
-                           statusbar_visible="draft,under_review,approved,done"/>
+                    <div class="o_statusbar_status o_statusbar_visible">
+                        <div class="btn-group">
+                            <button name="action_review" string="Under Review" type="object"
+                                    invisible="status != 'draft'" class="oe_highlight btn-primary"/>
+                            <button name="action_receive_items" string="Items Received" type="object"
+                                    invisible="status != 'awaiting_return'" class="oe_highlight btn-info"/>
+                            <button name="action_approve" string="Approve" type="object"
+                                    invisible="status != 'under_review'" class="oe_highlight btn-success"/>
+                            <button name="action_done" string="Mark as Done" type="object"
+                                    invisible="status != 'approved'" class="oe_highlight btn-primary"/>
+                            <button name="action_reject" string="Reject" type="object"
+                                    invisible="status not in ['draft', 'under_review']" class="btn-danger"/>
+                        </div>
+                        <field name="status" widget="statusbar"
+                               statusbar_visible="draft,under_review,awaiting_return,approved,done"/>
+                    </div>
+                    <div class="oe_button_box o_button_box">
+                        <button name="action_create_out_warranty_quotation" string="Create Quotation"
+                                type="object" class="oe_stat_button btn-warning"
+                                invisible="is_under_warranty == True or quotation_id != False">
+                            <field name="quotation_id" widget="statinfo" string="Quotations"
+                                   options="{'no_create': True}"/>
+                        </button>
+                        <button name="action_view_quotation" string="View Quotation" type="object"
+                                class="oe_stat_button btn-primary"
+                                invisible="quotation_id == False">
+                            <field name="quotation_id" widget="statinfo" string="Quotations"
+                                   options="{'no_create': True}"/>
+                        </button>
+                    </div>
                 </header>
                 <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button name="action_view_rma_in_pickings" type="object" 
-                                class="oe_stat_button" icon="fa-truck"
-                                invisible="rma_in_count == 0">
-                            <field name="rma_in_count" widget="statinfo" string="RMA IN"/>
-                        </button>
-                        <button name="action_view_replacement_out_pickings" type="object" 
-                                class="oe_stat_button" icon="fa-truck"
-                                invisible="replacement_out_count == 0">
-                            <field name="replacement_out_count" widget="statinfo" string="Replacements"/>
-                        </button>
-                        <button name="action_view_invoices" type="object" 
-                                class="oe_stat_button" icon="fa-file-text-o"
-                                invisible="invoice_count == 0">
-                            <field name="invoice_count" widget="statinfo" string="Invoices"/>
-                        </button>
+                    <div class="oe_title mb-3">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h1 class="mb-0">
+                                    <field name="name" readonly="1"/>
+                                </h1>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <div class="badge badge-pill badge-success"
+                                     invisible="is_under_warranty == False">
+                                    <span class="badge-text">Under Warranty</span>
+                                </div>
+                                <div class="badge badge-pill badge-warning"
+                                     invisible="is_under_warranty == True">
+                                    <span class="badge-text">Out of Warranty</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="alert alert-danger" role="alert" 
-                         invisible="is_under_warranty == True">
-                        <strong>Warning:</strong> This claim is OUT OF WARRANTY. 
-                        Warranty expired on <field name="warranty_end_date" readonly="1"/>.
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-danger d-flex align-items-center" role="alert"
+                                 invisible="is_under_warranty == True">
+                                <i class="fa fa-exclamation-triangle me-2"/>
+                                <div>
+                                    <strong>Warning:</strong> This claim is OUT OF WARRANTY.
+                                    Warranty expired on <field name="warranty_end_date" readonly="1"/>.
+                                </div>
+                            </div>
+                            <div class="alert alert-success d-flex align-items-center" role="alert"
+                                 invisible="is_under_warranty == False">
+                                <i class="fa fa-shield me-2"/>
+                                <div>
+                                    <strong>Under Warranty:</strong> This claim is covered by warranty.
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="alert alert-success" role="alert" 
-                         invisible="is_under_warranty == False">
-                        <strong>Under Warranty:</strong> This claim is covered by warranty.
+
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="oe_button_box o_button_box">
+                                <button name="action_view_rma_in_pickings" type="object"
+                                        class="oe_stat_button btn-primary" icon="fa-truck"
+                                        invisible="rma_in_count == 0">
+                                    <field name="rma_in_count" widget="statinfo" string="RMA IN"/>
+                                </button>
+                                <button name="action_view_replacement_out_pickings" type="object"
+                                        class="oe_stat_button btn-success" icon="fa-truck"
+                                        invisible="replacement_out_count == 0">
+                                    <field name="replacement_out_count" widget="statinfo" string="Replacements"/>
+                                </button>
+                                <button name="action_view_invoices" type="object"
+                                        class="oe_stat_button btn-warning" icon="fa-file-text-o"
+                                        invisible="invoice_count == 0">
+                                    <field name="invoice_count" widget="statinfo" string="Invoices"/>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="oe_title">
-                        <h1>
-                            <field name="name" readonly="1"/>
-                        </h1>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-info-circle me-2"/> Claim Information
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <group>
+                                        <field name="warranty_card_id"/>
+                                        <field name="partner_id"/>
+                                        <field name="product_id"/>
+                                        <field name="lot_id"/>
+                                    </group>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-info text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-cog me-2"/> Claim Details
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <group>
+                                        <field name="claim_date"/>
+                                        <field name="claim_type"/>
+                                        <field name="is_under_warranty" widget="boolean"/>
+                                        <field name="cost_estimate"/>
+                                    </group>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <group>
-                        <group string="Claim Information">
-                            <field name="warranty_card_id"/>
-                            <field name="partner_id"/>
-                            <field name="product_id"/>
-                            <field name="lot_id"/>
-                        </group>
-                        <group string="Claim Details">
-                            <field name="claim_date"/>
-                            <field name="claim_type"/>
-                            <field name="is_under_warranty" widget="boolean"/>
-                            <field name="cost_estimate"/>
-                        </group>
-                    </group>
-                    <group>
-                        <group string="Out-of-Warranty Quotation" 
-                               invisible="quotation_id == False">
-                            <field name="quotation_id"/>
-                        </group>
-                    </group>
-                    <group>
-                        <group>
-                            <button name="action_create_rma_in" string="Create RMA IN" 
-                                    type="object" class="btn-primary oe_highlight"
-                                    icon="fa-download"/>
-                            <button name="action_issue_replacement" string="Issue Replacement" 
-                                    type="object" class="btn-success"
-                                    icon="fa-upload"/>
-                        </group>
-                        <group>
-                            <button name="action_create_invoice" string="Create Invoice" 
-                                    type="object" class="btn-warning"
-                                    invisible="is_under_warranty == True"
-                                    icon="fa-file-text"/>
-                        </group>
-                    </group>
+
+                    <div class="row" invisible="quotation_id == False">
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-warning text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-file-text me-2"/> Out-of-Warranty Quotation
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <field name="quotation_id"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <div class="btn-group">
+                                    <button name="action_create_rma_in" string="Create RMA IN"
+                                            type="object" class="btn-primary btn-lg me-2"
+                                            icon="fa-download"/>
+                                    <button name="action_issue_replacement" string="Issue Replacement"
+                                            type="object" class="btn-success btn-lg me-2"
+                                            icon="fa-upload"/>
+                                </div>
+                                <div class="btn-group">
+                                    <button name="action_create_invoice" string="Create Invoice"
+                                            type="object" class="btn-warning btn-lg"
+                                            invisible="is_under_warranty == True"
+                                            icon="fa-file-text"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <notebook>
                         <page string="Problem Description">
                             <field name="description" nolabel="1" placeholder="Describe the problem..."/>

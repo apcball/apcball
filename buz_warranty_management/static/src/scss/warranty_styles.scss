@@ -1,0 +1,236 @@
+// Modern Warranty Management Styles
+.warranty-card {
+    .oe_title {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        
+        h1 {
+            margin: 0;
+            font-size: 1.75rem;
+            font-weight: 600;
+        }
+    }
+    
+    .badge-pill {
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+        border-radius: 50rem;
+        
+        &.badge-success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        &.badge-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        &.badge-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        &.badge-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+    }
+    
+    .card {
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+        
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-header {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+            
+            &.bg-primary {
+                background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                color: white;
+            }
+            
+            &.bg-info {
+                background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+                color: white;
+            }
+            
+            &.bg-secondary {
+                background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+                color: white;
+            }
+            
+            h5 {
+                margin: 0;
+                font-size: 1rem;
+                font-weight: 600;
+                
+                i {
+                    margin-right: 0.5rem;
+                }
+            }
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+    }
+    
+    .progress {
+        height: 1rem;
+        background-color: #e9ecef;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        
+        .progress-bar {
+            height: 100%;
+            transition: width 0.6s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    }
+    
+    .btn-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    
+    .o_button_box {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .oe_stat_button {
+        min-width: 150px;
+        transition: all 0.3s ease;
+        
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.15);
+        }
+        
+        &.btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            border: none;
+            color: white;
+            
+            &:hover {
+                background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+            }
+        }
+        
+        &.btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            color: white;
+            
+            &:hover {
+                background: linear-gradient(135deg, #20c997 0%, #198754 100%);
+            }
+        }
+        
+        &.btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            border: none;
+            color: white;
+            
+            &:hover {
+                background: linear-gradient(135deg, #138496 0%, #117a8b 100%);
+            }
+        }
+        
+        &.btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #e67e22 100%);
+            border: none;
+            color: #212529;
+            
+            &:hover {
+                background: linear-gradient(135deg, #e67e22 0%, #d4a01a 100%);
+            }
+        }
+        
+        &.btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            border: none;
+            color: white;
+            
+            &:hover {
+                background: linear-gradient(135deg, #c82333 0%, #a52a2a 100%);
+            }
+        }
+    }
+    
+    .alert {
+        border: none;
+        border-radius: 0.5rem;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        
+        &.alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border-left: 4px solid #c3e6cb;
+        }
+        
+        &.alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #f5c6cb;
+        }
+        
+        i {
+            margin-right: 0.75rem;
+            font-size: 1.25rem;
+        }
+    }
+    
+    .input-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+    .btn-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .o_button_box {
+        flex-direction: column;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+}

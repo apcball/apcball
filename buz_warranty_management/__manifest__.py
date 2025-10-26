@@ -12,6 +12,7 @@
         * RMA workflows with stock operations
         * Claim lines for parts and consumables tracking
         * RMA IN/OUT pickings with serial/lot support
+        * Multi-product RMA IN returns with part selection
         * Replacement issue with SO integration
         * Quick invoice generation from claim lines
         * Out-of-warranty quotation generation
@@ -30,6 +31,11 @@
         'mail',
         'uom',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'buz_warranty_management/static/src/scss/warranty_styles.scss',
+        ],
+    },
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',
