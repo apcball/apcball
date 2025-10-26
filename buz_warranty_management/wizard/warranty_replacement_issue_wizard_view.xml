@@ -20,13 +20,21 @@
                 
                 <notebook>
                     <page string="Replacement Items">
+                        <div class="alert alert-warning d-flex align-items-center"
+                             invisible="line_ids">
+                            <i class="fa fa-exclamation-triangle me-2"/>
+                            <div>
+                                <strong>No Replacement Items Found:</strong>
+                                No claim lines were marked for replacement.
+                                Please go back to the claim and mark the required items with "Need Replacement".
+                            </div>
+                        </div>
                         <field name="line_ids">
                             <tree editable="bottom">
                                 <field name="product_id"/>
                                 <field name="qty"/>
                                 <field name="lot_id"/>
-                                <field name="unit_price" 
-                                       readonly="context.get('is_under_warranty', False)"/>
+                                <field name="unit_price"/>
                                 <field name="currency_id" invisible="1"/>
                             </tree>
                         </field>

@@ -19,7 +19,7 @@ class WarrantyClaimLine(models.Model):
         required=True,
         domain="[('type', 'in', ['product', 'consu'])]"
     )
-    description = fields.Char(string='Description')
+    description = fields.Char(string='Description', compute='_compute_description', store=True, readonly=False)
     qty = fields.Float(
         string='Quantity',
         default=1.0,
@@ -74,9 +74,16 @@ class WarrantyClaimLine(models.Model):
         for line in self:
             line.is_consumable = line.product_id.type == 'consu'
     
+    @api.depends('product_id')
+    def _compute_description(self):
+        for line in self:
+            if line.product_id and not line.description:
+                line.description = line.product_id.name
+    
     @api.onchange('product_id')
     def _onchange_product_id(self):
         if self.product_id:
             self.unit_cost = self.product_id.standard_price
             self.unit_price = self.product_id.list_price
-            self.description = self.product_id.name
+            if not self.description:
+                self.description = self.product_id.name

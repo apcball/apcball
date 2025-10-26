@@ -137,6 +137,10 @@ class WarrantyClaim(models.Model):
         string='Invoice Count',
         compute='_compute_invoice_count'
     )
+    replacement_line_count = fields.Integer(
+        string='Replacement Line Count',
+        compute='_compute_replacement_line_count'
+    )
 
     @api.depends('warranty_card_id', 'warranty_card_id.end_date', 'claim_date')
     def _compute_is_under_warranty(self):
@@ -224,6 +228,11 @@ class WarrantyClaim(models.Model):
         for record in self:
             record.invoice_count = len(record.invoice_ids)
 
+    @api.depends('claim_line_ids.need_replacement')
+    def _compute_replacement_line_count(self):
+        for record in self:
+            record.replacement_line_count = len(record.claim_line_ids.filtered('need_replacement'))
+
     def action_create_rma_in(self):
         self.ensure_one()
         return {
@@ -286,3 +295,8 @@ class WarrantyClaim(models.Model):
         action['domain'] = [('id', 'in', self.invoice_ids.ids)]
         action['context'] = {}
         return action
+
+    def has_replacement_lines(self):
+        """Check if claim has lines marked for replacement"""
+        self.ensure_one()
+        return bool(self.claim_line_ids.filtered('need_replacement'))

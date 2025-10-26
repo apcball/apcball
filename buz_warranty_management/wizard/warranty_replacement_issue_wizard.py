@@ -1,5 +1,7 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+import logging
+_logger = logging.getLogger(__name__)
 
 
 class WarrantyReplacementIssueWizard(models.TransientModel):
@@ -9,12 +11,14 @@ class WarrantyReplacementIssueWizard(models.TransientModel):
     claim_id = fields.Many2one(
         'warranty.claim',
         string='Warranty Claim',
-        required=True
+        required=True,
+        default=lambda self: self._context.get('default_claim_id') or self._context.get('claim_id') or self._context.get('active_id')
     )
     partner_id = fields.Many2one(
         'res.partner',
         string='Customer',
-        required=True
+        required=True,
+        default=lambda self: self._context.get('default_partner_id')
     )
     is_under_warranty = fields.Boolean(
         related='claim_id.is_under_warranty',
@@ -47,6 +51,7 @@ class WarrantyReplacementIssueWizard(models.TransientModel):
         res = super().default_get(fields_list)
         ICP = self.env['ir.config_parameter'].sudo()
         
+        # Get default picking type and location
         picking_type_id = ICP.get_param('buz_warranty_management.warranty_replacement_out_picking_type_id')
         if picking_type_id:
             res['picking_type_id'] = int(picking_type_id)
@@ -55,19 +60,39 @@ class WarrantyReplacementIssueWizard(models.TransientModel):
         if location_id:
             res['location_id'] = int(location_id)
         
-        # Load claim lines as replacement lines
-        if 'claim_id' in self._context:
-            claim = self.env['warranty.claim'].browse(self._context['claim_id'])
-            lines = []
-            for claim_line in claim.claim_line_ids.filtered(lambda l: l.need_replacement):
-                lines.append((0, 0, {
-                    'product_id': claim_line.product_id.id,
-                    'qty': claim_line.qty,
-                    'lot_id': claim_line.lot_id.id,
-                    'unit_price': 0.0 if claim.is_under_warranty else claim_line.unit_price,
-                }))
-            if lines:
-                res['line_ids'] = lines
+        # Load claim lines marked for replacement
+        # Check both context and active_id for claim_id
+        claim_id = self._context.get('claim_id') or self._context.get('default_claim_id') or self._context.get('active_id')
+        if claim_id:
+            claim = self.env['warranty.claim'].browse(claim_id)
+            if claim.exists():
+                # Force refresh to get latest data
+                claim._invalidate_cache()
+                claim_line_ids = claim.claim_line_ids
+                
+                # Debug logging
+                _logger.info("Loading replacement wizard for claim: %s", claim.name)
+                _logger.info("Total claim lines: %s", len(claim_line_ids))
+                
+                # Filter claim lines that need replacement
+                replacement_lines = claim_line_ids.filtered(lambda l: l.need_replacement)
+                _logger.info("Replacement lines found: %s", len(replacement_lines))
+                
+                if replacement_lines:
+                    lines = []
+                    for claim_line in replacement_lines:
+                        _logger.info("Adding replacement line: Product=%s, Qty=%s",
+                                   claim_line.product_id.name, claim_line.qty)
+                        lines.append((0, 0, {
+                            'product_id': claim_line.product_id.id,
+                            'qty': claim_line.qty,
+                            'lot_id': claim_line.lot_id.id if claim_line.lot_id else False,
+                            'unit_price': 0.0 if claim.is_under_warranty else claim_line.unit_price,
+                        }))
+                    res['line_ids'] = lines
+                    _logger.info("Set %s replacement lines in wizard", len(lines))
+                else:
+                    _logger.warning("No replacement lines found for claim %s", claim.name)
         
         return res
 
@@ -81,7 +106,11 @@ class WarrantyReplacementIssueWizard(models.TransientModel):
             raise UserError(_('Please configure Repair Location in Warranty settings.'))
         
         if not self.line_ids:
-            raise UserError(_('Please add at least one replacement line.'))
+            # Check if there are claim lines marked for replacement
+            if self.claim_id.has_replacement_lines():
+                raise UserError(_('Replacement lines were found in claim but not loaded in wizard. Please refresh and try again.'))
+            else:
+                raise UserError(_('No claim lines marked for replacement found. Please mark claim lines with "Need Replacement" and try again.'))
         
         # Get customer location
         customer_location = self.partner_id.property_stock_customer

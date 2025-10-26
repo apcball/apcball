@@ -116,6 +116,11 @@
                                         invisible="invoice_count == 0">
                                     <field name="invoice_count" widget="statinfo" string="Invoices"/>
                                 </button>
+                                <button name="action_issue_replacement" type="object"
+                                        class="oe_stat_button btn-info" icon="fa-exchange"
+                                        invisible="replacement_line_count == 0">
+                                    <field name="replacement_line_count" widget="statinfo" string="Replacements Needed"/>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -211,6 +216,17 @@
                                     <field name="currency_id" invisible="1"/>
                                 </tree>
                             </field>
+                            <div class="alert alert-info d-flex align-items-center mt-3"
+                                 invisible="replacement_line_count == 0">
+                                <i class="fa fa-info-circle me-2"/>
+                                <div>
+                                    <strong>Replacement Items:</strong>
+                                    <span>There are
+                                        <field name="replacement_line_count" widget="integer"/>
+                                        item(s) marked for replacement. Click "Issue Replacement" to process them.
+                                    </span>
+                                </div>
+                            </div>
                         </page>
                         <page string="Internal Notes">
                             <field name="internal_notes" nolabel="1" placeholder="Internal notes for team members..."/>
