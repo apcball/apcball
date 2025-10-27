@@ -39,6 +39,7 @@ class PurchaseRequisition(models.Model):
         comodel_name='hr.employee',
         string='Employee',
         required=True,
+        default=lambda self: self._default_employee_id(),
         help='Select an employee'
     )
     expense_code_id = fields.Many2one(
@@ -197,11 +198,33 @@ class PurchaseRequisition(models.Model):
         compute="_compute_user_is_purchase",
         help="Check if current user is purchase manager"
     )
+    
+    @api.model
+    def _default_employee_id(self):
+        """Get the employee record linked to the current user"""
+        employee = self.env.user.employee_id
+        return employee.id if employee else False
+    
     @api.model
     def create(self, vals):
         if vals.get('name', 'New') == 'New':
             vals['name'] = self.env['ir.sequence'].next_by_code('employee.purchase.requisition') or 'New'
+        
+        # Set employee_id from current user if not provided
+        if not vals.get('employee_id'):
+            employee = self.env.user.employee_id
+            if employee:
+                vals['employee_id'] = employee.id
+        
         return super().create(vals)
+    
+    @api.onchange('user_id')
+    def _onchange_user_id(self):
+        """When user is changed, update employee_id if not set"""
+        if self.user_id and not self.employee_id:
+            employee = self.user_id.employee_id
+            if employee:
+                self.employee_id = employee.id
 
     @api.depends('dept_id')
     def _compute_user_is_purchase(self):
