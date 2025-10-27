@@ -260,10 +260,13 @@ class PurchaseRequisition(models.Model):
             self.env.ref('stock.stock_location_stock').id)
         # Only set destination_location_id if not already set by user
         if not self.destination_location_id:
-            self.destination_location_id = (
-                self.employee_id.employee_location_id.id) if (
-                self.employee_id.employee_location_id) else (
-                self.env.ref('stock.stock_location_stock').id)
+            # Check if user has access to employee_location_id field
+            try:
+                employee_location = self.employee_id.sudo().employee_location_id
+                self.destination_location_id = employee_location.id if employee_location else self.env.ref('stock.stock_location_stock').id
+            except Exception:
+                # Fallback to default location if access is denied
+                self.destination_location_id = self.env.ref('stock.stock_location_stock').id
         self.delivery_type_id = (
             self.source_location_id.warehouse_id.in_type_id.id)
         self.internal_picking_id = (
