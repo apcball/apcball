@@ -28,7 +28,6 @@
     <field name="arch" type="xml">
       <xpath expr="//search" position="inside">
         <field name="location_id"/>
-        <filter string="Location" name="location_filter" domain="[('location_id','=',self)]"/>
         <filter string="Group By Location" name="group_by_location" context="{'group_by':'location_id'}"/>
       </xpath>
     </field>
