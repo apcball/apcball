@@ -22,6 +22,7 @@
         "views/mrp_production_views.xml",
         "views/stock_picking_views.xml",
         "views/res_config_settings_views.xml",
+        "views/mrp_stock_request_mark_done_wizard_views.xml",
     ],
     "demo": [
     ],

@@ -7,6 +7,8 @@
         <field name="arch" type="xml">
             <form string="Allocate Materials">
                 <sheet>
+                    <!-- Add the missing field to make it available for modifiers -->
+                    <field name="has_unallocated_materials" invisible="1"/>
                     <separator string="Manufacturing Order"/>
                     <group>
                         <field name="mo_id" readonly="1"/>
@@ -61,6 +63,11 @@
                             class="btn-primary" 
                             invisible="not line_ids"
                             help="Allocate selected materials to MO"/>
+                    <button name="action_mark_as_done" type="object"
+                            string="Mark as Done"
+                            class="btn-warning"
+                            invisible="not has_unallocated_materials"
+                            help="Transfer all unallocated materials and mark request as Done"/>
                     <button name="action_complete" type="object" string="Complete &amp; Close" 
                             class="btn-success" 
                             invisible="line_ids"

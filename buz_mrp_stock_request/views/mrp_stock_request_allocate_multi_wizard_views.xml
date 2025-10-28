@@ -8,6 +8,8 @@
             <form string="Allocate Materials to Manufacturing Orders">
                 <sheet>
                     <field name="info_html" readonly="1"/>
+                    <!-- Add the missing field to make it available for modifiers -->
+                    <field name="has_unallocated_materials" invisible="1"/>
                     
                     <group>
                         <group>
@@ -107,6 +109,11 @@
                     <button name="action_allocate_all" type="object" 
                             string="Allocate All" class="btn-primary" 
                             help="Allocate materials to all Manufacturing Orders"/>
+                    <button name="action_mark_as_done" type="object"
+                            string="Mark as Done"
+                            class="btn-warning"
+                            invisible="has_unallocated_materials == False"
+                            help="Transfer all unallocated materials and mark request as Done"/>
                     <button string="Cancel" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

@@ -34,14 +34,25 @@ class StockMove(models.Model):
     @api.depends('picking_id')
     def _compute_sequence_number(self):
         """Function to compute line numbers"""
+        import logging
+        _logger = logging.getLogger(__name__)
+        
         for picking in self.mapped('picking_id'):
             sequence_number = 1
+            _logger.info("=== Computing sequence for picking: %s", picking.name)
             if picking.move_ids_without_package:
+                _logger.info("=== Picking has %d moves", len(picking.move_ids_without_package))
                 for lines in picking.move_ids_without_package:
+                    _logger.info("=== Setting sequence %d for move %s", sequence_number, lines.id)
                     lines.sequence_number = sequence_number
                     sequence_number += 1
             else:
-                self.sequence_number = ''
+                _logger.warning("=== Picking %s has no moves, setting sequence to 0 for moves: %s",
+                              picking.name, self.mapped('id'))
+                # FIX: Set sequence to 0 (integer) instead of empty string
+                for move in self:
+                    if move.picking_id == picking:
+                        move.sequence_number = 0
 
 
 class StockPicking(models.Model):

@@ -36,8 +36,8 @@
                     <button name="action_confirm" type="object" string="Confirm" 
                             class="oe_highlight" invisible="state != 'draft'" 
                             help="Confirm the request to create the internal transfer"/>
-                    <button name="action_allocate_wizard" type="object" string="Allocate to MO" 
-                            class="oe_highlight" invisible="state not in ['requested', 'done']" 
+                    <button name="action_allocate_wizard" type="object" string="Allocate to MO"
+                            class="oe_highlight" invisible="state != 'requested'"
                             help="Allocate issued materials to specific Manufacturing Orders"/>
                     <button name="action_cancel" type="object" string="Cancel" 
                             invisible="state not in ['draft', 'requested']" 

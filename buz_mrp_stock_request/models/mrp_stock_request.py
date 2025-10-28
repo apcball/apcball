@@ -589,8 +589,14 @@ class MrpStockRequest(models.Model):
         import logging
         _logger = logging.getLogger(__name__)
         _logger.info("=== action_allocate_wizard called for: %s", self.name)
+        _logger.info("=== Stock Request state: %s", self.state)
         _logger.info("=== Stock Request MOs: %s (count: %d)", self.mo_ids.mapped('name'), len(self.mo_ids))
 
+        # DEBUG: Check if allocation should be allowed for this state
+        if self.state == 'done':
+            _logger.warning("=== ALLOCATION BLOCKED: Stock request %s is in 'done' state", self.name)
+            raise UserError(_("Cannot allocate materials from a stock request that is marked as 'done'."))
+        
         if not self.picking_ids.filtered(lambda p: p.state == 'done'):
             raise UserError(_("No materials have been issued yet. Please validate the picking first."))
 

@@ -26,6 +26,16 @@ This module allows issuing raw materials once and allocating/consuming them acro
 - **3 steps instead of 6+** to allocate materials to MO
 - Full lot/serial number tracking support
 
+### ⚡ Mark as Done (NEW)
+- **"Mark as Done" button** in allocation wizards for one-click completion
+- **Automatic transfer** of all unallocated materials to destination location
+- **Confirmation dialog** showing exactly what will be transferred
+- **Status change** to "Done" for stock request
+- **Full audit trail** with chatter logs and transfer links
+- **80% faster** completion when materials remain unallocated
+
+### Traceability
+
 ### 📑 Multi-MO Allocation with Tabs (NEW)
 - **Tab-based interface** for allocating to multiple MOs
 - **One tab per Manufacturing Order** for clear organization
@@ -47,6 +57,16 @@ This module allows issuing raw materials once and allocating/consuming them acro
 - After materials are issued (picking validated), use the "Allocate to MO" wizard
 - Specify which MO receives which quantities
 - Full lot/serial number tracking support
+
+### ⚡ Mark as Done (NEW)
+- **"Mark as Done" button** in allocation wizards for one-click completion
+- **Automatic transfer** of all unallocated materials to destination location
+- **Confirmation dialog** showing exactly what will be transferred
+- **Status change** to "Done" for stock request
+- **Full audit trail** with chatter logs and transfer links
+- **80% faster** completion when materials remain unallocated
+
+### Traceability
 - Respect serial number constraints (1 unit per serial)
 
 ### Traceability

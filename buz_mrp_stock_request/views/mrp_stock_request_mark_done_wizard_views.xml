@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mark Done Wizard Form View -->
+    <record id="view_mrp_stock_request_mark_done_wizard_form" model="ir.ui.view">
+        <field name="name">mrp.stock.request.mark.done.wizard.form</field>
+        <field name="model">mrp.stock.request.mark.done.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Mark Stock Request as Done">
+                <sheet>
+                    <!-- Add the missing field to make it available for modifiers -->
+                    <field name="has_unallocated" invisible="1"/>
+                    <group>
+                        <group>
+                            <field name="request_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                    </group>
+                    
+                    <field name="summary_html" readonly="1"/>
+                    
+                    <notebook>
+                        <page string="Materials to Transfer" name="materials">
+                            <field name="line_ids">
+                                <tree string="Materials" create="false" delete="false" edit="false">
+                                    <field name="product_id" readonly="1"/>
+                                    <field name="available_qty" readonly="1" string="Available"/>
+                                    <field name="qty_to_transfer" readonly="1" string="To Transfer"/>
+                                    <field name="uom_id" readonly="1"/>
+                                    <field name="request_line_id" column_invisible="1"/>
+                                    <field name="wizard_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                    
+                    <div class="alert alert-info mt16" role="alert" invisible="not has_unallocated">
+                        <strong>ℹ️ Information:</strong><br/>
+                        This action will automatically transfer all unallocated materials to the destination location
+                        and mark the stock request as Done. This cannot be undone.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_confirm" type="object" string="Confirm &amp; Mark as Done" 
+                            class="btn-primary" 
+                            confirm="Are you sure you want to proceed? This action cannot be undone."
+                            help="Transfer all unallocated materials and mark request as Done"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Mark Done Wizard Action -->
+    <record id="action_mrp_stock_request_mark_done_wizard" model="ir.actions.act_window">
+        <field name="name">Mark Stock Request as Done</field>
+        <field name="res_model">mrp.stock.request.mark.done.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

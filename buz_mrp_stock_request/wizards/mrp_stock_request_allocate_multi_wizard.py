@@ -28,6 +28,11 @@ class MrpStockRequestAllocateMultiWizard(models.TransientModel):
         string="Information",
         compute="_compute_info_html",
     )
+    has_unallocated_materials = fields.Boolean(
+        string="Has Unallocated Materials",
+        compute="_compute_has_unallocated_materials",
+        help="Indicates if there are unallocated materials in the stock request"
+    )
 
     @api.depends("request_id", "request_id.mo_ids", "mo_allocation_ids")
     def _compute_info_html(self):
@@ -53,6 +58,36 @@ class MrpStockRequestAllocateMultiWizard(models.TransientModel):
                 "• Set quantity to 0 to skip allocation"
                 "</div>"
             ) % (wizard.request_id.name if wizard.request_id else "N/A", mo_count, mo_names)
+
+    @api.depends("request_id")
+    def _compute_has_unallocated_materials(self):
+        """Check if there are unallocated materials in the stock request."""
+        import logging
+        _logger = logging.getLogger(__name__)
+        
+        for wizard in self:
+            if not wizard.request_id:
+                wizard.has_unallocated_materials = False
+                _logger.info("=== _compute_has_unallocated_materials: No request_id, setting to False")
+                continue
+            
+            # Check each line for available materials
+            has_unallocated = False
+            for line in wizard.request_id.line_ids:
+                has_qty = float_compare(
+                    line.qty_available_to_allocate,
+                    0.0,
+                    precision_rounding=line.uom_id.rounding
+                ) > 0
+                _logger.info("=== _compute_has_unallocated_materials: Product %s, available=%s, has_qty=%s",
+                             line.product_id.name, line.qty_available_to_allocate, has_qty)
+                if has_qty:
+                    has_unallocated = True
+                    break
+            
+            wizard.has_unallocated_materials = has_unallocated
+            _logger.info("=== _compute_has_unallocated_materials: Final result=%s for wizard %s",
+                        has_unallocated, wizard.id)
 
     @api.model
     def default_get(self, fields_list):
@@ -217,6 +252,43 @@ class MrpStockRequestAllocateMultiWizard(models.TransientModel):
                 'type': 'success',
                 'sticky': False,
             }
+        }
+    
+    def action_mark_as_done(self):
+        """Open mark as done confirmation wizard."""
+        self.ensure_one()
+        
+        request = self.request_id
+        
+        if not request:
+            raise UserError(_("No stock request found."))
+        
+        # Check if request has unallocated materials
+        has_unallocated = any(
+            float_compare(
+                line.qty_available_to_allocate,
+                0.0,
+                precision_rounding=line.uom_id.rounding
+            ) > 0
+            for line in request.line_ids
+        )
+        
+        if not has_unallocated:
+            raise UserError(_(
+                "No unallocated materials found.\n\n"
+                "All materials from this stock request have already been allocated."
+            ))
+        
+        # Open mark done wizard
+        return {
+            "name": _("Mark Stock Request as Done"),
+            "type": "ir.actions.act_window",
+            "view_mode": "form",
+            "res_model": "mrp.stock.request.mark.done.wizard",
+            "target": "new",
+            "context": {
+                "default_request_id": request.id,
+            },
         }
 
     def _validate_all_allocations(self, lines):

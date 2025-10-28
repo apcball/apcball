@@ -15,6 +15,11 @@ class MrpProductionAllocateWizard(models.TransientModel):
     mo_id = fields.Many2one('mrp.production', string='Manufacturing Order', required=True, readonly=True)
     line_ids = fields.One2many('mrp.production.allocate.wizard.line', 'wizard_id', string='Materials')
     note = fields.Html(string='Note', readonly=True)
+    has_unallocated_materials = fields.Boolean(
+        string="Has Unallocated Materials",
+        compute="_compute_has_unallocated_materials",
+        help="Indicates if there are unallocated materials in linked stock requests"
+    )
 
     @api.model
     def default_get(self, fields_list):
@@ -26,6 +31,26 @@ class MrpProductionAllocateWizard(models.TransientModel):
             res['mo_id'] = mo_id
         
         return res
+    
+    @api.depends("mo_id")
+    def _compute_has_unallocated_materials(self):
+        """Check if there are unallocated materials in linked stock requests."""
+        for wizard in self:
+            if not wizard.mo_id:
+                wizard.has_unallocated_materials = False
+                continue
+            
+            # Check all linked stock requests for unallocated materials
+            wizard.has_unallocated_materials = any(
+                float_compare(
+                    line.qty_available_to_allocate,
+                    0.0,
+                    precision_rounding=line.uom_id.rounding
+                ) > 0
+                for request in wizard.mo_id.stock_request_ids
+                for line in request.line_ids
+                if request.state in ['requested', 'done']
+            )
     
     def _populate_wizard(self):
         """Populate wizard with lines after creation."""
@@ -265,6 +290,58 @@ class MrpProductionAllocateWizard(models.TransientModel):
                 'sticky': False,
                 'next': {'type': 'ir.actions.act_window_close'},
             }
+        }
+    
+    def action_mark_as_done(self):
+        """Open mark as done confirmation wizard."""
+        self.ensure_one()
+        
+        # Get stock requests linked to this MO
+        stock_requests = self.mo_id.stock_request_ids.filtered(
+            lambda r: r.state in ['requested', 'done']
+        )
+        
+        if not stock_requests:
+            raise UserError(_(
+                "No stock requests found for this MO that can be marked as done.\n\n"
+                "Please ensure:\n"
+                "• Stock requests are linked to this MO\n"
+                "• Stock requests are in 'Requested' or 'Done' state\n"
+                "• Materials have been issued (picking validated)"
+            ))
+        
+        # Check if any request has unallocated materials
+        requests_with_unallocated = stock_requests.filtered(
+            lambda r: any(
+                float_compare(
+                    line.qty_available_to_allocate,
+                    0.0,
+                    precision_rounding=line.uom_id.rounding
+                ) > 0
+                for line in r.line_ids
+            )
+        )
+        
+        if not requests_with_unallocated:
+            raise UserError(_(
+                "No unallocated materials found.\n\n"
+                "All materials from linked stock requests have already been allocated."
+            ))
+        
+        # If multiple requests, let user choose (for now, use first one)
+        # In future, could add selection dialog
+        request = requests_with_unallocated[0]
+        
+        # Open mark done wizard
+        return {
+            "name": _("Mark Stock Request as Done"),
+            "type": "ir.actions.act_window",
+            "view_mode": "form",
+            "res_model": "mrp.stock.request.mark.done.wizard",
+            "target": "new",
+            "context": {
+                "default_request_id": request.id,
+            },
         }
     
     def _refresh_lines(self):
