@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- IT Issue Report -->
+    <record id="paperformat_it_issue" model="report.paperformat">
+        <field name="name">IT Issue Report Format</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="page_height">0</field>
+        <field name="page_width">0</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">40</field>
+        <field name="margin_bottom">20</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">35</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_it_issue" model="ir.actions.report">
+        <field name="name">IT Issue Report</field>
+        <field name="model">it.ticket.issue</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_it_request.report_it_issue_template</field>
+        <field name="report_file">buz_it_request.report_it_issue_template</field>
+        <field name="paperformat_id" ref="paperformat_it_issue"/>
+        <field name="print_report_name">'IT_Issue_%s' % (object.name)</field>
+    </record>
+
+    <template id="report_it_issue_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="oe_structure"/>
+                        <div class="row">
+                            <div class="col-6">
+                                <h3>IT Issue Report</h3>
+                            </div>
+                            <div class="col-6 text-right">
+                                <h3><span t-field="doc.name"/></h3>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt32">
+                            <div class="col-6">
+                                <strong>Requester:</strong>
+                                <p t-field="doc.requester_id.name"/>
+                                
+                                <strong>Department:</strong>
+                                <p t-field="doc.department_id.name"/>
+                                
+                                <strong>Category:</strong>
+                                <p t-field="doc.category_id.name"/>
+                                
+                                <strong>Priority:</strong>
+                                <p t-field="doc.priority"/>
+                                
+                                <strong>Issue Date:</strong>
+                                <p t-field="doc.issue_date"/>
+                                
+                                <strong>Due Date:</strong>
+                                <p t-field="doc.due_date"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Assignee:</strong>
+                                <p t-field="doc.assignee_id.name"/>
+                                
+                                <strong>SLA Status:</strong>
+                                <p t-field="doc.sla_status"/>
+                                
+                                <strong>Status:</strong>
+                                <p t-field="doc.state"/>
+                                
+                                <strong>Resolved Date:</strong>
+                                <p t-field="doc.resolved_date"/>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt32">
+                            <div class="col-12">
+                                <strong>Description:</strong>
+                                <p t-field="doc.description"/>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt32">
+                            <div class="col-12">
+                                <strong>Root Cause:</strong>
+                                <p t-field="doc.root_cause"/>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt32">
+                            <div class="col-12">
+                                <strong>Resolution Note:</strong>
+                                <p t-field="doc.resolution_note"/>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt32">
+                            <div class="col-6">
+                                <strong>Requested by</strong>
+                                <div class="mt16"/>
+                                <p><span t-field="doc.requester_id.name"/></p>
+                            </div>
+                            <div class="col-6">
+                                <strong>Resolved by</strong>
+                                <div class="mt16"/>
+                                <p><span t-field="doc.assignee_id.name"/></p>
+                            </div>
+                        </div>
+                        
+                        <div class="oe_structure"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

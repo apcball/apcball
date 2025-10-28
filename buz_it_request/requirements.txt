@@ -1,0 +1,9 @@
+# For the IT Request Suite module to function properly, the following modules should be installed:
+- base
+- mail
+- hr
+- purchase
+- stock
+
+# Optional modules that enhance functionality:
+- purchase_request (for full procurement workflow)

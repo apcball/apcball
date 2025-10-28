@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- IT Procurement Request Tree View -->
+    <record id="view_it_request_procurement_tree" model="ir.ui.view">
+        <field name="name">it.request.procurement.tree</field>
+        <field name="model">it.request.procurement</field>
+        <field name="arch" type="xml">
+            <tree string="IT Procurement Requests">
+                <field name="name"/>
+                <field name="requester_id"/>
+                <field name="department_id"/>
+                <field name="create_date"/>
+                <field name="state"/>
+                <field name="purchase_order_id" invisible="1"/>
+                <button name="action_view_po" type="object" string="View PO"
+                        icon="fa-external-link" invisible="not purchase_order_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- IT Procurement Request Form View -->
+    <record id="view_it_request_procurement_form" model="ir.ui.view">
+        <field name="name">it.request.procurement.form</field>
+        <field name="model">it.request.procurement</field>
+        <field name="arch" type="xml">
+            <form string="IT Procurement Request">
+                <header>
+                    <button name="action_submit_for_approval" type="object" string="Submit for Approval"
+                            invisible="state != 'draft'" class="oe_highlight"/>
+                    <button name="action_manager_approve" type="object" string="Approve Request"
+                            invisible="state != 'to_manager_approve'" class="oe_highlight"/>
+                    <button name="action_manager_reject" type="object" string="Reject Request"
+                            invisible="state != 'to_manager_approve'"/>
+                    <button name="action_send_to_it" type="object" string="Send to IT"
+                            invisible="state != 'manager_approved'" class="oe_highlight"/>
+                    <button name="action_it_review" type="object" string="IT Review"
+                            invisible="state != 'to_it'" class="oe_highlight"/>
+                    <button name="action_create_pr" type="object" string="Create PR/RFQ"
+                            invisible="state != 'it_reviewed'" class="oe_highlight"/>
+                    <button name="action_receive_goods" type="object" string="Receive Goods"
+                            invisible="state != 'pr_created'" class="oe_highlight"/>
+                    <field name="state" widget="statusbar" 
+                           statusbar_visible="draft,to_manager_approve,manager_approved,to_it,it_reviewed,pr_created,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" 
+                                icon="fa-archive">
+                            <field name="active" widget="boolean_button" 
+                                   options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="requester_id"/>
+                            <field name="department_id"/>
+                            <field name="manager_id"/>
+                            <field name="purchase_order_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="it_operator_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Request Details">
+                            <field name="justification"/>
+                            <field name="attachment_ids" widget="binary_multiple"/>
+                        </page>
+                        <page string="Procurement Lines">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="description"/>
+                                    <field name="qty"/>
+                                    <field name="uom_id"/>
+                                    <field name="est_price"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Approval" invisible="state in ['draft']">
+                            <group>
+                                <field name="approval_note"
+                                       readonly="state not in ['to_manager_approve']"
+                                       required="state in ['to_manager_approve']"/>
+                            </group>
+                        </page>
+                        <page string="IT Review">
+                            <field name="it_spec_note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- IT Procurement Request Search View -->
+    <record id="view_it_request_procurement_search" model="ir.ui.view">
+        <field name="name">it.request.procurement.search</field>
+        <field name="model">it.request.procurement</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Request Number"/>
+                <field name="requester_id" string="Requester"/>
+                <field name="department_id" string="Department"/>
+                <field name="state" string="State"/>
+                <separator/>
+                <filter name="my_requests" string="My Requests" domain="[('requester_id', '=', uid)]"/>
+                <filter name="to_approve" string="To Approve" domain="[('state', '=', 'to_manager_approve')]"/>
+                <filter name="awaiting_pr" string="Awaiting PR Creation" domain="[('state', '=', 'it_reviewed')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_department" string="Department" domain="[]" context="{'group_by':'department_id'}"/>
+                    <filter name="group_state" string="State" domain="[]" context="{'group_by':'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>

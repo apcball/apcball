@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Security Groups -->
+    <record id="group_it_user" model="res.groups">
+        <field name="name">IT User</field>
+        <field name="category_id" ref="base.module_category_custom"/>
+        <field name="comment">Access to IT tickets, access requests, and procurement requests</field>
+    </record>
+
+    <record id="group_it_manager" model="res.groups">
+        <field name="name">IT Manager</field>
+        <field name="category_id" ref="base.module_category_custom"/>
+        <field name="comment">Full access to IT management, including configuration and reporting</field>
+        <field name="implied_ids" eval="[(4, ref('group_it_user'))]"/>
+    </record>
+
+    <record id="group_it_requester" model="res.groups">
+        <field name="name">IT Requester</field>
+        <field name="category_id" ref="base.module_category_custom"/>
+        <field name="comment">Can create IT requests but only view own records</field>
+    </record>
+
+    <record id="group_it_manager_approver" model="res.groups">
+        <field name="name">IT Manager Approver</field>
+        <field name="category_id" ref="base.module_category_custom"/>
+        <field name="comment">Can approve IT access and procurement requests</field>
+    </record>
+
+    <!-- Record Rules -->
+    <record id="rule_it_ticket_issue_own" model="ir.rule">
+        <field name="name">IT Ticket: Own Records</field>
+        <field name="model_id" ref="model_it_ticket_issue"/>
+        <field name="groups" eval="[(4, ref('group_it_requester'))]"/>
+        <field name="domain_force">[('requester_id', '=', user.employee_id.id)]</field>
+    </record>
+
+    <record id="rule_it_ticket_issue_department" model="ir.rule">
+        <field name="name">IT Ticket: Department Records</field>
+        <field name="model_id" ref="model_it_ticket_issue"/>
+        <field name="groups" eval="[(4, ref('group_it_manager_approver'))]"/>
+        <field name="domain_force">[('department_id', '=', user.employee_id.department_id.id)]</field>
+    </record>
+
+    <record id="rule_it_ticket_issue_all" model="ir.rule">
+        <field name="name">IT Ticket: All Records</field>
+        <field name="model_id" ref="model_it_ticket_issue"/>
+        <field name="groups" eval="[(4, ref('group_it_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
+    <record id="rule_it_request_access_own" model="ir.rule">
+        <field name="name">IT Access Request: Own Records</field>
+        <field name="model_id" ref="model_it_request_access"/>
+        <field name="groups" eval="[(4, ref('group_it_requester'))]"/>
+        <field name="domain_force">[('requester_id', '=', user.employee_id.id)]</field>
+    </record>
+
+    <record id="rule_it_request_access_department" model="ir.rule">
+        <field name="name">IT Access Request: Department Records</field>
+        <field name="model_id" ref="model_it_request_access"/>
+        <field name="groups" eval="[(4, ref('group_it_manager_approver'))]"/>
+        <field name="domain_force">[('department_id', '=', user.employee_id.department_id.id)]</field>
+    </record>
+
+    <record id="rule_it_request_access_all" model="ir.rule">
+        <field name="name">IT Access Request: All Records</field>
+        <field name="model_id" ref="model_it_request_access"/>
+        <field name="groups" eval="[(4, ref('group_it_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
+    <record id="rule_it_request_procurement_own" model="ir.rule">
+        <field name="name">IT Procurement Request: Own Records</field>
+        <field name="model_id" ref="model_it_request_procurement"/>
+        <field name="groups" eval="[(4, ref('group_it_requester'))]"/>
+        <field name="domain_force">[('requester_id', '=', user.employee_id.id)]</field>
+    </record>
+
+    <record id="rule_it_request_procurement_department" model="ir.rule">
+        <field name="name">IT Procurement Request: Department Records</field>
+        <field name="model_id" ref="model_it_request_procurement"/>
+        <field name="groups" eval="[(4, ref('group_it_manager_approver'))]"/>
+        <field name="domain_force">[('department_id', '=', user.employee_id.department_id.id)]</field>
+    </record>
+
+    <record id="rule_it_request_procurement_all" model="ir.rule">
+        <field name="name">IT Procurement Request: All Records</field>
+        <field name="model_id" ref="model_it_request_procurement"/>
+        <field name="groups" eval="[(4, ref('group_it_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
+    <!-- Record Rules for Procurement Lines -->
+    <record id="rule_it_procurement_line_own" model="ir.rule">
+        <field name="name">IT Procurement Line: Own Records</field>
+        <field name="model_id" ref="model_it_procurement_line"/>
+        <field name="groups" eval="[(4, ref('group_it_requester'))]"/>
+        <field name="domain_force">[('request_id.requester_id', '=', user.employee_id.id)]</field>
+    </record>
+
+    <record id="rule_it_procurement_line_department" model="ir.rule">
+        <field name="name">IT Procurement Line: Department Records</field>
+        <field name="model_id" ref="model_it_procurement_line"/>
+        <field name="groups" eval="[(4, ref('group_it_manager_approver'))]"/>
+        <field name="domain_force">[('request_id.department_id', '=', user.employee_id.department_id.id)]</field>
+    </record>
+
+    <record id="rule_it_procurement_line_all" model="ir.rule">
+        <field name="name">IT Procurement Line: All Records</field>
+        <field name="model_id" ref="model_it_procurement_line"/>
+        <field name="groups" eval="[(4, ref('group_it_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
+</odoo>

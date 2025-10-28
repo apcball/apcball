@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- IT Access Request Report -->
+    <record id="paperformat_it_access" model="report.paperformat">
+        <field name="name">IT Access Request Report Format</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="page_height">0</field>
+        <field name="page_width">0</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">40</field>
+        <field name="margin_bottom">20</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">35</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_it_access" model="ir.actions.report">
+        <field name="name">IT Access Request Report</field>
+        <field name="model">it.request.access</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_it_request.report_it_access_template</field>
+        <field name="report_file">buz_it_request.report_it_access_template</field>
+        <field name="paperformat_id" ref="paperformat_it_access"/>
+        <field name="print_report_name">'IT_Access_Request_%s' % (object.name)</field>
+    </record>
+
+    <template id="report_it_access_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="oe_structure"/>
+                        <div class="row">
+                            <div class="col-6">
+                                <h3>IT Access Request Form</h3>
+                            </div>
+                            <div class="col-6 text-right">
+                                <h3><span t-field="doc.name"/></h3>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt32">
+                            <div class="col-6">
+                                <strong>Requester:</strong>
+                                <p t-field="doc.requester_id.name"/>
+                                
+                                <strong>Employee Receiving Access:</strong>
+                                <p t-field="doc.employee_id.name"/>
+                                
+                                <strong>Department:</strong>
+                                <p t-field="doc.department_id.name"/>
+                                
+                                <strong>Request Type:</strong>
+                                <p t-field="doc.request_type"/>
+                                
+                                <strong>System Details:</strong>
+                                <p t-field="doc.system_detail"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Approving Manager:</strong>
+                                <p t-field="doc.manager_id.name"/>
+                                
+                                <strong>IT Operator:</strong>
+                                <p t-field="doc.it_operator_id.name"/>
+                                
+                                <strong>Status:</strong>
+                                <p t-field="doc.state"/>
+                                
+                                <strong>Creation Date:</strong>
+                                <p t-field="doc.create_date"/>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt32">
+                            <div class="col-12">
+                                <strong>Justification:</strong>
+                                <p t-field="doc.justification"/>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt32">
+                            <div class="col-12">
+                                <strong>Manager Approval Note:</strong>
+                                <p t-field="doc.approval_note"/>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt32">
+                            <div class="col-12">
+                                <strong>IT Implementation Note:</strong>
+                                <p t-field="doc.it_note"/>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt32">
+                            <div class="col-12">
+                                <strong>Checklist:</strong>
+                                <table class="table table-striped mt16">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Completed</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="doc.checklist_ids" t-as="item">
+                                            <td><span t-field="item.name"/></td>
+                                            <td><span t-field="item.is_completed"/></td>
+                                            <td><span t-field="item.notes"/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt32">
+                            <div class="col-4">
+                                <strong>Requested by</strong>
+                                <div class="mt16"/>
+                                <p><span t-field="doc.requester_id.name"/></p>
+                            </div>
+                            <div class="col-4">
+                                <strong>Approved by</strong>
+                                <div class="mt16"/>
+                                <p><span t-field="doc.manager_id.name"/></p>
+                            </div>
+                            <div class="col-4">
+                                <strong>Implemented by</strong>
+                                <div class="mt16"/>
+                                <p><span t-field="doc.it_operator_id.name"/></p>
+                            </div>
+                        </div>
+                        
+                        <div class="oe_structure"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

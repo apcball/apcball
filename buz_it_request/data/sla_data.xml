@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- SLA Policies by Priority -->
+        <record id="sla_policy_low" model="it.sla.policy">
+            <field name="name">Low Priority</field>
+            <field name="priority">0</field>
+            <field name="resolution_hours">72</field> <!-- 3 days -->
+            <field name="warning_hours">48</field>   <!-- 2 days -->
+        </record>
+
+        <record id="sla_policy_normal" model="it.sla.policy">
+            <field name="name">Normal Priority</field>
+            <field name="priority">1</field>
+            <field name="resolution_hours">24</field> <!-- 1 day -->
+            <field name="warning_hours">12</field>   <!-- 12 hours -->
+        </record>
+
+        <record id="sla_policy_high" model="it.sla.policy">
+            <field name="name">High Priority</field>
+            <field name="priority">2</field>
+            <field name="resolution_hours">8</field>  <!-- 8 hours -->
+            <field name="warning_hours">4</field>    <!-- 4 hours -->
+        </record>
+
+        <record id="sla_policy_urgent" model="it.sla.policy">
+            <field name="name">Urgent Priority</field>
+            <field name="priority">3</field>
+            <field name="resolution_hours">2</field>  <!-- 2 hours -->
+            <field name="warning_hours">1</field>    <!-- 1 hour -->
+        </record>
+
+        <!-- IT Categories -->
+        <record id="category_computer" model="it.category">
+            <field name="name">Computer</field>
+            <field name="description">Issues related to computer hardware or software</field>
+        </record>
+
+        <record id="category_printer" model="it.category">
+            <field name="name">Printer</field>
+            <field name="description">Issues related to printer hardware or connectivity</field>
+        </record>
+
+        <record id="category_network" model="it.category">
+            <field name="name">Network</field>
+            <field name="description">Issues related to network connectivity</field>
+        </record>
+
+        <record id="category_software" model="it.category">
+            <field name="name">Software</field>
+            <field name="description">Issues related to software applications</field>
+        </record>
+
+        <record id="category_other" model="it.category">
+            <field name="name">Other</field>
+            <field name="description">Other IT related issues</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- IT Ticket Issue Sequence -->
+        <record id="seq_it_ticket_issue" model="ir.sequence">
+            <field name="name">IT Ticket Issue</field>
+            <field name="code">it.ticket.issue</field>
+            <field name="prefix">IT-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- IT Access Request Sequence -->
+        <record id="seq_it_access_request" model="ir.sequence">
+            <field name="name">IT Access Request</field>
+            <field name="code">it.request.access</field>
+            <field name="prefix">ITA-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- IT Procurement Request Sequence -->
+        <record id="seq_it_procurement_request" model="ir.sequence">
+            <field name="name">IT Procurement Request</field>
+            <field name="code">it.request.procurement</field>
+            <field name="prefix">ITP-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

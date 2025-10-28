@@ -1,184 +1,222 @@
-Goals
-	•	โมดูลชื่อ buz_it_ticket ติดตั้งแล้วใช้งานได้ทันที
-	•	ใช้ โมเดลเดียว it.ticket แยก flow ด้วย category = issue | access | purchase
-	•	ทำ 3 flow ครบ (ไม่เน้นเฉพาะ PO):
-	•	Issue/Repair: รับแจ้ง → ทำงาน → ขอข้อมูลเพิ่ม (ถ้ามี) → แก้เสร็จ → ปิด
-	•	Access: ผู้ขอ → Manager อนุมัติ → IT ดำเนินการสร้างสิทธิ์/บัญชี → ปิด
-	•	Purchase: ผู้ขอ → Manager อนุมัติ → IT ตรวจสอบ → สร้าง PO → รับของ → ปิด
-	•	สร้างรายงาน QWeb สำหรับ ISO ทั้ง 3 หมวด + Summary
-	•	มี Dashboard กราฟ/พิวอต/บอร์ด แยกตามหมวด
-	•	มี Demo Data (ถ้า demo=True) และ Uninstall ได้สะอาด
+Prompt Engineering: Implement Odoo 17 Module - IT Request Suite
 
-Dependencies
+🎯 Objective
 
-hr, mail, uom, purchase, web (+ stock เป็นทางเลือกถ้ารับเข้าอุปกรณ์)
+สร้างโมดูล Odoo 17 สำหรับจัดการคำขอด้านไอที (IT Request Suite) แยกออกเป็น 3 ฟอร์มอิสระ ไม่ใช้ form เดียวกัน และมีแดชบอร์ดรวมการทำงานของทีม IT
 
-Security & Groups
-	•	group_it_requester (พนักงานผู้ขอ)
-	•	group_it_user (เจ้าหน้าที่ IT)
-	•	group_it_manager (หัวหน้า IT)
-	•	group_it_approver (ผู้อนุมัติสายงาน/HR/Finance—เผื่อขยาย)
-	•	group_it_iso_auditor (อ่าน+พิมพ์ ISO)
+⸻
 
-Record Rules (สำคัญ):
-	•	Requester เห็นเฉพาะ ticket ของตน [('employee_id.user_id', '=', user.id)]
-	•	IT/Manager เห็นในบริษัทตน, หรือทุกใบตามกลุ่ม
+🧩 Module Information
+	•	Module Name: buz_it_request
+	•	Odoo Version: 17.0 (Community)
+	•	Category: IT Management / Helpdesk / Purchase
+	•	Author: Ball (MOGEN)
+	•	Description: รวมระบบคำขอด้าน IT ทั้งหมดไว้ในโมดูลเดียว แต่แยกออกเป็น 3 ฟอร์ม คือ
+	1.	IT Request – แจ้งซ่อม / ปัญหา
+	2.	IT Access Request – ขอใช้งานระบบไอที
+	3.	IT Procurement Request – ขอซื้ออุปกรณ์ไอที
+	•	Dashboard: รวมสถานะทุกประเภทเป็นการ์ด + กราฟ สำหรับทีม IT
 
-Data Model
+⸻
 
-it.ticket (core)
+🧱 Structure
 
-ฟิลด์หลัก:
-	•	name (sequence; prefix ตาม category: ISS/…, ACS/…, PRC/…)
-	•	category (selection: issue, access, purchase, required)
-	•	state (selection; แตกต่างตามหมวด—ดูด้านล่าง)
-	•	employee_id (m2o hr.employee, required)
-	•	manager_id (m2o hr.employee, compute จาก employee_id.parent_id, store=True)
-	•	it_responsible_id (m2o res.users)
+buz_it_request/
+├── __init__.py
+├── __manifest__.py
+├── security/
+│   ├── ir.model.access.csv
+│   └── security.xml
+├── data/
+│   ├── sequence.xml
+│   ├── mail_activity.xml
+│   ├── dashboard_data.xml
+│   └── sla_data.xml
+├── models/
+│   ├── it_ticket_issue.py
+│   ├── it_request_access.py
+│   ├── it_request_procurement.py
+├── views/
+│   ├── menu.xml
+│   ├── it_ticket_issue_views.xml
+│   ├── it_request_access_views.xml
+│   ├── it_request_procurement_views.xml
+│   ├── dashboard_views.xml
+│   └── report_templates.xml
+└── report/
+    ├── report_issue.xml
+    ├── report_access.xml
+    └── report_procurement.xml
+
+
+⸻
+
+🧩 Model 1: it.ticket.issue – แจ้งซ่อม / ปัญหา
+
+Fields
+	•	name (sequence)
+	•	requester_id (employee)
+	•	department_id, location_id
+	•	category_id (computer, printer, network, software, other)
 	•	priority (Low/Normal/High/Urgent)
-	•	company_id, department_id, user_id (ผู้สร้าง)
+	•	issue_date, due_date, resolved_date
 	•	description, attachment_ids
-	•	SLA: sla_policy_id, deadline_sla, responded_at, resolved_at, ttr_respond, ttr_resolve, sla_breached (bool)
-	•	Access: access_template_id, access_line_ids (รายละเอียดสิทธิ์)
-	•	Purchase: purchase_line_ids (o2m), purchase_id (m2o purchase.order)
-	•	ISO: iso_doc_code, revision, printed_count, printed_by, printed_at
-	•	Inherit: mail.thread, mail.activity.mixin
+	•	assignee_id (IT staff)
+	•	root_cause, resolution_note
+	•	state: draft → triage → in_progress → waiting_user → done → cancel
+	•	sla_status: on_track / risk / breached
 
-it.ticket.line
+Logic
+	•	SLA คำนวณอัตโนมัติตาม priority + calendar
+	•	ปิดงานต้องมี resolution_note
+	•	Auto assign technician ตาม category
+	•	แจ้งเตือน SLA ใกล้หมดอายุ / breach ผ่าน activity
 
-ใช้ร่วมหมวด Access และ Purchase:
-	•	ticket_id (m2o, cascade)
-	•	name (Char, required)
-	•	product_id (m2o product.product, optional สำหรับ purchase)
-	•	uom_id (m2o uom.uom), quantity (Float, default=1.0)
-	•	estimated_cost (Float; purchase)
-	•	access_type (selection: email/erp/vpn/drive/shared-folder/etc.)
-	•	access_payload (Text/JSON—เช่น กลุ่ม, role, module)
+⸻
 
-it.sla.policy (สั้น ๆ)
-	•	เงื่อนไข: category, priority, subtype (optional)
-	•	ค่า: response_time_hours, resolve_time_hours
+🧩 Model 2: it.request.access – ขอใช้งานระบบไอที
 
-it.access.template (optional, ชุดสิทธิ์สำเร็จรูป)
-	•	name, department, lines (ชนิดสิทธิ์/กลุ่ม/role)
+Flow
+	1.	User ส่งคำขอ (draft → to_manager_approve)
+	2.	Manager อนุมัติ (→ manager_approved)
+	3.	IT ดำเนินการ (→ to_it → it_in_progress → done)
 
-State Machines (3 หมวด)
+Fields
+	•	name (sequence)
+	•	requester_id, employee_id
+	•	request_type (Email, ERP, VPN, Wi-Fi, Shared Folder, etc.)
+	•	system_detail, justification
+	•	manager_id, approval_note
+	•	it_operator_id, it_note
+	•	checklist_ids (ตาม template)
+	•	attachment_ids
+	•	state: draft → to_manager_approve → manager_approved → to_it → done
 
-1) Issue/Repair (แจ้งปัญหา–แจ้งซ่อม)
+Logic
+	•	เมื่อ manager อนุมัติ → auto activity ส่งให้ IT
+	•	Checklist template ต่อชนิดการขอ (เช่น Email, ERP, VPN)
+	•	บันทึกสิทธิ์ที่มอบให้ (role, username)
+	•	พิมพ์ฟอร์ม ISO พร้อมลายเซ็น
 
-draft → submitted → in_progress → pending_info → resolved → closed (หรือ cancel)
-	•	Submit: สร้าง activity ให้ IT, ตั้ง SLA
-	•	In Progress: IT เริ่มงาน
-	•	Pending Info: ขอข้อมูลเพิ่ม (แจ้ง requester)
-	•	Resolved: แก้เสร็จ, บันทึกผล
-	•	Closed: ผู้ขอคอนเฟิร์มหรือ auto-close ภายใน X วัน
+⸻
 
-2) Access (ขอใช้งานระบบ)
+🧩 Model 3: it.request.procurement – ขอซื้ออุปกรณ์ไอที
 
-draft → submitted → waiting_manager → approved → implementing → closed (หรือ rejected/cancel)
-	•	Submit: ส่งให้ Manager อนุมัติ (ดึง manager_id อัตโนมัติ)
-	•	Approved: Manager อนุมัติครบ → ไป Implementing
-	•	Implementing: IT ดำเนินการตาม access_line_ids (สร้าง email/เพิ่ม ERP group ฯลฯ)
-	•	Closed: สำเร็จ + แจ้งผู้ขอ
+Flow
+	1.	User สร้างคำขอ (draft)
+	2.	Manager Approve (→ manager_approved)
+	3.	IT ตรวจสอบ / เปิด PR (→ it_reviewed → pr_created)
+	4.	ติดตามสถานะ PR/PO → done
 
-3) Purchase (ขอซื้ออุปกรณ์)
+Fields
+	•	name (sequence)
+	•	requester_id, department_id
+	•	justification
+	•	line_ids (One2many): product, description, qty, uom, est_price
+	•	manager_id, approval_note
+	•	it_operator_id, it_spec_note
+	•	purchase_request_id / purchase_order_id
+	•	state: draft → to_manager_approve → manager_approved → to_it → it_reviewed → pr_created → done
 
-draft → submitted → waiting_manager → waiting_it → po_created → received → closed (หรือ rejected/cancel)
-	•	Submit: ส่ง Manager
-	•	Waiting IT: Manager อนุมัติแล้วส่งต่อ IT ตรวจสอบ
-	•	Create PO: IT กดสร้าง PO จาก purchase_line_ids
-	•	Received: รับของ/ส่งมอบ (เชื่อม stock picking ถ้ามี)
-	•	Closed: ปิดงาน
+Logic
+	•	ปุ่ม Create PR: ตรวจสอบโมดูล purchase_request → ถ้ามีใช้ PR ถ้าไม่มีใช้ RFQ
+	•	Smart button: ลิงก์เอกสาร PR/PO ที่สร้าง
+	•	รายงาน ISO พิมพ์ฟอร์มคำขอซื้อ
 
-Buttons & Permissions (ตัวอย่างหลัก)
-	•	Issue
-	•	Submit (requester), Start Work/Need Info/Resolve/Close (IT/Manager)
-	•	Access
-	•	Submit (requester)
-	•	Manager Approve/Reject (เฉพาะ manager)
-	•	Start Implement / Mark Done (IT)
-	•	Purchase
-	•	Submit (requester)
-	•	Manager Approve/Reject (manager)
-	•	Create PO (IT), Mark Received/Close (IT/Manager)
+⸻
 
-Business Logic ที่ต้องใส่
-	•	คำนวณ SLA deadline เมื่อ Submit ตาม sla_policy_id
-	•	บันทึก responded_at เมื่อ state เปลี่ยนจาก submitted ครั้งแรก
-	•	บันทึก resolved_at เมื่อเข้าสู่ resolved/closed (หมวด issue) หรือ closed (access/purchase)
-	•	ตั้ง sla_breached ถ้าเลย deadline_sla
-	•	ทุกการเปลี่ยน state ให้ message_post และ mail.activity ไปยังผู้เกี่ยวข้อง
-	•	สร้าง purchase.order จาก purchase_line_ids: map name/product_id/qty/uom/price_unit/date_planned + origin=ticket.name, link กลับ purchase_id
+📊 Dashboard (IT Overview)
 
-Views & Menu
-	•	เมนูหลัก: IT Tickets
-	•	Submenu: Tickets (list/kanban/graph/pivot), Dashboard, Reports, Configuration (SLA/Access Templates)
-	•	Search filters: category/state/priority/department/IT responsible/SLA breach
-	•	Kanban: แยกคอลัมน์ตาม state พร้อม badge SLA
-	•	Smart buttons: PO, Activities, Print Count
+KPI Cards
+	•	Open Issues (ทั้งหมด/ตาม priority)
+	•	Awaiting Manager Approval (Access/Procurement)
+	•	Awaiting IT Action (ทุกประเภท)
+	•	SLA Breached / At Risk
+	•	PR Created / Waiting Vendor / Received
 
-Reports (QWeb, ISO)
-	•	Issue Report (ISO): ข้อมูลปัญหา, ขั้นตอนแก้ไข, ผู้ดำเนินการ, ลายเซ็น ตรวจทาน
-	•	Access Request Form (ISO): รายละเอียดสิทธิ์, ผู้อนุมัติ, ลายเซ็น
-	•	IT Purchase Request (ISO): รายการจะซื้อ + ผู้อนุมัติ + เลข PO
-	•	Ticket Summary (Batch): เลือกช่วงวันที่/หมวด แสดงตารางสรุป
-	•	ก่อนพิมพ์ทุกครั้งให้บันทึก printed_by, printed_at, เพิ่ม printed_count
+Charts
+	•	Bar: จำนวนงาน IT ตามหมวด/สัปดาห์
+	•	Pie: งานแยกตามประเภท (Issue/Access/Procurement)
+	•	Line: SLA On-time vs Breach
+	•	Table: รายการใกล้ครบกำหนด (due_date)
 
-Dashboard (Graph/Pivot/Board)
-	•	การ์ดนับ: Issue Open/Overdue/SLA Breach, Access Waiting Manager/Implementing, Purchase Waiting Manager/Waiting IT/PO Created
-	•	กราฟ: จำนวน ticket ต่อแผนก/ประเภท/ผู้รับผิดชอบ (7/30 วัน), Avg TTR Respond/Resolve
-	•	Pivot: สรุป cost (purchase) ต่อแผนก/vendor, จำนวน access ต่อ template
+⸻
 
-File Structure (ให้โค้ดเจนสร้าง)
-buz_it_ticket/
-├─ __manifest__.py
-├─ __init__.py
-├─ security/
-│  ├─ ir.model.access.csv
-│  └─ security.xml
-├─ data/
-│  ├─ sequence.xml
-│  ├─ mail_templates.xml
-│  ├─ sla_data.xml
-│  ├─ access_templates.xml
-│  └─ demo_data.xml
-├─ models/
-│  ├─ it_ticket.py
-│  ├─ it_ticket_line.py
-│  ├─ it_sla_policy.py
-│  └─ it_access_template.py
-├─ views/
-│  ├─ it_ticket_views.xml
-│  ├─ it_ticket_actions.xml
-│  ├─ it_ticket_menu.xml
-│  ├─ it_dashboard_views.xml
-│  └─ it_config_views.xml
-└─ report/
-   ├─ it_issue_report.xml
-   ├─ it_access_request_report.xml
-   ├─ it_purchase_request_report.xml
-   └─ it_ticket_summary_report.xml
- Acceptance Criteria (สำคัญ)
-	1.	Issue: สร้าง–Submit–In Progress–Pending Info–Resolved–Closed ได้ครบ, SLA คำนวณและ breach ถูกต้อง
-	2.	Access: Submit แล้วส่งถึง Manager, อนุมัติแล้ว IT ทำ Implement, ปิดงานแล้วแจ้งผู้ขอ
-	3.	Purchase: Submit → Manager Approve → IT Create PO จาก lines → link PO กลับ ticket → Mark Received/Close
-	4.	ISO Print: พิมพ์ได้ทั้ง 3 แบบ, printed_count/by/at ถูกบันทึก
-	5.	Dashboard: มีกราฟ/พิวอต/ตัวนับตามหมวด ใช้งานได้
-	6.	Security: Requester เห็นเฉพาะของตน, ปุ่มแสดงตาม state+groups, ไม่เกิด access error
-	7.	Demo: โหลด demo ผ่าน (พนักงาน/ผู้จัดการ/IT, ตัวอย่าง issue/access/purchase หลายสถานะ)
-	8.	Uninstall: ไม่ทิ้ง orphan (m2o/o2m cascade พร้อม)
+🔐 Security
 
-Notes ให้โค้ดเจน
-	•	ใช้ _() ครอบข้อความแปลได้
-	•	ใช้ @api.depends + store=True กับ manager_id/metric ที่จำเป็น
-	•	ใช้ mail.activity แจ้งเตือนทุกจุดเปลี่ยน state สำคัญ
-	•	รองรับ multi-company (company_id)
-	•	ใส่ domain vendor/supplier ใน purchase ถ้าทำ wizard เลือก vendor
-	•	แยก sequence ตาม category (ISS/ACS/PRC)
+Groups
+	•	group_it_user: เจ้าหน้าที่ IT (ดู/แก้ไขงานทั้งหมด)
+	•	group_it_manager: ผู้จัดการ IT (ตั้งค่า/รายงาน)
+	•	group_it_requester: พนักงานทั่วไป (ดูเฉพาะที่สร้าง)
+	•	group_it_manager_approver: หัวหน้าแผนก (อนุมัติ Access/Procurement)
 
-Optional Extensions (ใส่เป็น placeholder/comment)
-	•	Portal สำหรับพนักงานติดตามงาน
-	•	Auto-close issue หลัง 3–7 วันถ้า requester ไม่ตอบ
-	•	เชื่อม stock picking & asset สร้างทรัพย์สินอัตโนมัติ
-	•	Access automation (สคริปต์ต่อ API/LDAP/SSO) — mock method ไว้ก่อน
+Record Rules
+	•	Requester: see own records only
+	•	IT User: see all records
+	•	Manager Approver: see requests in own department
 
+⸻
+
+⚙️ Configuration
+	•	SLA Policy ต่อ Priority
+	•	Category / Checklist Template ต่อประเภทคำขอ
+	•	Working Calendar / วันหยุด IT
+	•	Auto Assignment Rule ต่อ category
+	•	Email alias: it@company.com → auto create Issue
+	•	Integration: purchase_request, purchase, HR Onboarding
+
+⸻
+
+📑 Report Forms
+	1.	แบบฟอร์มแจ้งซ่อม (IT Issue)
+	2.	แบบฟอร์มขอใช้งานระบบ (IT Access)
+	3.	แบบฟอร์มขอซื้ออุปกรณ์ (IT Procurement)
+
+แต่ละแบบมี:
+	•	หมายเลขเอกสาร (Sequence)
+	•	ลายเซ็นผู้ขอ / ผู้อนุมัติ / ผู้ดำเนินการ
+	•	วันที่ / หมายเหตุ / แนบไฟล์
+
+⸻
+
+🧮 KPI / Analytics
+	•	MTTR (Mean Time To Repair)
+	•	SLA On-time vs Breached
+	•	งานที่รออนุมัติ (Access/Procurement)
+	•	มูลค่า PR รวมตามแผนก/เดือน
+
+⸻
+
+🧠 Key Python Hooks
+
+def _compute_sla_status(self):
+    # คำนวณ SLA ตาม calendar / priority
+    ...
+
+def _action_auto_assign(self):
+    # เลือก assignee อัตโนมัติจาก category
+    ...
+
+def _action_create_pr(self):
+    # สร้าง PR หรือ RFQ อัตโนมัติ
+    ...
+
+def _prepare_checklist(self):
+    # ดึง checklist จาก template สำหรับ Access Request
+    ...
+
+
+⸻
+
+📦 Deliverables
+	•	โมดูลพร้อม install ได้ (buz_it_request)
+	•	มี security, dashboard, report, flow ครบ 3 โมเดล
+	•	รองรับ multi-company, multi-user, record rules ครบ
+
+⸻
+
+🚀 Next Step (ให้มะนาวสร้างโค้ดได้ทันที)
+
+Prompt:
+
+สร้างโมดูล Odoo 17 ชื่อ buz_it_request ตามสเปคในไฟล์นี้ พร้อม 3 โมเดล (Issue, Access, Procurement) และ dashboard รวม ให้ครบพร้อมติดตั้งได้

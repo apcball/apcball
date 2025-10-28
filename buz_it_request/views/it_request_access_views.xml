@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- IT Access Request Tree View -->
+    <record id="view_it_request_access_tree" model="ir.ui.view">
+        <field name="name">it.request.access.tree</field>
+        <field name="model">it.request.access</field>
+        <field name="arch" type="xml">
+            <tree string="IT Access Requests">
+                <field name="name"/>
+                <field name="requester_id"/>
+                <field name="employee_id"/>
+                <field name="request_type"/>
+                <field name="department_id"/>
+                <field name="create_date"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- IT Access Request Form View -->
+    <record id="view_it_request_access_form" model="ir.ui.view">
+        <field name="name">it.request.access.form</field>
+        <field name="model">it.request.access</field>
+        <field name="arch" type="xml">
+            <form string="IT Access Request">
+                <header>
+                    <button name="action_submit_for_approval" type="object" string="Submit for Approval"
+                            invisible="state != 'draft'" class="oe_highlight"/>
+                    <button name="action_manager_approve" type="object" string="Approve Request"
+                            invisible="state != 'to_manager_approve'" class="oe_highlight"/>
+                    <button name="action_manager_reject" type="object" string="Reject Request"
+                            invisible="state != 'to_manager_approve'"/>
+                    <button name="action_send_to_it" type="object" string="Send to IT"
+                            invisible="state != 'manager_approved'" class="oe_highlight"/>
+                    <button name="action_start_it_work" type="object" string="Start Work"
+                            invisible="state != 'to_it'"/>
+                    <button name="action_complete_request" type="object" string="Complete Request"
+                            invisible="state != 'it_in_progress'" class="oe_highlight"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,to_manager_approve,manager_approved,to_it,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" 
+                                icon="fa-archive">
+                            <field name="active" widget="boolean_button" 
+                                   options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="requester_id"/>
+                            <field name="employee_id"/>
+                            <field name="department_id"/>
+                        </group>
+                        <group>
+                            <field name="request_type"/>
+                            <field name="system_detail"/>
+                            <field name="manager_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Request Details">
+                            <field name="justification"/>
+                            <field name="attachment_ids" widget="binary_multiple"/>
+                        </page>
+                        <page string="Approval">
+                            <group>
+                                <field name="approval_note"/>
+                            </group>
+                        </page>
+                        <page string="IT Implementation">
+                            <group>
+                                <field name="it_operator_id"/>
+                            </group>
+                            <field name="it_note"/>
+                        </page>
+                        <page string="Checklist">
+                            <field name="checklist_ids">
+                                <tree editable="bottom">
+                                    <field name="name"/>
+                                    <field name="is_completed"/>
+                                    <field name="notes"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- IT Access Request Search View -->
+    <record id="view_it_request_access_search" model="ir.ui.view">
+        <field name="name">it.request.access.search</field>
+        <field name="model">it.request.access</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Request Number"/>
+                <field name="requester_id" string="Requester"/>
+                <field name="employee_id" string="Employee"/>
+                <field name="request_type" string="Request Type"/>
+                <field name="state" string="State"/>
+                <separator/>
+                <filter name="my_requests" string="My Requests" domain="[('requester_id', '=', uid)]"/>
+                <filter name="to_approve" string="To Approve" domain="[('state', '=', 'to_manager_approve')]"/>
+                <filter name="my_department" string="My Department" domain="[('department_id', '=', employee_id.department_id.id)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_request_type" string="Request Type" domain="[]" context="{'group_by':'request_type'}"/>
+                    <filter name="group_state" string="State" domain="[]" context="{'group_by':'state'}"/>
+                    <filter name="group_department" string="Department" domain="[]" context="{'group_by':'department_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

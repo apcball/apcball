@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- IT Ticket Issue Tree View -->
+    <record id="view_it_ticket_issue_tree" model="ir.ui.view">
+        <field name="name">it.ticket.issue.tree</field>
+        <field name="model">it.ticket.issue</field>
+        <field name="arch" type="xml">
+            <tree string="IT Tickets">
+                <field name="name"/>
+                <field name="requester_id"/>
+                <field name="department_id"/>
+                <field name="category_id"/>
+                <field name="priority" widget="priority"/>
+                <field name="issue_date"/>
+                <field name="due_date"/>
+                <field name="assignee_id"/>
+                <field name="sla_status"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- IT Ticket Issue Form View -->
+    <record id="view_it_ticket_issue_form" model="ir.ui.view">
+        <field name="name">it.ticket.issue.form</field>
+        <field name="model">it.ticket.issue</field>
+        <field name="arch" type="xml">
+            <form string="IT Ticket">
+                <header>
+                    <button name="action_triage" type="object" string="Triage"
+                            invisible="state != 'draft'" class="oe_highlight"/>
+                    <button name="action_start_progress" type="object" string="Start Progress"
+                            invisible="state != 'triage'" class="oe_highlight"/>
+                    <button name="action_wait_user" type="object" string="Wait for User"
+                            invisible="state != 'in_progress'"/>
+                    <button name="action_resolve" type="object" string="Resolve"
+                            invisible="state not in ['in_progress', 'waiting_user']" class="oe_highlight"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state not in ['draft', 'triage', 'in_progress', 'waiting_user']"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,triage,in_progress,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" 
+                                icon="fa-archive">
+                            <field name="active" widget="boolean_button" 
+                                   options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="requester_id"/>
+                            <field name="department_id"/>
+                            <field name="location_id"/>
+                        </group>
+                        <group>
+                            <field name="category_id"/>
+                            <field name="priority" widget="priority"/>
+                            <field name="sla_status"/>
+                            <field name="due_date"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Issue Details">
+                            <group>
+                                <field name="issue_date"/>
+                            </group>
+                            <field name="description"/>
+                            <field name="attachment_ids" widget="binary_multiple"/>
+                        </page>
+                        <page string="Resolution">
+                            <group>
+                                <field name="assignee_id"/>
+                                <field name="resolved_date"/>
+                            </group>
+                            <field name="root_cause"/>
+                            <field name="resolution_note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- IT Ticket Issue Search View -->
+    <record id="view_it_ticket_issue_search" model="ir.ui.view">
+        <field name="name">it.ticket.issue.search</field>
+        <field name="model">it.ticket.issue</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Ticket Number"/>
+                <field name="requester_id" string="Requester"/>
+                <field name="category_id" string="Category"/>
+                <field name="assignee_id" string="Assignee"/>
+                <field name="state" string="State"/>
+                <field name="priority" string="Priority"/>
+                <field name="sla_status" string="SLA Status"/>
+                <separator/>
+                <filter name="my_tickets" string="My Tickets" domain="[('requester_id', '=', uid)]"/>
+                <filter name="my_assigned" string="Assigned to Me" domain="[('assignee_id.user_id', '=', uid)]"/>
+                <filter name="overdue" string="Overdue" domain="[('due_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_category" string="Category" domain="[]" context="{'group_by':'category_id'}"/>
+                    <filter name="group_priority" string="Priority" domain="[]" context="{'group_by':'priority'}"/>
+                    <filter name="group_assignee" string="Assignee" domain="[]" context="{'group_by':'assignee_id'}"/>
+                    <filter name="group_state" string="State" domain="[]" context="{'group_by':'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

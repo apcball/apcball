@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main IT Management Menu -->
+    <menuitem id="menu_it_management_root" name="IT Management" sequence="10"/>
+
+    <!-- IT Tickets Submenu -->
+    <menuitem id="menu_it_tickets_root" name="IT Tickets" parent="menu_it_management_root" sequence="10"/>
+    <menuitem id="menu_it_tickets" name="All Tickets" parent="menu_it_tickets_root" action="action_it_ticket_issue" sequence="1"/>
+    <menuitem id="menu_it_tickets_my" name="My Tickets" parent="menu_it_tickets_root" action="action_it_ticket_issue_my" sequence="2"/>
+
+    <!-- IT Access Requests Submenu -->
+    <menuitem id="menu_it_access_root" name="IT Access Requests" parent="menu_it_management_root" sequence="20"/>
+    <menuitem id="menu_it_access_requests" name="All Requests" parent="menu_it_access_root" action="action_it_request_access" sequence="1"/>
+    <menuitem id="menu_it_access_requests_my" name="My Requests" parent="menu_it_access_root" action="action_it_request_access_my" sequence="2"/>
+
+    <!-- IT Procurement Requests Submenu -->
+    <menuitem id="menu_it_procurement_root" name="IT Procurement" parent="menu_it_management_root" sequence="30"/>
+    <menuitem id="menu_it_procurement_requests" name="All Requests" parent="menu_it_procurement_root" action="action_it_request_procurement" sequence="1"/>
+    <menuitem id="menu_it_procurement_requests_my" name="My Requests" parent="menu_it_procurement_root" action="action_it_request_procurement_my" sequence="2"/>
+
+    <!-- Dashboard Menu -->
+    <menuitem id="menu_it_dashboard" name="Dashboard" parent="menu_it_management_root" action="action_it_dashboard" sequence="5"/>
+
+    <!-- Actions for IT Tickets -->
+    <record id="action_it_ticket_issue" model="ir.actions.act_window">
+        <field name="name">All IT Tickets</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.ticket.issue</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="action_it_ticket_issue_my" model="ir.actions.act_window">
+        <field name="name">My IT Tickets</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.ticket.issue</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('requester_id', '=', uid)]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Actions for IT Access Requests -->
+    <record id="action_it_request_access" model="ir.actions.act_window">
+        <field name="name">All IT Access Requests</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.request.access</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="action_it_request_access_my" model="ir.actions.act_window">
+        <field name="name">My IT Access Requests</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.request.access</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('requester_id', '=', uid)]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Actions for IT Procurement Requests -->
+    <record id="action_it_request_procurement" model="ir.actions.act_window">
+        <field name="name">All IT Procurement Requests</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.request.procurement</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="action_it_request_procurement_my" model="ir.actions.act_window">
+        <field name="name">My IT Procurement Requests</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.request.procurement</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('requester_id', '=', uid)]</field>
+        <field name="context">{}</field>
+    </record>
+    
+</odoo>

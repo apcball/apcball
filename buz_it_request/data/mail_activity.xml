@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- IT Ticket Activities -->
+        <record id="activity_sla_reminder" model="mail.activity.type">
+            <field name="name">SLA Reminder</field>
+            <field name="delay_count">1</field>
+            <field name="delay_unit">days</field>
+            <field name="summary">SLA is about to breach</field>
+            <field name="category">default</field>
+        </record>
+
+        <record id="activity_sla_breach" model="mail.activity.type">
+            <field name="name">SLA Breach</field>
+            <field name="delay_count">0</field>
+            <field name="delay_unit">days</field>
+            <field name="summary">SLA has been breached</field>
+            <field name="category">default</field>
+        </record>
+
+        <record id="activity_manager_approval" model="mail.activity.type">
+            <field name="name">Manager Approval Required</field>
+            <field name="delay_count">0</field>
+            <field name="delay_unit">days</field>
+            <field name="summary">Manager approval required for request</field>
+            <field name="category">default</field>
+        </record>
+
+        <record id="activity_it_action" model="mail.activity.type">
+            <field name="name">IT Action Required</field>
+            <field name="delay_count">0</field>
+            <field name="delay_unit">days</field>
+            <field name="summary">IT action required for request</field>
+            <field name="category">default</field>
+        </record>
+    </data>
+</odoo>

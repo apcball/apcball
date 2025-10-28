@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Dashboard action for IT Overview -->
+    <record id="action_it_dashboard" model="ir.actions.act_window">
+        <field name="name">IT Dashboard</field>
+        <field name="res_model">it.ticket.issue</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                IT Dashboard Overview
+            </p>
+        </field>
+    </record>
+
+    <!-- Actions for IT Tickets -->
+    <record id="action_it_ticket_issue" model="ir.actions.act_window">
+        <field name="name">All IT Tickets</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.ticket.issue</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="action_it_ticket_issue_my" model="ir.actions.act_window">
+        <field name="name">My IT Tickets</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.ticket.issue</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('requester_id', '=', uid)]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Actions for IT Access Requests -->
+    <record id="action_it_request_access" model="ir.actions.act_window">
+        <field name="name">All IT Access Requests</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.request.access</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="action_it_request_access_my" model="ir.actions.act_window">
+        <field name="name">My IT Access Requests</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.request.access</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('requester_id', '=', uid)]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Actions for IT Procurement Requests -->
+    <record id="action_it_request_procurement" model="ir.actions.act_window">
+        <field name="name">All IT Procurement Requests</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.request.procurement</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="action_it_request_procurement_my" model="ir.actions.act_window">
+        <field name="name">My IT Procurement Requests</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">it.request.procurement</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('requester_id', '=', uid)]</field>
+        <field name="context">{}</field>
+    </record>
+</odoo>
