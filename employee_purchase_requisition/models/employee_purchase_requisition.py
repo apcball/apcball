@@ -319,7 +319,7 @@ class PurchaseRequisition(models.Model):
                 'product_id': rec.product_id.id,
                 'product_qty': rec.quantity,
                 'product_uom': rec.product_id.uom_po_id.id,
-                'date_planned': fields.Datetime.now(),
+                'date_planned': fields.Date.today(),
                 'price_unit': rec.unit_price or rec.product_id.standard_price,
             }
             
