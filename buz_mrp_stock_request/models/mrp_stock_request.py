@@ -470,7 +470,36 @@ class MrpStockRequest(models.Model):
         )
 
     def action_confirm(self):
-        """Create internal transfer(s) from request lines."""
+        """Open confirmation wizard before creating internal transfer(s)."""
+        self.ensure_one()
+        
+        if self.state != "draft":
+            raise UserError(_("Only draft requests can be confirmed."))
+
+        # Validate
+        if not self.line_ids:
+            raise UserError(_("Cannot confirm request without lines."))
+        
+        if not self.mo_ids:
+            raise UserError(_("Please select at least one Manufacturing Order."))
+
+        if not self.location_id or not self.location_dest_id:
+            raise UserError(_("Source and destination locations are required."))
+
+        # Open confirmation wizard instead of directly confirming
+        return {
+            "name": _("Confirm Stock Request"),
+            "type": "ir.actions.act_window",
+            "view_mode": "form",
+            "res_model": "mrp.stock.request.confirm.wizard",
+            "target": "new",
+            "context": {
+                "default_request_id": self.id,
+            },
+        }
+
+    def action_confirm_with_validation(self):
+        """Create internal transfer(s) from request lines after confirmation."""
         for request in self:
             if request.state != "draft":
                 raise UserError(_("Only draft requests can be confirmed."))

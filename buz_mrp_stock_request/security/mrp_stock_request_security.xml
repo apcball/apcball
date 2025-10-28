@@ -28,4 +28,12 @@
         <field name="domain_force">[('request_id.company_id', 'in', company_ids)]</field>
         <field name="groups" eval="[(4, ref('group_mrp_stock_request_user'))]"/>
     </record>
+
+    <!-- Record Rules for Confirmation Wizard -->
+    <record id="rule_mrp_stock_request_confirm_wizard_company" model="ir.rule">
+        <field name="name">MRP Stock Request Confirm Wizard Company Rule</field>
+        <field name="model_id" ref="model_mrp_stock_request_confirm_wizard"/>
+        <field name="domain_force">[('request_id.company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_mrp_stock_request_user'))]"/>
+    </record>
 </odoo>
