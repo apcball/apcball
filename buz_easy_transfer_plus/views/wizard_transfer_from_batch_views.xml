@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Define the wizard form view -->
+    <record id="transfer_from_batch_wizard_form_view" model="ir.ui.view">
+        <field name="name">transfer.from.batch.wizard.form</field>
+        <field name="model">transfer.from.batch.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Transfer from Batch">
+                <group>
+                    <field name="batch_id" invisible="1"/>
+                    <field name="origin"/>
+                    <field name="dest_location_id" options="{'no_create': True}"/>
+                </group>
+                <footer>
+                    <button name="create_transfer_from_batch" type="object" 
+                            string="Create Transfer" 
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

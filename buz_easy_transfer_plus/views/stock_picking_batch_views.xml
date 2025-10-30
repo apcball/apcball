@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit the stock picking batch form view to add new buttons -->
+    <record id="view_picking_batch_form_inherit_easy_transfer_plus" model="ir.ui.view">
+        <field name="name">stock.picking.batch.form.inherit.easy.transfer.plus</field>
+        <field name="model">stock.picking.batch</field>
+        <field name="inherit_id" ref="stock_picking_batch.stock_picking_batch_form"/>
+        <field name="arch" type="xml">
+            <!-- ensure computed field is available in the view for modifiers -->
+            <xpath expr="//form" position="inside">
+                <field name="all_picks_done" invisible="1"/>
+            </xpath>
+            <header position="inside">
+                <!-- Show Create Transfer only when batch has pickings and all of them are done -->
+                <button name="action_create_transfer" type="object"
+                        string="Create Transfer"
+                        class="oe_highlight"
+                        invisible="picking_ids == [] or not all_picks_done"/>
+            </header>
+            <div class="oe_button_box" position="inside">
+                <button name="action_view_transfers" type="object"
+                        class="oe_stat_button"
+                        icon="fa-exchange"
+                        groups="stock.group_stock_user">
+                    <field name="transfer_count" widget="statinfo"
+                           string="Internal Transfers"/>
+                </button>
+            </div>
+        </field>
+    </record>
+</odoo>

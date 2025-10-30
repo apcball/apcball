@@ -1,39 +1,69 @@
-# Prompt Engineering – BUZ Validate Control Module (Odoo 17)
+# Prompt Engineering: Implement Module `buz_easy_transfer_plus`
 
 ## 🎯 Objective
-สร้างโมดูลที่ใช้ **ควบคุมการมองเห็นและสิทธิ์การกดปุ่ม Validate / Post** ในเอกสาร Odoo ให้เฉพาะกลุ่มผู้ใช้ที่ได้รับอนุญาตเท่านั้น เช่น กลุ่มผู้จัดการคลัง หรือหัวหน้าบัญชี
+สร้างโมดูล **`buz_easy_transfer_plus`** สำหรับ **Odoo 17 Community**  
+เพื่อเพิ่มความสามารถของระบบ Inventory มาตรฐาน โดยไม่แตะ workflow หรือ core code ของ `stock`  
+
+เน้นเพิ่มฟังก์ชัน 2 ส่วนหลัก:
+1. **หน้าใบ Transfer (`stock.picking`)** → ปุ่ม “Select All Products”, “Clear Lines”, “Transfer Now”  
+2. **หน้า Batch Transfers (`stock.picking.batch`)** → ปุ่ม “Create Transfer” เพื่อสร้างใบ Internal Transfer อัตโนมัติ โดยใช้ Destination ของ Batch เป็น Source ของใบใหม่
 
 ---
 
-## 🧩 Module Name
-`buz_validate_control`
+## 📦 Module Information
+**Module Name:** buz_easy_transfer_plus  
+**Version:** 17.0.2.0.0  
+**License:** LGPL-3  
+**Depends:** `stock`  
+**Category:** Inventory / Stock Management  
+**Author:** Ball (MOGEN)  
 
 ---
 
-## 🧠 Concept
-- ซ่อนปุ่ม Validate (Stock Picking) และ Post (Account Move) จากผู้ใช้ทั่วไป
-- แสดงเฉพาะผู้ใช้ในกลุ่ม `Validate Privileged`
-- ป้องกันการ bypass ด้วยการเช็คสิทธิ์ในฝั่งเซิร์ฟเวอร์ (`has_group()`)
-- สามารถขยายได้กับโมเดลอื่น เช่น `mrp.production` (ปุ่ม Mark as Done), `purchase.order` (Confirm)
+## 🧩 Features Summary
+
+### 🧱 A. ส่วนของใบ Transfer (`stock.picking`)
+- ปุ่ม **Select All Products**  
+  → ดึงสินค้าทั้งหมดจาก Source Location (stock.quant)
+- ปุ่ม **Clear Lines**  
+  → ล้างรายการสินค้าทั้งหมดในใบ Transfer
+- รองรับ multi-company / multi-warehouse
+- ไม่แตะ workflow เดิม (`action_confirm`, `button_validate`)
 
 ---
 
-## ⚙️ Functional Requirements
-### 1. กลุ่มสิทธิ์ (`res.groups`)
-สร้างกลุ่มใหม่ชื่อ `Validate Privileged`  
-ให้เฉพาะผู้ใช้ที่มีสิทธิ์ Validate / Post เอกสารได้
-
-### 2. ฝั่ง UI
-- ปุ่ม Validate / Post ต้องเพิ่ม attribute `groups="buz_validate_control.group_validate_privileged"`
-- ผู้ใช้ที่ไม่ได้อยู่ในกลุ่มนี้จะ **ไม่เห็นปุ่มเลย**
-
-### 3. ฝั่ง Server (Security Layer)
-- Override method:
-  - `button_validate()` ของ `stock.picking`
-  - `action_post()` ของ `account.move`
-- เช็ค `if not self.env.user.has_group('buz_validate_control.group_validate_privileged')`
-- ถ้าไม่ผ่าน ให้ raise `AccessError`
+### 🧱 B. ส่วนของ Batch Transfers (`stock.picking.batch`)
+- ปุ่ม **Create Transfer**  
+  → เปิด wizard ให้เลือก “Destination Location”
+  → ระบบสร้างใบ Internal Transfer ใหม่ โดย:
+    - Source Location = Destination ของ Batch
+    - Destination Location = ที่เลือกใน wizard
+    - สินค้าในใบใหม่ = รายการสินค้าใน Batch
+- ใช้สำหรับ “ย้ายสินค้าที่รับจาก Batch ไปอีก Location หนึ่ง” ได้สะดวก
+- สร้างใบ Transfer พร้อมเปิดหน้าฟอร์มทันที
 
 ---
 
-## 📁 File Structure
+## 📂 Directory Structure
+buz_easy_transfer_plus/
+├── init.py
+├── manifest.py
+├── models/
+│ ├── init.py
+│ ├── stock_picking.py
+│ └── stock_picking_batch.py
+├── wizard/
+│ ├── init.py
+│ └── transfer_from_batch_wizard.py
+└── views/
+├── stock_picking_views.xml
+├── stock_picking_batch_views.xml
+└── wizard_transfer_from_batch_views.xml
+
+🧪 Test Scenarios
+หน้าจอ	Action	ผลลัพธ์
+Internal Transfer	กด “Select All Products”	ดึงสินค้าทั้งหมดจาก Source Location
+Internal Transfer	กด “Clear Lines”	ล้างรายการทั้งหมด
+Batch Transfer	กด “Create Transfer”	เปิด wizard
+Wizard	เลือก Destination Location แล้วกด “Create Transfer”	สร้างใบ Internal Transfer ใหม่จาก Batch
+
