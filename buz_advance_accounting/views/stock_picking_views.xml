@@ -21,21 +21,27 @@
                 </button>
             </xpath>
             
-            <!-- Add action buttons in header for purchase-related pickings -->
-            <xpath expr="//header" position="inside">
-                <button name="action_create_advance_accrual" 
-                        type="object" 
-                        string="Create Advance" 
-                        class="btn-secondary"
-                        invisible="not purchase_order_id or state not in ['assigned', 'done']"
-                        help="Create advance accrual entry for this Purchase Order"/>
-                        
-                <button name="action_reverse_all_advance_accruals" 
-                        type="object" 
-                        string="Reverse All" 
-                        class="btn-secondary"
-                        invisible="not purchase_order_id or advance_accrual_count == 0"
-                        help="Reverse all advance accrual entries for this Purchase Order"/>
+            <!-- Add action buttons in a dedicated Advance Accounting tab -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Advance Accounting" invisible="not purchase_order_id">
+                    <group>
+                        <group string="Advance Operations">
+                            <button name="action_create_advance_accrual"
+                                    type="object"
+                                    string="Create Advance"
+                                    class="btn-primary btn-lg"
+                                    invisible="not purchase_order_id or state not in ['assigned', 'done']"
+                                    help="Create advance accrual entry for this Purchase Order"/>
+                                    
+                            <button name="action_reverse_all_advance_accruals"
+                                    type="object"
+                                    string="Reverse All"
+                                    class="btn-warning"
+                                    invisible="not purchase_order_id or advance_accrual_count == 0"
+                                    help="Reverse all advance accrual entries for this Purchase Order"/>
+                        </group>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>
