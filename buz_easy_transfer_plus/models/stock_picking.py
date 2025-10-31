@@ -119,3 +119,31 @@ class StockPicking(models.Model):
             self.button_validate()
         
         return True
+
+    def action_add_to_batch(self):
+        """Open wizard to add the receipt to an existing batch or create a new one"""
+        self.ensure_one()
+        
+        # Check if picking is already in a batch
+        if self.batch_id:
+            raise UserError(_('This receipt is already part of batch %s.') % self.batch_id.name)
+        
+        # Check if picking is in an appropriate state for batching
+        if self.state in ['done', 'cancel']:
+            raise UserError(_('You cannot add a receipt that is already done or cancelled to a batch.'))
+        
+        # Open the wizard to select batch option
+        wizard_context = {
+            'default_picking_id': self.id,
+            'default_new_batch_name': _('Batch from %s') % self.name,
+        }
+        
+        return {
+            'name': _('Add to Batch Transfer'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'add.to.batch.wizard',
+            'view_mode': 'form',
+            'view_type': 'form',
+            'target': 'new',
+            'context': wizard_context,
+        }

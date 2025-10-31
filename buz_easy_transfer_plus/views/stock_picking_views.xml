@@ -15,6 +15,11 @@
             string="Select All Products"
             class="oe_highlight"
             invisible="state not in ['draft'] or not is_from_batch"/>
+        <!-- Add to Batch Transfer button for receipts -->
+        <button name="action_add_to_batch" type="object"
+            string="Add to Batch Transfer"
+            class="oe_highlight"
+            invisible="picking_type_code != 'incoming' or state in ['done', 'cancel'] or batch_id"/>
         <!-- Removed 'Clear Lines' and 'Transfer Now' buttons as requested -->
         </xpath>
         </field>

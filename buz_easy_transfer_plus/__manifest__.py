@@ -10,6 +10,7 @@
         - Batch transfer creation functionality
         - Smart button in batch forms to view related internal transfers
         - Link between batch transfers and created internal transfers
+        - Add to Batch Transfer button on receipts to create new batch transfers
     """,
     "author": "Ball (MOGEN)",
     "license": "LGPL-3",
@@ -22,6 +23,7 @@
         "views/stock_picking_views.xml",
         "views/stock_picking_batch_views.xml",
         "views/wizard_transfer_from_batch_views.xml",
+        "views/add_to_batch_wizard_views.xml",
     ],
     "installable": True,
     "auto_install": False,
