@@ -159,8 +159,7 @@ class EtaxTransaction(models.Model):
         branch = ""
         payment_method = ""
 
-        if self.invoice_id.name:
-            invoice = self.env['account.move'].search([('name', '=', self.invoice_id.name)], limit=1)
+        invoice = self.invoice_id
         
         # เตรียมข้อมูลรายการสินค้า
         line_items = []
@@ -220,15 +219,23 @@ class EtaxTransaction(models.Model):
         cdn_label = dict(self._fields['remark_cdn'].selection).get(self.remark_cdn)
         doc_label = dict(self._fields['document_type'].selection).get(self.document_type)
 
-        if invoice.cash_group_field1 or invoice.cash_group_field2:
+        # ตรวจสอบว่ามีฟิลด์ที่ต้องการหรือไม่ และกำหนดค่าเริ่มต้น
+        payment_method = ""
+        bank_name = ""
+        branch = ""
+        cheque_no = ""
+        date_str = ""
+        
+        # ใช้ฟิลด์ที่มีอยู่จริงใน account.move หรือกำหนดค่าเริ่มต้น
+        if hasattr(invoice, 'cash_group_field1') and (invoice.cash_group_field1 or getattr(invoice, 'cash_group_field2', '')):
             payment_method = "เงินโอน"
             bank_name = invoice.cash_group_field1
-            branch = invoice.cash_group_field2
-        elif invoice.cheque_group_field1 or invoice.cheque_group_field2:
+            branch = getattr(invoice, 'cash_group_field2', '')
+        elif hasattr(invoice, 'cheque_group_field1') and (getattr(invoice, 'cheque_group_field1', '') or getattr(invoice, 'cheque_group_field2', '')):
             payment_method = "เช็คธนาคาร"
-            bank_name = invoice.cheque_group_field3
-            cheque_no = invoice.cheque_group_field1
-            date_str = invoice.cheque_group_field2
+            bank_name = getattr(invoice, 'cheque_group_field3', '')
+            cheque_no = getattr(invoice, 'cheque_group_field1', '')
+            date_str = getattr(invoice, 'cheque_group_field2', '')
         
         # ข้อมูลหลักสำหรับ API
         etax_data = {

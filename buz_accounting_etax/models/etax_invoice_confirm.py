@@ -13,6 +13,7 @@ class AccountMoveInherit(models.Model):
     # เพิ่ม field ถ้าต้องการ
     custom_field = fields.Char(string='Custom Field')
     is_custom_confirmed = fields.Boolean(string='Custom Confirmed', default=False)
+    sales_order_number = fields.Char(string='Sales Order Number', related='invoice_origin', store=True)
 
     def action_post(self):
         """
@@ -88,7 +89,7 @@ class AccountMoveInherit(models.Model):
             'partner_id': move.partner_id.id,
             'partner_tax_id': move.partner_id.vat or "",
             'partner_branch_id': "00000",
-            'sale_order_ref': sale_order.id,
+            'sale_order_ref': sale_order.id if sale_order else None,
             'document_date': move.invoice_date or fields.Date.today(),
             'payment_term': move.invoice_payment_term_id.line_ids[0].nb_days if move.invoice_payment_term_id.line_ids else 0,
             'amount_untaxed': move.amount_untaxed,
