@@ -70,6 +70,11 @@
             <div class="company_name">
                 <p>
                     <span t-field="o.company_partner_id.name" />
+                    <t t-if="o.company_partner_id.branch">
+                        <span> (</span>
+                        <span t-field="o.company_partner_id.branch" />
+                        <span>)</span>
+                    </t>
                 </p>
             </div>
             <div class="company_address">
@@ -142,6 +147,11 @@
             <div class="supplier_name">
                 <p>
                     <span t-field="o.partner_id.name" />
+                    <t t-if="o.partner_id.branch">
+                        <span> (</span>
+                        <span t-field="o.partner_id.branch" />
+                        <span>)</span>
+                    </t>
                 </p>
             </div>
             <div class="supplier_address">
