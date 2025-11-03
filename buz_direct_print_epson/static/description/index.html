@@ -1,0 +1,83 @@
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <div class="oe_span12">
+            <h2 class="oe_slogan">Direct Print Epson</h2>
+            <p class="oe_mt32">
+                This module allows Odoo users to print documents directly to Epson printers through a Local Print Agent (HTTP API).
+            </p>
+        </div>
+    </div>
+</section>
+
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <div class="oe_span12">
+            <h3>Features</h3>
+            <ul class="oe_mt32">
+                <li>Direct printing to Epson continuous form printers</li>
+                <li>Support for multiple document types (Invoices, Pickings, Bills)</li>
+                <li>Multi-record selection for batch printing</li>
+                <li>Configuration management for print agent settings</li>
+                <li>Error handling and user notifications</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <div class="oe_span12">
+            <h3>Configuration</h3>
+            <p class="oe_mt32">
+                1. Go to Settings > Technical > Printing > Epson Print Configuration<br/>
+                2. Create a new configuration with:<br/>
+                - Configuration Name: A descriptive name for this configuration<br/>
+                - Agent URL: URL of your Local Print Agent (e.g., http://192.168.1.55:5000/print)<br/>
+                - Default Printer: Printer name as configured in your system (e.g., Epson_LQ310)<br/>
+                - Active: Check to enable this configuration
+            </p>
+        </div>
+    </div>
+</section>
+
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <div class="oe_span12">
+            <h3>Usage</h3>
+            <p class="oe_mt32">
+                <strong>For Invoices/Bills:</strong><br/>
+                1. Go to Accounting > Customers > Invoices or Accounting > Vendors > Bills<br/>
+                2. Select one or more invoices/bills from the list view<br/>
+                3. Click "Action > พิมพ์ต่อเนื่อง (Epson)" or use the button in the header<br/>
+                4. The documents will be sent to the configured Epson printer
+            </p>
+            <p class="oe_mt32">
+                <strong>For Stock Pickings:</strong><br/>
+                1. Go to Inventory > Operations > Transfers<br/>
+                2. Select one or more pickings from the list view<br/>
+                3. Click "Action > พิมพ์ต่อเนื่อง (Epson)" or use the button in the header<br/>
+                4. The documents will be sent to the configured Epson printer
+            </p>
+        </div>
+    </div>
+</section>
+
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <div class="oe_span12">
+            <h3>Technical Details</h3>
+            <p class="oe_mt32">
+                <strong>Models:</strong><br/>
+                - buz.epson.config: Stores configuration for the Local Print Agent<br/>
+                - account.move: Extended with action_print_epson() method<br/>
+                - stock.picking: Extended with action_print_epson() method
+            </p>
+            <p class="oe_mt32">
+                <strong>Dependencies:</strong><br/>
+                - base: Core Odoo functionality<br/>
+                - account: For invoice and bill printing<br/>
+                - stock: For picking printing
+            </p>
+        </div>
+    </div>
+</section>

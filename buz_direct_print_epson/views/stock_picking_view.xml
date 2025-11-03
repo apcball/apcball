@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add action to stock.picking list view -->
+    <record id="view_stock_picking_list_inherit" model="ir.ui.view">
+        <field name="name">stock.picking.list.inherit</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <header>
+                    <button name="action_print_epson" 
+                            string="พิมพ์ต่อเนื่อง (Epson)" 
+                            type="object" 
+                            class="btn-primary"
+                            groups="base.group_user"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Add action to stock.picking form view -->
+    <record id="view_stock_picking_form_inherit" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_print_epson"
+                        string="พิมพ์ต่อเนื่อง (Epson)"
+                        type="object"
+                        class="btn-primary"
+                        groups="base.group_user"
+                        invisible="state not in ['assigned', 'done']"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Server action for multi-record selection -->
+    <record id="action_stock_picking_print_epson" model="ir.actions.server">
+        <field name="name">พิมพ์ต่อเนื่อง (Epson)</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+            for record in records:
+                record.action_print_epson()
+        </field>
+    </record>
+</odoo>

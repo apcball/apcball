@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Epson Configuration Tree View -->
+    <record id="view_epson_config_tree" model="ir.ui.view">
+        <field name="name">buz.epson.config.tree</field>
+        <field name="model">buz.epson.config</field>
+        <field name="arch" type="xml">
+            <tree string="Epson Print Configuration">
+                <field name="name"/>
+                <field name="agent_url"/>
+                <field name="default_printer"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Epson Configuration Form View -->
+    <record id="view_epson_config_form" model="ir.ui.view">
+        <field name="name">buz.epson.config.form</field>
+        <field name="model">buz.epson.config</field>
+        <field name="arch" type="xml">
+            <form string="Epson Print Configuration">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="agent_url" placeholder="http://192.168.1.55:5000/print"/>
+                            <field name="default_printer" placeholder="Epson_LQ310"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Help">
+                            <group>
+                                <div class="oe_mt16">
+                                    <p>This configuration allows Odoo to send print jobs directly to Epson printers through a Local Print Agent.</p>
+                                    <br/>
+                                    <p><strong>Agent URL:</strong> The URL where your Local Print Agent is running. The agent should accept POST requests with JSON payload containing printer name, file URL, and type.</p>
+                                    <br/>
+                                    <p><strong>Default Printer:</strong> The name of the printer as configured in your system.</p>
+                                    <br/>
+                                    <p><strong>Example API POST Body:</strong></p>
+                                    <pre>{
+  "printer": "Epson_LQ310",
+  "file_url": "https://odoo.example.com/web/content/123?download=true",
+  "type": "pdf"
+}</pre>
+                                </div>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Epson Configuration Action -->
+    <record id="action_epson_config" model="ir.actions.act_window">
+        <field name="name">Epson Print Configuration</field>
+        <field name="res_model">buz.epson.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Epson Print Configuration
+            </p>
+            <p>
+                Configure the connection to your Local Print Agent to enable direct printing to Epson printers.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_epson_config"
+              name="Epson Print Configuration"
+              parent="base.menu_administration"
+              action="action_epson_config"
+              sequence="10"/>
+</odoo>

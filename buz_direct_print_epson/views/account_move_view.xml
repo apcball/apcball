@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add action to account.move list view -->
+    <record id="view_account_move_list_inherit" model="ir.ui.view">
+        <field name="name">account.move.list.inherit</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <header>
+                    <button name="action_print_epson" 
+                            string="พิมพ์ต่อเนื่อง (Epson)" 
+                            type="object" 
+                            class="btn-primary"
+                            groups="base.group_user"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Add action to account.move form view -->
+    <record id="view_account_move_form_inherit" model="ir.ui.view">
+        <field name="name">account.move.form.inherit</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_print_epson"
+                        string="พิมพ์ต่อเนื่อง (Epson)"
+                        type="object"
+                        class="btn-primary"
+                        groups="base.group_user"
+                        invisible="state != 'posted'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Server action for multi-record selection -->
+    <record id="action_account_move_print_epson" model="ir.actions.server">
+        <field name="name">พิมพ์ต่อเนื่อง (Epson)</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+            for record in records:
+                record.action_print_epson()
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_epson_config_user,buz.epson.config.user,model_buz_epson_config,base.group_user,1,0,0,0
+access_epson_config_system,buz.epson.config.system,model_buz_epson_config,base.group_system,1,1,1,1
