@@ -112,7 +112,8 @@ class ThaiTaxReport(models.AbstractModel):
             )
             total_base += line["tax_base_amount"]
             total_tax += line["tax_amount"]
-        return total_base, total_tax, tax_report_data
+        total_amount = total_base + total_tax
+        return total_base, total_tax, total_amount, tax_report_data
 
     def _get_report_values(self, docids, data):
         docs = self.env["tax.report.wizard"].browse(docids)
@@ -133,7 +134,7 @@ class ThaiTaxReport(models.AbstractModel):
         )
 
         # Add parameter to line
-        total_base, total_tax, tax_report_data = self._add_data_line(tax_report_data)
+        total_base, total_tax, total_amount, tax_report_data = self._add_data_line(tax_report_data)
 
         return {
             "doc_ids": docids,
@@ -149,5 +150,6 @@ class ThaiTaxReport(models.AbstractModel):
             "show_cancel": show_cancel,
             "total_base": total_base,
             "total_tax": total_tax,
+            "total_amount": total_amount,
             "tax_report_data": tax_report_data,
         }

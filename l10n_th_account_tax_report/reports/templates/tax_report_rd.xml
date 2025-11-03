@@ -147,13 +147,6 @@
                                     <th
                                         rowspan="2"
                                         class="text-center"
-                                        style="width: 9%;"
-                                    >
-                                        เลขที่เอกสาร
-                                    </th>
-                                    <th
-                                        rowspan="2"
-                                        class="text-center"
                                         style="width: 21%;"
                                     >
                                         <span
@@ -208,6 +201,13 @@
                                     >
                                         จำนวนเงินภาษีมูลค่าเพิ่ม
                                     </th>
+                                    <th
+                                        rowspan="2"
+                                        class="text-center"
+                                        style="width: 12%;"
+                                    >
+                                        รวมเงิน
+                                    </th>
                                 </tr>
                                 <tr>
                                     <th class="text-center" style="width: 7%;">
@@ -240,9 +240,6 @@
                                         </td>
                                         <td class="text-center">
                                             <span t-out="line['tax_invoice_number']" />
-                                        </td>
-                                        <td class="text-center">
-                                            <t t-out="line['name']" />
                                         </td>
                                         <td>
                                             <span t-out="line['partner_name']" />
@@ -279,6 +276,11 @@
                                                 t-out="'{0:,.2f}'.format(line['tax_amount'])"
                                             />
                                         </td>
+                                        <td class="text-right">
+                                            <t
+                                                t-out="'{0:,.2f}'.format(line['tax_base_amount'] + line['tax_amount'])"
+                                            />
+                                        </td>
                                     </tr>
                                 </t>
                                 <tr>
@@ -299,6 +301,11 @@
                                             t-out="'{:,.2f}'.format(total_tax_page)"
                                         />
                                     </th>
+                                    <th class="text-right">
+                                        <span
+                                            t-out="'{:,.2f}'.format(total_base_page + total_tax_page)"
+                                        />
+                                    </th>
                                 </tr>
                                 <t t-if="line['row_number'] == num_results">
                                     <tr>
@@ -316,6 +323,9 @@
                                         </th>
                                         <th class="text-right">
                                             <span t-out="'{:,.2f}'.format(total_tax)" />
+                                        </th>
+                                        <th class="text-right">
+                                            <span t-out="'{:,.2f}'.format(total_amount)" />
                                         </th>
                                     </tr>
                                 </t>

@@ -101,7 +101,7 @@
                 <div class="act_as_cell">Branch ID</div>
                 <div class="act_as_cell">Base Amount</div>
                 <div class="act_as_cell">Tax Amount</div>
-                <div class="act_as_cell">Doc Ref.</div>
+                <div class="act_as_cell">Amount Total</div>
             </div>
         </div>
     </template>
@@ -132,8 +132,8 @@
             <div class="act_as_cell amount">
                 <t t-out="'{0:,.2f}'.format(line['tax_amount'])" />
             </div>
-            <div class="act_as_cell">
-                <t t-out="line['name']" />
+            <div class="act_as_cell amount">
+                <t t-out="'{0:,.2f}'.format(line['tax_base_amount'] + line['tax_amount'])" />
             </div>
         </div>
     </template>
@@ -152,7 +152,9 @@
             <div class="act_as_cell amount">
                 <t t-out="'{0:,.2f}'.format(total_tax)" />
             </div>
-            <div class="act_as_cell" />
+            <div class="act_as_cell amount">
+                <t t-out="'{0:,.2f}'.format(total_amount)" />
+            </div>
         </div>
     </template>
 </odoo>
