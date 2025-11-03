@@ -16,9 +16,11 @@
                     <t t-out="o.ref_wht_cert_id.name" />
                 </span>
             </t>
-            <h4 class="number_payment">
-                <span t-out="o.name" />
-            </h4>
+            <t t-if="False">
+                <h4 class="number_payment">
+                    <span t-out="o.name" />
+                </h4>
+            </t>
             <h4 class="number_wht">
                 <span t-out="o.number" />
             </h4>
