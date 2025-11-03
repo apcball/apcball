@@ -107,7 +107,7 @@ class ThaiTaxReport(models.AbstractModel):
                 {
                     "partner_name": partner_id.display_name,
                     "partner_vat": partner_id.vat,
-                    "partner_branch": partner_id.company_registry,
+                    "partner_branch": partner_id.branch or "00000",
                 }
             )
             total_base += line["tax_base_amount"]
@@ -143,7 +143,7 @@ class ThaiTaxReport(models.AbstractModel):
             "tax_report_format": company.tax_report_format,
             "company_name": company.display_name,
             "company_vat": company.partner_id.vat,
-            "company_branch": company.partner_id.company_registry,
+            "company_branch": company.partner_id.branch or "00000",
             "date_from": date_from,
             "date_to": date_to,
             "tax_id": tax_id,

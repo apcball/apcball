@@ -125,7 +125,7 @@ class WithholdingTaxReport(models.AbstractModel):
                     and partner.country_id.name
                     or False,
                     "partner_vat": partner.vat,
-                    "partner_branch": partner.company_registry,
+                    "partner_branch": partner.branch or "00000",
                     "partner_bank_account": partner_bank_account,
                 }
             )
@@ -193,7 +193,7 @@ class WithholdingTaxReport(models.AbstractModel):
             "wht_report_format": company.wht_report_format,
             "company_name": company.display_name,
             "company_vat": company.partner_id.vat,
-            "company_branch": company.partner_id.company_registry,
+            "company_branch": company.partner_id.branch or "00000",
             "date_from": date_from,
             "date_to": date_to,
             "income_tax_form": income_tax_form,
