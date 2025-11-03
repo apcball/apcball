@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_omni_print_omni_print,omni_print.omni_print,model_omni_print_omni_print,,1,0,0,0
