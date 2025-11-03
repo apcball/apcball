@@ -41,9 +41,11 @@
         right: 200px;
     }
     .company_vat {
-        margin-left: 715px;
         position: fixed;
         top: 156px;
+        left: 721px;
+        display: flex;
+        gap: 0px;
     }
     .company_name {
         margin-left: 107px;
@@ -64,9 +66,11 @@
         padding: 1px;
     }
     .supplier_vat {
-        margin-left: 715px;
         position: fixed;
         top: 288px;
+        left: 721px;
+        display: flex;
+        gap: 0px;
     }
     .supplier_name {
         margin-left: 107px;
@@ -419,15 +423,16 @@
         font-weight: bold;
     }
     .box-vat {
-        box-sizing: content-box;
-        width: 21px;
-        height: 23px;
+        box-sizing: border-box;
+        width: 25px;
+        height: 25px;
         text-align: center;
-        margin-bottom: 0px;
-        padding-left: 2px;
+        margin: 0px;
+        padding: 2px;
+        display: inline-block;
     }
     .vat_tab {
-        margin-left: 11px;
+        margin-left: 8px;
     }
     .sign_wht {
         position: fixed;

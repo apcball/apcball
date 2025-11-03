@@ -26,47 +26,45 @@
             </h4>
             <div class="company_vat">
                 <t t-if="o.company_partner_id.vat">
-                    <div class="row">
-                        <p class="box-vat">
-                            <t t-out="o.company_partner_id.vat[:1]" />
-                        </p>
-                        <p class="box-vat vat_tab">
-                            <t t-out="o.company_partner_id.vat[1:2]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.company_partner_id.vat[2:3]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.company_partner_id.vat[3:4]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.company_partner_id.vat[4:5]" />
-                        </p>
-                        <p class="box-vat vat_tab">
-                            <t t-out="o.company_partner_id.vat[5:6]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.company_partner_id.vat[6:7]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.company_partner_id.vat[7:8]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.company_partner_id.vat[8:9]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.company_partner_id.vat[9:10]" />
-                        </p>
-                        <p class="box-vat vat_tab">
-                            <t t-out="o.company_partner_id.vat[10:11]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.company_partner_id.vat[11:12]" />
-                        </p>
-                        <p class="box-vat vat_tab">
-                            <t t-out="o.company_partner_id.vat[12:13]" />
-                        </p>
-                    </div>
+                    <span class="box-vat">
+                        <t t-out="o.company_partner_id.vat[:1]" />
+                    </span>
+                    <span class="box-vat vat_tab">
+                        <t t-out="o.company_partner_id.vat[1:2]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.company_partner_id.vat[2:3]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.company_partner_id.vat[3:4]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.company_partner_id.vat[4:5]" />
+                    </span>
+                    <span class="box-vat vat_tab">
+                        <t t-out="o.company_partner_id.vat[5:6]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.company_partner_id.vat[6:7]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.company_partner_id.vat[7:8]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.company_partner_id.vat[8:9]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.company_partner_id.vat[9:10]" />
+                    </span>
+                    <span class="box-vat vat_tab">
+                        <t t-out="o.company_partner_id.vat[10:11]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.company_partner_id.vat[11:12]" />
+                    </span>
+                    <span class="box-vat vat_tab">
+                        <t t-out="o.company_partner_id.vat[12:13]" />
+                    </span>
                 </t>
             </div>
             <div class="company_name">
@@ -100,47 +98,45 @@
             </div>
             <div class="supplier_vat">
                 <t t-if="o.partner_id.vat">
-                    <div class="row">
-                        <p class="box-vat">
-                            <t t-out="o.partner_id.vat[:1]" />
-                        </p>
-                        <p class="box-vat vat_tab">
-                            <t t-out="o.partner_id.vat[1:2]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.partner_id.vat[2:3]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.partner_id.vat[3:4]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.partner_id.vat[4:5]" />
-                        </p>
-                        <p class="box-vat vat_tab">
-                            <t t-out="o.partner_id.vat[5:6]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.partner_id.vat[6:7]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.partner_id.vat[7:8]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.partner_id.vat[8:9]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.partner_id.vat[9:10]" />
-                        </p>
-                        <p class="box-vat vat_tab">
-                            <t t-out="o.partner_id.vat[10:11]" />
-                        </p>
-                        <p class="box-vat">
-                            <t t-out="o.partner_id.vat[11:12]" />
-                        </p>
-                        <p class="box-vat vat_tab">
-                            <t t-out="o.partner_id.vat[12:13]" />
-                        </p>
-                    </div>
+                    <span class="box-vat">
+                        <t t-out="o.partner_id.vat[:1]" />
+                    </span>
+                    <span class="box-vat vat_tab">
+                        <t t-out="o.partner_id.vat[1:2]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.partner_id.vat[2:3]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.partner_id.vat[3:4]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.partner_id.vat[4:5]" />
+                    </span>
+                    <span class="box-vat vat_tab">
+                        <t t-out="o.partner_id.vat[5:6]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.partner_id.vat[6:7]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.partner_id.vat[7:8]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.partner_id.vat[8:9]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.partner_id.vat[9:10]" />
+                    </span>
+                    <span class="box-vat vat_tab">
+                        <t t-out="o.partner_id.vat[10:11]" />
+                    </span>
+                    <span class="box-vat">
+                        <t t-out="o.partner_id.vat[11:12]" />
+                    </span>
+                    <span class="box-vat vat_tab">
+                        <t t-out="o.partner_id.vat[12:13]" />
+                    </span>
                 </t>
             </div>
             <div class="supplier_name">
