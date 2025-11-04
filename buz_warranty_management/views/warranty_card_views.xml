@@ -184,7 +184,7 @@
                 <filter string="Active" name="active" domain="[('state', '=', 'active')]"/>
                 <filter string="Expired" name="expired" domain="[('state', '=', 'expired')]"/>
                 <filter string="Near Expiry (30 days)" name="near_expiry" 
-                        domain="[('end_date', '&lt;=', (context_today() + relativedelta(days=30)).strftime('%Y-%m-%d')), ('end_date', '>=', context_today().strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d')), ('end_date', '>=', context_today().strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Group By">
                     <filter string="Customer" name="group_partner" context="{'group_by': 'partner_id'}"/>
                     <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>

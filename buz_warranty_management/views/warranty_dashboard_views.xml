@@ -505,20 +505,20 @@
                 <field name="product_id"/>
                 <field name="lot_id"/>
                 <filter string="Expiring Soon (30 days)" name="expiring_soon"
-                        domain="[('end_date', '&lt;=', (context_today() + relativedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
                 <filter string="Expiring Soon (90 days)" name="expiring_soon_90"
-                        domain="[('end_date', '&lt;=', (context_today() + relativedelta(days=90)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=90)).strftime('%Y-%m-%d'))]"/>
                 <filter string="With Claims" name="with_claims" domain="[('claim_count', '&gt;', 0)]"/>
                 <filter string="No Claims" name="no_claims" domain="[('claim_count', '=', 0)]"/>
                 <separator/>
                 <filter string="This Month" name="this_month"
-                        domain="[('start_date', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('start_date', '&gt;=', (context_today() - datetime.timedelta(days=context_today().day-1)).strftime('%Y-%m-%d'))]"/>
                 <filter string="Last 6 Months" name="last_6_months"
-                        domain="[('start_date', '&gt;=', (context_today() - relativedelta(months=6)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('start_date', '&gt;=', (context_today() - datetime.timedelta(days=180)).strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Group By">
                     <filter string="Customer" name="group_partner" context="{'group_by': 'partner_id'}"/>
                     <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
-                    <filter string="Warranty Type" name="group_warranty_type" context="{'group_by': 'warranty_type'}"/>
+                    <filter string="Product" name="group_product_type" context="{'group_by': 'product_id'}"/>
                     <filter string="Start Date" name="group_start_date" context="{'group_by': 'start_date'}"/>
                     <filter string="End Date" name="group_end_date" context="{'group_by': 'end_date'}"/>
                 </group>
@@ -556,11 +556,11 @@
                 <field name="product_id"/>
                 <field name="lot_id"/>
                 <filter string="Expired This Month" name="expired_this_month"
-                        domain="[('end_date', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d')), ('end_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&gt;=', (context_today() - datetime.timedelta(days=context_today().day-1)).strftime('%Y-%m-%d')), ('end_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
                 <filter string="Expired Last 3 Months" name="expired_last_3_months"
-                        domain="[('end_date', '&gt;=', (context_today() - relativedelta(months=3)).strftime('%Y-%m-%d')), ('end_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&gt;=', (context_today() - datetime.timedelta(days=90)).strftime('%Y-%m-%d')), ('end_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
                 <filter string="Expired Last 6 Months" name="expired_last_6_months"
-                        domain="[('end_date', '&gt;=', (context_today() - relativedelta(months=6)).strftime('%Y-%m-%d')), ('end_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&gt;=', (context_today() - datetime.timedelta(days=180)).strftime('%Y-%m-%d')), ('end_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
                 <filter string="With Claims" name="with_claims" domain="[('claim_count', '&gt;', 0)]"/>
                 <filter string="No Claims" name="no_claims" domain="[('claim_count', '=', 0)]"/>
                 <separator/>
@@ -570,7 +570,7 @@
                     <filter string="Customer" name="group_partner" context="{'group_by': 'partner_id'}"/>
                     <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
                     <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
-                    <filter string="Warranty Type" name="group_warranty_type" context="{'group_by': 'warranty_type'}"/>
+                    <filter string="Product" name="group_product_type" context="{'group_by': 'product_id'}"/>
                     <filter string="Expiry Date" name="group_end_date" context="{'group_by': 'end_date'}"/>
                 </group>
             </search>
@@ -613,17 +613,17 @@
                 <filter string="Expired with Claims" name="expired_with_claims" domain="[('state', '=', 'expired'), ('claim_count', '&gt;', 0)]"/>
                 <separator/>
                 <filter string="Claimed This Month" name="claimed_this_month"
-                        domain="[('last_claim_date', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('last_claim_date', '&gt;=', (context_today() - datetime.timedelta(days=context_today().day-1)).strftime('%Y-%m-%d'))]"/>
                 <filter string="Claimed Last 3 Months" name="claimed_last_3_months"
-                        domain="[('last_claim_date', '&gt;=', (context_today() - relativedelta(months=3)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('last_claim_date', '&gt;=', (context_today() - datetime.timedelta(days=90)).strftime('%Y-%m-%d'))]"/>
                 <filter string="Claimed Last 6 Months" name="claimed_last_6_months"
-                        domain="[('last_claim_date', '&gt;=', (context_today() - relativedelta(months=6)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('last_claim_date', '&gt;=', (context_today() - datetime.timedelta(days=180)).strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Group By">
                     <filter string="Customer" name="group_partner" context="{'group_by': 'partner_id'}"/>
                     <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
                     <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
-                    <filter string="Claim Count" name="group_claim_count" context="{'group_by': 'claim_count'}"/>
-                    <filter string="Warranty Type" name="group_warranty_type" context="{'group_by': 'warranty_type'}"/>
+                    <filter string="Status" name="group_claim_status" context="{'group_by': 'state'}"/>
+                    <filter string="Product" name="group_product_type" context="{'group_by': 'product_id'}"/>
                 </group>
             </search>
         </field>
@@ -657,25 +657,25 @@
                 <field name="product_id"/>
                 <field name="lot_id"/>
                 <filter string="Expiring in 7 days" name="expiring_7_days"
-                        domain="[('end_date', '&lt;=', (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
                 <filter string="Expiring in 15 days" name="expiring_15_days"
-                        domain="[('end_date', '&lt;=', (context_today() + relativedelta(days=15)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=15)).strftime('%Y-%m-%d'))]"/>
                 <filter string="Expiring in 30 days" name="expiring_30_days"
-                        domain="[('end_date', '&lt;=', (context_today() + relativedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
                 <filter string="With Claims" name="with_claims" domain="[('claim_count', '&gt;', 0)]"/>
                 <filter string="No Claims" name="no_claims" domain="[('claim_count', '=', 0)]"/>
                 <separator/>
                 <filter string="Critical (7 days)" name="critical"
-                        domain="[('end_date', '&lt;=', (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
                 <filter string="Warning (15 days)" name="warning"
-                        domain="[('end_date', '&gt;', (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d')), ('end_date', '&lt;=', (context_today() + relativedelta(days=15)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&gt;', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d')), ('end_date', '&lt;=', (context_today() + datetime.timedelta(days=15)).strftime('%Y-%m-%d'))]"/>
                 <filter string="Alert (30 days)" name="alert"
-                        domain="[('end_date', '&gt;', (context_today() + relativedelta(days=15)).strftime('%Y-%m-%d')), ('end_date', '&lt;=', (context_today() + relativedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('end_date', '&gt;', (context_today() + datetime.timedelta(days=15)).strftime('%Y-%m-%d')), ('end_date', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Group By">
                     <filter string="Customer" name="group_partner" context="{'group_by': 'partner_id'}"/>
                     <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
-                    <filter string="Warranty Type" name="group_warranty_type" context="{'group_by': 'warranty_type'}"/>
-                    <filter string="Days Remaining" name="group_days_remaining" context="{'group_by': 'days_remaining'}"/>
+                    <filter string="Product" name="group_product_type" context="{'group_by': 'product_id'}"/>
+                    <filter string="Days Remaining" name="group_days_remaining" context="{'group_by': 'end_date'}"/>
                     <filter string="End Date" name="group_end_date" context="{'group_by': 'end_date'}"/>
                 </group>
             </search>
@@ -735,7 +735,7 @@
         <field name="name">Warranties Near Expiry</field>
         <field name="res_model">warranty.card</field>
         <field name="view_mode">tree,form</field>
-        <field name="domain">[('state', '=', 'active'), ('end_date', '&gt;=', context_today().strftime('%Y-%m-%d')), ('end_date', '&lt;=', (context_today() + relativedelta(days=30)).strftime('%Y-%m-%d'))]</field>
+        <field name="domain">[('state', '=', 'active'), ('end_date', '&gt;=', context_today().strftime('%Y-%m-%d')), ('end_date', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]</field>
         <field name="context">{'search_default_near_expiry': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
