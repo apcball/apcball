@@ -176,6 +176,7 @@
                             <div class="mb-1" style="margin-bottom:0; padding:0 1px;">
                                 <strong style="display: inline-block; width:25%;">ผู้ขาย/VENDOR:</strong>
                                 <span t-field="o.partner_id.name"/>
+                                <span t-field="o.partner_id.branch"/>
                             </div>
                             <div class="mb-1" style="margin-bottom:0; padding: 0.5px 2px;">
                                 <strong style="display: inline-block; width: 25%;">ที่อยู่/ADDRESS:</strong>
