@@ -1,15 +1,18 @@
 <odoo>
-  <!-- Wizard action & menu (optional) -->
-  <record id="action_fast_sql_wizard" model="ir.actions.act_window">
-    <field name="name">SVL Location — Fast SQL</field>
-    <field name="res_model">stock.valuation.location.fast.sql.wizard</field>
-    <field name="view_mode">form</field>
-    <field name="target">new</field>
+  <!-- Action to recompute all SVL locations -->
+  <record id="action_recompute_all_svl_location" model="ir.actions.server">
+    <field name="name">Recompute All SVL Locations</field>
+    <field name="model_id" ref="stock_account.model_stock_valuation_layer"/>
+    <field name="state">code</field>
+    <field name="code">
+action = model.action_recompute_location()
+    </field>
   </record>
 
-  <menuitem id="menu_inventory_valuation_fast_sql"
-            name="SVL Location — Fast SQL"
-            parent="stock.menu_stock_inventory_control"
-            action="action_fast_sql_wizard"
-            groups="stock_valuation_location.group_svl_location_admin"/>
+  <!-- Menu item under Inventory > Configuration -->
+  <menuitem id="menu_recompute_svl_location"
+            name="Recompute SVL Locations"
+            parent="stock.menu_stock_config_settings"
+            action="action_recompute_all_svl_location"
+            sequence="100"/>
 </odoo>

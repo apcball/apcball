@@ -1,7 +1,3 @@
 <odoo>
-    <record id="group_svl_location_admin" model="res.groups">
-        <field name="name">SVL Location Admin</field>
-        <field name="comment">Access to fast SQL recompute tools for stock valuation location</field>
-        <field name="category_id" ref="base.module_category_inventory"/>
-    </record>
+    <!-- No custom groups needed - module only adds computed field -->
 </odoo>
