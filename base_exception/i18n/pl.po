@@ -1,0 +1,331 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# * base_exception
+#
+# Translators:
+# OCA Transbot <transbot@odoo-community.org>, 2017
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 10.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2017-05-01 10:38+0000\n"
+"PO-Revision-Date: 2025-02-07 08:15+0000\n"
+"Last-Translator: Andrzej Gerasimuk <a.gerasimuk@archimedes.pl>\n"
+"Language-Team: Polish (https://www.transifex.com/oca/teams/23907/pl/)\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && "
+"(n%100<12 || n%100>=14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && "
+"n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
+"X-Generator: Weblate 5.6.2\n"
+
+#. module: base_exception
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_form
+msgid "<code>self</code>: Record on which the rule is evaluated."
+msgstr "<code>self</code>: Rekord, na podstawie którego oceniana jest reguła."
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__active
+msgid "Active"
+msgstr "Aktywne"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__model
+msgid "Apply on"
+msgstr "Zastosuj do"
+
+#. module: base_exception
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_form
+msgid "Archived"
+msgstr "Zarchiwizowane"
+
+#. module: base_exception
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_form
+msgid "As well as all the libraries provided in safe_eval."
+msgstr "Oraz wszystkie biblioteki dostarczone w safe_eval."
+
+#. module: base_exception
+#: model:ir.model.fields.selection,name:base_exception.selection__exception_rule__exception_type__by_domain
+msgid "By domain"
+msgstr "Wg. domeny"
+
+#. module: base_exception
+#: model:ir.model.fields.selection,name:base_exception.selection__exception_rule__exception_type__by_method
+msgid "By method"
+msgstr "Wg. metody"
+
+#. module: base_exception
+#: model:ir.model.fields.selection,name:base_exception.selection__exception_rule__exception_type__by_py_code
+msgid "By python code"
+msgstr "Wg. kodu python"
+
+#. module: base_exception
+#: model:ir.model.fields,help:base_exception.field_exception_rule__exception_type
+msgid ""
+"By python code: allow to define any arbitrary check\n"
+"By domain: limited to a selection by an odoo domain:\n"
+"           performance can be better when exceptions           are evaluated "
+"with several records\n"
+"By method: allow to select an existing check method"
+msgstr ""
+"Wg. kodu python: pozwala zdefiniować dowolne sprawdzenie\n"
+"Wg. domeny: ograniczone do wyboru przez domenę odoo:\n"
+"                            wydajność może być lepsza, gdy wyjątki są "
+"oceniane z kilkoma rekordami\n"
+"Wg. metody: pozwala wybrać istniejącą metodę sprawdzania"
+
+#. module: base_exception
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_confirm
+msgid "Close"
+msgstr "Zamknij"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__create_uid
+msgid "Created by"
+msgstr "Utworzył(a)"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__create_date
+msgid "Created on"
+msgstr "Utworzono"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__description
+msgid "Description"
+msgstr "Opis"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__display_name
+msgid "Display Name"
+msgstr "Wyświetlana nazwa "
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__domain
+msgid "Domain"
+msgstr "Domena"
+
+#. module: base_exception
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_form
+msgid ""
+"Enter Python code here. Help about Python expression is available in the "
+"help tab of this document."
+msgstr ""
+"Tutaj wpisz kod Pythona. Pomoc dotycząca wyrażenia w języku Python jest "
+"dostępna na karcie pomocy tego dokumentu."
+
+#. module: base_exception
+#. odoo-python
+#: code:addons/base_exception/models/base_exception_method.py:0
+#, python-format
+msgid ""
+"Error when evaluating the exception.rule rule:\n"
+" %(rule_name)s \n"
+"(%(error)s)"
+msgstr ""
+"Błąd podczas oceny reguły exception.rule:\n"
+" %(rule_name)s \n"
+"(%(error)s)"
+
+#. module: base_exception
+#: model:ir.model,name:base_exception.model_base_exception
+msgid "Exception"
+msgstr "Wyjątek"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__name
+msgid "Exception Name"
+msgstr "Nazwa wyjątku"
+
+#. module: base_exception
+#: model:ir.model,name:base_exception.model_exception_rule
+msgid "Exception Rule"
+msgstr "Reguła wyjątku"
+
+#. module: base_exception
+#: model:ir.model,name:base_exception.model_exception_rule_confirm
+msgid "Exception Rule Confirm Wizard"
+msgstr "Kreator potwierdzania reguł wyjątku"
+
+#. module: base_exception
+#: model:ir.model,name:base_exception.model_base_exception_method
+msgid "Exception Rule Methods"
+msgstr "Metody reguł wyjątku"
+
+#. module: base_exception
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_form
+msgid "Exception Rule Setup"
+msgstr "Konfiguracja reguł wyjątku"
+
+#. module: base_exception
+#: model:ir.actions.act_window,name:base_exception.action_exception_rule_tree
+#: model:ir.ui.menu,name:base_exception.menu_action_exception
+msgid "Exception Rules"
+msgstr "Reguły wyjątków"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__exception_type
+msgid "Exception Type"
+msgstr "Rodzaje wyjątków"
+
+#. module: base_exception
+#: model:res.groups,name:base_exception.group_exception_rule_manager
+msgid "Exception manager"
+msgstr "Menedżer wyjątków"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_base_exception__exception_ids
+msgid "Exceptions"
+msgstr "Wyjątki"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_base_exception__exceptions_summary
+msgid "Exceptions Summary"
+msgstr "Podsumowanie wyjątków"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule_confirm__exception_ids
+msgid "Exceptions to resolve"
+msgstr "Wyjątki do rozstrzygnięcia"
+
+#. module: base_exception
+#: model:ir.model.fields,help:base_exception.field_exception_rule__sequence
+msgid "Gives the sequence order when applying the test"
+msgstr "Podaje kolejność wykonywania testu"
+
+#. module: base_exception
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_form
+msgid "Help"
+msgstr "Pomoc"
+
+#. module: base_exception
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_form
+msgid "Help with Python expressions"
+msgstr "Pomoc z wyrażeniami Pythona"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__id
+msgid "ID"
+msgstr "ID"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_base_exception__ignore_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule_confirm__ignore
+msgid "Ignore Exceptions"
+msgstr "Ignoruj wykryte wyjątki"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__is_blocking
+msgid "Is Blocking"
+msgstr "Jest blokujący"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__write_uid
+msgid "Last Updated by"
+msgstr "Ostatnio modyfikowane przez"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__write_date
+msgid "Last Updated on"
+msgstr "Ostatnia zmiana"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_base_exception__main_exception_id
+msgid "Main Exception"
+msgstr "Główny wyjątek"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__method
+msgid "Method"
+msgstr "Metoda"
+
+#. module: base_exception
+#. odoo-python
+#: code:addons/base_exception/wizard/base_exception_confirm.py:0
+#, python-format
+msgid "Only 1 ID accepted, got %r."
+msgstr "Zaakceptowano tylko 1 ID, otrzymano %r."
+
+#. module: base_exception
+#: model:ir.actions.act_window,name:base_exception.action_exception_rule_confirm
+msgid "Outstanding exceptions to manage"
+msgstr "Wyjątki wymagające zarządzania"
+
+#. module: base_exception
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_confirm
+msgid "Outstanding exceptions to manager"
+msgstr "Wyjątki do menedżera"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__code
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_form
+msgid "Python Code"
+msgstr "Kod python"
+
+#. module: base_exception
+#: model:ir.model.fields,help:base_exception.field_exception_rule__code
+msgid ""
+"Python code executed to check if the exception apply or not. Use failed = "
+"True to block the exception"
+msgstr ""
+"Kod python wykonany w celu sprawdzenia, czy wyjątek ma zastosowanie, czy "
+"nie. Użyj failed = True, aby zablokować wyjątek"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule_confirm__related_model_id
+msgid "Related Model"
+msgstr "Powiązany model"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__sequence
+msgid "Sequence"
+msgstr "Sekwencja"
+
+#. module: base_exception
+#: model:ir.model.fields,field_description:base_exception.field_base_exception__smart_search
+#: model:ir.model.fields,field_description:base_exception.field_base_exception_method__smart_search
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule__smart_search
+#: model:ir.model.fields,field_description:base_exception.field_exception_rule_confirm__smart_search
+msgid "Smart Search"
+msgstr ""
+
+#. module: base_exception
+#. odoo-python
+#: code:addons/base_exception/models/base_exception.py:0
+#, python-format
+msgid "The exceptions can not be ignored, because some of them are blocking."
+msgstr "Wyjątków nie można ignorować, ponieważ niektóre z nich są blokujące."
+
+#. module: base_exception
+#. odoo-python
+#: code:addons/base_exception/models/exception_rule.py:0
+#, python-format
+msgid ""
+"There is a problem of configuration, python code, domain or method is "
+"missing to match the exception type."
+msgstr ""
+"Wystąpił problem z konfiguracją, brakuje kodu python, domeny lub metody "
+"odpowiadającej typowi wyjątku."
+
+#. module: base_exception
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_form
+msgid "To block the exception use: <code>failed = True</code>"
+msgstr "Aby zablokować wyjątek użyj: <code>failed = True</code>"
+
+#. module: base_exception
+#: model_terms:ir.ui.view,arch_db:base_exception.view_exception_rule_form
+msgid ""
+"Various fields may use Python code or Python expressions. The following "
+"variables can be used:"
+msgstr ""
+"Różne pola mogą używać kodu Pythona lub wyrażeń Pythona. Można używać "
+"następujących zmiennych:"
+
+#. module: base_exception
+#: model:ir.model.fields,help:base_exception.field_exception_rule__is_blocking
+msgid "When checked the exception can not be ignored"
+msgstr "Po zaznaczeniu wyjątku nie można go zignorować"
+
+#~ msgid "Last Modified on"
+#~ msgstr "Ostatnio modyfikowano"
