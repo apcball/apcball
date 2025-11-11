@@ -1,11 +1,11 @@
-/* Enhanced Stock Report CSS */
+/* Enhanced Stock Report CSS - STRICTLY SCOPED TO stock_current_report_kanban ONLY */
 
 /* Full-width Kanban View - Like Product View */
-.o_kanban_view.o_kanban_mobile {
+.o_kanban_view.stock_current_report_kanban.o_kanban_mobile {
     padding: 8px;
 }
 
-.o_kanban_view.o_kanban_mobile .o_kanban_record {
+.o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
     width: 100%;
     max-width: 400px;
     min-width: 300px;
@@ -14,14 +14,14 @@
     vertical-align: top;
 }
 
-.o_kanban_view.o_kanban_mobile .o_kanban_record.o_kanban_ghost {
+.o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record.o_kanban_ghost {
     height: 0;
     min-height: 0;
     visibility: hidden;
 }
 
 /* Kanban Card Styling */
-.o_kanban_view .oe_kanban_global_click {
+.o_kanban_view.stock_current_report_kanban .oe_kanban_global_click {
     border: 1px solid #dee2e6;
     border-radius: 8px;
     background: white;
@@ -30,409 +30,107 @@
     padding: 16px;
 }
 
-.o_kanban_view .oe_kanban_global_click:hover {
+.o_kanban_view.stock_current_report_kanban .oe_kanban_global_click:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     transform: translateY(-2px);
     border-color: #007bff;
 }
 
 /* Kanban Record Details */
-.o_kanban_view .oe_kanban_details {
+.o_kanban_view.stock_current_report_kanban .oe_kanban_details {
     width: 100%;
 }
 
-.o_kanban_view .o_kanban_record_title {
+.o_kanban_view.stock_current_report_kanban .o_kanban_record_title {
     font-size: 1.1rem;
     color: #212529;
     display: block;
     margin-bottom: 4px;
 }
 
-.o_kanban_view .o_kanban_record_subtitle {
+.o_kanban_view.stock_current_report_kanban .o_kanban_record_subtitle {
     font-size: 0.875rem;
     color: #6c757d;
     margin-bottom: 12px;
 }
 
 /* Badge Styling */
-.o_kanban_view .badge {
+.o_kanban_view.stock_current_report_kanban .badge {
     font-weight: 500;
     padding: 6px 12px;
 }
 
 /* Responsive Grid Layout */
 @media (min-width: 1400px) {
-    .o_kanban_view.o_kanban_mobile .o_kanban_record {
+    .o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
         width: calc(20% - 16px);
     }
 }
 
 @media (min-width: 1200px) and (max-width: 1399px) {
-    .o_kanban_view.o_kanban_mobile .o_kanban_record {
+    .o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
         width: calc(25% - 16px);
     }
 }
 
 @media (min-width: 992px) and (max-width: 1199px) {
-    .o_kanban_view.o_kanban_mobile .o_kanban_record {
+    .o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
         width: calc(33.333% - 16px);
     }
 }
 
 @media (min-width: 768px) and (max-width: 991px) {
-    .o_kanban_view.o_kanban_mobile .o_kanban_record {
+    .o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
         width: calc(50% - 16px);
     }
 }
 
 @media (max-width: 767px) {
-    .o_kanban_view.o_kanban_mobile .o_kanban_record {
+    .o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
         width: 100%;
         margin: 8px 0;
     }
-}
-
-/* Old Small Column Styling - Kept for compatibility */
-.o_kanban_view.o_kanban_small_column .oe_kanban_card {
-    min-width: 300px;
-    max-width: 350px;
-}
-
-
-/* Dashboard card styling */
-.stock-dashboard-card {
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out;
-}
-
-.stock-dashboard-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-/* Stock quantity badge */
-.stock-quantity {
-    font-weight: 600;
-    color: #007bff;
-}
-
-
-/* Search panel enhancements */
-.o_search_panel .o_search_panel_category {
-    border-bottom: 1px solid #e9ecef;
-}
-
-.o_search_panel .o_search_panel_category.active {
-    background-color: #f8f9fa;
-    border-left: 3px solid #007bff;
-}
-
-/* Tree view enhancements */
-.o_list_table tbody tr.o_data_row:nth-child(even) {
-    background-color: #f8f9fa;
-}
-
-.o_list_table tbody tr.o_data_row:hover {
-    background-color: #e3f2fd;
-}
-
-/* Progress bar styling */
-.o_progressbar {
-    background-color: transparent;
-    border: none;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.o_progressbar .o_progressbar_value {
-    background-color: transparent;
-    height: 100%;
-    transition: width 0.3s ease;
-}
-
-/* Status indicators */
-.stock-status-low {
-    color: #000000;
-    font-weight: bold;
-}
-
-.stock-status-medium {
-    color: #000000;
-    font-weight: bold;
-}
-
-.stock-status-high {
-    color: #000000;
-    font-weight: bold;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .stock-dashboard-card {
-        margin-bottom: 1rem;
-    }
     
-    .o_kanban_view .o_kanban_record_title {
+    .o_kanban_view.stock_current_report_kanban .o_kanban_record_title {
         font-size: 1rem;
     }
     
-    .o_kanban_view .badge {
+    .o_kanban_view.stock_current_report_kanban .badge {
         font-size: 0.75rem;
         padding: 4px 8px;
     }
 }
 
-/* Enhanced search panel */
-.o_search_panel {
-    border-right: 1px solid #dee2e6;
-    background-color: #f8f9fa;
+/* Dashboard card styling - SCOPED */
+.o_kanban_view.stock_current_report_kanban .stock-dashboard-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out;
 }
 
-.o_search_panel_header {
-    background-color: #007bff;
-    color: white;
-    padding: 0.75rem 1rem;
-    font-weight: 600;
-}
-
-/* Filter buttons */
-.stock-filter-btn {
-    margin: 0.25rem;
-    border-radius: 20px;
-    padding: 0.375rem 0.75rem;
-    font-size: 0.875rem;
-}
-
-.stock-filter-btn.active {
-    background-color: #007bff;
-    border-color: #007bff;
-    color: white;
-}
-
-/* Summary cards animation */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.stock-summary-card {
-    animation: fadeInUp 0.5s ease-out;
-}
-
-/* Custom scrollbar for search panel */
-.o_search_panel::-webkit-scrollbar {
-    width: 6px;
-}
-
-.o_search_panel::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.o_search_panel::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-}
-
-.o_search_panel::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
-/* Enhanced Warehouse Sidebar */
-.warehouse-sidebar {
-    width: 320px;
-    min-height: 500px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    padding: 1rem;
-    margin-right: 1rem;
-    overflow-y: auto;
-    max-height: calc(100vh - 150px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.warehouse-sidebar-header {
-    border-bottom: 2px solid #007bff;
-    padding-bottom: 1rem;
-    margin-bottom: 1rem;
-    background: white;
-    margin: -1rem -1rem 1rem -1rem;
-    padding: 1rem;
-    border-radius: 12px 12px 0 0;
-}
-
-/* Search Box Styling */
-.sidebar-search .input-group {
-    border-radius: 20px;
-    overflow: hidden;
-}
-
-.sidebar-search input {
-    border: 1px solid #e0e0e0;
-    border-radius: 20px 0 0 20px;
-    padding-left: 1rem;
-}
-
-.sidebar-search button {
-    border-radius: 0 20px 20px 0;
-    border-left: none;
-}
-
-/* Warehouse Card Styling */
-.warehouse-header {
-    transition: all 0.3s ease;
-    cursor: pointer;
-    border: none;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.warehouse-header:hover {
+.o_kanban_view.stock_current_report_kanban .stock-dashboard-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
-.warehouse-header.text-primary {
-    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-    border-left: 4px solid #007bff;
-}
-
-/* Location Item Styling */
-.location-item .card {
-    transition: all 0.2s ease;
-    border-left: 3px solid transparent;
-}
-
-.location-item .card:hover {
-    transform: translateX(4px);
-    border-left-color: #28a745;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.location-item .bg-success {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
-    border-left-color: #28a745 !important;
-}
-
-/* Badge Enhancements */
-.warehouse-sidebar .badge {
-    font-size: 0.7rem;
-    padding: 0.35rem 0.65rem;
-    border-radius: 12px;
-    font-weight: 500;
-}
-
-/* Icon Styling */
-.warehouse-sidebar .fa-building {
+/* Stock quantity badge - SCOPED */
+.o_kanban_view.stock_current_report_kanban .stock-quantity {
+    font-weight: 600;
     color: #007bff;
 }
 
-.warehouse-sidebar .fa-home {
-    color: #28a745;
+/* Status indicators - SCOPED */
+.o_kanban_view.stock_current_report_kanban .stock-status-low {
+    color: #000000;
+    font-weight: bold;
 }
 
-.warehouse-sidebar .fa-industry {
-    color: #ffc107;
+.o_kanban_view.stock_current_report_kanban .stock-status-medium {
+    color: #000000;
+    font-weight: bold;
 }
 
-.warehouse-sidebar .fa-warehouse {
-    color: #6f42c1;
-}
-
-/* Animation for expand/collapse */
-.location-list {
-    overflow: hidden;
-    transition: all 0.3s ease-in-out;
-    animation: slideDown 0.3s ease-out;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        max-height: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        max-height: 1000px;
-        transform: translateY(0);
-    }
-}
-
-/* Summary Section */
-.warehouse-summary {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    margin-top: 1rem;
-}
-
-/* Loading State */
-.spinner-border-sm {
-    width: 1rem;
-    height: 1rem;
-}
-
-/* Responsive Design */
-@media (max-width: 1200px) {
-    .warehouse-sidebar {
-        width: 300px;
-        margin-right: 0.5rem;
-    }
-}
-
-@media (max-width: 992px) {
-    .warehouse-sidebar {
-        width: 100%;
-        max-height: 400px;
-        margin-bottom: 1rem;
-        margin-right: 0;
-    }
-    
-    .o_content {
-        flex-direction: column;
-    }
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-    .warehouse-sidebar {
-        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-        color: #e2e8f0;
-    }
-    
-    .warehouse-sidebar-header {
-        background: #1a202c;
-        color: #e2e8f0;
-    }
-    
-    .location-item .card {
-        background: #2d3748;
-        color: #e2e8f0;
-    }
-}
-
-/* Integration with main content area */
-.o_content {
-    display: flex;
-    gap: 1rem;
-}
-
-.o_view_controller {
-    flex: 1;
-}
-
-/* Ensure sidebar doesn't interfere with existing search panel */
-.o_search_panel {
-    flex-shrink: 0;
-}
-
-.warehouse-sidebar {
-    flex-shrink: 0;
+.o_kanban_view.stock_current_report_kanban .stock-status-high {
+    color: #000000;
+    font-weight: bold;
 }

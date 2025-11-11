@@ -94,7 +94,7 @@
         <field name="name">stock.current.report.kanban</field>
         <field name="model">stock.current.report</field>
         <field name="arch" type="xml">
-            <kanban string="Stock Overview" class="o_kanban_mobile">
+            <kanban string="Stock Overview" class="o_kanban_mobile stock_current_report_kanban">
                 <field name="product_id"/>
                 <field name="location_id"/>
                 <field name="warehouse_id"/>

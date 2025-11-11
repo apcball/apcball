@@ -6,7 +6,7 @@
         <field name="model">stock.current.report</field>
         <field name="arch" type="xml">
             <kanban string="Stock Overview with Warehouse Sidebar" 
-                    class="o_kanban_mobile">
+                    class="o_kanban_mobile stock_current_report_kanban">
                 <field name="product_id"/>
                 <field name="location_id"/>
                 <field name="warehouse_id"/>
