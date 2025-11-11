@@ -99,7 +99,8 @@ class StockCurrentReport(models.Model):
                             WHEN sl.usage = 'production' THEN 'Production'
                             WHEN sl.usage = 'inventory' THEN 'Inventory'
                             ELSE sl.usage
-                        END AS location_type_name
+                        END AS location_type_name,
+                        CURRENT_DATE AS stock_date
                     FROM stock_quant sq
                     JOIN product_product pp ON pp.id = sq.product_id
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id

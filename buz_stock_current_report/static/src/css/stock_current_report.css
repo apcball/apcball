@@ -37,30 +37,31 @@
 
 /* Progress bar styling */
 .o_progressbar {
-    background-color: #e9ecef;
+    background-color: transparent;
+    border: none;
     border-radius: 4px;
     overflow: hidden;
 }
 
 .o_progressbar .o_progressbar_value {
-    background-color: #28a745;
+    background-color: transparent;
     height: 100%;
     transition: width 0.3s ease;
 }
 
 /* Status indicators */
 .stock-status-low {
-    color: #dc3545;
+    color: #000000;
     font-weight: bold;
 }
 
 .stock-status-medium {
-    color: #ffc107;
+    color: #000000;
     font-weight: bold;
 }
 
 .stock-status-high {
-    color: #28a745;
+    color: #000000;
     font-weight: bold;
 }
 

@@ -3,7 +3,7 @@
 
     <!-- Enhanced Kanban Card Template for Odoo 17 -->
     <t t-name="buz_stock_current_report.KanbanCard">
-        <div t-attf-class="oe_kanban_card oe_kanban_global_click #{record.quantity.raw_value &lt;= 0 ? 'oe_kanban_color_4' : record.quantity.raw_value &lt; 10 ? 'oe_kanban_color_2' : 'oe_kanban_color_0'}">
+        <div class="oe_kanban_card oe_kanban_global_click">
             <div class="o_kanban_record_top">
                 <div class="o_kanban_record_headings">
                     <strong class="o_kanban_record_title">
@@ -18,7 +18,7 @@
                 <div class="row">
                     <div class="col-6">
                         <strong>Qty:</strong> 
-                        <span t-attf-class="stock-quantity #{record.quantity.raw_value &lt;= 0 ? 'stock-status-low' : record.quantity.raw_value &lt; 10 ? 'stock-status-medium' : 'stock-status-high'}">
+                        <span class="stock-quantity">
                             <field name="quantity"/>
                         </span>
                     </div>
