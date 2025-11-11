@@ -1,8 +1,103 @@
 /* Enhanced Stock Report CSS */
+
+/* Full-width Kanban View - Like Product View */
+.o_kanban_view.o_kanban_mobile {
+    padding: 8px;
+}
+
+.o_kanban_view.o_kanban_mobile .o_kanban_record {
+    width: 100%;
+    max-width: 400px;
+    min-width: 300px;
+    margin: 8px;
+    display: inline-block;
+    vertical-align: top;
+}
+
+.o_kanban_view.o_kanban_mobile .o_kanban_record.o_kanban_ghost {
+    height: 0;
+    min-height: 0;
+    visibility: hidden;
+}
+
+/* Kanban Card Styling */
+.o_kanban_view .oe_kanban_global_click {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.2s ease-in-out;
+    padding: 16px;
+}
+
+.o_kanban_view .oe_kanban_global_click:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+    border-color: #007bff;
+}
+
+/* Kanban Record Details */
+.o_kanban_view .oe_kanban_details {
+    width: 100%;
+}
+
+.o_kanban_view .o_kanban_record_title {
+    font-size: 1.1rem;
+    color: #212529;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.o_kanban_view .o_kanban_record_subtitle {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 12px;
+}
+
+/* Badge Styling */
+.o_kanban_view .badge {
+    font-weight: 500;
+    padding: 6px 12px;
+}
+
+/* Responsive Grid Layout */
+@media (min-width: 1400px) {
+    .o_kanban_view.o_kanban_mobile .o_kanban_record {
+        width: calc(20% - 16px);
+    }
+}
+
+@media (min-width: 1200px) and (max-width: 1399px) {
+    .o_kanban_view.o_kanban_mobile .o_kanban_record {
+        width: calc(25% - 16px);
+    }
+}
+
+@media (min-width: 992px) and (max-width: 1199px) {
+    .o_kanban_view.o_kanban_mobile .o_kanban_record {
+        width: calc(33.333% - 16px);
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .o_kanban_view.o_kanban_mobile .o_kanban_record {
+        width: calc(50% - 16px);
+    }
+}
+
+@media (max-width: 767px) {
+    .o_kanban_view.o_kanban_mobile .o_kanban_record {
+        width: 100%;
+        margin: 8px 0;
+    }
+}
+
+/* Old Small Column Styling - Kept for compatibility */
 .o_kanban_view.o_kanban_small_column .oe_kanban_card {
     min-width: 300px;
     max-width: 350px;
 }
+
 
 /* Dashboard card styling */
 .stock-dashboard-card {
@@ -15,6 +110,13 @@
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
+
+/* Stock quantity badge */
+.stock-quantity {
+    font-weight: 600;
+    color: #007bff;
+}
+
 
 /* Search panel enhancements */
 .o_search_panel .o_search_panel_category {
@@ -71,9 +173,13 @@
         margin-bottom: 1rem;
     }
     
-    .o_kanban_view.o_kanban_small_column .oe_kanban_card {
-        min-width: 280px;
-        max-width: 100%;
+    .o_kanban_view .o_kanban_record_title {
+        font-size: 1rem;
+    }
+    
+    .o_kanban_view .badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
     }
 }
 
