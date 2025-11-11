@@ -131,7 +131,7 @@
                                         </div>
                                         <div class="col-6 text-end">
                                             <span class="badge bg-success fs-6">
-                                                <i class="fa fa-dollar"/> <field name="total_value" widget="monetary"/>
+                                                ฿ <field name="total_value" widget="monetary"/>
                                             </span>
                                         </div>
                                     </div>
