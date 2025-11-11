@@ -1,0 +1,70 @@
+<odoo>
+    <record id="view_stock_current_report_tree" model="ir.ui.view">
+        <field name="name">stock.current.report.tree</field>
+        <field name="model">stock.current.report</field>
+        <field name="arch" type="xml">
+            <tree string="Current Stock">
+                <field name="location_id"/>
+                <field name="product_id"/>
+                <field name="category_id"/>
+                <field name="quantity" sum="Total"/>
+                <field name="uom_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_stock_current_report_search" model="ir.ui.view">
+        <field name="name">stock.current.report.search</field>
+        <field name="model">stock.current.report</field>
+        <field name="arch" type="xml">
+            <search string="Filters">
+                <field name="location_id"/>
+                <field name="product_id"/>
+                <field name="category_id"/>
+                <group expand="1" string="Group By">
+                    <filter name="group_location" string="Location" context="{'group_by':'location_id'}"/>
+                    <filter name="group_category" string="Category" context="{'group_by':'category_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_stock_current_report" model="ir.actions.act_window">
+        <field name="name">Current Stock Report</field>
+        <field name="res_model">stock.current.report</field>
+        <field name="view_mode">tree,search</field>
+        <field name="context">{'search_default_group_location': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                ดูสินค้าคงเหลือตาม Location แบบ Real-time
+            </p>
+            <p>
+                คุณสามารถดูสินค้าคงเหลือปัจจุบันได้ที่นี่ กรองตาม Location หรือ Product
+            </p>
+        </field>
+    </record>
+
+    <record id="action_stock_current_export_wizard" model="ir.actions.act_window">
+        <field name="name">Export to Excel</field>
+        <field name="res_model">stock.current.export.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_stock_current_report_root"
+              name="Current Stock Report"
+              parent="stock.menu_warehouse_report"
+              sequence="15"/>
+
+    <menuitem id="menu_stock_current_report_view"
+              name="Current Stock View"
+              parent="menu_stock_current_report_root"
+              action="action_stock_current_report"
+              sequence="10"/>
+
+    <menuitem id="menu_stock_current_export_wizard"
+              name="Export Stock to Excel"
+              parent="menu_stock_current_report_root"
+              action="action_stock_current_export_wizard"
+              sequence="20"/>
+</odoo>

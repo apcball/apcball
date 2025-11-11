@@ -1,170 +1,249 @@
-# Prompt Engineering: Odoo 17 Module – buz_direct_print_epson
-**Objective:**  
-สร้างโมดูล Odoo 17 ที่ช่วยให้ผู้ใช้สามารถเลือกเอกสารหลายใบ (เช่น Invoice, Picking, Bill) แล้วสั่งพิมพ์ตรงไปยังเครื่องพิมพ์ Epson (continuous form) ที่อยู่ใน Office ผ่าน Local Print Agent (HTTP API)
+🧩 สร้าง module (Current Stock by Date + Export Excel)
 
----
+Module name: buz_stock_current_report
+Odoo Version: 17.0
 
-## 🎯 Functional Concept
-- Module name: `buz_direct_print_epson`
-- Category: Technical / Printing Integration
-- Depends: `base`, `account`, `stock`
-- Version: `17.0.1.0.0`
-- License: LGPL-3
+🎯 ฟังก์ชันหลัก
 
-### 🔹 Use Case
-1. User อยู่บน Odoo Cloud
-2. User เปิด List View ของ Invoices (หรืออื่น ๆ)
-3. เลือกหลายใบ → คลิกปุ่ม `Action > พิมพ์ต่อเนื่อง (Epson)`
-4. Odoo จะเรียก REST API ของ Local Print Agent ที่รันอยู่ใน Office
-5. Agent จะดึง PDF จาก Odoo แล้วสั่งพิมพ์ออกเครื่อง Epson (ผ่าน Windows driver)
+แสดง สินค้าคงเหลือ (On Hand)
 
----
+กรองตาม Location / Product / Category
 
-## ⚙️ Module Components
+มีตัวเลือก “Stock Date” เพื่อดูคงเหลือย้อนหลัง
 
-### 1️⃣ Settings
-เพิ่มเมนูใน **Settings → Technical → Printing → Epson Print Configuration**
+ปุ่ม Export Excel บนหน้า Tree View
 
-Model: `buz.epson.config`
-Fields:
-- `name`: ชื่อการตั้งค่า
-- `agent_url`: URL ของ Local Print Agent เช่น `http://192.168.1.55:5000/print`
-- `default_printer`: ชื่อ printer (เช่น Epson_LQ310)
-- `active`: Boolean
+ใช้ข้อมูลจริงจาก stock.quant และประวัติ stock_move_line
 
-### 2️⃣ Action Button
-เพิ่มปุ่ม Action ใน model `account.move` และ `stock.picking`:
-- Label: “พิมพ์ต่อเนื่อง (Epson)”
-- Multi-record action (ใช้ใน list view)
-- เมื่อคลิก → เรียก method `action_print_epson()`
+filter “Show Zero Qty = False” (ซ่อนสินค้าที่คงเหลือเป็น 0)
 
-### 3️⃣ Backend Logic
-ไฟล์ `models/account_move.py` และ `models/stock_picking.py`:
-
-- สำหรับแต่ละเอกสารที่เลือก:
-  - ใช้ `self.env.ref('account.account_invoices')._render_qweb_pdf()` เพื่อสร้าง PDF
-  - Encode PDF หรือ upload ไป /web/content
-  - POST ไปยัง URL จาก `buz.epson.config`
-    ```python
-    payload = {
-        "printer": config.default_printer,
-        "file_url": pdf_url,
-        "type": "pdf",
-    }
-    requests.post(config.agent_url, json=payload, timeout=10)
-    ```
-
-- แสดง notification ว่า “ส่งพิมพ์สำเร็จแล้ว”
-
-### 4️⃣ Views
-- Menu: Settings → Technical → Printing → Epson Configuration
-- List + Form View
-- Action button ใน invoice list view
-
-### 5️⃣ Security
-- `security/ir.model.access.csv`
-- ให้สิทธิ์กลุ่ม `base.group_system` แก้ไขการตั้งค่า Epson ได้
-
----
-
-## 📂 Module Structure
-buz_direct_print_epson/
-├── init.py
-├── manifest.py
+📁 โครงสร้างโมดูล
+buz_stock_current_report/
+│
+├── __manifest__.py
+├── __init__.py
+│
 ├── models/
-│ ├── init.py
-│ ├── epson_config.py
-│ ├── account_move.py
-│ └── stock_picking.py
+│   ├── __init__.py
+│   └── stock_current_report.py
+│
+├── wizard/
+│   ├── __init__.py
+│   └── stock_current_export_wizard.py
+│
 ├── views/
-│ ├── epson_config_view.xml
-│ ├── account_move_view.xml
-│ └── stock_picking_view.xml
-├── security/
-│ ├── ir.model.access.csv
-│ └── security.xml
-└── README.md
+│   ├── stock_current_report_views.xml
+│   └── stock_current_export_wizard_views.xml
+│
+└── report/
+    ├── __init__.py
+    └── stock_current_report_xlsx.py
 
----
-
-## 💻 Example API POST Body
-
-```json
+📄 __manifest__.py
 {
-  "printer": "Epson_LQ310",
-  "file_url": "https://odoo.mogth.work/report/pdf/account.move/INV/123",
-  "type": "pdf"
+    'name': 'Current Stock Report by Date',
+    'version': '17.0.1.0.0',
+    'summary': 'View and Export Current Stock by Location and Date',
+    'category': 'Inventory/Reports',
+    'depends': ['stock', 'report_xlsx'],
+    'data': [
+        'views/stock_current_report_views.xml',
+        'views/stock_current_export_wizard_views.xml',
+    ],
+    'installable': True,
+    'application': False,
 }
 
-🧠 Additional Notes
+🧠 models/stock_current_report.py
+from odoo import models, fields, tools, api
 
-ใช้ requests module ใน Odoo (ต้อง import)
+class StockCurrentReport(models.Model):
+    _name = 'stock.current.report'
+    _description = 'Current Stock Report (by Date)'
+    _auto = False
+    _order = 'location_id, product_id'
 
-รองรับ multi-record selection
+    product_id = fields.Many2one('product.product', string='Product', readonly=True)
+    location_id = fields.Many2one('stock.location', string='Location', readonly=True)
+    category_id = fields.Many2one('product.category', string='Category', readonly=True)
+    uom_id = fields.Many2one('uom.uom', string='UoM', readonly=True)
+    quantity = fields.Float('On Hand Qty', readonly=True, digits='Product Unit of Measure')
 
-Error handling:
+    stock_date = fields.Date(string="Stock Date", default=fields.Date.context_today)
 
-ถ้า agent ไม่ตอบ → แสดง warning popup
+    def init(self):
+        # view basic real-time stock
+        tools.drop_view_if_exists(self._cr, self._table)
+        self._cr.execute(f"""
+            CREATE OR REPLACE VIEW {self._table} AS (
+                SELECT
+                    sq.id AS id,
+                    sq.product_id,
+                    sq.location_id,
+                    sq.quantity AS quantity,
+                    sq.uom_id,
+                    pt.categ_id AS category_id
+                FROM stock_quant sq
+                JOIN product_product pp ON pp.id = sq.product_id
+                JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                JOIN stock_location sl ON sl.id = sq.location_id
+                WHERE sl.usage = 'internal'
+            )
+        """)
 
-ถ้า success → แสดง toast “ส่งพิมพ์แล้ว”
+    @api.model
+    def compute_stock_at_date(self, date):
+        """Return quantities at a specific date (historical)"""
+        query = f"""
+            SELECT
+                sml.product_id,
+                sml.location_id,
+                sum(
+                    CASE
+                        WHEN sml.location_dest_id IN (
+                            SELECT id FROM stock_location WHERE usage = 'internal'
+                        )
+                        THEN sml.qty_done
+                        ELSE 0
+                    END
+                    -
+                    CASE
+                        WHEN sml.location_id IN (
+                            SELECT id FROM stock_location WHERE usage = 'internal'
+                        )
+                        THEN sml.qty_done
+                        ELSE 0
+                    END
+                ) AS quantity
+            FROM stock_move_line sml
+            JOIN stock_move sm ON sm.id = sml.move_id
+            WHERE sm.date <= %s
+            AND sm.state = 'done'
+            GROUP BY sml.product_id, sml.location_id
+        """
+        self._cr.execute(query, (date,))
+        return self._cr.dictfetchall()
 
-🧾 Example Python Snippet (core logic)
-import requests
-from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+🧮 wizard/stock_current_export_wizard.py
+from odoo import models, fields, api
 
-class AccountMove(models.Model):
-    _inherit = "account.move"
+class StockCurrentExportWizard(models.TransientModel):
+    _name = 'stock.current.export.wizard'
+    _description = 'Export Current Stock to Excel'
 
-    def action_print_epson(self):
-        config = self.env["buz.epson.config"].search([("active", "=", True)], limit=1)
-        if not config:
-            raise UserError(_("Please configure Epson Print Agent first."))
+    stock_date = fields.Date(string="Stock Date", required=True, default=fields.Date.context_today)
 
-        for record in self:
-            pdf = self.env.ref("account.account_invoices")._render_qweb_pdf([record.id])[0]
-            attachment = self.env["ir.attachment"].create({
-                "name": f"{record.name}.pdf",
-                "type": "binary",
-                "datas": base64.b64encode(pdf),
-                "res_model": record._name,
-                "res_id": record.id,
-                "mimetype": "application/pdf",
-            })
-            pdf_url = f"/web/content/{attachment.id}?download=true"
+    def action_export_excel(self):
+        return self.env.ref(
+            'buz_stock_current_report.action_report_stock_current_xlsx'
+        ).report_action(self, data={'stock_date': self.stock_date})
 
-            payload = {
-                "printer": config.default_printer,
-                "file_url": self.env["ir.config_parameter"].sudo().get_param("web.base.url") + pdf_url,
-                "type": "pdf"
-            }
+📊 report/stock_current_report_xlsx.py
+from odoo import models
+from datetime import datetime
 
-            try:
-                requests.post(config.agent_url, json=payload, timeout=10)
-            except Exception as e:
-                raise UserError(_("Cannot connect to Epson agent:\n%s") % e)
+class StockCurrentReportXlsx(models.AbstractModel):
+    _name = 'report.buz_stock_current_report.stock_current_report_xlsx'
+    _inherit = 'report.report_xlsx.abstract'
+    _description = 'Current Stock Report Excel (By Date)'
 
-        return True
+    def generate_xlsx_report(self, workbook, data, wizard):
+        sheet = workbook.add_worksheet('Current Stock')
+        bold = workbook.add_format({'bold': True})
 
-🧩 Deliverables
+        headers = ['Location', 'Product', 'Category', 'Qty', 'UoM']
+        for col, header in enumerate(headers):
+            sheet.write(0, col, header, bold)
 
-รองรับ Invoice, Picking, Bill
+        stock_date = data.get('stock_date')
+        sheet.write(1, 0, f"Stock as of: {stock_date}", bold)
 
-มี config สำหรับ URL Agent และ Printer name
+        # get stock by date
+        stock_lines = self.env['stock.current.report'].compute_stock_at_date(stock_date)
 
-มี Action Button สำหรับพิมพ์ต่อเนื่อง (multi select)
+        row = 3
+        for rec in stock_lines:
+            product = self.env['product.product'].browse(rec['product_id'])
+            location = self.env['stock.location'].browse(rec['location_id'])
+            sheet.write(row, 0, location.display_name)
+            sheet.write(row, 1, product.display_name)
+            sheet.write(row, 2, product.categ_id.display_name)
+            sheet.write(row, 3, rec['quantity'])
+            sheet.write(row, 4, product.uom_id.display_name)
+            row += 1
 
-ใช้ร่วมกับ Local Print Agent (Flask API)
+🪄 views/stock_current_report_views.xml
+<odoo>
+  <record id="view_stock_current_report_tree" model="ir.ui.view">
+    <field name="name">stock.current.report.tree</field>
+    <field name="model">stock.current.report</field>
+    <field name="arch" type="xml">
+      <tree string="Current Stock">
+        <field name="location_id"/>
+        <field name="product_id"/>
+        <field name="category_id"/>
+        <field name="quantity" sum="Total"/>
+        <field name="uom_id"/>
+      </tree>
+    </field>
+  </record>
 
-🪄 Bonus (Optional)
+  <record id="view_stock_current_report_search" model="ir.ui.view">
+    <field name="name">stock.current.report.search</field>
+    <field name="model">stock.current.report</field>
+    <field name="arch" type="xml">
+      <search string="Filters">
+        <field name="location_id"/>
+        <field name="product_id"/>
+        <field name="category_id"/>
+        <group expand="1" string="Group By">
+          <filter name="group_location" string="Location" context="{'group_by':'location_id'}"/>
+          <filter name="group_category" string="Category" context="{'group_by':'category_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
 
-เพิ่ม Auth Key ระหว่าง Odoo ↔ Agent
+  <record id="action_stock_current_report" model="ir.actions.act_window">
+    <field name="name">Current Stock Report</field>
+    <field name="res_model">stock.current.report</field>
+    <field name="view_mode">tree</field>
+    <field name="help" type="html">
+      <p>ดูสินค้าคงเหลือตาม Location แบบ Real-time หรือย้อนหลังตามวันที่เลือก</p>
+    </field>
+  </record>
 
-เพิ่ม Log การพิมพ์ใน model buz.epson.log
+  <act_window
+      id="action_stock_current_export_wizard"
+      name="Export to Excel"
+      res_model="stock.current.export.wizard"
+      view_mode="form"
+      target="new"
+      binding_model="stock.current.report"
+      binding_view_types="list"/>
 
-รองรับ Esc/POS Direct print mode (fast print)
+  <menuitem id="menu_stock_current_report_root"
+            name="Current Stock Report"
+            parent="stock.menu_stock_reporting"
+            action="action_stock_current_report"/>
+</odoo>
 
-Prompt Instruction:
-
-สร้างโมดูล Odoo 17 ตามรายละเอียดข้างต้น พร้อมไฟล์ครบ (manifest, model, view, security, readme) และใช้ชื่อโมดูลว่า buz_direct_print_epson.
+🧾 views/stock_current_export_wizard_views.xml
+<odoo>
+  <record id="view_stock_current_export_wizard_form" model="ir.ui.view">
+    <field name="name">stock.current.export.wizard.form</field>
+    <field name="model">stock.current.export.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Export Current Stock">
+        <group>
+          <field name="stock_date"/>
+        </group>
+        <footer>
+          <button name="action_export_excel" string="Export Excel" type="object" class="btn-primary"/>
+          <button string="Cancel" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>
 
