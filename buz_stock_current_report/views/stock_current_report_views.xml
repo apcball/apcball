@@ -3,13 +3,45 @@
         <field name="name">stock.current.report.tree</field>
         <field name="model">stock.current.report</field>
         <field name="arch" type="xml">
-            <tree string="Current Stock">
-                <field name="location_id"/>
+            <tree string="Current Stock Report" edit="false" create="false" delete="false">
                 <field name="product_id"/>
-                <field name="category_id"/>
-                <field name="quantity" sum="Total"/>
-                <field name="uom_id"/>
+                <field name="unit_cost" string="Unit Cost" sum="Total"/>
+                <field name="total_value" string="Total Value" sum="Total"/>
+                <field name="quantity" string="On Hand" sum="Total"/>
+                <field name="free_to_use" string="Free to Use" sum="Total"/>
+                <field name="incoming" sum="Total"/>
+                <field name="outgoing" sum="Total"/>
+                <field name="uom_id" string="Unit"/>
             </tree>
+        </field>
+    </record>
+
+    <record id="view_stock_current_report_form" model="ir.ui.view">
+        <field name="name">stock.current.report.form</field>
+        <field name="model">stock.current.report</field>
+        <field name="arch" type="xml">
+            <form string="Current Stock" create="false" delete="false" edit="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="product_id" readonly="1"/>
+                            <field name="location_id" readonly="1"/>
+                            <field name="category_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="unit_cost" readonly="1"/>
+                            <field name="total_value" readonly="1"/>
+                            <field name="uom_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Quantities">
+                        <field name="quantity" readonly="1"/>
+                        <field name="free_to_use" readonly="1"/>
+                        <field name="incoming" readonly="1"/>
+                        <field name="outgoing" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
         </field>
     </record>
 
@@ -18,12 +50,15 @@
         <field name="model">stock.current.report</field>
         <field name="arch" type="xml">
             <search string="Filters">
-                <field name="location_id"/>
                 <field name="product_id"/>
+                <field name="location_id"/>
                 <field name="category_id"/>
+                <separator/>
+                <filter name="filter_zero" string="Hide Zero Quantity" domain="[('quantity', '!=', 0)]"/>
                 <group expand="1" string="Group By">
                     <filter name="group_location" string="Location" context="{'group_by':'location_id'}"/>
                     <filter name="group_category" string="Category" context="{'group_by':'category_id'}"/>
+                    <filter name="group_product" string="Product" context="{'group_by':'product_id'}"/>
                 </group>
             </search>
         </field>
@@ -32,14 +67,15 @@
     <record id="action_stock_current_report" model="ir.actions.act_window">
         <field name="name">Current Stock Report</field>
         <field name="res_model">stock.current.report</field>
-        <field name="view_mode">tree,search</field>
+        <field name="view_mode">tree,form</field>
         <field name="context">{'search_default_group_location': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                ดูสินค้าคงเหลือตาม Location แบบ Real-time
+                Current Stock Report View
             </p>
             <p>
-                คุณสามารถดูสินค้าคงเหลือปัจจุบันได้ที่นี่ กรองตาม Location หรือ Product
+                View current stock quantities with unit cost, total value, and inbound/outbound movements.
+                Filter by location, product, or category.
             </p>
         </field>
     </record>

@@ -5,7 +5,15 @@
         <field name="arch" type="xml">
             <form string="Export Current Stock">
                 <group>
-                    <field name="stock_date"/>
+                    <group string="Date Range">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group string="Filters (Optional)">
+                        <field name="location_ids" widget="many2many_tags" placeholder="All internal locations"/>
+                        <field name="product_ids" widget="many2many_tags" placeholder="All products"/>
+                        <field name="category_ids" widget="many2many_tags" placeholder="All categories"/>
+                    </group>
                 </group>
                 <footer>
                     <button name="action_export_excel" string="Export Excel" type="object" class="btn-primary"/>

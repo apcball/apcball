@@ -12,74 +12,64 @@ class StockCurrentReport(models.Model):
     location_id = fields.Many2one('stock.location', string='Location', readonly=True)
     category_id = fields.Many2one('product.category', string='Category', readonly=True)
     uom_id = fields.Many2one('uom.uom', string='UoM', readonly=True)
-    quantity = fields.Float('On Hand Qty', readonly=True, digits='Product Unit of Measure')
+    quantity = fields.Float('On Hand', readonly=True, digits='Product Unit of Measure')
+    free_to_use = fields.Float('Free to Use', readonly=True, digits='Product Unit of Measure')
+    incoming = fields.Float('Incoming', readonly=True, digits='Product Unit of Measure')
+    outgoing = fields.Float('Outgoing', readonly=True, digits='Product Unit of Measure')
+    unit_cost = fields.Float('Unit Cost', readonly=True)
+    total_value = fields.Float('Total Value', readonly=True)
 
     stock_date = fields.Date(string="Stock Date", default=fields.Date.context_today)
 
     def init(self):
-        # view basic real-time stock
+        # view basic real-time stock with cost from product and incoming/outgoing movements
         _logger.info("Initializing stock.current.report view")
         tools.drop_view_if_exists(self._cr, self._table)
         try:
-            # Check if stock_quant table exists, if not use stock_quant as fallback
-            self._cr.execute("""
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables
-                    WHERE table_name = 'stock_quant'
-                );
-            """)
-            quant_table_exists = self._cr.fetchone()[0]
-            
-            if quant_table_exists:
-                _logger.info("Using stock_quant table")
-                self._cr.execute(f"""
-                    CREATE OR REPLACE VIEW {self._table} AS (
+            _logger.info("Creating stock.current.report view")
+            self._cr.execute(f"""
+                CREATE OR REPLACE VIEW {self._table} AS (
+                    SELECT
+                        sq.id AS id,
+                        sq.product_id,
+                        sq.location_id,
+                        pt.categ_id AS category_id,
+                        pt.uom_id,
+                        COALESCE(sq.quantity, 0) AS quantity,
+                        COALESCE(sq.quantity, 0) AS free_to_use,
+                        COALESCE(incoming.qty, 0) AS incoming,
+                        COALESCE(outgoing.qty, 0) AS outgoing,
+                        COALESCE(pt.list_price, 0) AS unit_cost,
+                        COALESCE(sq.quantity, 0) * COALESCE(pt.list_price, 0) AS total_value
+                    FROM stock_quant sq
+                    JOIN product_product pp ON pp.id = sq.product_id
+                    JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                    JOIN stock_location sl ON sl.id = sq.location_id
+                    LEFT JOIN (
                         SELECT
-                            sq.id AS id,
-                            sq.product_id,
-                            sq.location_id,
-                            sq.quantity AS quantity,
-                            pt.uom_id,
-                            pt.categ_id AS category_id
-                        FROM stock_quant sq
-                        JOIN product_product pp ON pp.id = sq.product_id
-                        JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                        JOIN stock_location sl ON sl.id = sq.location_id
-                        WHERE sl.usage = 'internal'
-                    )
-                """)
-            else:
-                _logger.info("stock_quant table not found, using alternative query")
-                self._cr.execute(f"""
-                    CREATE OR REPLACE VIEW {self._table} AS (
-                        SELECT
-                            ROW_NUMBER() OVER () AS id,
+                            sml.location_dest_id,
                             sml.product_id,
-                            sml.location_dest_id AS location_id,
-                            SUM(CASE WHEN sml.location_dest_id IN (
-                                SELECT id FROM stock_location WHERE usage = 'internal'
-                            ) THEN sml.qty_done ELSE 0 END) -
-                            SUM(CASE WHEN sml.location_id IN (
-                                SELECT id FROM stock_location WHERE usage = 'internal'
-                            ) THEN sml.qty_done ELSE 0 END) AS quantity,
-                            pt.uom_id,
-                            pt.categ_id AS category_id
+                            SUM(sml.quantity) AS qty
                         FROM stock_move_line sml
                         JOIN stock_move sm ON sm.id = sml.move_id
-                        JOIN product_product pp ON pp.id = sml.product_id
-                        JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                        WHERE sm.state = 'done'
-                        AND (sml.location_dest_id IN (SELECT id FROM stock_location WHERE usage = 'internal')
-                             OR sml.location_id IN (SELECT id FROM stock_location WHERE usage = 'internal'))
-                        GROUP BY sml.product_id, sml.location_dest_id, pt.uom_id, pt.categ_id
-                        HAVING SUM(CASE WHEN sml.location_dest_id IN (
-                            SELECT id FROM stock_location WHERE usage = 'internal'
-                        ) THEN sml.qty_done ELSE 0 END) -
-                              SUM(CASE WHEN sml.location_id IN (
-                            SELECT id FROM stock_location WHERE usage = 'internal'
-                        ) THEN sml.qty_done ELSE 0 END) != 0
-                    )
-                """)
+                        WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
+                        AND sml.location_dest_id IS NOT NULL
+                        GROUP BY sml.location_dest_id, sml.product_id
+                    ) incoming ON incoming.location_dest_id = sq.location_id AND incoming.product_id = sq.product_id
+                    LEFT JOIN (
+                        SELECT
+                            sml.location_id,
+                            sml.product_id,
+                            SUM(sml.quantity) AS qty
+                        FROM stock_move_line sml
+                        JOIN stock_move sm ON sm.id = sml.move_id
+                        WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
+                        AND sml.location_id IS NOT NULL
+                        GROUP BY sml.location_id, sml.product_id
+                    ) outgoing ON outgoing.location_id = sq.location_id AND outgoing.product_id = sq.product_id
+                    WHERE sl.usage = 'internal'
+                )
+            """)
             _logger.info(f"Successfully created {self._table} view")
         except Exception as e:
             _logger.error(f"Error creating {self._table} view: {e}")
@@ -110,7 +100,7 @@ class StockCurrentReport(models.Model):
                         WHEN sml.location_dest_id IN (
                             SELECT id FROM stock_location WHERE usage = 'internal'
                         )
-                        THEN sml.qty_done
+                        THEN sml.quantity
                         ELSE 0
                     END
                     -
@@ -118,7 +108,7 @@ class StockCurrentReport(models.Model):
                         WHEN sml.location_id IN (
                             SELECT id FROM stock_location WHERE usage = 'internal'
                         )
-                        THEN sml.qty_done
+                        THEN sml.quantity
                         ELSE 0
                     END
                 ) AS quantity
