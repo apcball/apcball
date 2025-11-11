@@ -19,7 +19,7 @@
                     <div class="col-6">
                         <strong>Qty:</strong> 
                         <span class="stock-quantity">
-                            <field name="quantity"/>
+                            <field name="quantity" widget="float" digits="[16,2]"/>
                         </span>
                     </div>
                     <div class="col-6">

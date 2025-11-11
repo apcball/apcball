@@ -60,6 +60,15 @@
     padding: 6px 12px;
 }
 
+/* Text styling for card body - specific white text */
+.o_kanban_view.stock_current_report_kanban .o_kanban_record_body .row:first-child strong {
+    color: #ffffff;
+}
+
+.o_kanban_view.stock_current_report_kanban .o_kanban_record_body .row:first-child > div {
+    color: #ffffff;
+}
+
 /* Responsive Grid Layout */
 @media (min-width: 1400px) {
     .o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {

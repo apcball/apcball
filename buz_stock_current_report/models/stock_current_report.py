@@ -13,7 +13,7 @@ class StockCurrentReport(models.Model):
     warehouse_id = fields.Many2one('stock.warehouse', string='Warehouse', readonly=True)
     category_id = fields.Many2one('product.category', string='Category', readonly=True)
     uom_id = fields.Many2one('uom.uom', string='UoM', readonly=True)
-    quantity = fields.Float('On Hand', readonly=True, digits='Product Unit of Measure')
+    quantity = fields.Float('On Hand', readonly=True, digits=(16, 2))
     free_to_use = fields.Float('Free to Use', readonly=True, digits='Product Unit of Measure')
     incoming = fields.Float('Incoming', readonly=True, digits='Product Unit of Measure')
     outgoing = fields.Float('Outgoing', readonly=True, digits='Product Unit of Measure')
