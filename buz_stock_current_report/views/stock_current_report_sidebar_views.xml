@@ -113,7 +113,7 @@
 
     <!-- Update Action to use sidebar views -->
     <record id="action_stock_current_report_sidebar" model="ir.actions.act_window">
-        <field name="name">Current Stock Report with Warehouse Sidebar</field>
+        <field name="name">Current Stock Report</field>
         <field name="res_model">stock.current.report</field>
         <field name="view_mode">kanban,tree,form</field>
         <field name="view_ids" eval="[

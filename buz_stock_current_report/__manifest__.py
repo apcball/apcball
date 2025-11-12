@@ -1,5 +1,5 @@
 {
-    'name': 'Current Stock Report by Date',
+    'name': 'Current Stock Report',
     'version': '17.0.1.0.0',
     'summary': 'View and Export Current Stock by Location and Date with Enhanced UI',
     'category': 'Inventory/Reports',
