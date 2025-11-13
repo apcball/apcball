@@ -222,9 +222,10 @@
         <field name="target">new</field>
     </record>
 
+    <!-- Create a Products submenu under Inventory -->
     <menuitem id="menu_stock_current_report_root"
               name="Current Stock Report"
-              parent="stock.menu_warehouse_report"
+              parent="stock.menu_stock_inventory_control"
               sequence="15"/>
 
     <menuitem id="menu_stock_current_report_sidebar"
