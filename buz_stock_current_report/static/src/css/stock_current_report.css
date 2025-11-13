@@ -294,3 +294,216 @@
         margin-left: 2px;
     }
 }
+
+/* Transfer Feature Styles */
+.product-selection-checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: #28a745;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.product-selection-checkbox:hover {
+    transform: scale(1.1);
+    border-color: #28a745;
+}
+
+.product-selection-checkbox:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.product-selection-container {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    z-index: 10;
+    background: white;
+    border-radius: 6px;
+    padding: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 0;
+    transition: all 0.3s ease;
+}
+
+.product-selection-container:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    transform: scale(1.05);
+}
+
+.kanban-card-selected {
+    border: 3px solid #28a745 !important;
+    background-color: #f0f8f4 !important;
+    box-shadow: 0 4px 12px rgba(40,167,69,0.4) !important;
+}
+
+.kanban-card-selected .product-selection-container {
+    background: #28a745;
+    box-shadow: 0 4px 12px rgba(40,167,69,0.5);
+}
+
+.kanban-card-selected .product-selection-checkbox {
+    border-color: white;
+    background-color: white;
+}
+
+.transfer-selected-button {
+    position: fixed !important;
+    bottom: 30px !important;
+    right: 30px !important;
+    z-index: 9999 !important;
+    border-radius: 30px !important;
+    padding: 14px 28px !important;
+    box-shadow: 0 6px 20px rgba(0,123,255,0.4) !important;
+    transition: all 0.3s ease !important;
+    animation: slideInUp 0.5s ease-out !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    border: none !important;
+}
+
+.transfer-selected-button:hover {
+    transform: translateY(-4px) scale(1.05) !important;
+    box-shadow: 0 10px 30px rgba(0,123,255,0.5) !important;
+}
+
+.transfer-product-btn {
+    opacity: 0.8;
+    transition: all 0.2s ease;
+}
+
+.transfer-product-btn:hover {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+/* Quantity validation styling */
+.quantity-warning {
+    color: #dc3545;
+    font-weight: bold;
+    background-color: #f8d7da;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.quantity-success {
+    color: #155724;
+    font-weight: bold;
+    background-color: #d4edda;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* Transfer wizard enhancements */
+.o_form_view.o_stock_current_transfer_wizard .o_form_sheet {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.o_form_view.o_stock_current_transfer_wizard .o_field_widget.o_list_editable {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.o_form_view.o_stock_current_transfer_wizard .o_list_table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Transfer button animations */
+@keyframes slideInUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+    }
+}
+
+.transfer-selected-button.pulse {
+    animation: pulse 2s infinite;
+}
+
+.product-selection-container label {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    user-select: none;
+}
+
+.kanban-card-selected .product-selection-container label {
+    color: white;
+    font-weight: 600;
+}
+
+/* Responsive adjustments for transfer features */
+@media (max-width: 768px) {
+    .transfer-selected-button {
+        bottom: 15px !important;
+        right: 15px !important;
+        padding: 12px 20px !important;
+        font-size: 1rem !important;
+    }
+    
+    .product-selection-checkbox {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .product-selection-container {
+        bottom: 10px;
+        right: 10px;
+        padding: 6px;
+    }
+    
+    .transfer-product-btn {
+        padding: 6px 8px;
+        font-size: 0.75rem;
+    }
+}
+
+/* Transfer status indicators */
+.transfer-status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.transfer-status-confirmed {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.transfer-status-done {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.transfer-status-cancelled {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}

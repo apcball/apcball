@@ -20,7 +20,7 @@
                 <field name="uom_id"/>
                 <templates>
                     <t t-name="kanban-box">
-                        <div class="oe_kanban_global_click o_kanban_record_has_image_fill">
+                        <div class="o_kanban_record_has_image_fill position-relative">
                             <div class="oe_kanban_details">
                                 <div class="o_kanban_record_top mb-2">
                                     <div class="o_kanban_record_headings">
@@ -74,13 +74,40 @@
                                     </div>
                                 </div>
                                 <div class="o_kanban_record_bottom mt-2">
-                                    <div class="oe_kanban_bottom_right">
-                                        <button class="btn btn-sm btn-primary" 
+                                    <div class="oe_kanban_bottom_left">
+                                        <button class="btn btn-sm btn-success transfer-product-btn me-1"
+                                                t-att-data-product-id="record.product_id.raw_value"
+                                                t-att-data-location-id="record.location_id.raw_value"
+                                                t-att-data-quantity="record.quantity.raw_value"
+                                                t-att-data-uom-id="record.uom_id.raw_value"
+                                                t-att-data-product-name="record.product_id.value"
+                                                t-att-data-location-name="record.location_id.value"
+                                                title="Transfer this product">
+                                            <i class="fa fa-exchange-alt"/> Transfer
+                                        </button>
+                                        <button class="btn btn-sm btn-primary me-1"
                                                 name="action_view_product_moves" type="object">
-                                            <i class="fa fa-arrows-alt"/> View Stock Moves
+                                            <i class="fa fa-arrows-alt"/> Moves
+                                        </button>
+                                        <button class="btn btn-sm btn-info"
+                                                type="object" name="action_open_record"
+                                                title="View Details">
+                                            <i class="fa fa-info-circle"/> Details
                                         </button>
                                     </div>
                                 </div>
+                            </div>
+                            <!-- Product Selection Checkbox - Bottom Right -->
+                            <div class="product-selection-container">
+                                <input type="checkbox"
+                                       class="product-selection-checkbox"
+                                       t-att-data-product-id="record.product_id.raw_value"
+                                       t-att-data-location-id="record.location_id.raw_value"
+                                       t-att-data-quantity="record.quantity.raw_value"
+                                       t-att-data-uom-id="record.uom_id.raw_value"
+                                       t-att-data-product-name="record.product_id.value"
+                                       t-att-data-location-name="record.location_id.value"
+                                       title="Select this product for transfer"/>
                             </div>
                         </div>
                     </t>
@@ -108,6 +135,9 @@
                 <field name="total_value" string="Total Value" sum="Total" widget="monetary"/>
                 <field name="uom_id" string="Unit" optional="hide"/>
                 <button name="action_view_product_moves" type="object" string="Stock Moves" icon="fa-arrows-alt" invisible="quantity == 0"/>
+                <button name="action_transfer_single_product" type="object" string="Transfer" icon="fa-exchange-alt"
+                        class="btn btn-sm btn-success"
+                        title="Transfer this product"/>
             </tree>
         </field>
     </record>

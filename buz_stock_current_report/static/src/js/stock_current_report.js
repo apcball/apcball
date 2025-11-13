@@ -5,19 +5,280 @@ import { listView } from "@web/views/list/list_view";
 import { ListController, ListRenderer } from "@web/views/list/list_controller";
 import { kanbanView } from "@web/views/kanban/kanban_view";
 import { KanbanController, KanbanRenderer } from "@web/views/kanban/kanban_controller";
-import { Component, useState, onWillStart } from "@odoo/owl";
+import { KanbanRecord } from "@web/views/kanban/kanban_record";
+import { Component, useState, onWillStart, onMounted, onPatched } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
+
+// Custom Kanban Record to handle clicks without navigation
+export class StockKanbanRecord extends KanbanRecord {
+    /**
+     * Override global click to prevent form opening when clicking on checkboxes or buttons
+     * This allows multi-product selection without navigation
+     */
+    onGlobalClick(ev) {
+        // Check if click is on interactive elements that shouldn't trigger navigation
+        const isInteractiveElement = ev.target.closest(
+            '.product-selection-checkbox, .transfer-product-btn, button, a, input, select, textarea'
+        );
+        
+        if (isInteractiveElement) {
+            // Don't open record form, let the element handle the click
+            return;
+        }
+        
+        // For all other clicks, call the parent method to open record form
+        super.onGlobalClick(ev);
+    }
+}
+
+// Product Selection Manager for Transfer Feature
+export class ProductSelectionManager {
+    constructor() {
+        this.selectedProducts = new Map();
+        this.callbacks = new Set();
+    }
+
+    toggleProductSelection(productData) {
+        const key = `${productData.productId}_${productData.locationId}`;
+        if (this.selectedProducts.has(key)) {
+            this.selectedProducts.delete(key);
+        } else {
+            this.selectedProducts.set(key, productData);
+        }
+        this.notifyCallbacks();
+    }
+
+    isProductSelected(productId, locationId) {
+        const key = `${productId}_${locationId}`;
+        return this.selectedProducts.has(key);
+    }
+
+    getSelectedProducts() {
+        return Array.from(this.selectedProducts.values());
+    }
+
+    getSelectedCount() {
+        return this.selectedProducts.size;
+    }
+
+    clearSelection() {
+        this.selectedProducts.clear();
+        this.notifyCallbacks();
+    }
+
+    onSelectionChange(callback) {
+        this.callbacks.add(callback);
+    }
+
+    notifyCallbacks() {
+        this.callbacks.forEach(callback => callback());
+    }
+}
 
 export class StockListController extends ListController {
     setup() {
         super.setup();
+        this.orm = useService("orm");
+        this.action = useService("action");
+        this.notification = useService("notification");
+        this.selectionManager = new ProductSelectionManager();
+        
+        // Add transfer button to toolbar
+        this.renderTransferButton();
+    }
+
+    renderTransferButton() {
+        const transferButton = document.createElement('button');
+        transferButton.className = 'btn btn-primary transfer-selected-button';
+        transferButton.innerHTML = '<i class="fa fa-exchange-alt me-2"/>Transfer Selected';
+        transferButton.style.display = 'none';
+        transferButton.onclick = () => this.onTransferSelected();
+        
+        // Add to toolbar
+        const toolbar = document.querySelector('.o_control_panel .o_cp_buttons');
+        if (toolbar) {
+            toolbar.appendChild(transferButton);
+            this.transferButton = transferButton;
+            
+            // Update button visibility when selection changes
+            this.selectionManager.onSelectionChange(() => {
+                const count = this.selectionManager.getSelectedCount();
+                this.transferButton.style.display = count > 0 ? 'inline-block' : 'none';
+                this.transferButton.innerHTML = `<i class="fa fa-exchange-alt me-2"/>Transfer Selected (${count})`;
+            });
+        }
+    }
+
+    async onTransferSelected() {
+        const selectedProducts = this.selectionManager.getSelectedProducts();
+        if (selectedProducts.length === 0) {
+            this.notification.add("Please select at least one product", { type: "warning" });
+            return;
+        }
+        
+        await this.openTransferWizard(selectedProducts);
+    }
+
+    async openTransferWizard(selectedProducts) {
+        return this.action.doAction({
+            type: 'ir.actions.act_window',
+            res_model: 'stock.current.transfer.wizard',
+            view_mode: 'form',
+            target: 'new',
+            context: {
+                default_selected_products: selectedProducts
+            }
+        });
+    }
+
+    async onTransferSingleProduct(productData) {
+        await this.openTransferWizard([productData]);
     }
 }
 
 export class StockKanbanController extends KanbanController {
     setup() {
         super.setup();
+        this.orm = useService("orm");
+        this.action = useService("action");
+        this.notification = useService("notification");
+        this.selectionManager = new ProductSelectionManager();
+        
+        // Setup product selection handlers
+        this.setupProductSelection();
+        
+        // Add transfer button to toolbar after mount
+        onMounted(() => {
+            this.renderTransferButton();
+        });
+    }
+
+    renderTransferButton() {
+        // Check if button already exists
+        if (this.transferButton) {
+            return;
+        }
+        
+        const toolbar = document.querySelector('.o_control_panel .o_cp_buttons');
+        if (toolbar) {
+            const transferButton = document.createElement('button');
+            transferButton.className = 'btn btn-primary me-2';
+            transferButton.innerHTML = '<i class="fa fa-exchange-alt me-2"></i>Create Transfer';
+            transferButton.style.display = 'none';
+            transferButton.onclick = () => this.onTransferSelected();
+            
+            // Insert at the beginning of toolbar
+            toolbar.insertBefore(transferButton, toolbar.firstChild);
+            this.transferButton = transferButton;
+            
+            // Update button visibility when selection changes
+            this.selectionManager.onSelectionChange(() => {
+                const count = this.selectionManager.getSelectedCount();
+                if (count > 0) {
+                    this.transferButton.style.display = 'inline-block';
+                    this.transferButton.innerHTML = `<i class="fa fa-exchange-alt me-2"></i>Create Transfer (${count})`;
+                } else {
+                    this.transferButton.style.display = 'none';
+                }
+            });
+        }
+    }
+
+    setupProductSelection() {
+        const attachListeners = () => {
+            // Add event listeners for product selection checkboxes
+            const checkboxes = document.querySelectorAll('.product-selection-checkbox');
+            checkboxes.forEach(checkbox => {
+                // Remove old listener if exists
+                if (checkbox._stockChangeHandler) {
+                    checkbox.removeEventListener('change', checkbox._stockChangeHandler);
+                }
+                
+                checkbox._stockChangeHandler = (e) => {
+                    const productData = {
+                        productId: parseInt(e.target.dataset.productId),
+                        locationId: parseInt(e.target.dataset.locationId),
+                        quantity: parseFloat(e.target.dataset.quantity),
+                        uomId: parseInt(e.target.dataset.uomId),
+                        productName: e.target.dataset.productName,
+                        locationName: e.target.dataset.locationName
+                    };
+                    this.selectionManager.toggleProductSelection(productData);
+                    
+                    // Update visual selection state
+                    const card = e.target.closest('.oe_kanban_card');
+                    if (card) {
+                        card.classList.toggle('kanban-card-selected', this.selectionManager.isProductSelected(
+                            productData.productId, productData.locationId
+                        ));
+                    }
+                };
+                checkbox.addEventListener('change', checkbox._stockChangeHandler);
+            });
+
+            // Add event listeners for individual transfer buttons
+            const transferButtons = document.querySelectorAll('.transfer-product-btn');
+            transferButtons.forEach(button => {
+                // Remove old listener if exists
+                if (button._stockClickHandler) {
+                    button.removeEventListener('click', button._stockClickHandler);
+                }
+                
+                button._stockClickHandler = async (e) => {
+                    e.stopPropagation();
+                    // Use closest to get the button element even if icon is clicked
+                    const btn = e.target.closest('.transfer-product-btn');
+                    if (!btn) return;
+                    
+                    const productData = {
+                        productId: parseInt(btn.dataset.productId),
+                        locationId: parseInt(btn.dataset.locationId),
+                        quantity: parseFloat(btn.dataset.quantity),
+                        uomId: parseInt(btn.dataset.uomId),
+                        productName: btn.dataset.productName,
+                        locationName: btn.dataset.locationName
+                    };
+                    await this.onTransferSingleProduct(productData);
+                };
+                button.addEventListener('click', button._stockClickHandler);
+            });
+        };
+        
+        onMounted(() => {
+            attachListeners();
+        });
+        
+        // Reattach listeners after kanban refresh/filter
+        onPatched(() => {
+            attachListeners();
+        });
+    }
+
+    async onTransferSelected() {
+        const selectedProducts = this.selectionManager.getSelectedProducts();
+        if (selectedProducts.length === 0) {
+            this.notification.add("Please select at least one product", { type: "warning" });
+            return;
+        }
+        
+        await this.openTransferWizard(selectedProducts);
+    }
+
+    async openTransferWizard(selectedProducts) {
+        return this.action.doAction({
+            type: 'ir.actions.act_window',
+            res_model: 'stock.current.transfer.wizard',
+            view_mode: 'form',
+            target: 'new',
+            context: {
+                default_selected_products: selectedProducts
+            }
+        });
+    }
+
+    async onTransferSingleProduct(productData) {
+        await this.openTransferWizard([productData]);
     }
 }
 
@@ -203,9 +464,64 @@ export class StockListWithSidebarController extends ListController {
 
     setup() {
         super.setup();
+        this.orm = useService("orm");
+        this.action = useService("action");
+        this.notification = useService("notification");
+        this.selectionManager = new ProductSelectionManager();
         this.sidebarState = useState({
             showSidebar: true,
         });
+        
+        // Add transfer button to toolbar
+        this.renderTransferButton();
+    }
+
+    renderTransferButton() {
+        const transferButton = document.createElement('button');
+        transferButton.className = 'btn btn-primary transfer-selected-button';
+        transferButton.innerHTML = '<i class="fa fa-exchange-alt me-2"/>Transfer Selected';
+        transferButton.style.display = 'none';
+        transferButton.onclick = () => this.onTransferSelected();
+        
+        // Add to toolbar
+        const toolbar = document.querySelector('.o_control_panel .o_cp_buttons');
+        if (toolbar) {
+            toolbar.appendChild(transferButton);
+            this.transferButton = transferButton;
+            
+            // Update button visibility when selection changes
+            this.selectionManager.onSelectionChange(() => {
+                const count = this.selectionManager.getSelectedCount();
+                this.transferButton.style.display = count > 0 ? 'inline-block' : 'none';
+                this.transferButton.innerHTML = `<i class="fa fa-exchange-alt me-2"/>Transfer Selected (${count})`;
+            });
+        }
+    }
+
+    async onTransferSelected() {
+        const selectedProducts = this.selectionManager.getSelectedProducts();
+        if (selectedProducts.length === 0) {
+            this.notification.add("Please select at least one product", { type: "warning" });
+            return;
+        }
+        
+        await this.openTransferWizard(selectedProducts);
+    }
+
+    async openTransferWizard(selectedProducts) {
+        return this.action.doAction({
+            type: 'ir.actions.act_window',
+            res_model: 'stock.current.transfer.wizard',
+            view_mode: 'form',
+            target: 'new',
+            context: {
+                default_selected_products: selectedProducts
+            }
+        });
+    }
+
+    async onTransferSingleProduct(productData) {
+        await this.openTransferWizard([productData]);
     }
 }
 
@@ -217,9 +533,148 @@ export class StockKanbanWithSidebarController extends KanbanController {
 
     setup() {
         super.setup();
+        this.orm = useService("orm");
+        this.action = useService("action");
+        this.notification = useService("notification");
+        this.selectionManager = new ProductSelectionManager();
         this.sidebarState = useState({
             showSidebar: true,
         });
+        
+        // Setup product selection handlers
+        this.setupProductSelection();
+        
+        // Add transfer button to toolbar after mount
+        onMounted(() => {
+            this.renderTransferButton();
+        });
+    }
+
+    renderTransferButton() {
+        // Check if button already exists
+        if (this.transferButton) {
+            return;
+        }
+        
+        const toolbar = document.querySelector('.o_control_panel .o_cp_buttons');
+        if (toolbar) {
+            const transferButton = document.createElement('button');
+            transferButton.className = 'btn btn-primary me-2';
+            transferButton.innerHTML = '<i class="fa fa-exchange-alt me-2"></i>Create Transfer';
+            transferButton.style.display = 'none';
+            transferButton.onclick = () => this.onTransferSelected();
+            
+            // Insert at the beginning of toolbar
+            toolbar.insertBefore(transferButton, toolbar.firstChild);
+            this.transferButton = transferButton;
+            
+            // Update button visibility when selection changes
+            this.selectionManager.onSelectionChange(() => {
+                const count = this.selectionManager.getSelectedCount();
+                if (count > 0) {
+                    this.transferButton.style.display = 'inline-block';
+                    this.transferButton.innerHTML = `<i class="fa fa-exchange-alt me-2"></i>Create Transfer (${count})`;
+                } else {
+                    this.transferButton.style.display = 'none';
+                }
+            });
+        }
+    }
+
+    setupProductSelection() {
+        const attachListeners = () => {
+            // Add event listeners for product selection checkboxes
+            const checkboxes = document.querySelectorAll('.product-selection-checkbox');
+            checkboxes.forEach(checkbox => {
+                // Remove old listener if exists
+                if (checkbox._stockChangeHandler) {
+                    checkbox.removeEventListener('change', checkbox._stockChangeHandler);
+                }
+                
+                checkbox._stockChangeHandler = (e) => {
+                    const productData = {
+                        productId: parseInt(e.target.dataset.productId),
+                        locationId: parseInt(e.target.dataset.locationId),
+                        quantity: parseFloat(e.target.dataset.quantity),
+                        uomId: parseInt(e.target.dataset.uomId),
+                        productName: e.target.dataset.productName,
+                        locationName: e.target.dataset.locationName
+                    };
+                    this.selectionManager.toggleProductSelection(productData);
+                    
+                    // Update visual selection state
+                    const card = e.target.closest('.oe_kanban_card');
+                    if (card) {
+                        card.classList.toggle('kanban-card-selected', this.selectionManager.isProductSelected(
+                            productData.productId, productData.locationId
+                        ));
+                    }
+                };
+                checkbox.addEventListener('change', checkbox._stockChangeHandler);
+            });
+
+            // Add event listeners for individual transfer buttons
+            const transferButtons = document.querySelectorAll('.transfer-product-btn');
+            transferButtons.forEach(button => {
+                // Remove old listener if exists
+                if (button._stockClickHandler) {
+                    button.removeEventListener('click', button._stockClickHandler);
+                }
+                
+                button._stockClickHandler = async (e) => {
+                    e.stopPropagation();
+                    // Use closest to get the button element even if icon is clicked
+                    const btn = e.target.closest('.transfer-product-btn');
+                    if (!btn) return;
+                    
+                    const productData = {
+                        productId: parseInt(btn.dataset.productId),
+                        locationId: parseInt(btn.dataset.locationId),
+                        quantity: parseFloat(btn.dataset.quantity),
+                        uomId: parseInt(btn.dataset.uomId),
+                        productName: btn.dataset.productName,
+                        locationName: btn.dataset.locationName
+                    };
+                    await this.onTransferSingleProduct(productData);
+                };
+                button.addEventListener('click', button._stockClickHandler);
+            });
+        };
+        
+        onMounted(() => {
+            attachListeners();
+        });
+        
+        // Reattach listeners after kanban refresh/filter
+        onPatched(() => {
+            attachListeners();
+        });
+    }
+
+    async onTransferSelected() {
+        const selectedProducts = this.selectionManager.getSelectedProducts();
+        if (selectedProducts.length === 0) {
+            this.notification.add("Please select at least one product", { type: "warning" });
+            return;
+        }
+        
+        await this.openTransferWizard(selectedProducts);
+    }
+
+    async openTransferWizard(selectedProducts) {
+        return this.action.doAction({
+            type: 'ir.actions.act_window',
+            res_model: 'stock.current.transfer.wizard',
+            view_mode: 'form',
+            target: 'new',
+            context: {
+                default_selected_products: selectedProducts
+            }
+        });
+    }
+
+    async onTransferSingleProduct(productData) {
+        await this.openTransferWizard([productData]);
     }
 }
 
@@ -231,6 +686,7 @@ export const stockListView = {
 export const stockKanbanView = {
     ...kanbanView,
     Controller: StockKanbanController,
+    Record: StockKanbanRecord,
 };
 
 // Views with Sidebar
@@ -244,6 +700,7 @@ export const stockKanbanWithSidebarView = {
     ...kanbanView,
     Controller: StockKanbanWithSidebarController,
     Renderer: KanbanRenderer,
+    Record: StockKanbanRecord,
 };
 
 registry.category("views").add("stock_current_list", stockListView);

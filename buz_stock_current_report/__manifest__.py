@@ -9,6 +9,7 @@
         'views/stock_current_report_views.xml',
         'views/stock_current_report_sidebar_views.xml',
         'views/stock_current_export_wizard_views.xml',
+        'views/stock_current_transfer_wizard_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

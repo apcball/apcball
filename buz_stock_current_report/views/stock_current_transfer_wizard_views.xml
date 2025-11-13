@@ -1,0 +1,192 @@
+<odoo>
+
+    <!-- Transfer Wizard Form View -->
+    <record id="view_stock_current_transfer_wizard_form" model="ir.ui.view">
+        <field name="name">stock.current.transfer.wizard.form</field>
+        <field name="model">stock.current.transfer.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Stock Transfer">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <i class="fa fa-exchange-alt"/> Stock Transfer
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="source_location_id" readonly="1" invisible="not source_location_id"/>
+                            <field name="destination_location_id" required="1"/>
+                            <field name="picking_type_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="immediate_transfer"/>
+                            <field name="scheduled_date" invisible="immediate_transfer" required="not immediate_transfer"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Products to Transfer">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="source_location_id" readonly="1"/>
+                                    <field name="available_quantity" readonly="1"/>
+                                    <field name="quantity_to_transfer"/>
+                                    <field name="uom_id" readonly="1"/>
+                                </tree>
+                                <form>
+                                    <group>
+                                        <group>
+                                            <field name="product_id"/>
+                                            <field name="source_location_id" readonly="1"/>
+                                            <field name="available_quantity" readonly="1"/>
+                                        </group>
+                                        <group>
+                                            <field name="quantity_to_transfer"/>
+                                            <field name="uom_id" readonly="1"/>
+                                        </group>
+                                    </group>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="Additional Information">
+                            <group>
+                                <field name="notes" nolabel="1" placeholder="Add any notes about this transfer..."/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_create_transfer" type="object" string="Create Transfer" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Transfer Wizard Line Form View -->
+    <record id="view_stock_current_transfer_wizard_line_form" model="ir.ui.view">
+        <field name="name">stock.current.transfer.wizard.line.form</field>
+        <field name="model">stock.current.transfer.wizard.line</field>
+        <field name="arch" type="xml">
+            <form string="Transfer Line">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="product_id"/>
+                            <field name="source_location_id"/>
+                        </group>
+                        <group>
+                            <field name="available_quantity"/>
+                            <field name="quantity_to_transfer"/>
+                            <field name="uom_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Transfer Wizard Line Tree View -->
+    <record id="view_stock_current_transfer_wizard_line_tree" model="ir.ui.view">
+        <field name="name">stock.current.transfer.wizard.line.tree</field>
+        <field name="model">stock.current.transfer.wizard.line</field>
+        <field name="arch" type="xml">
+            <tree string="Transfer Lines">
+                <field name="product_id"/>
+                <field name="source_location_id"/>
+                <field name="available_quantity"/>
+                <field name="quantity_to_transfer"/>
+                <field name="uom_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Action for Transfer Wizard -->
+    <record id="action_stock_current_transfer_wizard" model="ir.actions.act_window">
+        <field name="name">Create Stock Transfer</field>
+        <field name="res_model">stock.current.transfer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create Stock Transfer
+            </p>
+            <p>
+                Select products to transfer from current stock locations to a destination location.
+                You can modify quantities and choose whether to validate the transfer immediately.
+            </p>
+        </field>
+    </record>
+
+    <!-- Enhanced Kanban View with Selection Checkboxes -->
+    <!-- Temporarily commented out to isolate the issue
+    <record id="view_stock_current_report_kanban_with_selection" model="ir.ui.view">
+        <field name="name">stock.current.report.kanban.with.selection</field>
+        <field name="model">stock.current.report</field>
+        <field name="inherit_id" ref="buz_stock_current_report.view_stock_current_report_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@class='oe_kanban_details']" position="inside">
+                <div class="product-selection-container">
+                    <div class="float-start">
+                        <input type="checkbox"
+                               class="product-selection-checkbox"
+                               t-att-data-product-id="record.product_id.raw_value"
+                               t-att-data-location-id="record.location_id.raw_value"
+                               t-att-data-quantity="record.quantity.raw_value"
+                               t-att-data-uom-id="record.uom_id.raw_value"
+                               t-att-data-product-name="record.product_id.value"
+                               t-att-data-location-name="record.location_id.value"/>
+                    </div>
+                </div>
+            </xpath>
+            <xpath expr="//div[@class='oe_kanban_bottom_right']" position="inside">
+                <button class="btn btn-sm btn-success transfer-product-btn me-1"
+                        t-att-data-product-id="record.product_id.raw_value"
+                        t-att-data-location-id="record.location_id.raw_value"
+                        t-att-data-quantity="record.quantity.raw_value"
+                        t-att-data-uom-id="record.uom_id.raw_value"
+                        t-att-data-product-name="record.product_id.value"
+                        t-att-data-location-name="record.location_id.value"
+                        title="Transfer this product">
+                    <i class="fa fa-exchange-alt"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+    -->
+
+    <!-- Enhanced List View with Selection Column -->
+    <!-- Temporarily commented out to isolate the issue
+    <record id="view_stock_current_report_tree_with_selection" model="ir.ui.view">
+        <field name="name">stock.current.report.tree.with.selection</field>
+        <field name="model">stock.current.report</field>
+        <field name="inherit_id" ref="buz_stock_current_report.view_stock_current_report_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <field name="product_selection" widget="selection" create="false" edit="false"
+                       optional="show" string="Select"/>
+            </xpath>
+            <xpath expr="//button[@name='action_view_product_moves']" position="after">
+                <button name="action_transfer_single_product" type="object"
+                        string="Transfer" icon="fa-exchange-alt"
+                        class="btn btn-sm btn-success"
+                        title="Transfer this product"/>
+            </xpath>
+        </field>
+    </record>
+    -->
+
+    <!-- Transfer Selected Products Button Template -->
+    <template id="transfer_selected_products_button" name="Transfer Selected Products Button">
+        <div class="transfer-selected-container">
+            <button class="btn btn-primary btn-lg transfer-selected-button" 
+                    t-on-click="onTransferSelected"
+                    title="Transfer selected products">
+                <i class="fa fa-exchange-alt me-2"/>
+                Transfer Selected (<span t-esc="selectedCount"/>)
+            </button>
+        </div>
+    </template>
+
+</odoo>

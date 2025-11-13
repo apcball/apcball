@@ -59,5 +59,47 @@
             <field name="perm_create" eval="True"/>
             <field name="perm_unlink" eval="True"/>
         </record>
+
+        <!-- Access rights for stock.current.transfer.wizard model -->
+        <record id="access_stock_current_transfer_wizard_user" model="ir.model.access">
+            <field name="name">stock.current.transfer.wizard user</field>
+            <field name="model_id" ref="model_stock_current_transfer_wizard"/>
+            <field name="group_id" ref="stock.group_stock_user"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="access_stock_current_transfer_wizard_manager" model="ir.model.access">
+            <field name="name">stock.current.transfer.wizard manager</field>
+            <field name="model_id" ref="model_stock_current_transfer_wizard"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Access rights for stock.current.transfer.wizard.line model -->
+        <record id="access_stock_current_transfer_wizard_line_user" model="ir.model.access">
+            <field name="name">stock.current.transfer.wizard.line user</field>
+            <field name="model_id" ref="model_stock_current_transfer_wizard_line"/>
+            <field name="group_id" ref="stock.group_stock_user"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="access_stock_current_transfer_wizard_line_manager" model="ir.model.access">
+            <field name="name">stock.current.transfer.wizard.line manager</field>
+            <field name="model_id" ref="model_stock_current_transfer_wizard_line"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
     </data>
 </odoo>

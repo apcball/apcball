@@ -28,6 +28,7 @@ class StockCurrentReport(models.Model):
         ('transit', 'Transit'),
     ], string='Location Usage', readonly=True)
     location_type_name = fields.Char(string='Location Type', readonly=True)
+    product_selection = fields.Boolean(string='Select', default=False)
 
     stock_date = fields.Date(string="Stock Date", default=fields.Date.context_today)
 
@@ -45,6 +46,43 @@ class StockCurrentReport(models.Model):
                 ('location_dest_id', '=', self.location_id.id)
             ],
             'context': {'default_product_id': self.product_id.id},
+        }
+
+    def action_transfer_single_product(self):
+        """Action to transfer a single product"""
+        self.ensure_one()
+        
+        # Prepare product data for transfer wizard
+        product_data = {
+            'productId': self.product_id.id,
+            'locationId': self.location_id.id,
+            'quantity': self.quantity,
+            'uomId': self.uom_id.id,
+            'productName': self.product_id.name,
+            'locationName': self.location_id.name
+        }
+        
+        return {
+            'name': 'Transfer Product',
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.current.transfer.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_selected_products': [product_data]
+            }
+        }
+
+    def action_open_record(self):
+        """Action to open the form view of the current record"""
+        self.ensure_one()
+        return {
+            'name': 'Stock Details',
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.current.report',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
         }
 
     def init(self):
@@ -100,6 +138,7 @@ class StockCurrentReport(models.Model):
                             WHEN sl.usage = 'inventory' THEN 'Inventory'
                             ELSE sl.usage
                         END AS location_type_name,
+                        false AS product_selection,
                         CURRENT_DATE AS stock_date
                     FROM stock_quant sq
                     JOIN product_product pp ON pp.id = sq.product_id
