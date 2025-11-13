@@ -70,49 +70,98 @@ class StockCurrentExportWizard(models.TransientModel):
         """
         _logger.info("Fetching filtered stock data")
         
-        query = """
-            SELECT
-                sq.id,
-                sq.product_id,
-                sq.location_id,
-                pt.categ_id AS category_id,
-                pt.uom_id,
-                COALESCE(sq.quantity, 0) AS quantity,
-                COALESCE(sq.quantity, 0) AS free_to_use,
-                COALESCE(incoming.qty, 0) AS incoming,
-                COALESCE(outgoing.qty, 0) AS outgoing,
-                COALESCE(pt.list_price, 0) AS unit_cost,
-                COALESCE(sq.quantity, 0) * COALESCE(pt.list_price, 0) AS total_value
-            FROM stock_quant sq
-            JOIN product_product pp ON pp.id = sq.product_id
-            JOIN product_template pt ON pt.id = pp.product_tmpl_id
-            JOIN stock_location sl ON sl.id = sq.location_id
-            LEFT JOIN (
+        # Check if user has cost viewing permissions
+        has_cost_access = self.env.user.has_group('buz_stock_current_report.group_stock_cost_viewer')
+        
+        # Build query based on user permissions
+        if has_cost_access:
+            query = """
                 SELECT
-                    sml.location_dest_id,
-                    sml.product_id,
-                    SUM(sml.quantity) AS qty
-                FROM stock_move_line sml
-                JOIN stock_move sm ON sm.id = sml.move_id
-                WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
-                AND sml.location_dest_id IS NOT NULL
-                AND sm.date::date >= %s AND sm.date::date <= %s
-                GROUP BY sml.location_dest_id, sml.product_id
-            ) incoming ON incoming.location_dest_id = sq.location_id AND incoming.product_id = sq.product_id
-            LEFT JOIN (
+                    sq.id,
+                    sq.product_id,
+                    sq.location_id,
+                    pt.categ_id AS category_id,
+                    pt.uom_id,
+                    COALESCE(sq.quantity, 0) AS quantity,
+                    COALESCE(sq.quantity, 0) AS free_to_use,
+                    COALESCE(incoming.qty, 0) AS incoming,
+                    COALESCE(outgoing.qty, 0) AS outgoing,
+                    COALESCE(pt.list_price, 0) AS unit_cost,
+                    COALESCE(sq.quantity, 0) * COALESCE(pt.list_price, 0) AS total_value
+                FROM stock_quant sq
+                JOIN product_product pp ON pp.id = sq.product_id
+                JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                JOIN stock_location sl ON sl.id = sq.location_id
+                LEFT JOIN (
+                    SELECT
+                        sml.location_dest_id,
+                        sml.product_id,
+                        SUM(sml.quantity) AS qty
+                    FROM stock_move_line sml
+                    JOIN stock_move sm ON sm.id = sml.move_id
+                    WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
+                    AND sml.location_dest_id IS NOT NULL
+                    AND sm.date::date >= %s AND sm.date::date <= %s
+                    GROUP BY sml.location_dest_id, sml.product_id
+                ) incoming ON incoming.location_dest_id = sq.location_id AND incoming.product_id = sq.product_id
+                LEFT JOIN (
+                    SELECT
+                        sml.location_id,
+                        sml.product_id,
+                        SUM(sml.quantity) AS qty
+                    FROM stock_move_line sml
+                    JOIN stock_move sm ON sm.id = sml.move_id
+                    WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
+                    AND sml.location_id IS NOT NULL
+                    AND sm.date::date >= %s AND sm.date::date <= %s
+                    GROUP BY sml.location_id, sml.product_id
+                ) outgoing ON outgoing.location_id = sq.location_id AND outgoing.product_id = sq.product_id
+                WHERE sl.usage = 'internal'
+            """
+        else:
+            query = """
                 SELECT
-                    sml.location_id,
-                    sml.product_id,
-                    SUM(sml.quantity) AS qty
-                FROM stock_move_line sml
-                JOIN stock_move sm ON sm.id = sml.move_id
-                WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
-                AND sml.location_id IS NOT NULL
-                AND sm.date::date >= %s AND sm.date::date <= %s
-                GROUP BY sml.location_id, sml.product_id
-            ) outgoing ON outgoing.location_id = sq.location_id AND outgoing.product_id = sq.product_id
-            WHERE sl.usage = 'internal'
-        """
+                    sq.id,
+                    sq.product_id,
+                    sq.location_id,
+                    pt.categ_id AS category_id,
+                    pt.uom_id,
+                    COALESCE(sq.quantity, 0) AS quantity,
+                    COALESCE(sq.quantity, 0) AS free_to_use,
+                    COALESCE(incoming.qty, 0) AS incoming,
+                    COALESCE(outgoing.qty, 0) AS outgoing,
+                    0 AS unit_cost,
+                    0 AS total_value
+                FROM stock_quant sq
+                JOIN product_product pp ON pp.id = sq.product_id
+                JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                JOIN stock_location sl ON sl.id = sq.location_id
+                LEFT JOIN (
+                    SELECT
+                        sml.location_dest_id,
+                        sml.product_id,
+                        SUM(sml.quantity) AS qty
+                    FROM stock_move_line sml
+                    JOIN stock_move sm ON sm.id = sml.move_id
+                    WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
+                    AND sml.location_dest_id IS NOT NULL
+                    AND sm.date::date >= %s AND sm.date::date <= %s
+                    GROUP BY sml.location_dest_id, sml.product_id
+                ) incoming ON incoming.location_dest_id = sq.location_id AND incoming.product_id = sq.product_id
+                LEFT JOIN (
+                    SELECT
+                        sml.location_id,
+                        sml.product_id,
+                        SUM(sml.quantity) AS qty
+                    FROM stock_move_line sml
+                    JOIN stock_move sm ON sm.id = sml.move_id
+                    WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
+                    AND sml.location_id IS NOT NULL
+                    AND sm.date::date >= %s AND sm.date::date <= %s
+                    GROUP BY sml.location_id, sml.product_id
+                ) outgoing ON outgoing.location_id = sq.location_id AND outgoing.product_id = sq.product_id
+                WHERE sl.usage = 'internal'
+            """
         
         params = [date_from, date_to, date_from, date_to]
         

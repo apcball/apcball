@@ -5,8 +5,9 @@
         <field name="name">stock.current.report.kanban.with.sidebar</field>
         <field name="model">stock.current.report</field>
         <field name="arch" type="xml">
-            <kanban string="Stock Overview with Warehouse Sidebar" 
-                    class="o_kanban_mobile stock_current_report_kanban">
+            <kanban string="Stock Overview with Warehouse Sidebar"
+                    class="o_kanban_mobile stock_current_report_kanban"
+                    js_class="stock_current_kanban">
                 <field name="product_id"/>
                 <field name="location_id"/>
                 <field name="warehouse_id"/>
@@ -95,7 +96,7 @@
         <field name="arch" type="xml">
             <tree string="Current Stock Report with Warehouse Sidebar"
                   edit="false" create="false" delete="false"
-                  js_class="stock_current_list_sidebar">
+                  js_class="stock_current_list">
                 <field name="warehouse_id" optional="show"/>
                 <field name="location_id"/>
                 <field name="product_id"/>
@@ -113,7 +114,7 @@
 
     <!-- Update Action to use sidebar views -->
     <record id="action_stock_current_report_sidebar" model="ir.actions.act_window">
-        <field name="name">Current Stock Report</field>
+        <field name="name">Current Stock View</field>
         <field name="res_model">stock.current.report</field>
         <field name="view_mode">kanban,tree,form</field>
         <field name="view_ids" eval="[

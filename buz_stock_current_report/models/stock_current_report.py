@@ -17,8 +17,8 @@ class StockCurrentReport(models.Model):
     free_to_use = fields.Float('Free to Use', readonly=True, digits='Product Unit of Measure')
     incoming = fields.Float('Incoming', readonly=True, digits='Product Unit of Measure')
     outgoing = fields.Float('Outgoing', readonly=True, digits='Product Unit of Measure')
-    unit_cost = fields.Float('Unit Cost', readonly=True)
-    total_value = fields.Float('Total Value', readonly=True)
+    unit_cost = fields.Float('Unit Cost', readonly=True, groups='buz_stock_current_report.group_stock_cost_viewer')
+    total_value = fields.Float('Total Value', readonly=True, groups='buz_stock_current_report.group_stock_cost_viewer')
     location_usage = fields.Selection([
         ('internal', 'Internal'),
         ('production', 'Production'),
@@ -88,7 +88,7 @@ class StockCurrentReport(models.Model):
                         pt.categ_id AS category_id,
                         pt.uom_id,
                         COALESCE(sq.quantity, 0) AS quantity,
-                        COALESCE(sq.quantity, 0) AS free_to_use,
+                        COALESCE(sq.quantity, 0) + COALESCE(incoming.qty, 0) - COALESCE(outgoing.qty, 0) AS free_to_use,
                         COALESCE(incoming.qty, 0) AS incoming,
                         COALESCE(outgoing.qty, 0) AS outgoing,
                         COALESCE(pt.{price_column}, 0) AS unit_cost,
@@ -193,8 +193,8 @@ class StockCurrentReport(models.Model):
         return self._cr.dictfetchall()
 
     @api.model
-    def get_warehouses_with_internal_locations(self):
-        """Enhanced method with better performance and more data"""
+    def get_warehouses_with_locations(self):
+        """Enhanced method to include both internal and transit locations"""
         query = """
             SELECT
                 w.id,
@@ -204,7 +204,7 @@ class StockCurrentReport(models.Model):
                 COALESCE(SUM(s.total_products), 0) as total_products,
                 COALESCE(SUM(s.total_value), 0) as total_value
             FROM stock_warehouse w
-            LEFT JOIN stock_location l ON l.warehouse_id = w.id AND l.usage = 'internal' AND l.active = true
+            LEFT JOIN stock_location l ON l.warehouse_id = w.id AND l.usage IN ('internal', 'transit') AND l.active = true
             LEFT JOIN (
                 SELECT
                     location_id,
@@ -220,9 +220,9 @@ class StockCurrentReport(models.Model):
         self._cr.execute(query)
         warehouses = self._cr.dictfetchall()
         
-        # Get locations for each warehouse
+        # Get internal locations for each warehouse
         for warehouse in warehouses:
-            location_query = """
+            internal_location_query = """
                 SELECT
                     l.id,
                     l.name,
@@ -237,10 +237,37 @@ class StockCurrentReport(models.Model):
                 GROUP BY l.id, l.name, l.complete_name, l.usage
                 ORDER BY l.name
             """
-            self._cr.execute(location_query, (warehouse['id'],))
-            warehouse['locations'] = self._cr.dictfetchall()
+            self._cr.execute(internal_location_query, (warehouse['id'],))
+            warehouse['internal_locations'] = self._cr.dictfetchall()
+            
+            # Get transit locations for each warehouse
+            transit_location_query = """
+                SELECT
+                    l.id,
+                    l.name,
+                    l.complete_name,
+                    l.usage,
+                    COUNT(DISTINCT scr.product_id) as product_count,
+                    COALESCE(SUM(scr.quantity), 0) as total_quantity,
+                    COALESCE(SUM(scr.total_value), 0) as total_value
+                FROM stock_location l
+                LEFT JOIN stock_current_report scr ON scr.location_id = l.id
+                WHERE l.warehouse_id = %s AND l.usage = 'transit' AND l.active = true
+                GROUP BY l.id, l.name, l.complete_name, l.usage
+                ORDER BY l.name
+            """
+            self._cr.execute(transit_location_query, (warehouse['id'],))
+            warehouse['transit_locations'] = self._cr.dictfetchall()
+            
+            # For backward compatibility, keep the old locations field with internal locations
+            warehouse['locations'] = warehouse['internal_locations']
         
         return warehouses
+
+    @api.model
+    def get_warehouses_with_internal_locations(self):
+        """Deprecated method - use get_warehouses_with_locations instead"""
+        return self.get_warehouses_with_locations()
 
     @api.model
     def get_location_hierarchy(self):

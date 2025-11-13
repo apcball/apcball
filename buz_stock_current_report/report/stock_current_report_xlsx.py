@@ -68,8 +68,15 @@ class StockCurrentReportXlsx(models.AbstractModel):
                 sheet.write(row, 1, 'All categories')
             row += 2
             
-            # Write table headers
-            headers = ['Location', 'Product', 'Category', 'Qty On Hand', 'Free to Use', 'Incoming', 'Outgoing', 'Unit Cost', 'Total Value', 'UoM']
+            # Check if user has cost viewing permissions
+            has_cost_access = self.env.user.has_group('buz_stock_current_report.group_stock_cost_viewer')
+            
+            # Write table headers based on user permissions
+            headers = ['Location', 'Product', 'Category', 'Qty On Hand', 'Free to Use', 'Incoming', 'Outgoing']
+            if has_cost_access:
+                headers.extend(['Unit Cost', 'Total Value'])
+            headers.append('UoM')
+            
             for col, header in enumerate(headers):
                 sheet.write(row, col, header, header_format)
             row += 1
@@ -92,32 +99,40 @@ class StockCurrentReportXlsx(models.AbstractModel):
                 category = self.env['product.category'].browse(rec['category_id'])
                 uom = self.env['uom.uom'].browse(rec['uom_id'])
                 
-                sheet.write(row, 0, location.display_name)
-                sheet.write(row, 1, product.display_name)
-                sheet.write(row, 2, category.display_name if category else '')
-                sheet.write(row, 3, rec['quantity'], number_format)
-                sheet.write(row, 4, rec['free_to_use'], number_format)
-                sheet.write(row, 5, rec['incoming'], number_format)
-                sheet.write(row, 6, rec['outgoing'], number_format)
-                sheet.write(row, 7, rec['unit_cost'], number_format)
-                sheet.write(row, 8, rec['total_value'], number_format)
-                sheet.write(row, 9, uom.display_name if uom else '')
+                col_index = 0
+                sheet.write(row, col_index, location.display_name); col_index += 1
+                sheet.write(row, col_index, product.display_name); col_index += 1
+                sheet.write(row, col_index, category.display_name if category else ''); col_index += 1
+                sheet.write(row, col_index, rec['quantity'], number_format); col_index += 1
+                sheet.write(row, col_index, rec['free_to_use'], number_format); col_index += 1
+                sheet.write(row, col_index, rec['incoming'], number_format); col_index += 1
+                sheet.write(row, col_index, rec['outgoing'], number_format); col_index += 1
                 
-                total_value += rec['total_value']
+                if has_cost_access:
+                    sheet.write(row, col_index, rec['unit_cost'], number_format); col_index += 1
+                    sheet.write(row, col_index, rec['total_value'], number_format); col_index += 1
+                    total_value += rec['total_value']
+                
+                sheet.write(row, col_index, uom.display_name if uom else '')
                 row += 1
             
-            # Write summary row
-            row += 1
-            sheet.write(row, 7, 'Total Value:', bold)
-            sheet.write(row, 8, total_value, number_format)
+            # Write summary row (only if user has cost access)
+            if has_cost_access:
+                row += 1
+                cost_col_index = 7  # Unit Cost and Total Value columns start at index 7
+                sheet.write(row, cost_col_index + 1, 'Total Value:', bold)
+                sheet.write(row, cost_col_index + 2, total_value, number_format)
             
             # Set column widths
             sheet.set_column('A:A', 25)
             sheet.set_column('B:B', 30)
             sheet.set_column('C:C', 20)
             sheet.set_column('D:H', 15)
-            sheet.set_column('I:I', 15)
-            sheet.set_column('J:J', 12)
+            if has_cost_access:
+                sheet.set_column('I:I', 15)
+                sheet.set_column('J:J', 12)
+            else:
+                sheet.set_column('I:I', 12)
             
             _logger.info("Successfully completed Excel report generation")
         except Exception as e:

@@ -2,9 +2,9 @@
 
 import { registry } from "@web/core/registry";
 import { listView } from "@web/views/list/list_view";
-import { ListController } from "@web/views/list/list_controller";
+import { ListController, ListRenderer } from "@web/views/list/list_controller";
 import { kanbanView } from "@web/views/kanban/kanban_view";
-import { KanbanController } from "@web/views/kanban/kanban_controller";
+import { KanbanController, KanbanRenderer } from "@web/views/kanban/kanban_controller";
 import { Component, useState, onWillStart } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
@@ -21,6 +21,7 @@ export class StockKanbanController extends KanbanController {
     }
 }
 
+// Define WarehouseSidebar component first
 export class WarehouseSidebar extends Component {
     static template = "buz_stock_current_report.WarehouseSidebar";
     
@@ -48,7 +49,7 @@ export class WarehouseSidebar extends Component {
             this.state.loading = true;
             const result = await this.orm.call(
                 'stock.current.report',
-                'get_warehouses_with_internal_locations',
+                'get_warehouses_with_locations',
                 [],
                 {}
             );
@@ -73,7 +74,11 @@ export class WarehouseSidebar extends Component {
             warehouses = warehouses.filter(wh =>
                 wh.name.toLowerCase().includes(term) ||
                 (wh.code && wh.code.toLowerCase().includes(term)) ||
-                (wh.locations && wh.locations.some(loc =>
+                (wh.internal_locations && wh.internal_locations.some(loc =>
+                    loc.name.toLowerCase().includes(term) ||
+                    loc.complete_name.toLowerCase().includes(term)
+                )) ||
+                (wh.transit_locations && wh.transit_locations.some(loc =>
                     loc.name.toLowerCase().includes(term) ||
                     loc.complete_name.toLowerCase().includes(term)
                 ))
@@ -83,7 +88,8 @@ export class WarehouseSidebar extends Component {
         if (this.state.showOnlyWithStock) {
             warehouses = warehouses.filter(wh =>
                 wh.total_products > 0 ||
-                (wh.locations && wh.locations.some(loc => loc.product_count > 0))
+                (wh.internal_locations && wh.internal_locations.some(loc => loc.product_count > 0)) ||
+                (wh.transit_locations && wh.transit_locations.some(loc => loc.product_count > 0))
             );
         }
         
@@ -188,6 +194,35 @@ export class WarehouseSidebar extends Component {
     }
 }
 
+// Controller with Sidebar - defined after WarehouseSidebar
+export class StockListWithSidebarController extends ListController {
+    static components = {
+        ...ListController.components,
+        WarehouseSidebar,
+    };
+
+    setup() {
+        super.setup();
+        this.sidebarState = useState({
+            showSidebar: true,
+        });
+    }
+}
+
+export class StockKanbanWithSidebarController extends KanbanController {
+    static components = {
+        ...KanbanController.components,
+        WarehouseSidebar,
+    };
+
+    setup() {
+        super.setup();
+        this.sidebarState = useState({
+            showSidebar: true,
+        });
+    }
+}
+
 export const stockListView = {
     ...listView,
     Controller: StockListController,
@@ -198,5 +233,20 @@ export const stockKanbanView = {
     Controller: StockKanbanController,
 };
 
+// Views with Sidebar
+export const stockListWithSidebarView = {
+    ...listView,
+    Controller: StockListWithSidebarController,
+    Renderer: ListRenderer,
+};
+
+export const stockKanbanWithSidebarView = {
+    ...kanbanView,
+    Controller: StockKanbanWithSidebarController,
+    Renderer: KanbanRenderer,
+};
+
 registry.category("views").add("stock_current_list", stockListView);
 registry.category("views").add("stock_current_kanban", stockKanbanView);
+registry.category("views").add("stock_current_list_sidebar", stockListWithSidebarView);
+registry.category("views").add("stock_current_kanban_sidebar", stockKanbanWithSidebarView);

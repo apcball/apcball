@@ -12,8 +12,8 @@
                 <field name="free_to_use" string="Free to Use" sum="Total" optional="show"/>
                 <field name="incoming" sum="Total" optional="show"/>
                 <field name="outgoing" sum="Total" optional="show"/>
-                <field name="unit_cost" string="Unit Cost" sum="Total" widget="monetary"/>
-                <field name="total_value" string="Total Value" sum="Total" widget="monetary"/>
+                <field name="unit_cost" string="Unit Cost" sum="Total" widget="monetary" groups="buz_stock_current_report.group_stock_cost_viewer"/>
+                <field name="total_value" string="Total Value" sum="Total" widget="monetary" groups="buz_stock_current_report.group_stock_cost_viewer"/>
                 <field name="uom_id" string="Unit" optional="hide"/>
                 <button name="action_view_product_moves" type="object" string="Stock Moves" icon="fa-arrows-alt" invisible="quantity == 0"/>
             </tree>
@@ -33,8 +33,8 @@
                             <field name="location_id" readonly="1"/>
                         </group>
                         <group>
-                            <field name="unit_cost" readonly="1"/>
-                            <field name="total_value" readonly="1"/>
+                            <field name="unit_cost" readonly="1" groups="buz_stock_current_report.group_stock_cost_viewer"/>
+                            <field name="total_value" readonly="1" groups="buz_stock_current_report.group_stock_cost_viewer"/>
                             <field name="uom_id" readonly="1"/>
                         </group>
                     </group>
@@ -66,6 +66,7 @@
                 <filter string="Out of Stock" name="out_of_stock" domain="[('quantity', '&lt;=', 0)]"/>
                 <filter string="In Stock" name="in_stock" domain="[('quantity', '&gt;', 0)]"/>
                 <separator/>
+                <filter string="High Value" name="high_value" domain="[('total_value', '&gt;', 1000)]" groups="buz_stock_current_report.group_stock_cost_viewer"/>
                 <filter string="High Value" name="high_value" domain="[('total_value', '&gt;', 1000)]"/>
                 <filter string="With Incoming" name="with_incoming" domain="[('incoming', '&gt;', 0)]"/>
                 <filter string="With Outgoing" name="with_outgoing" domain="[('outgoing', '&gt;', 0)]"/>
@@ -102,8 +103,8 @@
                 <field name="free_to_use"/>
                 <field name="incoming"/>
                 <field name="outgoing"/>
-                <field name="total_value"/>
-                <field name="unit_cost"/>
+                <field name="total_value" groups="buz_stock_current_report.group_stock_cost_viewer"/>
+                <field name="unit_cost" groups="buz_stock_current_report.group_stock_cost_viewer"/>
                 <field name="uom_id"/>
                 <templates>
                     <t t-name="kanban-box">
@@ -129,7 +130,7 @@
                                                 <i class="fa fa-cube"/> <field name="quantity"/> <field name="uom_id"/>
                                             </span>
                                         </div>
-                                        <div class="col-6 text-end">
+                                        <div class="col-6 text-end" groups="buz_stock_current_report.group_stock_cost_viewer">
                                             <span class="badge bg-success fs-6">
                                                 ฿ <field name="total_value" widget="monetary"/>
                                             </span>
@@ -141,7 +142,7 @@
                                             <br/>
                                             <strong><field name="free_to_use"/></strong>
                                         </div>
-                                        <div class="col-6">
+                                        <div class="col-6" groups="buz_stock_current_report.group_stock_cost_viewer">
                                             <small class="text-muted">Unit Cost:</small>
                                             <br/>
                                             <strong><field name="unit_cost" widget="monetary"/></strong>

@@ -22,6 +22,23 @@
             <field name="perm_unlink" eval="False"/>
         </record>
 
+        <!-- Stock Cost Viewer Group -->
+        <record id="group_stock_cost_viewer" model="res.groups">
+            <field name="name">Stock Cost Viewer</field>
+            <field name="comment">Users who can view cost information in stock reports</field>
+        </record>
+
+        <!-- Access rights for stock.current.report model for cost viewers -->
+        <record id="access_stock_current_report_cost_viewer" model="ir.model.access">
+            <field name="name">stock.current.report cost viewer</field>
+            <field name="model_id" ref="model_stock_current_report"/>
+            <field name="group_id" ref="group_stock_cost_viewer"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
         <!-- Access rights for stock.current.export.wizard model -->
         <record id="access_stock_current_export_wizard_user" model="ir.model.access">
             <field name="name">stock.current.export.wizard user</field>

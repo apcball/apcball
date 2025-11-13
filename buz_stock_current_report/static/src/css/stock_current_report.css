@@ -143,3 +143,154 @@
     color: #000000;
     font-weight: bold;
 }
+
+/* Warehouse Sidebar Styles */
+.warehouse-sidebar {
+    border-right: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    overflow-y: auto;
+}
+
+.warehouse-sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid #dee2e6;
+    background-color: white;
+}
+
+.warehouse-item {
+    margin-bottom: 8px;
+}
+
+.warehouse-header {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.warehouse-header:hover {
+    background-color: #e9ecef;
+}
+
+.warehouse-header .card-body {
+    padding: 12px;
+}
+
+.location-list {
+    padding: 0 8px;
+}
+
+.location-section {
+    margin-bottom: 16px;
+}
+
+.location-type-header {
+    border-bottom: 1px dashed #dee2e6;
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Transit locations styling */
+.transit-location-list {
+    border-left: 3px solid #ffc107;
+    padding-left: 12px;
+    margin-left: 4px;
+}
+
+.transit-location-list .location-item {
+    opacity: 0.9;
+    transition: opacity 0.2s ease;
+}
+
+.transit-location-list .location-item:hover {
+    opacity: 1;
+}
+
+.transit-location-list .card {
+    border-left: 3px solid #ffc107;
+}
+
+/* Location item styling */
+.location-item .card {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.location-item .card:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.location-item .badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+}
+
+/* Summary section styling */
+.warehouse-summary {
+    margin: 16px;
+    padding: 12px;
+    background-color: white;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.warehouse-summary h6 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.warehouse-summary .row {
+    font-size: 0.8125rem;
+}
+
+/* Loading state */
+.warehouse-sidebar .spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+/* Search box styling */
+.sidebar-search .input-group-sm .form-control {
+    font-size: 0.875rem;
+}
+
+.sidebar-search .btn {
+    border-color: #ced4da;
+}
+
+/* Filters styling */
+.sidebar-filters .form-check {
+    margin-bottom: 8px;
+}
+
+.sidebar-filters .form-check-label {
+    font-size: 0.875rem;
+    color: #495057;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .warehouse-sidebar {
+        min-height: auto;
+        border-right: none;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .warehouse-sidebar-header {
+        padding: 12px;
+    }
+    
+    .location-list {
+        padding: 0 4px;
+    }
+    
+    .transit-location-list {
+        padding-left: 8px;
+        margin-left: 2px;
+    }
+}
