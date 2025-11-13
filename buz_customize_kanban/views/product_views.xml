@@ -7,6 +7,10 @@
         <field name="arch" type="xml">
             <xpath expr="//kanban" position="inside">
                 <field name="product_tag_ids"/>
+                <field name="qty_available"/>
+                <field name="incoming_qty"/>
+                <field name="outgoing_qty"/>
+                <field name="available_qty"/>
             </xpath>
             <xpath expr="//div[hasclass('o_kanban_record_top')]" position="replace">
                 <div class="o_kanban_record_top">
@@ -38,6 +42,13 @@
             </field>
             <field name="list_price" position="after">
                 <field name="price_with_vat" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <!-- Stock Information -->
+                <div class="mt-2">
+                    <div class="d-flex justify-content-between">
+                        <span><strong>Available:</strong></span>
+                        <span><field name="available_qty"/></span>
+                    </div>
+                </div>
                 <!-- Add product tags below the price -->
                 <div class="mt-2">
                     <field name="product_tag_ids" widget="many2many_tags"/>
