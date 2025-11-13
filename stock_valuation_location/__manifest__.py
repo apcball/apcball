@@ -1,7 +1,7 @@
 {
     "name": "buz Stock Valuation Location",
-    "version": "17.0.1.0.2",
-    "summary": "Add Location Information to Stock Valuation",
+    "version": "17.0.1.1.0",
+    "summary": "Stock Valuation Analysis by Location with Pivot & Graph Views",
     "category": "Inventory/Accounting",
     "author": "Apcball",
     "website": "https://mogdev.work",

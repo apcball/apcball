@@ -16,7 +16,8 @@
     <field name="inherit_id" ref="stock_account.stock_valuation_layer_tree"/>
     <field name="arch" type="xml">
       <xpath expr="//field[@name='product_id']" position="after">
-        <field name="location_id"/>
+        <field name="location_id" optional="show"/>
+        <field name="warehouse_id" optional="hide"/>
       </xpath>
     </field>
   </record>
@@ -28,8 +29,40 @@
     <field name="arch" type="xml">
       <xpath expr="//search" position="inside">
         <field name="location_id"/>
+        <field name="warehouse_id"/>
         <filter string="Group By Location" name="group_by_location" context="{'group_by':'location_id'}"/>
+        <filter string="Group By Warehouse" name="group_by_warehouse" context="{'group_by':'warehouse_id'}"/>
       </xpath>
+    </field>
+  </record>
+
+  <!-- Pivot View for Valuation Analysis by Location -->
+  <record id="view_stock_valuation_layer_pivot_location" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.pivot.location</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="arch" type="xml">
+      <pivot string="Stock Valuation by Location Analysis">
+        <field name="location_id" type="row"/>
+        <field name="product_id" type="row"/>
+        <field name="company_id" type="col"/>
+        <field name="value" type="measure"/>
+        <field name="remaining_value" type="measure"/>
+        <field name="quantity" type="measure"/>
+        <field name="remaining_qty" type="measure"/>
+      </pivot>
+    </field>
+  </record>
+
+  <!-- Graph View for Valuation Visualization -->
+  <record id="view_stock_valuation_layer_graph_location" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.graph.location</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="arch" type="xml">
+      <graph string="Stock Valuation by Location" type="bar">
+        <field name="location_id"/>
+        <field name="remaining_value" type="measure"/>
+        <field name="remaining_qty" type="measure"/>
+      </graph>
     </field>
   </record>
 

@@ -16,6 +16,23 @@ class StockValuationLayer(models.Model):
         help="Internal location chosen from the move (source if internal, else destination if internal). "
              "Remains empty for SVLs without stock_move_id (e.g., some Landed Costs).",
     )
+    
+    location_complete_name = fields.Char(
+        related='location_id.complete_name',
+        string='Location Path',
+        store=True,
+        readonly=True,
+        help="Full hierarchical path of the location"
+    )
+    
+    warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        related='location_id.warehouse_id',
+        string='Warehouse',
+        store=True,
+        readonly=True,
+        help="Warehouse of the location"
+    )
 
     @api.depends("stock_move_id")
     def _compute_location_id(self):
