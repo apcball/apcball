@@ -1,0 +1,30 @@
+<odoo>
+
+    <record id="product_cost_location_history_tree" model="ir.ui.view">
+        <field name="name">product.cost.location.history.tree</field>
+        <field name="model">product.cost.location.history</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="product_id"/>
+                <field name="date"/>
+                <field name="location_id"/>
+                <field name="qty"/>
+                <field name="standard_price"/>
+                <field name="company_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="product_cost_location_history_action"
+            model="ir.actions.act_window">
+        <field name="name">Product Cost History By Location</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">product.cost.location.history</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="product_cost_location_history_menu" name="Product Cost History"
+              parent="base.menu_custom"
+              action="product_cost_location_history_action"/>
+
+</odoo>

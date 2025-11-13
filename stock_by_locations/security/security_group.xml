@@ -1,0 +1,5 @@
+<odoo>
+    <record id="config_users_on_locations_group" model="res.groups">
+        <field name="name">Inventory: Configure users on locations</field>
+    </record>
+</odoo>
