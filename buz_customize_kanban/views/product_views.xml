@@ -46,7 +46,7 @@
                 <div class="mt-2">
                     <div class="d-flex justify-content-between">
                         <span><strong>Available:</strong></span>
-                        <span><field name="available_qty"/></span>
+                        <span><strong><field name="available_qty" widget="float" options="{'digits': [16,2]}"/> <field name="uom_id"/></strong></span>
                     </div>
                 </div>
                 <!-- Add product tags below the price -->
