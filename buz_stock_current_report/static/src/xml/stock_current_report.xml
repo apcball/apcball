@@ -168,22 +168,22 @@
             
             <!-- Warehouse List -->
             <div t-else="" class="warehouse-list">
-                <div t-if="filteredWarehouses.length === 0" class="text-center p-3 text-muted">
+                <div t-if="this.filteredWarehouses.length === 0" class="text-center p-3 text-muted">
                     <i class="fa fa-search fa-2x mb-2"/>
                     <div>No warehouses found</div>
                 </div>
                 
-                <div t-foreach="filteredWarehouses" t-as="warehouse" t-key="warehouse.id"
+                <div t-foreach="this.filteredWarehouses" t-as="warehouse" t-key="warehouse.id"
                      class="warehouse-item mb-3">
                     
                     <!-- Warehouse Header -->
                     <div class="warehouse-header card">
                         <div class="card-body p-2">
                             <div class="d-flex justify-content-between align-items-center"
-                                 t-att-class="isWarehouseSelected(warehouse.id) ? 'text-primary' : ''"
+                                 t-att-class="this.isWarehouseSelected(warehouse.id) ? 'text-primary' : ''"
                                  t-on-click.stop="() => this.onWarehouseClick(warehouse)">
                                 <div class="d-flex align-items-center flex-grow-1">
-                                    <i t-att-class="isWarehouseExpanded(warehouse.id) ? 'fa fa-chevron-down me-2' : 'fa fa-chevron-right me-2'"
+                                    <i t-att-class="this.isWarehouseExpanded(warehouse.id) ? 'fa fa-chevron-down me-2' : 'fa fa-chevron-right me-2'"
                                        class="cursor-pointer text-muted"
                                        t-on-click.stop="() => this.toggleWarehouse(warehouse.id)"/>
                                     <div>
@@ -210,14 +210,14 @@
                             <div t-if="warehouse.total_value > 0" class="mt-2">
                                 <small class="text-muted">
                                     Total Value:
-                                    <strong t-esc="formatMonetary(warehouse.total_value)"/>
+                                    <strong t-esc="this.formatMonetary(warehouse.total_value)"/>
                                 </small>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Locations List -->
-                    <div t-if="isWarehouseExpanded(warehouse.id)" class="location-list ms-3 mt-2">
+                    <div t-if="this.isWarehouseExpanded(warehouse.id)" class="location-list ms-3 mt-2">
                         <!-- Internal Locations Section -->
                         <div class="location-section mb-3">
                             <div class="location-type-header mb-2">
@@ -234,15 +234,15 @@
                                 <div class="card border-0 bg-light">
                                     <div class="card-body p-2">
                                         <div class="d-flex justify-content-between align-items-center"
-                                             t-att-class="isLocationSelected(location.id) ? 'bg-success text-white rounded' : ''"
+                                             t-att-class="this.isLocationSelected(location.id) ? 'bg-success text-white rounded' : ''"
                                              t-on-click.stop="() => this.onLocationClick(location)">
                                             <div class="d-flex align-items-center flex-grow-1">
-                                                <i t-att-class="getLocationTypeIcon(location.usage) + ' me-2 text-muted'"/>
+                                                <i t-att-class="this.getLocationTypeIcon(location.usage) + ' me-2 text-muted'"/>
                                                 <div>
                                                     <div class="fw-bold">
                                                         <t t-esc="location.name"/>
                                                     </div>
-                                                    <small class="text-muted" t-if="!isLocationSelected(location.id)">
+                                                    <small class="text-muted" t-if="!this.isLocationSelected(location.id)">
                                                         <t t-esc="location.complete_name"/>
                                                     </small>
                                                 </div>
@@ -252,8 +252,8 @@
                                                     <t t-esc="location.product_count"/> products
                                                 </div>
                                                 <div class="small mt-1">
-                                                    <span t-att-class="getStockStatusClass(location.total_quantity)">
-                                                        Qty: <t t-esc="formatQuantity(location.total_quantity)"/>
+                                                    <span t-att-class="this.getStockStatusClass(location.total_quantity)">
+                                                        Qty: <t t-esc="this.formatQuantity(location.total_quantity)"/>
                                                     </span>
                                                 </div>
                                             </div>
@@ -262,7 +262,7 @@
                                         <!-- Location Value -->
                                         <div t-if="location.total_value > 0" class="mt-2">
                                             <small class="text-muted">
-                                                Value: <strong t-esc="formatMonetary(location.total_value)"/>
+                                                Value: <strong t-esc="this.formatMonetary(location.total_value)"/>
                                             </small>
                                         </div>
                                     </div>
@@ -283,7 +283,7 @@
                 <div class="card border-0 bg-light">
                     <div class="card-body p-2">
                         <div class="d-flex justify-content-between align-items-center"
-                             t-att-class="isLocationSelected(location.id) ? 'bg-warning text-dark rounded' : ''"
+                             t-att-class="this.isLocationSelected(location.id) ? 'bg-warning text-dark rounded' : ''"
                              t-on-click.stop="() => this.onLocationClick(location)">
                             <div class="d-flex align-items-center flex-grow-1">
                                 <i class="fa fa-exchange-alt me-2 text-warning"/>
@@ -291,7 +291,7 @@
                                     <div class="fw-bold">
                                         <t t-esc="location.name"/>
                                     </div>
-                                    <small class="text-muted" t-if="!isLocationSelected(location.id)">
+                                    <small class="text-muted" t-if="!this.isLocationSelected(location.id)">
                                         <t t-esc="location.complete_name"/>
                                     </small>
                                 </div>
@@ -301,8 +301,8 @@
                                     <t t-esc="location.product_count"/> products
                                 </div>
                                 <div class="small mt-1">
-                                    <span t-att-class="getStockStatusClass(location.total_quantity)">
-                                        Qty: <t t-esc="formatQuantity(location.total_quantity)"/>
+                                    <span t-att-class="this.getStockStatusClass(location.total_quantity)">
+                                        Qty: <t t-esc="this.formatQuantity(location.total_quantity)"/>
                                     </span>
                                 </div>
                             </div>
@@ -311,7 +311,7 @@
                         <!-- Location Value -->
                         <div t-if="location.total_value > 0" class="mt-2">
                             <small class="text-muted">
-                                Value: <strong t-esc="formatMonetary(location.total_value)"/>
+                                Value: <strong t-esc="this.formatMonetary(location.total_value)"/>
                             </small>
                         </div>
                     </div>
@@ -340,7 +340,7 @@
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Total Value</small>
-                        <strong t-esc="formatMonetary(state.warehouses.reduce((sum, wh) => sum + wh.total_value, 0))"/>
+                        <strong t-esc="this.formatMonetary(state.warehouses.reduce((sum, wh) => sum + wh.total_value, 0))"/>
                     </div>
                 </div>
             </div>

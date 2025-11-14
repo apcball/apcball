@@ -1,339 +1,128 @@
-# Architecture Diagram: Easy Pick Product Transfer Feature
+# Architecture Diagram: Enhanced Warehouse Sidebar with Transit Locations
 
-## System Architecture Overview
-
-```mermaid
-graph TB
-    subgraph "UI Layer"
-        A[Kanban View] --> B[Product Selection]
-        C[List View] --> B
-        B --> D[Transfer Button]
-        D --> E[Transfer Wizard]
-    end
-    
-    subgraph "Controller Layer"
-        F[StockKanbanController] --> A
-        G[StockListController] --> C
-        H[SelectionManager] --> B
-        I[TransferWizardController] --> E
-    end
-    
-    subgraph "Model Layer"
-        J[StockCurrentReport] --> F
-        J --> G
-        K[StockCurrentTransferWizard] --> I
-        L[StockCurrentTransferWizardLine] --> K
-    end
-    
-    subgraph "Core Odoo Models"
-        M[StockPicking] --> K
-        N[StockMove] --> M
-        O[StockLocation] --> K
-        P[ProductProduct] --> L
-        Q[UoM] --> L
-    end
-    
-    subgraph "Security Layer"
-        R[Access Rights] --> K
-        R --> L
-        S[Group Permissions] --> R
-    end
-```
-
-## Data Flow Diagram
+## Data Flow
 
 ```mermaid
-sequenceDiagram
-    participant User
-    participant KanbanView
-    participant SelectionManager
-    participant TransferWizard
-    participant StockPicking
-    participant StockMove
+graph TD
+    A[User Opens Current Stock View] --> B[WarehouseSidebar Component Loads]
+    B --> C[JavaScript Calls get_warehouses_with_locations]
+    C --> D[Python Model Executes SQL Queries]
+    D --> E[Returns Warehouse Data Structure]
+    E --> F[JavaScript Processes Data]
+    F --> G[XML Template Renders Sidebar]
+    G --> H[User Sees Internal & Transit Locations]
     
-    User->>KanbanView: Select products
-    KanbanView->>SelectionManager: Track selections
-    User->>KanbanView: Click Transfer button
-    KanbanView->>SelectionManager: Get selected products
-    SelectionManager->>TransferWizard: Open with selected data
-    TransferWizard->>User: Show transfer form
-    User->>TransferWizard: Configure transfer
-    TransferWizard->>TransferWizard: Validate quantities
-    TransferWizard->>StockPicking: Create picking
-    StockPicking->>StockMove: Create moves
-    StockMove->>StockMove: Validate transfer
-    StockMove->>User: Show transfer result
+    D --> D1[Query 1: Warehouse Summary]
+    D --> D2[Query 2: Internal Locations]
+    D --> D3[Query 3: Transit Locations]
+    
+    E --> E1[Warehouse Object]
+    E1 --> E2[internal_locations Array]
+    E1 --> E3[transit_locations Array]
+    
+    G --> G1[Render Warehouse Header]
+    G1 --> G2[Render Internal Locations Section]
+    G2 --> G3[Render Transit Locations Section]
 ```
 
-## Component Interaction Diagram
-
-```mermaid
-graph LR
-    subgraph "Frontend Components"
-        A[Kanban Cards]
-        B[List Rows]
-        C[Selection Checkboxes]
-        D[Transfer Button]
-        E[Wizard Form]
-    end
-    
-    subgraph "JavaScript Controllers"
-        F[Selection Manager]
-        G[View Controllers]
-        H[Wizard Controller]
-    end
-    
-    subgraph "Backend Models"
-        I[Stock Current Report]
-        J[Transfer Wizard]
-        K[Transfer Wizard Lines]
-    end
-    
-    subgraph "Core Stock Models"
-        L[Stock Picking]
-        M[Stock Move]
-        N[Stock Quant]
-    end
-    
-    A --> C
-    B --> C
-    C --> F
-    F --> D
-    D --> H
-    H --> J
-    J --> K
-    J --> L
-    L --> M
-    M --> N
-    I --> A
-    I --> B
-    G --> A
-    G --> B
-```
-
-## Class Diagram
+## Component Structure
 
 ```mermaid
 classDiagram
     class StockCurrentReport {
-        +product_id: Many2one
-        +location_id: Many2one
-        +quantity: Float
-        +action_view_product_moves()
-        +action_open_transfer_wizard()
+        +get_warehouses_with_locations()
+        -SQL queries for warehouses
+        -SQL queries for internal locations
+        -SQL queries for transit locations
     }
     
-    class StockCurrentTransferWizard {
-        +source_location_id: Many2one
-        +destination_location_id: Many2one
-        +picking_type_id: Many2one
-        +immediate_transfer: Boolean
-        +line_ids: One2many
-        +action_create_transfer()
-        +_get_picking_type()
+    class WarehouseSidebar {
+        -state: warehouses
+        -state: expandedWarehouses
+        +loadWarehouses()
+        +toggleWarehouse()
+        +onWarehouseClick()
+        +onLocationClick()
+        +getLocationTypeIcon()
     }
     
-    class StockCurrentTransferWizardLine {
-        +wizard_id: Many2one
-        +product_id: Many2one
-        +source_location_id: Many2one
-        +available_quantity: Float
-        +quantity_to_transfer: Float
-        +uom_id: Many2one
-        +_check_quantity()
-        +_onchange_product_location()
+    class WarehouseSidebarTemplate {
+        +renderWarehouseHeader()
+        +renderInternalLocations()
+        +renderTransitLocations()
+        +renderLocationItem()
     }
     
-    class SelectionManager {
-        +selectedProducts: Map
-        +toggleProductSelection()
-        +openTransferWizard()
-        +clearSelection()
-    }
-    
-    class StockKanbanWithTransferController {
-        +selectionManager: SelectionManager
-        +setup()
-        +renderSelection()
-    }
-    
-    StockCurrentReport --> StockKanbanWithTransferController
-    StockKanbanWithTransferController --> SelectionManager
-    SelectionManager --> StockCurrentTransferWizard
-    StockCurrentTransferWizard --> StockCurrentTransferWizardLine
+    StockCurrentReport --> WarehouseSidebar : provides data
+    WarehouseSidebar --> WarehouseSidebarTemplate : renders UI
 ```
 
-## State Management Diagram
-
-```mermaid
-stateDiagram-v2
-    [*] --> ProductSelection
-    ProductSelection --> SelectingProducts: User selects products
-    SelectingProducts --> ProductsSelected: User clicks transfer
-    ProductsSelected --> WizardOpen: Open transfer wizard
-    WizardOpen --> ConfiguringTransfer: User configures transfer
-    ConfiguringTransfer --> ValidatingData: User submits
-    ValidatingData --> ValidationFailed: Invalid data
-    ValidationFailed --> ConfiguringTransfer: Fix errors
-    ValidatingData --> CreatingTransfer: Valid data
-    CreatingTransfer --> TransferCreated: Success
-    CreatingTransfer --> TransferError: System error
-    TransferError --> ConfiguringTransfer: Retry
-    TransferCreated --> [*]: Complete
-```
-
-## Database Schema Diagram
+## Data Structure
 
 ```mermaid
 erDiagram
-    stock_current_report {
-        int id PK
-        int product_id FK
-        int location_id FK
-        float quantity
-        float free_to_use
-        float incoming
-        float outgoing
+    WAREHOUSE {
+        int id
+        string name
+        string code
+        int location_count
+        int total_products
+        float total_value
+        internal_locations[]
+        transit_locations[]
     }
     
-    stock_current_transfer_wizard {
-        int id PK
-        int source_location_id FK
-        int destination_location_id FK
-        int picking_type_id FK
-        boolean immediate_transfer
-        datetime scheduled_date
-        text notes
+    INTERNAL_LOCATION {
+        int id
+        string name
+        string complete_name
+        string usage
+        int product_count
+        float total_quantity
+        float total_value
     }
     
-    stock_current_transfer_wizard_line {
-        int id PK
-        int wizard_id FK
-        int product_id FK
-        int source_location_id FK
-        float available_quantity
-        float quantity_to_transfer
-        int uom_id FK
+    TRANSIT_LOCATION {
+        int id
+        string name
+        string complete_name
+        string usage
+        int product_count
+        float total_quantity
+        float total_value
     }
     
-    stock_picking {
-        int id PK
-        int picking_type_id FK
-        int location_id FK
-        int location_dest_id FK
-        string state
-    }
-    
-    stock_move {
-        int id PK
-        int picking_id FK
-        int product_id FK
-        int location_id FK
-        int location_dest_id FK
-        float product_uom_qty
-        float quantity_done
-    }
-    
-    stock_current_report ||--o{ stock_current_transfer_wizard_line : "provides data"
-    stock_current_transfer_wizard ||--o{ stock_current_transfer_wizard_line : "has lines"
-    stock_current_transfer_wizard ||--|| stock_picking : "creates"
-    stock_picking ||--o{ stock_move : "contains"
-}
+    WAREHOUSE ||--o{ INTERNAL_LOCATION : contains
+    WAREHOUSE ||--o{ TRANSIT_LOCATION : contains
 ```
 
-## Security Architecture
+## UI Layout
 
 ```mermaid
 graph TB
-    subgraph "User Groups"
-        A[Stock User]
-        B[Stock Manager]
-        C[Stock Cost Viewer]
+    subgraph Warehouse Sidebar
+        WH[Warehouse Header]
+        WH --> IL[Internal Locations Section]
+        WH --> TL[Transit Locations Section]
+        
+        subgraph Internal Locations
+            IL1[Location 1]
+            IL2[Location 2]
+            IL3[...]
+        end
+        
+        subgraph Transit Locations
+            TL1[Transit Location 1]
+            TL2[Transit Location 2]
+            TL3[...]
+        end
     end
     
-    subgraph "Access Rights"
-        D[Read Access]
-        E[Write Access]
-        F[Create Access]
-        G[Delete Access]
+    subgraph Main Content
+        R[Stock Report Table/Kanban]
     end
     
-    subgraph "Model Permissions"
-        H[Stock Current Report]
-        I[Transfer Wizard]
-        J[Transfer Wizard Lines]
-        K[Stock Picking]
-        L[Stock Move]
-    end
-    
-    A --> D
-    A --> F
-    A --> G
-    A --> H
-    A --> I
-    A --> J
-    
-    B --> D
-    B --> E
-    B --> F
-    B --> G
-    B --> H
-    B --> I
-    B --> J
-    B --> K
-    B --> L
-    
-    C --> D
-    C --> H
-    
-    D --> H
-    F --> I
-    F --> J
-    E --> K
-    E --> L
-```
-
-## Performance Optimization Strategy
-
-```mermaid
-graph LR
-    subgraph "Frontend Optimization"
-        A[Lazy Loading]
-        B[Selection Caching]
-        C[DOM Optimization]
-    end
-    
-    subgraph "Backend Optimization"
-        D[Batch Processing]
-        E[Query Optimization]
-        F[Connection Pooling]
-    end
-    
-    subgraph "Database Optimization"
-        G[Indexing Strategy]
-        H[Query Planning]
-        I[Transaction Management]
-    end
-    
-    A --> D
-    B --> E
-    C --> F
-    D --> G
-    E --> H
-    F --> I
-```
-
-## Error Handling Flow
-
-```mermaid
-flowchart TD
-    A[User Action] --> B{Validation Check}
-    B -->|Valid| C[Execute Action]
-    B -->|Invalid| D[Show Error Message]
-    D --> A
-    C --> E{System Response}
-    E -->|Success| F[Show Success Message]
-    E -->|Error| G[Log Error]
-    G --> H[Show User-Friendly Error]
-    H --> A
-    F --> I[Update UI State]
+    IL1 --> R
+    IL2 --> R
+    TL1 --> R
+    TL2 --> R

@@ -5,10 +5,9 @@ import { listView } from "@web/views/list/list_view";
 import { ListController } from "@web/views/list/list_controller";
 import { ListRenderer } from "@web/views/list/list_renderer";
 import { kanbanView } from "@web/views/kanban/kanban_view";
-import { KanbanController } from "@web/views/kanban/kanban_controller";
-import { KanbanRenderer } from "@web/views/kanban/kanban_renderer";
+import { KanbanController, KanbanRenderer } from "@web/views/kanban/kanban_controller";
 import { KanbanRecord } from "@web/views/kanban/kanban_record";
-import { Component, useState, onWillStart, onMounted, onPatched } from "@odoo/owl";
+import { Component, useState, onWillStart, onMounted, onPatched, onWillDestroy } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 
@@ -86,8 +85,10 @@ export class StockListController extends ListController {
         this.notification = useService("notification");
         this.selectionManager = new ProductSelectionManager();
         
-        // Add transfer button to toolbar
-        this.renderTransferButton();
+        // Add transfer button to toolbar after mount
+        onMounted(() => {
+            this.renderTransferButton();
+        });
     }
 
     renderTransferButton() {
@@ -147,12 +148,98 @@ export class StockKanbanController extends KanbanController {
         this.notification = useService("notification");
         this.selectionManager = new ProductSelectionManager();
         
-        // Setup product selection handlers
-        this.setupProductSelection();
-        
         // Add transfer button to toolbar after mount
         onMounted(() => {
             this.renderTransferButton();
+            this.attachProductListeners();
+        });
+        
+        // Reattach listeners after kanban refresh/filter
+        onPatched(() => {
+            this.attachProductListeners();
+        });
+        
+        // Cleanup on destroy
+        onWillDestroy(() => {
+            this.detachProductListeners();
+        });
+    }
+
+    attachProductListeners() {
+        // Add event listeners for product selection checkboxes
+        const checkboxes = document.querySelectorAll('.product-selection-checkbox');
+        checkboxes.forEach(checkbox => {
+            // Remove old listener if exists
+            if (checkbox._stockChangeHandler) {
+                checkbox.removeEventListener('change', checkbox._stockChangeHandler);
+            }
+            
+            checkbox._stockChangeHandler = (e) => {
+                const productData = {
+                    productId: parseInt(e.target.dataset.productId),
+                    locationId: parseInt(e.target.dataset.locationId),
+                    quantity: parseFloat(e.target.dataset.quantity),
+                    uomId: parseInt(e.target.dataset.uomId),
+                    productName: e.target.dataset.productName,
+                    locationName: e.target.dataset.locationName
+                };
+                this.selectionManager.toggleProductSelection(productData);
+                
+                // Update visual selection state
+                const card = e.target.closest('.oe_kanban_card');
+                if (card) {
+                    card.classList.toggle('kanban-card-selected', this.selectionManager.isProductSelected(
+                        productData.productId, productData.locationId
+                    ));
+                }
+            };
+            checkbox.addEventListener('change', checkbox._stockChangeHandler);
+        });
+
+        // Add event listeners for individual transfer buttons
+        const transferButtons = document.querySelectorAll('.transfer-product-btn');
+        transferButtons.forEach(button => {
+            // Remove old listener if exists
+            if (button._stockClickHandler) {
+                button.removeEventListener('click', button._stockClickHandler);
+            }
+            
+            button._stockClickHandler = async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                // Use closest to get the button element even if icon is clicked
+                const btn = e.target.closest('.transfer-product-btn');
+                if (!btn) return;
+                
+                const productData = {
+                    productId: parseInt(btn.dataset.productId),
+                    locationId: parseInt(btn.dataset.locationId),
+                    quantity: parseFloat(btn.dataset.quantity),
+                    uomId: parseInt(btn.dataset.uomId),
+                    productName: btn.dataset.productName,
+                    locationName: btn.dataset.locationName
+                };
+                await this.onTransferSingleProduct(productData);
+            };
+            button.addEventListener('click', button._stockClickHandler);
+        });
+    }
+
+    detachProductListeners() {
+        // Clean up checkbox listeners
+        const checkboxes = document.querySelectorAll('.product-selection-checkbox');
+        checkboxes.forEach(checkbox => {
+            if (checkbox._stockChangeHandler) {
+                checkbox.removeEventListener('change', checkbox._stockChangeHandler);
+            }
+        });
+
+        // Clean up button listeners
+        const transferButtons = document.querySelectorAll('.transfer-product-btn');
+        transferButtons.forEach(button => {
+            if (button._stockClickHandler) {
+                button.removeEventListener('click', button._stockClickHandler);
+            }
         });
     }
 
@@ -290,7 +377,6 @@ export class WarehouseSidebar extends Component {
     
     setup() {
         this.orm = useService("orm");
-        this.action = useService("action");
         this.notification = useService("notification");
         this.state = useState({
             warehouses: [],
@@ -370,10 +456,6 @@ export class WarehouseSidebar extends Component {
     onWarehouseClick(warehouse) {
         this.state.selectedWarehouse = warehouse.id;
         this.state.selectedLocation = null;
-        
-        const domain = [['location_id.warehouse_id', '=', warehouse.id]];
-        this.updateDomain(domain);
-        
         this.notification.add(
             _t("Filtered by warehouse: ") + warehouse.name,
             { type: "info" }
@@ -383,10 +465,6 @@ export class WarehouseSidebar extends Component {
     onLocationClick(location) {
         this.state.selectedLocation = location.id;
         this.state.selectedWarehouse = null;
-        
-        const domain = [['location_id', '=', location.id]];
-        this.updateDomain(domain);
-        
         this.notification.add(
             _t("Filtered by location: ") + location.name,
             { type: "info" }
@@ -398,13 +476,6 @@ export class WarehouseSidebar extends Component {
         this.state.selectedLocation = null;
         this.state.searchTerm = '';
         this.state.showOnlyWithStock = false;
-        this.updateDomain([]);
-    }
-
-    updateDomain(domain) {
-        if (this.env.searchModel) {
-            this.env.searchModel.updateSearchDomain(domain);
-        }
     }
 
     async refreshData() {
@@ -459,11 +530,6 @@ export class WarehouseSidebar extends Component {
 
 // Controller with Sidebar - defined after WarehouseSidebar
 export class StockListWithSidebarController extends ListController {
-    static components = {
-        ...ListController.components,
-        WarehouseSidebar,
-    };
-
     setup() {
         super.setup();
         this.orm = useService("orm");
@@ -474,8 +540,10 @@ export class StockListWithSidebarController extends ListController {
             showSidebar: true,
         });
         
-        // Add transfer button to toolbar
-        this.renderTransferButton();
+        // Add transfer button to toolbar after mount
+        onMounted(() => {
+            this.renderTransferButton();
+        });
     }
 
     renderTransferButton() {
@@ -528,11 +596,6 @@ export class StockListWithSidebarController extends ListController {
 }
 
 export class StockKanbanWithSidebarController extends KanbanController {
-    static components = {
-        ...KanbanController.components,
-        WarehouseSidebar,
-    };
-
     setup() {
         super.setup();
         this.orm = useService("orm");
@@ -543,12 +606,98 @@ export class StockKanbanWithSidebarController extends KanbanController {
             showSidebar: true,
         });
         
-        // Setup product selection handlers
-        this.setupProductSelection();
-        
         // Add transfer button to toolbar after mount
         onMounted(() => {
             this.renderTransferButton();
+            this.attachProductListeners();
+        });
+        
+        // Reattach listeners after kanban refresh/filter
+        onPatched(() => {
+            this.attachProductListeners();
+        });
+        
+        // Cleanup on destroy
+        onWillDestroy(() => {
+            this.detachProductListeners();
+        });
+    }
+
+    attachProductListeners() {
+        // Add event listeners for product selection checkboxes
+        const checkboxes = document.querySelectorAll('.product-selection-checkbox');
+        checkboxes.forEach(checkbox => {
+            // Remove old listener if exists
+            if (checkbox._stockChangeHandler) {
+                checkbox.removeEventListener('change', checkbox._stockChangeHandler);
+            }
+            
+            checkbox._stockChangeHandler = (e) => {
+                const productData = {
+                    productId: parseInt(e.target.dataset.productId),
+                    locationId: parseInt(e.target.dataset.locationId),
+                    quantity: parseFloat(e.target.dataset.quantity),
+                    uomId: parseInt(e.target.dataset.uomId),
+                    productName: e.target.dataset.productName,
+                    locationName: e.target.dataset.locationName
+                };
+                this.selectionManager.toggleProductSelection(productData);
+                
+                // Update visual selection state
+                const card = e.target.closest('.oe_kanban_card');
+                if (card) {
+                    card.classList.toggle('kanban-card-selected', this.selectionManager.isProductSelected(
+                        productData.productId, productData.locationId
+                    ));
+                }
+            };
+            checkbox.addEventListener('change', checkbox._stockChangeHandler);
+        });
+
+        // Add event listeners for individual transfer buttons
+        const transferButtons = document.querySelectorAll('.transfer-product-btn');
+        transferButtons.forEach(button => {
+            // Remove old listener if exists
+            if (button._stockClickHandler) {
+                button.removeEventListener('click', button._stockClickHandler);
+            }
+            
+            button._stockClickHandler = async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                // Use closest to get the button element even if icon is clicked
+                const btn = e.target.closest('.transfer-product-btn');
+                if (!btn) return;
+                
+                const productData = {
+                    productId: parseInt(btn.dataset.productId),
+                    locationId: parseInt(btn.dataset.locationId),
+                    quantity: parseFloat(btn.dataset.quantity),
+                    uomId: parseInt(btn.dataset.uomId),
+                    productName: btn.dataset.productName,
+                    locationName: btn.dataset.locationName
+                };
+                await this.onTransferSingleProduct(productData);
+            };
+            button.addEventListener('click', button._stockClickHandler);
+        });
+    }
+
+    detachProductListeners() {
+        // Clean up checkbox listeners
+        const checkboxes = document.querySelectorAll('.product-selection-checkbox');
+        checkboxes.forEach(checkbox => {
+            if (checkbox._stockChangeHandler) {
+                checkbox.removeEventListener('change', checkbox._stockChangeHandler);
+            }
+        });
+
+        // Clean up button listeners
+        const transferButtons = document.querySelectorAll('.transfer-product-btn');
+        transferButtons.forEach(button => {
+            if (button._stockClickHandler) {
+                button.removeEventListener('click', button._stockClickHandler);
+            }
         });
     }
 
@@ -695,13 +844,11 @@ export const stockKanbanView = {
 export const stockListWithSidebarView = {
     ...listView,
     Controller: StockListWithSidebarController,
-    Renderer: ListRenderer,
 };
 
 export const stockKanbanWithSidebarView = {
     ...kanbanView,
     Controller: StockKanbanWithSidebarController,
-    Renderer: KanbanRenderer,
     Record: StockKanbanRecord,
 };
 
