@@ -95,7 +95,7 @@
         <field name="name">stock.current.report.kanban</field>
         <field name="model">stock.current.report</field>
         <field name="arch" type="xml">
-            <kanban string="Stock Overview" class="o_kanban_mobile stock_current_report_kanban">
+            <kanban string="Stock Overview" class="stock_current_report_kanban">
                 <field name="product_id"/>
                 <field name="location_id"/>
                 <field name="warehouse_id"/>
@@ -106,68 +106,31 @@
                 <field name="total_value" groups="buz_stock_current_report.group_stock_cost_viewer"/>
                 <field name="unit_cost" groups="buz_stock_current_report.group_stock_cost_viewer"/>
                 <field name="uom_id"/>
+                <!-- transfer toolbar removed -->
                 <templates>
                     <t t-name="kanban-box">
-                        <div class="oe_kanban_global_click o_kanban_record_has_image_fill">
-                            <div class="oe_kanban_details">
-                                <div class="o_kanban_record_top mb-2">
-                                    <div class="o_kanban_record_headings">
-                                        <strong class="o_kanban_record_title">
-                                            <field name="product_id"/>
-                                        </strong>
-                                    </div>
-                                    <div class="o_kanban_record_subtitle">
-                                        <i class="fa fa-map-marker text-muted"/> <field name="location_id"/>
-                                        <t t-if="record.warehouse_id.value">
-                                            | <i class="fa fa-building text-muted"/> <field name="warehouse_id"/>
-                                        </t>
-                                    </div>
+                        <div class="oe_kanban_card" t-att-data-record-id="record.id">
+                            <!-- selection checkbox removed -->
+                            <div class="oe_kanban_content">
+                                <div class="mb-2">
+                                    <strong><field name="product_id"/></strong>
+                                    <br/>
+                                    <small class="text-muted"><i class="fa fa-map-marker"/> <field name="location_id"/></small>
                                 </div>
-                                <div class="o_kanban_record_body">
-                                    <div class="row mb-2">
-                                        <div class="col-6">
-                                            <span class="badge bg-primary fs-6">
-                                                <i class="fa fa-cube"/> <field name="quantity"/> <field name="uom_id"/>
-                                            </span>
-                                        </div>
-                                        <div class="col-6 text-end" groups="buz_stock_current_report.group_stock_cost_viewer">
-                                            <span class="badge bg-success fs-6">
-                                                ฿ <field name="total_value" widget="monetary"/>
-                                            </span>
-                                        </div>
+                                <div class="mb-2">
+                                    <div>
+                                        <span class="badge bg-primary">
+                                            <i class="fa fa-cube"/> <field name="quantity"/> <field name="uom_id"/>
+                                        </span>
                                     </div>
-                                    <div class="row g-2 mb-2">
-                                        <div class="col-6">
-                                            <small class="text-muted">Free to Use:</small>
-                                            <br/>
-                                            <strong><field name="free_to_use"/></strong>
-                                        </div>
-                                        <div class="col-6" groups="buz_stock_current_report.group_stock_cost_viewer">
-                                            <small class="text-muted">Unit Cost:</small>
-                                            <br/>
-                                            <strong><field name="unit_cost" widget="monetary"/></strong>
-                                        </div>
-                                    </div>
-                                    <div class="row g-2 mb-2" t-if="record.incoming.raw_value > 0 or record.outgoing.raw_value > 0">
-                                        <div class="col-6" t-if="record.incoming.raw_value > 0">
-                                            <span class="badge bg-info">
-                                                <i class="fa fa-arrow-down"/> Incoming: <field name="incoming"/>
-                                            </span>
-                                        </div>
-                                        <div class="col-6" t-if="record.outgoing.raw_value > 0">
-                                            <span class="badge bg-warning">
-                                                <i class="fa fa-arrow-up"/> Outgoing: <field name="outgoing"/>
-                                            </span>
-                                        </div>
-                                    </div>
+                                    <small class="d-block mt-1">Free: <strong><field name="free_to_use"/></strong></small>
                                 </div>
-                                <div class="o_kanban_record_bottom mt-2">
-                                    <div class="oe_kanban_bottom_right">
-                                        <button class="btn btn-sm btn-primary" 
-                                                name="action_view_product_moves" type="object">
-                                            <i class="fa fa-arrows-alt"/> View Stock Moves
-                                        </button>
-                                    </div>
+                                <div class="oe_kanban_bottom_left">
+                                </div>
+                                <div class="oe_kanban_bottom_right">
+                                    <a type="object" name="action_view_product_moves" class="oe_kanban_action_button" t-if="record.quantity.raw_value > 0">
+                                        <i class="fa fa-arrows-alt"/> Moves
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -180,7 +143,7 @@
     <record id="action_stock_current_report" model="ir.actions.act_window">
         <field name="name">Current Stock Report</field>
         <field name="res_model">stock.current.report</field>
-        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_mode">tree,kanban,form</field>
         <field name="context">{}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
@@ -197,11 +160,11 @@
     <record id="action_stock_current_report_sidebar" model="ir.actions.act_window">
         <field name="name">Current Stock Report with Warehouse Sidebar</field>
         <field name="res_model">stock.current.report</field>
-        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_mode">tree,kanban,form</field>
         <field name="view_ids" eval="[
             (5, 0, 0),
-            (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_stock_current_report_kanban')}),
             (0, 0, {'view_mode': 'tree', 'view_id': ref('view_stock_current_report_tree')}),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_stock_current_report_kanban')}),
             (0, 0, {'view_mode': 'form', 'view_id': ref('view_stock_current_report_form')})
         ]"/>
         <field name="context">{'search_default_group_location': 1}</field>
@@ -223,6 +186,8 @@
         <field name="target">new</field>
     </record>
 
+    <!-- transfer wizard action removed -->
+
     <!-- Create a Products submenu under Inventory -->
     <menuitem id="menu_stock_current_report_root"
               name="Current Stock Report"
@@ -234,6 +199,8 @@
               parent="menu_stock_current_report_root"
               action="action_stock_current_report_sidebar"
               sequence="5"/>
+
+    <!-- transfer menu removed -->
 
     <menuitem id="menu_stock_current_export_wizard"
               name="Export Stock to Excel"

@@ -49,34 +49,67 @@ class StockCurrentTransferWizard(models.TransientModel):
         """Override to pre-populate with selected products"""
         res = super().default_get(fields_list)
         
+        _logger.info(f"default_get called with fields: {fields_list}")
+        
         # Get selected products from context
         selected_products = self.env.context.get('default_selected_products', [])
-        if selected_products:
+        _logger.info(f"Selected products from context: {selected_products}")
+        
+        if selected_products and isinstance(selected_products, list):
             lines = []
-            for product_data in selected_products:
+            source_locations = set()
+            
+            for idx, product_data in enumerate(selected_products):
+                _logger.info(f"Processing product {idx}: {product_data}")
+                
+                # Ensure product_data is a dict
+                if not isinstance(product_data, dict):
+                    _logger.warning(f"Product data {idx} is not a dict: {type(product_data)}")
+                    continue
+                    
+                product_id = product_data.get('productId') or product_data.get('product_id')
+                location_id = product_data.get('locationId') or product_data.get('location_id')
+                
+                if not product_id or not location_id:
+                    _logger.warning(f"Missing product_id or location_id in product {idx}")
+                    continue
+                
+                source_locations.add(location_id)
+                
                 line_vals = {
-                    'product_id': product_data.get('productId'),
-                    'source_location_id': product_data.get('locationId'),
+                    'product_id': product_id,
+                    'source_location_id': location_id,
                     'available_quantity': product_data.get('quantity', 0),
                     'quantity_to_transfer': product_data.get('quantity', 0),
-                    'uom_id': product_data.get('uomId'),
+                    'uom_id': product_data.get('uomId') or product_data.get('uom_id'),
                 }
+                _logger.info(f"Created line values: {line_vals}")
                 lines.append((0, 0, line_vals))
             
-            res['line_ids'] = lines
+            if lines:
+                _logger.info(f"Adding {len(lines)} transfer lines")
+                res['line_ids'] = lines
+            else:
+                _logger.warning("No valid lines created from selected products")
             
             # Set source location if all products are from same location
-            if len(selected_products) == 1:
-                res['source_location_id'] = selected_products[0].get('locationId')
-            elif selected_products:
-                # Check if all products are from same location
-                first_location = selected_products[0].get('locationId')
-                if all(p.get('locationId') == first_location for p in selected_products):
-                    res['source_location_id'] = first_location
+            if len(source_locations) == 1:
+                source_loc = list(source_locations)[0]
+                _logger.info(f"Setting source location to {source_loc}")
+                res['source_location_id'] = source_loc
+            elif len(source_locations) > 1:
+                _logger.info(f"Multiple source locations found: {source_locations}, will let user choose")
             
             # Set default picking type
-            res['picking_type_id'] = self._get_picking_type().id if self._get_picking_type() else False
-            
+            picking_type = self._get_picking_type()
+            if picking_type:
+                _logger.info(f"Setting picking type to {picking_type.name}")
+                res['picking_type_id'] = picking_type.id
+            else:
+                _logger.warning("Could not find picking type")
+        else:
+            _logger.info("No selected products in context")
+        
         return res
 
     def _get_picking_type(self):
@@ -103,11 +136,16 @@ class StockCurrentTransferWizard(models.TransientModel):
                     raise ValidationError(_("Destination location must be different from source location."))
 
     def action_create_transfer(self):
-        """Create stock transfer from wizard data"""
+        """Create stock transfer from wizard data as draft"""
         self.ensure_one()
+        
+        _logger.info(f"action_create_transfer called: source_location={self.source_location_id}, dest={self.destination_location_id}, lines={len(self.line_ids)}")
         
         if not self.line_ids:
             raise UserError(_("Please add at least one product to transfer."))
+        
+        if not self.destination_location_id:
+            raise UserError(_("Please select a destination location."))
         
         # Validate all lines
         for line in self.line_ids:
@@ -123,64 +161,83 @@ class StockCurrentTransferWizard(models.TransientModel):
                     )
                 )
         
-        # Create stock picking
-        picking_vals = {
-            'picking_type_id': self.picking_type_id.id,
-            'location_id': self.source_location_id.id or self.line_ids[0].source_location_id.id,
-            'location_dest_id': self.destination_location_id.id,
-            'scheduled_date': self.scheduled_date,
-            'origin': _('Stock Current Transfer'),
-            'note': self.notes,
-            'move_ids': [],
-        }
-        
-        # Create stock moves
-        move_vals_list = []
-        for line in self.line_ids:
-            move_vals = {
-                'name': _('Transfer: %s') % line.product_id.name,
-                'product_id': line.product_id.id,
-                'product_uom_qty': line.quantity_to_transfer,
-                'product_uom': line.uom_id.id,
-                'location_id': line.source_location_id.id,
+        try:
+            # Get source location (all must be same)
+            source_location_id = self.source_location_id.id or self.line_ids[0].source_location_id.id
+            picking_type_id = self.picking_type_id.id if self.picking_type_id else None
+            
+            # If no picking type set, try to find or use warehouse default
+            if not picking_type_id:
+                _logger.info("No picking type set, attempting to find default")
+                picking_type = self._get_picking_type()
+                if picking_type:
+                    picking_type_id = picking_type.id
+            
+            if not picking_type_id:
+                raise UserError(_("Cannot determine picking type for this transfer. Please contact your administrator."))
+            
+            _logger.info(f"Creating transfer: source={source_location_id}, dest={self.destination_location_id.id}, picking_type={picking_type_id}")
+            
+            # Create stock picking in draft state
+            picking_vals = {
+                'picking_type_id': picking_type_id,
+                'location_id': source_location_id,
                 'location_dest_id': self.destination_location_id.id,
-                'picking_type_id': self.picking_type_id.id,
+                'scheduled_date': self.scheduled_date,
                 'origin': _('Stock Current Transfer'),
+                'note': self.notes,
             }
-            move_vals_list.append((0, 0, move_vals))
-        
-        picking_vals['move_ids'] = move_vals_list
-        
-        # Create the picking
-        picking = self.env['stock.picking'].create(picking_vals)
-        
-        # Validate the transfer if immediate
-        if self.immediate_transfer:
-            try:
-                picking.action_confirm()
-                picking.action_assign()
-                
-                # Create stock move lines and validate
-                for move in picking.move_ids:
-                    if move.state == 'assigned':
-                        for move_line in move.move_line_ids:
-                            move_line.qty_done = move_line.product_uom_qty
-                
-                picking.button_validate()
-            except Exception as e:
-                _logger.error("Error validating transfer: %s", str(e))
-                raise UserError(_("Transfer created but validation failed: %s") % str(e))
-        
-        # Return action to view the created picking
-        return {
-            'name': _('Stock Transfer'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'stock.picking',
-            'res_id': picking.id,
-            'view_mode': 'form',
-            'target': 'current',
-            'context': self.env.context,
-        }
+            
+            picking = self.env['stock.picking'].create(picking_vals)
+            _logger.info(f"Created picking {picking.name}")
+            
+            # Create stock moves for each line
+            for line in self.line_ids:
+                self.env['stock.move'].create({
+                    'name': _('Transfer: %s') % line.product_id.name,
+                    'product_id': line.product_id.id,
+                    'product_uom_qty': line.quantity_to_transfer,
+                    'product_uom': line.uom_id.id,
+                    'location_id': line.source_location_id.id,
+                    'location_dest_id': self.destination_location_id.id,
+                    'picking_id': picking.id,
+                    'picking_type_id': picking_type_id,
+                    'origin': _('Stock Current Transfer'),
+                })
+            
+            # Attempt to confirm and prepare if immediate transfer
+            if self.immediate_transfer:
+                try:
+                    picking.action_confirm()
+                    picking.action_assign()
+                    
+                    # Set quantities done and validate
+                    for move in picking.move_ids:
+                        if move.state in ['assigned', 'partially_available']:
+                            for move_line in move.move_line_ids:
+                                move_line.qty_done = move_line.product_uom_qty
+                    
+                    picking.button_validate()
+                    _logger.info("Transfer %s automatically validated", picking.name)
+                except Exception as e:
+                    _logger.warning("Could not auto-validate transfer %s: %s", picking.name, str(e))
+                    # Leave as confirmed but not validated
+            
+            _logger.info(f"Transfer completed successfully: {picking.name}")
+            
+            # Return action to view the created picking
+            return {
+                'type': 'ir.actions.act_window',
+                'res_model': 'stock.picking',
+                'res_id': picking.id,
+                'view_mode': 'form',
+                'target': 'current',
+            }
+        except UserError:
+            raise
+        except Exception as e:
+            _logger.error("Error creating transfer: %s", str(e))
+            raise UserError(_("Failed to create transfer: %s") % str(e))
 
 
 class StockCurrentTransferWizardLine(models.TransientModel):
@@ -237,7 +294,13 @@ class StockCurrentTransferWizardLine(models.TransientModel):
     @api.onchange('product_id', 'source_location_id')
     def _onchange_product_location(self):
         """Update available quantity when product or location changes"""
+        # Only update if we don't already have a valid available_quantity
+        # (e.g., from default_get context)
         if self.product_id and self.source_location_id:
+            # If available_quantity is already set (from context), don't override
+            if self.available_quantity > 0:
+                return
+            
             # Get current stock for this product/location
             stock_report = self.env['stock.current.report'].search([
                 ('product_id', '=', self.product_id.id),
@@ -246,13 +309,12 @@ class StockCurrentTransferWizardLine(models.TransientModel):
             
             if stock_report:
                 self.available_quantity = stock_report.quantity
-                self.quantity_to_transfer = min(stock_report.quantity, self.quantity_to_transfer)
+                if self.quantity_to_transfer == 0:
+                    self.quantity_to_transfer = stock_report.quantity
             else:
-                self.available_quantity = 0
-                self.quantity_to_transfer = 0
-        else:
-            self.available_quantity = 0
-            self.quantity_to_transfer = 0
+                # Only set to 0 if available_quantity was 0
+                if self.available_quantity == 0:
+                    self.quantity_to_transfer = 0
 
     @api.model
     def create(self, vals):

@@ -34,32 +34,52 @@ class StockCurrentReport(models.Model):
 
     def action_view_product_moves(self):
         """Action to view stock moves for this product/location"""
-        self.ensure_one()
+        _logger.info(f"action_view_product_moves called with ids: {self.ids}")
+        
+        # Handle case where no record is selected
+        if not self or len(self) == 0:
+            _logger.warning("action_view_product_moves called with no record")
+            from odoo.exceptions import UserError
+            raise UserError('Please select a product to view moves')
+        
+        # Get the first record
+        record = self[0]
+        
         return {
             'name': 'Stock Moves',
             'type': 'ir.actions.act_window',
             'res_model': 'stock.move.line',
             'view_mode': 'tree,form',
             'domain': [
-                ('product_id', '=', self.product_id.id),
-                '|', ('location_id', '=', self.location_id.id),
-                ('location_dest_id', '=', self.location_id.id)
+                ('product_id', '=', record.product_id.id),
+                '|', ('location_id', '=', record.location_id.id),
+                ('location_dest_id', '=', record.location_id.id)
             ],
-            'context': {'default_product_id': self.product_id.id},
+            'context': {'default_product_id': record.product_id.id},
         }
 
     def action_transfer_single_product(self):
         """Action to transfer a single product"""
-        self.ensure_one()
+        _logger.info(f"action_transfer_single_product called with ids: {self.ids}, context: {self.env.context}")
+        
+        # Handle case where no record is selected
+        if not self or len(self) == 0:
+            _logger.warning("action_transfer_single_product called with no record")
+            from odoo.exceptions import UserError
+            raise UserError('Please select a product to transfer')
+        
+        # Get the first record
+        record = self[0]
+        _logger.info(f"Transferring product: {record.product_id.name} from location: {record.location_id.name}")
         
         # Prepare product data for transfer wizard
         product_data = {
-            'productId': self.product_id.id,
-            'locationId': self.location_id.id,
-            'quantity': self.quantity,
-            'uomId': self.uom_id.id,
-            'productName': self.product_id.name,
-            'locationName': self.location_id.name
+            'productId': record.product_id.id,
+            'locationId': record.location_id.id,
+            'quantity': record.quantity,
+            'uomId': record.uom_id.id,
+            'productName': record.product_id.name,
+            'locationName': record.location_id.name
         }
         
         return {
@@ -71,6 +91,65 @@ class StockCurrentReport(models.Model):
             'context': {
                 'default_selected_products': [product_data]
             }
+        }
+
+    def action_bulk_transfer(self):
+        """Action for bulk transfer of selected products"""
+        _logger.info(f"action_bulk_transfer called with ids: {self.ids}, active_ids: {self.env.context.get('active_ids')}")
+        
+        # Get selected IDs from context
+        active_ids = self.env.context.get('active_ids', [])
+        
+        if not active_ids:
+            _logger.warning("No active_ids in context for bulk transfer")
+            from odoo.exceptions import UserError
+            raise UserError('Please select at least one product to transfer')
+        
+        selected_records = self.env['stock.current.report'].search([
+            ('id', 'in', active_ids)
+        ])
+        
+        if not selected_records:
+            from odoo.exceptions import UserError
+            raise UserError('Please select at least one product to transfer')
+        
+        _logger.info(f"Bulk transferring {len(selected_records)} records")
+        
+        products_data = []
+        for record in selected_records:
+            product_data = {
+                'productId': record.product_id.id,
+                'locationId': record.location_id.id,
+                'quantity': record.quantity,
+                'uomId': record.uom_id.id,
+                'productName': record.product_id.name,
+                'locationName': record.location_id.name
+            }
+            _logger.info(f"Adding to bulk transfer: {product_data}")
+            products_data.append(product_data)
+        
+        _logger.info(f"Total products for transfer: {len(products_data)}")
+        
+        return {
+            'name': 'Bulk Transfer',
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.current.transfer.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_selected_products': products_data
+            }
+        }
+
+    def action_open_transfer_simple(self):
+        """Simple action to open transfer wizard - menu entry point"""
+        return {
+            'name': 'Create Transfer',
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.current.transfer.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {}
         }
 
     def action_open_record(self):

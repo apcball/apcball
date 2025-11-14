@@ -18,10 +18,8 @@ class StockCurrentExportWizard(models.TransientModel):
     product_ids = fields.Many2many('product.product', string='Products')
     category_ids = fields.Many2many('product.category', string='Categories')
 
-    def action_export_excel(self):
-        """Export current stock to Excel"""
-        self.ensure_one()
-        
+    def get_filtered_stock_data(self):
+        """Get filtered stock data based on wizard filters"""
         # Build domain based on filters
         domain = []
         
@@ -58,6 +56,15 @@ class StockCurrentExportWizard(models.TransientModel):
                 'location_usage': record.location_usage,
                 'stock_date': record.stock_date,
             })
+        
+        return data
+
+    def action_export_excel(self):
+        """Export current stock to Excel"""
+        self.ensure_one()
+        
+        # Get filtered stock data
+        data = self.get_filtered_stock_data()
         
         # Return action for Excel report
         return {

@@ -91,25 +91,8 @@ export class StockListController extends ListController {
     }
 
     renderTransferButton() {
-        const transferButton = document.createElement('button');
-        transferButton.className = 'btn btn-primary transfer-selected-button';
-        transferButton.innerHTML = '<i class="fa fa-exchange-alt me-2"/>Transfer Selected';
-        transferButton.style.display = 'none';
-        transferButton.onclick = () => this.onTransferSelected();
-        
-        // Add to toolbar
-        const toolbar = document.querySelector('.o_control_panel .o_cp_buttons');
-        if (toolbar) {
-            toolbar.appendChild(transferButton);
-            this.transferButton = transferButton;
-            
-            // Update button visibility when selection changes
-            this.selectionManager.onSelectionChange(() => {
-                const count = this.selectionManager.getSelectedCount();
-                this.transferButton.style.display = count > 0 ? 'inline-block' : 'none';
-                this.transferButton.innerHTML = `<i class="fa fa-exchange-alt me-2"/>Transfer Selected (${count})`;
-            });
-        }
+        // transfer feature disabled
+        return;
     }
 
     async onTransferSelected() {
@@ -123,15 +106,33 @@ export class StockListController extends ListController {
     }
 
     async openTransferWizard(selectedProducts) {
-        return this.action.doAction({
-            type: 'ir.actions.act_window',
-            res_model: 'stock.current.transfer.wizard',
-            view_mode: 'form',
-            target: 'new',
-            context: {
-                default_selected_products: selectedProducts
-            }
-        });
+        console.log("StockListController.openTransferWizard", selectedProducts);
+        try {
+            const wizardId = await this.orm.create(
+                'stock.current.transfer.wizard',
+                {
+                    line_ids: selectedProducts.map(prod => [0, 0, {
+                        product_id: prod.productId,
+                        source_location_id: prod.locationId,
+                        available_quantity: prod.quantity,
+                        quantity_to_transfer: prod.quantity,
+                        uom_id: prod.uomId,
+                    }]),
+                    source_location_id: selectedProducts.length > 0 && selectedProducts.every(p => p.locationId === selectedProducts[0].locationId) ? selectedProducts[0].locationId : null,
+                }
+            );
+            return this.action.doAction({
+                type: 'ir.actions.act_window',
+                res_model: 'stock.current.transfer.wizard',
+                res_id: wizardId,
+                view_mode: 'form',
+                target: 'new',
+                views: [[false, 'form']],
+            });
+        } catch (err) {
+            console.error("Error:", err);
+            this.notification.add("Error: " + err.message, { type: "danger" });
+        }
     }
 
     async onTransferSingleProduct(productData) {
@@ -147,113 +148,73 @@ export class StockKanbanController extends KanbanController {
         this.notification = useService("notification");
         this.selectionManager = new ProductSelectionManager();
         
-        // Setup product selection handlers
-        this.setupProductSelection();
-        
-        // Add transfer button to toolbar after mount
+        // Add transfer button to toolbar
         onMounted(() => {
             this.renderTransferButton();
+            this.setupProductSelection();
+        });
+        
+        // Re-setup listeners when kanban is patched
+        onPatched(() => {
+            this.setupProductSelection();
         });
     }
 
     renderTransferButton() {
-        // Check if button already exists
-        if (this.transferButton) {
-            return;
-        }
-        
-        const toolbar = document.querySelector('.o_control_panel .o_cp_buttons');
-        if (toolbar) {
-            const transferButton = document.createElement('button');
-            transferButton.className = 'btn btn-primary me-2';
-            transferButton.innerHTML = '<i class="fa fa-exchange-alt me-2"></i>Create Transfer';
-            transferButton.style.display = 'none';
-            transferButton.onclick = () => this.onTransferSelected();
-            
-            // Insert at the beginning of toolbar
-            toolbar.insertBefore(transferButton, toolbar.firstChild);
-            this.transferButton = transferButton;
-            
-            // Update button visibility when selection changes
-            this.selectionManager.onSelectionChange(() => {
-                const count = this.selectionManager.getSelectedCount();
-                if (count > 0) {
-                    this.transferButton.style.display = 'inline-block';
-                    this.transferButton.innerHTML = `<i class="fa fa-exchange-alt me-2"></i>Create Transfer (${count})`;
-                } else {
-                    this.transferButton.style.display = 'none';
-                }
-            });
-        }
+        // transfer feature disabled
+        return;
     }
 
     setupProductSelection() {
-        const attachListeners = () => {
-            // Add event listeners for product selection checkboxes
-            const checkboxes = document.querySelectorAll('.product-selection-checkbox');
-            checkboxes.forEach(checkbox => {
-                // Remove old listener if exists
-                if (checkbox._stockChangeHandler) {
-                    checkbox.removeEventListener('change', checkbox._stockChangeHandler);
-                }
-                
-                checkbox._stockChangeHandler = (e) => {
+        // Attach checkbox listeners
+        const checkboxes = document.querySelectorAll('.product-selection-checkbox');
+        checkboxes.forEach(checkbox => {
+            // Skip if already has listener
+            if (checkbox._hasStockListener) return;
+            checkbox._hasStockListener = true;
+            
+            checkbox.addEventListener('change', (e) => {
+                try {
+                    const productId = parseInt(e.target.dataset.productId);
+                    const locationId = parseInt(e.target.dataset.locationId);
+                    const quantity = parseFloat(e.target.dataset.quantity);
+                    const uomId = parseInt(e.target.dataset.uomId);
+                    
+                    if (!productId || !locationId) {
+                        console.warn("Missing product or location id", {
+                            productId,
+                            locationId,
+                            dataset: e.target.dataset
+                        });
+                        return;
+                    }
+                    
                     const productData = {
-                        productId: parseInt(e.target.dataset.productId),
-                        locationId: parseInt(e.target.dataset.locationId),
-                        quantity: parseFloat(e.target.dataset.quantity),
-                        uomId: parseInt(e.target.dataset.uomId),
-                        productName: e.target.dataset.productName,
-                        locationName: e.target.dataset.locationName
+                        productId: productId,
+                        locationId: locationId,
+                        quantity: quantity || 0,
+                        uomId: uomId || 0,
+                        productName: e.target.dataset.productName || 'Product',
+                        locationName: e.target.dataset.locationName || 'Location'
                     };
+                    
+                    console.log("Product selected:", productData);
+                    
                     this.selectionManager.toggleProductSelection(productData);
                     
-                    // Update visual selection state
-                    const card = e.target.closest('.oe_kanban_card');
+                    // Update card visual state
+                    const card = e.target.closest('.oe_kanban_card, .o_kanban_record');
                     if (card) {
-                        card.classList.toggle('kanban-card-selected', this.selectionManager.isProductSelected(
-                            productData.productId, productData.locationId
-                        ));
+                        const isSelected = this.selectionManager.isProductSelected(
+                            productData.productId, 
+                            productData.locationId
+                        );
+                        card.classList.toggle('kanban-card-selected', isSelected);
                     }
-                };
-                checkbox.addEventListener('change', checkbox._stockChangeHandler);
-            });
-
-            // Add event listeners for individual transfer buttons
-            const transferButtons = document.querySelectorAll('.transfer-product-btn');
-            transferButtons.forEach(button => {
-                // Remove old listener if exists
-                if (button._stockClickHandler) {
-                    button.removeEventListener('click', button._stockClickHandler);
+                } catch (err) {
+                    console.error("Error in checkbox change handler:", err);
                 }
-                
-                button._stockClickHandler = async (e) => {
-                    e.stopPropagation();
-                    // Use closest to get the button element even if icon is clicked
-                    const btn = e.target.closest('.transfer-product-btn');
-                    if (!btn) return;
-                    
-                    const productData = {
-                        productId: parseInt(btn.dataset.productId),
-                        locationId: parseInt(btn.dataset.locationId),
-                        quantity: parseFloat(btn.dataset.quantity),
-                        uomId: parseInt(btn.dataset.uomId),
-                        productName: btn.dataset.productName,
-                        locationName: btn.dataset.locationName
-                    };
-                    await this.onTransferSingleProduct(productData);
-                };
-                button.addEventListener('click', button._stockClickHandler);
-            });
-        };
-        
-        onMounted(() => {
-            attachListeners();
-        });
-        
-        // Reattach listeners after kanban refresh/filter
-        onPatched(() => {
-            attachListeners();
+            }, { once: false });
         });
     }
 
@@ -268,15 +229,33 @@ export class StockKanbanController extends KanbanController {
     }
 
     async openTransferWizard(selectedProducts) {
-        return this.action.doAction({
-            type: 'ir.actions.act_window',
-            res_model: 'stock.current.transfer.wizard',
-            view_mode: 'form',
-            target: 'new',
-            context: {
-                default_selected_products: selectedProducts
-            }
-        });
+        console.log("StockKanbanController.openTransferWizard", selectedProducts);
+        try {
+            const wizardId = await this.orm.create(
+                'stock.current.transfer.wizard',
+                {
+                    line_ids: selectedProducts.map(prod => [0, 0, {
+                        product_id: prod.productId,
+                        source_location_id: prod.locationId,
+                        available_quantity: prod.quantity,
+                        quantity_to_transfer: prod.quantity,
+                        uom_id: prod.uomId,
+                    }]),
+                    source_location_id: selectedProducts.length > 0 && selectedProducts.every(p => p.locationId === selectedProducts[0].locationId) ? selectedProducts[0].locationId : null,
+                }
+            );
+            return this.action.doAction({
+                type: 'ir.actions.act_window',
+                res_model: 'stock.current.transfer.wizard',
+                res_id: wizardId,
+                view_mode: 'form',
+                target: 'new',
+                views: [[false, 'form']],
+            });
+        } catch (err) {
+            console.error("Error:", err);
+            this.notification.add("Error: " + err.message, { type: "danger" });
+        }
     }
 
     async onTransferSingleProduct(productData) {
@@ -479,25 +458,8 @@ export class StockListWithSidebarController extends ListController {
     }
 
     renderTransferButton() {
-        const transferButton = document.createElement('button');
-        transferButton.className = 'btn btn-primary transfer-selected-button';
-        transferButton.innerHTML = '<i class="fa fa-exchange-alt me-2"/>Transfer Selected';
-        transferButton.style.display = 'none';
-        transferButton.onclick = () => this.onTransferSelected();
-        
-        // Add to toolbar
-        const toolbar = document.querySelector('.o_control_panel .o_cp_buttons');
-        if (toolbar) {
-            toolbar.appendChild(transferButton);
-            this.transferButton = transferButton;
-            
-            // Update button visibility when selection changes
-            this.selectionManager.onSelectionChange(() => {
-                const count = this.selectionManager.getSelectedCount();
-                this.transferButton.style.display = count > 0 ? 'inline-block' : 'none';
-                this.transferButton.innerHTML = `<i class="fa fa-exchange-alt me-2"/>Transfer Selected (${count})`;
-            });
-        }
+        // transfer feature disabled
+        return;
     }
 
     async onTransferSelected() {
@@ -511,15 +473,33 @@ export class StockListWithSidebarController extends ListController {
     }
 
     async openTransferWizard(selectedProducts) {
-        return this.action.doAction({
-            type: 'ir.actions.act_window',
-            res_model: 'stock.current.transfer.wizard',
-            view_mode: 'form',
-            target: 'new',
-            context: {
-                default_selected_products: selectedProducts
-            }
-        });
+        console.log("StockListWithSidebarController.openTransferWizard", selectedProducts);
+        try {
+            const wizardId = await this.orm.create(
+                'stock.current.transfer.wizard',
+                {
+                    line_ids: selectedProducts.map(prod => [0, 0, {
+                        product_id: prod.productId,
+                        source_location_id: prod.locationId,
+                        available_quantity: prod.quantity,
+                        quantity_to_transfer: prod.quantity,
+                        uom_id: prod.uomId,
+                    }]),
+                    source_location_id: selectedProducts.length > 0 && selectedProducts.every(p => p.locationId === selectedProducts[0].locationId) ? selectedProducts[0].locationId : null,
+                }
+            );
+            return this.action.doAction({
+                type: 'ir.actions.act_window',
+                res_model: 'stock.current.transfer.wizard',
+                res_id: wizardId,
+                view_mode: 'form',
+                target: 'new',
+                views: [[false, 'form']],
+            });
+        } catch (err) {
+            console.error("Error:", err);
+            this.notification.add("Error: " + err.message, { type: "danger" });
+        }
     }
 
     async onTransferSingleProduct(productData) {
@@ -553,34 +533,8 @@ export class StockKanbanWithSidebarController extends KanbanController {
     }
 
     renderTransferButton() {
-        // Check if button already exists
-        if (this.transferButton) {
-            return;
-        }
-        
-        const toolbar = document.querySelector('.o_control_panel .o_cp_buttons');
-        if (toolbar) {
-            const transferButton = document.createElement('button');
-            transferButton.className = 'btn btn-primary me-2';
-            transferButton.innerHTML = '<i class="fa fa-exchange-alt me-2"></i>Create Transfer';
-            transferButton.style.display = 'none';
-            transferButton.onclick = () => this.onTransferSelected();
-            
-            // Insert at the beginning of toolbar
-            toolbar.insertBefore(transferButton, toolbar.firstChild);
-            this.transferButton = transferButton;
-            
-            // Update button visibility when selection changes
-            this.selectionManager.onSelectionChange(() => {
-                const count = this.selectionManager.getSelectedCount();
-                if (count > 0) {
-                    this.transferButton.style.display = 'inline-block';
-                    this.transferButton.innerHTML = `<i class="fa fa-exchange-alt me-2"></i>Create Transfer (${count})`;
-                } else {
-                    this.transferButton.style.display = 'none';
-                }
-            });
-        }
+        // transfer feature disabled
+        return;
     }
 
     setupProductSelection() {
@@ -664,15 +618,33 @@ export class StockKanbanWithSidebarController extends KanbanController {
     }
 
     async openTransferWizard(selectedProducts) {
-        return this.action.doAction({
-            type: 'ir.actions.act_window',
-            res_model: 'stock.current.transfer.wizard',
-            view_mode: 'form',
-            target: 'new',
-            context: {
-                default_selected_products: selectedProducts
-            }
-        });
+        console.log("StockKanbanWithSidebarController.openTransferWizard", selectedProducts);
+        try {
+            const wizardId = await this.orm.create(
+                'stock.current.transfer.wizard',
+                {
+                    line_ids: selectedProducts.map(prod => [0, 0, {
+                        product_id: prod.productId,
+                        source_location_id: prod.locationId,
+                        available_quantity: prod.quantity,
+                        quantity_to_transfer: prod.quantity,
+                        uom_id: prod.uomId,
+                    }]),
+                    source_location_id: selectedProducts.length > 0 && selectedProducts.every(p => p.locationId === selectedProducts[0].locationId) ? selectedProducts[0].locationId : null,
+                }
+            );
+            return this.action.doAction({
+                type: 'ir.actions.act_window',
+                res_model: 'stock.current.transfer.wizard',
+                res_id: wizardId,
+                view_mode: 'form',
+                target: 'new',
+                views: [[false, 'form']],
+            });
+        } catch (err) {
+            console.error("Error:", err);
+            this.notification.add("Error: " + err.message, { type: "danger" });
+        }
     }
 
     async onTransferSingleProduct(productData) {
@@ -709,3 +681,32 @@ registry.category("views").add("stock_current_list", stockListView);
 registry.category("views").add("stock_current_kanban", stockKanbanView);
 registry.category("views").add("stock_current_list_sidebar", stockListWithSidebarView);
 registry.category("views").add("stock_current_kanban_sidebar", stockKanbanWithSidebarView);
+
+// Global setup for stock report transfer functionality
+document.addEventListener('DOMContentLoaded', () => {
+    setupStockTransferUI();
+});
+
+// Setup function for transfer UI
+function setupStockTransferUI() {
+    // transfer feature disabled
+    return;
+}
+
+// Initialize globally when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    setupStockTransferUI();
+    setupTransferButtonHandlers();
+});
+
+// Setup Transfer button handlers for kanban cards
+function setupTransferButtonHandlers() {
+    // transfer handlers disabled
+    return;
+}
+
+// Also try initialization after Odoo has loaded
+setTimeout(setupStockTransferUI, 1000);
+setTimeout(setupStockTransferUI, 3000);
+setTimeout(setupTransferButtonHandlers, 1000);
+setTimeout(setupTransferButtonHandlers, 3000);

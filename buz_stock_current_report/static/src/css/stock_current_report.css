@@ -36,6 +36,42 @@
     border-color: #007bff;
 }
 
+/* Kanban Card Selected State */
+.o_kanban_view.stock_current_report_kanban .oe_kanban_global_click.kanban-card-selected {
+    background-color: #e7f3ff;
+    border-color: #0056b3;
+    border-width: 2px;
+    box-shadow: 0 0 8px rgba(0, 86, 179, 0.3);
+}
+
+/* Product Selection Checkbox */
+.o_kanban_view.stock_current_report_kanban .product-selection-checkbox {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.o_kanban_view.stock_current_report_kanban .form-check {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.o_kanban_view.stock_current_report_kanban .form-check-input {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    margin-top: 0;
+    cursor: pointer;
+}
+
+.o_kanban_view.stock_current_report_kanban .form-check-input:checked {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
 /* Kanban Record Details */
 .o_kanban_view.stock_current_report_kanban .oe_kanban_details {
     width: 100%;
@@ -181,6 +217,15 @@
 
 .location-section {
     margin-bottom: 16px;
+}
+
+/* Disable transfer UI and selection checkbox (feature removed) */
+.product-selection-checkbox,
+.transfer-product-btn,
+.transfer-selected-button,
+.stock-transfer-btn,
+.stock-transfer-bulk-btn {
+    display: none !important;
 }
 
 .location-type-header {
