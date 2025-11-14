@@ -1,9 +1,9 @@
 {
-    'name': 'Stock FIFO by Location',
+    'name': 'Buz Stock FIFO by Location',
     'version': '17.0.1.0.0',
     'category': 'Inventory/Stock',
-    'author': 'Custom Development',
-    'website': 'https://github.com/apcball/odoo-custom',
+    'author': 'APC Ball',
+    'website': 'https://github.com/apcball/apcball',
     'license': 'LGPL-3',
     'depends': [
         'stock',
