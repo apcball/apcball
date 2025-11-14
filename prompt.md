@@ -1,249 +1,151 @@
-🧩 สร้าง module (Current Stock by Date + Export Excel)
+สร้างโมดูล Odoo 17 ชื่อ stock_fifo_by_location โดยทำตามข้อกำหนดต่อไปนี้อย่างเข้มงวด — ให้ผลลัพธ์เป็นโค้ดพร้อมติดตั้ง (module folder พร้อมไฟล์ทั้งหมด) และรวม unit tests, migration script, README, และตัวอย่างการทดสอบ manual ด้วย
 
-Module name: buz_stock_current_report
-Odoo Version: 17.0
+สรุปฟังก์ชันหลัก (goal)
 
-🎯 ฟังก์ชันหลัก
+เพิ่มการจัดการ FIFO แบบแยก queue ต่อ location: แต่ละ stock.valuation.layer ต้องมี location_id เพื่อให้เราสามารถคำนวณ COGS ตาม FIFO เฉพาะโลเคชันที่สินค้านั้นอยู่ได้
 
-แสดง สินค้าคงเหลือ (On Hand)
+ต้องทำงานร่วมกับ Odoo 17 stock + stock_account (หรือโมดูลบัญชีที่เกี่ยวข้อง) และยังคงรักษาความถูกต้องของ journal entries
 
-กรองตาม Location / Product / Category
+ข้อกำหนดเชิงเทคนิค (must-have)
 
-มีตัวเลือก “Stock Date” เพื่อดูคงเหลือย้อนหลัง
+Manifest
 
-ปุ่ม Export Excel บนหน้า Tree View
+name: Stock FIFO by Location
 
-ใช้ข้อมูลจริงจาก stock.quant และประวัติ stock_move_line
+depends: ['stock', 'stock_account']
 
-filter “Show Zero Qty = False” (ซ่อนสินค้าที่คงเหลือเป็น 0)
+compatible กับ Odoo 17
 
-📁 โครงสร้างโมดูล
-buz_stock_current_report/
-│
-├── __manifest__.py
-├── __init__.py
-│
-├── models/
-│   ├── __init__.py
-│   └── stock_current_report.py
-│
-├── wizard/
-│   ├── __init__.py
-│   └── stock_current_export_wizard.py
-│
-├── views/
-│   ├── stock_current_report_views.xml
-│   └── stock_current_export_wizard_views.xml
-│
-└── report/
-    ├── __init__.py
-    └── stock_current_report_xlsx.py
+Add field
 
-📄 __manifest__.py
-{
-    'name': 'Current Stock Report by Date',
-    'version': '17.0.1.0.0',
-    'summary': 'View and Export Current Stock by Location and Date',
-    'category': 'Inventory/Reports',
-    'depends': ['stock', 'report_xlsx'],
-    'data': [
-        'views/stock_current_report_views.xml',
-        'views/stock_current_export_wizard_views.xml',
-    ],
-    'installable': True,
-    'application': False,
-}
+เพิ่ม location_id = fields.Many2one('stock.location') ใน model stock.valuation.layer (_inherit = 'stock.valuation.layer')
 
-🧠 models/stock_current_report.py
-from odoo import models, fields, tools, api
+Field ต้องมี index และ help text
 
-class StockCurrentReport(models.Model):
-    _name = 'stock.current.report'
-    _description = 'Current Stock Report (by Date)'
-    _auto = False
-    _order = 'location_id, product_id'
+การสร้าง SVL (valuation layers)
 
-    product_id = fields.Many2one('product.product', string='Product', readonly=True)
-    location_id = fields.Many2one('stock.location', string='Location', readonly=True)
-    category_id = fields.Many2one('product.category', string='Category', readonly=True)
-    uom_id = fields.Many2one('uom.uom', string='UoM', readonly=True)
-    quantity = fields.Float('On Hand Qty', readonly=True, digits='Product Unit of Measure')
+หาจุดที่ Odoo 17 สร้าง stock.valuation.layer (ใช้ method/flow ที่แท้จริงของ Odoo 17) แล้วแก้ไข/override ให้เมื่อตอนรับเข้า/สร้าง layer ระบบใส่ค่า location_id ที่ถูกต้องโดยอิงจาก stock.move หรือ stock.move.line (สำหรับ incoming → ใช้ destination location, สำหรับ outgoing → ใช้ source location, สำหรับ internal transfer → ขึ้นกับนโยบาย แต่ต้องกำหนดชัดเจน)
 
-    stock_date = fields.Date(string="Stock Date", default=fields.Date.context_today)
+หากมีจุดที่สร้าง SVL หลายจุด ให้แก้ทุกจุดให้ consistent
 
-    def init(self):
-        # view basic real-time stock
-        tools.drop_view_if_exists(self._cr, self._table)
-        self._cr.execute(f"""
-            CREATE OR REPLACE VIEW {self._table} AS (
-                SELECT
-                    sq.id AS id,
-                    sq.product_id,
-                    sq.location_id,
-                    sq.quantity AS quantity,
-                    sq.uom_id,
-                    pt.categ_id AS category_id
-                FROM stock_quant sq
-                JOIN product_product pp ON pp.id = sq.product_id
-                JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                JOIN stock_location sl ON sl.id = sq.location_id
-                WHERE sl.usage = 'internal'
-            )
-        """)
+FIFO per-location logic
 
-    @api.model
-    def compute_stock_at_date(self, date):
-        """Return quantities at a specific date (historical)"""
-        query = f"""
-            SELECT
-                sml.product_id,
-                sml.location_id,
-                sum(
-                    CASE
-                        WHEN sml.location_dest_id IN (
-                            SELECT id FROM stock_location WHERE usage = 'internal'
-                        )
-                        THEN sml.qty_done
-                        ELSE 0
-                    END
-                    -
-                    CASE
-                        WHEN sml.location_id IN (
-                            SELECT id FROM stock_location WHERE usage = 'internal'
-                        )
-                        THEN sml.qty_done
-                        ELSE 0
-                    END
-                ) AS quantity
-            FROM stock_move_line sml
-            JOIN stock_move sm ON sm.id = sml.move_id
-            WHERE sm.date <= %s
-            AND sm.state = 'done'
-            GROUP BY sml.product_id, sml.location_id
-        """
-        self._cr.execute(query, (date,))
-        return self._cr.dictfetchall()
+เขียน service/helper ที่ดึง FIFO queue เฉพาะ location_id (เรียงตาม create_date / oldest first) และคำนวนการใช้ชั้น (layer) สำหรับการลดสต็อกเมื่อออกขายหรือ validate picking
 
-🧮 wizard/stock_current_export_wizard.py
-from odoo import models, fields, api
+เมื่อใช้ layer ใด ต้อง update/สร้าง accounting entries ให้ถูกต้อง (ใช้ existing mechanisms ของ stock_account ถ้าเป็นไปได้ แต่ปรับให้ใช้ location_id ในการเลือก layer)
 
-class StockCurrentExportWizard(models.TransientModel):
-    _name = 'stock.current.export.wizard'
-    _description = 'Export Current Stock to Excel'
+Behavior policy on shortage
 
-    stock_date = fields.Date(string="Stock Date", required=True, default=fields.Date.context_today)
+กำหนดพฤติกรรมเมื่อสต็อกไม่พอในโลเคชันที่ระบุ (choose one and implement):
 
-    def action_export_excel(self):
-        return self.env.ref(
-            'buz_stock_current_report.action_report_stock_current_xlsx'
-        ).report_action(self, data={'stock_date': self.stock_date})
+A) Raise an error and block validation (default safety), และ provide config option to allow fallback to other locations
 
-📊 report/stock_current_report_xlsx.py
-from odoo import models
-from datetime import datetime
+B) (optional) If fallback allowed, pull from other locations following company policy (documented)
 
-class StockCurrentReportXlsx(models.AbstractModel):
-    _name = 'report.buz_stock_current_report.stock_current_report_xlsx'
-    _inherit = 'report.report_xlsx.abstract'
-    _description = 'Current Stock Report Excel (By Date)'
+Implement this as a setting in module settings (ir.config_parameter or menu setting)
 
-    def generate_xlsx_report(self, workbook, data, wizard):
-        sheet = workbook.add_worksheet('Current Stock')
-        bold = workbook.add_format({'bold': True})
+Migration script
 
-        headers = ['Location', 'Product', 'Category', 'Qty', 'UoM']
-        for col, header in enumerate(headers):
-            sheet.write(0, col, header, bold)
+สร้าง script (server action / script runnable from Odoo shell) เพื่อ populate location_id สำหรับ existing stock.valuation.layer:
 
-        stock_date = data.get('stock_date')
-        sheet.write(1, 0, f"Stock as of: {stock_date}", bold)
+Preferentially derive from linked stock.move or stock.move.line (incoming -> location_dest_id, outgoing -> location_id)
 
-        # get stock by date
-        stock_lines = self.env['stock.current.report'].compute_stock_at_date(stock_date)
+Log or list items that cannot be resolved for manual review
 
-        row = 3
-        for rec in stock_lines:
-            product = self.env['product.product'].browse(rec['product_id'])
-            location = self.env['stock.location'].browse(rec['location_id'])
-            sheet.write(row, 0, location.display_name)
-            sheet.write(row, 1, product.display_name)
-            sheet.write(row, 2, product.categ_id.display_name)
-            sheet.write(row, 3, rec['quantity'])
-            sheet.write(row, 4, product.uom_id.display_name)
-            row += 1
+Unit & Integration Tests
 
-🪄 views/stock_current_report_views.xml
-<odoo>
-  <record id="view_stock_current_report_tree" model="ir.ui.view">
-    <field name="name">stock.current.report.tree</field>
-    <field name="model">stock.current.report</field>
-    <field name="arch" type="xml">
-      <tree string="Current Stock">
-        <field name="location_id"/>
-        <field name="product_id"/>
-        <field name="category_id"/>
-        <field name="quantity" sum="Total"/>
-        <field name="uom_id"/>
-      </tree>
-    </field>
-  </record>
+สร้าง tests (pytest / Odoo test framework) ครอบคลุม:
 
-  <record id="view_stock_current_report_search" model="ir.ui.view">
-    <field name="name">stock.current.report.search</field>
-    <field name="model">stock.current.report</field>
-    <field name="arch" type="xml">
-      <search string="Filters">
-        <field name="location_id"/>
-        <field name="product_id"/>
-        <field name="category_id"/>
-        <group expand="1" string="Group By">
-          <filter name="group_location" string="Location" context="{'group_by':'location_id'}"/>
-          <filter name="group_category" string="Category" context="{'group_by':'category_id'}"/>
-        </group>
-      </search>
-    </field>
-  </record>
+Incoming receipt → SVL created with correct location_id
 
-  <record id="action_stock_current_report" model="ir.actions.act_window">
-    <field name="name">Current Stock Report</field>
-    <field name="res_model">stock.current.report</field>
-    <field name="view_mode">tree</field>
-    <field name="help" type="html">
-      <p>ดูสินค้าคงเหลือตาม Location แบบ Real-time หรือย้อนหลังตามวันที่เลือก</p>
-    </field>
-  </record>
+Internal transfer → expected SVL behavior (depending on chosen policy)
 
-  <act_window
-      id="action_stock_current_export_wizard"
-      name="Export to Excel"
-      res_model="stock.current.export.wizard"
-      view_mode="form"
-      target="new"
-      binding_model="stock.current.report"
-      binding_view_types="list"/>
+Outgoing sale from specific location → COGS drawn from FIFO queue of that location
 
-  <menuitem id="menu_stock_current_report_root"
-            name="Current Stock Report"
-            parent="stock.menu_stock_reporting"
-            action="action_stock_current_report"/>
-</odoo>
+Shortage in location → raising error (and if fallback configured — pulling from fallback)
 
-🧾 views/stock_current_export_wizard_views.xml
-<odoo>
-  <record id="view_stock_current_export_wizard_form" model="ir.ui.view">
-    <field name="name">stock.current.export.wizard.form</field>
-    <field name="model">stock.current.export.wizard</field>
-    <field name="arch" type="xml">
-      <form string="Export Current Stock">
-        <group>
-          <field name="stock_date"/>
-        </group>
-        <footer>
-          <button name="action_export_excel" string="Export Excel" type="object" class="btn-primary"/>
-          <button string="Cancel" class="btn-secondary" special="cancel"/>
-        </footer>
-      </form>
-    </field>
-  </record>
-</odoo>
+Returns, scrap, inventory adjustments → correct SVL and accounting results
 
+Tests must assert journal entries (COGS) correctness and that cost calculations match expected FIFO results
+
+Edge cases
+
+Negative quantity layers, partial consumption across multiple layers, rounding issues, multicompany boundary conditions
+
+Document how module behaves with multi-company and multi-warehouse; if unsupported, mention explicitly
+
+Code quality
+
+Pythonic, PEP8-compliant, use Odoo ORM idioms (no raw SQL unless necessary and justified)
+
+Add docstrings/comments for complex logic
+
+Use contexts correctly where needed (e.g., passing location via context when creating SVL)
+
+Do not break existing Odoo APIs — prefer inheritance/extension
+
+Security
+
+Add ir.model.access.csv entries for new model fields if needed
+
+Ensure no unauthorized access to sensitive accounting operations
+
+README
+
+How it works, install instructions, config options, migration steps, testing steps, known limitations, and example flows (incoming → internal → outgoing)
+
+Deliverables
+
+Module folder stock_fifo_by_location/ with all files
+
+__manifest__.py
+
+models/ with stock_valuation_layer.py, stock_move.py (or files with actual method overrides used)
+
+security/ir.model.access.csv
+
+tests/ with pytest tests
+
+migrations/ or script for populating location_id
+
+README.md
+
+Optional: example Odoo server action / CLI command to run migration
+
+Acceptance criteria (what I will check)
+
+ Module installs cleanly on Odoo 17 with stock and stock_account installed
+
+ After receiving incoming goods to Location A, stock.valuation.layer records have location_id = Location A
+
+ When validating a delivery (sale) coming from Location A, consumed layers are taken from FIFO queue of Location A only
+
+ If Location A lacks enough qty, module blocks or follows configured fallback (matching chosen policy)
+
+ Accounting entries (COGS, inventory valuation) reflect amounts based on the used FIFO layers
+
+ Tests pass (pytest / Odoo test runner) and demonstrate the scenarios above
+
+ Migration script populates legacy SVL location_id correctly for typical moves
+
+Extra: Example unit test scenario (include as test)
+
+Setup product P, two incoming receipts:
+
+Receipt 1 (2025-01-01) to Location A: qty 10, unit cost 100 → SVL1 (loc A)
+
+Receipt 2 (2025-01-10) to Location A: qty 5, unit cost 120 → SVL2 (loc A)
+
+Validate sale from Location A for qty 12:
+
+Expect: consume 10 from SVL1 and 2 from SVL2
+
+COGS should = 10100 + 2120 = 1000 + 240 = 1240
+
+Journal entries must match above amounts
+
+Test asserts consumed SVL remaining quantities and posted journal lines
+
+Tone for code generator
+
+Produce runnable, production-considerate code (not pseudo-code). If some Odoo internal method names differ, adapt to Odoo 17 conventions but ensure correctness. If a single-file change is insufficient, modify all necessary call sites where stock.valuation.layer is created.
