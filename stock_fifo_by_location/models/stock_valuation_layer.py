@@ -106,18 +106,29 @@ class StockValuationLayer(models.Model):
             move = self.env['stock.move'].browse(vals['stock_move_id'])
             if move:
                 quantity = vals.get('quantity', 0)
+                source_usage = move.location_id.usage if move.location_id else None
+                dest_usage = move.location_dest_id.usage if move.location_dest_id else None
                 
                 # For positive layers (incoming): use destination location
                 if quantity > 0:
                     if move.location_dest_id:
                         vals['location_id'] = move.location_dest_id.id
-                # For negative layers (outgoing/consumption): use source location
+                # For negative layers (outgoing/consumption): determine source
                 else:
-                    if move.location_id and move.location_id.usage == 'internal':
-                        # Outgoing from internal warehouse - track source location
+                    # Determine the correct location based on move type
+                    if source_usage == 'transit':
+                        # Transit → Anywhere: Track transit as source
+                        # This covers Transit→Internal (warehouse receipt scenario)
                         vals['location_id'] = move.location_id.id
-                    elif move.location_dest_id and move.location_dest_id.usage == 'internal':
-                        # Fallback to destination if source is not internal
+                    elif source_usage == 'internal':
+                        # Internal → Anywhere: Track warehouse as source
+                        # This covers Internal→Internal, Internal→Transit, Internal→Customer
+                        vals['location_id'] = move.location_id.id
+                    elif dest_usage == 'internal':
+                        # Non-internal (supplier, etc) → Internal: Track destination warehouse
+                        vals['location_id'] = move.location_dest_id.id
+                    elif dest_usage == 'transit':
+                        # Non-internal → Transit: Track destination transit location
                         vals['location_id'] = move.location_dest_id.id
         
         # Priority 3: Try to get from move_line through stock_move

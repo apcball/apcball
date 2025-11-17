@@ -40,10 +40,14 @@ class StockMove(models.Model):
         Determine the appropriate location for FIFO valuation layer.
         
         Rules:
-        - Incoming moves (supplier -> internal): use destination location
-        - Outgoing moves (internal -> customer): use source location
-        - Internal transfers (internal -> internal): use destination location
-        - Inventory adjustments: use destination location
+        - Supplier/Production → Internal/Transit: use destination location (new stock)
+        - Transit → Internal: use destination location (warehouse receipt)
+        - Internal → Transit: use source location (warehouse shipment)
+        - Internal → Internal: use destination location (transfer)
+        - Internal → Customer/Supplier: use source location (outgoing)
+        - Transit → Transit: use destination location
+        
+        Handles multi-warehouse scenarios with transit locations for inter-warehouse transfers.
         
         Returns:
             stock.location record or None
@@ -53,17 +57,38 @@ class StockMove(models.Model):
         if not self.location_id or not self.location_dest_id:
             return None
         
-        # Incoming movement (from supplier/production/etc to warehouse)
-        if self.location_id.usage != 'internal':
+        source_usage = self.location_id.usage
+        dest_usage = self.location_dest_id.usage
+        
+        # Supplier/Production → Internal/Transit (INCOMING NEW STOCK)
+        if source_usage in ('supplier', 'production', 'inventory'):
             return self.location_dest_id
         
-        # Outgoing movement (from warehouse to customer/loss/etc)
-        if self.location_dest_id.usage != 'internal':
-            # For deliveries, the FIFO layer source is still the warehouse location
-            # but we track which location the goods came from
+        # Customer → Internal (RETURN)
+        if source_usage == 'customer' and dest_usage == 'internal':
+            return self.location_dest_id
+        
+        # Transit → Internal (WAREHOUSE RECEIPT FROM INTER-WAREHOUSE TRANSFER)
+        if source_usage == 'transit' and dest_usage == 'internal':
+            return self.location_dest_id
+        
+        # Transit → Transit (INTER-TRANSIT MOVE)
+        if source_usage == 'transit' and dest_usage == 'transit':
+            return self.location_dest_id
+        
+        # Internal → Transit (WAREHOUSE SHIPMENT FOR INTER-WAREHOUSE TRANSFER)
+        if source_usage == 'internal' and dest_usage == 'transit':
             return self.location_id
         
-        # Internal transfer (warehouse to warehouse or within same warehouse)
+        # Internal → Internal (INTERNAL WAREHOUSE TRANSFER)
+        if source_usage == 'internal' and dest_usage == 'internal':
+            return self.location_dest_id
+        
+        # Internal → Customer/Supplier/Other (OUTGOING)
+        if source_usage == 'internal' and dest_usage != 'internal':
+            return self.location_id
+        
+        # Default: use destination location for unknown cases
         return self.location_dest_id
     
     def _get_valuation_layers_context(self):
@@ -127,18 +152,31 @@ class StockMove(models.Model):
     
     def _create_valuation_layers_for_internal_transfer(self):
         """
-        Explicitly create valuation layers for internal transfers.
+        Explicitly create valuation layers for internal and transit-related transfers.
         
-        Internal transfers may not automatically create layers in standard Odoo.
-        This method ensures they do, capturing location for FIFO tracking.
+        Creates layers for:
+        - Internal → Internal transfers
+        - Transit → Internal transfers (warehouse receipts)
+        - Internal → Transit transfers (warehouse shipments)
+        
+        Transit locations are used in multi-warehouse scenarios for inter-warehouse transfers.
+        This ensures proper valuation tracking across all warehouse movements.
         """
         for move in self:
             if move.state != 'done':
                 continue
             
-            # Check if this is internal transfer
-            if (move.location_id.usage != 'internal' or 
-                move.location_dest_id.usage != 'internal'):
+            source_usage = move.location_id.usage if move.location_id else None
+            dest_usage = move.location_dest_id.usage if move.location_dest_id else None
+            
+            # Check if this is a transfer (internal-internal, transit-internal, or internal-transit)
+            is_transfer = (
+                (source_usage == 'internal' and dest_usage == 'internal') or
+                (source_usage == 'transit' and dest_usage == 'internal') or
+                (source_usage == 'internal' and dest_usage == 'transit')
+            )
+            
+            if not is_transfer:
                 continue
             
             # Check if layers already exist
@@ -150,11 +188,15 @@ class StockMove(models.Model):
                 # Layers already created, just ensure location_id is set correctly
                 for layer in existing_layers:
                     if layer.quantity < 0:
-                        # Negative layer (outgoing) should have source location
+                        # Negative layer (outgoing)
+                        # For Internal→Transit: track source warehouse
+                        # For Transit→Internal: track source transit
+                        # For Internal→Internal: track source warehouse
                         if layer.location_id.id != move.location_id.id:
                             layer.location_id = move.location_id.id
                     elif layer.quantity > 0:
-                        # Positive layer (incoming) should have destination location
+                        # Positive layer (incoming)
+                        # Always track destination (transit or warehouse)
                         if layer.location_id.id != move.location_dest_id.id:
                             layer.location_id = move.location_dest_id.id
             else:
