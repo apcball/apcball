@@ -73,17 +73,17 @@ class StockValuationLayer(models.Model):
             if not move:
                 continue
             
-            # Check source location
+            # Check source location (accept internal and transit locations)
             if move['location_id']:
                 loc_id = move['location_id'][0]
-                if location_usage.get(loc_id) == 'internal':
+                if location_usage.get(loc_id) in ('internal', 'transit'):
                     svl.location_id = loc_id
                     continue
             
-            # Check destination location
+            # Check destination location (accept internal and transit locations)
             if move['location_dest_id']:
                 loc_id = move['location_dest_id'][0]
-                if location_usage.get(loc_id) == 'internal':
+                if location_usage.get(loc_id) in ('internal', 'transit'):
                     svl.location_id = loc_id
 
     def action_recompute_location(self):

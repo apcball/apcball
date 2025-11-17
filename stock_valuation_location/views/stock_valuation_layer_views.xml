@@ -5,7 +5,7 @@
     <field name="inherit_id" ref="stock_account.stock_valuation_layer_form"/>
     <field name="arch" type="xml">
       <xpath expr="//field[@name='product_id']" position="after">
-        <field name="location_id"/>
+        <field name="location_id" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
       </xpath>
     </field>
   </record>
@@ -16,8 +16,8 @@
     <field name="inherit_id" ref="stock_account.stock_valuation_layer_tree"/>
     <field name="arch" type="xml">
       <xpath expr="//field[@name='product_id']" position="after">
-        <field name="location_id" optional="show"/>
-        <field name="warehouse_id" optional="hide"/>
+        <field name="location_id" optional="show" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="warehouse_id" optional="hide" groups="stock_valuation_location.group_stock_valuation_location_view_warehouse"/>
       </xpath>
     </field>
   </record>
@@ -28,8 +28,8 @@
     <field name="inherit_id" ref="stock_account.view_inventory_valuation_search"/>
     <field name="arch" type="xml">
       <xpath expr="//search" position="inside">
-        <field name="location_id"/>
-        <field name="warehouse_id"/>
+        <field name="location_id" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="warehouse_id" groups="stock_valuation_location.group_stock_valuation_location_view_warehouse"/>
         <filter string="Group By Location" name="group_by_location" context="{'group_by':'location_id'}"/>
         <filter string="Group By Warehouse" name="group_by_warehouse" context="{'group_by':'warehouse_id'}"/>
       </xpath>
@@ -42,7 +42,7 @@
     <field name="model">stock.valuation.layer</field>
     <field name="arch" type="xml">
       <pivot string="Stock Valuation by Location Analysis">
-        <field name="location_id" type="row"/>
+        <field name="location_id" type="row" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
         <field name="product_id" type="row"/>
         <field name="company_id" type="col"/>
         <field name="value" type="measure"/>
@@ -59,7 +59,7 @@
     <field name="model">stock.valuation.layer</field>
     <field name="arch" type="xml">
       <graph string="Stock Valuation by Location" type="bar">
-        <field name="location_id"/>
+        <field name="location_id" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
         <field name="remaining_value" type="measure"/>
         <field name="remaining_qty" type="measure"/>
       </graph>

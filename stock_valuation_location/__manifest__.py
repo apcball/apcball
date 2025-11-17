@@ -8,6 +8,8 @@
     "license": "LGPL-3",
     "depends": ["stock_account"],
     "data": [
+        "security/stock_valuation_location_groups.xml",
+        "security/ir.model.access.csv",
         "views/stock_valuation_layer_views.xml",
         "views/stock_valuation_location_menu.xml",
     ],
