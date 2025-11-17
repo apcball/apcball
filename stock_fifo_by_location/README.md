@@ -9,9 +9,10 @@ By default, Odoo 17's stock accounting calculates COGS based on a company-wide F
 ### Key Features
 
 ✅ **Per-Location FIFO Tracking** - Each valuation layer now tracks its storage location  
+✅ **Transit Location Support** - Full support for inter-warehouse transfers via transit locations  
 ✅ **Automatic Location Capture** - Location is automatically populated during receiving, transferring, and delivering  
 ✅ **Shortage Handling** - Configurable policies for dealing with insufficient stock at a location  
-✅ **Migration Support** - Script to populate location_id for existing layers  
+✅ **Migration Support** - Comprehensive migration scripts including transit location scenarios  
 ✅ **Comprehensive Tests** - Full test coverage including FIFO calculations and edge cases  
 ✅ **Security** - Proper access controls and audit trails  
 
@@ -90,7 +91,7 @@ stock_fifo_by_location/
 │   └── stock_valuation_layer_views.xml  # UI views with location field
 ├── migrations/
 │   ├── __init__.py
-│   └── populate_location_id.py    # Migration script for existing layers
+│   └── populate_location_id.py    # Comprehensive migration with transit support
 ├── tests/
 │   ├── __init__.py
 │   └── test_fifo_by_location.py   # Unit and integration tests
@@ -225,6 +226,51 @@ result = env['fifo.service'].validate_location_availability(
 
 If you're installing this module on an existing Odoo instance with prior stock movements, you need to populate the `location_id` field for existing valuation layers.
 
+#### Quick Start Migration
+
+```bash
+# Access Odoo shell
+cd /path/to/odoo17
+python -m odoo.bin shell -d your_database
+
+# Run comprehensive migration (includes transit locations)
+from odoo.addons.stock_fifo_by_location.migrations import populate_location_id
+result = populate_location_id.populate_location_id(env)
+# Output shows migration progress and any items needing manual review
+
+# Check results
+print(f"Total: {result['total']}")
+print(f"Successful: {result['successful']}")
+print(f"Failed: {result['failed']}")
+```
+
+#### Transit Location Migration
+
+For systems using transit locations in inter-warehouse transfers, use the specialized migration:
+
+```bash
+# Analyze transit locations first
+from odoo.addons.stock_fifo_by_location.migrations import populate_location_id
+stats = populate_location_id.analyze_transit_locations(env)
+
+# Run transit-specific migration
+result = populate_location_id.populate_transit_location_layers(env)
+
+# Review transit statistics
+print(f"Internal → Transit: {result['stats']['internal_to_transit']}")
+print(f"Transit → Internal: {result['stats']['transit_to_internal']}")
+print(f"Transit → Transit: {result['stats']['transit_to_transit']}")
+```
+
+**Transit Location Scenarios Supported:**
+- ✅ Internal → Transit (warehouse shipments)
+- ✅ Transit → Internal (warehouse receipts)
+- ✅ Transit → Transit (inter-transit moves)
+- ✅ Supplier → Transit (direct imports)
+- ✅ Transit → Customer (direct deliveries)
+
+For detailed transit migration guide, see: [TRANSIT_LOCATION_MIGRATION_GUIDE.md](TRANSIT_LOCATION_MIGRATION_GUIDE.md)
+
 #### Option 1: Via Python Shell (Recommended)
 
 ```bash
@@ -246,8 +292,10 @@ result = populate_location_id.populate_location_id(env)
 
 #### Option 3: Direct SQL (For Large Datasets)
 
+⚠️ **Warning:** This method doesn't handle transit locations properly. Use Python migration for transit scenarios.
+
 ```sql
--- Populate from stock_move relationship
+-- Populate from stock_move relationship (basic cases only)
 UPDATE stock_valuation_layer svl
 SET location_id = sm.location_dest_id
 FROM stock_move sm
@@ -257,6 +305,23 @@ WHERE svl.stock_move_id = sm.id
 -- Verify completeness
 SELECT COUNT(*) FROM stock_valuation_layer WHERE location_id IS NULL;
 ```
+
+### Migration Testing
+
+A comprehensive test script is available:
+
+```bash
+# Run all migration tests
+cd /opt/instance1/odoo17/custom-addons
+python -m odoo.bin shell -d your_database
+>>> exec(open('test_transit_migration.py').read())
+```
+
+Tests include:
+- Transit location analysis
+- Transit-specific migration
+- Full migration
+- Consistency verification
 
 ### Migration Details
 
@@ -342,6 +407,10 @@ Receipt 2 (2025-01-10): qty 5, cost $120 → SVL2
 ✅ **Fully Supported** - Designed for multi-warehouse scenarios  
 - Each warehouse location has isolated FIFO queue
 - No cross-warehouse mixing in FIFO calculations
+- **Transit Location Support:** Full FIFO tracking during inter-warehouse transfers
+  - Warehouse A → Transit → Warehouse B properly tracked
+  - Transit locations maintain separate FIFO queues
+  - Accurate cost tracking throughout the transfer process
 
 ### Negative Quantities
 
