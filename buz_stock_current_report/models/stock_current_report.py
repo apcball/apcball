@@ -215,6 +215,7 @@ class StockCurrentReport(models.Model):
                             WHEN sl.usage = 'internal' THEN 'Internal'
                             WHEN sl.usage = 'production' THEN 'Production'
                             WHEN sl.usage = 'inventory' THEN 'Inventory'
+                            WHEN sl.usage = 'transit' THEN 'Transit'
                             ELSE sl.usage
                         END AS location_type_name,
                         false AS product_selection,
@@ -252,7 +253,7 @@ class StockCurrentReport(models.Model):
                         AND sml.location_id IS NOT NULL
                         GROUP BY sml.location_id, sml.product_id
                     ) outgoing ON outgoing.location_id = sq.location_id AND outgoing.product_id = sq.product_id
-                    WHERE sl.usage IN ('internal', 'production', 'inventory')
+                    WHERE sl.usage IN ('internal', 'production', 'inventory', 'transit')
                 )
             """
             _logger.info(f"SQL Query to be executed (using {price_column}):\n{sql_query}")
@@ -402,7 +403,7 @@ class StockCurrentReport(models.Model):
                     0 as level,
                     ARRAY[l.id] as path
                 FROM stock_location l
-                WHERE l.location_id IS NULL AND l.usage IN ('internal', 'production', 'inventory')
+                WHERE l.location_id IS NULL AND l.usage IN ('internal', 'production', 'inventory', 'transit')
                 
                 UNION ALL
                 
@@ -417,7 +418,7 @@ class StockCurrentReport(models.Model):
                     lt.path || child.id
                 FROM stock_location child
                 JOIN location_tree lt ON child.location_id = lt.id
-                WHERE child.usage IN ('internal', 'production', 'inventory')
+                WHERE child.usage IN ('internal', 'production', 'inventory', 'transit')
             )
             SELECT
                 lt.*,
@@ -444,7 +445,7 @@ class StockCurrentReport(models.Model):
         for warehouse in warehouses:
             locations = self.env['stock.location'].search([
                 ('warehouse_id', '=', warehouse.id),
-                ('usage', '=', 'internal'),
+                ('usage', 'in', ['internal', 'transit']),
                 ('active', '=', True)
             ])
             total_locations += len(locations)
