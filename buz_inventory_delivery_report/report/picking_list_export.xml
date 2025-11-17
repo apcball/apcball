@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Paper Format for delivery document Reports -->
+    <record id="paperformat_picking_list_document" model="report.paperformat">
+        <field name="name">Picking list A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">5</field>
+        <field name="margin_bottom">5</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+    
+    <template id="picking_list_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <style>
+                            @font-face {
+                            font-family: 'Sarabun';
+                            src: url('/buz_inventory_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            }
+                            body {
+                                font-family: Sarabun, sans-serif;
+                                font-size: 15px;
+                            }
+                            .header-section {
+                                margin-bottom: 8px;
+                            }
+                            .company-header {
+                                display: flex;
+                                justify-content: space-between;
+                                margin-bottom: 5px;
+                                border-bottom: 1px solid #000;
+                                padding-bottom: 3px;
+                            }
+                            .company-name {
+                                font-weight: bold;
+                                font-size: 12px;
+                            }
+                            .company-contact {
+                                font-size: 9px;
+                                text-align: right;
+                            }
+                            .page-title {
+                                text-align: center;
+                                font-size: 16px;
+                                font-weight: bold;
+                                margin: 5px 0;
+                            }
+                            .picking-number {
+                                text-align: center;
+                                font-size: 11px;
+                                margin-bottom: 8px;
+                            }
+                            .details-grid {
+                                width: 100%;
+                                margin-bottom: 5px;
+                            }
+                            .detail-row {
+                                display: flex;
+                                margin-bottom: 2px;
+                            }
+                            .detail-label {
+                                width: 12%;
+                                font-weight: bold;
+                                text-align: left;
+                                font-size: 11px;
+                            }
+                            .detail-value {
+                                width: 30%;
+                                text-align: left;
+                                font-size: 11px;
+                            }
+                            .detail-label-right {
+                                width: 18%;
+                                font-weight: bold;
+                                text-align: left;
+                                margin-left: 10px;
+                                font-size: 11px;
+                            }
+                            .detail-value-right {
+                                width: 30%;
+                                text-align: left;
+                                font-size: 11px;
+                            }
+                            table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 8px;
+                            }
+                            table thead {
+                                background-color: #f0f0f0;
+                                border-bottom: 2px solid #000;
+                            }
+                            table thead th {
+                                border: 1px solid #000;
+                                padding: 3px;
+                                text-align: center;
+                                font-weight: bold;
+                                font-size: 10px;
+                            }
+                            table tbody td {
+                                border: 1px solid #000;
+                                padding: 3px;
+                                text-align: center;
+                                font-size: 10px;
+                            }
+                            table tbody tr:nth-child(odd) {
+                                background-color: #fff;
+                            }
+                            table tbody tr:nth-child(even) {
+                                background-color: #f9f9f9;
+                            }
+                            .totals-section {
+                                margin-top: 8px;
+                                margin-bottom: 10px;
+                            }
+                            .total-row {
+                                display: flex;
+                                margin-bottom: 4px;
+                                font-size: 11px;
+                            }
+                            .total-label {
+                                width: 70%;
+                                text-align: right;
+                                font-weight: bold;
+                                margin-right: 10px;
+                            }
+                            .total-value {
+                                width: 20%;
+                                text-align: right;
+                                font-weight: bold;
+                            }
+                            .signatures {
+                                display: flex;
+                                justify-content: space-between;
+                                margin-top: 20px;
+                                font-size: 10px;
+                            }
+                            .signature-box {
+                                width: 40%;
+                                text-align: center;
+                            }
+                            .signature-line {
+                                border-bottom: 1px solid #000;
+                                margin-bottom: 3px;
+                                height: 20px;
+                            }
+                            .text-left {
+                                text-align: left;
+                            }
+                            .text-right {
+                                text-align: right;
+                            }
+                            .text-center {
+                                text-align: center;
+                            }
+                        </style>
+
+                        <!-- company info -->
+                        <div class="row mb-2">
+                        <div class="col-8">
+                            <div style="font-size: 16px;">
+                                <div class="mb-1"><strong>MOGEN CO., LTD. (HEAD OFFICE)</strong></div>
+                                <div style="font-size: 14px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+                                <div style="font-size: 14px;">Tax ID: 0105547076103</div>
+                                <div style="font-size: 14px;">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                 style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                        </div>
+                    </div>
+
+                        <!-- Details Section -->
+                        <div class="details-grid">
+                            <div class="detail-row">
+                                <div class="detail-label">Date :</div>
+                                <div class="detail-value"><t t-esc="o.scheduled_date.strftime('%d/%m/%Y') if o.scheduled_date else ''"/></div>
+                                <div class="detail-label-right">Commercial Invoice ID :</div>
+                                <div class="detail-value-right"><t t-esc="o.origin or ''"/></div>
+                            </div>
+                            <br/>
+                            <div class="detail-row">
+                                <div class="detail-label">Shipper :</div>
+                                <div class="detail-value" style="white-space:margin-left: -20px;">
+                                    <t t-esc="o.company_id.name"/><br/>
+                                    <t t-esc="o.company_id.street or ''"/><br/>
+                                    <t t-esc="(o.company_id.city or '') + ' ' + (o.company_id.state_id.name or '') if o.company_id.city else ''"/>
+                                </div>
+                                <div class="detail-label-right">Tax Payer ID :</div>
+                                <div class="detail-value-right"><t t-esc="o.company_id.vat or ''"/></div>
+                            </div>
+                            
+                            <div class="detail-row">
+                                <div class="detail-label">Consignee :</div>
+                                <div class="detail-value" style="white-space;">
+                                    <t t-set="consignee" t-value="o.sale_id.partner_shipping_id if o.sale_id else o.partner_id"/>
+                                    <t t-esc="consignee.name"/><br/>
+                                    <t t-esc="consignee.street or ''"/><br/>
+                                    <t t-esc="(consignee.city or '') + ' ' + (consignee.state_id.name or '') if consignee.city else ''"/>
+                                </div>
+                                <div class="detail-label-right">Inco-Terms :</div>
+                                <div class="detail-value-right">
+                                    <!-- Incoterm may be on different models depending on configuration.
+                                         Use getattr checks to avoid AttributeError when the field is not defined on stock.picking. -->
+                                    <!-- Incoterm intentionally left blank so report runs. -->
+                                    <t t-esc="''"/>
+                                </div>
+                            </div>
+
+                            <div class="detail-row">
+                                <div class="detail-label">TEL :</div>
+                                <div class="detail-value"><t t-esc="o.partner_id.phone or ''"/></div>
+                                <div class="detail-label-right">Bank Info :</div>
+                                <div class="detail-value-right" style="font-size: 9px;">
+                                    <t t-esc="o.company_id.bank_ids[0].bank_name if o.company_id.bank_ids else ''"/>
+                                </div>
+                            </div>
+
+                            <div class="detail-row">
+                                <div class="detail-label">Notify :</div>
+                                <div class="detail-value"></div>
+                                <div class="detail-label-right"></div>
+                                <div class="detail-value-right"></div>
+                            </div>
+
+                            <div class="detail-row">
+                                <div class="detail-label">Attn :</div>
+                                <div class="detail-value"><t t-esc="o.sale_id.partner_id.name"/></div>
+                                <div class="detail-label-right"></div>
+                                <div class="detail-value-right"></div>
+                            </div>
+
+                            <div class="detail-row">
+                                <div class="detail-label">Payment Term :</div>
+                                <div class="detail-value"><t t-esc="o.partner_id.property_payment_term_id.name if o.partner_id.property_payment_term_id else ''"/></div>
+                                <div class="detail-label-right"></div>
+                                <div class="detail-value-right"></div>
+                            </div>
+                        </div>
+
+                        <!-- Items Table -->
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Item No.</th>
+                                    <th>Description</th>
+                                    <th>Quantity</th>
+                                    <th>Carton</th>
+                                    <th>G.W (KG)</th>
+                                    <th>N.W (KG)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="o.move_ids_without_package" t-as="line">
+                                    <t t-set="index" t-value="line_index + 1"/>
+                                    <tr>
+                                        <td class="text-center"><t t-esc="index"/></td>
+                                        <td class="text-left"><t t-esc="line.product_id.name"/></td>
+                                        <td class="text-center"><t t-esc="line.product_uom_qty or 0"/></td>
+                                        <td class="text-center">-</td>
+                                        <td class="text-center"><t t-esc="(line.product_id.weight or 0) * (line.product_uom_qty or 0)"/></td>
+                                        <td class="text-center"><t t-esc="(line.product_id.weight or 0) * (line.product_uom_qty or 0)"/></td>
+                                    </tr>
+                                </t>
+                                <tr style="border-top: 2px solid #000; font-weight: bold;">
+                                    <td colspan="2" class="text-right">Total :</td>
+                                    <td class="text-center"><t t-esc="sum((m.product_uom_qty or 0) for m in o.move_ids_without_package)"/></td>
+                                    <td class="text-center"><t t-esc="len(o.move_ids_without_package)"/></td>
+                                    <td class="text-center"><t t-esc="sum(((m.product_id.weight or 0) * (m.product_uom_qty or 0)) for m in o.move_ids_without_package if m.product_id.weight)"/></td>
+                                    <td class="text-center"><t t-esc="sum(((m.product_id.weight or 0) * (m.product_uom_qty or 0)) for m in o.move_ids_without_package if m.product_id.weight)"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Description and Totals -->
+                        <div class="totals-section">
+                            <div class="total-row">
+                                <div class="total-label">Satang</div>
+                                <div class="total-value">-</div>
+                            </div>
+                            <div class="total-row">
+                                <div class="total-label">Total Quantity :</div>
+                                <div class="total-value"><t t-esc="sum((m.product_uom_qty or 0) for m in o.move_ids_without_package)"/> <span style="margin-left: 20px;">Carton (S)</span></div>
+                            </div>
+                            <div class="total-row">
+                                <div class="total-label">Total net Weight :</div>
+                                <div class="total-value"><t t-esc="sum((m.product_id.weight or 0) * (m.product_uom_qty or 0) for m in o.move_ids_without_package if m.product_id.weight)"/> Kgs</div>
+                            </div>
+                            <div class="total-row">
+                                <div class="total-label">Gross Weight :</div>
+                                <div class="total-value"><t t-esc="sum((m.product_id.weight or 0) * (m.product_uom_qty or 0) for m in o.move_ids_without_package if m.product_id.weight)"/> Kgs</div>
+                            </div>
+                        </div>
+
+                        <!-- Signatures -->
+                        <div class="signatures">
+                            <div class="signature-box">
+                                <div class="signature-line"></div>
+                                <div>(Document Administrator)</div>
+                            </div>
+                            <div class="signature-box">
+                                <div class="signature-line"></div>
+                                <div>(Managing Director)</div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>    
+    </template>
+     <record id="action_report_picking_list_export" model="ir.actions.report">
+        <field name="name">Piking List ต่างประเทศ</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_inventory_delivery_report.picking_list_document</field>
+        <field name="report_file">buz_inventory_delivery_report.picking_list_document</field>
+        <field name="print_report_name">'Picking List Export - %s' % object.name</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_picking_list_document"/>
+    </record>
+</odoo> 

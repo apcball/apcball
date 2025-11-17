@@ -27,6 +27,7 @@
         'report/request_job_order.xml',
         'report/delivery_report_tem.xml',
         'report/dispatch_report_dis.xml',
+        'report/picking_list_export.xml',
         
     ],
     'installable': True,
