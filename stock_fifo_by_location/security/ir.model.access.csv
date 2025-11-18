@@ -1,3 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_stock_valuation_layer_user,stock.valuation.layer user,stock.model_stock_valuation_layer,stock.group_stock_user,1,0,0,0
-access_stock_valuation_layer_manager,stock.valuation.layer manager,stock.model_stock_valuation_layer,stock.group_stock_manager,1,1,0,0
+access_landed_cost_location_user,Valuation Layer Landed Cost user,model_stock_valuation_layer_landed_cost,stock.group_stock_user,1,1,1,0
+access_landed_cost_location_manager,Valuation Layer Landed Cost manager,model_stock_valuation_layer_landed_cost,stock.group_stock_manager,1,1,1,1
+access_landed_cost_allocation_user,Landed Cost Allocation user,model_stock_landed_cost_allocation,stock.group_stock_user,1,1,1,0
+access_landed_cost_allocation_manager,Landed Cost Allocation manager,model_stock_landed_cost_allocation,stock.group_stock_manager,1,1,1,1

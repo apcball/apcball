@@ -12,6 +12,7 @@ By default, Odoo 17's stock accounting calculates COGS based on a company-wide F
 ✅ **Transit Location Support** - Full support for inter-warehouse transfers via transit locations  
 ✅ **Automatic Location Capture** - Location is automatically populated during receiving, transferring, and delivering  
 ✅ **Shortage Handling** - Configurable policies for dealing with insufficient stock at a location  
+✅ **Landed Cost Support** - Proportional landed cost allocation during internal transfers  
 ✅ **Migration Support** - Comprehensive migration scripts including transit location scenarios  
 ✅ **Comprehensive Tests** - Full test coverage including FIFO calculations and edge cases  
 ✅ **Security** - Proper access controls and audit trails  
@@ -23,6 +24,7 @@ By default, Odoo 17's stock accounting calculates COGS based on a company-wide F
 - Odoo 17 installed and running
 - `stock` module enabled
 - `stock_account` module enabled
+- `stock_landed_costs` module enabled (for landed cost support)
 - Write access to custom-addons folder
 
 ### Steps
@@ -580,8 +582,9 @@ LGPL-3 - See LICENSE file for details
 
 ## Changelog
 
-### Version 17.0.1.0.0 (Initial Release)
+### Version 17.0.1.0.0 (Current Release)
 
+#### Core Features
 - ✨ Added location_id field to stock.valuation.layer
 - ✨ Per-location FIFO queue management
 - ✨ Automatic location capture during stock moves
@@ -590,15 +593,41 @@ LGPL-3 - See LICENSE file for details
 - ✨ Comprehensive test suite
 - 📖 Full documentation and examples
 
+#### Landed Cost Support (NEW)
+- ✨ Per-location landed cost tracking
+- ✨ Automatic landed cost allocation during internal transfers
+- ✨ Proportional landed cost distribution
+- ✨ Audit trail for all allocations
+- ✨ New service methods: `calculate_fifo_cost_with_landed_cost()`
+- ✨ 3 new models for landed cost management
+- ✨ Comprehensive landed cost tests
+- 📖 Landed cost documentation
+
+#### Technical Additions
+- 2 new models: `stock.valuation.layer.landed.cost`, `stock.landed.cost.allocation`
+- 3 enhanced models: `stock.valuation.layer`, `stock.landed.cost`, `stock.move`
+- New dependency: `stock_landed_costs`
+- Backward compatible with existing installations
+
+## Documentation
+
+- **[README.md](README.md)** - This file, module overview
+- **[LANDED_COST_SUPPORT.md](LANDED_COST_SUPPORT.md)** - Detailed landed cost feature
+- **[LANDED_COST_IMPLEMENTATION_GUIDE.md](LANDED_COST_IMPLEMENTATION_GUIDE.md)** - Step-by-step implementation guide
+- **[ANALYSIS_STOCK_FIFO_BY_LOCATION.md](../ANALYSIS_STOCK_FIFO_BY_LOCATION.md)** - Architecture analysis
+- **Tests** - `tests/test_fifo_by_location.py` (482+ lines)
+
 ## Support
 
 For issues, questions, or improvements:
 
 1. Check this README for common scenarios
 2. Review test cases in `tests/test_fifo_by_location.py`
-3. Check module logs: **Settings → Technical → Logs**
-4. Contact development team with:
+3. Read landed cost documentation: `LANDED_COST_SUPPORT.md`
+4. Check module logs: **Settings → Technical → Logs**
+5. Contact development team with:
    - Odoo version
    - Module version
    - Affected products/locations
    - Error messages or behavior description
+

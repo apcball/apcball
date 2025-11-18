@@ -319,6 +319,167 @@ class FifoService(models.AbstractModel):
             default='True'
         )
         return enabled.lower() == 'true'
+    
+    @api.model
+    def get_landed_cost_at_location(self, product_id, location_id, company_id=None):
+        """
+        Get total landed cost for a product at a specific location.
+        
+        Sums all landed costs from all valuation layers at that location.
+        
+        Args:
+            product_id: stock.product.product
+            location_id: stock.location
+            company_id: res.company
+            
+        Returns:
+            float: Total landed cost at location
+        """
+        if isinstance(product_id, int):
+            product_id = self.env['stock.product.product'].browse(product_id)
+        
+        if isinstance(location_id, int):
+            location_id = self.env['stock.location'].browse(location_id)
+        
+        if not company_id:
+            company_id = self.env.company.id
+        
+        return self.env['stock.valuation.layer'].get_landed_cost_at_location(
+            product_id, location_id, company_id
+        )
+    
+    @api.model
+    def get_unit_landed_cost_at_location(self, product_id, location_id, company_id=None):
+        """
+        Get average unit landed cost for a product at a location.
+        
+        Args:
+            product_id: stock.product.product
+            location_id: stock.location
+            company_id: res.company
+            
+        Returns:
+            float: Unit landed cost (landed_cost_value / qty_available)
+        """
+        if isinstance(product_id, int):
+            product_id = self.env['stock.product.product'].browse(product_id)
+        
+        if isinstance(location_id, int):
+            location_id = self.env['stock.location'].browse(location_id)
+        
+        if not company_id:
+            company_id = self.env.company.id
+        
+        total_lc = self.get_landed_cost_at_location(product_id, location_id, company_id)
+        available_qty = self.get_available_qty_at_location(product_id, location_id, company_id)
+        
+        precision = self.env['decimal.precision'].precision_get('Product Price')
+        
+        if available_qty and float_compare(available_qty, 0, precision_digits=precision) > 0:
+            return float_round(
+                total_lc / available_qty,
+                precision_digits=precision
+            )
+        return 0.0
+    
+    @api.model
+    def calculate_fifo_cost_with_landed_cost(self, product_id, location_id, quantity, 
+                                             company_id=None):
+        """
+        Calculate COGS including landed costs for consuming quantity from FIFO queue.
+        
+        This method extends calculate_fifo_cost to include landed costs that were
+        allocated to the consumed layers.
+        
+        Args:
+            product_id: stock.product.product
+            location_id: stock.location
+            quantity: float - quantity to consume
+            company_id: res.company
+            
+        Returns:
+            dict {
+                'cost': float - total cost including landed costs,
+                'qty': float - quantity consumed,
+                'unit_cost': float - average unit cost with landed costs,
+                'landed_cost': float - total landed cost portion,
+                'layers': [{
+                    'layer_id': int,
+                    'qty_consumed': float,
+                    'layer_unit_cost': float,
+                    'layer_landed_cost': float,
+                    'cost': float (including landed cost)
+                }]
+            }
+        """
+        if isinstance(product_id, int):
+            product_id = self.env['stock.product.product'].browse(product_id)
+        
+        if isinstance(location_id, int):
+            location_id = self.env['stock.location'].browse(location_id)
+        
+        if not company_id:
+            company_id = self.env.company.id
+        
+        # Get base FIFO cost
+        base_cost_result = self.calculate_fifo_cost(
+            product_id, location_id, quantity, company_id
+        )
+        
+        # Now add landed costs for consumed layers
+        lc_model = self.env['stock.valuation.layer.landed.cost']
+        precision = self.env['decimal.precision'].precision_get('Product Price')
+        total_landed_cost = 0.0
+        
+        # Update each layer with its landed cost
+        for layer_info in base_cost_result['layers']:
+            layer_id = layer_info['layer_id']
+            qty_consumed = layer_info['qty_consumed']
+            
+            # Get unit landed cost for this layer at this location
+            lc_records = lc_model.search([
+                ('valuation_layer_id', '=', layer_id),
+                ('location_id', '=', location_id.id),
+            ])
+            
+            unit_lc = 0.0
+            if lc_records:
+                unit_lc = lc_records[0].unit_landed_cost
+            
+            # Calculate landed cost for consumed quantity from this layer
+            layer_landed_cost = float_round(
+                qty_consumed * unit_lc,
+                precision_digits=precision
+            )
+            
+            layer_info['layer_landed_cost'] = layer_landed_cost
+            layer_info['cost'] = float_round(
+                layer_info['cost'] + layer_landed_cost,
+                precision_digits=precision
+            )
+            
+            total_landed_cost += layer_landed_cost
+        
+        # Update totals
+        total_cost_with_lc = float_round(
+            base_cost_result['cost'] + total_landed_cost,
+            precision_digits=precision
+        )
+        
+        qty_consumed = base_cost_result['qty']
+        avg_unit_cost = (
+            float_round(total_cost_with_lc / qty_consumed, precision_digits=precision)
+            if qty_consumed > 0
+            else 0.0
+        )
+        
+        return {
+            'cost': total_cost_with_lc,
+            'qty': qty_consumed,
+            'unit_cost': avg_unit_cost,
+            'landed_cost': total_landed_cost,
+            'layers': base_cost_result['layers']
+        }
 
 
 class ConfigParameter(models.Model):

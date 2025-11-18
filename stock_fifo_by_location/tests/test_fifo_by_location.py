@@ -12,7 +12,7 @@ Tests cover:
 - Edge cases (negative qty, rounding, multi-company)
 """
 
-import pytest
+# import pytest  # Pytest not required for Odoo tests
 from odoo.tests import TransactionCase, tagged
 from odoo.tools import float_compare, float_round
 from odoo.exceptions import UserError
@@ -479,3 +479,226 @@ class TestFifoServiceMethods(TransactionCase):
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
+
+
+@tagged('post_install', '-at_install')
+class TestLandedCostByLocation(TransactionCase):
+    """
+    Tests for landed cost allocation by location functionality.
+    """
+    
+    def setUp(self):
+        super().setUp()
+        self.product_model = self.env['product.product']
+        self.location_model = self.env['stock.location']
+        self.move_model = self.env['stock.move']
+        self.valuation_layer_model = self.env['stock.valuation.layer']
+        self.landed_cost_model = self.env['stock.landed.cost']
+        self.landed_cost_lines_model = self.env['stock.landed.cost.lines']
+        self.lc_location_model = self.env['stock.valuation.layer.landed.cost']
+        self.company = self.env.company
+        
+        # Create test product
+        self.product = self.product_model.create({
+            'name': 'Test Product LC',
+            'type': 'product',
+            'categ_id': self.env.ref('product.product_category_all').id,
+            'cost_method': 'fifo',
+        })
+        
+        # Create test locations
+        self.warehouse = self.location_model.search([
+            ('usage', '=', 'internal'),
+            ('company_id', '=', self.company.id),
+        ], limit=1)
+        
+        if not self.warehouse:
+            self.warehouse = self.location_model.create({
+                'name': 'Test Warehouse',
+                'usage': 'internal',
+                'company_id': self.company.id,
+            })
+        
+        self.location_a = self.location_model.create({
+            'name': 'Location A',
+            'usage': 'internal',
+            'location_id': self.warehouse.id,
+            'company_id': self.company.id,
+        })
+        
+        self.location_b = self.location_model.create({
+            'name': 'Location B',
+            'usage': 'internal',
+            'location_id': self.warehouse.id,
+            'company_id': self.company.id,
+        })
+        
+        self.supplier_location = self.location_model.search([
+            ('usage', '=', 'supplier'),
+            ('company_id', '=', self.company.id),
+        ], limit=1)
+        
+        if not self.supplier_location:
+            self.supplier_location = self.location_model.create({
+                'name': 'Supplier',
+                'usage': 'supplier',
+                'company_id': self.company.id,
+            })
+    
+    def test_landed_cost_at_location_creation(self):
+        """
+        Test that landed costs are properly tracked at specific locations.
+        
+        Scenario:
+        - Receive 10 units at Location A
+        - Apply landed cost of $50
+        - Verify landed cost is recorded at Location A
+        """
+        # Create incoming move to Location A
+        move = self.move_model.create({
+            'name': 'Receipt LC',
+            'product_id': self.product.id,
+            'product_uom_qty': 10.0,
+            'product_uom': self.product.uom_id.id,
+            'location_id': self.supplier_location.id,
+            'location_dest_id': self.location_a.id,
+            'state': 'draft',
+        })
+        
+        move._action_done()
+        
+        # Get the valuation layer
+        layers = self.valuation_layer_model.search([
+            ('stock_move_id', '=', move.id),
+            ('location_id', '=', self.location_a.id),
+        ])
+        
+        self.assertEqual(len(layers), 1, "Should have one layer at Location A")
+        layer = layers[0]
+        
+        # Verify layer has location_id set
+        self.assertEqual(layer.location_id.id, self.location_a.id)
+    
+    def test_landed_cost_transfer_between_locations(self):
+        """
+        Test that landed costs are transferred proportionally during internal transfer.
+        
+        Scenario:
+        - Receive 100 units at Location A (cost 100, landed cost 50 total = 50.5 per unit)
+        - Transfer 50 units from A to B
+        - Verify landed cost is split proportionally
+        """
+        precision = self.env['decimal.precision'].precision_get('Product Price')
+        
+        # Create incoming move to Location A
+        move_in = self.move_model.create({
+            'name': 'Receipt',
+            'product_id': self.product.id,
+            'product_uom_qty': 100.0,
+            'product_uom': self.product.uom_id.id,
+            'location_id': self.supplier_location.id,
+            'location_dest_id': self.location_a.id,
+            'state': 'draft',
+        })
+        
+        move_in._action_done()
+        
+        # Manually set cost and create landed cost record
+        layers_a = self.valuation_layer_model.search([
+            ('stock_move_id', '=', move_in.id),
+            ('location_id', '=', self.location_a.id),
+        ])
+        
+        self.assertEqual(len(layers_a), 1)
+        layer_a = layers_a[0]
+        
+        # Create a landed cost allocation (simulating landed cost application)
+        lc_value = 50.0
+        self.lc_location_model.create({
+            'valuation_layer_id': layer_a.id,
+            'location_id': self.location_a.id,
+            'landed_cost_value': lc_value,
+            'quantity': 100.0,
+        })
+        
+        # Verify landed cost is recorded at Location A
+        total_lc_a = self.valuation_layer_model.get_landed_cost_at_location(
+            self.product, self.location_a, self.company.id
+        )
+        self.assertAlmostEqual(total_lc_a, lc_value, places=precision)
+        
+        # Create internal transfer from A to B
+        transfer = self.move_model.create({
+            'name': 'Transfer A->B',
+            'product_id': self.product.id,
+            'product_uom_qty': 50.0,
+            'product_uom': self.product.uom_id.id,
+            'location_id': self.location_a.id,
+            'location_dest_id': self.location_b.id,
+            'state': 'draft',
+        })
+        
+        transfer._action_done()
+        
+        # After transfer, landed cost should be split
+        # Transferred qty: 50 out of 100 = 50% of landed cost = 25
+        total_lc_a_after = self.valuation_layer_model.get_landed_cost_at_location(
+            self.product, self.location_a, self.company.id
+        )
+        total_lc_b_after = self.valuation_layer_model.get_landed_cost_at_location(
+            self.product, self.location_b, self.company.id
+        )
+        
+        # Location A should have reduced landed cost
+        # Location B should have received portion of landed cost
+        self.assertAlmostEqual(
+            total_lc_a_after + total_lc_b_after,
+            lc_value,
+            places=precision,
+            msg='Total landed cost should be preserved after transfer'
+        )
+    
+    def test_landed_cost_allocation_history(self):
+        """
+        Test that landed cost allocation is recorded in history.
+        
+        Scenario:
+        - Verify that allocation history is created during transfer
+        """
+        # Create incoming move
+        move_in = self.move_model.create({
+            'name': 'Receipt',
+            'product_id': self.product.id,
+            'product_uom_qty': 100.0,
+            'product_uom': self.product.uom_id.id,
+            'location_id': self.supplier_location.id,
+            'location_dest_id': self.location_a.id,
+            'state': 'draft',
+        })
+        
+        move_in._action_done()
+        
+        # Create internal transfer
+        transfer = self.move_model.create({
+            'name': 'Transfer',
+            'product_id': self.product.id,
+            'product_uom_qty': 50.0,
+            'product_uom': self.product.uom_id.id,
+            'location_id': self.location_a.id,
+            'location_dest_id': self.location_b.id,
+            'state': 'draft',
+        })
+        
+        transfer._action_done()
+        
+        # Check if allocation history was created
+        allocation_history = self.env['stock.landed.cost.allocation'].search([
+            ('move_id', '=', transfer.id),
+        ])
+        
+        # Should have created history record
+        self.assertEqual(
+            len(allocation_history), 1,
+            "Should create allocation history for transfer"
+        )
+

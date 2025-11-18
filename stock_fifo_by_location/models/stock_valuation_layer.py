@@ -6,7 +6,7 @@ This module extends stock.valuation.layer to include location_id for per-locatio
 """
 
 from odoo import models, fields, api
-from odoo.tools import float_compare
+from odoo.tools import float_compare, float_round
 
 
 class StockValuationLayer(models.Model):
@@ -25,6 +25,20 @@ class StockValuationLayer(models.Model):
         index=True,
         help='The stock location where this layer applies. Used for per-location FIFO tracking.',
         ondelete='restrict',
+    )
+    
+    landed_cost_ids = fields.One2many(
+        'stock.valuation.layer.landed.cost',
+        'valuation_layer_id',
+        string='Landed Costs',
+        help='Landed costs allocated to this valuation layer at specific locations.'
+    )
+    
+    total_landed_cost = fields.Float(
+        string='Total Landed Cost',
+        compute='_compute_total_landed_cost',
+        digits='Product Price',
+        help='Total landed cost across all locations for this layer.'
     )
     
     @api.model
@@ -213,3 +227,51 @@ class StockValuationLayer(models.Model):
         
         layers = self._get_fifo_queue(product_id, location_id, company_id)
         return sum(layer.quantity for layer in layers)
+    
+    @api.depends('landed_cost_ids.landed_cost_value')
+    def _compute_total_landed_cost(self):
+        """Compute total landed cost for this layer across all locations."""
+        precision = self.env['decimal.precision'].precision_get('Product Price')
+        for layer in self:
+            total = sum(layer.landed_cost_ids.mapped('landed_cost_value'))
+            layer.total_landed_cost = float_round(total, precision_digits=precision)
+    
+    @api.model
+    def get_landed_cost_at_location(self, product_id, location_id, company_id=None):
+        """
+        Get total landed cost for a product at a specific location.
+        
+        Sums all landed costs from all valuation layers of the product at that location.
+        
+        Args:
+            product_id: stock.product.product
+            location_id: stock.location
+            company_id: res.company
+            
+        Returns:
+            float: Total landed cost at location
+        """
+        if not company_id:
+            company_id = self.env.company.id
+        
+        layers = self.search([
+            ('product_id', '=', product_id.id),
+            ('location_id', '=', location_id.id),
+            ('company_id', '=', company_id),
+            ('quantity', '>', 0),
+        ])
+        
+        landed_cost_model = self.env['stock.valuation.layer.landed.cost']
+        total_landed_cost = 0.0
+        
+        for layer in layers:
+            # Get landed costs for this layer at this location
+            lc_records = landed_cost_model.search([
+                ('valuation_layer_id', '=', layer.id),
+                ('location_id', '=', location_id.id),
+            ])
+            total_landed_cost += sum(lc_records.mapped('landed_cost_value'))
+        
+        precision = self.env['decimal.precision'].precision_get('Product Price')
+        return float_round(total_landed_cost, precision_digits=precision)
+
