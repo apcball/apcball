@@ -12,6 +12,7 @@
         "security/ir.model.access.csv",
         "views/stock_valuation_layer_views.xml",
         "views/stock_valuation_location_menu.xml",
+        "views/stock_valuation_transit_report.xml",
     ],
     "assets": {},
     "installable": True,

@@ -6,6 +6,8 @@
     <field name="arch" type="xml">
       <xpath expr="//field[@name='product_id']" position="after">
         <field name="location_id" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="location_type" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="location_complete_name" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
       </xpath>
     </field>
   </record>
@@ -17,6 +19,7 @@
     <field name="arch" type="xml">
       <xpath expr="//field[@name='product_id']" position="after">
         <field name="location_id" optional="show" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="location_type" optional="hide" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
         <field name="warehouse_id" optional="hide" groups="stock_valuation_location.group_stock_valuation_location_view_warehouse"/>
       </xpath>
     </field>
@@ -29,8 +32,13 @@
     <field name="arch" type="xml">
       <xpath expr="//search" position="inside">
         <field name="location_id" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="location_type" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
         <field name="warehouse_id" groups="stock_valuation_location.group_stock_valuation_location_view_warehouse"/>
-        <filter string="Group By Location" name="group_by_location" context="{'group_by':'location_id'}"/>
+        <separator/>
+        <filter string="Internal Location" name="filter_internal" domain="[('location_type', '=', 'internal')]" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <filter string="Transit Location" name="filter_transit" domain="[('location_type', '=', 'transit')]" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <filter string="Has Location" name="filter_has_location" domain="[('location_id', '!=', False)]" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <filter string="Group By Location Type" name="group_by_location_type" context="{'group_by':'location_type'}"/>
         <filter string="Group By Warehouse" name="group_by_warehouse" context="{'group_by':'warehouse_id'}"/>
       </xpath>
     </field>
@@ -42,6 +50,7 @@
     <field name="model">stock.valuation.layer</field>
     <field name="arch" type="xml">
       <pivot string="Stock Valuation by Location Analysis">
+        <field name="location_type" type="row" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
         <field name="location_id" type="row" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
         <field name="product_id" type="row"/>
         <field name="company_id" type="col"/>

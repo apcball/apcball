@@ -13,7 +13,7 @@ class StockValuationLayer(models.Model):
         store=True,
         compute_sudo=True,
         index=True,
-        help="Internal location chosen from the move (source if internal, else destination if internal). "
+        help="Location (internal or transit) from the move. "
              "Remains empty for SVLs without stock_move_id (e.g., some Landed Costs).",
     )
     
@@ -23,6 +23,14 @@ class StockValuationLayer(models.Model):
         store=True,
         readonly=True,
         help="Full hierarchical path of the location"
+    )
+    
+    location_type = fields.Selection(
+        related='location_id.usage',
+        string='Location Type',
+        store=True,
+        readonly=True,
+        help="Type of location (internal, transit, etc.)"
     )
     
     warehouse_id = fields.Many2one(
