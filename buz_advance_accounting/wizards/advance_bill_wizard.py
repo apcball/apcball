@@ -15,6 +15,16 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
     currency_id = fields.Many2one('res.currency', required=True, default=lambda self: self.env.company.currency_id)
     date = fields.Date(default=fields.Date.context_today)
     ref = fields.Char(string='Reference')
+    
+    # Exchange rate fields
+    auto_exchange_rate = fields.Float(string='Auto Exchange Rate (Decimal)', readonly=True, digits=(12, 6))
+    auto_exchange_rate_thb = fields.Float(string='Auto Rate (THB per Unit)', readonly=True, digits=(12, 6), compute='_compute_exchange_rate_thb')
+    manual_exchange_rate = fields.Float(string='Manual Rate (THB per Unit)', digits=(12, 6))
+    exchange_rate_diff_amount = fields.Float(string='Exchange Rate Difference', readonly=True, digits=(12, 2))
+    use_manual_exchange_rate = fields.Boolean(string='Use Manual Exchange Rate', default=False)
+    show_exchange_rate_section = fields.Boolean(string='Show Exchange Rate Section', compute='_compute_show_exchange_rate_section')
+    source_currency_name = fields.Char(string='Source Currency', compute='_compute_currency_names')
+    company_currency_name = fields.Char(string='Company Currency', compute='_compute_currency_names')
 
     preview_line_ids = fields.One2many('purchase.advance.bill.preview.line', 'wizard_id', string='Preview Lines', readonly=True)
 
@@ -24,11 +34,90 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
             # Set amount to include tax (total amount)
             self.amount = self.purchase_id.amount_total
             self.currency_id = self.purchase_id.currency_id
+            self._compute_exchange_rates()
             self._recompute_preview()
 
-    @api.onchange('amount', 'accrual_account_id', 'journal_id', 'date', 'ref')
+    @api.onchange('amount', 'accrual_account_id', 'journal_id', 'date', 'ref', 'use_manual_exchange_rate', 'manual_exchange_rate', 'currency_id')
     def _onchange_recompute_preview(self):
+        self._compute_exchange_rates()
         self._recompute_preview()
+    
+    @api.depends('purchase_id', 'currency_id')
+    def _compute_show_exchange_rate_section(self):
+        """Compute whether to show exchange rate section"""
+        for wizard in self:
+            if wizard.purchase_id and wizard.currency_id:
+                company_currency = wizard.purchase_id.company_id.currency_id
+                wizard.show_exchange_rate_section = wizard.currency_id.id != company_currency.id
+            else:
+                wizard.show_exchange_rate_section = False
+
+    @api.depends('auto_exchange_rate', 'currency_id', 'purchase_id')
+    def _compute_exchange_rate_thb(self):
+        """Convert auto exchange rate from decimal to THB per Unit format"""
+        for wizard in self:
+            if wizard.auto_exchange_rate and wizard.auto_exchange_rate != 0:
+                # Convert from decimal format (e.g., 0.030861) to THB per Unit (e.g., 32.45)
+                # decimal_rate = 1 / thb_per_unit, so thb_per_unit = 1 / decimal_rate
+                wizard.auto_exchange_rate_thb = 1.0 / wizard.auto_exchange_rate
+            else:
+                wizard.auto_exchange_rate_thb = 1.0
+
+    @api.depends('currency_id', 'purchase_id')
+    def _compute_currency_names(self):
+        """Get currency names for display"""
+        for wizard in self:
+            if wizard.purchase_id and wizard.currency_id:
+                company_currency = wizard.purchase_id.company_id.currency_id
+                wizard.source_currency_name = wizard.currency_id.name
+                wizard.company_currency_name = company_currency.name
+            else:
+                wizard.source_currency_name = ''
+                wizard.company_currency_name = ''
+
+    def _compute_exchange_rates(self):
+        """Compute auto and manual exchange rates and the difference
+        
+        Exchange rate format explanation:
+        - auto_exchange_rate: Odoo's internal decimal format (e.g., 0.030861)
+        - auto_exchange_rate_thb: THB per Unit format (e.g., 32.45 THB per 1 USD)
+        - manual_exchange_rate: THB per Unit format for user input (e.g., 32.10 THB per 1 USD)
+        """
+        if self.purchase_id and self.currency_id:
+            company = self.purchase_id.company_id
+            company_currency = company.currency_id
+            
+            # Only compute if different currencies
+            if self.currency_id != company_currency:
+                # Get auto exchange rate from Odoo (in decimal format)
+                self.auto_exchange_rate = self.currency_id._get_conversion_rate(
+                    company_currency, self.currency_id, company, self.date or fields.Date.context_today(self)
+                )
+                
+                # Set manual exchange rate to auto rate (converted to THB per Unit) if not set
+                if not self.manual_exchange_rate:
+                    if self.auto_exchange_rate and self.auto_exchange_rate != 0:
+                        self.manual_exchange_rate = 1.0 / self.auto_exchange_rate
+                    else:
+                        self.manual_exchange_rate = 1.0
+                
+                # Calculate exchange rate difference
+                if self.use_manual_exchange_rate and self.manual_exchange_rate:
+                    # Convert amount using both rates
+                    amount_company_auto = self.currency_id._convert(
+                        self.amount, company_currency, company, self.date or fields.Date.context_today(self)
+                    )
+                    # manual_exchange_rate is THB per Unit (e.g., 32.10 means 32.10 THB = 1 USD)
+                    # To convert from foreign currency to company currency, we divide by the rate
+                    amount_company_manual = self.amount / self.manual_exchange_rate if self.manual_exchange_rate != 0 else 0
+                    self.exchange_rate_diff_amount = amount_company_manual - amount_company_auto
+                else:
+                    self.exchange_rate_diff_amount = 0
+            else:
+                # Same currency, no exchange rate difference
+                self.auto_exchange_rate = 1.0
+                self.manual_exchange_rate = 1.0
+                self.exchange_rate_diff_amount = 0
 
     def _get_payable_account_from_partner(self, partner):
         return partner.property_account_payable_id
@@ -88,9 +177,17 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
         return tax_account
 
     def _recompute_preview(self):
+        """Generate preview of journal entry lines
+        
+        Journal Entry Structure:
+        - Debit Expense Account: Bill amount (source currency) ÷ Manual Exchange Rate
+        - Debit Tax Input Account: Tax amount (source currency) ÷ Manual Exchange Rate  
+        - Credit Accrual Account: Full bill amount (source currency) ÷ Exchange Rate (manual or auto)
+        - Debit/Credit Exchange Difference: Difference between manual and auto rates (if applicable)
+        """
         for wizard in self:
             lines = []
-            if not wizard.purchase_id or not wizard.accrual_account_id or wizard.amount <= 0:
+            if not wizard.purchase_id or not wizard.accrual_account_id:
                 wizard.preview_line_ids = [Command.clear()]
                 continue
             po = wizard.purchase_id
@@ -98,8 +195,8 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
             company_currency = company.currency_id
             src_currency = wizard.currency_id or po.currency_id or company_currency
             
-            # Use the amount from wizard (which is the total amount including tax)
-            total_amount = wizard.amount
+            # Use PO amounts directly (in source currency) - NOT wizard.amount which gets converted
+            total_amount = po.amount_total
             
             # Calculate tax rate from PO to split the amount
             if po.amount_total > 0:
@@ -113,11 +210,18 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
             amount_untaxed = total_amount * untaxed_rate
             amount_tax = total_amount * tax_rate
             
-            # Convert to company currency for accounting amounts
-            amount_untaxed_company = src_currency._convert(amount_untaxed, company_currency, company, wizard.date or fields.Date.context_today(wizard))
-            amount_tax_company = src_currency._convert(amount_tax, company_currency, company, wizard.date or fields.Date.context_today(wizard))
+            # Calculate amounts using MANUAL exchange rate (for debit side)
+            if wizard.use_manual_exchange_rate and wizard.manual_exchange_rate and src_currency != company_currency:
+                # Use manual exchange rate (THB per Unit format - divide by rate)
+                amount_untaxed_company_manual = amount_untaxed / wizard.manual_exchange_rate
+                amount_tax_company_manual = amount_tax / wizard.manual_exchange_rate
+                total_amount_company_manual = total_amount / wizard.manual_exchange_rate
+            else:
+                # Use auto exchange rate
+                amount_untaxed_company_manual = src_currency._convert(amount_untaxed, company_currency, company, wizard.date or fields.Date.context_today(wizard))
+                amount_tax_company_manual = src_currency._convert(amount_tax, company_currency, company, wizard.date or fields.Date.context_today(wizard))
+                total_amount_company_manual = src_currency._convert(total_amount, company_currency, company, wizard.date or fields.Date.context_today(wizard))
             
-            payable_account = wizard._get_payable_account_from_partner(po.partner_id)
             expense_account = wizard._get_expense_account_from_po(po)
             
             # Get tax input account
@@ -126,42 +230,69 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
             label = wizard.ref or _('Advance Accrual')
             label_tax = wizard.ref or _('Input Tax')
             
-            if amount_untaxed_company > 0 and expense_account and wizard.accrual_account_id:
-                # Expense line (Debit) - amount before tax
+            if amount_untaxed_company_manual > 0 and expense_account and wizard.accrual_account_id:
+                # Expense line (Debit) - using MANUAL exchange rate
                 lines.append((0, 0, {
                     'account_id': expense_account.id,
                     'name': label,
-                    'debit': amount_untaxed_company,
+                    'debit': amount_untaxed_company_manual,
                     'credit': 0.0,
                 }))
                 
-                # Tax line (Debit) - if there's tax
-                if amount_tax_company > 0 and tax_input_account:
+                # Tax line (Debit) - using MANUAL exchange rate, if there's tax
+                if amount_tax_company_manual > 0 and tax_input_account:
                     lines.append((0, 0, {
                         'account_id': tax_input_account.id,
                         'name': label_tax,
-                        'debit': amount_tax_company,
+                        'debit': amount_tax_company_manual,
                         'credit': 0.0,
                     }))
                 
-                # Accrual account (Credit) - total amount (as entered by user)
-                total_amount_company = src_currency._convert(total_amount, company_currency, company, wizard.date or fields.Date.context_today(wizard))
+                # Accrual account (Credit) - FULL bill amount using appropriate rate
+                # When manual rate is used: credit is the MANUAL rate converted amount
+                # This matches the debit side total
                 lines.append((0, 0, {
                     'account_id': wizard.accrual_account_id.id,
                     'name': label,
                     'debit': 0.0,
-                    'credit': total_amount_company,
+                    'credit': total_amount_company_manual,
                 }))
+                
+                # Exchange rate difference line (if applicable)
+                if wizard.use_manual_exchange_rate and wizard.exchange_rate_diff_amount != 0 and src_currency != company_currency:
+                    exchange_rate_diff_account = wizard.env['advance.accounting.config'].get_exchange_rate_diff_account()
+                    if exchange_rate_diff_account:
+                        if wizard.exchange_rate_diff_amount > 0:
+                            # Positive difference: Debit exchange rate diff account
+                            lines.append((0, 0, {
+                                'account_id': exchange_rate_diff_account.id,
+                                'name': _('Exchange Rate Difference'),
+                                'debit': abs(wizard.exchange_rate_diff_amount),
+                                'credit': 0.0,
+                            }))
+                        else:
+                            # Negative difference: Credit exchange rate diff account
+                            lines.append((0, 0, {
+                                'account_id': exchange_rate_diff_account.id,
+                                'name': _('Exchange Rate Difference'),
+                                'debit': 0.0,
+                                'credit': abs(wizard.exchange_rate_diff_amount),
+                            }))
             
             wizard.preview_line_ids = [Command.clear()] + [Command.create(vals[2]) for vals in lines]
 
     def action_create(self):
+        """Create journal entry with correct accounting
+        
+        Entry structure:
+        - Debit Expense/Tax: Bill amounts ÷ Manual Exchange Rate
+        - Credit Accrual: Full bill amount ÷ Manual Exchange Rate (matches debit total)
+        - Debit/Credit Exchange Difference: Difference if manual rate differs from auto
+        """
         self.ensure_one()
         po = self.purchase_id
         if not po:
             raise UserError(_('No Purchase Order provided.'))
-        if self.amount <= 0:
-            raise UserError(_('Amount must be positive.'))
         if not self.accrual_account_id:
             raise UserError(_('Please select an Accrual Account.'))
 
@@ -175,8 +306,10 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
         company_currency = company.currency_id
         src_currency = self.currency_id or po.currency_id or company_currency
         
-        # Use the amount from wizard (which is the total amount including tax)
-        total_amount = self.amount
+        # Use PO amounts directly (in source currency) - NOT wizard.amount which gets converted
+        total_amount = po.amount_total
+        if total_amount <= 0:
+            raise UserError(_('Amount must be positive.'))
         
         # Calculate tax rate from PO to split the amount
         if po.amount_total > 0:
@@ -190,47 +323,78 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
         amount_untaxed = total_amount * untaxed_rate
         amount_tax = total_amount * tax_rate
         
-        # Convert to company currency
-        amount_untaxed_company = src_currency._convert(amount_untaxed, company_currency, company, self.date or fields.Date.context_today(self))
-        amount_tax_company = src_currency._convert(amount_tax, company_currency, company, self.date or fields.Date.context_today(self))
-        total_amount_company = src_currency._convert(total_amount, company_currency, company, self.date or fields.Date.context_today(self))
+        # Calculate amounts using MANUAL exchange rate (for debit side)
+        if self.use_manual_exchange_rate and self.manual_exchange_rate and src_currency != company_currency:
+            # Use manual exchange rate (THB per Unit format - divide by rate)
+            amount_untaxed_company_manual = amount_untaxed / self.manual_exchange_rate
+            amount_tax_company_manual = amount_tax / self.manual_exchange_rate
+            total_amount_company_manual = total_amount / self.manual_exchange_rate
+        else:
+            # Use auto exchange rate
+            amount_untaxed_company_manual = src_currency._convert(amount_untaxed, company_currency, company, self.date or fields.Date.context_today(self))
+            amount_tax_company_manual = src_currency._convert(amount_tax, company_currency, company, self.date or fields.Date.context_today(self))
+            total_amount_company_manual = src_currency._convert(total_amount, company_currency, company, self.date or fields.Date.context_today(self))
 
         # Prepare journal entry lines
         journal_lines = []
         
-        # Expense line (Debit) - amount before tax
+        # Expense line (Debit) - using MANUAL exchange rate
         journal_lines.append((0, 0, {
             'name': self.ref or _('Advance Accrual'),
-            'debit': amount_untaxed_company if amount_untaxed_company > 0 else 0.0,
+            'debit': amount_untaxed_company_manual if amount_untaxed_company_manual > 0 else 0.0,
             'credit': 0.0,
             'account_id': expense_account.id,
             'partner_id': po.partner_id.id,
             'currency_id': src_currency.id,
-            'amount_currency': amount_untaxed if src_currency != company_currency else amount_untaxed_company,
+            'amount_currency': amount_untaxed if src_currency != company_currency else amount_untaxed_company_manual,
         }))
         
-        # Tax line (Debit) - if there's tax and tax account
-        if amount_tax_company > 0 and tax_input_account:
+        # Tax line (Debit) - using MANUAL exchange rate, if there's tax and tax account
+        if amount_tax_company_manual > 0 and tax_input_account:
             journal_lines.append((0, 0, {
                 'name': self.ref or _('Input Tax'),
-                'debit': amount_tax_company,
+                'debit': amount_tax_company_manual,
                 'credit': 0.0,
                 'account_id': tax_input_account.id,
                 'partner_id': po.partner_id.id,
                 'currency_id': src_currency.id,
-                'amount_currency': amount_tax if src_currency != company_currency else amount_tax_company,
+                'amount_currency': amount_tax if src_currency != company_currency else amount_tax_company_manual,
             }))
         
-        # Accrual account (Credit) - total amount as entered by user
+        # Accrual account (Credit) - FULL bill amount
+        # Credit matches the debit side total when using manual rate
         journal_lines.append((0, 0, {
             'name': self.ref or _('Advance Accrual'),
             'debit': 0.0,
-            'credit': total_amount_company if total_amount_company > 0 else 0.0,
+            'credit': total_amount_company_manual if total_amount_company_manual > 0 else 0.0,
             'account_id': self.accrual_account_id.id,
             'partner_id': po.partner_id.id,
             'currency_id': src_currency.id,
-            'amount_currency': -total_amount if src_currency != company_currency else -total_amount_company,
+            'amount_currency': -total_amount if src_currency != company_currency else -total_amount_company_manual,
         }))
+        
+        # Exchange rate difference line (if applicable)
+        if self.use_manual_exchange_rate and self.exchange_rate_diff_amount != 0 and src_currency != company_currency:
+            exchange_rate_diff_account = self.env['advance.accounting.config'].get_exchange_rate_diff_account()
+            if exchange_rate_diff_account:
+                if self.exchange_rate_diff_amount > 0:
+                    # Positive difference: Debit exchange rate diff account
+                    journal_lines.append((0, 0, {
+                        'name': _('Exchange Rate Difference'),
+                        'debit': abs(self.exchange_rate_diff_amount),
+                        'credit': 0.0,
+                        'account_id': exchange_rate_diff_account.id,
+                        'partner_id': po.partner_id.id,
+                    }))
+                else:
+                    # Negative difference: Credit exchange rate diff account
+                    journal_lines.append((0, 0, {
+                        'name': _('Exchange Rate Difference'),
+                        'debit': 0.0,
+                        'credit': abs(self.exchange_rate_diff_amount),
+                        'account_id': exchange_rate_diff_account.id,
+                        'partner_id': po.partner_id.id,
+                    }))
 
         move_vals = {
             'move_type': 'entry',
@@ -247,8 +411,8 @@ class PurchaseAdvanceBillWizard(models.TransientModel):
         accrual = self.env['purchase.advance.accrual'].create({
             'purchase_id': po.id,
             'move_id': move.id,
-            'amount': total_amount,  # Store the total amount as entered by user
-            'currency_id': self.currency_id.id,
+            'amount': total_amount,
+            'currency_id': src_currency.id,
             'date': self.date,
         })
         return {

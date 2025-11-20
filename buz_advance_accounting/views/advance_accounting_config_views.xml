@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Advance Accounting Configuration Form View -->
+    <record id="view_advance_accounting_config_form" model="ir.ui.view">
+        <field name="name">advance.accounting.config.form</field>
+        <field name="model">advance.accounting.config</field>
+        <field name="arch" type="xml">
+            <form string="Advance Accounting Configuration">
+                <sheet>
+                    <group name="configuration">
+                        <group name="exchange_rate" string="Exchange Rate Configuration">
+                            <field name="company_id" invisible="1"/>
+                            <field name="exchange_rate_diff_account_id" required="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Advance Accounting Configuration Tree View -->
+    <record id="view_advance_accounting_config_tree" model="ir.ui.view">
+        <field name="name">advance.accounting.config.tree</field>
+        <field name="model">advance.accounting.config</field>
+        <field name="arch" type="xml">
+            <tree string="Advance Accounting Configuration">
+                <field name="company_id"/>
+                <field name="exchange_rate_diff_account_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Advance Accounting Configuration Action -->
+    <record id="action_advance_accounting_config" model="ir.actions.act_window">
+        <field name="name">Advance Accounting Configuration</field>
+        <field name="res_model">advance.accounting.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'default_company_id': allowed_company_ids[0]}</field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_advance_accounting_config"
+              name="Advance Accounting Configuration"
+              parent="account.menu_account_config"
+              action="action_advance_accounting_config"
+              sequence="95"/>
+</odoo>

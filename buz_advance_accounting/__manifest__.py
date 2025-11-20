@@ -10,11 +10,13 @@
     'data': [
     'security/advance_accounting_groups.xml',
     'security/advance_accounting_rule.xml',
+    'security/advance_accounting_config_security.xml',
         'security/ir.model.access.csv',
         'views/purchase_views.xml',
         'views/account_move_views.xml',
         'views/stock_picking_views.xml',
         'views/menu.xml',
+        'views/advance_accounting_config_views.xml',
         'wizards/advance_bill_wizard_views.xml',
         'wizards/reverse_accrual_wizard_views.xml',
     ],
@@ -22,4 +24,5 @@
     'icon': 'static/description/icon.png',
     'installable': True,
     'application': False,
+    'test': ['tests/test_exchange_rate_feature.py'],
 }

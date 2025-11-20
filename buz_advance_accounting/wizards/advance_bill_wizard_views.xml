@@ -6,6 +6,10 @@
         <field name="arch" type="xml">
             <form string="Create Advance Accrual">
                 <sheet>
+                    <field name="show_exchange_rate_section" invisible="1"/>
+                    <field name="auto_exchange_rate" invisible="1"/>
+                    <field name="source_currency_name" invisible="1"/>
+                    <field name="company_currency_name" invisible="1"/>
                     <group string="Accrual Information">
                         <group>
                             <field name="purchase_id" invisible="1"/>
@@ -17,6 +21,21 @@
                             <field name="amount" required="1"/>
                             <field name="currency_id" required="1"/>
                             <field name="ref" string="Reference"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Exchange Rate Information" invisible="not show_exchange_rate_section">
+                        <group>
+                            <field name="source_currency_name" readonly="1" string="From Currency"/>
+                            <field name="company_currency_name" readonly="1" string="To Currency"/>
+                        </group>
+                        <group>
+                            <field name="auto_exchange_rate_thb" readonly="1" string="Auto Rate (THB per Unit)"/>
+                            <field name="use_manual_exchange_rate"/>
+                        </group>
+                        <group invisible="not use_manual_exchange_rate">
+                            <field name="manual_exchange_rate" required="use_manual_exchange_rate" string="Manual Rate (THB per Unit)"/>
+                            <field name="exchange_rate_diff_amount" readonly="1" string="Difference Amount"/>
                         </group>
                     </group>
                     

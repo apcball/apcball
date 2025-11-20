@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Advance Accounting Configuration Groups -->
+    <record id="group_advance_accounting_manager" model="res.groups">
+        <field name="name">Advance Accounting Manager</field>
+        <field name="comment">User can manage advance accounting configuration</field>
+        <field name="category_id" ref="base.module_category_accounting"/>
+        <field name="implied_ids" eval="[(4, ref('account.group_account_manager'))]"/>
+    </record>
+
+    <!-- Access Rights for Advance Accounting Configuration -->
+    <record id="access_advance_accounting_config_user" model="ir.model.access">
+        <field name="name">advance.accounting.config user</field>
+        <field name="model_id" ref="model_advance_accounting_config"/>
+        <field name="group_id" ref="account.group_account_user"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <record id="access_advance_accounting_config_manager" model="ir.model.access">
+        <field name="name">advance.accounting.config manager</field>
+        <field name="model_id" ref="model_advance_accounting_config"/>
+        <field name="group_id" ref="group_advance_accounting_manager"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <!-- Menu Access Rules -->
+    <record id="rule_advance_accounting_config_company" model="ir.rule">
+        <field name="name">Advance Accounting Configuration Company Rule</field>
+        <field name="model_id" ref="model_advance_accounting_config"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('account.group_account_user'))]"/>
+    </record>
+</odoo>
