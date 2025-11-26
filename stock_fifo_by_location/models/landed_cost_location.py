@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Landed Cost by Location Model
+Landed Cost by Warehouse Model
 
-This module tracks landed costs on a per-location basis to ensure that when
-goods are transferred between locations, the associated landed costs are also
-properly allocated to the new location.
+This module tracks landed costs on a per-warehouse basis to ensure that when
+goods are transferred between warehouses, the associated landed costs are also
+properly allocated to the new warehouse.
 
 Landed cost is the additional cost added to the purchase of goods, such as
 freight, insurance, customs, etc. This extension ensures that when inventory
-is transferred internally between locations, the landed cost portion is also
+is transferred internally between warehouses, the landed cost portion is also
 transferred proportionally.
 """
 
@@ -18,20 +18,20 @@ from odoo.tools import float_compare, float_round
 
 class StockValuationLayerLandedCost(models.Model):
     """
-    Tracks landed cost allocation per location for stock valuation layers.
+    Tracks landed cost allocation per warehouse for stock valuation layers.
     
     Each layer can have associated landed costs that were applied to incoming
-    stock. When inventory is transferred internally, we need to allocate the
-    landed cost proportionally to the receiving location.
+    stock. When inventory is transferred internally between warehouses, we need to allocate the
+    landed cost proportionally to the receiving warehouse.
     
     This model maintains the relationship between:
     - stock.valuation.layer (the inventory layer)
-    - stock.location (the warehouse location)
+    - stock.warehouse (the warehouse)
     - landed cost amount
     """
     
     _name = 'stock.valuation.layer.landed.cost'
-    _description = 'Landed Cost by Location'
+    _description = 'Landed Cost by Warehouse'
     _rec_name = 'valuation_layer_id'
     
     # Allow deletion even when referenced
@@ -45,12 +45,12 @@ class StockValuationLayerLandedCost(models.Model):
         help='The stock valuation layer this landed cost applies to.'
     )
     
-    location_id = fields.Many2one(
-        'stock.location',
-        string='Stock Location',
+    warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Warehouse',
         required=False,
         index=True,
-        help='The location where this landed cost is applicable.'
+        help='The warehouse where this landed cost is applicable.'
     )
     
     landed_cost_id = fields.Many2one(
@@ -118,39 +118,39 @@ class StockValuationLayerLandedCost(models.Model):
                 record.unit_landed_cost = 0.0
     
     @api.model
-    def get_landed_cost_for_layer_at_location(self, valuation_layer_id, location_id):
+    def get_landed_cost_for_layer_at_warehouse(self, valuation_layer_id, warehouse_id):
         """
-        Get total landed cost for a valuation layer at a specific location.
+        Get total landed cost for a valuation layer at a specific warehouse.
         
         Args:
             valuation_layer_id: ID of stock.valuation.layer
-            location_id: ID of stock.location
+            warehouse_id: ID of stock.warehouse
             
         Returns:
             float: Total landed cost value
         """
         record = self.search([
             ('valuation_layer_id', '=', valuation_layer_id),
-            ('location_id', '=', location_id),
+            ('warehouse_id', '=', warehouse_id),
         ], limit=1)
         
         return record.landed_cost_value if record else 0.0
     
     @api.model
-    def get_unit_landed_cost_for_layer_at_location(self, valuation_layer_id, location_id):
+    def get_unit_landed_cost_for_layer_at_warehouse(self, valuation_layer_id, warehouse_id):
         """
-        Get unit landed cost for a valuation layer at a specific location.
+        Get unit landed cost for a valuation layer at a specific warehouse.
         
         Args:
             valuation_layer_id: ID of stock.valuation.layer
-            location_id: ID of stock.location
+            warehouse_id: ID of stock.warehouse
             
         Returns:
             float: Landed cost per unit
         """
         record = self.search([
             ('valuation_layer_id', '=', valuation_layer_id),
-            ('location_id', '=', location_id),
+            ('warehouse_id', '=', warehouse_id),
         ], limit=1)
         
         return record.unit_landed_cost if record else 0.0
@@ -169,15 +169,15 @@ class StockValuationLayerLandedCost(models.Model):
 
 class StockValuationLayerLandedCostAllocation(models.Model):
     """
-    Tracks the allocation of landed costs during internal transfers.
+    Tracks the allocation of landed costs during inter-warehouse transfers.
     
-    When inventory is transferred between locations, landed costs need to be
+    When inventory is transferred between warehouses, landed costs need to be
     allocated proportionally. This model tracks:
-    - Source location landed cost (being reduced)
-    - Destination location landed cost (being added)
+    - Source warehouse landed cost (being reduced)
+    - Destination warehouse landed cost (being added)
     - The proportion transferred
     
-    This creates an audit trail for cost allocation during transfers.
+    This creates an audit trail for cost allocation during inter-warehouse transfers.
     """
     
     _name = 'stock.landed.cost.allocation'
@@ -201,21 +201,39 @@ class StockValuationLayerLandedCostAllocation(models.Model):
         store=True
     )
     
-    source_location_id = fields.Many2one(
-        'stock.location',
-        string='Source Location',
-        related='move_id.location_id',
+    source_warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Source Warehouse',
+        compute='_compute_warehouses',
         readonly=True,
         store=True
     )
     
-    destination_location_id = fields.Many2one(
-        'stock.location',
-        string='Destination Location',
-        related='move_id.location_dest_id',
+    destination_warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Destination Warehouse',
+        compute='_compute_warehouses',
         readonly=True,
         store=True
     )
+    
+    @api.depends('move_id.location_id', 'move_id.location_dest_id')
+    def _compute_warehouses(self):
+        """Compute source and destination warehouses from move locations."""
+        for record in self:
+            if record.move_id:
+                if record.move_id.location_id:
+                    record.source_warehouse_id = record.move_id.location_id.warehouse_id
+                else:
+                    record.source_warehouse_id = False
+                
+                if record.move_id.location_dest_id:
+                    record.destination_warehouse_id = record.move_id.location_dest_id.warehouse_id
+                else:
+                    record.destination_warehouse_id = False
+            else:
+                record.source_warehouse_id = False
+                record.destination_warehouse_id = False
     
     quantity_transferred = fields.Float(
         string='Quantity Transferred',
@@ -224,27 +242,27 @@ class StockValuationLayerLandedCostAllocation(models.Model):
     )
     
     source_layer_landed_cost_before = fields.Float(
-        string='Source Layer LC Before',
+        string='Source Warehouse LC Before',
         digits='Product Price',
-        help='Landed cost value at source location before transfer.'
+        help='Landed cost value at source warehouse before transfer.'
     )
     
     source_layer_landed_cost_after = fields.Float(
-        string='Source Layer LC After',
+        string='Source Warehouse LC After',
         digits='Product Price',
-        help='Landed cost value at source location after transfer.'
+        help='Landed cost value at source warehouse after transfer.'
     )
     
     destination_layer_landed_cost_before = fields.Float(
-        string='Destination Layer LC Before',
+        string='Destination Warehouse LC Before',
         digits='Product Price',
-        help='Landed cost value at destination location before transfer.'
+        help='Landed cost value at destination warehouse before transfer.'
     )
     
     destination_layer_landed_cost_after = fields.Float(
-        string='Destination Layer LC After',
+        string='Destination Warehouse LC After',
         digits='Product Price',
-        help='Landed cost value at destination location after transfer.'
+        help='Landed cost value at destination warehouse after transfer.'
     )
     
     landed_cost_transferred = fields.Float(

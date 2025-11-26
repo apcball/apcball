@@ -1,6 +1,6 @@
 {
-    'name': 'Buz Stock FIFO by Location',
-    'version': '17.0.1.0.3',
+    'name': 'Buz Stock FIFO by Warehouse',
+    'version': '17.0.1.0.6',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -21,24 +21,28 @@
         'python': [],
     },
     'description': '''
-Stock FIFO by Location with Landed Cost Support
+Stock FIFO by Warehouse with Landed Cost Support
 ================================================
 
 This module extends Odoo 17's stock valuation system to support FIFO (First-In-First-Out)
-cost accounting on a per-location basis. Each stock valuation layer now includes a location
+cost accounting on a per-warehouse basis. Each stock valuation layer now includes a warehouse
 reference, ensuring that COGS calculations and inventory valuations are correct when managing
-inventory across multiple storage locations.
+inventory across multiple warehouses.
 
 Core Features:
-- Adds location_id field to stock.valuation.layer for per-location FIFO tracking
-- Automatic population of location_id when receiving/transferring/delivering inventory
+- Adds warehouse_id field to stock.valuation.layer for per-warehouse FIFO tracking
+- Automatic population of warehouse_id when receiving/transferring/delivering inventory
+- Independent FIFO queue for each warehouse - no mixing between warehouses
+- Intra-warehouse moves (same warehouse) do NOT create new layers
+- Inter-warehouse transfers properly track cost flow between warehouses
+- FIX v17.0.1.0.6: Ensures valuation layers are created for all inter-warehouse transfers
 - Shortage handling with configurable fallback policy
 - Migration script for existing valuation layers
 - Full integration with Odoo 17 stock and stock_account modules
 
-NEW: Landed Cost Support
-- Per-location landed cost tracking with stock.valuation.layer.landed.cost model
-- Automatic landed cost allocation during internal transfers
+NEW: Landed Cost Support by Warehouse
+- Per-warehouse landed cost tracking with stock.valuation.layer.landed.cost model
+- Automatic landed cost allocation during inter-warehouse transfers
 - Proportional landed cost distribution based on quantity transferred
 - Audit trail for all cost allocations via stock.landed.cost.allocation
 - Service method: calculate_fifo_cost_with_landed_cost() for accurate COGS
@@ -46,11 +50,17 @@ NEW: Landed Cost Support
 - Comprehensive landed cost tests
 
 Multi-Warehouse Scenarios:
-- Internal transfers between locations automatically allocate landed costs
-- Transit locations fully supported for inter-warehouse transfers
-- Shortage handling with optional fallback to alternative locations
+- Inter-warehouse transfers automatically allocate landed costs
+- Transit locations fully supported for multi-warehouse transfers
+- Intra-warehouse moves keep inventory in same FIFO queue (no new layers)
+- Shortage handling with optional fallback to other warehouses
 - Cascading transfers maintain accurate landed cost tracking
 - Comprehensive unit and integration tests
+
+Key Benefits:
+✓ True warehouse-level FIFO: Each warehouse maintains its own independent FIFO queue
+✓ Cost propagation: Accurate cost transfer when moving between warehouses
+✓ Landed cost accuracy: 100% accurate landed cost tracking per warehouse
 
 Requirements:
 - Odoo 17 with stock and stock_account modules installed

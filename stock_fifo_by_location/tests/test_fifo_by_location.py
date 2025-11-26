@@ -701,4 +701,305 @@ class TestLandedCostByLocation(TransactionCase):
             len(allocation_history), 1,
             "Should create allocation history for transfer"
         )
+    
+    def test_inter_warehouse_transfer_no_zero_valuation(self):
+        """
+        Test that inter-warehouse transfers do not create 0.00 valuation layers.
+        
+        This is the critical fix for version 17.0.1.0.5.
+        Even when source warehouse has no stock, we should use standard_price fallback.
+        """
+        # Create two warehouses
+        warehouse_a = self.env['stock.warehouse'].search([('company_id', '=', self.company.id)], limit=1)
+        warehouse_b = self.env['stock.warehouse'].create({
+            'name': 'Test Warehouse B',
+            'code': 'TWB',
+            'company_id': self.company.id,
+        })
+        
+        # Create product with standard price
+        product = self.product_model.create({
+            'name': 'Test Product Inter-WH',
+            'type': 'product',
+            'categ_id': self.env.ref('product.product_category_all').id,
+            'cost_method': 'fifo',
+            'standard_price': 150.0,  # Fallback cost
+            'company_id': self.company.id,
+        })
+        
+        # Get internal locations for each warehouse
+        loc_a = warehouse_a.lot_stock_id
+        loc_b = warehouse_b.lot_stock_id
+        
+        # Create incoming stock to warehouse A
+        move_in = self.move_model.create({
+            'name': 'Receipt to WH A',
+            'product_id': product.id,
+            'product_uom_qty': 100.0,
+            'product_uom': product.uom_id.id,
+            'location_id': self.supplier_location.id,
+            'location_dest_id': loc_a.id,
+            'state': 'draft',
+        })
+        move_in._action_done()
+        
+        # Create inter-warehouse transfer (A → B)
+        transfer = self.move_model.create({
+            'name': 'Transfer WH A → B',
+            'product_id': product.id,
+            'product_uom_qty': 50.0,
+            'product_uom': product.uom_id.id,
+            'location_id': loc_a.id,
+            'location_dest_id': loc_b.id,
+            'state': 'draft',
+        })
+        transfer._action_done()
+        
+        # Check valuation layers for the transfer
+        transfer_layers = self.valuation_layer_model.search([
+            ('stock_move_id', '=', transfer.id),
+        ])
+        
+        # Should have exactly 2 layers (negative at A, positive at B)
+        self.assertEqual(
+            len(transfer_layers), 2,
+            "Inter-warehouse transfer should create exactly 2 layers"
+        )
+        
+        # Verify NO layers have 0.00 value (except zero quantity)
+        for layer in transfer_layers:
+            if layer.quantity != 0:
+                self.assertNotEqual(
+                    layer.value, 0.0,
+                    f"Layer {layer.id} should not have 0.00 value when quantity is {layer.quantity}"
+                )
+                self.assertNotEqual(
+                    layer.unit_cost, 0.0,
+                    f"Layer {layer.id} should not have 0.00 unit_cost"
+                )
+        
+        # Verify warehouse_id is properly set
+        negative_layer = transfer_layers.filtered(lambda l: l.quantity < 0)
+        positive_layer = transfer_layers.filtered(lambda l: l.quantity > 0)
+        
+        self.assertEqual(
+            negative_layer.warehouse_id.id, warehouse_a.id,
+            "Negative layer should have source warehouse"
+        )
+        self.assertEqual(
+            positive_layer.warehouse_id.id, warehouse_b.id,
+            "Positive layer should have destination warehouse"
+        )
+    
+    def test_inter_warehouse_transfer_empty_source_uses_standard_price(self):
+        """
+        Test that transferring from empty warehouse uses standard_price as fallback.
+        
+        This prevents 0.00 valuations when FIFO queue is empty.
+        """
+        # Create two warehouses
+        warehouse_a = self.env['stock.warehouse'].search([('company_id', '=', self.company.id)], limit=1)
+        warehouse_b = self.env['stock.warehouse'].create({
+            'name': 'Empty Warehouse',
+            'code': 'EWH',
+            'company_id': self.company.id,
+        })
+        
+        # Create product with standard price
+        product = self.product_model.create({
+            'name': 'Test Product Empty Source',
+            'type': 'product',
+            'categ_id': self.env.ref('product.product_category_all').id,
+            'cost_method': 'fifo',
+            'standard_price': 200.0,  # This should be used as fallback
+            'company_id': self.company.id,
+        })
+        
+        loc_a = warehouse_a.lot_stock_id
+        loc_b = warehouse_b.lot_stock_id
+        
+        # Directly create inventory at warehouse B (empty source scenario)
+        # Using inventory adjustment to force stock without valuation layer
+        inventory = self.env['stock.quant'].create({
+            'product_id': product.id,
+            'location_id': loc_b.id,
+            'quantity': 50.0,
+        })
+        
+        # Now transfer from B (which has no valuation layers yet)
+        transfer = self.move_model.create({
+            'name': 'Transfer from Empty WH',
+            'product_id': product.id,
+            'product_uom_qty': 25.0,
+            'product_uom': product.uom_id.id,
+            'location_id': loc_b.id,
+            'location_dest_id': loc_a.id,
+            'state': 'draft',
+        })
+        transfer._action_done()
+        
+        # Get layers created by this transfer
+        layers = self.valuation_layer_model.search([
+            ('stock_move_id', '=', transfer.id),
+        ])
+        
+        # Verify standard_price was used (not 0.00)
+        for layer in layers:
+            if layer.quantity != 0:
+                expected_value = abs(layer.quantity * product.standard_price)
+                self.assertAlmostEqual(
+                    abs(layer.value), 
+                    expected_value, 
+                    places=2,
+                    msg="Layer should use standard_price when FIFO queue is empty"
+                )
+    
+    def test_no_duplicate_layers_created(self):
+        """
+        Test that inter-warehouse transfers don't create duplicate layers.
+        
+        Core fix: We should NOT manually create layers - let Odoo standard do it.
+        """
+        # Create two warehouses
+        warehouse_a = self.env['stock.warehouse'].search([('company_id', '=', self.company.id)], limit=1)
+        warehouse_b = self.env['stock.warehouse'].create({
+            'name': 'Test Warehouse Duplicate',
+            'code': 'TWD',
+            'company_id': self.company.id,
+        })
+        
+        product = self.product_model.create({
+            'name': 'Test Product No Duplicate',
+            'type': 'product',
+            'categ_id': self.env.ref('product.product_category_all').id,
+            'cost_method': 'fifo',
+            'standard_price': 100.0,
+            'company_id': self.company.id,
+        })
+        
+        loc_a = warehouse_a.lot_stock_id
+        loc_b = warehouse_b.lot_stock_id
+        
+        # Receive stock at warehouse A
+        move_in = self.move_model.create({
+            'name': 'Receipt',
+            'product_id': product.id,
+            'product_uom_qty': 100.0,
+            'product_uom': product.uom_id.id,
+            'location_id': self.supplier_location.id,
+            'location_dest_id': loc_a.id,
+            'state': 'draft',
+        })
+        move_in._action_done()
+        
+        # Count layers before transfer
+        layers_before = self.valuation_layer_model.search_count([
+            ('product_id', '=', product.id),
+        ])
+        
+        # Transfer between warehouses
+        transfer = self.move_model.create({
+            'name': 'Transfer',
+            'product_id': product.id,
+            'product_uom_qty': 50.0,
+            'product_uom': product.uom_id.id,
+            'location_id': loc_a.id,
+            'location_dest_id': loc_b.id,
+            'state': 'draft',
+        })
+        transfer._action_done()
+        
+        # Count layers after transfer
+        layers_after = self.valuation_layer_model.search_count([
+            ('product_id', '=', product.id),
+        ])
+        
+        # Should have exactly 2 new layers (not 4 which would indicate duplication)
+        layers_created = layers_after - layers_before
+        self.assertEqual(
+            layers_created, 2,
+            f"Should create exactly 2 layers for inter-warehouse transfer, not {layers_created}"
+        )
+        
+        # Verify exactly 2 layers for this move
+        move_layers = self.valuation_layer_model.search([
+            ('stock_move_id', '=', transfer.id),
+        ])
+        self.assertEqual(
+            len(move_layers), 2,
+            "Transfer move should have exactly 2 layers (negative + positive)"
+        )
+    
+    def test_intra_warehouse_move_same_warehouse(self):
+        """
+        Test that moves within the same warehouse are properly handled.
+        
+        Intra-warehouse moves should have the same warehouse_id on layers.
+        """
+        warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company.id)], limit=1)
+        
+        # Create two locations within same warehouse
+        parent_loc = warehouse.lot_stock_id
+        loc_shelf_a = self.location_model.create({
+            'name': 'Shelf A',
+            'usage': 'internal',
+            'location_id': parent_loc.id,
+            'company_id': self.company.id,
+        })
+        loc_shelf_b = self.location_model.create({
+            'name': 'Shelf B',
+            'usage': 'internal',
+            'location_id': parent_loc.id,
+            'company_id': self.company.id,
+        })
+        
+        product = self.product_model.create({
+            'name': 'Test Product Intra-WH',
+            'type': 'product',
+            'categ_id': self.env.ref('product.product_category_all').id,
+            'cost_method': 'fifo',
+            'standard_price': 100.0,
+            'company_id': self.company.id,
+        })
+        
+        # Receive stock at Shelf A
+        move_in = self.move_model.create({
+            'name': 'Receipt',
+            'product_id': product.id,
+            'product_uom_qty': 100.0,
+            'product_uom': product.uom_id.id,
+            'location_id': self.supplier_location.id,
+            'location_dest_id': loc_shelf_a.id,
+            'state': 'draft',
+        })
+        move_in._action_done()
+        
+        # Move within same warehouse (Shelf A → Shelf B)
+        intra_move = self.move_model.create({
+            'name': 'Intra-warehouse Move',
+            'product_id': product.id,
+            'product_uom_qty': 50.0,
+            'product_uom': product.uom_id.id,
+            'location_id': loc_shelf_a.id,
+            'location_dest_id': loc_shelf_b.id,
+            'state': 'draft',
+        })
+        intra_move._action_done()
+        
+        # Get layers for intra-warehouse move
+        intra_layers = self.valuation_layer_model.search([
+            ('stock_move_id', '=', intra_move.id),
+        ])
+        
+        # All layers should have the same warehouse_id (if any)
+        warehouse_ids = intra_layers.mapped('warehouse_id')
+        if warehouse_ids:
+            self.assertEqual(
+                len(set(warehouse_ids.ids)), 1,
+                "Intra-warehouse move layers should all have same warehouse_id"
+            )
+            self.assertEqual(
+                warehouse_ids[0].id, warehouse.id,
+                "Intra-warehouse layers should have the parent warehouse"
+            )
 
