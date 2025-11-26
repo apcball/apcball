@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Goods Arrival Wizard Form View -->
+        <record id="view_goods_arrival_wizard_form" model="ir.ui.view">
+            <field name="name">purchase.goods.arrival.wizard.form</field>
+            <field name="model">purchase.goods.arrival.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Goods Arrival Reclassification">
+                    <group>
+                        <group>
+                            <field name="stock_picking_id" readonly="1"/>
+                            <field name="purchase_order_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="arrival_date"/>
+                            <field name="ref"/>
+                        </group>
+                    </group>
+
+                    <group string="GIT Accrual Entry">
+                        <field name="accrual_id"/>
+                    </group>
+
+                    <group string="Bill Date Information" readonly="1">
+                        <group>
+                            <field name="bill_date"/>
+                            <field name="source_currency_name"/>
+                            <field name="source_currency_amount"/>
+                        </group>
+                        <group>
+                            <field name="bill_fx_rate"/>
+                            <field name="company_currency_name"/>
+                            <field name="bill_amount_thb"/>
+                        </group>
+                    </group>
+
+                    <group string="Accounts">
+                        <group>
+                            <field name="journal_id" required="1"/>
+                            <field name="inventory_account_id" required="1"/>
+                        </group>
+                        <group>
+                            <field name="git_account_id" required="1"/>
+                        </group>
+                    </group>
+
+                    <group string="Preview of Journal Entry" readonly="1">
+                        <field name="preview_line_ids" nolabel="1">
+                            <tree editable="bottom">
+                                <field name="account_id"/>
+                                <field name="name"/>
+                                <field name="debit" sum="Debit"/>
+                                <field name="credit" sum="Credit"/>
+                            </tree>
+                        </field>
+                    </group>
+
+                    <footer>
+                        <button name="action_create" type="object" string="Post Goods Arrival Entry" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Action to open wizard -->
+        <record id="action_goods_arrival_wizard" model="ir.actions.act_window">
+            <field name="name">Goods Arrival Reclassification</field>
+            <field name="res_model">purchase.goods.arrival.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>

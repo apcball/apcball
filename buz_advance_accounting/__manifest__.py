@@ -19,6 +19,7 @@
         'views/advance_accounting_config_views.xml',
         'wizards/advance_bill_wizard_views.xml',
         'wizards/reverse_accrual_wizard_views.xml',
+        'wizards/goods_arrival_wizard_views.xml',
     ],
     'assets': {},
     'icon': 'static/description/icon.png',

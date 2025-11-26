@@ -131,3 +131,50 @@ class StockPicking(models.Model):
                 'default_purchase_id': self.purchase_order_id.id,
             }
         }
+
+    def action_create_goods_arrival_entry(self):
+        """Create goods arrival reclassification JE when picking is received"""
+        self.ensure_one()
+        
+        if not self.purchase_order_id:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('No Purchase Order'),
+                    'message': _('This picking is not linked to any Purchase Order.'),
+                    'type': 'warning',
+                    'sticky': False,
+                }
+            }
+        
+        # Find GIT accrual entries that are posted but not yet arrived
+        git_accruals = self.purchase_order_id.advance_accrual_ids.filtered(
+            lambda a: a.is_git_entry and a.state == 'posted'
+        )
+        
+        if not git_accruals:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('No GIT Entries'),
+                    'message': _('No posted Goods-in-Transit entries found for this Purchase Order.'),
+                    'type': 'info',
+                    'sticky': False,
+                }
+            }
+        
+        # Open wizard to create goods arrival JE
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Goods Arrival Reclassification'),
+            'res_model': 'purchase.goods.arrival.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_stock_picking_id': self.id,
+                'default_purchase_order_id': self.purchase_order_id.id,
+            }
+        }
+
