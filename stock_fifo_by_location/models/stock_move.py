@@ -151,8 +151,10 @@ class StockMove(models.Model):
             
             product = move.product_id
             
-            # Skip if product is not storable or not using real-time valuation
-            if product.type != 'product' or product.valuation != 'real_time':
+            # Skip if product is not storable
+            # Note: We don't check valuation type because it's not always set in ir_property
+            # The fact that moves exist and product uses FIFO is sufficient
+            if product.type != 'product':
                 continue
             
             source_wh = move.location_id.warehouse_id if move.location_id else None

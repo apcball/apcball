@@ -14,10 +14,10 @@ from odoo.tools import float_round, float_compare
 
 class StockLandedCost(models.Model):
     """
-    Extension of stock.landed.cost to support per-location tracking.
+    Extension of stock.landed.cost to support per-warehouse tracking.
     
     When a landed cost is posted, it creates allocations in 
-    stock.valuation.layer.landed.cost to track the cost at each location.
+    stock.valuation.layer.landed.cost to track the cost at each warehouse.
     """
     
     _inherit = 'stock.landed.cost'
@@ -25,8 +25,8 @@ class StockLandedCost(models.Model):
     location_landed_cost_ids = fields.One2many(
         'stock.valuation.layer.landed.cost',
         'landed_cost_id',
-        string='Location-based Landed Costs',
-        help='Per-location breakdown of this landed cost.',
+        string='Warehouse-based Landed Costs',
+        help='Per-warehouse breakdown of this landed cost.',
         readonly=True
     )
     
@@ -50,11 +50,11 @@ class StockLandedCost(models.Model):
     
     def _allocate_landed_costs_by_location(self):
         """
-        Create per-location landed cost allocations.
+        Create per-warehouse landed cost allocations.
         
         For each valuation adjustment line with a landed cost, create or update
         stock.valuation.layer.landed.cost records to track the cost at the
-        specific location where the goods are received.
+        specific warehouse where the goods are received.
         """
         lc_location_model = self.env['stock.valuation.layer.landed.cost']
         precision = self.env['decimal.precision'].precision_get('Product Price')
@@ -70,17 +70,22 @@ class StockLandedCost(models.Model):
                 move = val_adj_line.move_id
                 product = move.product_id
                 location = move.location_dest_id  # Where the goods arrived
+                warehouse = location.warehouse_id if location else None
                 company = landed_cost.company_id
                 lc_value = val_adj_line.additional_landed_cost
                 qty = move.product_uom._compute_quantity(
                     move.quantity, move.product_id.uom_id
                 )
                 
-                # Find or create valuation layer for this move at the location
+                if not warehouse:
+                    # Skip if no warehouse found
+                    continue
+                
+                # Find or create valuation layer for this move at the warehouse
                 # The valuation layer should exist if landed costs are applied after receipt
                 svl_records = self.env['stock.valuation.layer'].search([
                     ('stock_move_id', '=', move.id),
-                    ('location_id', '=', location.id),
+                    ('warehouse_id', '=', warehouse.id),
                 ], limit=1)
                 
                 if svl_records:
@@ -89,7 +94,7 @@ class StockLandedCost(models.Model):
                     # Check if allocation already exists
                     existing = lc_location_model.search([
                         ('valuation_layer_id', '=', svl.id),
-                        ('location_id', '=', location.id),
+                        ('warehouse_id', '=', warehouse.id),
                         ('landed_cost_id', '=', landed_cost.id),
                     ], limit=1)
                     
@@ -101,7 +106,7 @@ class StockLandedCost(models.Model):
                         # Create new allocation
                         lc_location_model.create({
                             'valuation_layer_id': svl.id,
-                            'location_id': location.id,
+                            'warehouse_id': warehouse.id,
                             'landed_cost_id': landed_cost.id,
                             'valuation_adjustment_line_id': val_adj_line.id,
                             'landed_cost_value': float_round(lc_value, precision_digits=precision),
@@ -132,8 +137,8 @@ class StockValuationAdjustmentLines(models.Model):
     location_based_allocations = fields.One2many(
         'stock.valuation.layer.landed.cost',
         'valuation_adjustment_line_id',
-        string='Location-based Allocations',
-        help='Breakdown of this landed cost by location.',
+        string='Warehouse-based Allocations',
+        help='Breakdown of this landed cost by warehouse.',
         readonly=True
     )
     
