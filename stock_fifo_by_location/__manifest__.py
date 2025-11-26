@@ -1,6 +1,6 @@
 {
     'name': 'Buz Stock FIFO by Warehouse',
-    'version': '17.0.1.0.7',
+    'version': '17.0.1.0.8',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',

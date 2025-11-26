@@ -235,8 +235,8 @@ class StockMove(models.Model):
         valuation_layer_model = self.env['stock.valuation.layer']
         
         for move in self:
-            # Skip if not a valued move
-            if not move.product_id.valuation == 'real_time':
+            # Skip if not a product (only process storable products)
+            if move.product_id.type != 'product':
                 continue
                 
             source_wh = move.location_id.warehouse_id if move.location_id else None
