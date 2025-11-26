@@ -247,21 +247,42 @@ class StockMove(models.Model):
                 ('stock_move_id', '=', move.id),
             ])
             
+            # For return moves, get original move's unit cost INCLUDING landed costs
+            original_unit_cost = None
+            if move.origin_returned_move_id:
+                original_layers = valuation_layer_model.search([
+                    ('stock_move_id', '=', move.origin_returned_move_id.id),
+                    ('quantity', '>', 0),  # Positive (destination) layer
+                ], limit=1)
+                
+                if original_layers:
+                    # Get unit cost INCLUDING landed costs
+                    original_unit_cost = original_layers[0].unit_cost
+                    # The unit_cost already includes LC, so we use it as-is
+            
             for layer in layers:
                 # Determine correct warehouse based on layer quantity
                 if layer.quantity < 0:
                     # Negative layer (outgoing) - use source warehouse
                     if source_wh and (not layer.warehouse_id or layer.warehouse_id.id != source_wh.id):
                         layer.warehouse_id = source_wh.id
+                    # Fix unit_cost for return moves
+                    if original_unit_cost is not None:
+                        layer.unit_cost = original_unit_cost
+                        layer.value = layer.quantity * original_unit_cost
                 elif layer.quantity > 0:
                     # Positive layer (incoming) - use destination warehouse
                     if dest_wh and (not layer.warehouse_id or layer.warehouse_id.id != dest_wh.id):
                         layer.warehouse_id = dest_wh.id
+                    # Fix unit_cost for return moves
+                    if original_unit_cost is not None:
+                        layer.unit_cost = original_unit_cost
+                        layer.value = layer.quantity * original_unit_cost
     
     def _allocate_landed_cost_for_inter_warehouse(self):
         """
-        Allocate landed costs for inter-warehouse transfers only.
-        Skip intra-warehouse moves.
+        Allocate landed costs for inter-warehouse transfers and returns.
+        Skip intra-warehouse moves only.
         """
         for move in self:
             source_wh = move.location_id.warehouse_id if move.location_id else None
@@ -399,13 +420,7 @@ class StockMove(models.Model):
         ], order='create_date asc')
         
         if not source_lc_records:
-            # No landed costs to transfer - create a new one at destination
-            lc_model.create({
-                'valuation_layer_id': dest_layer.id,
-                'warehouse_id': dest_wh.id,
-                'landed_cost_value': lc_amount,
-                'quantity': dest_layer.quantity,
-            })
+            # No landed costs to transfer
             return
         
         # Calculate how much landed cost to take from each source layer (FIFO)
@@ -421,37 +436,21 @@ class StockMove(models.Model):
             
             # Update source warehouse record (reduce by amount transferred)
             new_source_value = source_lc_record.landed_cost_value - lc_to_take
-            if float_compare(new_source_value, 0, precision_digits=precision) > 0:
-                source_lc_record.landed_cost_value = float_round(
-                    new_source_value, precision_digits=precision
-                )
-            else:
-                # Delete if nothing left
-                source_lc_record.unlink()
+            source_lc_record.landed_cost_value = float_round(
+                new_source_value, precision_digits=precision
+            )
             
             remaining_lc = float_round(
                 remaining_lc - lc_to_take, precision_digits=precision
             )
         
         # Add landed cost to destination warehouse
-        # Create or update destination landed cost record
-        existing_dest_lc = lc_model.search([
-            ('valuation_layer_id', '=', dest_layer.id),
-            ('warehouse_id', '=', dest_wh.id),
-        ], limit=1)
-        
-        if existing_dest_lc:
-            existing_dest_lc.landed_cost_value = float_round(
-                existing_dest_lc.landed_cost_value + lc_amount,
-                precision_digits=precision
-            )
-        else:
-            lc_model.create({
-                'valuation_layer_id': dest_layer.id,
-                'warehouse_id': dest_wh.id,
-                'landed_cost_value': lc_amount,
-                'quantity': dest_layer.quantity,
-            })
+        lc_model.create({
+            'valuation_layer_id': dest_layer.id,
+            'warehouse_id': dest_wh.id,
+            'landed_cost_value': lc_amount,
+            'quantity': dest_layer.quantity,
+        })
 
     def _create_account_move_line(self, debit_line_vals, credit_line_vals, writeoff_line_vals=None):
         """
