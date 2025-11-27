@@ -165,6 +165,29 @@ class StockValuationLayer(models.Model):
             total = sum(layer.landed_cost_ids.mapped('landed_cost_value'))
             layer.total_landed_cost = float_round(total, precision_digits=precision)
     
+    @api.constrains('warehouse_id', 'quantity')
+    def _check_warehouse_consistency(self):
+        """
+        Validate warehouse_id is set for all layers with non-zero quantity.
+        
+        This ensures data consistency and prevents issues with FIFO queue management.
+        Layers without warehouse_id cannot be properly tracked in per-warehouse FIFO.
+        """
+        from odoo.exceptions import ValidationError
+        
+        for layer in self:
+            # Skip validation for layers with zero quantity (fully consumed)
+            if float_compare(abs(layer.quantity), 0, precision_digits=2) == 0:
+                continue
+            
+            # Layers with quantity MUST have warehouse_id
+            if not layer.warehouse_id:
+                raise ValidationError(
+                    f"Valuation layer {layer.id} for product {layer.product_id.display_name} "
+                    f"has quantity {layer.quantity} but no warehouse_id. "
+                    f"All layers with quantity must be assigned to a warehouse."
+                )
+    
     @api.model
     def get_landed_cost_at_warehouse(self, product_id, warehouse_id, company_id=None):
         """

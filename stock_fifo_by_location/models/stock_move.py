@@ -138,6 +138,9 @@ class StockMove(models.Model):
         
         Odoo standard may not create layers for internal transfers.
         If no layers exist after parent _action_done, create them manually.
+        
+        NOTE: We no longer skip intra-warehouse moves. Odoo should create layers
+        for all moves, and we just ensure warehouse_id is set correctly.
         """
         import logging
         _logger = logging.getLogger(__name__)
@@ -161,6 +164,7 @@ class StockMove(models.Model):
             dest_wh = move.location_dest_id.warehouse_id if move.location_dest_id else None
             
             # Only for inter-warehouse transfers (different warehouses)
+            # Intra-warehouse moves are handled by Odoo standard - we just set warehouse_id
             if not (source_wh and dest_wh and source_wh.id != dest_wh.id):
                 continue
             
@@ -247,18 +251,20 @@ class StockMove(models.Model):
                 ('stock_move_id', '=', move.id),
             ])
             
-            # For return moves, get original move's unit cost INCLUDING landed costs
+            # For return moves, get original move's unit cost (WITHOUT landed costs in layer.unit_cost)
+            # Landed costs are tracked separately and will be managed by FIFO consumption
             original_unit_cost = None
             if move.origin_returned_move_id:
+                # Find the NEGATIVE layer (consumption) from original move
                 original_layers = valuation_layer_model.search([
                     ('stock_move_id', '=', move.origin_returned_move_id.id),
-                    ('quantity', '>', 0),  # Positive (destination) layer
+                    ('quantity', '<', 0),  # NEGATIVE layer (consumption/delivery)
                 ], limit=1)
                 
                 if original_layers:
-                    # Get unit cost INCLUDING landed costs
-                    original_unit_cost = original_layers[0].unit_cost
-                    # The unit_cost already includes LC, so we use it as-is
+                    # Use the unit cost from the negative layer (base cost only, no LC)
+                    # LC will be handled separately by the FIFO queue system
+                    original_unit_cost = abs(original_layers[0].unit_cost)
             
             for layer in layers:
                 # Determine correct warehouse based on layer quantity
@@ -274,22 +280,34 @@ class StockMove(models.Model):
                     # Positive layer (incoming) - use destination warehouse
                     if dest_wh and (not layer.warehouse_id or layer.warehouse_id.id != dest_wh.id):
                         layer.warehouse_id = dest_wh.id
-                    # Fix unit_cost for return moves
+                    # Fix unit_cost for return moves (base cost only, no LC)
                     if original_unit_cost is not None:
                         layer.unit_cost = original_unit_cost
                         layer.value = layer.quantity * original_unit_cost
+                    
+                    # NOTE: Do NOT create new landed cost records for return moves
+                    # The landed costs are already in the system and managed by FIFO queue
+                    # Creating new LC records would double-count the costs
     
     def _allocate_landed_cost_for_inter_warehouse(self):
         """
-        Allocate landed costs for inter-warehouse transfers and returns.
-        Skip intra-warehouse moves only.
+        Allocate landed costs for inter-warehouse transfers.
+        Skip intra-warehouse moves and return moves.
         """
         for move in self:
+            # Skip return moves - they handle landed costs via original_unit_cost
+            if move.origin_returned_move_id:
+                continue
+            
             source_wh = move.location_id.warehouse_id if move.location_id else None
             dest_wh = move.location_dest_id.warehouse_id if move.location_dest_id else None
             
-            # Only process inter-warehouse transfers
+            # Only process inter-warehouse transfers (not returns)
             if not (source_wh and dest_wh and source_wh.id != dest_wh.id):
+                continue
+            
+            # Skip if source is customer/supplier (this is a receipt/delivery, not transfer)
+            if move.location_id.usage in ('customer', 'supplier'):
                 continue
             
             # Find layers for this move
@@ -434,11 +452,20 @@ class StockMove(models.Model):
             lc_available = source_lc_record.landed_cost_value
             lc_to_take = min(remaining_lc, lc_available)
             
+            # Validate that we're not taking more than available
+            if float_compare(lc_to_take, lc_available, precision_digits=precision) > 0:
+                lc_to_take = lc_available
+            
             # Update source warehouse record (reduce by amount transferred)
             new_source_value = source_lc_record.landed_cost_value - lc_to_take
-            source_lc_record.landed_cost_value = float_round(
-                new_source_value, precision_digits=precision
-            )
+            # Ensure non-negative
+            if float_compare(new_source_value, 0, precision_digits=precision) < 0:
+                new_source_value = 0.0
+            
+            source_lc_record.write({
+                'landed_cost_value': float_round(new_source_value, precision_digits=precision),
+                'quantity': source_lc_record.quantity,  # Keep quantity consistent
+            })
             
             remaining_lc = float_round(
                 remaining_lc - lc_to_take, precision_digits=precision
