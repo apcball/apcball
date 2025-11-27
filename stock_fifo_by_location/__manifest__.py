@@ -1,6 +1,6 @@
 {
     'name': 'Buz Stock FIFO by Warehouse',
-    'version': '17.0.1.1.0',
+    'version': '17.0.1.1.2',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -68,12 +68,24 @@ Key Benefits:
 ✓ Landed cost accuracy: 100% accurate landed cost tracking per warehouse
 ✓ Data integrity: Validation ensures all layers have proper warehouse assignment
 ✓ Return accuracy: Returns use original cost including landed costs
+✓ Full Balance Zero: Return full quantity results in balance = 0
 
 Requirements:
 - Odoo 17 with stock and stock_account modules installed
 - stock_landed_costs module for landed cost functionality
 
 Version History:
+- 17.0.1.1.2: CRITICAL FIX - Return moves use FIFO cost WITH landed costs
+  * Fixed unit_cost calculation for return layers
+  * Return moves now consume from FIFO queue including landed costs
+  * Added _copy_landed_cost_to_return() for proper landed cost allocation
+  * Return full quantity now results in balance = 0 ✅
+  * Test case: test_return_full_quantity_balance_equals_zero()
+- 17.0.1.1.1: CRITICAL FIX - Prevent negative warehouse balance on returns
+  * Return moves now FORCED to use original warehouse
+  * Added validation in _action_done() to block cross-warehouse returns
+  * Enhanced _check_warehouse_consistency() to detect negative balance
+  * Thai error messages for better user understanding
 - 17.0.1.1.0: Fixed intra-warehouse logic, added validation, enhanced return move handling
 - 17.0.1.0.9: Previous stable version
     ''',

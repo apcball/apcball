@@ -41,6 +41,7 @@ class StockMove(models.Model):
         Determine the appropriate warehouse for FIFO valuation layer.
         
         Rules:
+        - RETURN MOVES: MUST use original warehouse (critical for FIFO accuracy)
         - Supplier/Production → Internal/Transit: use destination warehouse (new stock)
         - Transit → Internal: use destination warehouse (warehouse receipt)
         - Internal → Transit: use source warehouse (warehouse shipment)
@@ -57,6 +58,16 @@ class StockMove(models.Model):
         if not self.location_id or not self.location_dest_id:
             return None
         
+        # 🔴 CRITICAL FIX: Return moves MUST use original warehouse
+        # This prevents negative warehouse balance issues
+        if self.origin_returned_move_id:
+            original_warehouse = self.origin_returned_move_id.warehouse_id
+            if original_warehouse:
+                return original_warehouse
+            # Fallback: try to get from original move's location
+            if self.origin_returned_move_id.location_id:
+                return self.origin_returned_move_id.location_id.warehouse_id
+        
         source_usage = self.location_id.usage
         dest_usage = self.location_dest_id.usage
         source_wh = self.location_id.warehouse_id
@@ -66,7 +77,7 @@ class StockMove(models.Model):
         if source_usage in ('supplier', 'production', 'inventory'):
             return dest_wh
         
-        # Customer → Internal (RETURN)
+        # Customer → Internal (RETURN) - use destination for non-origin returns
         if source_usage == 'customer' and dest_usage == 'internal':
             return dest_wh
         
@@ -118,6 +129,28 @@ class StockMove(models.Model):
         Core principle: Let Odoo create layers first, then enhance with warehouse_id.
         For inter-warehouse transfers, if Odoo doesn't create layers, we create them.
         """
+        from odoo.exceptions import ValidationError
+        
+        # 🔴 VALIDATION: Return moves must go back to original warehouse
+        for move in self:
+            if move.origin_returned_move_id:
+                original_wh = move.origin_returned_move_id.warehouse_id
+                # Get the warehouse this return will use
+                return_wh = move._get_fifo_valuation_layer_warehouse()
+                
+                # If both warehouses exist and they're different, block the move
+                if original_wh and return_wh and original_wh.id != return_wh.id:
+                    raise ValidationError(
+                        f"❌ ไม่สามารถ Return ไปคนละ Warehouse ได้\n\n"
+                        f"เอกสาร: {move.picking_id.name or move.name}\n"
+                        f"สินค้า: {move.product_id.display_name}\n"
+                        f"Warehouse ต้นทาง (ขายไป): {original_wh.name}\n"
+                        f"Warehouse ปลายทาง (Return เข้า): {return_wh.name}\n\n"
+                        f"⚠️ เพื่อความถูกต้องของ FIFO Valuation\n"
+                        f"การ Return ต้องกลับไปที่ Warehouse เดิม: {original_wh.name}\n\n"
+                        f"กรุณาเปลี่ยนปลายทางเป็น: {original_wh.name}"
+                    )
+        
         # Call parent implementation first - this creates the standard layers
         result = super()._action_done(cancel_backorder=cancel_backorder)
         
@@ -235,8 +268,18 @@ class StockMove(models.Model):
         - Negative layers (outgoing) should have source warehouse
         - Positive layers (incoming) should have destination warehouse
         For intra-warehouse moves: layers exist but stay in same warehouse
+        
+        For RETURN MOVES:
+        - CRITICAL: Use average unit cost from FIFO consumption (includes landed costs!)
+        - NOT base cost only
+        - This ensures balance = 0 when return full quantity
         """
+        import logging
+        _logger = logging.getLogger(__name__)
+        
         valuation_layer_model = self.env['stock.valuation.layer']
+        fifo_service = self.env['fifo.service']
+        precision = self.env['decimal.precision'].precision_get('Product Price')
         
         for move in self:
             # Skip if not a product (only process storable products)
@@ -251,20 +294,78 @@ class StockMove(models.Model):
                 ('stock_move_id', '=', move.id),
             ])
             
-            # For return moves, get original move's unit cost (WITHOUT landed costs in layer.unit_cost)
-            # Landed costs are tracked separately and will be managed by FIFO consumption
-            original_unit_cost = None
+            # For return moves, calculate unit cost from original delivery layer WITH landed costs
+            return_unit_cost = None
+            return_total_cost = None
             if move.origin_returned_move_id:
-                # Find the NEGATIVE layer (consumption) from original move
-                original_layers = valuation_layer_model.search([
-                    ('stock_move_id', '=', move.origin_returned_move_id.id),
-                    ('quantity', '<', 0),  # NEGATIVE layer (consumption/delivery)
-                ], limit=1)
+                original_move = move.origin_returned_move_id
+                original_wh = original_move.warehouse_id
                 
-                if original_layers:
-                    # Use the unit cost from the negative layer (base cost only, no LC)
-                    # LC will be handled separately by the FIFO queue system
-                    original_unit_cost = abs(original_layers[0].unit_cost)
+                if not original_wh and original_move.location_id:
+                    original_wh = original_move.location_id.warehouse_id
+                
+                # CRITICAL FIX: Get unit cost from the ACTUAL delivery layer
+                # Do NOT try to consume from FIFO queue (it's empty after delivery)
+                # Instead, use the unit_cost that was calculated during the original delivery
+                if original_wh:
+                    try:
+                        # Step 1: Find the NEGATIVE delivery layer from original move
+                        # This layer contains the actual unit_cost used when delivering
+                        original_delivery_layers = valuation_layer_model.search([
+                            ('stock_move_id', '=', original_move.id),
+                            ('quantity', '<', 0),  # NEGATIVE layer (outgoing/consumption)
+                            ('warehouse_id', '=', original_wh.id),
+                        ], limit=1)
+                        
+                        if original_delivery_layers:
+                            # The delivery layer's unit_cost is the FIFO cost at consumption time
+                            # (which includes landed costs already applied)
+                            base_delivery_unit_cost = abs(original_delivery_layers[0].unit_cost)
+                            
+                            # Step 2: Get any additional landed costs that should be included
+                            lc_model = self.env['stock.valuation.layer.landed.cost']
+                            delivery_lc_records = lc_model.search([
+                                ('valuation_layer_id', '=', original_delivery_layers[0].id),
+                                ('warehouse_id', '=', original_wh.id),
+                            ])
+                            
+                            unit_lc = 0.0
+                            if delivery_lc_records:
+                                # Get unit landed cost (landed_cost_value / quantity)
+                                lc_value = sum(delivery_lc_records.mapped('landed_cost_value'))
+                                lc_qty = delivery_lc_records[0].quantity or 1
+                                unit_lc = lc_value / lc_qty if lc_qty > 0 else 0.0
+                            
+                            # Total unit cost = base delivery cost + unit landed cost
+                            return_unit_cost = base_delivery_unit_cost + unit_lc
+                            return_total_cost = return_unit_cost * move.product_qty
+                            
+                            _logger.info(
+                                f"Return move {move.name}: "
+                                f"Using delivery layer unit cost: {base_delivery_unit_cost}/unit + "
+                                f"LC: {unit_lc}/unit = {return_unit_cost}/unit total"
+                            )
+                        else:
+                            # Fallback: Try FIFO calculation if no delivery layer found
+                            _logger.warning(
+                                f"Return move {move.name}: "
+                                f"No delivery layer found, falling back to FIFO calculation"
+                            )
+                            
+                            fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
+                                move.product_id,
+                                original_wh,
+                                move.product_qty,
+                                move.company_id.id
+                            )
+                            
+                            if fifo_result['cost'] > 0 and fifo_result['qty'] > 0:
+                                return_unit_cost = fifo_result['unit_cost']
+                                return_total_cost = fifo_result['cost']
+                    except Exception as e:
+                        _logger.warning(
+                            f"Failed to calculate return unit cost for move {move.name}: {e}"
+                        )
             
             for layer in layers:
                 # Determine correct warehouse based on layer quantity
@@ -272,21 +373,33 @@ class StockMove(models.Model):
                     # Negative layer (outgoing) - use source warehouse
                     if source_wh and (not layer.warehouse_id or layer.warehouse_id.id != source_wh.id):
                         layer.warehouse_id = source_wh.id
-                    # Fix unit_cost for return moves
-                    if original_unit_cost is not None:
-                        layer.unit_cost = original_unit_cost
-                        layer.value = layer.quantity * original_unit_cost
+                    # Fix unit_cost for return moves using FIFO cost with landed costs
+                    if return_unit_cost is not None and return_unit_cost > 0:
+                        layer.unit_cost = return_unit_cost
+                        layer.value = layer.quantity * return_unit_cost
+                        _logger.info(
+                            f"Return negative layer {layer.id}: "
+                            f"Set unit_cost={return_unit_cost}, value={layer.value}"
+                        )
                 elif layer.quantity > 0:
                     # Positive layer (incoming) - use destination warehouse
                     if dest_wh and (not layer.warehouse_id or layer.warehouse_id.id != dest_wh.id):
                         layer.warehouse_id = dest_wh.id
-                    # Fix unit_cost for return moves (base cost only, no LC)
-                    if original_unit_cost is not None:
-                        layer.unit_cost = original_unit_cost
-                        layer.value = layer.quantity * original_unit_cost
+                    # Fix unit_cost for return moves using FIFO cost with landed costs
+                    if return_unit_cost is not None and return_unit_cost > 0:
+                        layer.unit_cost = return_unit_cost
+                        layer.value = layer.quantity * return_unit_cost
+                        _logger.info(
+                            f"Return positive layer {layer.id}: "
+                            f"Set unit_cost={return_unit_cost}, value={layer.value}"
+                        )
                     
-                    # NOTE: Do NOT create new landed cost records for return moves
-                    # The landed costs are already in the system and managed by FIFO queue
+                    # Copy landed cost allocations from original move to return move
+                    # This ensures landed costs are properly tracked and reversed
+                    if move.origin_returned_move_id:
+                        self._copy_landed_cost_to_return(
+                            move.origin_returned_move_id, move, layer
+                        )
                     # Creating new LC records would double-count the costs
     
     def _allocate_landed_cost_for_inter_warehouse(self):
@@ -405,6 +518,83 @@ class StockMove(models.Model):
             'landed_cost_transferred': lc_to_transfer,
             'notes': f'Automatic landed cost allocation during inter-warehouse transfer: {qty_transferred} units of {product.name}',
         })
+    
+    def _copy_landed_cost_to_return(self, original_move, return_move, return_layer):
+        """
+        Copy landed cost allocation from original move to return move.
+        
+        When a return move is created, we need to allocate the same landed costs
+        that were in the original delivery/consumption so that the final balance = 0.
+        
+        This reverses the landed cost portion of the cost by creating records
+        that effectively unwind the landed cost from the original transaction.
+        
+        Args:
+            original_move: Original stock.move that was returned
+            return_move: Return stock.move
+            return_layer: The positive return layer
+        """
+        import logging
+        _logger = logging.getLogger(__name__)
+        
+        lc_model = self.env['stock.valuation.layer.landed.cost']
+        precision = self.env['decimal.precision'].precision_get('Product Price')
+        
+        # Get warehouse from original move
+        original_wh = original_move.warehouse_id
+        if not original_wh and original_move.location_id:
+            original_wh = original_move.location_id.warehouse_id
+        
+        if not original_wh:
+            _logger.warning(f"Return move {return_move.name}: Could not determine original warehouse")
+            return
+        
+        # Find all landed cost allocations at the original warehouse
+        # for the product we're returning
+        all_lc_records = lc_model.search([
+            ('valuation_layer_id.product_id', '=', return_move.product_id.id),
+            ('warehouse_id', '=', original_wh.id),
+            ('valuation_layer_id.company_id', '=', return_move.company_id.id),
+        ])
+        
+        if not all_lc_records:
+            _logger.info(f"Return move {return_move.name}: No landed costs to copy")
+            return
+        
+        # Calculate total landed cost available at source warehouse
+        total_lc_available = sum(all_lc_records.mapped('landed_cost_value'))
+        
+        # Calculate how much landed cost proportion to allocate to return
+        # Based on quantity ratio
+        try:
+            fifo_service = self.env['fifo.service']
+            total_qty_available = fifo_service.get_available_qty_at_warehouse(
+                return_move.product_id, original_wh, return_move.company_id.id
+            )
+            
+            if total_qty_available > 0:
+                proportion = return_move.product_qty / total_qty_available
+                lc_to_allocate = total_lc_available * proportion
+                lc_to_allocate = float_round(lc_to_allocate, precision_digits=precision)
+            else:
+                lc_to_allocate = 0.0
+        except Exception as e:
+            _logger.warning(f"Failed to calculate landed cost proportion: {e}")
+            lc_to_allocate = 0.0
+        
+        if float_compare(lc_to_allocate, 0, precision_digits=precision) > 0:
+            # Create landed cost record for return layer
+            lc_model.create({
+                'valuation_layer_id': return_layer.id,
+                'warehouse_id': original_wh.id,
+                'landed_cost_value': lc_to_allocate,
+                'quantity': return_layer.quantity,
+            })
+            
+            _logger.info(
+                f"Return move {return_move.name}: Allocated {lc_to_allocate} landed cost "
+                f"to {return_layer.quantity} units at {original_wh.name}"
+            )
     
     def _transfer_landed_cost_between_warehouses(self, product, source_wh, dest_wh,
                                                 company, qty_transferred, lc_amount,

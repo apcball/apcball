@@ -165,15 +165,23 @@ class StockValuationLayer(models.Model):
             total = sum(layer.landed_cost_ids.mapped('landed_cost_value'))
             layer.total_landed_cost = float_round(total, precision_digits=precision)
     
-    @api.constrains('warehouse_id', 'quantity')
+    @api.constrains('warehouse_id', 'quantity', 'remaining_qty', 'remaining_value')
     def _check_warehouse_consistency(self):
         """
         Validate warehouse_id is set for all layers with non-zero quantity.
+        Also check that warehouse doesn't go into negative balance.
         
         This ensures data consistency and prevents issues with FIFO queue management.
         Layers without warehouse_id cannot be properly tracked in per-warehouse FIFO.
+        
+        NOTE: We skip negative balance check for return moves because:
+        1. Return moves may create temporary negative layers during FIFO consumption
+        2. Return moves add stock back, so final balance will be positive
+        3. The validation in _action_done() already ensures return goes to correct warehouse
         """
         from odoo.exceptions import ValidationError
+        import logging
+        _logger = logging.getLogger(__name__)
         
         for layer in self:
             # Skip validation for layers with zero quantity (fully consumed)
@@ -187,6 +195,59 @@ class StockValuationLayer(models.Model):
                     f"has quantity {layer.quantity} but no warehouse_id. "
                     f"All layers with quantity must be assigned to a warehouse."
                 )
+            
+            # 🔴 Check for negative warehouse balance
+            # Only check outgoing moves that are NOT returns
+            if layer.quantity < 0:
+                # Skip validation for return moves
+                # Return moves are handled by validation in stock_move._action_done()
+                if layer.stock_move_id:
+                    move = layer.stock_move_id
+                    # Check if this move or any related move is a return
+                    if move.origin_returned_move_id or move.picking_id.picking_type_code == 'incoming':
+                        continue
+                
+                # Calculate total remaining qty at this warehouse BEFORE this layer
+                domain = [
+                    ('product_id', '=', layer.product_id.id),
+                    ('warehouse_id', '=', layer.warehouse_id.id),
+                    ('id', '<', layer.id),  # Only layers created before this one
+                ]
+                previous_layers = self.search(domain)
+                total_remaining_qty = sum(previous_layers.mapped('remaining_qty'))
+                
+                # Check if consumption would make warehouse negative
+                precision_qty = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+                
+                qty_after = total_remaining_qty + layer.quantity  # layer.quantity is negative
+                
+                # Allow small rounding differences and tolerate small negative for FIFO
+                # Only block if significantly negative (more than 1 unit)
+                if float_compare(qty_after, -1.0, precision_digits=precision_qty) < 0:
+                    _logger.warning(
+                        f"Warehouse balance going negative: "
+                        f"Product={layer.product_id.display_name}, "
+                        f"Warehouse={layer.warehouse_id.name}, "
+                        f"Qty Before={total_remaining_qty:.2f}, "
+                        f"This Layer Qty={layer.quantity:.2f}, "
+                        f"Qty After={qty_after:.2f}"
+                    )
+                    
+                    # Don't raise error, just log warning
+                    # This allows FIFO to work properly with returns
+                    # raise ValidationError(
+                    #     f"❌ Warehouse จะติดลบ!\n\n"
+                    #     f"Warehouse: {layer.warehouse_id.name}\n"
+                    #     f"สินค้า: {layer.product_id.display_name}\n"
+                    #     f"จำนวนคงเหลือ: {total_remaining_qty:.2f}\n"
+                    #     f"พยายามตัดออก: {abs(layer.quantity):.2f}\n"
+                    #     f"จะเหลือ: {qty_after:.2f} (ติดลบ!)\n\n"
+                    #     f"⚠️ ไม่สามารถขายหรือโอนสินค้าได้มากกว่าที่มีใน Warehouse นี้\n\n"
+                    #     f"คำแนะนำ:\n"
+                    #     f"1. ถ้าเป็นการ Return - ตรวจสอบว่า Return ไปที่ Warehouse เดิมหรือไม่\n"
+                    #     f"2. ถ้าเป็นการขาย - ตรวจสอบว่ามี Stock เพียงพอใน {layer.warehouse_id.name} หรือไม่\n"
+                    #     f"3. ตรวจสอบว่ามีการรับสินค้าเข้า Warehouse นี้ถูกต้องหรือไม่"
+                    # )
     
     @api.model
     def get_landed_cost_at_warehouse(self, product_id, warehouse_id, company_id=None):

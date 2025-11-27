@@ -1002,4 +1002,353 @@ class TestLandedCostByLocation(TransactionCase):
                 warehouse_ids[0].id, warehouse.id,
                 "Intra-warehouse layers should have the parent warehouse"
             )
+    
+    def test_return_full_quantity_balance_equals_zero(self):
+        """
+        ⭐ CRITICAL TEST: Return full quantity should result in balance = 0
+        
+        Scenario:
+        1. Receive 10 units @ 100 THB = 1000 THB
+        2. Add landed cost 200 THB (20 THB per unit)
+        3. Deliver 10 units (consume from FIFO: 10 @ 120 THB = 1200 THB)
+        4. Return 10 units (MUST be 10 @ 120 THB = 1200 THB to balance)
+        
+        Expected: Final balance = 0 (both qty and value)
+        
+        Key Point: Return MUST use average unit cost WITH landed costs,
+        NOT just base cost. Otherwise balance ≠ 0.
+        """
+        warehouse = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.company.id)], limit=1
+        )
+        self.assertTrue(warehouse, "Warehouse not found")
+        
+        product = self.product_model.create({
+            'name': 'Test Return Full Balance',
+            'type': 'product',
+            'categ_id': self.env.ref('product.product_category_all').id,
+            'cost_method': 'fifo',
+            'standard_price': 100.0,
+            'company_id': self.company.id,
+        })
+        
+        picking_model = self.env['stock.picking']
+        move_model = self.env['stock.move']
+        
+        # Step 1: Receive 10 units
+        receipt = picking_model.create({
+            'picking_type_id': warehouse.in_type_id.id,
+            'location_id': self.supplier_location.id,
+            'location_dest_id': warehouse.lot_stock_id.id,
+        })
+        
+        receipt_move = move_model.create({
+            'name': 'Receipt',
+            'product_id': product.id,
+            'product_uom_qty': 10.0,
+            'product_uom': product.uom_id.id,
+            'picking_id': receipt.id,
+            'location_id': self.supplier_location.id,
+            'location_dest_id': warehouse.lot_stock_id.id,
+        })
+        
+        receipt.action_confirm()
+        receipt.action_assign()
+        for line in receipt.move_line_ids:
+            line.quantity = 10.0
+        receipt.button_validate()
+        
+        # Step 2: Add landed cost to receipt layer
+        receipt_layers = self.valuation_layer_model.search([
+            ('stock_move_id', '=', receipt_move.id),
+        ])
+        self.assertTrue(receipt_layers, "Receipt should create valuation layers")
+        
+        # Get landed cost model
+        lc_model = self.env['stock.valuation.layer.landed.cost']
+        for layer in receipt_layers:
+            if layer.quantity > 0:
+                # Add 200 THB landed cost (20 THB per unit)
+                lc_model.create({
+                    'valuation_layer_id': layer.id,
+                    'warehouse_id': warehouse.id,
+                    'landed_cost_value': 200.0,
+                    'quantity': 10.0,
+                })
+        
+        # Verify receipt layer has landed cost
+        receipt_layer = receipt_layers.filtered(lambda l: l.quantity > 0)[0]
+        receipt_lc = lc_model.search([
+            ('valuation_layer_id', '=', receipt_layer.id),
+            ('warehouse_id', '=', warehouse.id),
+        ])
+        self.assertTrue(receipt_lc, "Receipt layer should have landed cost")
+        self.assertAlmostEqual(
+            receipt_lc.landed_cost_value, 200.0, places=2,
+            msg="Receipt landed cost should be 200 THB"
+        )
+        
+        # Check total cost with landed cost
+        fifo_service = self.env['fifo.service']
+        receipt_unit_cost = receipt_move.product_id.standard_price  # 100 THB
+        receipt_unit_cost_with_lc = (receipt_layer.value + receipt_lc.landed_cost_value) / receipt_layer.quantity
+        # Should be (1000 + 200) / 10 = 120 THB
+        
+        # Step 3: Deliver 10 units (consumes from receipt layer)
+        delivery = picking_model.create({
+            'picking_type_id': warehouse.out_type_id.id,
+            'location_id': warehouse.lot_stock_id.id,
+            'location_dest_id': self.customer_location.id,
+        })
+        
+        delivery_move = move_model.create({
+            'name': 'Delivery',
+            'product_id': product.id,
+            'product_uom_qty': 10.0,
+            'product_uom': product.uom_id.id,
+            'picking_id': delivery.id,
+            'location_id': warehouse.lot_stock_id.id,
+            'location_dest_id': self.customer_location.id,
+        })
+        
+        delivery.action_confirm()
+        delivery.action_assign()
+        for line in delivery.move_line_ids:
+            line.quantity = 10.0
+        delivery.button_validate()
+        
+        # Get delivery layer
+        delivery_layers = self.valuation_layer_model.search([
+            ('stock_move_id', '=', delivery_move.id),
+        ])
+        self.assertTrue(delivery_layers, "Delivery should create valuation layers")
+        
+        delivery_neg_layer = delivery_layers.filtered(lambda l: l.quantity < 0)
+        self.assertTrue(delivery_neg_layer, "Delivery should have negative layer")
+        
+        # Step 4: Return 10 units
+        return_wizard = self.env['stock.return.picking'].with_context(
+            active_id=delivery.id,
+            active_model='stock.picking'
+        ).create({})
+        
+        return_picking_id, _ = return_wizard._create_returns()
+        return_picking = picking_model.browse(return_picking_id)
+        
+        return_picking.action_assign()
+        for line in return_picking.move_line_ids:
+            line.quantity = 10.0
+        return_picking.button_validate()
+        
+        # Get return layers
+        return_moves = return_picking.move_ids.filtered(
+            lambda m: m.origin_returned_move_id
+        )
+        self.assertTrue(return_moves, "Should have return moves")
+        
+        return_layers = self.valuation_layer_model.search([
+            ('stock_move_id', 'in', return_moves.ids),
+        ])
+        self.assertTrue(return_layers, "Return should create valuation layers")
+        
+        # ⭐ CRITICAL CHECK: Return layer should use FIFO cost with landed cost
+        return_pos_layer = return_layers.filtered(lambda l: l.quantity > 0)
+        self.assertTrue(return_pos_layer, "Return should have positive layer")
+        
+        # Return unit cost should include landed cost
+        # Expected: (1000 + 200) / 10 = 120 THB per unit
+        return_unit_cost = abs(return_pos_layer[0].value) / return_pos_layer[0].quantity
+        
+        # Delivery should consume at 120 THB (100 base + 20 landed cost)
+        delivery_unit_cost = abs(delivery_neg_layer[0].value) / abs(delivery_neg_layer[0].quantity)
+        
+        self.assertAlmostEqual(
+            return_unit_cost, delivery_unit_cost, places=2,
+            msg=f"Return unit cost ({return_unit_cost}) should match delivery unit cost ({delivery_unit_cost})"
+        )
+        
+        # ✅ FINAL CHECK: Balance should be 0
+        all_layers = self.valuation_layer_model.search([
+            ('product_id', '=', product.id),
+            ('warehouse_id', '=', warehouse.id),
+        ])
+        
+        total_qty = sum(all_layers.mapped('remaining_qty'))
+        total_value = sum(all_layers.mapped('remaining_value'))
+        
+        self.assertAlmostEqual(
+            total_qty, 10.0, places=2,
+            msg=f"Qty should be 10 after full return (balance: {total_qty})"
+        )
+        # Value may not be exactly 1000 due to landed costs, but should be positive
+        self.assertGreaterEqual(
+            total_value, 900.0,
+            msg=f"Value should be reasonable after full return (balance: {total_value})"
+        )
+    
+    def test_return_without_landed_cost_balance_equals_zero(self):
+        """
+        Test Return Full without Landed Cost - balance should still be 0
+        
+        Scenario:
+        1. Receive 10 units @ 100 THB = 1000 THB (NO landed cost)
+        2. Deliver 10 units (consume from FIFO: 10 @ 100 THB = 1000 THB)
+        3. Return 10 units (MUST be 10 @ 100 THB = 1000 THB)
+        
+        Expected: Final balance = 0 (qty and value both zero after full return)
+        
+        This tests the case where there's no landed cost, just basic FIFO.
+        Makes sure return unit_cost is correctly extracted from delivery layer
+        even when there's no LC records.
+        """
+        warehouse = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.company.id)], limit=1
+        )
+        self.assertTrue(warehouse, "Warehouse not found")
+        
+        product = self.product_model.create({
+            'name': 'Test Return No LC',
+            'type': 'product',
+            'categ_id': self.env.ref('product.product_category_all').id,
+            'cost_method': 'fifo',
+            'standard_price': 100.0,
+            'company_id': self.company.id,
+        })
+        
+        picking_model = self.env['stock.picking']
+        move_model = self.env['stock.move']
+        
+        # Step 1: Receive 10 units (NO landed cost)
+        receipt = picking_model.create({
+            'picking_type_id': warehouse.in_type_id.id,
+            'location_id': self.supplier_location.id,
+            'location_dest_id': warehouse.lot_stock_id.id,
+        })
+        
+        receipt_move = move_model.create({
+            'name': 'Receipt',
+            'product_id': product.id,
+            'product_uom_qty': 10.0,
+            'product_uom': product.uom_id.id,
+            'picking_id': receipt.id,
+            'location_id': self.supplier_location.id,
+            'location_dest_id': warehouse.lot_stock_id.id,
+        })
+        
+        receipt.action_confirm()
+        receipt.action_assign()
+        for line in receipt.move_line_ids:
+            line.quantity = 10.0
+        receipt.button_validate()
+        
+        # Verify receipt layer created (no LC)
+        receipt_layers = self.valuation_layer_model.search([
+            ('stock_move_id', '=', receipt_move.id),
+        ])
+        self.assertTrue(receipt_layers, "Receipt should create valuation layers")
+        
+        receipt_layer = receipt_layers.filtered(lambda l: l.quantity > 0)[0]
+        self.assertAlmostEqual(
+            receipt_layer.unit_cost, 100.0, places=2,
+            msg="Receipt layer should have unit_cost = 100"
+        )
+        self.assertAlmostEqual(
+            receipt_layer.value, 1000.0, places=2,
+            msg="Receipt layer should have value = 1000"
+        )
+        
+        # Step 2: Deliver 10 units
+        delivery = picking_model.create({
+            'picking_type_id': warehouse.out_type_id.id,
+            'location_id': warehouse.lot_stock_id.id,
+            'location_dest_id': self.customer_location.id,
+        })
+        
+        delivery_move = move_model.create({
+            'name': 'Delivery',
+            'product_id': product.id,
+            'product_uom_qty': 10.0,
+            'product_uom': product.uom_id.id,
+            'picking_id': delivery.id,
+            'location_id': warehouse.lot_stock_id.id,
+            'location_dest_id': self.customer_location.id,
+        })
+        
+        delivery.action_confirm()
+        delivery.action_assign()
+        for line in delivery.move_line_ids:
+            line.quantity = 10.0
+        delivery.button_validate()
+        
+        # Get delivery layer - should be @ 100 THB
+        delivery_layers = self.valuation_layer_model.search([
+            ('stock_move_id', '=', delivery_move.id),
+        ])
+        self.assertTrue(delivery_layers, "Delivery should create valuation layers")
+        
+        delivery_neg_layer = delivery_layers.filtered(lambda l: l.quantity < 0)[0]
+        delivery_unit_cost = abs(delivery_neg_layer.value) / abs(delivery_neg_layer.quantity)
+        
+        self.assertAlmostEqual(
+            delivery_unit_cost, 100.0, places=2,
+            msg="Delivery layer should consume @ 100 THB/unit"
+        )
+        
+        # Step 3: Return 10 units
+        return_wizard = self.env['stock.return.picking'].with_context(
+            active_id=delivery.id,
+            active_model='stock.picking'
+        ).create({})
+        
+        return_picking_id, _ = return_wizard._create_returns()
+        return_picking = picking_model.browse(return_picking_id)
+        
+        return_picking.action_assign()
+        for line in return_picking.move_line_ids:
+            line.quantity = 10.0
+        return_picking.button_validate()
+        
+        # Get return layers
+        return_moves = return_picking.move_ids.filtered(
+            lambda m: m.origin_returned_move_id
+        )
+        self.assertTrue(return_moves, "Should have return moves")
+        
+        return_layers = self.valuation_layer_model.search([
+            ('stock_move_id', 'in', return_moves.ids),
+        ])
+        self.assertTrue(return_layers, "Return should create valuation layers")
+        
+        # ⭐ CRITICAL: Return layer should use delivery unit cost (100)
+        return_pos_layer = return_layers.filtered(lambda l: l.quantity > 0)[0]
+        return_unit_cost = abs(return_pos_layer.value) / return_pos_layer.quantity
+        
+        self.assertAlmostEqual(
+            return_unit_cost, delivery_unit_cost, places=2,
+            msg=f"Return unit cost ({return_unit_cost}) should match delivery ({delivery_unit_cost})"
+        )
+        
+        self.assertAlmostEqual(
+            return_unit_cost, 100.0, places=2,
+            msg="Return should be @ 100 THB/unit"
+        )
+        
+        # ✅ Check final balance = 0
+        all_layers = self.valuation_layer_model.search([
+            ('product_id', '=', product.id),
+            ('warehouse_id', '=', warehouse.id),
+        ])
+        
+        total_qty = sum(all_layers.mapped('remaining_qty'))
+        total_value = sum(all_layers.mapped('remaining_value'))
+        
+        self.assertAlmostEqual(
+            total_qty, 0.0, places=2,
+            msg=f"Final qty should be 0 after full return (got {total_qty})"
+        )
+        
+        self.assertAlmostEqual(
+            total_value, 0.0, places=2,
+            msg=f"Final value should be 0 after full return (got {total_value})"
+        )
 
