@@ -1,6 +1,6 @@
 {
     'name': 'Buz Stock FIFO by Warehouse',
-    'version': '17.0.1.1.5',
+    'version': '17.0.1.1.6',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -77,6 +77,18 @@ Requirements:
 - stock_landed_costs module for landed cost functionality
 
 Version History:
+- 17.0.1.1.6: FEATURE - Cross-Warehouse Returns Support
+  * REMOVED restriction: Returns can now go to DIFFERENT warehouse than original
+  * Safe implementation: Cost from original warehouse's FIFO, layer at destination warehouse
+  * Use case: ขายจาก WH-A แต่ลูกค้าคืนของเข้าคลัง WH-B
+  * Cost determinism: Uses original sale's FIFO cost (including landed costs)
+  * Layer placement: Created at destination warehouse (where stock returns)
+  * FIFO scope: Returned stock becomes part of destination warehouse's FIFO queue
+  * Benefits: Flexible logistics without breaking cost accuracy
+  * Example: Sell from Bangkok warehouse, customer returns to Chiang Mai warehouse
+  * Implementation: Modified _get_fifo_valuation_layer_warehouse() and _update_created_layers_warehouse()
+  * Removed validation that blocked cross-warehouse returns in _action_done()
+  * Added comprehensive tests: test_cross_warehouse_return.py
 - 17.0.1.1.5: CRITICAL FIX - Enhanced inter-warehouse transfer to ALWAYS create both layers
   * Fixed _ensure_inter_warehouse_valuation_layers() to create BOTH negative AND positive layers
   * Negative layer at source warehouse (consumes from FIFO queue)

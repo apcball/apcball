@@ -41,7 +41,10 @@ class StockMove(models.Model):
         Determine the appropriate warehouse for FIFO valuation layer.
         
         Rules:
-        - RETURN MOVES: MUST use original warehouse (critical for FIFO accuracy)
+        - RETURN MOVES (Cross-Warehouse): Use DESTINATION warehouse (where stock returns to)
+          * Cost comes from original warehouse's FIFO layers
+          * Layer created at destination warehouse for future FIFO consumption
+          * This allows safe cross-warehouse returns
         - Supplier/Production → Internal/Transit: use destination warehouse (new stock)
         - Transit → Internal: use destination warehouse (warehouse receipt)
         - Internal → Transit: use source warehouse (warehouse shipment)
@@ -58,23 +61,21 @@ class StockMove(models.Model):
         if not self.location_id or not self.location_dest_id:
             return None
         
-        # 🔴 CRITICAL FIX: Return moves MUST use original warehouse
-        # This prevents negative warehouse balance issues
+        # ✅ NEW: Cross-warehouse returns - use DESTINATION warehouse
+        # Cost will be taken from original warehouse's FIFO, but layer created at destination
         if self.origin_returned_move_id:
-            original_move = self.origin_returned_move_id
+            # For return moves, ALWAYS use destination warehouse (where stock is returning to)
+            # This allows flexible cross-warehouse returns while maintaining cost accuracy
+            if self.location_dest_id and self.location_dest_id.usage == 'internal':
+                dest_warehouse = self.location_dest_id.warehouse_id
+                if dest_warehouse:
+                    return dest_warehouse
             
-            # Try to get warehouse from original move's SOURCE location (where stock was taken from)
-            # For delivery: Internal -> Customer, we want the Internal location's warehouse
-            if original_move.location_id and original_move.location_id.usage == 'internal':
-                original_warehouse = original_move.location_id.warehouse_id
-                if original_warehouse:
-                    return original_warehouse
-            
-            # Fallback: try destination if source is not internal (e.g., Production -> Internal return)
-            if original_move.location_dest_id and original_move.location_dest_id.usage == 'internal':
-                original_warehouse = original_move.location_dest_id.warehouse_id
-                if original_warehouse:
-                    return original_warehouse
+            # Fallback: try transit location for returns in transit
+            if self.location_dest_id and self.location_dest_id.usage == 'transit':
+                dest_warehouse = self.location_dest_id.warehouse_id
+                if dest_warehouse:
+                    return dest_warehouse
         
         source_usage = self.location_id.usage
         dest_usage = self.location_dest_id.usage
@@ -166,37 +167,12 @@ class StockMove(models.Model):
         
         Core principle: Let Odoo create layers first, then enhance with warehouse_id.
         For inter-warehouse transfers, if Odoo doesn't create layers, we create them.
+        
+        ✅ Cross-warehouse returns are now ALLOWED:
+        - Cost comes from original warehouse's FIFO layers
+        - Layer created at destination warehouse (where stock returns)
+        - Safe and deterministic cost flow
         """
-        from odoo.exceptions import ValidationError
-        
-        # 🔴 VALIDATION: Return moves must go back to original warehouse
-        for move in self:
-            if move.origin_returned_move_id:
-                original_move = move.origin_returned_move_id
-                
-                # Get original warehouse from original move's location
-                original_wh = None
-                if original_move.location_id and original_move.location_id.usage == 'internal':
-                    original_wh = original_move.location_id.warehouse_id
-                elif original_move.location_dest_id and original_move.location_dest_id.usage == 'internal':
-                    original_wh = original_move.location_dest_id.warehouse_id
-                
-                # Get the warehouse this return will use
-                return_wh = move._get_fifo_valuation_layer_warehouse()
-                
-                # If both warehouses exist and they're different, block the move
-                if original_wh and return_wh and original_wh.id != return_wh.id:
-                    raise ValidationError(
-                        f"❌ ไม่สามารถ Return ไปคนละ Warehouse ได้\n\n"
-                        f"เอกสาร: {move.picking_id.name or move.name}\n"
-                        f"สินค้า: {move.product_id.display_name}\n"
-                        f"Warehouse ต้นทาง (ขายไป): {original_wh.name}\n"
-                        f"Warehouse ปลายทาง (Return เข้า): {return_wh.name}\n\n"
-                        f"⚠️ เพื่อความถูกต้องของ FIFO Valuation\n"
-                        f"การ Return ต้องกลับไปที่ Warehouse เดิม: {original_wh.name}\n\n"
-                        f"กรุณาเปลี่ยนปลายทางเป็น: {original_wh.name}"
-                    )
-        
         # Call parent implementation first - this creates the standard layers
         result = super()._action_done(cancel_backorder=cancel_backorder)
         
@@ -407,13 +383,15 @@ class StockMove(models.Model):
             ])
             
             # For return moves, calculate unit cost from original delivery layer WITH landed costs
+            # ✅ NEW: Support cross-warehouse returns - cost from original WH, layer at destination WH
             return_unit_cost = None
             return_total_cost = None
+            original_wh = None  # Store original warehouse for cost calculation
+            
             if move.origin_returned_move_id:
                 original_move = move.origin_returned_move_id
                 
-                # Get original warehouse from original move's location
-                original_wh = None
+                # Get original warehouse from original move's location (where it was sold/consumed from)
                 if original_move.location_id and original_move.location_id.usage == 'internal':
                     original_wh = original_move.location_id.warehouse_id
                 elif original_move.location_dest_id and original_move.location_dest_id.usage == 'internal':
@@ -483,35 +461,59 @@ class StockMove(models.Model):
                         )
             
             for layer in layers:
-                # Determine correct warehouse based on layer quantity
+                # Determine correct warehouse based on layer quantity and move type
+                is_return = bool(move.origin_returned_move_id)
+                
                 if layer.quantity < 0:
-                    # Negative layer (outgoing) - use source warehouse
-                    if source_wh and (not layer.warehouse_id or layer.warehouse_id.id != source_wh.id):
-                        layer.warehouse_id = source_wh.id
-                    # Fix unit_cost for return moves using FIFO cost with landed costs
+                    # Negative layer (outgoing/consumption)
+                    if is_return:
+                        # ✅ Cross-warehouse return: negative layer at DESTINATION warehouse
+                        # (consuming from future FIFO queue at return destination)
+                        if dest_wh and (not layer.warehouse_id or layer.warehouse_id.id != dest_wh.id):
+                            layer.warehouse_id = dest_wh.id
+                            _logger.info(
+                                f"Cross-warehouse return: Set negative layer {layer.id} "
+                                f"to destination warehouse {dest_wh.name}"
+                            )
+                    else:
+                        # Regular outgoing: use source warehouse
+                        if source_wh and (not layer.warehouse_id or layer.warehouse_id.id != source_wh.id):
+                            layer.warehouse_id = source_wh.id
+                    
+                    # Fix unit_cost for return moves using FIFO cost with landed costs from ORIGINAL warehouse
                     if return_unit_cost is not None and return_unit_cost > 0:
                         layer.unit_cost = return_unit_cost
                         layer.value = layer.quantity * return_unit_cost
                         _logger.info(
                             f"Return negative layer {layer.id}: "
-                            f"Set unit_cost={return_unit_cost}, value={layer.value}"
+                            f"Set unit_cost={return_unit_cost} (from original WH: {original_wh.name if original_wh else 'Unknown'}), "
+                            f"value={layer.value}, warehouse={layer.warehouse_id.name if layer.warehouse_id else 'None'}"
                         )
+                        
                 elif layer.quantity > 0:
-                    # Positive layer (incoming) - use destination warehouse
+                    # Positive layer (incoming) - ALWAYS use destination warehouse
                     if dest_wh and (not layer.warehouse_id or layer.warehouse_id.id != dest_wh.id):
                         layer.warehouse_id = dest_wh.id
-                    # Fix unit_cost for return moves using FIFO cost with landed costs
+                        if is_return:
+                            _logger.info(
+                                f"Cross-warehouse return: Set positive layer {layer.id} "
+                                f"to destination warehouse {dest_wh.name} "
+                                f"(cost from original WH: {original_wh.name if original_wh else 'Unknown'})"
+                            )
+                    
+                    # Fix unit_cost for return moves using FIFO cost with landed costs from ORIGINAL warehouse
                     if return_unit_cost is not None and return_unit_cost > 0:
                         layer.unit_cost = return_unit_cost
                         layer.value = layer.quantity * return_unit_cost
                         _logger.info(
                             f"Return positive layer {layer.id}: "
-                            f"Set unit_cost={return_unit_cost}, value={layer.value}"
+                            f"Set unit_cost={return_unit_cost} (from original WH: {original_wh.name if original_wh else 'Unknown'}), "
+                            f"value={layer.value}, warehouse={layer.warehouse_id.name if layer.warehouse_id else 'None'}"
                         )
                     
                     # Copy landed cost allocations from original move to return move
                     # This ensures landed costs are properly tracked and reversed
-                    if move.origin_returned_move_id:
+                    if is_return:
                         self._copy_landed_cost_to_return(
                             move.origin_returned_move_id, move, layer
                         )
