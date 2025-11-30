@@ -144,9 +144,19 @@ class StockMove(models.Model):
         Problem: Standard Odoo creates layer first, then _run_fifo() runs, THEN we set warehouse_id.
         Solution: Pass warehouse_id in context so it's set BEFORE _run_fifo() runs.
         """
+        import logging
+        _logger = logging.getLogger(__name__)
+        
         svl_vals_list = []
         for move in self:
             warehouse = move._get_fifo_valuation_layer_warehouse()
+            
+            _logger.info(
+                f"🏭 _create_out_svl for move {move.name}: "
+                f"from {move.location_id.complete_name} → {move.location_dest_id.complete_name}, "
+                f"warehouse={warehouse.name if warehouse else 'None'}"
+            )
+            
             if warehouse:
                 # Set warehouse_id in context so layer gets it during creation
                 move = move.with_context(fifo_warehouse_id=warehouse.id)
@@ -158,10 +168,19 @@ class StockMove(models.Model):
             if warehouse:
                 for vals in move_vals:
                     vals['warehouse_id'] = warehouse.id
+                    _logger.info(
+                        f"  ✅ Added warehouse_id={warehouse.id} ({warehouse.name}) to SVL vals: "
+                        f"qty={vals.get('quantity', 0):.2f}"
+                    )
+            else:
+                _logger.warning(
+                    f"  ⚠️ No warehouse found for move {move.name}, layer will have no warehouse_id!"
+                )
             
             svl_vals_list.extend(move_vals)
         
         # Create layers with warehouse_id already set
+        _logger.info(f"🔨 Creating {len(svl_vals_list)} valuation layers")
         return self.env['stock.valuation.layer'].sudo().create(svl_vals_list)
     
     def _action_done(self, cancel_backorder=False):

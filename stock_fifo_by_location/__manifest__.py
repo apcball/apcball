@@ -1,6 +1,6 @@
 {
     'name': 'Buz Stock FIFO by Warehouse',
-    'version': '17.0.1.2.2',
+    'version': '17.0.1.2.6',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -82,6 +82,75 @@ Requirements:
 - stock_landed_costs module for landed cost functionality
 
 Version History:
+- 17.0.1.2.6: CRITICAL FIX - Override product._get_fifo_candidates()
+  * Root cause found: Odoo calls product._run_fifo() → product._get_fifo_candidates()
+  * Our stock.valuation.layer._run_fifo() override was NEVER called!
+  * Odoo standard flow: move → product._run_fifo() → product._get_fifo_candidates()
+  * Problem: _get_fifo_candidates() returns ALL layers from ALL warehouses
+  * Solution: Override product._get_fifo_candidates() to filter by warehouse
+  * New model: product.product with _get_fifo_candidates() override
+  * Reads warehouse_id from context (fifo_warehouse_id key)
+  * Returns only candidates from specific warehouse
+  * Example:
+    - Delivery from ทรัพย์สิน (warehouse_id=28)
+    - _get_fifo_candidates() filters: warehouse_id=28
+    - Returns only layers from ทรัพย์สิน
+    - No more consuming from คลังวัตถุดิบ 2 ✅
+  * Benefits:
+    - Correct FIFO consumption per warehouse
+    - Works with Odoo's standard product._run_fifo() flow
+    - No need to override stock.valuation.layer._run_fifo()
+- 17.0.1.2.5: CRITICAL FIX - FLUSH before REFRESH in _run_fifo()
+  * Fixed _run_fifo() still consuming from wrong warehouse
+  * Problem: refresh() without flush() reads stale data from database
+  * Root cause: warehouse_id not flushed to DB before refresh()
+  * Example from production: 
+    - Layer 371981: warehouse_id=28 (ทรัพย์สิน) created
+    - _run_fifo() called immediately
+    - refresh() reads OLD data without warehouse_id
+    - Consumes from Layer 371974: warehouse_id=36 (NC) ❌
+  * Solution: flush_recordset() BEFORE refresh()
+  * Sequence: create() → flush_recordset() → refresh() → query candidates
+  * Benefits:
+    - warehouse_id guaranteed to be in database before query
+    - FIFO queue search uses correct warehouse_id
+    - No more cross-warehouse consumption
+- 17.0.1.2.4: CRITICAL FIX - Delivery FIFO Consumption from Wrong Warehouse
+  * Fixed _run_fifo() consuming from wrong warehouse during delivery
+  * Problem: warehouse_id not properly set when _run_fifo() is called
+  * Root cause: Odoo calls _run_fifo() during create() before warehouse_id is committed
+  * Solutions implemented:
+    1. Ensure warehouse_id is in vals dict BEFORE super().create()
+    2. Added refresh() in _run_fifo() to force read from database
+    3. Use explicit warehouse_id variable instead of relying on self.warehouse_id
+    4. Enhanced logging to verify warehouse_id at each step
+  * New logging added:
+    - "Creating layer with warehouse_id=X" (before creation)
+    - "Layer X created with warehouse_id=Y" (after creation)
+    - "_run_fifo() for Layer X: Warehouse=Y (ID=Z)" (during FIFO)
+    - "Consuming from Layer X at warehouse Y" (consumption detail)
+  * Test case: 
+    - Delivery from Warehouse ทรัพย์สิน should consume ONLY from ทรัพย์สิน FIFO
+    - Before: Consumed from คลังสินค้า NC instead ❌
+    - After: Consumes from correct warehouse ✅
+  * Benefits:
+    - Correct COGS per warehouse
+    - Accurate remaining_qty per warehouse
+    - No cross-warehouse consumption
+    - Better debugging with detailed logs
+- 17.0.1.2.3: CRITICAL FIX - FIFO Queue Visibility (Cache/Flush Issue)
+  * Fixed _run_fifo() consuming from wrong warehouse
+  * Problem: Sale from Warehouse-A → FIFO consumed from Warehouse-B
+  * Root cause: search() didn't see recently created layers in same transaction
+  * Example: Return move creates layer at WH-A, then sale from WH-A doesn't see it
+  * Solution: Added flush_model() before querying FIFO candidates
+  * Now ensures all pending database writes are flushed before FIFO query
+  * Fixes race condition where layers created moments before aren't visible
+  * Test case: 
+    - Return 5 units to NC warehouse
+    - Immediately sell 1 unit from NC warehouse
+    - Before: FIFO consumed from different warehouse ❌
+    - After: FIFO consumes from NC warehouse correctly ✅
 - 17.0.1.2.2: CRITICAL FIX - Return Moves for Inter-Warehouse Transfers
   * Fixed return moves not creating positive valuation layers
   * Fixed negative layers being assigned to wrong warehouse

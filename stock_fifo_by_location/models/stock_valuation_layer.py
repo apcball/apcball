@@ -78,14 +78,25 @@ class StockValuationLayer(models.Model):
         
         When creating valuation layers, warehouse_id can be passed via context
         under key 'fifo_warehouse_id'.
+        
+        🔴 CRITICAL v17.0.1.2.4: Ensure warehouse_id is set BEFORE calling super().create()
+        because Odoo's create() will call _run_fifo() which needs warehouse_id to be set.
         """
+        import logging
+        _create_logger = logging.getLogger(__name__)
+        
         # Priority 1: Get warehouse from context if provided
         if not vals.get('warehouse_id') and self.env.context.get('fifo_warehouse_id'):
             vals['warehouse_id'] = self.env.context.get('fifo_warehouse_id')
+            _create_logger.info(f"📍 Layer create: warehouse_id={vals['warehouse_id']} from context")
         
         # Priority 2: Derive from stock_move if not set yet
         if not vals.get('warehouse_id') and vals.get('stock_move_id'):
             move = self.env['stock.move'].browse(vals['stock_move_id'])
+            _create_logger.info(
+                f"📍 Layer create: move={move.name}, "
+                f"from {move.location_id.complete_name} → {move.location_dest_id.complete_name}"
+            )
             if move:
                 quantity = vals.get('quantity', 0)
                 source_usage = move.location_id.usage if move.location_id else None
@@ -95,6 +106,10 @@ class StockValuationLayer(models.Model):
                 if quantity > 0:
                     if move.location_dest_id and move.location_dest_id.warehouse_id:
                         vals['warehouse_id'] = move.location_dest_id.warehouse_id.id
+                        _create_logger.info(
+                            f"📍 Positive layer: set warehouse_id={vals['warehouse_id']} "
+                            f"({move.location_dest_id.warehouse_id.name}) from dest location"
+                        )
                 # For negative layers (outgoing/consumption): determine source warehouse
                 else:
                     # Determine the correct warehouse based on move type
@@ -102,10 +117,18 @@ class StockValuationLayer(models.Model):
                         # Transit/Internal → Anywhere: Track source warehouse
                         if move.location_id and move.location_id.warehouse_id:
                             vals['warehouse_id'] = move.location_id.warehouse_id.id
+                            _create_logger.info(
+                                f"📍 Negative layer: set warehouse_id={vals['warehouse_id']} "
+                                f"({move.location_id.warehouse_id.name}) from source location (internal/transit)"
+                            )
                     elif dest_usage in ('internal', 'transit'):
                         # Non-internal (supplier, etc) → Internal/Transit: Track destination warehouse
                         if move.location_dest_id and move.location_dest_id.warehouse_id:
                             vals['warehouse_id'] = move.location_dest_id.warehouse_id.id
+                            _create_logger.info(
+                                f"📍 Negative layer: set warehouse_id={vals['warehouse_id']} "
+                                f"({move.location_dest_id.warehouse_id.name}) from dest location (fallback)"
+                            )
         
         # Priority 3: Try to get from move_line through stock_move
         if not vals.get('warehouse_id') and vals.get('stock_move_id'):
@@ -121,7 +144,33 @@ class StockValuationLayer(models.Model):
                         vals['warehouse_id'] = move_line.location_id.warehouse_id.id
                         break
         
-        return super().create(vals)
+        if vals.get('warehouse_id'):
+            wh = self.env['stock.warehouse'].browse(vals['warehouse_id'])
+            _create_logger.info(
+                f"✅ Creating layer with warehouse_id={vals['warehouse_id']} ({wh.name}), "
+                f"qty={vals.get('quantity', 0):.2f}, product_id={vals.get('product_id')}"
+            )
+        else:
+            _create_logger.warning(
+                f"⚠️ Creating layer WITHOUT warehouse_id! qty={vals.get('quantity', 0)}, "
+                f"move_id={vals.get('stock_move_id')}, product_id={vals.get('product_id')}"
+            )
+        
+        # 🔴 CRITICAL: Call super with warehouse_id already in vals
+        # This ensures warehouse_id is set before _run_fifo() is called
+        layer = super().create(vals)
+        
+        # 🔴 VERIFY: Log the actual warehouse_id after creation
+        if layer.warehouse_id:
+            _create_logger.info(
+                f"✅ Layer {layer.id} created with warehouse_id={layer.warehouse_id.id} ({layer.warehouse_id.name})"
+            )
+        else:
+            _create_logger.error(
+                f"❌ Layer {layer.id} created WITHOUT warehouse_id! This will cause wrong FIFO consumption!"
+            )
+        
+        return layer
     
     def _validate_location_consistency(self):
         """
@@ -399,30 +448,61 @@ class StockValuationLayer(models.Model):
         
         # Negative quantity (outgoing) - need to consume from FIFO queue
         # CRITICAL: Only consume from the SAME warehouse
-        if not self.warehouse_id:
-            _logger.warning(
-                f"Layer {self.id} for product {self.product_id.display_name} "
-                f"has no warehouse_id, falling back to standard FIFO"
+        
+        # 🔴 CRITICAL FIX v17.0.1.2.6: This method is now mostly unused
+        # since we override product._get_fifo_candidates() instead
+        # But keep for manual calls to _run_fifo() (e.g., inter-warehouse transfers)
+        
+        _logger.error(f"🔧 _run_fifo() Layer {self.id}: Product={self.product_id.display_name}, Qty={quantity}")
+        
+        # Flush and invalidate to ensure warehouse_id is current
+        self.flush_recordset(['warehouse_id', 'product_id', 'company_id'])
+        self.invalidate_recordset(['warehouse_id', 'product_id', 'company_id'])
+        
+        # Get warehouse_id - should be set by now from create()
+        layer_warehouse_id = self.warehouse_id.id if self.warehouse_id else False
+        
+        if not layer_warehouse_id:
+            _logger.error(
+                f"❌ Layer {self.id} for product {self.product_id.display_name} "
+                f"has NO warehouse_id in _run_fifo() even after flush+refresh! "
+                f"This will cause incorrect FIFO consumption. "
+                f"Falling back to standard FIFO (consuming from all warehouses)."
             )
             return super(StockValuationLayer, self)._run_fifo(quantity, company)
+        
+        # 🔴 CRITICAL FIX v17.0.1.2.3: Flush pending database writes before querying
+        # This ensures we see all recently created layers (e.g., return moves)
+        # Without this, we might not see layers created in the same transaction
+        self.env['stock.valuation.layer'].flush_model(['product_id', 'warehouse_id', 'remaining_qty', 'company_id', 'create_date'])
         
         # Get FIFO queue for this product at THIS warehouse only
         candidates_domain = [
             ('product_id', '=', self.product_id.id),
-            ('warehouse_id', '=', self.warehouse_id.id),  # 🔴 KEY: Same warehouse only
+            ('warehouse_id', '=', layer_warehouse_id),  # 🔴 KEY: Same warehouse only
             ('remaining_qty', '>', 0),
             ('company_id', '=', company.id),
         ]
         
+        _logger.error(f"🔧 Step 4: Searching candidates with domain: {candidates_domain}")
+        
         candidates = self.search(candidates_domain, order='create_date, id')
         
-        _logger.debug(
-            f"🔍 _run_fifo() for Layer {self.id}: "
+        # Get warehouse name for logging
+        warehouse_name = self.warehouse_id.name if self.warehouse_id else 'Unknown'
+        
+        _logger.error(
+            f"🔍 _run_fifo() QUERY RESULT - Layer {self.id}: "
             f"Product={self.product_id.display_name}, "
-            f"Warehouse={self.warehouse_id.name}, "
+            f"Warehouse={warehouse_name} (ID={layer_warehouse_id}), "
             f"Consuming qty={abs(quantity):.2f}, "
-            f"Found {len(candidates)} candidate layers with remaining_qty > 0"
+            f"Found {len(candidates)} candidate layers"
         )
+        
+        if candidates:
+            _logger.error(f"🔍 Candidate layers found:")
+            for c in candidates[:5]:  # Show first 5
+                _logger.error(f"  - Layer {c.id}: warehouse={c.warehouse_id.name if c.warehouse_id else 'None'} (ID={c.warehouse_id.id if c.warehouse_id else 'None'}), remaining={c.remaining_qty}")
         
         qty_to_take_on_candidates = abs(quantity)
         tmp_value = 0  # Accumulator for total value consumed
@@ -447,8 +527,8 @@ class StockValuationLayer(models.Model):
                 new_remaining_qty = 0
                 new_remaining_value = 0
             
-            _logger.debug(
-                f"  📥 Consuming from Layer {candidate.id}: "
+            _logger.error(
+                f"  📥 CONSUMING from Layer {candidate.id} at warehouse {candidate.warehouse_id.name if candidate.warehouse_id else 'None'} (ID={candidate.warehouse_id.id if candidate.warehouse_id else 'None'}): "
                 f"qty_taken={qty_taken_on_candidate:.2f} @ {candidate_unit_cost:.4f}/unit = {value_taken_on_candidate:.4f}, "
                 f"remaining: {candidate.remaining_qty:.2f} → {new_remaining_qty:.2f}"
             )
