@@ -193,7 +193,7 @@ class StockMove(models.Model):
     def _ensure_inter_warehouse_valuation_layers(self):
         """
         🔴 CRITICAL: Ensure BOTH negative (source) AND positive (dest) valuation layers
-        exist for inter-warehouse transfers.
+        exist for inter-warehouse transfers AND their return moves.
         
         แนวคิดที่ถูกต้องเวลา Transfer ข้ามคลัง A → B:
         
@@ -212,10 +212,27 @@ class StockMove(models.Model):
            - warehouse_id = WH-B
            - layer นี้คือแหล่ง FIFO ของ WH-B สำหรับการขาย/เบิกครั้งต่อไป
         
+        🔄 Return Move ข้ามคลัง (B → A):
+        
+        1. คลังต้นทาง B (ที่รับคืน) - ทำเหมือน "เบิกออก":
+           - หา FIFO layer ของ WH-B ตาม quantity ที่คืน
+           - remaining_qty ลดลง (ผ่าน _run_fifo)
+           - สร้าง SVL out:
+             * quantity = -qty
+             * value = -cost_total (from original transfer)
+             * warehouse_id = WH-B
+        
+        2. คลังปลายทาง A (ที่คืนกลับไป) - ต้องมี "in layer ใหม่" เสมอ:
+           - quantity = +qty
+           - value = +cost_total เดิมจาก original transfer
+           - unit_cost = cost_total / qty
+           - warehouse_id = WH-A
+           - remaining_qty = qty (เพิ่ม FIFO queue กลับมา)
+        
         ⚠️ ถ้าข้อ 2 ไม่ทำ:
-        - ที่คลัง B จะมี stock ปริมาณ แต่ไม่มี valuation layer
+        - ที่คลัง A จะมี stock ปริมาณ แต่ไม่มี valuation layer
         - remaining_qty = 0 ตลอด
-        - พอขายจาก WH-B ระบบจะหา layer ไม่เจอ
+        - พอขายจาก WH-A ระบบจะหา layer ไม่เจอ
         - ไปหยิบ global layer / หรือ warehouse อื่น / หรือคำนวณผิด
         """
         import logging
@@ -252,6 +269,9 @@ class StockMove(models.Model):
                 _logger.debug(f"Skip {move.name}: Not internal transfer (usage: {move.location_id.usage} -> {move.location_dest_id.usage})")
                 continue
             
+            # 🆕 Check if this is a return move
+            is_return_move = bool(move.origin_returned_move_id)
+            
             # Check what layers already exist for this move
             existing_layers = valuation_layer_model.search([
                 ('stock_move_id', '=', move.id),
@@ -266,8 +286,9 @@ class StockMove(models.Model):
                 for l in existing_layers
             )
             
+            move_type = "RETURN" if is_return_move else "TRANSFER"
             _logger.debug(
-                f"📦 Inter-warehouse move {move.name}: "
+                f"📦 Inter-warehouse {move_type} {move.name}: "
                 f"{source_wh.name} → {dest_wh.name}, "
                 f"Product: {product.name}, Qty: {move.product_qty}, "
                 f"Existing layers: {len(existing_layers)}, "
@@ -277,19 +298,51 @@ class StockMove(models.Model):
             
             company = move.company_id
             
-            # 🔴 STEP 1: Get FIFO cost from SOURCE warehouse
-            fifo_service = self.env['fifo.service']
-            fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
-                product, source_wh, move.product_qty, company.id
-            )
-            
-            # Extract unit cost
-            if isinstance(fifo_result, dict):
-                unit_cost = fifo_result.get('unit_cost', 0.0)
-                total_cost = fifo_result.get('cost', 0.0)
+            # 🔴 STEP 1: Determine unit cost
+            # For return moves, use cost from original transfer
+            # For regular transfers, get FIFO cost from source warehouse
+            if is_return_move and move.origin_returned_move_id:
+                # Get cost from original transfer's layers
+                original_move = move.origin_returned_move_id
+                original_layers = valuation_layer_model.search([
+                    ('stock_move_id', '=', original_move.id),
+                    ('quantity', '<', 0),  # Negative layer (outgoing from original source)
+                ], limit=1)
+                
+                if original_layers:
+                    unit_cost = abs(original_layers[0].unit_cost)
+                    total_cost = unit_cost * move.product_qty
+                    _logger.info(
+                        f"🔄 Return move: Using original transfer cost: "
+                        f"unit={unit_cost:.4f}, total={total_cost:.4f}"
+                    )
+                else:
+                    # Fallback if no original layer found
+                    _logger.warning(f"⚠️ Return move but no original layer found, using FIFO")
+                    fifo_service = self.env['fifo.service']
+                    fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
+                        product, source_wh, move.product_qty, company.id
+                    )
+                    if isinstance(fifo_result, dict):
+                        unit_cost = fifo_result.get('unit_cost', 0.0)
+                        total_cost = fifo_result.get('cost', 0.0)
+                    else:
+                        unit_cost = float(fifo_result) if fifo_result else 0.0
+                        total_cost = unit_cost * move.product_qty
             else:
-                unit_cost = float(fifo_result) if fifo_result else 0.0
-                total_cost = unit_cost * move.product_qty
+                # Regular transfer: Get FIFO cost from SOURCE warehouse
+                fifo_service = self.env['fifo.service']
+                fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
+                    product, source_wh, move.product_qty, company.id
+                )
+                
+                # Extract unit cost
+                if isinstance(fifo_result, dict):
+                    unit_cost = fifo_result.get('unit_cost', 0.0)
+                    total_cost = fifo_result.get('cost', 0.0)
+                else:
+                    unit_cost = float(fifo_result) if fifo_result else 0.0
+                    total_cost = unit_cost * move.product_qty
             
             # Fallback to standard price if still zero
             if unit_cost <= 0:
@@ -297,10 +350,11 @@ class StockMove(models.Model):
                 total_cost = unit_cost * move.product_qty
                 _logger.warning(f"⚠️ FIFO cost is 0, using standard_price fallback: {unit_cost}")
             
-            _logger.info(f"💰 FIFO cost from {source_wh.name}: unit={unit_cost:.4f}, total={total_cost:.4f}")
+            _logger.info(f"💰 Cost for {move_type}: unit={unit_cost:.4f}, total={total_cost:.4f}")
             
             # 🔴 STEP 2: Create negative layer at source warehouse (if not exists)
             if not has_negative_source:
+                neg_desc = f'Return OUT: {source_wh.name} → {dest_wh.name}' if is_return_move else f'Transfer OUT: {source_wh.name} → {dest_wh.name}'
                 neg_layer = valuation_layer_model.sudo().create({
                     'stock_move_id': move.id,
                     'product_id': product.id,
@@ -311,7 +365,7 @@ class StockMove(models.Model):
                     'remaining_qty': 0.0,  # Negative layers don't have remaining
                     'remaining_value': 0.0,
                     'company_id': company.id,
-                    'description': f'Transfer OUT: {source_wh.name} → {dest_wh.name}',
+                    'description': neg_desc,
                 })
                 _logger.info(f"✅ Created NEGATIVE layer at {source_wh.name}: qty={-move.product_qty}, value={-total_cost:.4f}")
                 
@@ -321,9 +375,20 @@ class StockMove(models.Model):
                 _logger.info(f"✅ Ran FIFO consumption at {source_wh.name}")
             else:
                 _logger.info(f"ℹ️ Negative layer at {source_wh.name} already exists (created by Odoo)")
+                # 🆕 FIX: Check if existing negative layer has correct warehouse_id
+                neg_layers = [l for l in existing_layers if l.quantity < 0]
+                for neg_layer in neg_layers:
+                    if neg_layer.warehouse_id and neg_layer.warehouse_id.id != source_wh.id:
+                        _logger.warning(
+                            f"⚠️ Fixing negative layer {neg_layer.id}: "
+                            f"Wrong warehouse {neg_layer.warehouse_id.name} → {source_wh.name}"
+                        )
+                        neg_layer.warehouse_id = source_wh.id
             
             # 🔴 STEP 3: Create positive layer at destination warehouse (if not exists)
+            # 🆕 CRITICAL FIX: This is essential for BOTH transfers AND returns!
             if not has_positive_dest:
+                pos_desc = f'Return IN: {source_wh.name} → {dest_wh.name}' if is_return_move else f'Transfer IN: {source_wh.name} → {dest_wh.name}'
                 pos_layer = valuation_layer_model.sudo().create({
                     'stock_move_id': move.id,
                     'product_id': product.id,
@@ -334,18 +399,28 @@ class StockMove(models.Model):
                     'remaining_qty': move.product_qty,  # ✅ This becomes FIFO source for dest warehouse
                     'remaining_value': total_cost,
                     'company_id': company.id,
-                    'description': f'Transfer IN: {source_wh.name} → {dest_wh.name}',
+                    'description': pos_desc,
                 })
+                action = "returned to" if is_return_move else "transferred to"
                 _logger.info(
                     f"✅ Created POSITIVE layer at {dest_wh.name}: "
                     f"qty={move.product_qty}, value={total_cost:.4f}, "
-                    f"remaining_qty={move.product_qty} (FIFO source for future sales)"
+                    f"remaining_qty={move.product_qty} (Stock {action} FIFO queue)"
                 )
             else:
                 _logger.info(f"ℹ️ Positive layer at {dest_wh.name} already exists (created by Odoo)")
+                # 🆕 FIX: Check if existing positive layer has correct warehouse_id
+                pos_layers = [l for l in existing_layers if l.quantity > 0]
+                for pos_layer in pos_layers:
+                    if pos_layer.warehouse_id and pos_layer.warehouse_id.id != dest_wh.id:
+                        _logger.warning(
+                            f"⚠️ Fixing positive layer {pos_layer.id}: "
+                            f"Wrong warehouse {pos_layer.warehouse_id.name} → {dest_wh.name}"
+                        )
+                        pos_layer.warehouse_id = dest_wh.id
             
             _logger.info(
-                f"🎉 Inter-warehouse transfer complete: "
+                f"🎉 Inter-warehouse {move_type} complete: "
                 f"{move.product_qty} x {product.name} @ {unit_cost:.4f}/unit "
                 f"from {source_wh.name} to {dest_wh.name}"
             )
@@ -470,13 +545,15 @@ class StockMove(models.Model):
                 if layer.quantity < 0:
                     # Negative layer (outgoing/consumption)
                     if is_return:
-                        # ✅ Cross-warehouse return: negative layer at DESTINATION warehouse
-                        # (consuming from future FIFO queue at return destination)
-                        if dest_wh and (not layer.warehouse_id or layer.warehouse_id.id != dest_wh.id):
-                            layer.warehouse_id = dest_wh.id
+                        # 🔴 CRITICAL FIX: Return move negative layer at SOURCE warehouse
+                        # Return move: A → B (returning stock from A back to B)
+                        # - Negative layer at A (consume from A's FIFO queue)
+                        # - Positive layer at B (add to B's FIFO queue)
+                        if source_wh and (not layer.warehouse_id or layer.warehouse_id.id != source_wh.id):
+                            layer.warehouse_id = source_wh.id
                             _logger.info(
-                                f"Cross-warehouse return: Set negative layer {layer.id} "
-                                f"to destination warehouse {dest_wh.name}"
+                                f"Return move: Set negative layer {layer.id} "
+                                f"to source warehouse {source_wh.name} (consuming from FIFO queue)"
                             )
                     else:
                         # Regular outgoing: use source warehouse

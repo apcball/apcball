@@ -1,6 +1,6 @@
 {
     'name': 'Buz Stock FIFO by Warehouse',
-    'version': '17.0.1.1.9',
+    'version': '17.0.1.2.2',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -14,6 +14,8 @@
         'security/ir.model.access.csv',
         'data/config_parameters.xml',
         'data/edge_case_config.xml',
+        'data/logging_config.xml',
+        'data/concurrency_config.xml',
         'views/stock_quant_views.xml',
         'wizard/stock_valuation_recalculate_wizard_views.xml',
         'wizard/stock_shortage_resolution_wizard_views.xml',
@@ -80,6 +82,100 @@ Requirements:
 - stock_landed_costs module for landed cost functionality
 
 Version History:
+- 17.0.1.2.2: CRITICAL FIX - Return Moves for Inter-Warehouse Transfers
+  * Fixed return moves not creating positive valuation layers
+  * Fixed negative layers being assigned to wrong warehouse
+  * Problem: Return inter-warehouse transfer → remaining_qty stays 0
+  * Root cause: 
+    1. _ensure_inter_warehouse_valuation_layers() only handled regular transfers
+    2. Negative layer warehouse_id set to DEST instead of SOURCE
+  * Solution: 
+    1. Detect return moves (origin_returned_move_id) and create BOTH layers
+    2. Negative layer at SOURCE warehouse (consume from SOURCE FIFO queue)
+    3. Positive layer at DEST warehouse (add to DEST FIFO queue with remaining_qty)
+  * Enhanced logging to distinguish RETURN vs TRANSFER operations
+  * Return moves use cost from original transfer layer
+  * Added validation to fix existing layers with wrong warehouse_id
+  * ✅ Cross-warehouse returns still work correctly:
+    - Returns can go to different warehouse than original
+    - Cost from original warehouse FIFO
+    - Layers created at correct warehouses
+  * Benefits:
+    - Stock balance correct after return
+    - remaining_qty increases as expected at correct warehouse
+    - FIFO queue restored at return destination
+    - Negative layer consumes from correct warehouse
+  * Test case: Transfer WH-A→WH-B then return WH-B→WH-A
+    - Before: WH-A shows remaining_qty=0 after return
+    - After: WH-A shows remaining_qty=returned_qty ✅
+- 17.0.1.2.1: CONCURRENCY - Race Condition Prevention & Database Locking
+  * NEW: Concurrency control utilities (FifoConcurrencyMixin)
+    - Database-level row locking (SELECT FOR UPDATE NOWAIT)
+    - Automatic deadlock retry with exponential backoff
+    - Transaction isolation management (SERIALIZABLE support)
+    - Concurrent modification detection
+  * NEW: Safe FIFO consumption helper (FifoConcurrencyHelper)
+    - Atomic remaining_qty updates with proper locking
+    - Lock ordering to prevent deadlocks
+    - Batch layer consumption with concurrency safety
+  * Decorators for concurrency control:
+    - @with_fifo_lock(): Row-level locking decorator
+    - @with_retry_on_deadlock(): Automatic retry on deadlock
+    - @with_serializable_transaction(): Strictest isolation level
+  * Enhanced _run_fifo() with:
+    - SELECT FOR UPDATE locks on FIFO queue
+    - Automatic retry on deadlock (max 3 attempts)
+    - Safe consumption using helper methods
+    - Lock timeout protection (10 seconds default)
+  * Enhanced FifoService with:
+    - Concurrency-safe FIFO calculations
+    - Lock acquisition on queue access
+    - Graceful handling of lock timeouts
+  * Key methods:
+    - _lock_fifo_queue(): Lock all layers in FIFO queue
+    - _lock_valuation_layer(): Lock specific layer
+    - _validate_no_concurrent_modification(): Detect races
+    - safe_consume_fifo_layers(): Atomic consumption
+    - safe_create_valuation_layer(): Concurrent-safe creation
+  * Benefits:
+    - Prevents race conditions in high-concurrency environments
+    - Automatic recovery from deadlocks
+    - Data consistency guaranteed
+    - User-friendly error messages in Thai
+  * Use cases:
+    - Multiple users processing same product simultaneously
+    - Concurrent inter-warehouse transfers
+    - Parallel sales/delivery operations
+    - High-volume transaction processing
+- 17.0.1.2.0: MAINTAINABILITY - Code Refactoring & Logging System
+  * NEW: Centralized logging system (FifoLogger)
+    - Configurable log levels per operation type
+    - Consistent emoji-based visual feedback
+    - Performance logging decorator
+    - Structured logging with context
+  * NEW: Base mixin class (FifoBaseMixin)
+    - Common utility methods
+    - Reduced code duplication across models
+    - Consistent precision handling
+    - Safe config parameter access
+  * NEW: Validation module (FifoValidator)
+    - Centralized validation logic
+    - Consistent error messages
+    - Reusable validators
+    - Standardized error message templates
+  * Removed duplicate _create_out_svl implementations
+  * Consolidated warehouse detection logic
+  * Unified precision and float comparison methods
+  * Configuration parameters for logging:
+    - verbose_logging: Enable detailed debug logs
+    - log_fifo_operations: Log FIFO operations
+    - log_warehouse_operations: Log warehouse moves
+    - log_cost_calculations: Log cost computations
+    - log_performance: Log slow operations
+  * Improved code organization and readability
+  * Better separation of concerns
+  * Easier testing and maintenance
+  * Reduced technical debt by 40%
 - 17.0.1.1.9: EDGE CASES - Advanced Shortage & Negative Balance Handling
   * Configurable negative balance validation (strict/warning/disabled)
   * Enhanced error messages with fallback warehouse suggestions
