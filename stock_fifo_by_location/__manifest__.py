@@ -1,6 +1,6 @@
 {
     'name': 'Buz Stock FIFO by Warehouse',
-    'version': '17.0.1.1.2',
+    'version': '17.0.1.1.4',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -13,7 +13,9 @@
     'data': [
         'security/ir.model.access.csv',
         'data/config_parameters.xml',
+        'wizard/stock_valuation_recalculate_wizard_views.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'auto_install': False,
     'application': False,
@@ -75,6 +77,21 @@ Requirements:
 - stock_landed_costs module for landed cost functionality
 
 Version History:
+- 17.0.1.1.4: CRITICAL FIX - Override _run_fifo() AND _create_out_svl() to respect warehouse boundaries
+  * Added _run_fifo() override in stock.valuation.layer
+  * Added _create_out_svl() override in stock.move to set warehouse_id BEFORE _run_fifo()
+  * FIFO consumption now only from SAME warehouse (no cross-warehouse)
+  * remaining_qty and remaining_value now calculated PER WAREHOUSE
+  * Negative layers now have warehouse_id set during creation (not after)
+  * Fixes issue where Remaining Qty != Moved Qty in valuation reports
+  * Each warehouse maintains truly independent FIFO queue
+  * Solves: ตัด stock ผิดคลัง causing incorrect valuation
+- 17.0.1.1.3: CRITICAL FIX - Return moves now correctly identify original warehouse
+  * Fixed _get_fifo_valuation_layer_warehouse() to get warehouse from location (not move.warehouse_id)
+  * Fixed validation in _action_done() to properly detect original warehouse
+  * Fixed _update_created_layers_warehouse() to correctly find original warehouse
+  * Return moves now ALWAYS use warehouse from original move's INTERNAL location
+  * Prevents cross-warehouse return issues causing negative balance
 - 17.0.1.1.2: CRITICAL FIX - Return moves use FIFO cost WITH landed costs
   * Fixed unit_cost calculation for return layers
   * Return moves now consume from FIFO queue including landed costs

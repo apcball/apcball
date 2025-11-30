@@ -23,3 +23,5 @@ __author__ = 'Custom Development'
 __license__ = 'LGPL-3'
 
 from . import models
+from . import wizard
+from .hooks import post_init_hook

@@ -3,3 +3,4 @@ access_landed_cost_location_user,Valuation Layer Landed Cost user,model_stock_va
 access_landed_cost_location_manager,Valuation Layer Landed Cost manager,model_stock_valuation_layer_landed_cost,stock.group_stock_manager,1,1,1,1
 access_landed_cost_allocation_user,Landed Cost Allocation user,model_stock_landed_cost_allocation,stock.group_stock_user,1,1,1,0
 access_landed_cost_allocation_manager,Landed Cost Allocation manager,model_stock_landed_cost_allocation,stock.group_stock_manager,1,1,1,1
+access_stock_valuation_recalculate_wizard_manager,stock.valuation.recalculate.wizard manager,model_stock_valuation_recalculate_wizard,stock.group_stock_manager,1,1,1,1

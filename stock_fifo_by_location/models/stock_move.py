@@ -61,12 +61,20 @@ class StockMove(models.Model):
         # 🔴 CRITICAL FIX: Return moves MUST use original warehouse
         # This prevents negative warehouse balance issues
         if self.origin_returned_move_id:
-            original_warehouse = self.origin_returned_move_id.warehouse_id
-            if original_warehouse:
-                return original_warehouse
-            # Fallback: try to get from original move's location
-            if self.origin_returned_move_id.location_id:
-                return self.origin_returned_move_id.location_id.warehouse_id
+            original_move = self.origin_returned_move_id
+            
+            # Try to get warehouse from original move's SOURCE location (where stock was taken from)
+            # For delivery: Internal -> Customer, we want the Internal location's warehouse
+            if original_move.location_id and original_move.location_id.usage == 'internal':
+                original_warehouse = original_move.location_id.warehouse_id
+                if original_warehouse:
+                    return original_warehouse
+            
+            # Fallback: try destination if source is not internal (e.g., Production -> Internal return)
+            if original_move.location_dest_id and original_move.location_dest_id.usage == 'internal':
+                original_warehouse = original_move.location_dest_id.warehouse_id
+                if original_warehouse:
+                    return original_warehouse
         
         source_usage = self.location_id.usage
         dest_usage = self.location_dest_id.usage
@@ -122,6 +130,36 @@ class StockMove(models.Model):
             return {'fifo_warehouse_id': warehouse.id}
         return {}
     
+    def _create_out_svl(self, forced_quantity=None):
+        """
+        🔴 CRITICAL OVERRIDE: Set warehouse_id in context BEFORE creating negative layer.
+        
+        This ensures that when _run_fifo() is called during layer creation,
+        the layer already has warehouse_id set, preventing cross-warehouse FIFO consumption.
+        
+        Problem: Standard Odoo creates layer first, then _run_fifo() runs, THEN we set warehouse_id.
+        Solution: Pass warehouse_id in context so it's set BEFORE _run_fifo() runs.
+        """
+        svl_vals_list = []
+        for move in self:
+            warehouse = move._get_fifo_valuation_layer_warehouse()
+            if warehouse:
+                # Set warehouse_id in context so layer gets it during creation
+                move = move.with_context(fifo_warehouse_id=warehouse.id)
+            
+            # Get standard vals
+            move_vals = move._get_out_svl_vals(forced_quantity)
+            
+            # Add warehouse_id to each val dict
+            if warehouse:
+                for vals in move_vals:
+                    vals['warehouse_id'] = warehouse.id
+            
+            svl_vals_list.extend(move_vals)
+        
+        # Create layers with warehouse_id already set
+        return self.env['stock.valuation.layer'].sudo().create(svl_vals_list)
+    
     def _action_done(self, cancel_backorder=False):
         """
         Override move completion to ensure warehouse context is passed to layer operations.
@@ -134,7 +172,15 @@ class StockMove(models.Model):
         # 🔴 VALIDATION: Return moves must go back to original warehouse
         for move in self:
             if move.origin_returned_move_id:
-                original_wh = move.origin_returned_move_id.warehouse_id
+                original_move = move.origin_returned_move_id
+                
+                # Get original warehouse from original move's location
+                original_wh = None
+                if original_move.location_id and original_move.location_id.usage == 'internal':
+                    original_wh = original_move.location_id.warehouse_id
+                elif original_move.location_dest_id and original_move.location_dest_id.usage == 'internal':
+                    original_wh = original_move.location_dest_id.warehouse_id
+                
                 # Get the warehouse this return will use
                 return_wh = move._get_fifo_valuation_layer_warehouse()
                 
@@ -299,10 +345,13 @@ class StockMove(models.Model):
             return_total_cost = None
             if move.origin_returned_move_id:
                 original_move = move.origin_returned_move_id
-                original_wh = original_move.warehouse_id
                 
-                if not original_wh and original_move.location_id:
+                # Get original warehouse from original move's location
+                original_wh = None
+                if original_move.location_id and original_move.location_id.usage == 'internal':
                     original_wh = original_move.location_id.warehouse_id
+                elif original_move.location_dest_id and original_move.location_dest_id.usage == 'internal':
+                    original_wh = original_move.location_dest_id.warehouse_id
                 
                 # CRITICAL FIX: Get unit cost from the ACTUAL delivery layer
                 # Do NOT try to consume from FIFO queue (it's empty after delivery)

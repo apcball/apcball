@@ -290,4 +290,106 @@ class StockValuationLayer(models.Model):
         
         precision = self.env['decimal.precision'].precision_get('Product Price')
         return float_round(total_landed_cost, precision_digits=precision)
+    
+    def _run_fifo(self, quantity, company):
+        """
+        🔴 CRITICAL OVERRIDE: Run FIFO per warehouse instead of globally.
+        
+        This is the KEY fix for the valuation issue. Odoo standard _run_fifo() 
+        calculates remaining_qty by consuming from ALL warehouses together,
+        which is incorrect for per-warehouse FIFO tracking.
+        
+        This override ensures FIFO consumption respects warehouse boundaries:
+        - Each warehouse maintains its own independent FIFO queue
+        - remaining_qty is calculated per warehouse
+        - No cross-warehouse consumption
+        
+        Args:
+            quantity: float - quantity to consume (negative for outgoing)
+            company: res.company - company context
+            
+        Returns:
+            None - updates remaining_qty and remaining_value in place
+        """
+        import logging
+        _logger = logging.getLogger(__name__)
+        
+        self.ensure_one()
+        
+        # For positive quantity (incoming), set remaining = quantity
+        if quantity > 0 or float_compare(quantity, 0, precision_rounding=self.product_id.uom_id.rounding) == 0:
+            self.remaining_qty = self.quantity
+            self.remaining_value = self.value
+            return
+        
+        # Negative quantity (outgoing) - need to consume from FIFO queue
+        # CRITICAL: Only consume from the SAME warehouse
+        if not self.warehouse_id:
+            _logger.warning(
+                f"Layer {self.id} for product {self.product_id.display_name} "
+                f"has no warehouse_id, falling back to standard FIFO"
+            )
+            return super(StockValuationLayer, self)._run_fifo(quantity, company)
+        
+        # Get FIFO queue for this product at THIS warehouse only
+        candidates_domain = [
+            ('product_id', '=', self.product_id.id),
+            ('warehouse_id', '=', self.warehouse_id.id),  # 🔴 KEY: Same warehouse only
+            ('remaining_qty', '>', 0),
+            ('company_id', '=', company.id),
+        ]
+        
+        candidates = self.search(candidates_domain, order='create_date, id')
+        
+        qty_to_take_on_candidates = abs(quantity)
+        tmp_value = 0  # Accumulator for total value consumed
+        
+        for candidate in candidates:
+            # How much can we take from this candidate?
+            qty_taken_on_candidate = min(qty_to_take_on_candidates, candidate.remaining_qty)
+            
+            # Calculate value proportion
+            candidate_unit_cost = candidate.remaining_value / candidate.remaining_qty if candidate.remaining_qty > 0 else 0
+            value_taken_on_candidate = qty_taken_on_candidate * candidate_unit_cost
+            
+            # Update candidate's remaining
+            new_remaining_qty = candidate.remaining_qty - qty_taken_on_candidate
+            new_remaining_value = candidate.remaining_value - value_taken_on_candidate
+            
+            # Ensure no negative remaining due to rounding
+            if new_remaining_qty < 0:
+                new_remaining_qty = 0
+                new_remaining_value = 0
+            
+            candidate_vals = {
+                'remaining_qty': new_remaining_qty,
+                'remaining_value': new_remaining_value,
+            }
+            candidate.write(candidate_vals)
+            
+            # Accumulate total value
+            tmp_value += value_taken_on_candidate
+            qty_to_take_on_candidates -= qty_taken_on_candidate
+            
+            # Check if we've consumed enough
+            if float_compare(qty_to_take_on_candidates, 0, precision_rounding=self.product_id.uom_id.rounding) <= 0:
+                break
+        
+        # If we couldn't consume all qty from FIFO queue (shortage)
+        if float_compare(qty_to_take_on_candidates, 0, precision_rounding=self.product_id.uom_id.rounding) > 0:
+            _logger.warning(
+                f"FIFO shortage: Product {self.product_id.display_name} at {self.warehouse_id.name}: "
+                f"Need {abs(quantity):.2f}, but only {abs(quantity) - qty_to_take_on_candidates:.2f} available. "
+                f"Shortage: {qty_to_take_on_candidates:.2f}"
+            )
+            # Use standard_price for the shortage
+            tmp_value += qty_to_take_on_candidates * self.product_id.standard_price
+        
+        # Update this layer's values
+        # Negative layers don't have remaining (they are consumption)
+        # IMPORTANT: Use 0.0 (float) not 0 to ensure proper database storage
+        self.write({
+            'remaining_qty': 0.0,
+            'remaining_value': 0.0,
+        })
 
