@@ -8,6 +8,9 @@ to valuation layers during inventory moves.
 
 from odoo import models, fields, api
 from odoo.tools import float_round, float_compare
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class StockMove(models.Model):
@@ -263,7 +266,7 @@ class StockMove(models.Model):
                 for l in existing_layers
             )
             
-            _logger.info(
+            _logger.debug(
                 f"📦 Inter-warehouse move {move.name}: "
                 f"{source_wh.name} → {dest_wh.name}, "
                 f"Product: {product.name}, Qty: {move.product_qty}, "

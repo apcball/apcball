@@ -53,6 +53,21 @@ class StockValuationLayerLandedCost(models.Model):
         help='The warehouse where this landed cost is applicable.'
     )
     
+    def init(self):
+        """Create composite indexes for landed cost queries."""
+        # Composite index for landed cost lookups by layer and warehouse
+        self.env.cr.execute("""
+            CREATE INDEX IF NOT EXISTS svl_landed_cost_layer_wh_idx
+            ON stock_valuation_layer_landed_cost (valuation_layer_id, warehouse_id)
+        """)
+        
+        # Index for product and warehouse landed cost aggregations
+        self.env.cr.execute("""
+            CREATE INDEX IF NOT EXISTS svl_landed_cost_product_wh_idx
+            ON stock_valuation_layer_landed_cost (warehouse_id, landed_cost_value)
+            WHERE landed_cost_value > 0
+        """)
+    
     landed_cost_id = fields.Many2one(
         'stock.landed.cost',
         string='Landed Cost',

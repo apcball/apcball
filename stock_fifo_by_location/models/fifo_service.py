@@ -226,11 +226,56 @@ class FifoService(models.AbstractModel):
         }
         
         if has_shortage and not allow_fallback:
-            raise UserError(
-                f'Insufficient quantity for product {product_id.display_name} '
-                f'at warehouse {warehouse_id.display_name}. '
-                f'Available: {available_qty}, Needed: {quantity}'
+            # Build detailed error message with suggestions
+            error_msg = (
+                f"❌ สินค้าไม่เพียงพอในคลัง!\n\n"
+                f"สินค้า: {product_id.display_name}\n"
+                f"คลัง: {warehouse_id.display_name}\n"
+                f"มีอยู่: {available_qty:.2f} {product_id.uom_id.name}\n"
+                f"ต้องการ: {quantity:.2f} {product_id.uom_id.name}\n"
+                f"ขาด: {shortage:.2f} {product_id.uom_id.name}\n\n"
             )
+            
+            # Try to find alternative warehouses
+            try:
+                fallback_whs = self._find_fallback_warehouses(
+                    product_id, warehouse_id, shortage, company_id
+                )
+                
+                if fallback_whs:
+                    error_msg += "💡 คลังอื่นที่มีสินค้า:\n"
+                    total_available_elsewhere = 0
+                    for fb in fallback_whs[:5]:  # Show top 5
+                        wh = self.env['stock.warehouse'].browse(fb['warehouse_id'])
+                        error_msg += f"   • {wh.name}: {fb['available_qty']:.2f} {product_id.uom_id.name}\n"
+                        total_available_elsewhere += fb['available_qty']
+                    
+                    if total_available_elsewhere >= shortage:
+                        error_msg += (
+                            f"\n✅ มีสินค้าเพียงพอในคลังอื่น (รวม {total_available_elsewhere:.2f})\n"
+                            f"\n🔧 แนะนำ: สร้าง Internal Transfer เพื่อโอนสินค้ามายังคลังนี้\n"
+                        )
+                    else:
+                        error_msg += (
+                            f"\n⚠️ รวมคลังอื่นมี {total_available_elsewhere:.2f} (ยังขาดอีก {shortage - total_available_elsewhere:.2f})\n"
+                            f"\n🔧 แนะนำ:\n"
+                            f"   1. โอนสินค้าจากคลังอื่นมาก่อน\n"
+                            f"   2. สั่งซื้อเพิ่มเติมจาก Supplier\n"
+                        )
+                else:
+                    error_msg += (
+                        f"⚠️ ไม่พบสินค้าในคลังอื่น\n\n"
+                        f"🔧 แนะนำ:\n"
+                        f"   1. สั่งซื้อสินค้าจาก Supplier\n"
+                        f"   2. ตรวจสอบ Receipt ที่ยังไม่ได้ Validate\n"
+                        f"   3. ตรวจสอบ Inventory Adjustment\n"
+                    )
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to find fallback warehouses: {e}")
+                error_msg += "\n⚠️ ไม่สามารถค้นหาคลังอื่นได้\n"
+            
+            raise UserError(error_msg)
         
         if has_shortage and allow_fallback:
             # Find other warehouses with available inventory
@@ -238,6 +283,7 @@ class FifoService(models.AbstractModel):
                 product_id, warehouse_id, shortage, company_id
             )
             result['fallback_warehouses'] = fallback_whs
+            result['can_fulfill'] = sum(fb['available_qty'] for fb in fallback_whs) >= shortage
         
         return result
     
@@ -287,6 +333,115 @@ class FifoService(models.AbstractModel):
                     break
         
         return fallback_results
+    
+    @api.model
+    def create_suggested_transfer(self, product_id, dest_warehouse_id, quantity, company_id=None):
+        """
+        Create suggested internal transfer to fulfill shortage.
+        
+        Finds best source warehouse and creates draft transfer.
+        
+        Args:
+            product_id: stock.product.product or id
+            dest_warehouse_id: stock.warehouse or id
+            quantity: float - quantity needed
+            company_id: res.company id
+            
+        Returns:
+            dict: {
+                'transfer_id': stock.picking id,
+                'source_warehouse_id': int,
+                'quantity': float,
+                'message': str
+            }
+        """
+        if isinstance(product_id, int):
+            product_id = self.env['product.product'].browse(product_id)
+        
+        if isinstance(dest_warehouse_id, int):
+            dest_warehouse_id = self.env['stock.warehouse'].browse(dest_warehouse_id)
+        
+        if not company_id:
+            company_id = self.env.company.id
+        
+        # Find best source warehouse
+        fallback_whs = self._find_fallback_warehouses(
+            product_id, dest_warehouse_id, quantity, company_id
+        )
+        
+        if not fallback_whs:
+            return {
+                'transfer_id': False,
+                'source_warehouse_id': False,
+                'quantity': 0,
+                'message': 'ไม่พบคลังต้นทางที่มีสินค้าเพียงพอ'
+            }
+        
+        # Use warehouse with most stock
+        best_source = fallback_whs[0]
+        source_wh = self.env['stock.warehouse'].browse(best_source['warehouse_id'])
+        qty_to_transfer = min(quantity, best_source['available_qty'])
+        
+        # Create internal transfer
+        picking_type = self.env['stock.picking.type'].search([
+            ('code', '=', 'internal'),
+            ('warehouse_id', '=', dest_warehouse_id.id),
+        ], limit=1)
+        
+        if not picking_type:
+            # Fallback to any internal picking type
+            picking_type = self.env['stock.picking.type'].search([
+                ('code', '=', 'internal'),
+                ('company_id', '=', company_id),
+            ], limit=1)
+        
+        if not picking_type:
+            return {
+                'transfer_id': False,
+                'source_warehouse_id': source_wh.id,
+                'quantity': qty_to_transfer,
+                'message': 'ไม่พบ Picking Type สำหรับ Internal Transfer'
+            }
+        
+        # Create picking
+        picking_vals = {
+            'picking_type_id': picking_type.id,
+            'location_id': source_wh.lot_stock_id.id,
+            'location_dest_id': dest_warehouse_id.lot_stock_id.id,
+            'origin': f'Auto-suggested transfer for shortage',
+            'move_ids': [(0, 0, {
+                'name': product_id.display_name,
+                'product_id': product_id.id,
+                'product_uom_qty': qty_to_transfer,
+                'product_uom': product_id.uom_id.id,
+                'location_id': source_wh.lot_stock_id.id,
+                'location_dest_id': dest_warehouse_id.lot_stock_id.id,
+            })],
+        }
+        
+        picking = self.env['stock.picking'].create(picking_vals)
+        
+        message = (
+            f"สร้าง Internal Transfer สำเร็จ!\n"
+            f"จาก: {source_wh.name}\n"
+            f"ไป: {dest_warehouse_id.name}\n"
+            f"จำนวน: {qty_to_transfer:.2f} {product_id.uom_id.name}\n\n"
+            f"Transfer: {picking.name}"
+        )
+        
+        if qty_to_transfer < quantity:
+            message += (
+                f"\n\n⚠️ โอนได้เพียง {qty_to_transfer:.2f} "
+                f"(ยังขาดอีก {quantity - qty_to_transfer:.2f})"
+            )
+        
+        return {
+            'transfer_id': picking.id,
+            'source_warehouse_id': source_wh.id,
+            'quantity': qty_to_transfer,
+            'message': message,
+            'picking_name': picking.name,
+        }
     
     @api.model
     def get_shortage_policy(self):
@@ -343,6 +498,76 @@ class FifoService(models.AbstractModel):
         return self.env['stock.valuation.layer'].get_landed_cost_at_warehouse(
             product_id, warehouse_id, company_id
         )
+    
+    @api.model
+    def calculate_fifo_cost_batch(self, product_warehouse_qty_list, company_id=None):
+        """
+        🚀 PERFORMANCE: Calculate FIFO cost for multiple products/warehouses in one call.
+        
+        This is much more efficient than calling calculate_fifo_cost multiple times
+        as it batches database queries.
+        
+        Args:
+            product_warehouse_qty_list: list of tuples [(product_id, warehouse_id, quantity), ...]
+            company_id: res.company
+            
+        Returns:
+            dict: {(product_id, warehouse_id): {'cost': float, 'qty': float, 'unit_cost': float}}
+        """
+        if not company_id:
+            company_id = self.env.company.id
+        
+        results = {}
+        
+        # Group by product and warehouse for efficient querying
+        unique_pairs = set((p_id, wh_id) for p_id, wh_id, _ in product_warehouse_qty_list)
+        
+        # Batch fetch all FIFO queues
+        all_layers = {}
+        if unique_pairs:
+            for product_id, warehouse_id in unique_pairs:
+                layers = self.get_valuation_layer_queue(product_id, warehouse_id, company_id)
+                all_layers[(product_id, warehouse_id)] = layers
+        
+        # Calculate costs using cached layers
+        for product_id, warehouse_id, quantity in product_warehouse_qty_list:
+            layers = all_layers.get((product_id, warehouse_id), self.env['stock.valuation.layer'])
+            
+            if not layers:
+                # Fallback to standard price
+                product = self.env['product.product'].browse(product_id)
+                standard_price = product.standard_price or 0.0
+                results[(product_id, warehouse_id)] = {
+                    'cost': standard_price * quantity,
+                    'qty': quantity,
+                    'unit_cost': standard_price,
+                }
+                continue
+            
+            # Calculate FIFO cost from layers
+            precision = self.env['decimal.precision'].precision_get('Product Price')
+            qty_remaining = float_round(quantity, precision_digits=precision)
+            total_cost = 0.0
+            
+            for layer in layers:
+                if float_compare(qty_remaining, 0, precision_digits=precision) <= 0:
+                    break
+                
+                qty_to_consume = min(qty_remaining, layer.remaining_qty)
+                layer_cost = qty_to_consume * layer.unit_cost
+                total_cost += layer_cost
+                qty_remaining -= qty_to_consume
+            
+            qty_consumed = quantity - qty_remaining
+            avg_unit_cost = total_cost / qty_consumed if qty_consumed > 0 else 0.0
+            
+            results[(product_id, warehouse_id)] = {
+                'cost': total_cost,
+                'qty': qty_consumed,
+                'unit_cost': avg_unit_cost,
+            }
+        
+        return results
     
     @api.model
     def get_unit_landed_cost_at_warehouse(self, product_id, warehouse_id, company_id=None):
@@ -441,20 +666,32 @@ class FifoService(models.AbstractModel):
         # Handle both recordset and id for warehouse_id
         wh_id = warehouse_id.id if hasattr(warehouse_id, 'id') else warehouse_id
         
+        # 🚀 PERFORMANCE: Batch fetch all landed costs at once instead of querying in loop
+        layer_ids = [layer_info['layer_id'] for layer_info in base_cost_result['layers']]
+        if layer_ids:
+            lc_records = lc_model.search([
+                ('valuation_layer_id', 'in', layer_ids),
+                ('warehouse_id', '=', wh_id),
+            ])
+            
+            # Create lookup dictionary for O(1) access
+            lc_lookup = {}
+            for lc in lc_records:
+                if lc.valuation_layer_id.id not in lc_lookup:
+                    lc_lookup[lc.valuation_layer_id.id] = []
+                lc_lookup[lc.valuation_layer_id.id].append(lc)
+        else:
+            lc_lookup = {}
+        
         # Update each layer with its landed cost
         for layer_info in base_cost_result['layers']:
             layer_id = layer_info['layer_id']
             qty_consumed = layer_info['qty_consumed']
             
-            # Get unit landed cost for this layer at this warehouse
-            lc_records = lc_model.search([
-                ('valuation_layer_id', '=', layer_id),
-                ('warehouse_id', '=', wh_id),
-            ])
-            
+            # Get unit landed cost from lookup (no query!)
             unit_lc = 0.0
-            if lc_records:
-                unit_lc = lc_records[0].unit_landed_cost
+            if layer_id in lc_lookup and lc_lookup[layer_id]:
+                unit_lc = lc_lookup[layer_id][0].unit_landed_cost
             
             # Calculate landed cost for consumed quantity from this layer
             layer_landed_cost = float_round(

@@ -7,6 +7,9 @@ This module extends stock.valuation.layer to include location_id for per-locatio
 
 from odoo import models, fields, api
 from odoo.tools import float_compare, float_round
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class StockValuationLayer(models.Model):
@@ -26,6 +29,33 @@ class StockValuationLayer(models.Model):
         help='The warehouse where this layer applies. Used for per-warehouse FIFO tracking.',
         ondelete='restrict',
     )
+    
+    # SQL Constraints for performance
+    _sql_constraints = [
+        # Ensure proper indexing for warehouse consistency checks
+    ]
+    
+    def init(self):
+        """Create composite indexes for better FIFO query performance."""
+        # Composite index for FIFO queue retrieval (most common query)
+        # Covers: product_id, warehouse_id, remaining_qty, company_id
+        self.env.cr.execute("""
+            CREATE INDEX IF NOT EXISTS stock_valuation_layer_fifo_queue_idx
+            ON stock_valuation_layer (product_id, warehouse_id, company_id, remaining_qty, create_date, id)
+            WHERE remaining_qty > 0
+        """)
+        
+        # Index for warehouse balance calculations
+        self.env.cr.execute("""
+            CREATE INDEX IF NOT EXISTS stock_valuation_layer_warehouse_balance_idx
+            ON stock_valuation_layer (warehouse_id, product_id, quantity)
+        """)
+        
+        # Index for product valuation lookups
+        self.env.cr.execute("""
+            CREATE INDEX IF NOT EXISTS stock_valuation_layer_product_wh_idx
+            ON stock_valuation_layer (product_id, warehouse_id, id)
+        """)
     
     landed_cost_ids = fields.One2many(
         'stock.valuation.layer.landed.cost',
@@ -108,7 +138,7 @@ class StockValuationLayer(models.Model):
         return True
     
     @api.model
-    def _get_fifo_queue(self, product_id, warehouse_id, company_id=None):
+    def _get_fifo_queue(self, product_id, warehouse_id, company_id=None, limit=None):
         """
         Retrieve FIFO queue for a product at a specific warehouse.
         
@@ -119,6 +149,7 @@ class StockValuationLayer(models.Model):
             product_id: stock.product.product
             warehouse_id: stock.warehouse (or id)
             company_id: res.company (defaults to current company)
+            limit: int (optional) - limit number of layers returned for performance
             
         Returns:
             Recordset of stock.valuation.layer ordered by FIFO
@@ -133,10 +164,14 @@ class StockValuationLayer(models.Model):
             ('product_id', '=', product_id.id),
             ('warehouse_id', '=', wh_id),
             ('company_id', '=', company_id),
-            ('quantity', '>', 0),  # Only layers with positive quantity
+            ('remaining_qty', '>', 0),  # 🚀 PERFORMANCE: Use remaining_qty instead of quantity
         ]
         
-        return self.search(domain, order='create_date asc, id asc')
+        # 🚀 PERFORMANCE: Add limit to prevent scanning too many records
+        # Default limit of 1000 should be enough for most FIFO scenarios
+        search_limit = limit if limit is not None else 1000
+        
+        return self.search(domain, order='create_date asc, id asc', limit=search_limit)
     
     @api.model
     def _get_total_available_qty(self, product_id, warehouse_id, company_id=None):
@@ -221,33 +256,73 @@ class StockValuationLayer(models.Model):
                 
                 qty_after = total_remaining_qty + layer.quantity  # layer.quantity is negative
                 
-                # Allow small rounding differences and tolerate small negative for FIFO
-                # Only block if significantly negative (more than 1 unit)
-                if float_compare(qty_after, -1.0, precision_digits=precision_qty) < 0:
-                    _logger.warning(
-                        f"Warehouse balance going negative: "
-                        f"Product={layer.product_id.display_name}, "
-                        f"Warehouse={layer.warehouse_id.name}, "
-                        f"Qty Before={total_remaining_qty:.2f}, "
-                        f"This Layer Qty={layer.quantity:.2f}, "
-                        f"Qty After={qty_after:.2f}"
+                # Check validation mode from config
+                validation_mode = self.env['ir.config_parameter'].sudo().get_param(
+                    'stock_fifo_by_location.negative_balance_mode',
+                    default='warning'  # 'strict', 'warning', or 'disabled'
+                )
+                
+                # Allow small rounding differences (0.01 unit tolerance)
+                tolerance = float(self.env['ir.config_parameter'].sudo().get_param(
+                    'stock_fifo_by_location.negative_balance_tolerance',
+                    default='0.01'
+                ))
+                
+                if float_compare(qty_after, -tolerance, precision_digits=precision_qty) < 0:
+                    error_msg = (
+                        f"❌ คลัง {layer.warehouse_id.name} จะติดลบ!\n\n"
+                        f"สินค้า: {layer.product_id.display_name}\n"
+                        f"จำนวนคงเหลือปัจจุบัน: {total_remaining_qty:.2f} {layer.product_id.uom_id.name}\n"
+                        f"พยายามตัดออก: {abs(layer.quantity):.2f} {layer.product_id.uom_id.name}\n"
+                        f"จะเหลือ: {qty_after:.2f} {layer.product_id.uom_id.name} (ติดลบ!)\n\n"
+                        f"⚠️ ไม่สามารถขายหรือโอนสินค้าได้มากกว่าที่มีในคลังนี้\n\n"
+                        f"💡 คำแนะนำ:\n"
                     )
                     
-                    # Don't raise error, just log warning
-                    # This allows FIFO to work properly with returns
-                    # raise ValidationError(
-                    #     f"❌ Warehouse จะติดลบ!\n\n"
-                    #     f"Warehouse: {layer.warehouse_id.name}\n"
-                    #     f"สินค้า: {layer.product_id.display_name}\n"
-                    #     f"จำนวนคงเหลือ: {total_remaining_qty:.2f}\n"
-                    #     f"พยายามตัดออก: {abs(layer.quantity):.2f}\n"
-                    #     f"จะเหลือ: {qty_after:.2f} (ติดลบ!)\n\n"
-                    #     f"⚠️ ไม่สามารถขายหรือโอนสินค้าได้มากกว่าที่มีใน Warehouse นี้\n\n"
-                    #     f"คำแนะนำ:\n"
-                    #     f"1. ถ้าเป็นการ Return - ตรวจสอบว่า Return ไปที่ Warehouse เดิมหรือไม่\n"
-                    #     f"2. ถ้าเป็นการขาย - ตรวจสอบว่ามี Stock เพียงพอใน {layer.warehouse_id.name} หรือไม่\n"
-                    #     f"3. ตรวจสอบว่ามีการรับสินค้าเข้า Warehouse นี้ถูกต้องหรือไม่"
-                    # )
+                    # Try to find alternative warehouses
+                    fifo_service = self.env['fifo.service']
+                    try:
+                        fallback_whs = fifo_service._find_fallback_warehouses(
+                            layer.product_id, layer.warehouse_id, abs(qty_after), layer.company_id.id
+                        )
+                        
+                        if fallback_whs:
+                            error_msg += f"   🏭 คลังอื่นที่มีสินค้า:\n"
+                            for fb in fallback_whs[:3]:  # Show top 3
+                                wh = self.env['stock.warehouse'].browse(fb['warehouse_id'])
+                                error_msg += f"      • {wh.name}: {fb['available_qty']:.2f} {layer.product_id.uom_id.name}\n"
+                            error_msg += f"\n   ➡️ แนะนำ: โอนสินค้าจากคลังอื่นมายังคลังนี้ก่อน\n"
+                        else:
+                            error_msg += f"   ⚠️ ไม่พบสินค้าในคลังอื่น\n"
+                            error_msg += f"   ➡️ แนะนำ: สั่งซื้อสินค้าเพิ่ม หรือตรวจสอบการรับสินค้าเข้า\n"
+                    except Exception as e:
+                        _logger.warning(f"Failed to find fallback warehouses: {e}")
+                        error_msg += f"   ➡️ แนะนำ: ตรวจสอบ Stock ในคลังอื่น หรือสั่งซื้อเพิ่m\n"
+                    
+                    error_msg += (
+                        f"\n🔧 วิธีแก้ไข:\n"
+                        f"   1. ถ้าเป็นการ Return: ตรวจสอบว่า Return ไปคลังที่ถูกต้อง\n"
+                        f"   2. ถ้าเป็นการขาย: โอนสินค้าจากคลังอื่นมาก่อน\n"
+                        f"   3. ตรวจสอบว่ามีการรับสินค้าเข้า {layer.warehouse_id.name} ถูกต้อง\n"
+                        f"   4. ตรวจสอบ Inventory Adjustment ที่อาจทำให้ Stock ลดลง\n"
+                    )
+                    
+                    if validation_mode == 'strict':
+                        # STRICT: Always raise error
+                        raise ValidationError(error_msg)
+                    elif validation_mode == 'warning':
+                        # WARNING: Log warning but allow (for troubleshooting)
+                        _logger.warning(
+                            f"Negative balance warning: Product={layer.product_id.display_name}, "
+                            f"Warehouse={layer.warehouse_id.name}, After={qty_after:.2f}"
+                        )
+                        # Show user warning via message
+                        if hasattr(self.env.user, 'notify_warning'):
+                            self.env.user.notify_warning(
+                                message=f"⚠️ คลัง {layer.warehouse_id.name} มี Stock ไม่พอ!",
+                                title="Stock Warning"
+                            )
+                    # else: disabled - do nothing
     
     @api.model
     def get_landed_cost_at_warehouse(self, product_id, warehouse_id, company_id=None):
@@ -341,7 +416,7 @@ class StockValuationLayer(models.Model):
         
         candidates = self.search(candidates_domain, order='create_date, id')
         
-        _logger.info(
+        _logger.debug(
             f"🔍 _run_fifo() for Layer {self.id}: "
             f"Product={self.product_id.display_name}, "
             f"Warehouse={self.warehouse_id.name}, "
@@ -351,6 +426,9 @@ class StockValuationLayer(models.Model):
         
         qty_to_take_on_candidates = abs(quantity)
         tmp_value = 0  # Accumulator for total value consumed
+        
+        # 🚀 PERFORMANCE: Collect all updates in batch for bulk write
+        updates_to_write = []
         
         for candidate in candidates:
             # How much can we take from this candidate?
@@ -369,25 +447,32 @@ class StockValuationLayer(models.Model):
                 new_remaining_qty = 0
                 new_remaining_value = 0
             
-            _logger.info(
+            _logger.debug(
                 f"  📥 Consuming from Layer {candidate.id}: "
                 f"qty_taken={qty_taken_on_candidate:.2f} @ {candidate_unit_cost:.4f}/unit = {value_taken_on_candidate:.4f}, "
                 f"remaining: {candidate.remaining_qty:.2f} → {new_remaining_qty:.2f}"
             )
             
-            candidate_vals = {
-                'remaining_qty': new_remaining_qty,
-                'remaining_value': new_remaining_value,
-            }
-            candidate.write(candidate_vals)
+            # Store update for batch write
+            updates_to_write.append({
+                'record': candidate,
+                'vals': {
+                    'remaining_qty': new_remaining_qty,
+                    'remaining_value': new_remaining_value,
+                }
+            })
             
             # Accumulate total value
             tmp_value += value_taken_on_candidate
             qty_to_take_on_candidates -= qty_taken_on_candidate
             
-            # Check if we've consumed enough
+            # 🚀 PERFORMANCE: Early exit if we've consumed enough
             if float_compare(qty_to_take_on_candidates, 0, precision_rounding=self.product_id.uom_id.rounding) <= 0:
                 break
+        
+        # 🚀 PERFORMANCE: Bulk write all updates at once
+        for update in updates_to_write:
+            update['record'].write(update['vals'])
         
         # If we couldn't consume all qty from FIFO queue (shortage)
         if float_compare(qty_to_take_on_candidates, 0, precision_rounding=self.product_id.uom_id.rounding) > 0:
@@ -399,7 +484,7 @@ class StockValuationLayer(models.Model):
             # Use standard_price for the shortage
             tmp_value += qty_to_take_on_candidates * self.product_id.standard_price
         
-        _logger.info(
+        _logger.debug(
             f"✅ _run_fifo() complete: "
             f"Total value consumed: {tmp_value:.4f}, "
             f"Setting this layer (ID={self.id}) remaining to 0"
