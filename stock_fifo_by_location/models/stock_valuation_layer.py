@@ -341,6 +341,14 @@ class StockValuationLayer(models.Model):
         
         candidates = self.search(candidates_domain, order='create_date, id')
         
+        _logger.info(
+            f"🔍 _run_fifo() for Layer {self.id}: "
+            f"Product={self.product_id.display_name}, "
+            f"Warehouse={self.warehouse_id.name}, "
+            f"Consuming qty={abs(quantity):.2f}, "
+            f"Found {len(candidates)} candidate layers with remaining_qty > 0"
+        )
+        
         qty_to_take_on_candidates = abs(quantity)
         tmp_value = 0  # Accumulator for total value consumed
         
@@ -361,6 +369,12 @@ class StockValuationLayer(models.Model):
                 new_remaining_qty = 0
                 new_remaining_value = 0
             
+            _logger.info(
+                f"  📥 Consuming from Layer {candidate.id}: "
+                f"qty_taken={qty_taken_on_candidate:.2f} @ {candidate_unit_cost:.4f}/unit = {value_taken_on_candidate:.4f}, "
+                f"remaining: {candidate.remaining_qty:.2f} → {new_remaining_qty:.2f}"
+            )
+            
             candidate_vals = {
                 'remaining_qty': new_remaining_qty,
                 'remaining_value': new_remaining_value,
@@ -378,12 +392,18 @@ class StockValuationLayer(models.Model):
         # If we couldn't consume all qty from FIFO queue (shortage)
         if float_compare(qty_to_take_on_candidates, 0, precision_rounding=self.product_id.uom_id.rounding) > 0:
             _logger.warning(
-                f"FIFO shortage: Product {self.product_id.display_name} at {self.warehouse_id.name}: "
+                f"⚠️ FIFO shortage: Product {self.product_id.display_name} at {self.warehouse_id.name}: "
                 f"Need {abs(quantity):.2f}, but only {abs(quantity) - qty_to_take_on_candidates:.2f} available. "
-                f"Shortage: {qty_to_take_on_candidates:.2f}"
+                f"Shortage: {qty_to_take_on_candidates:.2f} - Using standard_price fallback"
             )
             # Use standard_price for the shortage
             tmp_value += qty_to_take_on_candidates * self.product_id.standard_price
+        
+        _logger.info(
+            f"✅ _run_fifo() complete: "
+            f"Total value consumed: {tmp_value:.4f}, "
+            f"Setting this layer (ID={self.id}) remaining to 0"
+        )
         
         # Update this layer's values
         # Negative layers don't have remaining (they are consumption)

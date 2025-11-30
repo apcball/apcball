@@ -1,6 +1,6 @@
 {
     'name': 'Buz Stock FIFO by Warehouse',
-    'version': '17.0.1.1.4',
+    'version': '17.0.1.1.5',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -77,6 +77,15 @@ Requirements:
 - stock_landed_costs module for landed cost functionality
 
 Version History:
+- 17.0.1.1.5: CRITICAL FIX - Enhanced inter-warehouse transfer to ALWAYS create both layers
+  * Fixed _ensure_inter_warehouse_valuation_layers() to create BOTH negative AND positive layers
+  * Negative layer at source warehouse (consumes from FIFO queue)
+  * Positive layer at destination warehouse (becomes new FIFO source)
+  * Prevents issue where destination warehouse has stock quantity but no valuation layer
+  * Without positive layer: remaining_qty = 0, sales fail to find FIFO layers
+  * Enhanced logging in _run_fifo() and _ensure_inter_warehouse_valuation_layers()
+  * Added comprehensive test script: test_inter_warehouse_transfer.py
+  * Solves: ที่คลังปลายทางมี stock แต่ไม่มี layer → ขายไม่ได้หรือคำนวณผิด
 - 17.0.1.1.4: CRITICAL FIX - Override _run_fifo() AND _create_out_svl() to respect warehouse boundaries
   * Added _run_fifo() override in stock.valuation.layer
   * Added _create_out_svl() override in stock.move to set warehouse_id BEFORE _run_fifo()

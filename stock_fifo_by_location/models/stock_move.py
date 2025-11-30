@@ -213,13 +213,31 @@ class StockMove(models.Model):
     
     def _ensure_inter_warehouse_valuation_layers(self):
         """
-        Ensure valuation layers exist for inter-warehouse transfers.
+        🔴 CRITICAL: Ensure BOTH negative (source) AND positive (dest) valuation layers
+        exist for inter-warehouse transfers.
         
-        Odoo standard may not create layers for internal transfers.
-        If no layers exist after parent _action_done, create them manually.
+        แนวคิดที่ถูกต้องเวลา Transfer ข้ามคลัง A → B:
         
-        NOTE: We no longer skip intra-warehouse moves. Odoo should create layers
-        for all moves, and we just ensure warehouse_id is set correctly.
+        1. คลังต้นทาง (WH-A) - ทำเหมือน "เบิกออก":
+           - หา FIFO layer ของ WH-A ตาม quantity ที่ย้าย
+           - remaining_qty ลดลง (ผ่าน _run_fifo)
+           - สร้าง SVL out:
+             * quantity = -qty
+             * value = -cost_total (from FIFO)
+             * warehouse_id = WH-A
+        
+        2. คลังปลายทาง (WH-B) - ต้องมี "in layer ใหม่" เสมอ:
+           - quantity = +qty
+           - value = +cost_total เดิมจาก WH-A
+           - unit_cost = cost_total / qty
+           - warehouse_id = WH-B
+           - layer นี้คือแหล่ง FIFO ของ WH-B สำหรับการขาย/เบิกครั้งต่อไป
+        
+        ⚠️ ถ้าข้อ 2 ไม่ทำ:
+        - ที่คลัง B จะมี stock ปริมาณ แต่ไม่มี valuation layer
+        - remaining_qty = 0 ตลอด
+        - พอขายจาก WH-B ระบบจะหา layer ไม่เจอ
+        - ไปหยิบ global layer / หรือ warehouse อื่น / หรือคำนวณผิด
         """
         import logging
         _logger = logging.getLogger(__name__)
@@ -233,36 +251,54 @@ class StockMove(models.Model):
             
             product = move.product_id
             
-            # Skip if product is not storable
-            # Note: We don't check valuation type because it's not always set in ir_property
-            # The fact that moves exist and product uses FIFO is sufficient
+            # Skip if product is not storable or not using FIFO valuation
             if product.type != 'product':
+                continue
+            
+            # Check if product uses FIFO costing
+            if product.categ_id.property_cost_method != 'fifo':
+                _logger.debug(f"Skip {move.name}: Product {product.name} not using FIFO")
                 continue
             
             source_wh = move.location_id.warehouse_id if move.location_id else None
             dest_wh = move.location_dest_id.warehouse_id if move.location_dest_id else None
             
             # Only for inter-warehouse transfers (different warehouses)
-            # Intra-warehouse moves are handled by Odoo standard - we just set warehouse_id
             if not (source_wh and dest_wh and source_wh.id != dest_wh.id):
                 continue
             
-            # Check if layers already exist for this move
+            # Skip if source/dest is not internal location
+            if move.location_id.usage not in ('internal', 'transit') or \
+               move.location_dest_id.usage not in ('internal', 'transit'):
+                _logger.debug(f"Skip {move.name}: Not internal transfer (usage: {move.location_id.usage} -> {move.location_dest_id.usage})")
+                continue
+            
+            # Check what layers already exist for this move
             existing_layers = valuation_layer_model.search([
                 ('stock_move_id', '=', move.id),
             ])
             
-            if existing_layers:
-                # Layers exist - Odoo created them, we'll just enhance with warehouse_id
-                _logger.info(f"Inter-warehouse move {move.name}: {len(existing_layers)} layers exist")
-                continue
+            has_negative_source = any(
+                l.quantity < 0 and l.warehouse_id and l.warehouse_id.id == source_wh.id 
+                for l in existing_layers
+            )
+            has_positive_dest = any(
+                l.quantity > 0 and l.warehouse_id and l.warehouse_id.id == dest_wh.id 
+                for l in existing_layers
+            )
             
-            # No layers exist - need to create them manually
-            _logger.info(f"Inter-warehouse move {move.name}: Creating valuation layers")
+            _logger.info(
+                f"📦 Inter-warehouse move {move.name}: "
+                f"{source_wh.name} → {dest_wh.name}, "
+                f"Product: {product.name}, Qty: {move.product_qty}, "
+                f"Existing layers: {len(existing_layers)}, "
+                f"Has negative@source: {has_negative_source}, "
+                f"Has positive@dest: {has_positive_dest}"
+            )
             
             company = move.company_id
             
-            # Get cost from FIFO service with fallback to standard_price
+            # 🔴 STEP 1: Get FIFO cost from SOURCE warehouse
             fifo_service = self.env['fifo.service']
             fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
                 product, source_wh, move.product_qty, company.id
@@ -271,39 +307,69 @@ class StockMove(models.Model):
             # Extract unit cost
             if isinstance(fifo_result, dict):
                 unit_cost = fifo_result.get('unit_cost', 0.0)
+                total_cost = fifo_result.get('cost', 0.0)
             else:
                 unit_cost = float(fifo_result) if fifo_result else 0.0
+                total_cost = unit_cost * move.product_qty
             
             # Fallback to standard price if still zero
             if unit_cost <= 0:
                 unit_cost = product.standard_price or 0.0
-                _logger.info(f"Using standard_price fallback: {unit_cost}")
+                total_cost = unit_cost * move.product_qty
+                _logger.warning(f"⚠️ FIFO cost is 0, using standard_price fallback: {unit_cost}")
             
-            # Create negative layer at source warehouse
-            valuation_layer_model.sudo().create({
-                'stock_move_id': move.id,
-                'product_id': product.id,
-                'warehouse_id': source_wh.id,
-                'quantity': -move.product_qty,
-                'unit_cost': unit_cost,
-                'value': -move.product_qty * unit_cost,
-                'company_id': company.id,
-                'description': f'Inter-warehouse: {source_wh.name} → {dest_wh.name}',
-            })
+            _logger.info(f"💰 FIFO cost from {source_wh.name}: unit={unit_cost:.4f}, total={total_cost:.4f}")
             
-            # Create positive layer at destination warehouse
-            valuation_layer_model.sudo().create({
-                'stock_move_id': move.id,
-                'product_id': product.id,
-                'warehouse_id': dest_wh.id,
-                'quantity': move.product_qty,
-                'unit_cost': unit_cost,
-                'value': move.product_qty * unit_cost,
-                'company_id': company.id,
-                'description': f'Inter-warehouse: {source_wh.name} → {dest_wh.name}',
-            })
+            # 🔴 STEP 2: Create negative layer at source warehouse (if not exists)
+            if not has_negative_source:
+                neg_layer = valuation_layer_model.sudo().create({
+                    'stock_move_id': move.id,
+                    'product_id': product.id,
+                    'warehouse_id': source_wh.id,
+                    'quantity': -move.product_qty,
+                    'unit_cost': unit_cost,
+                    'value': -total_cost,
+                    'remaining_qty': 0.0,  # Negative layers don't have remaining
+                    'remaining_value': 0.0,
+                    'company_id': company.id,
+                    'description': f'Transfer OUT: {source_wh.name} → {dest_wh.name}',
+                })
+                _logger.info(f"✅ Created NEGATIVE layer at {source_wh.name}: qty={-move.product_qty}, value={-total_cost:.4f}")
+                
+                # 🔴 CRITICAL: Run FIFO to consume from source warehouse's FIFO queue
+                # This will reduce remaining_qty of existing layers at source warehouse
+                neg_layer._run_fifo(-move.product_qty, company)
+                _logger.info(f"✅ Ran FIFO consumption at {source_wh.name}")
+            else:
+                _logger.info(f"ℹ️ Negative layer at {source_wh.name} already exists (created by Odoo)")
             
-            _logger.info(f"Created 2 valuation layers for {move.name}: {move.product_qty} @ {unit_cost}")
+            # 🔴 STEP 3: Create positive layer at destination warehouse (if not exists)
+            if not has_positive_dest:
+                pos_layer = valuation_layer_model.sudo().create({
+                    'stock_move_id': move.id,
+                    'product_id': product.id,
+                    'warehouse_id': dest_wh.id,
+                    'quantity': move.product_qty,
+                    'unit_cost': unit_cost,
+                    'value': total_cost,
+                    'remaining_qty': move.product_qty,  # ✅ This becomes FIFO source for dest warehouse
+                    'remaining_value': total_cost,
+                    'company_id': company.id,
+                    'description': f'Transfer IN: {source_wh.name} → {dest_wh.name}',
+                })
+                _logger.info(
+                    f"✅ Created POSITIVE layer at {dest_wh.name}: "
+                    f"qty={move.product_qty}, value={total_cost:.4f}, "
+                    f"remaining_qty={move.product_qty} (FIFO source for future sales)"
+                )
+            else:
+                _logger.info(f"ℹ️ Positive layer at {dest_wh.name} already exists (created by Odoo)")
+            
+            _logger.info(
+                f"🎉 Inter-warehouse transfer complete: "
+                f"{move.product_qty} x {product.name} @ {unit_cost:.4f}/unit "
+                f"from {source_wh.name} to {dest_wh.name}"
+            )
     
 
     def _update_created_layers_warehouse(self):
