@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Backup Tree View -->
+        <record id="view_fifo_recalculation_backup_tree" model="ir.ui.view">
+            <field name="name">fifo.recalculation.backup.tree</field>
+            <field name="model">fifo.recalculation.backup</field>
+            <field name="arch" type="xml">
+                <tree string="FIFO Recalculation Backups" decoration-success="state=='active'" decoration-muted="state=='restored'" decoration-danger="state=='expired'">
+                    <field name="name"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="date_from"/>
+                    <field name="date_to"/>
+                    <field name="layer_count"/>
+                    <field name="state"/>
+                    <field name="restore_date"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Backup Form View -->
+        <record id="view_fifo_recalculation_backup_form" model="ir.ui.view">
+            <field name="name">fifo.recalculation.backup.form</field>
+            <field name="model">fifo.recalculation.backup</field>
+            <field name="arch" type="xml">
+                <form string="FIFO Recalculation Backup">
+                    <header>
+                        <button name="action_restore" string="Restore Backup" type="object" class="btn-primary"
+                                invisible="state != 'active'"
+                                confirm="Are you sure you want to restore this backup? This will revert all changes made during recalculation."/>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="layer_count"/>
+                            </group>
+                            <group>
+                                <field name="date_from"/>
+                                <field name="date_to"/>
+                                <field name="restore_date" invisible="state != 'restored'"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Backup Lines">
+                                <field name="line_ids" nolabel="1">
+                                    <tree string="Backed Up Layers">
+                                        <field name="product_id"/>
+                                        <field name="warehouse_id"/>
+                                        <field name="quantity"/>
+                                        <field name="unit_cost"/>
+                                        <field name="value"/>
+                                        <field name="remaining_qty"/>
+                                        <field name="remaining_value"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Backup Action -->
+        <record id="action_fifo_recalculation_backup" model="ir.actions.act_window">
+            <field name="name">Recalculation Backups</field>
+            <field name="res_model">fifo.recalculation.backup</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <!-- Config Tree View -->
+        <record id="view_fifo_recalculation_config_tree" model="ir.ui.view">
+            <field name="name">fifo.recalculation.config.tree</field>
+            <field name="model">fifo.recalculation.config</field>
+            <field name="arch" type="xml">
+                <tree string="Scheduled Recalculation Configs" decoration-bf="is_default==True">
+                    <field name="name"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="is_default"/>
+                    <field name="auto_apply"/>
+                    <field name="batch_size"/>
+                    <field name="active"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Config Form View -->
+        <record id="view_fifo_recalculation_config_form" model="ir.ui.view">
+            <field name="name">fifo.recalculation.config.form</field>
+            <field name="model">fifo.recalculation.config</field>
+            <field name="arch" type="xml">
+                <form string="FIFO Recalculation Configuration">
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="%(action_fifo_recalculation_wizard)d" 
+                                    type="action" 
+                                    class="oe_stat_button" 
+                                    icon="fa-calculator"
+                                    string="Run Now"
+                                    context="{'default_date_from': date_from, 'default_date_to': date_to, 'default_warehouse_ids': warehouse_ids, 'default_product_ids': product_ids, 'default_product_categ_ids': product_categ_ids, 'default_clear_old_layers': clear_old_layers, 'default_lock_after_recal': lock_after_recal, 'default_batch_size': batch_size}"/>
+                        </div>
+                        <widget name="web_ribbon" title="Default" bg_color="bg-info" invisible="not is_default"/>
+                        <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                        <div class="oe_title">
+                            <label for="name"/>
+                            <h1>
+                                <field name="name" placeholder="e.g. Monthly Recalculation"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group string="Basic Settings">
+                                <field name="active" widget="boolean_toggle"/>
+                                <field name="is_default" widget="boolean_toggle"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                            <group string="Date Range">
+                                <field name="date_from"/>
+                                <field name="date_to"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Filters">
+                                <field name="warehouse_ids" widget="many2many_tags"/>
+                                <field name="product_ids" widget="many2many_tags"/>
+                                <field name="product_categ_ids" widget="many2many_tags"/>
+                            </group>
+                            <group string="Options">
+                                <field name="clear_old_layers"/>
+                                <field name="lock_after_recal"/>
+                                <field name="batch_size"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Automation">
+                                <field name="auto_apply" widget="boolean_toggle"/>
+                            </group>
+                            <group string="Notifications">
+                                <field name="notification_user_ids" widget="many2many_tags"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Config Action -->
+        <record id="action_fifo_recalculation_config" model="ir.actions.act_window">
+            <field name="name">Scheduled Recalculation</field>
+            <field name="res_model">fifo.recalculation.config</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <!-- Menu Items -->
+        <menuitem id="menu_fifo_recalculation_backup"
+                  name="Backups"
+                  parent="stock.menu_stock_warehouse_mgmt"
+                  action="action_fifo_recalculation_backup"
+                  groups="group_fifo_recalculation,base.group_system"
+                  sequence="101"/>
+        
+        <menuitem id="menu_fifo_recalculation_config"
+                  name="Scheduled Recalculation"
+                  parent="stock.menu_stock_warehouse_mgmt"
+                  action="action_fifo_recalculation_config"
+                  groups="group_fifo_recalculation,base.group_system"
+                  sequence="102"/>
+        
+    </data>
+</odoo>

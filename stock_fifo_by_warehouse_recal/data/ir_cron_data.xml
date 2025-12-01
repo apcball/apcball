@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Scheduled Action for FIFO Recalculation -->
+        <record id="ir_cron_fifo_recalculation" model="ir.cron">
+            <field name="name">FIFO Recalculation by Warehouse - Scheduled</field>
+            <field name="model_id" ref="model_fifo_recalculation_wizard"/>
+            <field name="state">code</field>
+            <field name="code">model.run_scheduled_recalculation()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="numbercall">-1</field>
+            <field name="active" eval="False"/>
+            <field name="doall" eval="False"/>
+            <field name="priority">10</field>
+        </record>
+        
+    </data>
+</odoo>

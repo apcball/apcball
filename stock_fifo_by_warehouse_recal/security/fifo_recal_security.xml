@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- FIFO Recalculation Access Group -->
+        <record id="group_fifo_recalculation" model="res.groups">
+            <field name="name">FIFO Recalculation Access</field>
+            <field name="category_id" ref="base.module_category_inventory_inventory"/>
+            <field name="comment">Allows users to run FIFO recalculation wizard for fixing valuation layers</field>
+            <field name="implied_ids" eval="[(4, ref('stock.group_stock_manager'))]"/>
+        </record>
+        
+    </data>
+</odoo>
