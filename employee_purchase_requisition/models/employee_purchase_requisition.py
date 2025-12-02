@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -292,18 +293,27 @@ class PurchaseRequisition(models.Model):
         self.write({'state': 'waiting_head_approval'})
         self.confirm_id = self.env.uid
         self.confirmed_date = fields.Date.today()
+        
+        # Create activity for department head
+        self._create_head_approval_activity()
 
     def action_head_approval(self):
         """Approval from department head"""
         self.write({'state': 'waiting_purchase_approval'})
         self.requisition_head_id = self.env.uid
         self.approval_date = fields.Date.today()
+        
+        # Create activity for responsible person (purchase department)
+        self._create_purchase_approval_activity()
 
     def action_head_cancel(self):
         """Cancellation from department head"""
         self.write({'state': 'draft'})
         self.rejected_user_id = self.env.uid
         self.reject_date = fields.Date.today()
+        
+        # Create rejection activity for employee
+        self._create_rejection_activity('head')
 
     def action_purchase_approval(self):
         """Approval from purchase department"""
@@ -313,12 +323,18 @@ class PurchaseRequisition(models.Model):
         self.write({'state': 'approved'})
         self.manager_id = self.env.uid
         self.department_approval_date = fields.Date.today()
+        
+        # Create approval completion activity
+        self._create_approval_completion_activity()
 
     def action_purchase_cancel(self):
         """Cancellation from purchase department"""
         self.write({'state': 'draft'})
         self.rejected_user_id = self.env.uid
         self.reject_date = fields.Date.today()
+        
+        # Create rejection activity for employee
+        self._create_rejection_activity('purchase')
 
     def action_cancel_requisition(self):
         """Cancel requisition and return to draft state (only for original requester)"""
@@ -422,6 +438,94 @@ class PurchaseRequisition(models.Model):
             'res_model': 'stock.picking',
             'domain': [('requisition_order', '=', self.name)],
         }
+    
+    def _create_head_approval_activity(self):
+        """Create activity for department head approval"""
+        if not self.manager_user_id:
+            return
+            
+        activity_type_id = self.env.ref('employee_purchase_requisition.mail_activity_type_head_approval').id
+        date_deadline = self.requisition_deadline or fields.Date.today() + timedelta(days=3)
+        
+        self.activity_schedule(
+            activity_type_id=activity_type_id,
+            user_id=self.manager_user_id.id,
+            date_deadline=date_deadline,
+            summary=f'PR {self.name} - Head Approval Required',
+            note=f'Purchase Requisition {self.name} from {self.employee_id.name} requires your approval.\n\n'
+                  f'Department: {self.dept_id.name if self.dept_id else "N/A"}\n'
+                  f'Total Amount: {self.total_amount:,.2f} {self.company_currency_id.symbol if self.company_currency_id else ""}\n'
+                  f'Purpose: {self.purpose or "N/A"}\n\n'
+                  f'Please review and approve or reject this requisition.'
+        )
+    
+    def _create_purchase_approval_activity(self):
+        """Create activity for purchase department processing"""
+        if not self.user_id:
+            return
+            
+        activity_type_id = self.env.ref('employee_purchase_requisition.mail_activity_type_purchase_approval').id
+        date_deadline = self.requisition_deadline or fields.Date.today() + timedelta(days=5)
+        
+        self.activity_schedule(
+            activity_type_id=activity_type_id,
+            user_id=self.user_id.id,
+            date_deadline=date_deadline,
+            summary=f'PR {self.name} - Purchase Processing Required',
+            note=f'Purchase Requisition {self.name} has been approved by {self.requisition_head_id.name}.\n\n'
+                  f'Department: {self.dept_id.name if self.dept_id else "N/A"}\n'
+                  f'Total Amount: {self.total_amount:,.2f} {self.company_currency_id.symbol if self.company_currency_id else ""}\n'
+                  f'Items: {len(self.requisition_order_ids)}\n\n'
+                  f'Please review vendors and process this requisition for purchase order creation.'
+        )
+    
+    def _create_approval_completion_activity(self):
+        """Create activity for approval completion"""
+        # Notify the original requester that PR is approved
+        if not self.create_uid:
+            return
+            
+        activity_type_id = self.env.ref('employee_purchase_requisition.mail_activity_type_pr_approved').id
+        date_deadline = fields.Date.today() + timedelta(days=1)
+        
+        self.activity_schedule(
+            activity_type_id=activity_type_id,
+            user_id=self.create_uid.id,
+            date_deadline=date_deadline,
+            summary=f'PR {self.name} - Approved',
+            note=f'Purchase Requisition {self.name} has been fully approved!\n\n'
+                  f'Department: {self.dept_id.name if self.dept_id else "N/A"}\n'
+                  f'Total Amount: {self.total_amount:,.2f} {self.company_currency_id.symbol if self.company_currency_id else ""}\n'
+                  f'Approved by: {self.requisition_head_id.name} (Head), {self.manager_id.name} (Purchase)\n\n'
+                  f'You can now create purchase orders for this requisition.'
+        )
+    
+    def _create_rejection_activity(self, rejection_type):
+        """Create activity for rejection notification"""
+        if not self.create_uid:
+            return
+            
+        activity_type_id = self.env.ref('employee_purchase_requisition.mail_activity_type_pr_rejected').id
+        date_deadline = fields.Date.today() + timedelta(days=1)
+        
+        if rejection_type == 'head':
+            rejected_by = self.requisition_head_id.name if self.requisition_head_id else 'Department Head'
+            reason = 'Department Head'
+        else:
+            rejected_by = self.manager_id.name if self.manager_id else 'Purchase Department'
+            reason = 'Purchase Department'
+        
+        self.activity_schedule(
+            activity_type_id=activity_type_id,
+            user_id=self.create_uid.id,
+            date_deadline=date_deadline,
+            summary=f'PR {self.name} - Rejected',
+            note=f'Purchase Requisition {self.name} has been rejected.\n\n'
+                  f'Rejected by: {rejected_by} ({reason})\n'
+                  f'Department: {self.dept_id.name if self.dept_id else "N/A"}\n'
+                  f'Total Amount: {self.total_amount:,.2f} {self.company_currency_id.symbol if self.company_currency_id else ""}\n\n'
+                  f'Please review the rejection and make necessary corrections if needed.'
+        )
 
 class RequisitionOrder(models.Model):
     _name = 'requisition.order'
