@@ -267,6 +267,11 @@ class PurchaseRequisition(models.Model):
 
     def action_confirm_requisition(self):
         """Function to submit to purchase approval"""
+        # Check if all requisition lines have analytic distribution
+        for line in self.requisition_order_ids:
+            if not line.analytic_distribution:
+                raise ValidationError('Please enter Analytic Distribution for all items before submitting for approval.')
+        
         self.source_location_id = (
             self.employee_id.department_id.department_location_id.id) if (
             self.employee_id.department_id.department_location_id) else (
