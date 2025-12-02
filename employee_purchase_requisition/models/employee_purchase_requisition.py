@@ -97,6 +97,12 @@ class PurchaseRequisition(models.Model):
         default=lambda self: self.env.company,
         help='Select a company'
     )
+    company_currency_id = fields.Many2one(
+        related='company_id.currency_id',
+        string='Currency',
+        readonly=True,
+        store=True
+    )
     requisition_order_ids = fields.One2many(
         comodel_name='requisition.order',
         inverse_name='requisition_product_id',
@@ -177,6 +183,12 @@ class PurchaseRequisition(models.Model):
         string='Internal Transfer count',
         help='Internal transfer count',
         compute='_compute_internal_transfer_count'
+    )
+    total_amount = fields.Float(
+        string="Total Amount",
+        compute="_compute_total_amount",
+        store=True,
+        help="Total value of all items in this requisition"
     )
     state = fields.Selection([
         ('new', 'New'),
@@ -361,6 +373,12 @@ class PurchaseRequisition(models.Model):
         for rec in self:
             rec.purchase_count = self.env['purchase.order'].search_count([
                 ('requisition_order', '=', rec.name)])
+
+    @api.depends('requisition_order_ids.price_subtotal')
+    def _compute_total_amount(self):
+        """Calculate total amount for the requisition"""
+        for requisition in self:
+            requisition.total_amount = sum(line.price_subtotal for line in requisition.requisition_order_ids)
 
     def action_receive(self):
         """Received purchase requisition by Department Head"""

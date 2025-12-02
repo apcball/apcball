@@ -7,14 +7,15 @@
             <tree editable="bottom">
                 <field name="product_id"/>
                 <field name="description"/>
-                <field name="analytic_distribution" 
-                       widget="analytic_distribution" 
+                <field name="analytic_distribution"
+                       widget="analytic_distribution"
                        groups="analytic.group_analytic_accounting"
                        options="{'product_field': 'product_id'}"/>
-                <field name="unit_price" string="Unit Price"/>       
+                <field name="unit_price" string="Unit Price"/>
                 <field name="quantity"/>
+                <field name="price_subtotal" string="Subtotal" readonly="1" widget="monetary"/>
                 <field name="uom"/>
-                <field name="partner_id" 
+                <field name="partner_id"
                        groups="employee_purchase_requisition.employee_requisition_head,employee_purchase_requisition.employee_requisition_manager"/>
             </tree>
         </field>

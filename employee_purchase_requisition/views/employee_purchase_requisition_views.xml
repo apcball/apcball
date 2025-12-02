@@ -93,7 +93,7 @@
                                    name="purchase_count" 
                                    widget="statinfo"/>
                         </button>
-                        <button class="oe_stat_button" 
+                        <button class="oe_stat_button"
                                 type="object"
                                 name="get_internal_transfer"
                                 icon="fa-truck"
@@ -101,6 +101,14 @@
                             <field string="Internal Transfer"
                                    name="internal_transfer_count"
                                    widget="statinfo"/>
+                        </button>
+                        <button class="oe_stat_button"
+                                icon="fa-money"
+                                invisible="not total_amount">
+                            <field string="Total Amount"
+                                   name="total_amount"
+                                   widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                         </button>
                     </div>
                     <div class="oe_title">
@@ -124,8 +132,26 @@
                     </group>
                     <notebook>
                         <page string="Requisition Orders">
-                            <field name="requisition_order_ids" 
-                                   readonly="state not in ['new','waiting_head_approval','waiting_purchase_approval']"/>
+                            <field name="requisition_order_ids"
+                                   readonly="state not in ['new','waiting_head_approval','waiting_purchase_approval']">
+                                <tree editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="description"/>
+                                    <field name="analytic_distribution"
+                                           widget="analytic_distribution"
+                                           groups="analytic.group_analytic_accounting"
+                                           options="{'product_field': 'product_id'}"/>
+                                    <field name="unit_price" string="Unit Price"/>
+                                    <field name="quantity"/>
+                                    <field name="price_subtotal" string="Subtotal" readonly="1" widget="monetary"/>
+                                    <field name="uom"/>
+                                    <field name="partner_id"
+                                           groups="employee_purchase_requisition.employee_requisition_head,employee_purchase_requisition.employee_requisition_manager"/>
+                                </tree>
+                            </field>
+                            <group class="oe_subtotal_footer oe_right">
+                                <field name="total_amount" string="ยอดรวมทั้งหมด" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
+                            </group>
                         </page>
                         <page string="Picking Details" 
                               groups="employee_purchase_requisition.employee_requisition_manager,employee_purchase_requisition.employee_requisition_head">
@@ -175,6 +201,7 @@
                 <field name="dept_id"/>
                 <field name="user_id"/>
                 <field name="requisition_date"/>
+                <field name="total_amount" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
                 <field name="state" widget="badge"
                        decoration-success="state in ('approved','received')"
                        decoration-warning="state in ('waiting_head_approval','waiting_purchase_approval')"
@@ -208,6 +235,9 @@
                                     </div>
                                     <div>
                                         <field name="requisition_date"/>
+                                    </div>
+                                    <div>
+                                        <strong>Total: <field name="total_amount" widget="monetary"/></strong>
                                     </div>
                                     <div>
                                         <field name="state" widget="badge"
