@@ -191,14 +191,14 @@ class PurchaseRequisition(models.Model):
         help="Total value of all items in this requisition"
     )
     state = fields.Selection([
-        ('new', 'New'),
+        ('draft', 'Draft'),
         ('waiting_head_approval', 'Waiting Head Approval'),
         ('waiting_purchase_approval', 'Waiting Purchase Approval'),
         ('approved', 'Approved'),
         ('purchase_order_created', 'Purchase Order Created'),
         ('received', 'Received'),
         ('cancelled', 'Cancelled')
-    ], default='new', copy=False, tracking=True)
+    ], default='draft', copy=False, tracking=True)
 
     user_is_head = fields.Boolean(
         string="Is Department Head",
@@ -209,6 +209,11 @@ class PurchaseRequisition(models.Model):
         string="Is Purchase Manager",
         compute="_compute_user_is_purchase",
         help="Check if current user is purchase manager"
+    )
+    user_is_requester = fields.Boolean(
+        string="Is Requester",
+        compute="_compute_user_is_requester",
+        help="Check if current user is the original requester"
     )
     
     @api.model
@@ -244,14 +249,10 @@ class PurchaseRequisition(models.Model):
         for rec in self:
             rec.user_is_purchase = self.env.user.has_group('employee_purchase_requisition.employee_requisition_head')
 
-    @api.model
-    def create(self, vals):
-        """Function to generate purchase requisition sequence"""
-        if vals.get('name', 'New') == 'New':
-            vals['name'] = self.env['ir.sequence'].next_by_code(
-                'employee.purchase.requisition') or 'New'
-        result = super(PurchaseRequisition, self).create(vals)
-        return result
+    def _compute_user_is_requester(self):
+        """Check if current user is the original requester"""
+        for rec in self:
+            rec.user_is_requester = rec.create_uid == self.env.user or rec.employee_id.user_id == self.env.user
 
     @api.onchange('employee_id')
     def _onchange_employee_id(self):
@@ -295,7 +296,7 @@ class PurchaseRequisition(models.Model):
 
     def action_head_cancel(self):
         """Cancellation from department head"""
-        self.write({'state': 'cancelled'})
+        self.write({'state': 'draft'})
         self.rejected_user_id = self.env.uid
         self.reject_date = fields.Date.today()
 
@@ -310,7 +311,15 @@ class PurchaseRequisition(models.Model):
 
     def action_purchase_cancel(self):
         """Cancellation from purchase department"""
-        self.write({'state': 'cancelled'})
+        self.write({'state': 'draft'})
+        self.rejected_user_id = self.env.uid
+        self.reject_date = fields.Date.today()
+
+    def action_cancel_requisition(self):
+        """Cancel requisition and return to draft state (only for original requester)"""
+        if not self.user_is_requester:
+            raise ValidationError('Only the original requester can cancel this requisition.')
+        self.write({'state': 'draft'})
         self.rejected_user_id = self.env.uid
         self.reject_date = fields.Date.today()
 

@@ -20,14 +20,15 @@
             <form duplicate="false">
 <header>
     <field name="state" widget='statusbar'
-           statusbar_visible='new,waiting_head_approval,waiting_purchase_approval,approved,purchase_order_created,received'/>
+           statusbar_visible='draft,waiting_head_approval,waiting_purchase_approval,approved,purchase_order_created,received'/>
+    <field name="user_is_requester" invisible="1"/>
     
     <!-- Submit Button -->
     <button name="action_confirm_requisition"
-            string="Confrim" 
+            string="Confirm"
             type="object"
             class="oe_highlight"
-            invisible="state != 'new'"
+            invisible="state != 'draft'"
             help="Submit to Head Approval"
             groups="employee_purchase_requisition.employee_requisition_user"/>
     
@@ -42,11 +43,19 @@
     
     <!-- Head Cancel -->
     <button name="action_head_cancel"
-            string="Reject" 
+            string="Reject"
             type="object"
             invisible="state != 'waiting_head_approval'"
             help="Head Reject Purchase Requisition"
             groups="employee_purchase_requisition.employee_requisition_manager"/>
+    
+    <!-- Requester Cancel Button for Head Approval -->
+    <button name="action_cancel_requisition"
+            string="Cancel"
+            type="object"
+            invisible="state != 'waiting_head_approval' or not user_is_requester"
+            help="Cancel and return to draft"
+            groups="employee_purchase_requisition.employee_requisition_user"/>
     
     <!-- Purchase Department Approval -->
     <button name="action_purchase_approval"
@@ -64,6 +73,14 @@
             invisible="state != 'waiting_purchase_approval'"
             help="Purchase Department Reject"
             groups="employee_purchase_requisition.employee_requisition_head"/>
+    
+    <!-- Requester Cancel Button for Purchase Approval -->
+    <button name="action_cancel_requisition"
+            string="Cancel"
+            type="object"
+            invisible="state != 'waiting_purchase_approval' or not user_is_requester"
+            help="Cancel and return to draft"
+            groups="employee_purchase_requisition.employee_requisition_user"/>
     
     <!-- Create PO Button -->
     <button name="action_create_purchase_order"
@@ -118,22 +135,23 @@
                     </div>
                     <group>
                         <group>
-                            <field name="employee_id" readonly="state not in ['new']"/>
+                            <field name="employee_id" readonly="state not in ['draft']"/>
                             <field name="dept_id"/>
                             <field name="manager_user_id"/>
                             <field name="user_id"/>
-                            <field name="company_id" readonly="state not in ['new']"/>
+                            <field name="company_id" readonly="state not in ['draft']"/>
                         </group>
                         <group>
-                            <field name="requisition_date" readonly="state not in ['new']"/>
+                            <field name="requisition_date" readonly="state not in ['draft']"/>
                             <field name="receive_date"/>
-                            <field name="requisition_deadline" readonly="state not in ['new']"/>
+                            <field name="requisition_deadline" readonly="state not in ['draft']"/>
+                            <field name="destination_location_id" readonly="state not in ['draft']"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Requisition Orders">
                             <field name="requisition_order_ids"
-                                   readonly="state not in ['new','waiting_head_approval','waiting_purchase_approval']">
+                                   readonly="state not in ['draft', 'waiting_purchase_approval']">
                                 <tree editable="bottom">
                                     <field name="product_id"/>
                                     <field name="description"/>
@@ -153,11 +171,11 @@
                                 <field name="total_amount" string="ยอดรวมทั้งหมด" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
                             </group>
                         </page>
-                        <page string="Picking Details" 
+                        <page string="Picking Details"
                               groups="employee_purchase_requisition.employee_requisition_manager,employee_purchase_requisition.employee_requisition_head">
                             <group>
                                 <group>
-                                    <field name="destination_location_id"/>
+                                    <!-- Destination location moved to main group, only editable in draft -->
                                 </group>
                             </group>
                         </page>
