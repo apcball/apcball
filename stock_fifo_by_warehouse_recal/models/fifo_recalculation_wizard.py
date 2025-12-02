@@ -422,7 +422,9 @@ class FifoRecalculationWizard(models.TransientModel):
             layer_domain = [
                 ('product_id', '=', product_id),
                 ('company_id', '=', self.company_id.id),
+                '|',
                 ('locked', '=', False),
+                ('locked', '=', None),
             ]
             if warehouse_id:
                 layer_domain.append(('warehouse_id', '=', warehouse_id))
@@ -640,6 +642,16 @@ class FifoRecalculationWizard(models.TransientModel):
         log.append(f"User: {self.env.user.name}")
         log.append("")
         
+        # Fix NULL locked fields first
+        log.append("=== Fixing NULL locked fields ===")
+        try:
+            fixed_count = self._fix_null_locked_fields()
+            log.append(f"Fixed {fixed_count} layers with locked=NULL")
+            log.append("")
+        except Exception as e:
+            log.append(f"WARNING: Failed to fix NULL locked fields: {str(e)}")
+            log.append("")
+        
         try:
             backup = self._create_backup()
             log.append(f"Backup created: {backup.name}")
@@ -778,7 +790,9 @@ class FifoRecalculationWizard(models.TransientModel):
             layer_domain = [
                 ('product_id', '=', product_id),
                 ('company_id', '=', self.company_id.id),
+                '|',
                 ('locked', '=', False),
+                ('locked', '=', None),
             ]
             
             if warehouse_id:
@@ -940,6 +954,37 @@ class FifoRecalculationWizard(models.TransientModel):
         
         return created_count
 
+    def _fix_null_locked_fields(self):
+        """Fix layers with locked=NULL by setting them to False."""
+        self.ensure_one()
+        
+        # Get affected product-warehouse combinations from preview lines
+        affected_combinations = set(
+            (line.product_id.id, line.warehouse_id.id if line.warehouse_id else False)
+            for line in self.line_ids
+        )
+        
+        fixed_count = 0
+        
+        # Fix locked=NULL for affected products
+        for product_id, warehouse_id in affected_combinations:
+            layer_domain = [
+                ('product_id', '=', product_id),
+                ('company_id', '=', self.company_id.id),
+                ('locked', '=', None),
+            ]
+            
+            if warehouse_id:
+                layer_domain.append(('warehouse_id', '=', warehouse_id))
+            
+            layers_to_fix = self.env['stock.valuation.layer'].search(layer_domain)
+            
+            if layers_to_fix:
+                layers_to_fix.write({'locked': False})
+                fixed_count += len(layers_to_fix)
+        
+        return fixed_count
+
     def _create_backup(self):
         """Create backup of layers before recalculation."""
         self.ensure_one()
@@ -950,31 +995,83 @@ class FifoRecalculationWizard(models.TransientModel):
             for line in self.line_ids
         )
         
-        # Collect all layers that will be deleted (use same logic as _delete_old_layers)
+        # IMPORTANT: Also include all explicitly selected products/warehouses
+        # even if they don't have moves in the date range
+        # This ensures we backup all layers for selected products
+        if self.product_ids:
+            # Add all combinations of selected products with selected/all warehouses
+            for product in self.product_ids:
+                if self.warehouse_ids:
+                    for warehouse in self.warehouse_ids:
+                        affected_combinations.add((product.id, warehouse.id))
+                else:
+                    # No warehouse filter - backup all warehouses for this product
+                    affected_combinations.add((product.id, False))
+        elif self.product_categ_ids:
+            # Add all products in selected categories
+            products = self.env['product.product'].search([
+                ('categ_id', 'child_of', self.product_categ_ids.ids)
+            ])
+            for product in products:
+                if self.warehouse_ids:
+                    for warehouse in self.warehouse_ids:
+                        affected_combinations.add((product.id, warehouse.id))
+                else:
+                    # No warehouse filter - backup all warehouses for this product
+                    affected_combinations.add((product.id, False))
+        
+        # Collect all layers that will be affected
+        # Even if we're not deleting, we need to backup because remaining_qty/value will change
         all_layers_to_backup = self.env['stock.valuation.layer']
         
         for product_id, warehouse_id in affected_combinations:
             layer_domain = [
                 ('product_id', '=', product_id),
                 ('company_id', '=', self.company_id.id),
+                '|',
                 ('locked', '=', False),
+                ('locked', '=', None),
             ]
             
             if warehouse_id:
                 layer_domain.append(('warehouse_id', '=', warehouse_id))
             
+            # Backup layers based on deletion strategy
             if self.clear_old_layers == 'range':
+                # Backup only layers in date range that will be deleted
                 layer_domain.extend([
                     ('create_date', '>=', self.date_from),
                     ('create_date', '<=', self.date_to),
                 ])
+            elif self.clear_old_layers == 'all_product':
+                # Backup all layers for this product-warehouse (will all be deleted)
+                pass  # No additional filter needed
             elif self.clear_old_layers == 'none':
-                continue  # Skip if not deleting
+                # Even if not deleting, backup existing layers because remaining values will change
+                # Backup all existing layers for accurate rollback
+                pass  # No additional filter needed
             
             layers = self.env['stock.valuation.layer'].search(layer_domain)
             all_layers_to_backup |= layers
         
         layers_to_backup = all_layers_to_backup
+        
+        # Log what we're backing up
+        import logging
+        _logger = logging.getLogger(__name__)
+        _logger.info(f"Backup: Found {len(affected_combinations)} product-warehouse combinations")
+        _logger.info(f"Backup: Total layers to backup: {len(layers_to_backup)}")
+        
+        # Group layers by product for logging
+        product_layer_count = {}
+        for layer in layers_to_backup:
+            product_name = layer.product_id.display_name
+            if product_name not in product_layer_count:
+                product_layer_count[product_name] = 0
+            product_layer_count[product_name] += 1
+        
+        for product_name, count in sorted(product_layer_count.items()):
+            _logger.info(f"Backup:   {product_name}: {count} layers")
         
         # Create backup record (even if no layers to backup, for audit trail)
         backup_vals = {
@@ -988,40 +1085,95 @@ class FifoRecalculationWizard(models.TransientModel):
         # Log backup creation
         if not layers_to_backup:
             # No layers to backup (might be clear_old_layers='none')
+            _logger.warning("No layers found to backup!")
             return backup
         
-        # Backup layer data
+        _logger.info(f"Starting to create {len(layers_to_backup)} backup lines...")
+        
+        # Backup layer data - use batch creation for better performance
         backup_line_count = 0
+        failed_layers = []
+        backup_lines_vals = []
+        
         for layer in layers_to_backup:
             try:
-                self.env['fifo.recalculation.backup.line'].create({
+                line_vals = {
                     'backup_id': backup.id,
                     'layer_id': layer.id,
                     'product_id': layer.product_id.id,
                     'warehouse_id': layer.warehouse_id.id if layer.warehouse_id else False,
-                    'quantity': layer.quantity,
-                    'unit_cost': layer.unit_cost,
-                    'value': layer.value,
-                    'remaining_qty': layer.remaining_qty,
-                    'remaining_value': layer.remaining_value,
+                    'quantity': layer.quantity or 0.0,
+                    'unit_cost': layer.unit_cost or 0.0,
+                    'value': layer.value or 0.0,
+                    'remaining_qty': layer.remaining_qty or 0.0,
+                    'remaining_value': layer.remaining_value or 0.0,
                     'stock_move_id': layer.stock_move_id.id if layer.stock_move_id else False,
-                    'description': layer.description,
+                    'description': layer.description or '',
                     'layer_data': json.dumps({
                         'create_date': layer.create_date.isoformat() if layer.create_date else None,
                         'write_date': layer.write_date.isoformat() if layer.write_date else None,
                     }),
-                })
-                backup_line_count += 1
+                }
+                backup_lines_vals.append(line_vals)
             except Exception as e:
                 # Log error but continue with other layers
-                import logging
-                _logger = logging.getLogger(__name__)
-                _logger.error(f"Failed to backup layer {layer.id}: {str(e)}")
+                _logger.error(f"Failed to prepare backup for layer {layer.id} (Product: {layer.product_id.display_name}): {str(e)}")
+                import traceback
+                _logger.error(traceback.format_exc())
+                failed_layers.append({
+                    'layer_id': layer.id,
+                    'product': layer.product_id.display_name,
+                    'error': str(e)
+                })
                 continue
+        
+        # Create all backup lines in batch
+        try:
+            if backup_lines_vals:
+                _logger.info(f"Creating {len(backup_lines_vals)} backup lines in batch...")
+                created_lines = self.env['fifo.recalculation.backup.line'].create(backup_lines_vals)
+                backup_line_count = len(created_lines)
+                _logger.info(f"Successfully created {backup_line_count} backup lines")
+        except Exception as e:
+            _logger.error(f"CRITICAL: Failed to create backup lines in batch: {str(e)}")
+            import traceback
+            _logger.error(traceback.format_exc())
+            
+            # Fallback: Try creating one by one
+            _logger.info("Attempting to create backup lines one by one...")
+            for line_vals in backup_lines_vals:
+                try:
+                    self.env['fifo.recalculation.backup.line'].create(line_vals)
+                    backup_line_count += 1
+                except Exception as e2:
+                    layer_id = line_vals.get('layer_id', 'unknown')
+                    _logger.error(f"Failed to create backup line for layer {layer_id}: {str(e2)}")
+                    failed_layers.append({
+                        'layer_id': layer_id,
+                        'error': str(e2)
+                    })
         
         # Update backup with actual line count
         if backup_line_count != backup.layer_count:
             backup.write({'layer_count': backup_line_count})
+        
+        # CRITICAL: Commit backup and lines to database immediately
+        # This ensures backup is persisted even if wizard transaction is rolled back
+        try:
+            self.env.cr.commit()
+            _logger.info(f"Backup committed to database: {backup.name} with {backup_line_count} lines")
+        except Exception as e:
+            _logger.error(f"Failed to commit backup: {str(e)}")
+            import traceback
+            _logger.error(traceback.format_exc())
+        
+        # Log failed layers if any
+        if failed_layers:
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.warning(f"Failed to backup {len(failed_layers)} layers out of {len(layers_to_backup)}")
+            for failed in failed_layers[:10]:  # Log first 10 failures
+                _logger.warning(f"  Layer {failed['layer_id']} ({failed['product']}): {failed['error']}")
         
         return backup
 

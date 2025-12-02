@@ -1,6 +1,58 @@
 # การปรับปรุง Module stock_fifo_by_warehouse_recal
 
+## Version History
+
+- **17.0.3.1.0** (2024-12-02): Fixed backup functionality for products without moves
+- **17.0.3.0.0**: Initial improvements with warehouse logic
+
 ## สรุปการเปลี่ยนแปลง
+
+### 🆕 **2024-12-02: Fix Backup Functionality** ✅
+
+**ปัญหา:** ระบบ backup เฉพาะ products ที่มี moves ในช่วงวันที่ที่เลือก
+- Products ที่ไม่มี moves แต่มี existing layers → ไม่ถูก backup
+- Rollback ไม่สมบูรณ์
+
+**การแก้ไข:**
+```python
+# เพิ่ม logic ใน _create_backup()
+if self.product_ids:
+    # Backup ALL selected products (with or without moves)
+    for product in self.product_ids:
+        if self.warehouse_ids:
+            for warehouse in self.warehouse_ids:
+                affected_combinations.add((product.id, warehouse.id))
+        else:
+            affected_combinations.add((product.id, False))
+
+elif self.product_categ_ids:
+    # Backup ALL products in selected categories
+    products = self.env['product.product'].search([
+        ('categ_id', 'child_of', self.product_categ_ids.ids)
+    ])
+    for product in products:
+        if self.warehouse_ids:
+            for warehouse in self.warehouse_ids:
+                affected_combinations.add((product.id, warehouse.id))
+        else:
+            affected_combinations.add((product.id, False))
+```
+
+**ผลลัพธ์:**
+- ✅ Backup ครอบคลุมทุก products ที่เลือก (ไม่ว่าจะมี moves หรือไม่)
+- ✅ Backup ทุก products ใน categories ที่เลือก
+- ✅ Rollback สมบูรณ์และปลอดภัย
+- ✅ เพิ่ม detailed logging
+
+**ไฟล์ที่แก้ไข:**
+- `models/fifo_recalculation_wizard.py`: Updated `_create_backup()` method
+- `__manifest__.py`: Version bump to 17.0.3.1.0, updated description
+
+**เอกสารเพิ่มเติม:**
+- `/opt/instance1/odoo17/custom-addons/STOCK_FIFO_BY_WAREHOUSE_RECAL_BACKUP_FIX.md`
+- `/opt/instance1/odoo17/custom-addons/STOCK_FIFO_BY_WAREHOUSE_RECAL_TESTING_GUIDE.md`
+
+---
 
 ### 1. ✅ ปรับปรุง `_get_move_warehouse()` ใช้ Logic จาก stock_fifo_by_location
 

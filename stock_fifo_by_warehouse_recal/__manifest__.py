@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'FIFO Recalculation by Warehouse',
-    'version': '17.0.3.0.0',
+    'version': '17.0.3.1.0',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -10,6 +10,7 @@
         'stock',
         'stock_account',
         'stock_fifo_by_location',
+        'stock_valuation_layer_usage',
     ],
     'data': [
         'security/fifo_recal_security.xml',
@@ -33,6 +34,7 @@ This module provides a wizard for recalculating FIFO valuation layers on a per-w
 - Supports cross-warehouse return moves
 - Creates proper stock.valuation.layer.usage records for audit trail
 - Handles transit locations properly
+- Comprehensive backup of ALL product layers (including products without moves in date range)
 
 Features:
 - Select date range for recalculation
@@ -40,9 +42,16 @@ Features:
 - Preview impact before applying changes (Before/After comparison)
 - Delete and rebuild valuation layers based on FIFO logic
 - Lock recalculated layers to prevent duplicate recalculation
+- Complete backup and rollback functionality for all affected products
 - Multi-company support
 - Dry run mode for testing
 - Detailed logging of all operations
+
+Backup Functionality:
+- Backs up ALL layers for selected products/warehouses
+- Includes products even if they have no moves in the selected date range
+- Ensures complete rollback capability
+- Tracks backup state and restore history
 
 Use Cases:
 - Period-end closing adjustments
