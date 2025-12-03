@@ -39,15 +39,15 @@
         <field name="arch" type="xml">
             <form string="Employee Advance Box">
                 <header>
-                    <button name="action_refill_to_base" 
-                            type="object" 
-                            string="Refill to Base" 
+                    <button name="action_refill_to_base_payment"
+                            type="object"
+                            string="Refill to Base (Payment)"
                             class="btn-primary"
                             invisible="not employee_id or not account_id or not journal_id or not remember_base_amount"
-                            help="Refill advance box to the specified base amount"/>
-                    <button name="action_open_settlement_wizard" 
-                            type="object" 
-                            string="Settle Advance" 
+                            help="Refill advance box using standard Odoo payment system"/>
+                    <button name="action_open_settlement_wizard"
+                            type="object"
+                            string="Settle Advance"
                             class="btn-secondary"
                             invisible="balance == 0"
                             help="Settle the advance with appropriate journal entries"/>
@@ -60,18 +60,27 @@
                     </div>
                     
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_refill_to_base" 
-                                type="object" 
-                                class="oe_stat_button" 
+                        <button name="action_refill_to_base_payment"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-credit-card"
+                                invisible="not employee_id or not account_id or not journal_id or not remember_base_amount">
+                            <div class="o_form_field o_stat_info">
+                                <span class="o_stat_text">Refill (Payment)</span>
+                            </div>
+                        </button>
+                        <button name="action_refill_to_base"
+                                type="object"
+                                class="oe_stat_button"
                                 icon="fa-usd"
                                 invisible="not employee_id or not account_id or not journal_id or not remember_base_amount">
                             <div class="o_form_field o_stat_info">
-                                <span class="o_stat_text">Refill to Base</span>
+                                <span class="o_stat_text">Refill (Journal)</span>
                             </div>
                         </button>
-                        <button name="action_open_settlement_wizard" 
-                                type="object" 
-                                class="oe_stat_button" 
+                        <button name="action_open_settlement_wizard"
+                                type="object"
+                                class="oe_stat_button"
                                 icon="fa-bank"
                                 invisible="balance == 0">
                             <div class="o_form_field o_stat_info">
@@ -129,6 +138,21 @@
                                 <field name="balance" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
                                 <field name="currency_id" invisible="1"/>
                             </group>
+                        </page>
+                        
+                        <!-- Payment Tracking -->
+                        <page string="Payment History" name="payment_history">
+                            <field name="payment_ids">
+                                <tree>
+                                        <field name="name"/>
+                                        <field name="date"/>
+                                        <field name="amount"/>
+                                        <field name="state"/>
+                                        <field name="journal_id"/>
+                                        <field name="payment_type"/>
+                                        <field name="is_advance_box_refill"/>
+                                    </tree>
+                            </field>
                         </page>
                     </notebook>
                 </sheet>

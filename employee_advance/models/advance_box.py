@@ -55,6 +55,19 @@ class EmployeeAdvanceBox(models.Model):
         string='Company',
         default=lambda self: self.env.company
     )
+    
+    # Payment tracking fields
+    payment_ids = fields.One2many(
+        'account.payment',
+        compute='_compute_payment_ids',
+        string='Related Payments',
+        help='Payments related to advance box refills and settlements'
+    )
+    use_payment_based_refill = fields.Boolean(
+        string='Use Payment-Based Refill',
+        default=True,
+        help='Use standard Odoo payment system for refilling advance boxes instead of direct journal entries'
+    )
 
     @api.model
     def _default_account(self):
@@ -76,7 +89,7 @@ class EmployeeAdvanceBox(models.Model):
     @api.depends('account_id', 'employee_id')
     def _compute_balance(self):
         for record in self:
-            _logger.info("🔍 BALANCE DEBUG: Computing for advance box %s (employee: %s)", 
+            _logger.info("🔍 BALANCE DEBUG: Computing for advance box %s (employee: %s)",
                        record.id, record.employee_id.name)
             
             if record.account_id and record.employee_id:
@@ -88,6 +101,7 @@ class EmployeeAdvanceBox(models.Model):
                     record.balance = 0.0
                     continue
                 
+                # Get all journal entry lines for this advance box
                 domain = [
                     ('account_id', '=', record.account_id.id),
                     ('move_id.state', '=', 'posted'),
@@ -96,25 +110,66 @@ class EmployeeAdvanceBox(models.Model):
                 
                 _logger.info("📋 BALANCE DEBUG: Searching with domain: %s", domain)
                 
-                # ใช้ search แทน read_group เพื่อ debug ง่ายขึ้น
+                # Get journal entry lines
                 lines = self.env['account.move.line'].search(domain)
-                _logger.info("📋 BALANCE DEBUG: Found %d lines", len(lines))
+                _logger.info("📋 BALANCE DEBUG: Found %d journal lines", len(lines))
                 
                 total_debit = sum(lines.mapped('debit'))
                 total_credit = sum(lines.mapped('credit'))
-                balance = total_debit - total_credit
                 
-                _logger.info("💰 BALANCE DEBUG: Debit: %s, Credit: %s, Balance: %s", 
-                           total_debit, total_credit, balance)
+                # Also include payment-based transactions
+                payment_lines = self.env['account.move.line'].search([
+                    ('account_id', '=', record.account_id.id),
+                    ('move_id.state', '=', 'posted'),
+                    ('move_id.payment_ids', '!=', False),
+                    ('move_id.payment_ids.advance_box_id', '=', record.id)
+                ])
+                
+                _logger.info("💳 BALANCE DEBUG: Found %d payment lines", len(payment_lines))
+                
+                total_payment_debit = sum(payment_lines.mapped('debit'))
+                total_payment_credit = sum(payment_lines.mapped('credit'))
+                
+                # Combine both journal entries and payment transactions
+                combined_debit = total_debit + total_payment_debit
+                combined_credit = total_credit + total_payment_credit
+                balance = combined_debit - combined_credit
+                
+                _logger.info("💰 BALANCE DEBUG: Journal - Debit: %s, Credit: %s",
+                           total_debit, total_credit)
+                _logger.info("💳 BALANCE DEBUG: Payments - Debit: %s, Credit: %s",
+                           total_payment_debit, total_payment_credit)
+                _logger.info("💰 BALANCE DEBUG: Combined - Debit: %s, Credit: %s, Balance: %s",
+                           combined_debit, combined_credit, balance)
                            
                 for line in lines:
-                    _logger.info("  📝 Line: %s | %s | Dr: %s | Cr: %s | Move: %s", 
+                    _logger.info("  📝 Journal Line: %s | %s | Dr: %s | Cr: %s | Move: %s",
+                               line.date, line.name, line.debit, line.credit, line.move_id.name)
+                
+                for line in payment_lines:
+                    _logger.info("  💳 Payment Line: %s | %s | Dr: %s | Cr: %s | Move: %s",
                                line.date, line.name, line.debit, line.credit, line.move_id.name)
                 
                 record.balance = balance
             else:
                 _logger.warning("⚠️ BALANCE DEBUG: Missing account or employee")
                 record.balance = 0.0
+
+    @api.depends('account_id', 'employee_id')
+    def _compute_payment_ids(self):
+        """Compute related payments for this advance box"""
+        for record in self:
+            if record.account_id:
+                # Find payments that affect this advance box account
+                payments = self.env['account.payment'].search([
+                    ('state', '=', 'posted'),
+                    '|',
+                    ('destination_account_id', '=', record.account_id.id),
+                    ('move_id.line_ids.account_id', '=', record.account_id.id)
+                ])
+                record.payment_ids = payments
+            else:
+                record.payment_ids = self.env['account.payment']
 
     def _refresh_balance_simple(self):
         """Simple balance refresh without triggering heavy computation - HANG FIX"""
@@ -177,6 +232,75 @@ class EmployeeAdvanceBox(models.Model):
             'res_id': wizard.id,
             'view_mode': 'form',
             'target': 'new',
+        }
+    
+    def action_refill_to_base_payment(self):
+        """Open payment register for advance box refill using standard Odoo payments"""
+        self.ensure_one()
+        
+        # Check if we have required data
+        if not self.account_id:
+            raise UserError(_("Please set the advance account."))
+        if not self.journal_id:
+            raise UserError(_("Please set the journal for advance transactions."))
+        if not self._get_employee_partner():
+            raise UserError(_("Please set the employee's private address."))
+        if not self.remember_base_amount:
+            raise UserError(_("Please set the base amount to refill to."))
+            
+        # Calculate top-up amount
+        current_balance = self.balance
+        topup_amount = max(self.remember_base_amount - current_balance, 0)
+        
+        if topup_amount <= 0:
+            raise UserError(_("Current balance is already at or above the base amount."))
+        
+        # Create a dummy bill to use with payment register for internal transfer
+        # This is a workaround to use payment register for internal transfers
+        bill_vals = {
+            'move_type': 'in_invoice',
+            'partner_id': self._get_employee_partner(),
+            'invoice_date': fields.Date.context_today(self),
+            'date': fields.Date.context_today(self),
+            'currency_id': self.currency_id.id,
+            'company_id': self.company_id.id,
+            'ref': f'Advance Box Refill - {self.name}',
+            'line_ids': [
+                (0, 0, {
+                    'name': f'Advance Box Refill - {self.name}',
+                    'account_id': self.account_id.id,
+                    'price_unit': topup_amount,
+                    'quantity': 1,
+                })
+            ]
+        }
+        
+        temp_bill = self.env['account.move'].create(bill_vals)
+        temp_bill.action_post()
+        
+        # Link to advance box
+        temp_bill.write({
+            'advance_box_id': self.id,
+            'is_expense_advance_bill': True
+        })
+        
+        # Open payment register with context for internal transfer
+        return {
+            'name': _('Refill Advance Box'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.payment.register',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'active_model': 'account.move',
+                'active_ids': [temp_bill.id],
+                'default_advance_box_id': self.id,
+                'default_payment_type': 'outbound',
+                'default_journal_id': self.journal_id.id,
+                'advance_box_refill': True,
+                'internal_transfer_destination_account_id': self.account_id.id,
+                'default_amount': topup_amount,
+            }
         }
     
     def _get_employee_partner(self):

@@ -38,6 +38,27 @@ class AccountPaymentRegister(models.TransientModel):
 
                 # Auto-fill journal from advance box
                 res['journal_id'] = advance_box.journal_id.id
+        
+        # Check if this is called from advance box refill
+        if self.env.context.get('advance_box_refill'):
+            advance_box_id = self.env.context.get('default_advance_box_id')
+            if advance_box_id:
+                advance_box = self.env['employee.advance.box'].browse(advance_box_id)
+                
+                if not advance_box.exists():
+                    raise UserError(_("No Advance Box configured for this refill."))
+                
+                if not advance_box.journal_id:
+                    raise UserError(_("No journal configured for the advance box."))
+
+                # Auto-fill journal from advance box
+                res['journal_id'] = advance_box.journal_id.id
+                
+                # Set payment type to outbound (money going out)
+                res['payment_type'] = 'outbound'
+                
+                # Note: destination_account_id field removed as it doesn't exist in account.payment model
+                # Internal transfer will be handled through move lines instead
 
         return res
 
@@ -128,5 +149,101 @@ class AccountPaymentRegister(models.TransientModel):
                         # Link to the advance box
                         for move_line in payment.reconciled_bill_ids:
                             move_line.move_id.write({'advance_box_id': advance_box.id})
+        
+        return payments
+
+
+class AccountPayment(models.Model):
+    _inherit = 'account.payment'
+
+    # Advance box refill tracking fields
+    is_advance_box_refill = fields.Boolean(
+        string='Is Advance Box Refill',
+        default=False,
+        help='True if this payment is an advance box refill'
+    )
+    advance_box_id = fields.Many2one(
+        'employee.advance.box',
+        string='Advance Box',
+        help='Advance box related to this payment'
+    )
+    destination_account_id = fields.Many2one(
+        'account.account',
+        string='Destination Account',
+        help='Destination account for internal transfers'
+    )
+
+    def _create_payment_vals_from_wizard(self, batch_result):
+        """Override to handle advance box refill payments"""
+        payment_vals_list = super()._create_payment_vals_from_wizard(batch_result)
+        
+        # Check if this is an advance box refill
+        if self.env.context.get('advance_box_refill'):
+            advance_box_id = self.env.context.get('default_advance_box_id')
+            if advance_box_id:
+                advance_box = self.env['employee.advance.box'].browse(advance_box_id)
+                if advance_box:
+                    # Add advance box reference to all payment values
+                    for payment_vals in payment_vals_list:
+                        payment_vals['advance_box_id'] = advance_box.id
+                        payment_vals['is_advance_box_refill'] = True
+                        # Set partner to employee's private address
+                        payment_vals['partner_id'] = advance_box._get_employee_partner()
+                        
+                        # Set destination account for internal transfer
+                        destination_account_id = self.env.context.get('internal_transfer_destination_account_id')
+                        if destination_account_id:
+                            payment_vals['destination_account_id'] = destination_account_id
+        
+        return payment_vals_list
+
+    def _create_payments(self):
+        """Override to handle advance box refill payment reconciliation"""
+        payments = super()._create_payments()
+        
+        # If this is an advance box refill, handle reconciliation
+        if self.env.context.get('advance_box_refill') and payments:
+            advance_box_id = self.env.context.get('default_advance_box_id')
+            if advance_box_id:
+                advance_box = self.env['employee.advance.box'].browse(advance_box_id)
+                if advance_box:
+                    for payment in payments:
+                        # Mark payment as advance box refill
+                        payment.write({
+                            'is_advance_box_refill': True,
+                            'advance_box_id': advance_box.id
+                        })
+                        
+                        # Reconcile payment with the temporary bill
+                        active_ids = self.env.context.get('active_ids', [])
+                        if active_ids:
+                            temp_bill = self.env['account.move'].browse(active_ids[0])
+                            if temp_bill.exists():
+                                # Find payment move lines and bill payable lines
+                                payment_move_lines = payment.move_id.line_ids.filtered(
+                                    lambda l: l.account_id.internal_type in ('receivable', 'payable')
+                                )
+                                bill_payable_lines = temp_bill.line_ids.filtered(
+                                    lambda l: l.account_id.internal_type in ('receivable', 'payable') and l.balance < 0
+                                )
+                                
+                                # Reconcile payment with bill
+                                if payment_move_lines and bill_payable_lines:
+                                    for payment_line in payment_move_lines:
+                                        for bill_line in bill_payable_lines:
+                                            if payment_line.account_id == bill_line.account_id:
+                                                try:
+                                                    (payment_line + bill_line).reconcile()
+                                                    _logger.info("💳 Reconciled payment line %s with bill line %s",
+                                                               payment_line.id, bill_line.id)
+                                                except Exception as e:
+                                                    _logger.warning("⚠️ Could not reconcile payment with bill: %s", str(e))
+                        
+                        # Refresh advance box balance
+                        try:
+                            advance_box._refresh_balance_simple()
+                            _logger.info("💰 Advance box balance refreshed after payment refill")
+                        except Exception as e:
+                            _logger.warning("⚠️ Balance refresh failed after refill: %s", str(e))
         
         return payments

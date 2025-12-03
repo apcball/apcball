@@ -15,6 +15,9 @@
         - NEW: Separate bills for same employee with different dates
         - NEW: Group by partner and date for proper accounting separation
         - NEW: Use expense sheet date as accounting date in bills
+        - NEW: Payment-based refill using standard Odoo payment system
+        - NEW: Internal transfer support for advance box refills
+        - NEW: Full payment tracking and reconciliation
     """,
     'author': 'Your Company',
     'website': 'https://www.yourcompany.com',

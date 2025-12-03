@@ -16,6 +16,7 @@
                         <group string="Advance Box Information">
                             <field name="advance_box_id" readonly="1" options="{'no_create': True}"/>
                             <field name="currency_id" invisible="1"/>
+                            <field name="refill_method" widget="radio"/>
                         </group>
                         <group string="Amount Details">
                             <field name="current_balance" readonly="1" widget="monetary" 
@@ -27,6 +28,18 @@
                                    class="text-success fw-bold"/>
                         </group>
                     </group>
+
+                    <div class="alert alert-info mt16" role="alert" invisible="refill_method != 'payment'">
+                        <h4><i class="fa fa-info-circle"/> Payment Method Information</h4>
+                        <p>This will create a standard Odoo payment that will be properly reconciled with your bank/cash accounts.</p>
+                        <p>Amount to be added: <strong><field name="topup_amount" readonly="1" widget="monetary" class="text-success fw-bold"/></strong></p>
+                    </div>
+
+                    <div class="alert alert-warning mt16" role="alert" invisible="refill_method != 'journal'">
+                        <h4><i class="fa fa-exclamation-triangle"/> Legacy Journal Method</h4>
+                        <p>This will create a direct journal entry without going through the standard payment system.</p>
+                        <p>Amount to be added: <strong><field name="topup_amount" readonly="1" widget="monetary" class="text-success fw-bold"/></strong></p>
+                    </div>
 
                     <div class="alert alert-info mt16" role="alert">
                         <h4><i class="fa fa-info-circle"/> Refill Information</h4>
@@ -43,7 +56,14 @@
                             type="object" 
                             string="Confirm Refill" 
                             class="btn-primary"
-                            help="Create journal entry to refill the advance box"/>
+                            invisible="refill_method == 'payment'"
+                            help="Create journal entry to refill advance box"/>
+                    <button name="action_confirm" 
+                            type="object" 
+                            string="Create Payment" 
+                            class="btn-primary"
+                            invisible="refill_method == 'journal'"
+                            help="Create standard payment to refill advance box"/>
                     <button string="Cancel" 
                             class="btn-secondary" 
                             special="cancel"/>
