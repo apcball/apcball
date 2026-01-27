@@ -1,0 +1,1940 @@
+ERROR: couldn't create the logfile directory. Logging to the standard output.
+2026-01-26 06:11:45,421 249012 WARNING ? py.warnings: /opt/instance1/odoo17/odoo/tools/config.py:586: DeprecationWarning: The 'osv_memory_age_limit' option found in the configuration file is a deprecated alias to 'transient_age_limit', please use the latter.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 131, in main
+    odoo.tools.config.parse_config(args)
+  File "/opt/instance1/odoo17/odoo/tools/config.py", line 380, in parse_config
+    self._warn_deprecated_options()
+  File "/opt/instance1/odoo17/odoo/tools/config.py", line 586, in _warn_deprecated_options
+    warnings.warn(
+ 
+2026-01-26 06:11:45,421 249012 INFO ? odoo: Odoo version 17.0 
+2026-01-26 06:11:45,422 249012 INFO ? odoo: Using configuration file at /etc/instance1.conf 
+2026-01-26 06:11:45,422 249012 INFO ? odoo: addons paths: ['/opt/instance1/odoo17/odoo/addons', '/opt/instance1/odoo17/addons', '/opt/instance1/odoo17/custom-addons'] 
+2026-01-26 06:11:45,422 249012 INFO ? odoo: database: odoo@localhost:5432 
+2026-01-26 06:11:45,638 249012 INFO ? odoo.addons.base.models.ir_actions_report: Will use the Wkhtmltopdf binary at /usr/bin/wkhtmltopdf 
+2026-01-26 06:11:45,921 249012 WARNING ? odoo.service.server: Unit testing in workers mode could fail; use --workers 0. 
+2026-01-26 06:11:45,921 249012 INFO ? odoo.service.server: HTTP service (werkzeug) running on 0.0.0.0:8097 
+2026-01-26 06:11:45,961 249012 INFO MOG_Pretest2 odoo.modules.loading: loading 1 modules... 
+2026-01-26 06:11:45,973 249012 INFO MOG_Pretest2 odoo.modules.loading: 1 modules loaded in 0.01s, 0 queries (+0 extra) 
+2026-01-26 06:11:46,013 249012 INFO MOG_Pretest2 odoo.modules.loading: updating modules list 
+2026-01-26 06:11:46,021 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_module: ALLOW access to module.update_list on [] to user __system__ #1 via n/a 
+2026-01-26 06:11:46,268 249012 WARNING MOG_Pretest2 odoo.modules.module: Missing `license` key in manifest for 'buz_add_nornal_price', defaulting to LGPL-3 
+2026-01-26 06:11:46,286 249012 WARNING MOG_Pretest2 odoo.modules.module: Missing `license` key in manifest for 'buz_custom_partner', defaulting to LGPL-3 
+2026-01-26 06:11:46,337 249012 WARNING MOG_Pretest2 odoo.modules.module: Missing `license` key in manifest for 'buz_stock_current_report', defaulting to LGPL-3 
+2026-01-26 06:11:46,353 249012 WARNING MOG_Pretest2 odoo.modules.module: Missing `license` key in manifest for 'buzcustom_product_sku', defaulting to LGPL-3 
+2026-01-26 06:11:46,378 249012 WARNING MOG_Pretest2 odoo.modules.module: Missing `license` key in manifest for 'custom_purchase_approval', defaulting to LGPL-3 
+2026-01-26 06:11:46,399 249012 WARNING MOG_Pretest2 odoo.modules.module: Missing `license` key in manifest for 'employee_advance', defaulting to LGPL-3 
+2026-01-26 06:11:47,217 249012 WARNING MOG_Pretest2 odoo.modules.module: Missing `license` key in manifest for 'odoo_sale_order_line_views', defaulting to LGPL-3 
+2026-01-26 06:11:47,818 249012 INFO MOG_Pretest2 odoo.modules.loading: loading 264 modules... 
+2026-01-26 06:11:49,378 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_credit_note.models.credit_note is not overriding the create method in batch 
+2026-01-26 06:11:49,385 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_inventory_delivery_report.models.dispatch_report_config is not overriding the create method in batch 
+2026-01-26 06:11:49,396 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_stock_current_report.models.stock_current_transfer_wizard is not overriding the create method in batch 
+2026-01-26 06:11:49,614 249012 INFO MOG_Pretest2 odoo.modules.loading: Loading module buz_account_receipt (140/264) 
+2026-01-26 06:11:50,080 249012 WARNING MOG_Pretest2 odoo.fields: Field stock.picking.sale_id with unknown comodel_name 'sale.order' 
+2026-01-26 06:11:50,094 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.request_date.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 181, in load_module_graph
+    registry.setup_models(env.cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:11:50,094 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.employee_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 181, in load_module_graph
+    registry.setup_models(env.cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:11:50,095 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.warehouse_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 181, in load_module_graph
+    registry.setup_models(env.cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:11:50,095 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.picking_type_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 181, in load_module_graph
+    registry.setup_models(env.cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:11:50,096 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.location_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 181, in load_module_graph
+    registry.setup_models(env.cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:11:50,096 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.location_dest_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 181, in load_module_graph
+    registry.setup_models(env.cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:11:50,097 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.responsible_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 181, in load_module_graph
+    registry.setup_models(env.cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:11:50,097 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.line_ids.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 181, in load_module_graph
+    registry.setup_models(env.cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:11:50,097 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.notes.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 181, in load_module_graph
+    registry.setup_models(env.cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:11:50,098 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.reason_for_requisition.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 181, in load_module_graph
+    registry.setup_models(env.cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:11:50,187 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_account_receipt.models.account_receipt is not overriding the create method in batch 
+2026-01-26 06:11:50,188 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_account_receipt.models.account_receipt is not overriding the create method in batch 
+2026-01-26 06:11:50,191 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_account_receipt.models.account_receipt_voucher is not overriding the create method in batch 
+2026-01-26 06:11:50,193 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_account_receipt.models.account_payment_voucher is not overriding the create method in batch 
+2026-01-26 06:11:50,557 249012 INFO MOG_Pretest2 odoo.modules.registry: module buz_account_receipt: creating or updating database tables 
+2026-01-26 06:11:50,771 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (move_type, journal_type) of account.payment() have the same label: Type. [Modules: None and sr_extra_bank_charges] 
+2026-01-26 06:11:51,008 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:814: UserWarning: Field 'account.payment.voucher.line.payment_ids' in dependency of account.payment.voucher.amount_paid should be searchable. This is necessary to determine which records to recompute when account.payment.state is modified. You should either make the field searchable, or simplify the field dependency.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 206, in load_module_graph
+    registry.init_models(env.cr, model_names, {'module': package.name}, new_install)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 582, in init_models
+    func()
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_model.py", line 48, in mark_modified
+    records.modified(fnames)
+  File "/opt/instance1/odoo17/odoo/models.py", line 6776, in modified
+    todo = [self._modified([self._fields[fname] for fname in fnames], create)]
+  File "/opt/instance1/odoo17/odoo/models.py", line 6827, in _modified
+    tree = self.pool.get_trigger_tree(fields, select=select)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 388, in get_trigger_tree
+    if field in self._field_triggers
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 28, in __get__
+    value = self.fget(obj)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 482, in _field_triggers
+    dependencies = list(field.resolve_depends(self))
+  File "/opt/instance1/odoo17/odoo/fields.py", line 814, in resolve_depends
+    warnings.warn(
+ 
+2026-01-26 06:11:51,008 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:814: UserWarning: Field 'account.payment.voucher.line.payment_ids' in dependency of account.payment.voucher.amount_paid should be searchable. This is necessary to determine which records to recompute when account.payment.amount is modified. You should either make the field searchable, or simplify the field dependency.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 206, in load_module_graph
+    registry.init_models(env.cr, model_names, {'module': package.name}, new_install)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 582, in init_models
+    func()
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_model.py", line 48, in mark_modified
+    records.modified(fnames)
+  File "/opt/instance1/odoo17/odoo/models.py", line 6776, in modified
+    todo = [self._modified([self._fields[fname] for fname in fnames], create)]
+  File "/opt/instance1/odoo17/odoo/models.py", line 6827, in _modified
+    tree = self.pool.get_trigger_tree(fields, select=select)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 388, in get_trigger_tree
+    if field in self._field_triggers
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 28, in __get__
+    value = self.fget(obj)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 482, in _field_triggers
+    dependencies = list(field.resolve_depends(self))
+  File "/opt/instance1/odoo17/odoo/fields.py", line 814, in resolve_depends
+    warnings.warn(
+ 
+2026-01-26 06:11:51,009 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:814: UserWarning: Field 'account.payment.voucher.line.payment_ids' in dependency of account.payment.voucher.line.payment_state should be searchable. This is necessary to determine which records to recompute when account.payment.state is modified. You should either make the field searchable, or simplify the field dependency.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 206, in load_module_graph
+    registry.init_models(env.cr, model_names, {'module': package.name}, new_install)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 582, in init_models
+    func()
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_model.py", line 48, in mark_modified
+    records.modified(fnames)
+  File "/opt/instance1/odoo17/odoo/models.py", line 6776, in modified
+    todo = [self._modified([self._fields[fname] for fname in fnames], create)]
+  File "/opt/instance1/odoo17/odoo/models.py", line 6827, in _modified
+    tree = self.pool.get_trigger_tree(fields, select=select)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 388, in get_trigger_tree
+    if field in self._field_triggers
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 28, in __get__
+    value = self.fget(obj)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 482, in _field_triggers
+    dependencies = list(field.resolve_depends(self))
+  File "/opt/instance1/odoo17/odoo/fields.py", line 814, in resolve_depends
+    warnings.warn(
+ 
+2026-01-26 06:11:51,099 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/data/sequence.xml 
+2026-01-26 06:11:51,112 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/data/account_receipt_config_data.xml 
+2026-01-26 06:11:51,123 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/security/ir.model.access.csv 
+2026-01-26 06:11:51,963 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/reports/account_receipt_report.xml 
+2026-01-26 06:11:52,027 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/reports/payment_receipt_report.xml 
+2026-01-26 06:11:52,042 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/reports/payment_receipt_template.xml 
+2026-01-26 06:11:52,070 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/reports/receipt_voucher_report.xml 
+2026-01-26 06:11:52,074 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/reports/receipt_voucher_template.xml 
+2026-01-26 06:11:52,096 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/reports/payment_voucher_report.xml 
+2026-01-26 06:11:52,104 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/reports/payment_voucher_template.xml 
+2026-01-26 06:11:52,141 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/account_move_views.xml 
+2026-01-26 06:11:52,230 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/account_receipt_views.xml 
+2026-01-26 06:11:52,311 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/account_receipt_config_views.xml 
+2026-01-26 06:11:52,385 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/account_receipt_voucher_views.xml 
+2026-01-26 06:11:52,434 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/account_payment_voucher_views.xml 
+2026-01-26 06:11:52,493 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/account_payment_register_wizard_views.xml 
+2026-01-26 06:11:52,512 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/bill_display_wizard_views.xml 
+2026-01-26 06:11:52,540 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/bill_register_payment_wizard_views.xml 
+2026-01-26 06:11:52,560 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/account_invoice_receipt_action.xml 
+2026-01-26 06:11:52,568 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/res_partner_receipt_action.xml 
+2026-01-26 06:11:52,575 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/res_config_settings_views.xml 
+2026-01-26 06:11:52,709 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/account_wht_type_views.xml 
+2026-01-26 06:11:52,732 249012 INFO MOG_Pretest2 odoo.modules.loading: loading buz_account_receipt/views/account_payment_views.xml 
+2026-01-26 06:11:52,780 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_module: module buz_account_receipt: no translation for language th_TH 
+2026-01-26 06:11:52,866 249012 INFO MOG_Pretest2 odoo.addons.buz_account_receipt.tests.test_approval_visibility: Starting TestApprovalVisibility.test_fallback_logic ... 
+2026-01-26 06:11:53,899 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27'
+2026-01-26 06:11:53,968 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27'
+2026-01-26 06:11:53,975 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27'
+2026-01-26 06:11:53,982 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27'
+2026-01-26 06:11:53,991 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27'
+2026-01-26 06:11:54,158 249012 INFO MOG_Pretest2 odoo.tests: skip sending email in test mode 
+2026-01-26 06:11:54,159 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Mail with ID 661 and Message-Id '<524636249960501.1769407914.083950281143188-openerp-private@metrabyte>' successfully sent 
+2026-01-26 06:11:54,172 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.mail records with IDs: [661] 
+2026-01-26 06:11:54,198 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.message records with IDs: [40228] 
+2026-01-26 06:11:54,199 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Sent batch 1 emails via mail server ID #False 
+2026-01-26 06:11:54,204 249012 INFO MOG_Pretest2 odoo.addons.auth_signup.models.res_users: Password reset email sent for user <checker1> to <c.c@example.com> 
+2026-01-26 06:11:55,201 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93'
+2026-01-26 06:11:55,257 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93'
+2026-01-26 06:11:55,261 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93'
+2026-01-26 06:11:55,265 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93'
+2026-01-26 06:11:55,268 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93'
+2026-01-26 06:11:55,350 249012 INFO MOG_Pretest2 odoo.tests: skip sending email in test mode 
+2026-01-26 06:11:55,351 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Mail with ID 662 and Message-Id '<716155798239127.1769407915.319583892822266-openerp-private@metrabyte>' successfully sent 
+2026-01-26 06:11:55,358 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.mail records with IDs: [662] 
+2026-01-26 06:11:55,369 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.message records with IDs: [40230] 
+2026-01-26 06:11:55,369 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Sent batch 1 emails via mail server ID #False 
+2026-01-26 06:11:55,374 249012 INFO MOG_Pretest2 odoo.addons.auth_signup.models.res_users: Password reset email sent for user <checker2> to <c.c@example.com> 
+2026-01-26 06:11:56,353 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a'
+2026-01-26 06:11:56,404 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a'
+2026-01-26 06:11:56,408 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a'
+2026-01-26 06:11:56,412 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a'
+2026-01-26 06:11:56,416 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a'
+2026-01-26 06:11:56,502 249012 INFO MOG_Pretest2 odoo.tests: skip sending email in test mode 
+2026-01-26 06:11:56,503 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Mail with ID 663 and Message-Id '<218407570259272.1769407916.468171834945679-openerp-private@metrabyte>' successfully sent 
+2026-01-26 06:11:56,511 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.mail records with IDs: [663] 
+2026-01-26 06:11:56,524 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.message records with IDs: [40232] 
+2026-01-26 06:11:56,524 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Sent batch 1 emails via mail server ID #False 
+2026-01-26 06:11:56,529 249012 INFO MOG_Pretest2 odoo.addons.auth_signup.models.res_users: Password reset email sent for user <approver> to <a.a@example.com> 
+2026-01-26 06:11:57,519 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95'
+2026-01-26 06:11:57,601 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95'
+2026-01-26 06:11:57,606 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95'
+2026-01-26 06:11:57,610 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95'
+2026-01-26 06:11:57,613 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95'
+2026-01-26 06:11:57,700 249012 INFO MOG_Pretest2 odoo.tests: skip sending email in test mode 
+2026-01-26 06:11:57,701 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Mail with ID 664 and Message-Id '<208752252305390.1769407917.665078878402710-openerp-private@metrabyte>' successfully sent 
+2026-01-26 06:11:57,708 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.mail records with IDs: [664] 
+2026-01-26 06:11:57,720 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.message records with IDs: [40234] 
+2026-01-26 06:11:57,720 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Sent batch 1 emails via mail server ID #False 
+2026-01-26 06:11:57,725 249012 INFO MOG_Pretest2 odoo.addons.auth_signup.models.res_users: Password reset email sent for user <other> to <o.o@example.com> 
+2026-01-26 06:11:57,932 249012 INFO MOG_Pretest2 odoo.addons.buz_account_receipt.tests.test_approval_visibility: Starting TestApprovalVisibility.test_visibility_logic ... 
+2026-01-26 06:11:58,915 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27'
+2026-01-26 06:11:58,967 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27'
+2026-01-26 06:11:58,973 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27'
+2026-01-26 06:11:58,976 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27'
+2026-01-26 06:11:58,981 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/74/74565d3f2cb74aa255a296ea6b2692cd8d385a27'
+2026-01-26 06:11:59,076 249012 INFO MOG_Pretest2 odoo.tests: skip sending email in test mode 
+2026-01-26 06:11:59,077 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Mail with ID 665 and Message-Id '<046830128467017.1769407919.042773962020874-openerp-private@metrabyte>' successfully sent 
+2026-01-26 06:11:59,084 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.mail records with IDs: [665] 
+2026-01-26 06:11:59,096 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.message records with IDs: [40242] 
+2026-01-26 06:11:59,096 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Sent batch 1 emails via mail server ID #False 
+2026-01-26 06:11:59,101 249012 INFO MOG_Pretest2 odoo.addons.auth_signup.models.res_users: Password reset email sent for user <checker1> to <c.c@example.com> 
+2026-01-26 06:12:00,052 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93'
+2026-01-26 06:12:00,105 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93'
+2026-01-26 06:12:00,112 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93'
+2026-01-26 06:12:00,117 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93'
+2026-01-26 06:12:00,122 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/37/376679d2d03b9e08fda3968d0c181ee9d1044a93'
+2026-01-26 06:12:00,214 249012 INFO MOG_Pretest2 odoo.tests: skip sending email in test mode 
+2026-01-26 06:12:00,215 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Mail with ID 666 and Message-Id '<883464114579727.1769407920.175423145294189-openerp-private@metrabyte>' successfully sent 
+2026-01-26 06:12:00,224 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.mail records with IDs: [666] 
+2026-01-26 06:12:00,238 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.message records with IDs: [40244] 
+2026-01-26 06:12:00,238 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Sent batch 1 emails via mail server ID #False 
+2026-01-26 06:12:00,243 249012 INFO MOG_Pretest2 odoo.addons.auth_signup.models.res_users: Password reset email sent for user <checker2> to <c.c@example.com> 
+2026-01-26 06:12:01,275 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a'
+2026-01-26 06:12:01,339 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a'
+2026-01-26 06:12:01,344 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a'
+2026-01-26 06:12:01,349 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a'
+2026-01-26 06:12:01,353 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/05/05ac44153aeca8b067fa4f0013ca0f31c018bc9a'
+2026-01-26 06:12:01,451 249012 INFO MOG_Pretest2 odoo.tests: skip sending email in test mode 
+2026-01-26 06:12:01,452 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Mail with ID 667 and Message-Id '<580690201294517.1769407921.408523559570312-openerp-private@metrabyte>' successfully sent 
+2026-01-26 06:12:01,460 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.mail records with IDs: [667] 
+2026-01-26 06:12:01,473 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.message records with IDs: [40246] 
+2026-01-26 06:12:01,474 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Sent batch 1 emails via mail server ID #False 
+2026-01-26 06:12:01,480 249012 INFO MOG_Pretest2 odoo.addons.auth_signup.models.res_users: Password reset email sent for user <approver> to <a.a@example.com> 
+2026-01-26 06:12:02,521 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95'
+2026-01-26 06:12:02,574 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95'
+2026-01-26 06:12:02,579 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95'
+2026-01-26 06:12:02,583 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95'
+2026-01-26 06:12:02,587 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_write writing /mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 140, in _file_write
+    with open(full_path, 'wb') as fp:
+         ^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/39/394019b5ab4d608320ea9e8610388aa04b5acf95'
+2026-01-26 06:12:02,672 249012 INFO MOG_Pretest2 odoo.tests: skip sending email in test mode 
+2026-01-26 06:12:02,672 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Mail with ID 668 and Message-Id '<387261877679549.1769407922.638969898223877-openerp-private@metrabyte>' successfully sent 
+2026-01-26 06:12:02,682 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.mail records with IDs: [668] 
+2026-01-26 06:12:02,698 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.message records with IDs: [40248] 
+2026-01-26 06:12:02,698 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Sent batch 1 emails via mail server ID #False 
+2026-01-26 06:12:02,706 249012 INFO MOG_Pretest2 odoo.addons.auth_signup.models.res_users: Password reset email sent for user <other> to <o.o@example.com> 
+2026-01-26 06:12:03,005 249012 INFO MOG_Pretest2 odoo.tests: skip sending email in test mode 
+2026-01-26 06:12:03,005 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Mail with ID 669 and Message-Id '<433332603305603.1769407922.903774976730347-openerp-message-notify@metrabyte>' successfully sent 
+2026-01-26 06:12:03,039 249012 INFO MOG_Pretest2 odoo.models.unlink: User #1 deleted mail.mail records with IDs: [669] 
+2026-01-26 06:12:03,040 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Sent batch 1 emails via mail server ID #False 
+2026-01-26 06:12:03,181 249012 INFO MOG_Pretest2 odoo.models.unlink: User #94 deleted mail.activity records with IDs: [199] 
+2026-01-26 06:12:03,295 249012 INFO MOG_Pretest2 odoo.tests: skip sending email in test mode 
+2026-01-26 06:12:03,296 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Mail with ID 670 and Message-Id '<412987441987511.1769407923.242356300354004-openerp-message-notify@metrabyte>' successfully sent 
+2026-01-26 06:12:03,311 249012 INFO MOG_Pretest2 odoo.models.unlink: User #94 deleted mail.mail records with IDs: [670] 
+2026-01-26 06:12:03,311 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Sent batch 1 emails via mail server ID #False 
+2026-01-26 06:12:03,419 249012 INFO MOG_Pretest2 odoo.models.unlink: User #95 deleted mail.activity records with IDs: [200] 
+2026-01-26 06:12:03,517 249012 INFO MOG_Pretest2 odoo.tests: skip sending email in test mode 
+2026-01-26 06:12:03,518 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Mail with ID 671 and Message-Id '<774252998760867.1769407923.465181350708008-openerp-message-notify@metrabyte>' successfully sent 
+2026-01-26 06:12:03,532 249012 INFO MOG_Pretest2 odoo.models.unlink: User #95 deleted mail.mail records with IDs: [671] 
+2026-01-26 06:12:03,532 249012 INFO MOG_Pretest2 odoo.addons.mail.models.mail_mail: Sent batch 1 emails via mail server ID #False 
+2026-01-26 06:12:03,653 249012 INFO MOG_Pretest2 odoo.models.unlink: User #96 deleted mail.activity records with IDs: [201] 
+2026-01-26 06:12:03,907 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.request_date.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 284, in load_module_graph
+    test_results = loader.run_suite(suite, module_name)
+  File "/opt/instance1/odoo17/odoo/tests/loader.py", line 86, in run_suite
+    suite(results)
+  File "/usr/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 46, in run
+    self._tearDownPreviousClass(None, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 187, in _tearDownPreviousClass
+    super()._tearDownPreviousClass(test, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 109, in _tearDownPreviousClass
+    previousClass.doClassCleanups()
+  File "/opt/instance1/odoo17/odoo/tests/case.py", line 247, in doClassCleanups
+    function(*args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/tests/common.py", line 758, in reset_changes
+    cls.registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:03,908 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.employee_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 284, in load_module_graph
+    test_results = loader.run_suite(suite, module_name)
+  File "/opt/instance1/odoo17/odoo/tests/loader.py", line 86, in run_suite
+    suite(results)
+  File "/usr/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 46, in run
+    self._tearDownPreviousClass(None, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 187, in _tearDownPreviousClass
+    super()._tearDownPreviousClass(test, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 109, in _tearDownPreviousClass
+    previousClass.doClassCleanups()
+  File "/opt/instance1/odoo17/odoo/tests/case.py", line 247, in doClassCleanups
+    function(*args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/tests/common.py", line 758, in reset_changes
+    cls.registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:03,909 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.warehouse_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 284, in load_module_graph
+    test_results = loader.run_suite(suite, module_name)
+  File "/opt/instance1/odoo17/odoo/tests/loader.py", line 86, in run_suite
+    suite(results)
+  File "/usr/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 46, in run
+    self._tearDownPreviousClass(None, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 187, in _tearDownPreviousClass
+    super()._tearDownPreviousClass(test, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 109, in _tearDownPreviousClass
+    previousClass.doClassCleanups()
+  File "/opt/instance1/odoo17/odoo/tests/case.py", line 247, in doClassCleanups
+    function(*args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/tests/common.py", line 758, in reset_changes
+    cls.registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:03,909 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.picking_type_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 284, in load_module_graph
+    test_results = loader.run_suite(suite, module_name)
+  File "/opt/instance1/odoo17/odoo/tests/loader.py", line 86, in run_suite
+    suite(results)
+  File "/usr/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 46, in run
+    self._tearDownPreviousClass(None, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 187, in _tearDownPreviousClass
+    super()._tearDownPreviousClass(test, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 109, in _tearDownPreviousClass
+    previousClass.doClassCleanups()
+  File "/opt/instance1/odoo17/odoo/tests/case.py", line 247, in doClassCleanups
+    function(*args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/tests/common.py", line 758, in reset_changes
+    cls.registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:03,910 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.location_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 284, in load_module_graph
+    test_results = loader.run_suite(suite, module_name)
+  File "/opt/instance1/odoo17/odoo/tests/loader.py", line 86, in run_suite
+    suite(results)
+  File "/usr/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 46, in run
+    self._tearDownPreviousClass(None, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 187, in _tearDownPreviousClass
+    super()._tearDownPreviousClass(test, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 109, in _tearDownPreviousClass
+    previousClass.doClassCleanups()
+  File "/opt/instance1/odoo17/odoo/tests/case.py", line 247, in doClassCleanups
+    function(*args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/tests/common.py", line 758, in reset_changes
+    cls.registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:03,910 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.location_dest_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 284, in load_module_graph
+    test_results = loader.run_suite(suite, module_name)
+  File "/opt/instance1/odoo17/odoo/tests/loader.py", line 86, in run_suite
+    suite(results)
+  File "/usr/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 46, in run
+    self._tearDownPreviousClass(None, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 187, in _tearDownPreviousClass
+    super()._tearDownPreviousClass(test, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 109, in _tearDownPreviousClass
+    previousClass.doClassCleanups()
+  File "/opt/instance1/odoo17/odoo/tests/case.py", line 247, in doClassCleanups
+    function(*args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/tests/common.py", line 758, in reset_changes
+    cls.registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:03,911 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.responsible_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 284, in load_module_graph
+    test_results = loader.run_suite(suite, module_name)
+  File "/opt/instance1/odoo17/odoo/tests/loader.py", line 86, in run_suite
+    suite(results)
+  File "/usr/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 46, in run
+    self._tearDownPreviousClass(None, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 187, in _tearDownPreviousClass
+    super()._tearDownPreviousClass(test, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 109, in _tearDownPreviousClass
+    previousClass.doClassCleanups()
+  File "/opt/instance1/odoo17/odoo/tests/case.py", line 247, in doClassCleanups
+    function(*args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/tests/common.py", line 758, in reset_changes
+    cls.registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:03,911 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.line_ids.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 284, in load_module_graph
+    test_results = loader.run_suite(suite, module_name)
+  File "/opt/instance1/odoo17/odoo/tests/loader.py", line 86, in run_suite
+    suite(results)
+  File "/usr/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 46, in run
+    self._tearDownPreviousClass(None, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 187, in _tearDownPreviousClass
+    super()._tearDownPreviousClass(test, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 109, in _tearDownPreviousClass
+    previousClass.doClassCleanups()
+  File "/opt/instance1/odoo17/odoo/tests/case.py", line 247, in doClassCleanups
+    function(*args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/tests/common.py", line 758, in reset_changes
+    cls.registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:03,912 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.notes.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 284, in load_module_graph
+    test_results = loader.run_suite(suite, module_name)
+  File "/opt/instance1/odoo17/odoo/tests/loader.py", line 86, in run_suite
+    suite(results)
+  File "/usr/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 46, in run
+    self._tearDownPreviousClass(None, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 187, in _tearDownPreviousClass
+    super()._tearDownPreviousClass(test, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 109, in _tearDownPreviousClass
+    previousClass.doClassCleanups()
+  File "/opt/instance1/odoo17/odoo/tests/case.py", line 247, in doClassCleanups
+    function(*args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/tests/common.py", line 758, in reset_changes
+    cls.registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:03,912 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property internal.consume.request.reason_for_requisition.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 284, in load_module_graph
+    test_results = loader.run_suite(suite, module_name)
+  File "/opt/instance1/odoo17/odoo/tests/loader.py", line 86, in run_suite
+    suite(results)
+  File "/usr/lib/python3.12/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 46, in run
+    self._tearDownPreviousClass(None, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 187, in _tearDownPreviousClass
+    super()._tearDownPreviousClass(test, result)
+  File "/opt/instance1/odoo17/odoo/tests/suite.py", line 109, in _tearDownPreviousClass
+    previousClass.doClassCleanups()
+  File "/opt/instance1/odoo17/odoo/tests/case.py", line 247, in doClassCleanups
+    function(*args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/tests/common.py", line 758, in reset_changes
+    cls.registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:04,036 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: _file_gc could not unlink /mnt/data_filestore/filestore/MOG_Pretest2/98/9858046daf4cbb2ca35f9a5a57dadd3976b194e4 
+Traceback (most recent call last):
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_attachment.py", line 220, in _gc_file_store_unsafe
+    os.unlink(self._full_path(fname))
+PermissionError: [Errno 13] Permission denied: '/mnt/data_filestore/filestore/MOG_Pretest2/98/9858046daf4cbb2ca35f9a5a57dadd3976b194e4'
+2026-01-26 06:12:04,037 249012 INFO MOG_Pretest2 odoo.addons.base.models.ir_attachment: filestore gc 1 checked, 0 removed 
+2026-01-26 06:12:04,100 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:814: UserWarning: Field 'account.payment.voucher.line.payment_ids' in dependency of account.payment.voucher.amount_paid should be searchable. This is necessary to determine which records to recompute when account.payment.state is modified. You should either make the field searchable, or simplify the field dependency.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 297, in load_module_graph
+    module.write({'state': 'installed', 'latest_version': ver})
+  File "/opt/instance1/odoo17/addons/website/models/ir_module_module.py", line 97, in write
+    return super(IrModuleModule, self).write(vals)
+  File "/opt/instance1/odoo17/addons/account/models/ir_module.py", line 64, in write
+    res = super().write(vals)
+  File "/opt/instance1/odoo17/odoo/models.py", line 4371, in write
+    if self.pool.is_modifying_relations(field):
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 501, in is_modifying_relations
+    result = field in self._field_triggers and (
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 28, in __get__
+    value = self.fget(obj)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 482, in _field_triggers
+    dependencies = list(field.resolve_depends(self))
+  File "/opt/instance1/odoo17/odoo/fields.py", line 814, in resolve_depends
+    warnings.warn(
+ 
+2026-01-26 06:12:04,101 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:814: UserWarning: Field 'account.payment.voucher.line.payment_ids' in dependency of account.payment.voucher.amount_paid should be searchable. This is necessary to determine which records to recompute when account.payment.amount is modified. You should either make the field searchable, or simplify the field dependency.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 297, in load_module_graph
+    module.write({'state': 'installed', 'latest_version': ver})
+  File "/opt/instance1/odoo17/addons/website/models/ir_module_module.py", line 97, in write
+    return super(IrModuleModule, self).write(vals)
+  File "/opt/instance1/odoo17/addons/account/models/ir_module.py", line 64, in write
+    res = super().write(vals)
+  File "/opt/instance1/odoo17/odoo/models.py", line 4371, in write
+    if self.pool.is_modifying_relations(field):
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 501, in is_modifying_relations
+    result = field in self._field_triggers and (
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 28, in __get__
+    value = self.fget(obj)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 482, in _field_triggers
+    dependencies = list(field.resolve_depends(self))
+  File "/opt/instance1/odoo17/odoo/fields.py", line 814, in resolve_depends
+    warnings.warn(
+ 
+2026-01-26 06:12:04,102 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:814: UserWarning: Field 'account.payment.voucher.line.payment_ids' in dependency of account.payment.voucher.line.payment_state should be searchable. This is necessary to determine which records to recompute when account.payment.state is modified. You should either make the field searchable, or simplify the field dependency.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 477, in load_modules
+    processed_modules += load_marked_modules(env, graph,
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 365, in load_marked_modules
+    loaded, processed = load_module_graph(
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 297, in load_module_graph
+    module.write({'state': 'installed', 'latest_version': ver})
+  File "/opt/instance1/odoo17/addons/website/models/ir_module_module.py", line 97, in write
+    return super(IrModuleModule, self).write(vals)
+  File "/opt/instance1/odoo17/addons/account/models/ir_module.py", line 64, in write
+    res = super().write(vals)
+  File "/opt/instance1/odoo17/odoo/models.py", line 4371, in write
+    if self.pool.is_modifying_relations(field):
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 501, in is_modifying_relations
+    result = field in self._field_triggers and (
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 28, in __get__
+    value = self.fget(obj)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 482, in _field_triggers
+    dependencies = list(field.resolve_depends(self))
+  File "/opt/instance1/odoo17/odoo/fields.py", line 814, in resolve_depends
+    warnings.warn(
+ 
+2026-01-26 06:12:04,134 249012 INFO MOG_Pretest2 odoo.modules.loading: Module buz_account_receipt loaded in 14.52s (incl. 11.19s test), 771 queries (+2090 test, +771 other) 
+2026-01-26 06:12:04,151 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_inter_customer_clearing_payment.models.clearing_link is not overriding the create method in batch 
+2026-01-26 06:12:04,163 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_mrp_stock_request.models.mrp_stock_request is not overriding the create method in batch 
+2026-01-26 06:12:04,167 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_mrp_stock_request.wizards.mrp_stock_request_allocate_multi_wizard is not overriding the create method in batch 
+2026-01-26 06:12:04,197 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.employee_purchase_requisition.models.employee_purchase_requisition is not overriding the create method in batch 
+2026-01-26 06:12:04,207 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.job_costing_management.models.job_cost_sheet is not overriding the create method in batch 
+2026-01-26 06:12:04,210 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.job_costing_management.models.job_order is not overriding the create method in batch 
+2026-01-26 06:12:04,212 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.job_costing_management.models.material_requisition is not overriding the create method in batch 
+2026-01-26 06:12:04,215 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.job_costing_management.models.job_note is not overriding the create method in batch 
+2026-01-26 06:12:04,216 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.job_costing_management.models.purchase_order is not overriding the create method in batch 
+2026-01-26 06:12:04,217 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.job_costing_management.models.purchase_order is not overriding the create method in batch 
+2026-01-26 06:12:04,217 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.job_costing_management.models.account_move is not overriding the create method in batch 
+2026-01-26 06:12:04,218 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.job_costing_management.models.account_move is not overriding the create method in batch 
+2026-01-26 06:12:04,218 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.job_costing_management.models.hr_timesheet is not overriding the create method in batch 
+2026-01-26 06:12:04,220 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.job_costing_management.models.boq is not overriding the create method in batch 
+2026-01-26 06:12:04,402 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.adevx_account_pdc.models.account_payment is not overriding the create method in batch 
+2026-01-26 06:12:04,414 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_custom_billing_note.models.billing_note is not overriding the create method in batch 
+2026-01-26 06:12:04,424 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.buz_mrp_period_cost_allocation.models.mrp_period_cost is not overriding the create method in batch 
+2026-01-26 06:12:04,428 249012 WARNING MOG_Pretest2 odoo.models: The model report.buz_mrp_period_cost_allocation.report_xlsx has no _description 
+2026-01-26 06:12:04,472 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.marketplace_settlement.models.settlement is not overriding the create method in batch 
+2026-01-26 06:12:04,476 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.marketplace_settlement.models.marketplace_vendor_bill is not overriding the create method in batch 
+2026-01-26 06:12:04,479 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.marketplace_settlement.models.marketplace_fee_allocation is not overriding the create method in batch 
+2026-01-26 06:12:04,487 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.marketplace_settlement.wizards.settlement_preview_wizard is not overriding the create method in batch 
+2026-01-26 06:12:04,787 249012 WARNING MOG_Pretest2 odoo.models: The model report.buz_landed_cost_report.xlsx has no _description 
+2026-01-26 06:12:05,066 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.stock_fifo_by_location.models.stock_valuation_layer is not overriding the create method in batch 
+2026-01-26 06:12:05,067 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.stock_fifo_by_location.models.stock_move is not overriding the create method in batch 
+2026-01-26 06:12:05,071 249012 WARNING MOG_Pretest2 odoo.api.create: The model odoo.addons.stock_fifo_by_location.models.stock_landed_cost is not overriding the create method in batch 
+2026-01-26 06:12:05,075 249012 WARNING MOG_Pretest2 odoo.models: The model config.parameter has no _description 
+2026-01-26 06:12:05,133 249012 INFO MOG_Pretest2 odoo.modules.loading: 264 modules loaded in 17.31s, 771 queries (+2861 extra) 
+2026-01-26 06:12:05,230 249012 WARNING MOG_Pretest2 odoo.fields: res.config.settings.pos_visibility_type: selection attribute will be ignored as the field is related 
+2026-01-26 06:12:05,231 249012 WARNING MOG_Pretest2 odoo.fields: res.config.settings.pos_service_charge_type: selection attribute will be ignored as the field is related 
+2026-01-26 06:12:05,415 249012 WARNING MOG_Pretest2 odoo.fields: manufacturing.report.state: selection attribute will be ignored as the field is related 
+2026-01-26 06:12:05,528 249012 WARNING MOG_Pretest2 odoo.fields: Field purchase.order.buz_purchase_request_id with unknown comodel_name 'buz.purchase.request' 
+2026-01-26 06:12:05,528 249012 WARNING MOG_Pretest2 odoo.fields: Field purchase.order.district_id with unknown comodel_name 'res.country.district' 
+2026-01-26 06:12:05,536 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property mrp.stock.request.company_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 489, in load_modules
+    registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:05,537 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property mrp.stock.request.mo_ids.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 489, in load_modules
+    registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:05,537 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property mrp.stock.request.line_ids.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 489, in load_modules
+    registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:05,538 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property mrp.stock.request.picking_type_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 489, in load_modules
+    registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:05,539 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property mrp.stock.request.location_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 489, in load_modules
+    registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:05,539 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property mrp.stock.request.location_dest_id.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 489, in load_modules
+    registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:05,540 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property mrp.stock.request.request_date.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 489, in load_modules
+    registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:05,540 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property mrp.stock.request.requested_by.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 489, in load_modules
+    registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:05,541 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:542: UserWarning: Since Odoo 17, property mrp.stock.request.note.states is no longer supported.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 489, in load_modules
+    registry.setup_models(cr)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 319, in setup_models
+    model._setup_fields()
+  File "/opt/instance1/odoo17/odoo/models.py", line 3393, in _setup_fields
+    field.setup(self)
+  File "/opt/instance1/odoo17/odoo/fields.py", line 542, in setup
+    warnings.warn(f'Since Odoo 17, property {self}.states is no longer supported.')
+ 
+2026-01-26 06:12:05,734 249012 WARNING MOG_Pretest2 odoo.fields: res.config.settings.pos_visibility_type: selection attribute will be ignored as the field is related 
+2026-01-26 06:12:05,734 249012 WARNING MOG_Pretest2 odoo.fields: res.config.settings.pos_service_charge_type: selection attribute will be ignored as the field is related 
+2026-01-26 06:12:05,918 249012 WARNING MOG_Pretest2 odoo.fields: manufacturing.report.state: selection attribute will be ignored as the field is related 
+2026-01-26 06:12:06,719 249012 INFO MOG_Pretest2 odoo.modules.registry: verifying fields for every extended model 
+2026-01-26 06:12:06,847 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (move_type, journal_type) of account.payment() have the same label: Type. [Modules: None and sr_extra_bank_charges] 
+2026-01-26 06:12:06,847 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (amount_text, check_amount_in_words) of account.payment() have the same label: Amount in Words. [Modules: None and account_check_printing] 
+2026-01-26 06:12:06,847 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (original_tax_invoice_amount, original_amount) of account.payment() have the same label: มูลค่าสินค้าตามใบกำกับภาษีเดิม. [Modules: None and None] 
+2026-01-26 06:12:06,847 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (correct_product_value, correct_amount) of account.payment() have the same label: มูลค่าของสินค้าที่ถูกต้อง. [Modules: None and None] 
+2026-01-26 06:12:06,848 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (project_count, project_ids) of res.users() have the same label: Projects. [Modules: None and None] 
+2026-01-26 06:12:06,848 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (project_count, project_ids) of res.partner() have the same label: Projects. [Modules: job_costing_management and job_costing_management] 
+2026-01-26 06:12:06,848 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (original_tax_invoice_amount, original_amount) of account.bank.statement.line() have the same label: มูลค่าสินค้าตามใบกำกับภาษีเดิม. [Modules: None and None] 
+2026-01-26 06:12:06,848 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (correct_product_value, correct_amount) of account.bank.statement.line() have the same label: มูลค่าของสินค้าที่ถูกต้อง. [Modules: None and None] 
+2026-01-26 06:12:06,848 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (original_tax_invoice_amount, original_amount) of account.move() have the same label: มูลค่าสินค้าตามใบกำกับภาษีเดิม. [Modules: buz_custom_invoice and buz_credit_note] 
+2026-01-26 06:12:06,849 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (correct_product_value, correct_amount) of account.move() have the same label: มูลค่าของสินค้าที่ถูกต้อง. [Modules: buz_custom_invoice and buz_credit_note] 
+2026-01-26 06:12:06,849 249012 WARNING MOG_Pretest2 odoo.addons.base.models.ir_model: Two fields (land_cost_cancel_modes, pos_picking_type_id) of res.config.settings() have the same label: Operation Type. [Modules: cancel_landed_cost_odoo and point_of_sale] 
+2026-01-26 06:12:07,005 249012 WARNING MOG_Pretest2 py.warnings: /opt/instance1/odoo17/odoo/fields.py:814: UserWarning: Field 'account.move.purchase_id' in dependency of account.move.purchase_order_number should be searchable. This is necessary to determine which records to recompute when purchase.order.name is modified. You should either make the field searchable, or simplify the field dependency.
+  File "/opt/instance1/odoo17/odoo-bin", line 8, in <module>
+    odoo.cli.main()
+  File "/opt/instance1/odoo17/odoo/cli/command.py", line 66, in main
+    o.run(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 184, in run
+    main(args)
+  File "/opt/instance1/odoo17/odoo/cli/server.py", line 177, in main
+    rc = odoo.service.server.start(preload=preload, stop=stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1414, in start
+    rc = server.run(preload, stop)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 973, in run
+    rc = preload_registries(preload)
+  File "/opt/instance1/odoo17/odoo/service/server.py", line 1314, in preload_registries
+    registry = Registry.new(dbname, update_module=update_module)
+  File "/opt/instance1/odoo17-venv/lib/python3.12/site-packages/decorator.py", line 232, in fun
+    return caller(func, *(extras + args), **kw)
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 87, in locked
+    return func(inst, *args, **kwargs)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 110, in new
+    odoo.modules.load_modules(registry, force_demo, status, update_module)
+  File "/opt/instance1/odoo17/odoo/modules/loading.py", line 580, in load_modules
+    registry.init_models(cr, list(models_to_check), {'models_to_check': True})
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 582, in init_models
+    func()
+  File "/opt/instance1/odoo17/odoo/addons/base/models/ir_model.py", line 48, in mark_modified
+    records.modified(fnames)
+  File "/opt/instance1/odoo17/odoo/models.py", line 6776, in modified
+    todo = [self._modified([self._fields[fname] for fname in fnames], create)]
+  File "/opt/instance1/odoo17/odoo/models.py", line 6827, in _modified
+    tree = self.pool.get_trigger_tree(fields, select=select)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 388, in get_trigger_tree
+    if field in self._field_triggers
+  File "/opt/instance1/odoo17/odoo/tools/func.py", line 28, in __get__
+    value = self.fget(obj)
+  File "/opt/instance1/odoo17/odoo/modules/registry.py", line 482, in _field_triggers
+    dependencies = list(field.resolve_depends(self))
+  File "/opt/instance1/odoo17/odoo/fields.py", line 814, in resolve_depends
+    warnings.warn(
+ 
+2026-01-26 06:12:09,012 249012 INFO MOG_Pretest2 odoo.modules.loading: Modules loaded. 
+2026-01-26 06:12:09,026 249012 INFO MOG_Pretest2 odoo.modules.registry: Registry loaded in 23.105s 
+2026-01-26 06:12:09,026 249012 INFO MOG_Pretest2 odoo.service.server: Starting post tests 
+2026-01-26 06:12:09,027 249012 INFO MOG_Pretest2 odoo.service.server: 0 post-tests in 0.00s, 0 queries 
+2026-01-26 06:12:09,027 249012 INFO MOG_Pretest2 odoo.tests.stats: buz_account_receipt: 4 tests 11.19s 2090 queries 
+2026-01-26 06:12:09,028 249012 INFO MOG_Pretest2 odoo.service.server: Stopping gracefully 
+profiling:/tmp/pip-install-y60bqvv9/rjsmin_75615d27fdf2470d9ea96f484b817616/build/temp.linux-x86_64-cpython-312/rjsmin.gcda:Cannot open

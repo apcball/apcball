@@ -1,0 +1,20 @@
+{
+    "name": "buz Stock Valuation Location",
+    "version": "17.0.1.1.0",
+    "summary": "Stock Valuation Analysis by Location with Pivot & Graph Views",
+    "category": "Inventory/Accounting",
+    "author": "Apcball",
+    "website": "https://mogdev.work",
+    "license": "LGPL-3",
+    "depends": ["stock_account"],
+    "data": [
+        "security/stock_valuation_location_groups.xml",
+        "security/ir.model.access.csv",
+        "views/stock_valuation_layer_views.xml",
+        "views/stock_valuation_location_menu.xml",
+        "views/stock_valuation_transit_report.xml",
+    ],
+    "assets": {},
+    "installable": True,
+    "auto_install": False,
+}

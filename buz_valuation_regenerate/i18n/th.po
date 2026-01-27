@@ -1,0 +1,249 @@
+# Translation of Odoo Server.# Translation of Odoo Server.
+
+# This file contains the translation of the following modules:# This file contains the translation of the following modules:
+
+# 	* buz_valuation_regenerate# 	* buz_valuation_regenerate
+
+##
+
+msgid ""msgid ""
+
+msgstr ""msgstr ""
+
+"Project-Id-Version: Odoo Server 17.0\n""Project-Id-Version: Odoo Server 17.0\n"
+
+"Report-Msgid-Bugs-To: \n""Report-Msgid-Bugs-To: \n"
+
+"POT-Creation-Date: 2024-10-17 12:00+0000\n""POT-Creation-Date: 2024-10-17 00:00+0000\n"
+
+"PO-Revision-Date: 2024-10-17 12:00+0000\n""PO-Revision-Date: 2024-10-17 00:00+0000\n"
+
+"Last-Translator: \n""Last-Translator: \n"
+
+"Language-Team: \n""Language-Team: \n"
+
+"MIME-Version: 1.0\n""Language: th\n"
+
+"Content-Type: text/plain; charset=UTF-8\n""MIME-Version: 1.0\n"
+
+"Content-Transfer-Encoding: 8bit\n""Content-Type: text/plain; charset=UTF-8\n"
+
+"Plural-Forms: nplurals=1; plural=0;\n""Content-Transfer-Encoding: 8bit\n"
+
+"Language: th\n""Plural-Forms: nplurals=1; plural=0;\n"
+
+
+
+#. module: buz_valuation_regeneratemsgid "Re-Generate Valuation & Entries"
+
+#: model:ir.module.module,name:buz_valuation_regenerate.module_meta_informationmsgstr "สร้างชั้นต้นทุนและรายการใหม่"
+
+msgid "Re-Generate Valuation & Entries"
+
+msgstr "สร้างชั้นต้นทุนและรายการบัญชีใหม่"msgid "Re-Generate Valuation Layers"
+
+msgstr "สร้างชั้นต้นทุนใหม่"
+
+#. module: buz_valuation_regenerate
+
+#: model:ir.model.fields,field_description:buz_valuation_regenerate.field_valuation_regenerate_wizard__company_idmsgid "Company"
+
+msgid "Company"msgstr "บริษัท"
+
+msgstr "บริษัท"
+
+msgid "Scope"
+
+#. module: buz_valuation_regeneratemsgstr "ขอบเขต"
+
+#: model:ir.model.fields,field_description:buz_valuation_regenerate.field_valuation_regenerate_wizard__mode
+
+msgid "Scope"msgid "Products"
+
+msgstr "ขอบเขต"msgstr "สินค้า"
+
+
+
+#. module: buz_valuation_regeneratemsgid "Categories"
+
+#: selection:valuation.regenerate.wizard,mode:0msgstr "หมวดหมู่"
+
+msgid "Products"
+
+msgstr "สินค้า"msgid "Domain"
+
+msgstr "โดเมน"
+
+#. module: buz_valuation_regenerate
+
+#: selection:valuation.regenerate.wizard,mode:0msgid "Domain Filter"
+
+msgid "Categories"msgstr "ตัวกรองโดเมน"
+
+msgstr "หมวดหมู่"
+
+msgid "Date From"
+
+#. module: buz_valuation_regeneratemsgstr "วันที่เริ่มต้น"
+
+#: model:ir.model.fields,field_description:buz_valuation_regenerate.field_valuation_regenerate_wizard__date_from
+
+msgid "Date From"msgid "Date To"
+
+msgstr "วันที่เริ่มต้น"msgstr "วันที่สิ้นสุด"
+
+
+
+#. module: buz_valuation_regeneratemsgid "Rebuild Valuation Layers"
+
+#: model:ir.model.fields,field_description:buz_valuation_regenerate.field_valuation_regenerate_wizard__date_tomsgstr "สร้างชั้นต้นทุนใหม่"
+
+msgid "Date To"
+
+msgstr "วันที่สิ้นสุด"msgid "Rebuild Journal Entries"
+
+msgstr "สร้างรายการบันทึกใหม่"
+
+#. module: buz_valuation_regenerate
+
+#: model:ir.model.fields,field_description:buz_valuation_regenerate.field_valuation_regenerate_wizard__rebuild_valuation_layersmsgid "Include Landed Cost Layers"
+
+msgid "Rebuild Valuation Layers"msgstr "รวมชั้นต้นทุนรวมเข้ากับสินค้า"
+
+msgstr "สร้างชั้นต้นทุนใหม่"
+
+msgid "Recompute Cost Method"
+
+#. module: buz_valuation_regeneratemsgstr "วิธีการคำนวณต้นทุนใหม่"
+
+#: model:ir.model.fields,field_description:buz_valuation_regenerate.field_valuation_regenerate_wizard__rebuild_account_moves
+
+msgid "Rebuild Journal Entries"msgid "Auto (Follow Product Category)"
+
+msgstr "สร้างรายการบันทึกบัญชีใหม่"msgstr "อัตโนมัติ (ตามหมวดสินค้า)"
+
+
+
+#. module: buz_valuation_regeneratemsgid "FIFO"
+
+#: model:ir.model.fields,field_description:buz_valuation_regenerate.field_valuation_regenerate_wizard__dry_runmsgstr "FIFO"
+
+msgid "Dry Run"
+
+msgstr "จำลองการทำงาน"msgid "AVCO"
+
+msgstr "AVCO"
+
+#. module: buz_valuation_regenerate
+
+#: model:ir.model.fields,field_description:buz_valuation_regenerate.field_valuation_regenerate_wizard__notesmsgid "Dry Run"
+
+msgid "Notes"msgstr "จำลองการทำงาน"
+
+msgstr "หมายเหตุ"
+
+msgid "Calculate plan but do not modify data"
+
+#. module: buz_valuation_regeneratemsgstr "คำนวณแผนแต่ไม่เปลี่ยนแปลงข้อมูล"
+
+#: model:ir.ui.view,arch_db:buz_valuation_regenerate.view_valuation_regenerate_wizard_form
+
+msgid "Compute Plan"msgid "Force rebuild if locked"
+
+msgstr "คำนวณแผน"msgstr "บังคับสร้างใหม่แม่ช่วงเวลาถูกล็อค"
+
+
+
+#. module: buz_valuation_regeneratemsgid "Post New Journal Entries"
+
+#: model:ir.ui.view,arch_db:buz_valuation_regenerate.view_valuation_regenerate_wizard_formmsgstr "ลงรายการบัญชีใหม่"
+
+msgid "Apply Regeneration"
+
+msgstr "ดำเนินการสร้างใหม่"msgid "Notes"
+
+msgstr "หมายเหตุ"
+
+#. module: buz_valuation_regenerate
+
+#: model:ir.ui.menu,name:buz_valuation_regenerate.menu_valuation_tools_rootmsgid "Compute Plan"
+
+msgid "Valuation Tools"msgstr "คำนวณแผน"
+
+msgstr "เครื่องมือต้นทุน"
+
+msgid "Apply Regeneration"
+
+#. module: buz_valuation_regeneratemsgstr "ใช้งานการสร้างใหม่"
+
+#: model:ir.ui.menu,name:buz_valuation_regenerate.menu_valuation_regenerate_wizard
+
+msgid "Re-Generate Valuation"msgid "Success!"
+
+msgstr "สร้างต้นทุนใหม่"msgstr "สำเร็จ!"
+
+
+
+#. module: buz_valuation_regeneratemsgid "Valuation Regeneration Logs"
+
+#: model:ir.ui.menu,name:buz_valuation_regenerate.menu_valuation_regenerate_logsmsgstr "บันทึกการสร้างชั้นต้นทุนใหม่"
+
+msgid "Valuation Regeneration Logs"
+
+msgstr "บันทึกการสร้างต้นทุนใหม่"msgid "Executed By"
+
+msgstr "ดำเนินการโดย"
+
+msgid "Executed At"
+msgstr "เวลาดำเนินการ"
+
+msgid "Target Products"
+msgstr "สินค้าเป้าหมาย"
+
+msgid "Rebuilt Valuation Layers"
+msgstr "ชั้นต้นทุนที่ถูกสร้างใหม่"
+
+msgid "Rebuilt Journal Entries"
+msgstr "รายการบันทึกที่ถูกสร้างใหม่"
+
+msgid "Included Landed Cost Layers"
+msgstr "ชั้นต้นทุนรวมเข้ากับสินค้าที่ถูกรวม"
+
+msgid "Was Dry Run"
+msgstr "เป็นการจำลองการทำงาน"
+
+msgid "Posted New Moves"
+msgstr "ลงรายการเคลื่อนไหวใหม่"
+
+msgid "Attachments"
+msgstr "ไฟล์แนบ"
+
+msgid "Valuation Regen"
+msgstr "สร้างชั้นต้นทุนใหม่"
+
+msgid "Impacted Stock Moves"
+msgstr "การเคลื่อนไหวสินค้าที่มีผลกระทบ"
+
+msgid "CSV Report"
+msgstr "รายงาน CSV"
+
+msgid "Rollback"
+msgstr "ย้อนกลับ"
+
+msgid "Export CSV Report"
+msgstr "ส่งออกไฟล์ CSV"
+
+msgid "Confirm Rollback"
+msgstr "ยืนยันการย้อนกลับ"
+
+msgid "Additional Notes"
+msgstr "หมายเหตุเพิ่มเติม"
+
+msgid "Valuation Tools"
+msgstr "เครื่องมือต้นทุน"
+
+msgid "Valuation Regeneration Log"
+msgstr "บันทึกการสร้างชั้นต้นทุนใหม่"
+
+msgid "Re-Generate Valuation"
+msgstr "สร้างชั้นต้นทุนใหม่"

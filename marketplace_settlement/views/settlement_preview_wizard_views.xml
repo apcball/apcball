@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- AR/AP Netting Preview Wizard Form -->
+        <record id="view_settlement_preview_wizard_form" model="ir.ui.view">
+            <field name="name">settlement.preview.wizard.form</field>
+            <field name="model">settlement.preview.wizard</field>
+            <field name="arch" type="xml">
+                <form string="AR/AP Netting Preview">
+                    <group>
+                        <group string="Settlement Information">
+                            <field name="settlement_id" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group string="Receivables (AR)" class="oe_left">
+                            <field name="total_receivables" widget="monetary"/>
+                            <field name="receivable_details" widget="text" readonly="1" nolabel="1" 
+                                   placeholder="No receivable details available"/>
+                        </group>
+                        
+                        <group string="Payables (AP)" class="oe_right">
+                            <field name="total_payables" widget="monetary"/>
+                            <field name="payable_details" widget="text" readonly="1" nolabel="1"
+                                   placeholder="No payable details available"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group string="Net Amount">
+                            <field name="net_amount" widget="monetary" 
+                                   class="oe_bold"
+                                   style="font-size: 1.2em;"/>
+                            <div class="text-muted">
+                                <span invisible="net_amount &lt;= 0">Amount to receive from marketplace</span>
+                                <span invisible="net_amount &gt;= 0">Amount to pay to marketplace</span>
+                            </div>
+                        </group>
+                    </group>
+                    
+                    <div class="alert alert-warning" invisible="not warning_message">
+                        <field name="warning_message" readonly="1" nolabel="1"/>
+                    </div>
+                    
+                    <field name="can_perform_netting" invisible="1"/>
+                    
+                    <footer>
+                        <button name="action_confirm_netting" type="object" 
+                                string="Confirm Netting" class="btn-primary"
+                                invisible="not can_perform_netting"/>
+                        <button name="action_cancel" type="object" 
+                                string="Cancel" class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Settlement Preview Wizard Form -->
+        <record id="view_marketplace_settlement_preview_wizard_form" model="ir.ui.view">
+            <field name="name">marketplace.settlement.preview.wizard.form</field>
+            <field name="model">marketplace.settlement.preview.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Settlement Preview">
+                    <sheet>
+                        <div class="oe_title">
+                            <label for="settlement_id" class="oe_edit_only"/>
+                            <h1>
+                                <field name="settlement_id" readonly="1"/>
+                            </h1>
+                        </div>
+                        
+                        <group>
+                            <group name="amounts" string="Settlement Summary">
+                                <field name="currency_id" invisible="1"/>
+                                <field name="total_invoice_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <separator string="Net Settlement (Full Invoice Amount)"/>
+                                <field name="net_settlement" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator" style="font-weight: bold;"/>
+                                <div class="alert alert-info mt-3" role="alert">
+                                    <strong>Note:</strong> Fees and taxes are now handled through separate vendor bills for proper documentation.
+                                </div>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Invoice Details" name="invoice_details">
+                                <field name="invoice_detail_ids" readonly="1">
+                                    <tree string="Invoices">
+                                        <field name="invoice_name"/>
+                                        <field name="partner_name"/>
+                                        <field name="currency_id" invisible="1"/>
+                                        <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                        
+                        <div class="alert alert-info" role="alert">
+                            <strong>Preview Notice:</strong> This is a preview of the settlement that will be created. 
+                            No journal entry will be posted until you confirm the creation.
+                        </div>
+                    </sheet>
+                    
+                    <footer>
+                        <button name="action_create_settlement" 
+                                string="Create Settlement" 
+                                type="object" 
+                                class="btn-primary"
+                                confirm="Are you sure you want to create this settlement? This will post a journal entry."/>
+                        <button name="action_cancel" 
+                                string="Cancel" 
+                                type="object" 
+                                class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Settlement Preview Line Tree View -->
+        <record id="view_marketplace_settlement_preview_line_tree" model="ir.ui.view">
+            <field name="name">marketplace.settlement.preview.line.tree</field>
+            <field name="model">marketplace.settlement.preview.line</field>
+            <field name="arch" type="xml">
+                <tree string="Invoice Details" create="false" edit="false" delete="false">
+                    <field name="invoice_name"/>
+                    <field name="partner_name"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                </tree>
+            </field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Force cleanup of wizard tables during module update to prevent constraint errors -->
+    <delete model="advance.refill.base.wizard" search="[]" />
+    <delete model="advance.settlement.wizard" search="[]" />
+</odoo>

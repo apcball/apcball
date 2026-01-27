@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Bill Register Payment Wizard Form View -->
+    <record id="view_bill_register_payment_wizard_form" model="ir.ui.view">
+        <field name="name">bill.register.payment.wizard.form</field>
+        <field name="model">bill.register.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Bill Details &amp; Payment Registration">
+                <group>
+                    <group string="Bill Information" colspan="2">
+                        <field name="bill_number" readonly="1"/>
+                        <field name="partner_id" readonly="1"/>
+                        <field name="bill_date" readonly="1"/>
+                        <field name="bill_due_date" readonly="1"/>
+                        <field name="bill_move_type" readonly="1"/>
+                        <field name="bill_payment_state" widget="badge" 
+                               decoration-info="bill_payment_state=='not_paid'" 
+                               decoration-warning="bill_payment_state=='partial'" 
+                               decoration-success="bill_payment_state=='paid'" 
+                               readonly="1"/>
+                    </group>
+                </group>
+                
+                <group>
+                    <group string="Bill Amounts" colspan="1">
+                        <field name="bill_amount_total" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}" readonly="1"/>
+                        <field name="bill_amount_residual" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}" readonly="1"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                    <group string="Payment Voucher Amounts" colspan="1">
+                        <field name="amount_to_pay_gross" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}" readonly="1"/>
+                        <field name="wht_amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}" readonly="1"/>
+                        <field name="amount_to_pay_net" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}" readonly="1"/>
+                    </group>
+                </group>
+                
+                <separator string="Payment Registration"/>
+                
+                <group string="Payment Details">
+                    <group>
+                        <field name="payment_date"/>
+                        <field name="journal_id"/>
+                    </group>
+                    <group>
+                        <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                        <field name="communication"/>
+                    </group>
+                </group>
+                
+                <div class="alert alert-info" role="alert" style="margin: 10px 0;">
+                    <strong>Payment Amount: </strong>
+                    <field name="amount_to_pay_net" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}" readonly="1" nolabel="1" class="oe_inline"/>
+                    <br/>
+                    <em>This is the net amount after WHT deduction that will be paid.</em>
+                </div>
+                
+                <footer>
+                    <button name="action_register_payment" string="Register Payment" type="object" class="btn-primary" 
+                            confirm="Are you sure you want to register this payment? This action cannot be undone."/>
+                    <button name="action_view_bill_details" string="View Full Bill" type="object" class="btn-secondary"/>
+                    <button name="action_cancel" string="Cancel" type="object" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

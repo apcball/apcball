@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_saleorder_document_multi_discount" inherit_id="sale.report_saleorder_document">
+        <xpath expr="//span[@t-field='line.discount']/../.." position="before">
+            <td t-if="any(l.multi_discount for l in doc.order_line)" class="text-end">
+                <span t-field="line.multi_discount"/>
+            </td>
+        </xpath>
+        <xpath expr="//th[@t-if='display_discount']" position="before">
+            <th t-if="any(l.multi_discount for l in doc.order_line)" class="text-end">Multi-Discount</th>
+        </xpath>
+    </template>
+</odoo>

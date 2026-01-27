@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================ -->
+    <!-- IT SERVICE DESK ROOT MENU (หลัก) -->
+    <!-- ============================================ -->
+    <menuitem id="menu_it_service_desk_root" 
+              name="IT Service Desk" 
+              sequence="10" 
+              web_icon="buz_it_service_desk,static/description/icon.png"/>
+    
+    <!-- ============================================ -->
+    <!-- IT INCIDENTS (submenu) -->
+    <!-- ============================================ -->
+    <menuitem id="menu_it_incidents" 
+              name="IT Incidents" 
+              parent="menu_it_service_desk_root" 
+              sequence="10"/>
+    
+    <menuitem id="menu_my_incidents" 
+              name="My Incidents" 
+              parent="menu_it_incidents" 
+              sequence="10" 
+              action="action_my_incidents"/>
+    
+    <menuitem id="menu_all_incidents" 
+              name="All Incidents" 
+              parent="menu_it_incidents" 
+              sequence="20" 
+              action="action_all_incidents"/>
+    
+    <!-- ============================================ -->
+    <!-- IT SERVICE REQUESTS (submenu) -->
+    <!-- ============================================ -->
+    <menuitem id="menu_it_service_requests" 
+              name="IT Service Requests" 
+              parent="menu_it_service_desk_root" 
+              sequence="20"/>
+    
+    <menuitem id="menu_my_service_requests" 
+              name="My Service Requests" 
+              parent="menu_it_service_requests" 
+              sequence="10" 
+              action="action_my_service_requests"/>
+    
+    <menuitem id="menu_all_service_requests" 
+              name="All Service Requests" 
+              parent="menu_it_service_requests" 
+              sequence="20" 
+              action="action_all_service_requests"/>
+    
+    <!-- ============================================ -->
+    <!-- IT PURCHASE REQUESTS (submenu) -->
+    <!-- ============================================ -->
+    <menuitem id="menu_it_purchase_requests" 
+              name="IT Purchase Requests" 
+              parent="menu_it_service_desk_root" 
+              sequence="30"/>
+    
+    <menuitem id="menu_purchase_requests" 
+              name="Purchase Requests" 
+              parent="menu_it_purchase_requests" 
+              sequence="10" 
+              action="action_it_purchase_request"/>
+
+    <!-- ============================================ -->
+    <!-- CONFIGURATION -->
+    <!-- ============================================ -->
+    <menuitem id="menu_configuration" 
+              name="Configuration" 
+              parent="menu_it_service_desk_root" 
+              sequence="90" 
+              groups="buz_it_service_desk.group_it_manager"/>
+    
+    <menuitem id="menu_categories" 
+              name="Categories" 
+              parent="menu_configuration" 
+              sequence="10" 
+              action="action_it_category"/>
+    
+    <menuitem id="menu_sla" 
+              name="SLA" 
+              parent="menu_configuration" 
+              sequence="20" 
+              action="action_it_sla"/>
+    
+    <!-- ============================================ -->
+    <!-- SLA CONFIGURATION (Shared across all types) -->
+    <!-- ============================================ -->
+    
+    <!-- SLA Action -->
+    <record id="action_it_sla" model="ir.actions.act_window">
+        <field name="name">SLA</field>
+        <field name="res_model">it.sla</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first SLA
+            </p>
+            <p>
+                Define Service Level Agreements for different priority levels.
+            </p>
+        </field>
+    </record>
+    
+    <!-- SLA Views -->
+    <record id="view_it_sla_tree" model="ir.ui.view">
+        <field name="name">it.sla.tree</field>
+        <field name="model">it.sla</field>
+        <field name="arch" type="xml">
+            <tree string="SLA">
+                <field name="name"/>
+                <field name="priority"/>
+                <field name="response_time"/>
+                <field name="resolve_time"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    
+    <record id="view_it_sla_form" model="ir.ui.view">
+        <field name="name">it.sla.form</field>
+        <field name="model">it.sla</field>
+        <field name="arch" type="xml">
+            <form string="SLA">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="priority"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="response_time"/>
+                            <field name="resolve_time"/>
+                            <field name="warning_time"/>
+                        </group>
+                    </group>
+                    <group string="Description">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <record id="view_it_sla_search" model="ir.ui.view">
+        <field name="name">it.sla.search</field>
+        <field name="model">it.sla</field>
+        <field name="arch" type="xml">
+            <search string="SLA">
+                <field name="name"/>
+                <field name="priority"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Priority" name="group_priority" context="{'group_by': 'priority'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>

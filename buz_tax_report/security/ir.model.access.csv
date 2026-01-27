@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tax_report_wizard,access_tax_report_wizard,model_tax_report_wizard,account.group_account_user,1,1,1,1
+access_tax_report_wizard_manager,access_tax_report_wizard_manager,model_tax_report_wizard,account.group_account_manager,1,1,1,1
+access_tax_report_config,access_tax_report_config,model_tax_report_config,account.group_account_user,1,0,0,0
+access_tax_report_config_manager,access_tax_report_config_manager,model_tax_report_config,account.group_account_manager,1,1,1,1

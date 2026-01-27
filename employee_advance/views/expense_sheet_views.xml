@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Expense Sheet Form View to add Advance functionality -->
+    <record id="view_expense_sheet_form_advance" model="ir.ui.view">
+        <field name="name">hr.expense.sheet.form.advance</field>
+        <field name="model">hr.expense.sheet</field>
+        <field name="inherit_id" ref="hr_expense.view_hr_expense_sheet_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='employee_id']" position="after">
+                <field name="is_auto_mode" invisible="1"/>
+                <field name="vendor_summary" invisible="not is_auto_mode"/>
+                <field name="clear_mode" invisible="state != 'draft' or is_auto_mode"/>
+                <field name="use_advance" invisible="state != 'draft'"/>
+                <field name="advance_box_id" 
+                       invisible="not use_advance or state != 'draft'"
+                       domain="[('company_id', '=', company_id)]"/>
+                <field name="has_wht_certs" invisible="1"/>
+                <field name="is_billed" invisible="1"/>
+                <field name="can_clear_advance_wht" invisible="1"/>
+            </xpath>
+            
+            <!-- Add buttons section -->
+            <header position="inside">
+                <!-- Reset to Draft button for refused/cancelled expenses -->
+                <button name="action_reset_expense_sheets" 
+                        type="object" 
+                        string="Reset to Draft" 
+                        class="btn-warning"
+                        invisible="state not in ('cancel', 'refuse')"
+                        groups="hr_expense.group_hr_expense_team_approver"
+                        help="Reset expense report to draft for corrections"/>
+                
+                <button name="action_create_vendor_bills" 
+                        type="object" 
+                        string="Create Bills (by Vendor)" 
+                        class="btn-primary"
+                        invisible="state != 'approve'"
+                        help="Create vendor bills grouped by vendor, company, and currency"/>
+                
+                <button name="action_clear_advance" 
+                        type="object" 
+                        string="Clear with Advance" 
+                        class="btn-primary"
+                        invisible="not bill_id or bill_id.state != 'posted' or bill_id.amount_residual &lt;= 0 or not advance_box_id"/>
+                        
+
+                <button name="%(l10n_th_account_tax.action_withholding_tax_cert_menu)d" 
+                        type="action" 
+                        string="Print WHT Certificates" 
+                        class="btn-secondary"
+                        invisible="not bill_id or (not has_wht_certs and not bill_id_has_wht_line)"/>
+                        
+                <button name="action_mark_as_done" 
+                        type="object" 
+                        string="Mark as Done" 
+                        class="btn-success"
+                        invisible="state != 'post'"
+                        help="Mark expense sheet as done when all bills are fully paid"/>
+            </header>
+            
+            <!-- Hide unwanted buttons from expense sheet form view -->
+            <xpath expr="//button[@name='action_register_payment']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+            <!-- Hide Post Journal Entries button -->
+            <xpath expr="//button[@name='action_sheet_move_create']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+            <!-- Add tabs for Bill and Payment information -->
+            <notebook position="inside">
+                <page string="Bill Information">
+                    <group>
+                        <group string="Bill Information">
+                            <field name="bill_id" readonly="1"/>
+                            <field name="bill_ids" widget="many2many_tags" invisible="not bill_ids" readonly="1"/>
+                            <field name="is_billed" readonly="1"/>
+                            <field name="payment_ids" readonly="1" widget="many2many_tags"/>
+                        </group>
+                        <group string="WHT Certificates" invisible="not bill_id or (not has_wht_certs and not bill_id_has_wht_line)">
+                            <field name="bill_id" invisible="1"/>
+                            <field name="has_wht_certs" invisible="1"/>
+                            <field name="bill_id_has_wht_line" invisible="1"/>
+                            <div class="mt-4">
+                                <h3>Withholding Tax Certificates</h3>
+                                <p>WHT certificates associated with this expense's vendor bill are available via the Print WHT Certificates action.</p>
+                            </div>
+                        </group>
+                    </group>
+                </page>
+                <page string="Advance Info">
+                    <group>
+                        <group string="Advance Information">
+                            <field name="use_advance" invisible="state != 'draft'"/>
+                            <field name="advance_box_id" 
+                                   invisible="not use_advance or state != 'draft'"
+                                   domain="[('company_id', '=', company_id)]"/>
+                        </group>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+    </record>
+    
+    <!-- Update the expense form view to add vendor field -->
+    <record id="view_expense_form_vendor" model="ir.ui.view">
+        <field name="name">hr.expense.form.vendor</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="expense_vendor_id" 
+                       string="Vendor"
+                       domain="[('supplier_rank', '&gt;', 0)]"
+                       placeholder="Leave empty to bill to employee"/>
+            </xpath>
+         <xpath expr="//field[@name='tax_ids']" position="after">
+          <field name="wht_tax_id" 
+              string="WHT Tax"
+              placeholder="Select WHT tax if applicable"/>
+          <!-- Use analytic_distribution (JSON) widget on Odoo 17 instead of old analytic_account_id / analytic_tag_ids -->
+          <field name="analytic_distribution" 
+              string="Analytic Distribution"
+              widget="analytic_distribution"/>
+         </xpath>
+        </field>
+    </record>
+    
+    <!-- Update the expense tree view to show vendor field -->
+    <record id="view_expense_tree_vendor" model="ir.ui.view">
+        <field name="name">hr.expense.tree.vendor</field>
+        <field name="model">hr.expense</field>
+        <field name="inherit_id" ref="hr_expense.view_expenses_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='total_amount']" position="before">
+                <field name="expense_vendor_id" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Vendor Bill Form View - Add Clear with Advance button -->
+    <!-- Note: This functionality is already provided in account_move_views.xml to avoid duplicate buttons -->
+</odoo>

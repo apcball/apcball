@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Dedicated Transit Location Valuation Report -->
+  <record id="view_stock_valuation_layer_tree_transit" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.tree.transit</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="arch" type="xml">
+      <tree string="Stock Valuation Transit Location">
+        <field name="create_date" optional="hide"/>
+        <field name="product_id" optional="show"/>
+        <field name="location_id" optional="show"/>
+        <field name="location_complete_name" optional="show"/>
+        <field name="warehouse_id" optional="hide"/>
+        <field name="quantity" sum="Total Qty" optional="show"/>
+        <field name="remaining_qty" sum="Total Remaining Qty" optional="show"/>
+        <field name="value" sum="Total Value" optional="hide"/>
+        <field name="remaining_value" sum="Total Remaining Value" optional="show"/>
+        <field name="unit_cost" optional="hide"/>
+        <field name="company_id" optional="hide"/>
+      </tree>
+    </field>
+  </record>
+
+  <!-- Pivot View for Transit Location Valuation -->
+  <record id="view_stock_valuation_layer_pivot_transit" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.pivot.transit</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="arch" type="xml">
+      <pivot string="Stock Valuation Transit Location Analysis">
+        <field name="location_id" type="row" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="product_id" type="row"/>
+        <field name="company_id" type="col"/>
+        <field name="value" type="measure"/>
+        <field name="remaining_value" type="measure"/>
+        <field name="quantity" type="measure"/>
+        <field name="remaining_qty" type="measure"/>
+      </pivot>
+    </field>
+  </record>
+
+  <!-- Graph View for Transit Location Valuation -->
+  <record id="view_stock_valuation_layer_graph_transit" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.graph.transit</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="arch" type="xml">
+      <graph string="Stock Valuation Transit Location" type="bar">
+        <field name="location_id" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="remaining_value" type="measure"/>
+        <field name="remaining_qty" type="measure"/>
+      </graph>
+    </field>
+  </record>
+
+  <!-- Search View for Transit Location -->
+  <record id="view_stock_valuation_layer_search_transit" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.search.transit</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="arch" type="xml">
+      <search string="Stock Valuation Transit Location">
+        <field name="product_id"/>
+        <field name="location_id" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="warehouse_id" groups="stock_valuation_location.group_stock_valuation_location_view_warehouse"/>
+        <field name="company_id"/>
+        <separator/>
+        <filter string="Has Transit Location" name="filter_transit_location" domain="[('location_id', '!=', False), ('location_id.usage', '=', 'transit')]"/>
+        <filter string="Has Location" name="filter_has_location" domain="[('location_id', '!=', False)]"/>
+        <filter string="No Location" name="filter_no_location" domain="[('location_id', '=', False)]"/>
+        <separator/>
+        <filter string="Positive Quantity" name="filter_positive_qty" domain="[('remaining_qty', '>', 0)]"/>
+        <filter string="Has Value" name="filter_has_value" domain="[('remaining_value', '>', 0)]"/>
+        <separator/>
+        <filter string="Group By Location" name="group_by_location" context="{'group_by':'location_id'}"/>
+        <filter string="Group By Warehouse" name="group_by_warehouse" context="{'group_by':'warehouse_id'}"/>
+        <filter string="Group By Product" name="group_by_product" context="{'group_by':'product_id'}"/>
+        <filter string="Group By Company" name="group_by_company" context="{'group_by':'company_id'}"/>
+      </search>
+    </field>
+  </record>
+
+  <!-- Action for Transit Location Valuation Report -->
+  <record id="action_stock_valuation_layer_transit" model="ir.actions.act_window">
+    <field name="name">Stock Valuation - Transit Location</field>
+    <field name="res_model">stock.valuation.layer</field>
+    <field name="view_mode">tree,pivot,graph,form</field>
+    <field name="view_ids" eval="[
+      (5, 0, 0),
+      (0, 0, {'view_mode': 'tree', 'view_id': ref('view_stock_valuation_layer_tree_transit')}),
+      (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_stock_valuation_layer_pivot_transit')}),
+      (0, 0, {'view_mode': 'graph', 'view_id': ref('view_stock_valuation_layer_graph_transit')}),
+      (0, 0, {'view_mode': 'form', 'view_id': ref('stock_account.stock_valuation_layer_form')}),
+    ]"/>
+    <field name="search_view_id" ref="view_stock_valuation_layer_search_transit"/>
+    <field name="domain">[('location_id.usage', '=', 'transit')]</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">
+        No transit location valuation found
+      </p>
+      <p>
+        This report shows stock valuation layers for transit locations.
+        Use pivot and graph views to analyze valuation distribution across transit locations.
+      </p>
+    </field>
+  </record>
+
+  <!-- Menu item for Transit Location Valuation Report -->
+  <menuitem id="menu_stock_valuation_transit_location"
+            name="Valuation - Transit Location"
+            parent="stock.menu_warehouse_report"
+            action="action_stock_valuation_layer_transit"
+            sequence="121"/>
+</odoo>

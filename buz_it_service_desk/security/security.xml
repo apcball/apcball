@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- IT User Group -->
+        <record id="group_it_user" model="res.groups">
+            <field name="name">IT User</field>
+            <field name="comment">Users can create and view their own tickets</field>
+        </record>
+
+        <!-- IT Officer Group -->
+        <record id="group_it_officer" model="res.groups">
+            <field name="name">IT Officer</field>
+            <field name="comment">IT Officers can manage and assign tickets</field>
+            <field name="implied_ids" eval="[(4, ref('group_it_user'))]"/>
+        </record>
+
+        <!-- IT Manager Group -->
+        <record id="group_it_manager" model="res.groups">
+            <field name="name">IT Manager</field>
+            <field name="comment">IT Managers can approve requests and manage SLA</field>
+            <field name="implied_ids" eval="[(4, ref('group_it_officer'))]"/>
+        </record>
+
+        <!-- IT Finance Group -->
+        <record id="group_it_finance" model="res.groups">
+            <field name="name">IT Finance</field>
+            <field name="comment">Finance users can approve purchase requests</field>
+        </record>
+
+        <!-- Record Rules -->
+        
+        <!-- Users can only see their own tickets -->
+        <record id="rule_it_ticket_user" model="ir.rule">
+            <field name="name">IT Ticket User Rule</field>
+            <field name="model_id" ref="model_it_ticket"/>
+            <field name="domain_force">[('requester_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_it_user'))]"/>
+        </record>
+
+        <!-- IT Officers can see all tickets -->
+        <record id="rule_it_ticket_officer" model="ir.rule">
+            <field name="name">IT Ticket Officer Rule</field>
+            <field name="model_id" ref="model_it_ticket"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_it_officer'))]"/>
+        </record>
+
+        <!-- Users can only see their own service requests -->
+        <record id="rule_it_service_request_user" model="ir.rule">
+            <field name="name">IT Service Request User Rule</field>
+            <field name="model_id" ref="model_it_service_request"/>
+            <field name="domain_force">[('requester_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_it_user'))]"/>
+        </record>
+
+        <!-- IT Officers can see all service requests -->
+        <record id="rule_it_service_request_officer" model="ir.rule">
+            <field name="name">IT Service Request Officer Rule</field>
+            <field name="model_id" ref="model_it_service_request"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_it_officer'))]"/>
+        </record>
+
+        <!-- Users can only see their own purchase requests -->
+        <record id="rule_it_purchase_request_user" model="ir.rule">
+            <field name="name">IT Purchase Request User Rule</field>
+            <field name="model_id" ref="model_it_purchase_request"/>
+            <field name="domain_force">[('requester_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_it_user'))]"/>
+        </record>
+
+        <!-- IT Officers can see all purchase requests -->
+        <record id="rule_it_purchase_request_officer" model="ir.rule">
+            <field name="name">IT Purchase Request Officer Rule</field>
+            <field name="model_id" ref="model_it_purchase_request"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_it_officer'))]"/>
+        </record>
+    </data>
+</odoo>

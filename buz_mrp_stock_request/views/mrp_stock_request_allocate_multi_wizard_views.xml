@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Multi-MO Allocation Wizard Form -->
+    <record id="view_mrp_stock_request_allocate_multi_wizard_form" model="ir.ui.view">
+        <field name="name">mrp.stock.request.allocate.multi.wizard.form</field>
+        <field name="model">mrp.stock.request.allocate.multi.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Allocate Materials to Manufacturing Orders">
+                <sheet>
+                    <field name="info_html" readonly="1"/>
+                    <!-- Add the missing field to make it available for modifiers -->
+                    <field name="has_unallocated_materials" invisible="1"/>
+                    
+                    <group>
+                        <group>
+                            <field name="request_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Manufacturing Orders" name="mo_allocations">
+                            <div class="alert alert-warning" role="alert" invisible="mo_allocation_ids">
+                                <strong>⚠️ No MO allocations found!</strong><br/>
+                                This might happen if:<br/>
+                                • No materials are available to allocate<br/>
+                                • All materials have been allocated already<br/>
+                                • There's a configuration issue
+                            </div>
+                            <field name="mo_allocation_ids" nolabel="1">
+                                <tree string="Manufacturing Orders">
+                                    <field name="mo_id"/>
+                                    <field name="total_lines" string="Materials"/>
+                                    <field name="wizard_id" column_invisible="1"/>
+                                </tree>
+                                
+                                <form string="MO Allocation">
+                                    <sheet>
+                                        <group>
+                                            <group>
+                                                <field name="mo_id" readonly="1"/>
+                                                <field name="total_lines" readonly="1"/>
+                                            </group>
+                                            <group>
+                                                <field name="wizard_id" invisible="1"/>
+                                                <field name="company_id" invisible="1"/>
+                                            </group>
+                                        </group>
+                                        
+                                        <notebook>
+                                            <page string="Materials to Allocate" name="materials">
+                                                <field name="line_ids">
+                                                    <tree editable="bottom" decoration-info="qty_to_consume > 0" 
+                                                          decoration-muted="qty_to_consume == 0">
+                                                        <field name="product_id" readonly="1"/>
+                                                        <field name="available_qty" readonly="1" 
+                                                               string="Available" 
+                                                               decoration-success="available_qty > 0"/>
+                                                        <field name="qty_to_consume" string="Qty to Consume"/>
+                                                        <field name="uom_id" readonly="1"/>
+                                                        <field name="lot_id" 
+                                                               optional="show"
+                                                               domain="[('product_id', '=', product_id), ('company_id', '=', company_id)]"
+                                                               context="{'default_product_id': product_id, 'default_company_id': company_id}"/>
+                                                        <field name="notes" optional="hide"/>
+                                                        <field name="company_id" column_invisible="1"/>
+                                                        <field name="request_line_id" column_invisible="1"/>
+                                                        <field name="mo_allocation_id" column_invisible="1"/>
+                                                    </tree>
+                                                </field>
+                                            </page>
+                                        </notebook>
+                                    </sheet>
+                                </form>
+                                
+                                <kanban class="o_kanban_mobile">
+                                    <field name="mo_id"/>
+                                    <field name="total_lines"/>
+                                    <field name="wizard_id"/>
+                                    <templates>
+                                        <t t-name="kanban-box">
+                                            <div class="oe_kanban_global_click">
+                                                <div class="o_kanban_record_top">
+                                                    <div class="o_kanban_record_headings">
+                                                        <strong class="o_kanban_record_title">
+                                                            <field name="mo_id"/>
+                                                        </strong>
+                                                    </div>
+                                                    <span class="badge badge-pill badge-info">
+                                                        <field name="total_lines"/> items
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </templates>
+                                </kanban>
+                            </field>
+                        </page>
+                    </notebook>
+                    
+                    <div class="alert alert-success mt-3" role="alert">
+                        <strong>✓ Ready to allocate</strong><br/>
+                        Click each MO above to review and adjust quantities, then click <strong>Allocate All</strong> below.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_allocate_all" type="object" 
+                            string="Allocate All" class="btn-primary" 
+                            help="Allocate materials to all Manufacturing Orders"/>
+                    <button name="action_mark_as_done" type="object"
+                            string="Mark as Done"
+                            class="btn-warning"
+                            invisible="has_unallocated_materials == False"
+                            help="Transfer all unallocated materials and mark request as Done"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

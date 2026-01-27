@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Portal Error Page -->
+    <template id="portal_error" name="Portal Approval Error">
+        <t t-call="portal.portal_layout">
+            <div class="container py-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card shadow">
+                            <div class="card-body text-center py-5">
+                                <div class="mb-4">
+                                    <i class="fa fa-exclamation-circle text-danger" style="font-size: 4rem;"></i>
+                                </div>
+                                <h3 class="text-danger mb-3" t-esc="error_title"/>
+                                <p class="text-muted mb-4" t-esc="error_message"/>
+                                <a href="/" class="btn btn-primary">
+                                    <i class="fa fa-home me-2"></i>Return Home
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Portal Success Page -->
+    <template id="portal_success" name="Portal Approval Success">
+        <t t-call="portal.portal_layout">
+            <div class="container py-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card shadow">
+                            <div class="card-body text-center py-5">
+                                <div class="mb-4">
+                                    <i class="fa fa-check-circle text-success" style="font-size: 4rem;"></i>
+                                </div>
+                                <h3 class="text-success mb-3" t-esc="success_title"/>
+                                <p class="text-muted mb-2" t-esc="success_message"/>
+                                <p class="mb-4" t-if="document_name">
+                                    <strong>Document:</strong> <t t-esc="document_name"/>
+                                </p>
+                                <a href="/" class="btn btn-primary">
+                                    <i class="fa fa-home me-2"></i>Return Home
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Portal Approval Page -->
+    <template id="portal_approval_page" name="Portal Approval Page">
+        <t t-call="portal.portal_layout">
+            <t t-set="additional_title">Document Approval</t>
+            
+            <div class="container py-4">
+                <div class="row">
+                    <!-- Document Header -->
+                    <div class="col-12 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-primary text-white">
+                                <h4 class="mb-0">
+                                    <i class="fa fa-file-text me-2"></i>
+                                    Document Approval Request
+                                </h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Document Reference:</strong></p>
+                                        <h5 class="text-primary" t-esc="doc_info.get('name', 'N/A')"/>
+                                    </div>
+                                    <div class="col-md-3" t-if="doc_info.get('amount')">
+                                        <p class="mb-1"><strong>Amount:</strong></p>
+                                        <h5>
+                                            <t t-esc="'{:,.2f}'.format(doc_info.get('amount', 0))"/>
+                                            <small t-if="doc_info.get('currency')" t-esc="doc_info.get('currency')"/>
+                                        </h5>
+                                    </div>
+                                    <div class="col-md-3" t-if="doc_info.get('date')">
+                                        <p class="mb-1"><strong>Date:</strong></p>
+                                        <h5 t-esc="doc_info.get('date')"/>
+                                    </div>
+                                </div>
+                                
+                                <hr t-if="doc_info.get('partner')"/>
+                                
+                                <div class="row" t-if="doc_info.get('partner')">
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Partner:</strong></p>
+                                        <p t-esc="doc_info.get('partner')"/>
+                                    </div>
+                                    <div class="col-md-6" t-if="doc_info.get('state')">
+                                        <p class="mb-1"><strong>Status:</strong></p>
+                                        <span class="badge bg-warning text-dark" t-esc="doc_info.get('state')"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Document Lines -->
+                    <div class="col-12 mb-4" t-if="doc_info.get('lines')">
+                        <div class="card shadow-sm">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fa fa-list me-2"></i>
+                                    Document Lines
+                                </h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-striped mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Description</th>
+                                            <th class="text-center">Quantity</th>
+                                            <th class="text-end">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="doc_info.get('lines', [])" t-as="line">
+                                            <tr>
+                                                <td t-esc="line.get('name', '-')"/>
+                                                <td class="text-center" t-esc="line.get('quantity', '-')"/>
+                                                <td class="text-end">
+                                                    <t t-if="line.get('price')">
+                                                        <t t-esc="'{:,.2f}'.format(line.get('price', 0))"/>
+                                                    </t>
+                                                    <t t-else="">-</t>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Description/Notes -->
+                    <div class="col-12 mb-4" t-if="doc_info.get('description')">
+                        <div class="card shadow-sm">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fa fa-sticky-note me-2"></i>
+                                    Notes
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-0" t-raw="doc_info.get('description')"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approval Actions -->
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fa fa-gavel me-2"></i>
+                                    Approval Decision
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-4">
+                                    Please review the document above and make your approval decision.
+                                    This action cannot be undone.
+                                </p>
+
+                                <!-- Rejection Reason (hidden by default) -->
+                                <div id="reject_reason_section" class="mb-4" style="display: none;">
+                                    <label for="reject_reason" class="form-label">
+                                        <strong>Reason for Rejection:</strong>
+                                    </label>
+                                    <textarea id="reject_reason" name="reject_reason" 
+                                              class="form-control" rows="3"
+                                              placeholder="Please provide a reason for rejecting this document..."></textarea>
+                                </div>
+
+                                <div class="d-flex justify-content-center gap-3">
+                                    <!-- Approve Button -->
+                                    <form t-attf-action="/my/approve/#{model}/#{doc_id}/action" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <input type="hidden" name="token" t-att-value="token"/>
+                                        <input type="hidden" name="action" value="approve"/>
+                                        <button type="submit" class="btn btn-success btn-lg px-5" 
+                                                onclick="return confirm('Are you sure you want to APPROVE this document?')">
+                                            <i class="fa fa-check me-2"></i>
+                                            Approve
+                                        </button>
+                                    </form>
+
+                                    <!-- Reject Button -->
+                                    <button type="button" class="btn btn-danger btn-lg px-5" id="btn_show_reject">
+                                        <i class="fa fa-times me-2"></i>
+                                        Reject
+                                    </button>
+                                </div>
+
+                                <!-- Hidden Reject Form -->
+                                <div id="reject_form_section" class="mt-4 text-center" style="display: none;">
+                                    <form t-attf-action="/my/approve/#{model}/#{doc_id}/action" method="POST">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <input type="hidden" name="token" t-att-value="token"/>
+                                        <input type="hidden" name="action" value="reject"/>
+                                        
+                                        <div class="mb-3">
+                                            <label for="reject_reason_input" class="form-label">
+                                                <strong>Reason for Rejection:</strong>
+                                            </label>
+                                            <textarea id="reject_reason_input" name="reject_reason" 
+                                                      class="form-control" rows="3"
+                                                      placeholder="Please provide a reason for rejecting this document..."
+                                                      required="required"></textarea>
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-center gap-3">
+                                            <button type="button" class="btn btn-secondary" id="btn_cancel_reject">
+                                                Cancel
+                                            </button>
+                                            <button type="submit" class="btn btn-danger"
+                                                    onclick="return confirm('Are you sure you want to REJECT this document?')">
+                                                <i class="fa fa-times me-2"></i>
+                                                Confirm Rejection
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approver Info -->
+                    <div class="col-12 mt-4">
+                        <div class="text-center text-muted small">
+                            <p class="mb-1">
+                                Logged in as: <strong t-esc="token_record.approver_id.name"/>
+                            </p>
+                            <p class="mb-0">
+                                This link expires on: 
+                                <strong t-esc="token_record.expiry_datetime"/>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JavaScript for reject form toggle -->
+            <script type="text/javascript">
+                document.addEventListener('DOMContentLoaded', function() {
+                    var btnShowReject = document.getElementById('btn_show_reject');
+                    var btnCancelReject = document.getElementById('btn_cancel_reject');
+                    var rejectFormSection = document.getElementById('reject_form_section');
+                    var approveBtn = document.querySelector('button[type="submit"].btn-success');
+                    
+                    if (btnShowReject) {
+                        btnShowReject.addEventListener('click', function() {
+                            rejectFormSection.style.display = 'block';
+                            btnShowReject.style.display = 'none';
+                            if (approveBtn) approveBtn.parentElement.style.display = 'none';
+                        });
+                    }
+                    
+                    if (btnCancelReject) {
+                        btnCancelReject.addEventListener('click', function() {
+                            rejectFormSection.style.display = 'none';
+                            btnShowReject.style.display = 'inline-block';
+                            if (approveBtn) approveBtn.parentElement.style.display = 'inline';
+                        });
+                    }
+                });
+            </script>
+        </t>
+    </template>
+</odoo>

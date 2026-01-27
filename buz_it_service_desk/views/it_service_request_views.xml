@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- IT Service Request Tree View -->
+    <record id="view_it_service_request_tree" model="ir.ui.view">
+        <field name="name">it.service.request.tree</field>
+        <field name="model">it.service.request</field>
+        <field name="arch" type="xml">
+            <tree string="IT Service Requests">
+                <field name="name"/>
+                <field name="fullname_th"/>
+                <field name="employee_code"/>
+                <field name="department_id"/>
+                <field name="request_email" widget="boolean_toggle"/>
+                <field name="request_odoo" widget="boolean_toggle"/>
+                <field name="request_mgtx" widget="boolean_toggle"/>
+                <field name="requester_id"/>
+                <field name="state"/>
+                <field name="start_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- IT Service Request Form View -->
+    <record id="view_it_service_request_form" model="ir.ui.view">
+        <field name="name">it.service.request.form</field>
+        <field name="model">it.service.request</field>
+        <field name="arch" type="xml">
+            <form string="IT Service Request">
+                <header>
+                    <button name="action_create_employee" string="Create Employee" type="object"
+                            invisible="state != 'draft'" class="btn-success"
+                            groups="buz_it_service_desk.group_it_officer"
+                            help="Create employee record from this request"/>
+                    <button name="action_submit" string="Submit" type="object"
+                            invisible="state != 'draft'" class="btn-primary"/>
+                    <button name="action_manager_approve" string="Approve" type="object"
+                            invisible="state != 'manager_approve'" class="btn-primary"
+                            groups="buz_it_service_desk.group_it_manager,buz_it_service_desk.group_it_officer"/>
+                    <button name="action_manager_reject" string="Reject" type="object"
+                            invisible="state != 'manager_approve'"
+                            groups="buz_it_service_desk.group_it_manager,buz_it_service_desk.group_it_officer"/>
+                    <button name="action_it_approve" string="Approve" type="object"
+                            invisible="state != 'it_approve'" class="btn-primary"
+                            groups="buz_it_service_desk.group_it_officer,buz_it_service_desk.group_it_manager"/>
+                    <button name="action_it_reject" string="Reject" type="object"
+                            invisible="state != 'it_approve'"
+                            groups="buz_it_service_desk.group_it_officer,buz_it_service_desk.group_it_manager"/>
+                    <button name="action_cancel" string="Cancel" type="object"
+                            invisible="state not in ['draft', 'manager_approve', 'it_approve']"/>
+                    <button name="action_draft" string="Reset to Draft" type="object"
+                            invisible="state != 'cancel'"/>
+                    
+                    <field name="state" widget="statusbar" 
+                           statusbar_visible="draft,manager_approve,it_approve,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Document Information">
+                            <field name="name"/>
+                            <field name="requester_id"/>
+                        </group>
+                        <group string="Period">
+                            <field name="approval_required"/>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Personal Information">
+                        <group>
+                            <field name="fullname_th" placeholder="ชื่อ-นามสกุล (ภาษาไทย)"/>
+                            <field name="fullname_en" placeholder="Full Name (English)"/>
+                            <field name="nickname"/>
+                            <field name="employee_code"/>
+                        </group>
+                        <group>
+                            <field name="department_id"/>
+                            <field name="job_position"/>
+                            <field name="line_id" placeholder="LINE ID"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Request Type">
+                            <group string="Select Request Type(s) - เลือกได้หลายรายการ" col="1">
+                                <group>
+                                    <label for="request_email" string=""/>
+                                    <div>
+                                        <field name="request_email" class="oe_inline"/> 
+                                        <label for="request_email" string="Request Email" class="oe_inline"/>
+                                    </div>
+                                    <field name="email_details" placeholder="Enter email requirements and details..." 
+                                           invisible="not request_email" nolabel="1" 
+                                           class="oe_edit_only"/>
+                                </group>
+                                
+                                <separator/>
+                                
+                                <group>
+                                    <label for="request_odoo" string=""/>
+                                    <div>
+                                        <field name="request_odoo" class="oe_inline"/>
+                                        <label for="request_odoo" string="Request Odoo System Access" class="oe_inline"/>
+                                    </div>
+                                    <field name="odoo_access_type" invisible="not request_odoo"/>
+                                    <field name="odoo_details" placeholder="Enter Odoo modules, permissions and access details..." 
+                                           invisible="not request_odoo" nolabel="1"/>
+                                </group>
+                                
+                                <separator/>
+                                
+                                <group>
+                                    <label for="request_mgtx" string=""/>
+                                    <div>
+                                        <field name="request_mgtx" class="oe_inline"/>
+                                        <label for="request_mgtx" string="Request MGTX System Access" class="oe_inline"/>
+                                    </div>
+                                    <field name="mgtx_access_type" invisible="not request_mgtx"/>
+                                    <field name="mgtx_details" placeholder="Enter MGTX modules, permissions and access details..." 
+                                           invisible="not request_mgtx" nolabel="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Approval History">
+                            <group>
+                                <group string="Manager Approval">
+                                    <field name="manager_approver_id" readonly="1"/>
+                                    <field name="manager_approval_date" readonly="1"/>
+                                    <field name="manager_notes"
+                                           readonly="state not in ['manager_approve']"/>
+                                </group>
+                                <group string="IT Approval">
+                                    <field name="it_approver_id" readonly="1"/>
+                                    <field name="it_approval_date" readonly="1"/>
+                                    <field name="it_notes"
+                                           readonly="state not in ['it_approve']"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- IT Service Request Search View -->
+    <record id="view_it_service_request_search" model="ir.ui.view">
+        <field name="name">it.service.request.search</field>
+        <field name="model">it.service.request</field>
+        <field name="arch" type="xml">
+            <search string="IT Service Requests">
+                <field name="name"/>
+                <field name="fullname_th"/>
+                <field name="employee_code"/>
+                <field name="department_id"/>
+                <field name="requester_id"/>
+                <filter string="My Requests" name="my_requests" domain="[('requester_id', '=', uid)]"/>
+                <filter string="To Approve" name="to_approve" 
+                        domain="[('state', 'in', ['manager_approve', 'it_approve'])]"/>
+                <separator/>
+                <filter string="Email Requests" name="email" domain="[('request_email', '=', True)]"/>
+                <filter string="Odoo System" name="odoo" domain="[('request_odoo', '=', True)]"/>
+                <filter string="MGTX System" name="mgtx" domain="[('request_mgtx', '=', True)]"/>
+                <separator/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Manager Approval" name="manager_approve" domain="[('state', '=', 'manager_approve')]"/>
+                <filter string="IT Approval" name="it_approve" domain="[('state', '=', 'it_approve')]"/>
+                <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Department" name="group_department" context="{'group_by': 'department_id'}"/>
+                    <filter string="Requester" name="group_requester" context="{'group_by': 'requester_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- IT Service Request Action -->
+    <record id="action_it_service_request" model="ir.actions.act_window">
+        <field name="name">IT Service Requests</field>
+        <field name="res_model">it.service.request</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first IT Service Request
+            </p>
+            <p>
+                Manage service requests for system access and permissions.
+            </p>
+        </field>
+    </record>
+
+    <!-- My Service Requests Action -->
+    <record id="action_my_service_requests" model="ir.actions.act_window">
+        <field name="name">My Service Requests</field>
+        <field name="res_model">it.service.request</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('requester_id', '=', uid)]</field>
+        <field name="context">{'default_requester_id': uid}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                You have no service requests yet
+            </p>
+            <p>
+                Create a new service request for system access or permissions.
+            </p>
+        </field>
+    </record>
+
+    <!-- All Service Requests Action -->
+    <record id="action_all_service_requests" model="ir.actions.act_window">
+        <field name="name">All Service Requests</field>
+        <field name="res_model">it.service.request</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No service requests found
+            </p>
+            <p>
+                All service requests will appear here.
+            </p>
+        </field>
+    </record>
+</odoo>

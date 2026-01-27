@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Custom Tree View for Pending Approvals -->
+    <record id="view_pending_approval_orders_tree" model="ir.ui.view">
+        <field name="name">sale.order.tree.pending.approval</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <tree string="Orders Pending Approval" create="false" decoration-warning="True">
+                <field name="name" string="Order"/>
+                <field name="date_order" string="Order Date"/>
+                <field name="partner_id" string="Customer"/>
+                <field name="user_id" string="Salesperson"/>
+                <field name="amount_total" string="Total" sum="Total"/>
+                <field name="margin" string="Margin Amount" sum="Total Margin"/>
+                <field name="margin_percentage" string="Margin %" widget="percentage"/>
+                <field name="margin_rule_line_id" string="Margin Range"/>
+                <field name="margin_approval_user_ids" string="Can Approve" widget="many2many_tags"/>
+                <field name="approval_type" string="Approval Type"/>
+                <field name="approved_user_ids" string="Approved By" widget="many2many_tags" 
+                       optional="show" invisible="approval_type != 'all'"/>
+                <field name="approval_state" invisible="1"/>
+                <field name="state" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Action for pending approvals -->
+    <record id="action_pending_approval_orders" model="ir.actions.act_window">
+        <field name="name">Orders Pending Approval</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_pending_approval_orders_tree"/>
+        <field name="domain">[('approval_state', '=', 'pending'), ('can_current_user_approve', '=', True)]</field>
+        <field name="context">{'search_default_pending_approval': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No sales orders pending your approval!
+            </p>
+            <p>
+                <strong>Regular Approvers:</strong> See only orders within your authorized margin ranges.<br/>
+                <strong>Admin Group:</strong> See all pending orders regardless of margin range.
+            </p>
+        </field>
+    </record>
+    
+    <!-- Add menu for pending approvals -->
+    <menuitem id="menu_pending_approval_orders"
+              name="Pending Approvals"
+              action="action_pending_approval_orders"
+              parent="sale.menu_sale_order"
+              sequence="5"
+              groups="buz_margin_approval.group_margin_approval"/>
+</odoo>

@@ -1,0 +1,1190 @@
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
+import logging
+
+_logger = logging.getLogger(__name__)
+
+
+class HrExpenseSheet(models.Model):
+    _inherit = 'hr.expense.sheet'
+
+    clear_mode = fields.Selection([
+        ('reimburse_employee', 'Reimburse Employee'),
+        ('pay_vendor', 'Pay to Vendor'),
+        ('mixed', 'Mixed')
+    ], string='Clear Mode', default='reimburse_employee', compute='_compute_clear_mode', store=True,
+       help="Reimburse Employee: Create bills for employee's private address. "
+            "Pay to Vendor: Create bills for vendors on each expense line. "
+            "Mixed: Both employee and vendor bills will be created.")
+    
+    @api.depends("expense_line_ids", "is_auto_mode")
+    def _compute_clear_mode(self):
+        for sheet in self:
+            if sheet.is_auto_mode:
+                # AUTO mode - automatically determine clear mode
+                has_vendor = any(exp.expense_vendor_id for exp in sheet.expense_line_ids)
+                has_no_vendor = any(not exp.expense_vendor_id for exp in sheet.expense_line_ids)
+                
+                if has_vendor and has_no_vendor:
+                    sheet.clear_mode = 'mixed'
+                elif has_vendor:
+                    sheet.clear_mode = 'pay_vendor'
+                else:
+                    sheet.clear_mode = 'reimburse_employee'
+            else:
+                # Manual mode - keep current value or default
+                if not sheet.clear_mode:
+                    sheet.clear_mode = 'reimburse_employee'
+    
+    bill_ids = fields.Many2many(
+        'account.move',
+        string='Vendor Bills',
+        relation='hr_expense_sheet_account_move_rel',
+        column1='expense_sheet_id',
+        column2='move_id',
+        readonly=True,
+        copy=False
+    )
+    
+    is_billed = fields.Boolean(
+        string='Bills Created',
+        default=False,
+        readonly=True,
+        help="Indicates if bills have been created for this expense sheet."
+    )
+
+    use_advance = fields.Boolean(
+        string='Clear from Advance',
+        default=True
+    )
+    advance_box_id = fields.Many2one(
+        'employee.advance.box',
+        string='Advance Box',
+        compute='_compute_advance_box_id',
+        store=True,
+        readonly=False,
+        domain="[('company_id', '=', company_id), ('employee_id', '=', employee_id)]"
+    )
+    
+    @api.depends('employee_id')
+    def _compute_advance_box_id(self):
+        """Auto-fill advance box from employee's default advance box"""
+        for sheet in self:
+            if sheet.employee_id and sheet.employee_id.advance_box_id:
+                sheet.advance_box_id = sheet.employee_id.advance_box_id
+            elif not sheet.advance_box_id:
+                # Try to find advance box for this employee
+                box = self.env['employee.advance.box'].search([
+                    ('employee_id', '=', sheet.employee_id.id),
+                    ('company_id', '=', sheet.company_id.id)
+                ], limit=1)
+                sheet.advance_box_id = box if box else False
+    
+    # AUTO mode fields
+    is_auto_mode = fields.Boolean(
+        string="Auto Mode",
+        compute="_compute_auto_mode",
+        help="Indicates if this sheet will use AUTO mode (automatic vendor bill separation)"
+    )
+    
+    vendor_summary = fields.Text(
+        string="Vendor Summary", 
+        compute="_compute_vendor_summary",
+        help="Summary of vendors and processing mode"
+    )
+    
+    @api.depends("expense_line_ids")
+    def _compute_auto_mode(self):
+        for sheet in self:
+            # AUTO MODE is enabled when:
+            # 1. Sheet has expenses from multiple vendors, OR
+            # 2. Sheet has mixed VAT status (with and without VAT)
+            unique_vendors = set(e.expense_vendor_id.id for e in sheet.expense_line_ids if e.expense_vendor_id)
+            has_vat_lines = any(bool(e.tax_ids) for e in sheet.expense_line_ids)
+            has_no_vat_lines = any(not bool(e.tax_ids) for e in sheet.expense_line_ids)
+            mixed_vat = has_vat_lines and has_no_vat_lines
+            sheet.is_auto_mode = (len(unique_vendors) > 1) or mixed_vat
+    
+    @api.depends("expense_line_ids", "is_auto_mode")  
+    def _compute_vendor_summary(self):
+        for sheet in self:
+            if not sheet.expense_line_ids:
+                sheet.vendor_summary = ""
+                continue
+            
+            # Get unique vendors using expense_vendor_id
+            vendors = {}
+            for expense in sheet.expense_line_ids:
+                if expense.expense_vendor_id:
+                    if expense.expense_vendor_id.id not in vendors:
+                        vendors[expense.expense_vendor_id.id] = expense.expense_vendor_id.name
+            
+            vendor_list = ", ".join(sorted(vendors.values())) if vendors else "Employee"
+            
+            # Calculate expected bill counts by VAT grouping
+            has_vat = any(bool(e.tax_ids) for e in sheet.expense_line_ids)
+            has_no_vat = any(not bool(e.tax_ids) for e in sheet.expense_line_ids)
+            bill_types = []
+            if has_no_vat:
+                bill_types.append("📄 Without VAT")
+            if has_vat:
+                bill_types.append("📊 With VAT")
+            bill_types_str = " | ".join(bill_types)
+            
+            # Summary format
+            if sheet.is_auto_mode:
+                sheet.vendor_summary = f"🤖 AUTO MODE - Bill Types: {bill_types_str} | Vendors: {vendor_list}"
+            else:
+                sheet.vendor_summary = f"Vendors: {vendor_list}"
+    bill_id = fields.Many2one(
+        'account.move',
+        string='Vendor Bill',
+        copy=False
+    )
+    payment_ids = fields.Many2many(
+        'account.payment',
+        string='Payments',
+        compute='_compute_payment_ids'
+    )
+    can_clear_advance_wht = fields.Boolean(
+        string='Can Clear Advance WHT',
+        compute='_compute_can_clear_advance_wht'
+    )
+
+    @api.depends('bill_id')
+    def _compute_payment_ids(self):
+        for sheet in self:
+            if sheet.bill_id:
+                # Find payments that are reconciled with the bill
+                reconciled_payments = self.env['account.payment']
+                for line in sheet.bill_id.line_ids:
+                    if line.account_id.account_type == 'liability_payable':
+                        for partial_line in line.matched_debit_ids + line.matched_credit_ids:
+                            payment = partial_line.debit_move_id.move_id or partial_line.credit_move_id.move_id
+                            if payment._name == 'account.payment':
+                                reconciled_payments |= payment
+                sheet.payment_ids = reconciled_payments
+            else:
+                sheet.payment_ids = [(5, 0, 0)]  # Empty
+
+    @api.depends('use_advance', 'advance_box_id', 'state', 'is_billed')
+    def _compute_can_clear_advance_wht(self):
+        """Check if WHT advance clearing is available"""
+        for sheet in self:
+            sheet.can_clear_advance_wht = (
+                sheet.use_advance and 
+                sheet.advance_box_id and 
+                sheet.state == 'approve' and
+                not sheet.is_billed
+            )
+
+    @api.onchange('use_advance')
+    def _onchange_use_advance(self):
+        """Clear advance box if not using advance"""
+        if not self.use_advance:
+            self.advance_box_id = False
+
+    def action_approve_expense_sheets(self):
+        """Override approval to create draft vendor bills - enhanced with vendor grouping"""
+        res = super(HrExpenseSheet, self).action_approve_expense_sheets()
+        
+        for sheet in self:
+            if sheet.state == 'approve':
+                # Always use the enhanced vendor bill creation logic
+                sheet.action_create_vendor_bills()
+        
+        return res
+
+    def _create_vendor_bill_and_activity(self):
+        """Create vendor bill and activity for accounting team"""
+        self.ensure_one()
+        
+        # Check if employee has private address
+        employee = self.employee_id
+        # Check if employee has private address using the same logic as advance box
+        partner_id = False
+        
+        # Method 1: Check if address_home_id exists (from hr_contract module)
+        if hasattr(employee, 'address_home_id'):
+            partner_id = employee.sudo().address_home_id.id if employee.sudo().address_home_id else False
+        
+        # If still not found, try to get the related user's partner (which might contain private address)
+        if not partner_id and employee.user_id:
+            partner_id = employee.user_id.partner_id.id
+        
+        # If still not found, default to employee's address_id (work address)
+        if not partner_id:
+            partner_id = employee.address_id.id if employee.address_id else False
+        
+        if not partner_id:
+            raise UserError(_(
+                "Employee %s does not have a private address. Please set the employee's home address."
+            ) % employee.name)
+        
+        # Check if advance account is set
+        advance_box = self.advance_box_id
+        if not advance_box.account_id:
+            raise UserError(_("Please set the advance account for the selected advance box."))
+        
+        # Create vendor bill
+        bill_vals = {
+            'move_type': 'in_invoice',
+            'partner_id': partner_id,
+            'invoice_date': fields.Date.context_today(self),
+            'date': fields.Date.context_today(self),
+            'currency_id': self.currency_id.id,
+            'company_id': self.company_id.id,
+            'ref': f'Expense Sheet {self.name}',
+            'invoice_line_ids': [],
+        }
+        
+        # Add expense lines to the bill
+        for expense in self.expense_line_ids:
+            bill_line_vals = {
+                'name': expense.name,
+                'quantity': expense.quantity,
+                'price_unit': self._calculate_expense_base_amount(expense),
+                'tax_ids': [(6, 0, expense.tax_ids.ids)],
+                'account_id': expense.account_id.id,
+            }
+            bill_vals['invoice_line_ids'].append((0, 0, bill_line_vals))
+        
+        bill = self.env['account.move'].sudo().create(bill_vals)
+        
+        # Link bill to expense sheet and also set advance box reference on the bill
+        self.bill_id = bill.id
+        # Also link the advance box to the bill for easier tracking
+        bill.sudo().write({
+            'advance_box_id': self.advance_box_id.id,
+            'expense_sheet_id': self.id,
+            'is_expense_advance_bill': True
+        })
+        
+        # Add activity for accounting as per settings
+        ICP = self.env['ir.config_parameter'].sudo()
+        user_id = int(ICP.get_param('employee_advance.advance_notify_user_id', 0))
+        group_id = int(ICP.get_param('employee_advance.advance_notify_group_id', 0))
+        activity_type_id = int(ICP.get_param('employee_advance.advance_notify_activity_type_id', 0))
+        deadline_days = int(ICP.get_param('employee_advance.advance_notify_deadline_days', 1))
+        
+        activity_vals = {
+            'res_id': bill.id,
+            'res_model_id': self.env['ir.model']._get_id('account.move'),
+            'activity_type_id': activity_type_id or self.env.ref('employee_advance.mail_activity_type_advance_bill_review').id,
+            'summary': f'Review vendor bill for expense sheet {self.name}',
+            'user_id': user_id or self.env.ref('base.user_admin').id,
+            'date_deadline': fields.Date.add(fields.Date.context_today(self), days=deadline_days),
+        }
+        
+        if group_id:
+            activity_vals['user_id'] = self.env['res.users'].search([('groups_id', '=', group_id)], limit=1).id or activity_vals['user_id']
+        
+        bill.activity_schedule(
+            activity_type_id=activity_vals['activity_type_id'],
+            summary=activity_vals['summary'],
+            note=f"Expense sheet {self.name} has been approved. Please review the vendor bill.",
+            user_id=activity_vals['user_id'],
+            date_deadline=activity_vals['date_deadline']
+        )
+        
+        # Log in chatter
+        bill.message_post(body=_("Vendor bill created from expense sheet approval."))
+        
+        return bill
+
+    def action_clear_advance(self):
+        """Create Journal Entry to clear advance instead of opening Register Payment wizard"""
+        self.ensure_one()
+        
+        if not self.bill_id:
+            raise UserError(_("No vendor bill found for this expense sheet."))
+        
+        if self.bill_id.state != 'posted':
+            raise UserError(_("The vendor bill must be posted before clearing the advance."))
+        
+        if self.bill_id.amount_residual <= 0:
+            raise UserError(_("The vendor bill is already fully paid."))
+        
+        advance_box = self.advance_box_id
+        if not advance_box:
+            raise UserError(_("No advance box selected."))
+        
+        if not advance_box.account_id:
+            raise UserError(_("The advance box does not have an account configured. Please set an account for the advance box."))
+        
+        # Call the existing method from account.move to handle JE creation
+        return self.bill_id._clear_advance_using_advance_box(advance_box)
+
+    def action_create_vendor_bills(self):
+        """Create vendor bills based on vendor field - group by vendor and create separate bills"""
+        self.ensure_one()
+        
+        # Run validations
+        self._validate_fiscal_period()
+        self._validate_expense_lines_for_clear_mode()
+        
+        if self.is_billed:
+            raise UserError(_("Bills have already been created for this expense sheet."))
+        
+        # Always use the date-based grouping logic to separate bills by date
+        # regardless of whether it's vendor or employee reimbursement
+        bills = self._create_bills_by_vendor_grouping()
+        
+        if bills:
+            self.bill_ids = [(4, bill.id) for bill in bills]
+            self.is_billed = True
+            
+            # Post accounting activity to reviewers
+            self._post_accounting_activity_for_bills(bills)
+            
+            # Log in chatter
+            bill_names = ', '.join(bills.mapped('name'))
+            self.message_post(body=_(f"Vendor bills created: {bill_names}"))
+            
+        return bills
+
+    def _create_bills_by_vendor_grouping(self):
+        """Enhanced: Each expense line creates a separate bill.
+        Groups by (vendor, company, currency, expense_line_date, expense_line_id).
+        This ensures clear separation and proper tracking of each expense."""
+        bills = self.env['account.move']
+        
+        # Group expense lines - each expense gets its own group
+        groups = {}
+        
+        for expense in self.expense_line_ids:
+            # Determine the partner: vendor if specified, otherwise employee
+            if expense.expense_vendor_id:
+                partner_id = expense.expense_vendor_id.id
+                partner_name = expense.expense_vendor_id.name
+            else:
+                # Use employee's partner
+                employee = expense.employee_id or self.employee_id
+                partner_id = self._get_employee_partner_id(employee)
+                partner_name = employee.name
+            
+            if not partner_id:
+                raise UserError(_(
+                    "Cannot determine partner for expense '%s'. "
+                    "Please ensure employee has a private address or specify a vendor."
+                ) % expense.name)
+            
+            # Get expense line date for grouping
+            expense_date = expense.date or fields.Date.context_today(self)
+            
+            # Determine VAT status
+            has_vat = bool(expense.tax_ids)
+            
+            # Create group key with special logic:
+            # - Lines WITHOUT VAT: Group together by (vendor, date, False)
+            # - Lines WITH VAT: Separate by (vendor, date, True, expense.id)
+            if has_vat:
+                # Lines with VAT must be separated - add expense.id to make unique
+                group_key = (
+                    partner_id, 
+                    expense.company_id.id, 
+                    expense.currency_id.id,
+                    expense_date,
+                    True,  # has_vat
+                    expense.id  # Make each VAT line unique
+                )
+            else:
+                # Lines without VAT can be grouped together
+                group_key = (
+                    partner_id, 
+                    expense.company_id.id, 
+                    expense.currency_id.id,
+                    expense_date,
+                    False  # has_vat
+                )
+            
+            # Initialize group if not exists
+            # Lines with same VAT status will share the same group
+            if group_key not in groups:
+                groups[group_key] = {
+                    'partner_id': partner_id,
+                    'partner_name': partner_name,
+                    'company_id': expense.company_id.id,
+                    'currency_id': expense.currency_id.id,
+                    'expense_line_date': expense_date,
+                    'has_vat': has_vat,
+                    'expense_names': [],
+                    'expenses': self.env['hr.expense'],
+                    'is_vendor': bool(expense.expense_vendor_id)
+                }
+            
+            # Add this expense name to the group's list
+            if expense.name not in groups[group_key]['expense_names']:
+                groups[group_key]['expense_names'].append(expense.name)
+            
+            groups[group_key]['expenses'] |= expense
+        
+        # Create bills for each group (one bill per expense line)
+        for group_data in groups.values():
+            bill = self._create_single_bill_for_vendor_group_date(group_data)
+            if bill:
+                bills |= bill
+        
+        return bills
+
+    def _calculate_expense_base_amount(self, expense):
+        """Calculate expense amount before tax for included tax expenses"""
+        if not expense.tax_ids:
+            return self._calculate_expense_base_amount(expense)
+        
+        # For included tax, calculate the base amount (excluding tax)
+        # price_unit = base_amount * (1 + tax_rate)
+        # base_amount = price_unit / (1 + tax_rate)
+        
+        total_tax_rate = 0
+        for tax in expense.tax_ids:
+            if tax.amount_type == 'percent':
+                total_tax_rate += tax.amount / 100
+        
+        if total_tax_rate > 0:
+            base_amount = self._calculate_expense_base_amount(expense) / (1 + total_tax_rate)
+        else:
+            base_amount = self._calculate_expense_base_amount(expense)
+            
+        return base_amount
+
+    def _create_single_bill_for_vendor_group_date(self, group_data):
+        """Create a single vendor bill for a vendor group with specific date and VAT status (enhanced version)"""
+        partner_id = group_data['partner_id']
+        partner_name = group_data['partner_name']
+        company_id = group_data['company_id']
+        currency_id = group_data['currency_id']
+        expense_line_date = group_data['expense_line_date']
+        expenses = group_data['expenses']
+        is_vendor = group_data['is_vendor']
+        has_vat = group_data.get('has_vat', False)  # NEW: Get VAT status
+        
+        if not partner_id:
+            return self.env['account.move']
+        
+        # Validate company and currency consistency within the group
+        for expense in expenses:
+            if expense.company_id.id != company_id:
+                raise UserError(_(
+                    "All expenses in a group must belong to the same company. "
+                    "Expense '%s' belongs to a different company."
+                ) % expense.name)
+            if expense.currency_id.id != currency_id:
+                raise UserError(_(
+                    "All expenses in a group must use the same currency. "
+                    "Expense '%s' uses a different currency."
+                ) % expense.name)
+        
+        # Create separate invoice lines for each expense line (no grouping)
+        # Each expense line will have its own invoice line, even if they share the same product
+        account_tax_groups = {}
+        for expense in expenses:
+            account = expense.account_id
+            taxes = tuple(expense.tax_ids.ids)
+            analytic_distribution = expense.analytic_distribution or {}
+            wht_tax = expense.wht_tax_id.id if hasattr(expense, 'wht_tax_id') and expense.wht_tax_id else False
+            product_id = expense.product_id.id if expense.product_id else False
+            # Include expense.id in key to ensure each expense line creates a separate invoice line
+            key = (account.id, taxes, tuple(sorted(analytic_distribution.keys())), wht_tax, product_id, expense.id)
+            
+            _logger.info(f"DEBUG _create_single_bill_for_vendor_group_date: Expense {expense.name} - analytic_distribution: {analytic_distribution}")
+            
+            if key not in account_tax_groups:
+                account_tax_groups[key] = {
+                    'amount': 0,
+                    'expenses': self.env['hr.expense'],
+                    'tax_ids': expense.tax_ids.ids,
+                    'analytic_distribution': analytic_distribution,
+                    'wht_tax_id': wht_tax,
+                    'product_id': product_id
+                }
+            
+            # Use price_unit (before tax) to avoid VAT duplication when tax_ids are applied
+            account_tax_groups[key]['amount'] += self._calculate_expense_base_amount(expense)
+            account_tax_groups[key]['expenses'] |= expense
+        
+        # Create vendor bill with grouped lines
+        # Include expense names and VAT status in reference
+        bill_ref = f'Expense Sheet {self.name}'
+        if is_vendor:
+            bill_ref += f' - {partner_name}'
+        else:
+            bill_ref += f' - Employee: {partner_name}'
+        
+        # Add date
+        bill_ref += f' - Date: {expense_line_date}'
+        
+        # Add expense names from the group
+        expense_names = group_data.get('expense_names', [])
+        if expense_names:
+            bill_ref += f' - {", ".join(expense_names)}'
+        
+        # Append VAT status to reference
+        vat_label = '(With VAT)' if has_vat else '(No VAT)'
+        bill_ref += f' {vat_label}'
+            
+        bill_vals = {
+            'move_type': 'in_invoice',
+            'partner_id': partner_id,
+            'invoice_date': expense_line_date,  # Use expense line date as invoice date
+            'date': expense_line_date,  # Use expense line date as accounting date
+            'currency_id': currency_id,
+            'company_id': company_id,
+            'ref': bill_ref,
+            'expense_sheet_id': self.id,
+            'invoice_line_ids': []
+        }
+        
+        for (account_id, taxes_tuple, analytic_keys, wht_tax, product_id, expense_id), group_data in account_tax_groups.items():
+            line_vals = {
+                'name': ', '.join(group_data['expenses'].mapped('name')),
+                'quantity': 1,
+                'price_unit': group_data['amount'],
+                'account_id': account_id,
+                'tax_ids': [(6, 0, list(set(group_data['tax_ids'])))],
+            }
+            
+            # Handle each expense line separately (no grouping)
+            # Since each expense has its own group now (expense.id in key), there should only be one expense per group
+            expense_lines = group_data['expenses']
+            if len(expense_lines) == 1:
+                # Use the single expense details
+                single_expense = expense_lines[0]
+                line_vals['name'] = single_expense.name
+                line_vals['quantity'] = single_expense.quantity if hasattr(single_expense, 'quantity') else 1
+                # Always use price_unit (before tax) when tax_ids are applied to avoid VAT duplication
+                line_vals['price_unit'] = self._calculate_expense_base_amount(single_expense)
+            else:
+                # This shouldn't happen anymore since we include expense.id in the key
+                # But keep it as fallback
+                line_vals['name'] = ', '.join(expense_lines.mapped('name'))
+                
+            if group_data['analytic_distribution']:
+                line_vals['analytic_distribution'] = group_data['analytic_distribution']
+            if group_data.get('product_id'):
+                line_vals['product_id'] = group_data['product_id']
+            if group_data.get('wht_tax_id'):
+                line_vals['wht_tax_id'] = group_data['wht_tax_id']
+            
+            bill_vals['invoice_line_ids'].append((0, 0, line_vals))
+        
+        bill = self.env['account.move'].sudo().create(bill_vals)
+        
+        # Link advance box to ALL bills when using advance (not just employee bills)
+        # This allows WHT wizard to find the correct advance box for vendor bills too
+        if self.use_advance and self.advance_box_id:
+            bill.sudo().write({
+                'advance_box_id': self.advance_box_id.id,
+                'is_expense_advance_bill': True
+            })
+        
+        # Carry attachments from expense lines to the bill
+        # Get all expenses from all groups to attach
+        all_expenses = self.env['hr.expense']
+        for group_data in account_tax_groups.values():
+            all_expenses |= group_data['expenses']
+        self._carry_attachments_to_bill(all_expenses, bill)
+        
+        return bill
+
+    def _create_bills_by_expense_lines(self):
+        """Legacy: Group expense lines and create vendor bills per group"""
+        bills = self.env['account.move']
+        
+        # Group expense lines by (vendor_or_employee_partner, company, currency)
+        groups = {}
+        
+        for expense in self.expense_line_ids:
+            # Determine the partner based on clear_mode and vendor_id
+            partner_id = self._get_partner_for_expense(expense)
+            
+            if not partner_id:
+                # Skip expenses without valid partner
+                continue
+            
+            # Create group key
+            group_key = (
+                partner_id, 
+                expense.company_id.id, 
+                expense.currency_id.id
+            )
+            
+            # Validate company and currency consistency
+            if group_key not in groups:
+                groups[group_key] = {
+                    'partner_id': partner_id,
+                    'company_id': expense.company_id.id,
+                    'currency_id': expense.currency_id.id,
+                    'expenses': self.env['hr.expense']
+                }
+            
+            groups[group_key]['expenses'] |= expense
+        
+        # Create bills for each group
+        for group_data in groups.values():
+            bill = self._create_single_bill_for_group(group_data)
+            if bill:
+                bills |= bill
+        
+        return bills
+
+    def _create_single_bill_for_vendor_group(self, group_data):
+        """Create a single vendor bill for a vendor group (enhanced version)"""
+        partner_id = group_data['partner_id']
+        partner_name = group_data['partner_name']
+        company_id = group_data['company_id']
+        currency_id = group_data['currency_id']
+        expenses = group_data['expenses']
+        is_vendor = group_data['is_vendor']
+        
+        if not partner_id:
+            return self.env['account.move']
+        
+        # Validate company and currency consistency within the group
+        for expense in expenses:
+            if expense.company_id.id != company_id:
+                raise UserError(_(
+                    "All expenses in a group must belong to the same company. "
+                    "Expense '%s' belongs to a different company."
+                ) % expense.name)
+            if expense.currency_id.id != currency_id:
+                raise UserError(_(
+                    "All expenses in a group must use the same currency. "
+                    "Expense '%s' uses a different currency."
+                ) % expense.name)
+        
+        # Group expenses by account, taxes, analytic account, analytic tags, product, and WHT tax to create proper invoice lines
+        account_tax_groups = {}
+        for expense in expenses:
+            account = expense.account_id
+            taxes = tuple(expense.tax_ids.ids)
+            analytic_distribution = expense.analytic_distribution or {}
+            wht_tax = expense.wht_tax_id.id if hasattr(expense, 'wht_tax_id') and expense.wht_tax_id else False
+            product_id = expense.product_id.id if expense.product_id else False
+            # Include product_id in key to separate lines for different products
+            key = (account.id, taxes, tuple(sorted(analytic_distribution.keys())), wht_tax, product_id)
+            
+            if key not in account_tax_groups:
+                account_tax_groups[key] = {
+                    'amount': 0,
+                    'expenses': self.env['hr.expense'],
+                    'tax_ids': expense.tax_ids.ids,
+                    'analytic_distribution': analytic_distribution,
+                    'wht_tax_id': wht_tax,
+                    'product_id': product_id
+                }
+            
+            # Use price_unit (before tax) to avoid VAT duplication when tax_ids are applied
+            account_tax_groups[key]['amount'] += self._calculate_expense_base_amount(expense)
+            account_tax_groups[key]['expenses'] |= expense
+        
+        # Create vendor bill with grouped lines
+        bill_ref = f'Expense Sheet {self.name}'
+        if is_vendor:
+            bill_ref += f' - {partner_name}'
+        else:
+            bill_ref += f' - Employee: {partner_name}'
+            
+        bill_vals = {
+            'move_type': 'in_invoice',
+            'partner_id': partner_id,
+            'invoice_date': fields.Date.context_today(self),
+            'date': fields.Date.context_today(self),
+            'currency_id': currency_id,
+            'company_id': company_id,
+            'ref': bill_ref,
+            'expense_sheet_id': self.id,
+            'invoice_line_ids': []
+        }
+        
+        for (account_id, taxes_tuple, analytic_keys, wht_tax, product_id), group_data in account_tax_groups.items():
+            line_vals = {
+                'name': ', '.join(group_data['expenses'].mapped('name')),
+                'quantity': 1,
+                'price_unit': group_data['amount'],
+                'account_id': account_id,
+                'tax_ids': [(6, 0, list(set(group_data['tax_ids'])))],
+            }
+            
+            # Handle taxes and amounts properly
+            expense_lines = group_data['expenses']
+            if len(expense_lines) > 1:
+                # Combine amounts from all expenses in this group
+                line_vals['name'] = ', '.join(expense_lines.mapped('name'))
+            else:
+                # Use the single expense details
+                single_expense = expense_lines[0]
+                line_vals['name'] = single_expense.name
+                line_vals['quantity'] = single_expense.quantity if hasattr(single_expense, 'quantity') else 1
+                
+            if group_data['analytic_distribution']:
+                line_vals['analytic_distribution'] = group_data['analytic_distribution']
+            if group_data.get('product_id'):
+                line_vals['product_id'] = group_data['product_id']
+            if group_data.get('wht_tax_id'):
+                line_vals['wht_tax_id'] = group_data['wht_tax_id']
+            
+            bill_vals['invoice_line_ids'].append((0, 0, line_vals))
+        
+        bill = self.env['account.move'].sudo().create(bill_vals)
+        
+        # Link advance box to ALL bills when using advance (not just employee bills)
+        # This allows WHT wizard to find the correct advance box for vendor bills too
+        if self.use_advance and self.advance_box_id:
+            bill.sudo().write({
+                'advance_box_id': self.advance_box_id.id,
+                'is_expense_advance_bill': True
+            })
+        
+        # Carry attachments from expense lines to the bill
+        self._carry_attachments_to_bill(expense_lines, bill)
+        
+        return bill
+
+    def _get_partner_for_expense(self, expense):
+        """Get the appropriate partner for an expense based on clear_mode"""
+        if self.clear_mode == 'pay_vendor':
+            # Use vendor if specified, otherwise skip (will be handled by employee logic)
+            return expense.expense_vendor_id.id if expense.expense_vendor_id else False
+        elif self.clear_mode == 'mixed':
+            # Use vendor if specified, otherwise use employee
+            if expense.expense_vendor_id:
+                return expense.expense_vendor_id.id
+            else:
+                employee = expense.employee_id or self.employee_id
+                return self._get_employee_partner_id(employee)
+        else:  # reimburse_employee
+            # Always use employee's private address
+            employee = expense.employee_id or self.employee_id
+            return self._get_employee_partner_id(employee)
+
+    def _get_employee_partner_id(self, employee):
+        """Get the partner ID for an employee (private address)"""
+        if not employee:
+            return False
+            
+        partner_id = False
+        
+        # Method 1: Check if address_home_id exists (from hr_contract module) - Primary method
+        if hasattr(employee, 'address_home_id') and employee.sudo().address_home_id:
+            partner_id = employee.sudo().address_home_id.id
+        
+        # Method 2: Get the related user's partner (which might contain private address)
+        if not partner_id and employee.user_id and employee.user_id.partner_id:
+            partner_id = employee.user_id.partner_id.id
+        
+        # Method 3: Default to employee's address_id (work address)
+        if not partner_id and employee.address_id:
+            partner_id = employee.address_id.id
+        
+        # If still no partner found, try to create/find partner by employee name
+        if not partner_id:
+            try:
+                # ลองหา Partner ที่มีชื่อเดียวกับ Employee ก่อน
+                employee_partner = self.env['res.partner'].search([
+                    ('name', '=', employee.name),
+                    ('is_company', '=', False)
+                ], limit=1)
+                
+                if employee_partner:
+                    partner_id = employee_partner.id
+                else:
+                    # สร้าง Partner ใหม่สำหรับ Employee
+                    employee_partner = self.env['res.partner'].create({
+                        'name': employee.name,
+                        'is_company': False,
+                        'employee': True,
+                        'supplier_rank': 0,
+                        'customer_rank': 0,
+                    })
+                    partner_id = employee_partner.id
+                    
+            except Exception as e:
+                # Final fallback using all methods
+                try:
+                    if hasattr(employee, 'address_home_id') and employee.sudo().address_home_id:
+                        partner_id = employee.sudo().address_home_id.id
+                    elif employee.user_id:
+                        partner_id = employee.user_id.partner_id.id
+                    elif employee.address_id:
+                        partner_id = employee.address_id.id
+                except Exception:
+                    partner_id = False
+        
+        return partner_id
+
+    def _create_single_bill_for_group(self, group_data):
+        """Create a single vendor bill for a group of expenses"""
+        partner_id = group_data['partner_id']
+        company_id = group_data['company_id']
+        currency_id = group_data['currency_id']
+        expenses = group_data['expenses']
+        
+        if not partner_id:
+            return self.env['account.move']
+        
+        # Validate company and currency consistency within the group
+        for expense in expenses:
+            if expense.company_id.id != company_id:
+                raise UserError(_(
+                    "All expenses in a group must belong to the same company. "
+                    "Expense '%s' belongs to a different company."
+                ) % expense.name)
+            if expense.currency_id.id != currency_id:
+                raise UserError(_(
+                    "All expenses in a group must use the same currency. "
+                    "Expense '%s' uses a different currency."
+                ) % expense.name)
+        
+        # Get company for this group
+        company = self.env['res.company'].browse(company_id)
+        
+        # Group expenses by account, taxes, analytic account, analytic tags, product, and WHT tax to create proper invoice lines
+        account_tax_groups = {}
+        for expense in expenses:
+            account = expense.account_id
+            taxes = tuple(expense.tax_ids.ids)
+            analytic_distribution = expense.analytic_distribution or {}
+            wht_tax = expense.wht_tax_id.id if hasattr(expense, 'wht_tax_id') and expense.wht_tax_id else False
+            product_id = expense.product_id.id if expense.product_id else False
+            # Include product_id in key to separate lines for different products
+            key = (account.id, taxes, tuple(sorted(analytic_distribution.keys())), wht_tax, product_id)
+            
+            if key not in account_tax_groups:
+                account_tax_groups[key] = {
+                    'amount': 0,
+                    'expenses': self.env['hr.expense'],
+                    'tax_ids': expense.tax_ids.ids,
+                    'analytic_distribution': analytic_distribution,
+                    'wht_tax_id': wht_tax,
+                    'product_id': product_id
+                }
+            
+            # Use price_unit (before tax) to avoid VAT duplication when tax_ids are applied
+            account_tax_groups[key]['amount'] += self._calculate_expense_base_amount(expense)
+            account_tax_groups[key]['expenses'] |= expense
+        # Create vendor bill with grouped lines
+        bill_vals = {
+            'move_type': 'in_invoice',
+            'partner_id': partner_id,
+            'invoice_date': fields.Date.context_today(self),
+            'date': fields.Date.context_today(self),
+            'currency_id': currency_id,
+            'company_id': company_id,
+            'ref': f'Expense Sheet {self.name}',
+            'expense_sheet_id': self.id,
+            'invoice_line_ids': []
+        }
+        
+        for (account_id, taxes_tuple, analytic_keys, wht_tax, product_id), group_data in account_tax_groups.items():
+            line_vals = {
+                'name': ', '.join(group_data['expenses'].mapped('name')),
+                'quantity': 1,
+                'price_unit': group_data['amount'],
+                'account_id': account_id,
+                'tax_ids': [(6, 0, list(set(group_data['tax_ids'])))],
+            }
+            
+            # Handle taxes and amounts properly
+            expense_lines = group_data['expenses']
+            if len(expense_lines) > 1:
+                # Combine amounts from all expenses in this group
+                line_vals['name'] = ', '.join(expense_lines.mapped('name'))
+            else:
+                # Use the single expense details
+                single_expense = expense_lines[0]
+                line_vals['name'] = single_expense.name
+                line_vals['quantity'] = single_expense.quantity if hasattr(single_expense, 'quantity') else 1
+                # Always use price_unit (before tax) when tax_ids are applied to avoid VAT duplication
+                line_vals['price_unit'] = self._calculate_expense_base_amount(single_expense)
+                
+            if group_data['analytic_distribution']:
+                line_vals['analytic_distribution'] = group_data['analytic_distribution']
+            if group_data.get('product_id'):
+                line_vals['product_id'] = group_data['product_id']
+            # Add WHT tax if available on the expense
+            if group_data.get('wht_tax_id'):
+                line_vals['wht_tax_id'] = group_data['wht_tax_id']
+            
+            bill_vals['invoice_line_ids'].append((0, 0, line_vals))
+        bill = self.env['account.move'].sudo().create(bill_vals)
+        
+        # Carry attachments from expense lines to the bill
+        self._carry_attachments_to_bill(expense_lines, bill)
+        
+        return bill
+
+    def _carry_attachments_to_bill(self, expense_lines, bill):
+        """Copy attachments from expense lines to the corresponding bill"""
+        Attachment = self.env['ir.attachment']
+        
+        for expense in expense_lines:
+            # Find attachments related to this expense
+            expense_attachments = Attachment.search([
+                ('res_model', '=', 'hr.expense'),
+                ('res_id', '=', expense.id)
+            ])
+            
+            # Copy each attachment to the bill
+            for attachment in expense_attachments:
+                Attachment.create({
+                    'name': attachment.name,
+                    'datas': attachment.datas,
+                    'res_model': 'account.move',
+                    'res_id': bill.id,
+                    'type': attachment.type,
+                    'url': attachment.url,
+                })
+
+    def _post_accounting_activity_for_bills(self, bills):
+        """Post accounting activity for reviewers to check the created bills"""
+        ICP = self.env['ir.config_parameter'].sudo()
+        user_id = int(ICP.get_param('employee_advance.advance_notify_user_id', 0))
+        group_id = int(ICP.get_param('employee_advance.advance_notify_group_id', 0))
+        activity_type_id = int(ICP.get_param('employee_advance.advance_notify_activity_type_id', 0))
+        deadline_days = int(ICP.get_param('employee_advance.advance_notify_deadline_days', 1))
+        
+        for bill in bills:
+            activity_vals = {
+                'res_id': bill.id,
+                'res_model_id': self.env['ir.model']._get_id('account.move'),
+                'activity_type_id': activity_type_id or self.env.ref('employee_advance.mail_activity_type_advance_bill_review').id,
+                'summary': f'Review vendor bill for expense sheet {self.name}',
+                'user_id': user_id or self.env.ref('base.user_admin').id,
+                'date_deadline': fields.Date.add(fields.Date.context_today(self), days=deadline_days),
+            }
+            
+            if group_id:
+                activity_vals['user_id'] = self.env['res.users'].search([('groups_id', '=', group_id)], limit=1).id or activity_vals['user_id']
+            
+            # Use sudo() to bypass access rights for creating activities
+            bill.sudo().activity_schedule(
+                activity_type_id=activity_vals['activity_type_id'],
+                summary=activity_vals['summary'],
+                note=f"Expense sheet {self.name} has been approved. Please review the vendor bill.",
+                user_id=activity_vals['user_id'],
+                date_deadline=activity_vals['date_deadline']
+            )
+
+    def _validate_expense_lines_for_clear_mode(self):
+        """Validate expense lines based on clear_mode"""
+        # Temporarily disabled vendor validation
+        pass
+
+    def _validate_company_currency_consistency(self):
+        """Validate company and currency consistency within sheet"""
+        for sheet in self:
+            companies = sheet.expense_line_ids.mapped('company_id')
+            currencies = sheet.expense_line_ids.mapped('currency_id')
+            
+            # Note: We can't validate overall sheet consistency here since different groups
+            # might have different companies/currencies, but we validate at the group level
+            # during bill creation which is already implemented
+            
+    def _validate_fiscal_period(self):
+        """Validate that we're not in a locked fiscal period"""
+        for sheet in self:
+            company = sheet.company_id
+            from odoo import fields
+            locked_date = company._get_user_fiscal_lock_date()
+            current_date = fields.Date.context_today(sheet)
+            if current_date <= locked_date:
+                raise UserError(_("Cannot create bills before or during the lock date %s.", locked_date))
+
+    def _validate_advance_box_setup(self):
+        """Validate advance box configuration when needed"""
+        for sheet in self:
+            if sheet.use_advance and sheet.advance_box_id:
+                advance_box = sheet.advance_box_id
+                if not advance_box.account_id:
+                    raise UserError(_("Please set the advance account for the selected advance box."))
+                if not advance_box.journal_id:
+                    raise UserError(_("Please set the journal for the selected advance box."))
+
+    def action_sheet_paid(self):
+        """Override method to handle paid status after advance clearing"""
+        # Only change the state to done if not already done
+        if self.state != 'done':
+            self.write({'state': 'done'})
+        return True
+
+    def action_open_mark_as_done_confirmation(self):
+        """Open confirmation wizard before marking expense sheet as done"""
+        # Create a transient record for the wizard
+        wizard = self.env['mark.as.done.confirmation.wizard'].create({
+            'expense_sheet_id': self.id,
+        })
+        
+        return {
+            'name': _('Confirm Mark as Done'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'mark.as.done.confirmation.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'res_id': wizard.id,
+            'context': self.env.context,
+        }
+
+    def action_mark_as_done_without_confirmation(self):
+        """Mark expense sheet as done manually when all bills are paid (internal method)"""
+        for sheet in self:
+            if sheet.state in ['post', 'approve'] and sheet.payment_state in ['paid', 'not_paid', 'partial']:
+                # Check if all related bills are paid (or there are no bills to pay)
+                all_bills_paid = True
+                if sheet.bill_ids:
+                    for bill in sheet.bill_ids:
+                        if bill.payment_state not in ['paid', 'reversed', 'cancelled'] and bill.amount_residual > 0:
+                            all_bills_paid = False
+                            break
+                elif sheet.bill_id:  # Check the single bill_id field too
+                    if sheet.bill_id.payment_state not in ['paid', 'reversed', 'cancelled'] and sheet.bill_id.amount_residual > 0:
+                        all_bills_paid = False
+                
+                # If all bills are paid (or no bills exist), mark as done
+                if all_bills_paid:
+                    # Update both state and payment_state to reflect the paid status
+                    sheet.write({'state': 'done', 'payment_state': 'paid'})
+                    # Log in chatter
+                    sheet.message_post(body=_("Expense sheet manually marked as done and payment status set to paid after verifying all bills are settled."))
+                else:
+                    raise UserError(_("Cannot mark as done: Some bills are not fully paid yet."))
+            else:
+                # Allow marking as done if state is already 'post' and needs manual completion
+                if sheet.state in ['post']:
+                    # Also update payment_state to 'paid' to reflect the correct status
+                    sheet.write({'state': 'done', 'payment_state': 'paid'})
+                    sheet.message_post(body=_("Expense sheet manually marked as done and payment status set to paid."))
+                else:
+                    raise UserError(_("Cannot mark as done: Expense sheet must be in 'Posted' or 'Approved' state."))
+        return True
+
+    def action_mark_as_done(self):
+        """Public method that opens confirmation wizard"""
+        return self.action_open_mark_as_done_confirmation()
+
+    def action_open_wht_clear_advance_wizard(self):
+        """Open WHT Clear Advance Wizard - HANG FIX APPLIED v2"""
+        import time
+        import logging
+        
+        _logger = logging.getLogger(__name__)
+        _logger.info("🎯 WIZARD BUTTON CLICKED: Starting Clear Advance (WHT) for expense sheet %s", self.name)
+        
+        start_time = time.time()
+        self.ensure_one()
+        
+        # Add immediate response for debugging
+        _logger.info("🔍 WIZARD: Method called successfully, processing...")
+        
+        try:
+            _logger.info("🔍 WIZARD: Entering try block...")
+            
+            # Quick validations
+            _logger.info("🔍 WIZARD: Checking use_advance: %s", self.use_advance)
+            _logger.info("🔍 WIZARD: Checking advance_box_id: %s", self.advance_box_id.id if self.advance_box_id else 'None')
+            _logger.info("🔍 WIZARD: Checking state: %s", self.state)
+            
+            if not self.use_advance or not self.advance_box_id:
+                raise UserError(_("This expense sheet is not using advance or has no advance box configured."))
+            
+            if self.state != 'approve':
+                raise UserError(_("Expense sheet must be approved before clearing advance with WHT."))
+            
+            # Support cross-employee advance box clearing
+            # ให้สามารถ Clear advance box ของพนักงานคนอื่นได้
+            if self.advance_box_id.employee_id.id != self.employee_id.id:
+                _logger.info("🔄 WIZARD: Cross-employee clearing detected - Current user: %s, Advance box owner: %s", 
+                           self.employee_id.name, self.advance_box_id.employee_id.name)
+                
+                # Use advance box employee's partner information for WHT processing
+                advance_box_partner = False
+                try:
+                    if self.advance_box_id.employee_id.address_home_id:
+                        advance_box_partner = self.advance_box_id.employee_id.address_home_id
+                    elif self.advance_box_id.employee_id.user_id and self.advance_box_id.employee_id.user_id.partner_id:
+                        advance_box_partner = self.advance_box_id.employee_id.user_id.partner_id
+                    _logger.info("� WIZARD: Will use advance box employee partner for WHT: %s", 
+                               advance_box_partner.name if advance_box_partner else 'None')
+                except Exception as e:
+                    _logger.warning("⚠️ WIZARD: Could not resolve advance box employee partner: %s", str(e))
+                    advance_box_partner = None
+                
+                # Override partner info if advance box employee partner is found
+                if advance_box_partner:
+                    employee_partner = advance_box_partner
+            
+            _logger.info("✅ WIZARD: Basic validations passed")
+            
+            # Get default employee partner (with timeout protection)
+            employee_partner = False
+            try:
+                if self.employee_id.user_id and self.employee_id.user_id.partner_id:
+                    employee_partner = self.employee_id.user_id.partner_id
+                elif hasattr(self.employee_id, 'address_home_id') and self.employee_id.address_home_id:
+                    employee_partner = self.employee_id.address_home_id
+                elif self.employee_id.address_id:
+                    employee_partner = self.employee_id.address_id
+                _logger.info("💼 WIZARD: Employee partner resolved: %s", employee_partner.name if employee_partner else 'None')
+            except Exception as e:
+                _logger.warning("⚠️ WIZARD: Could not resolve employee partner: %s", str(e))
+                employee_partner = False
+            
+            # Build context safely - ไม่ส่ง default_partner_id เพื่อให้ wizard หาจาก bill เอง
+            context = {
+                'default_expense_sheet_id': self.id,
+                'default_employee_id': self.employee_id.id,
+                'default_advance_box_id': self.advance_box_id.id,
+                'default_company_id': self.company_id.id,
+                # ไม่ส่ง default_partner_id และ default_wht_partner_id เพื่อให้ wizard หาจาก bill เอง
+                # 'default_partner_id': employee_partner.id if employee_partner else False,
+                # 'default_wht_partner_id': employee_partner.id if employee_partner else False,
+                'default_clear_amount': self.total_amount or 0.0,
+                'default_amount_base': self.total_amount or 0.0,
+            }
+            
+            _logger.info("💡 WIZARD: Not sending default partners - letting wizard find vendor from bill")
+            
+            elapsed = time.time() - start_time
+            _logger.info("🚀 WIZARD: Opening wizard (preparation took %.2f seconds)", elapsed)
+            
+            result = {
+                'type': 'ir.actions.act_window',
+                'name': _('Clear Advance with WHT'),
+                'res_model': 'wht.clear.advance.wizard',
+                'view_mode': 'form',
+                'target': 'new',
+                'context': context,
+            }
+            
+            _logger.info("✅ WIZARD: Method completed successfully, returning action")
+            return result
+            
+        except Exception as e:
+            elapsed = time.time() - start_time
+            _logger.error("❌ WIZARD: Failed to open wizard after %.2f seconds: %s", elapsed, str(e))
+            raise UserError(_("Failed to open Clear Advance (WHT) wizard: %s") % str(e))
+
+
+
+
+    def action_refuse_sheet(self, reason):
+        """Override refuse to set back to draft instead of cancel"""
+        self.write({
+            'state': 'draft',
+        })
+        # Post message about refusal
+        for sheet in self:
+            sheet.message_post(
+                body=_('Expense Report refused by manager. Reason: %s') % (reason or 'No reason provided'),
+                subject=_('Expense Report Refused')
+            )
+        return True
+
+    def action_reset_expense_sheets(self):
+        """Reset expense sheet from refuse/cancel state back to draft"""
+        if not self.env.user.has_group('hr_expense.group_hr_expense_team_approver'):
+            raise UserError(_('Only managers can reset expense reports.'))
+        
+        self.write({'state': 'draft'})
+        self.message_post(body=_('Expense Report reset to draft for corrections.'))
+        return True

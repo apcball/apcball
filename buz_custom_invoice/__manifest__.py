@@ -12,7 +12,7 @@
     """,
     'author': 'Your Name',
     'website': 'https://www.yourwebsite.com',
-    'depends': ['base', 'account','purchase'],
+    'depends': ['base', 'account', 'purchase', 'stock', 'sale_management'],
     'data': [
         'security/security.xml',           # เพิ่มไฟล์ security.xml
         'security/ir.model.access.csv',
@@ -21,6 +21,12 @@
         'report/paperformat.xml',
         'report/invoice_template.xml',
         'report/report_action.xml',
+        'report/ecommerce_receipt_report.xml',
+        'report/cerdit_note.xml',
+        'report/invoice_tax.xml',
+        'report/vendor_credit_note.xml',
+    
+        
      ],  
      'assets': {
         'web.report_assets_common': [

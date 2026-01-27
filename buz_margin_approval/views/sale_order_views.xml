@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extend Sale Order Form View -->
+    <record id="view_order_form_inherit_margin_approval" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.margin.approval</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Add fields after payment terms -->
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                <field name="margin_percentage"/>
+                <field name="approval_state" invisible="approval_state == 'not_required'"/>
+                <field name="confirm_flow_state"/>
+                <field name="margin_rule_id" invisible="1"/>
+                <field name="margin_rule_line_id" invisible="1"/>
+                <field name="margin_approval_user_ids" widget="many2many_tags" invisible="not margin_rule_line_id"/>
+                <field name="approval_type" invisible="not margin_rule_line_id"/>
+                <field name="approved_user_ids" widget="many2many_tags" invisible="approval_state != 'pending' or approval_type != 'all'"/>
+            </xpath>
+            
+            <!-- Hide Confirm Sale button for Sales Users -->
+            <xpath expr="//header/button[@name='action_confirm']" position="attributes">
+                <attribute name="groups">!buz_margin_approval.group_sales_margin_approver_user</attribute>
+            </xpath>
+            
+            <!-- Add buttons in header -->
+            <xpath expr="//header/button[@name='action_confirm']" position="after">
+                <!-- Request Margin Approval button - Only for Sales Margin Approver User -->
+                <button name="action_request_margin_approval" 
+                        type="object" 
+                        string="Request Margin Approval" 
+                        class="btn-primary"
+                        invisible="state not in ('draft', 'sent') or approval_state in ('pending', 'approved')"
+                        groups="buz_margin_approval.group_sales_margin_approver_user"/>
+                
+                <!-- Approve Margin button -->
+                <button name="action_approve_margin" 
+                        type="object" 
+                        string="Approve Margin" 
+                        class="btn-success"
+                        invisible="approval_state != 'pending' or state not in ('draft', 'sent')"
+                        groups="buz_margin_approval.group_margin_approval"/>
+                
+                <!-- Reject Margin button -->
+                <button name="action_reject_margin" 
+                        type="object" 
+                        string="Reject Margin" 
+                        class="btn-danger"
+                        invisible="approval_state != 'pending' or state not in ('draft', 'sent')"
+                        groups="buz_margin_approval.group_margin_approval"/>
+                
+                <!-- Confirm To SO button for Sales Users - Only when margin is approved -->
+                <button name="action_confirm_to_so" 
+                        type="object" 
+                        string="Confirm To SO" 
+                        class="btn-warning"
+                        invisible="state not in ('draft', 'sent') or confirm_flow_state != 'draft' or approval_state != 'approved'"
+                        groups="buz_margin_approval.group_sales_margin_approver_user"/>
+                
+                <!-- Confirm To SO button for Margin Approvers - When approved or not required -->
+                <button name="action_confirm_to_so" 
+                        type="object" 
+                        string="Confirm To SO" 
+                        class="btn-warning"
+                        invisible="state not in ('draft', 'sent') or confirm_flow_state != 'draft' or approval_state not in ('approved', 'not_required')"
+                        groups="buz_margin_approval.group_margin_approval"/>
+            </xpath>
+            
+            <!-- Add status bar indicator for confirm flow state -->
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="confirm_flow_state" 
+                       widget="statusbar" 
+                       statusbar_visible="draft,confirm_to_so,sale" 
+                       invisible="confirm_flow_state == 'draft'"/>
+            </xpath>
+            
+            <!-- Add status bar indicator for approval state -->
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="approval_state" 
+                       widget="statusbar" 
+                       statusbar_visible="pending,approved" 
+                       invisible="approval_state == 'not_required'"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Extend Sale Order Tree View -->
+    <record id="view_order_tree_inherit_margin_approval" model="ir.ui.view">
+        <field name="name">sale.order.tree.inherit.margin.approval</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="approval_state" 
+                       string="Margin Approval"
+                       widget="badge"
+                       decoration-warning="approval_state == 'pending'"
+                       decoration-success="approval_state == 'approved'"
+                       decoration-danger="approval_state == 'rejected'"
+                       decoration-muted="approval_state == 'not_required'"/>
+                <field name="margin_percentage" string="Margin %" optional="hide"/>
+                <field name="confirm_flow_state" 
+                       string="Confirm Flow"
+                       widget="badge"
+                       decoration-info="confirm_flow_state == 'draft'"
+                       decoration-warning="confirm_flow_state == 'confirm_to_so'"
+                       decoration-success="confirm_flow_state == 'sale'"
+                       optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Extend Quotation Tree View -->
+    <record id="view_quotation_tree_inherit_margin_approval" model="ir.ui.view">
+        <field name="name">sale.order.quotation.tree.inherit.margin.approval</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_quotation_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="approval_state" 
+                       string="Margin Approval"
+                       widget="badge"
+                       decoration-warning="approval_state == 'pending'"
+                       decoration-success="approval_state == 'approved'"
+                       decoration-danger="approval_state == 'rejected'"
+                       decoration-muted="approval_state == 'not_required'"/>
+                <field name="margin_percentage" string="Margin %" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Add filter for orders requiring margin approval -->
+    <record id="view_sales_order_filter_margin_approval" model="ir.ui.view">
+        <field name="name">sale.order.filter.margin.approval</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
+                <separator/>
+                <filter string="Pending Approval" name="pending_approval" domain="[('approval_state', '=', 'pending')]"/>
+                <filter string="Approved" name="approved" domain="[('approval_state', '=', 'approved')]"/>
+                <filter string="Rejected" name="rejected" domain="[('approval_state', '=', 'rejected')]"/>
+                <separator/>
+                <filter string="Confirm To SO" name="confirm_to_so" domain="[('confirm_flow_state', '=', 'confirm_to_so')]"/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter string="Approval Status" name="group_approval_state" context="{'group_by': 'approval_state'}"/>
+                <filter string="Confirm Flow State" name="group_confirm_flow_state" context="{'group_by': 'confirm_flow_state'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

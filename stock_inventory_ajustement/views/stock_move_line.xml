@@ -1,0 +1,29 @@
+<odoo>
+    <record id="view_stock_move_line_inventory_tree" model="ir.ui.view">
+        <field name="name">stock.move.line.tree.view.inventory</field>
+        <field name="model">stock.move.line</field>
+        <field name="priority">1000</field>
+        <field name="arch" type="xml">
+            <tree string="Stock Move Lines">
+                <field name="date" string="Date"/>
+                <field name="product_id" string="Product"/>
+                <field name="lot_id" string="Lot/Serial"/>
+                <field name="location_id" string="Source Location"/>
+                <field name="location_dest_id" string="Destination Location"/>
+                <field name="quantity" string="Quantity"/>
+                <field name="company_id" string="Company" optional="hide"/>
+                <field name="reference" string="Reference" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record
+        id="action_view_stock_move_line_inventory_tree"
+        model="ir.actions.act_window"
+    >
+        <field name="name">Stock Move Lines</field>
+        <field name="res_model">stock.move.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_stock_move_line_inventory_tree" />
+    </record>
+</odoo>

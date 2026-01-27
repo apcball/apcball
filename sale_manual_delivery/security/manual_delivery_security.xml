@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Manual Delivery Group -->
+        <record id="group_manual_delivery" model="res.groups">
+            <field name="name">Manual Delivery</field>
+            <field name="category_id" ref="base.module_category_sales_sales"/>
+            <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
+            <field name="comment">Users in this group can create and manage manual deliveries.</field>
+        </record>
+
+        <!-- Manual Delivery Access Rule -->
+        <record id="manual_delivery_rule" model="ir.rule">
+            <field name="name">Manual Delivery Access</field>
+            <field name="model_id" ref="model_manual_delivery"/>
+            <field name="domain_force">[('create_uid', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_manual_delivery'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Manual Delivery Line Access Rule -->
+        <record id="manual_delivery_line_rule" model="ir.rule">
+            <field name="name">Manual Delivery Line Access</field>
+            <field name="model_id" ref="model_manual_delivery_line"/>
+            <field name="domain_force">[('manual_delivery_id.create_uid', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_manual_delivery'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Manager Access Rule -->
+        <record id="manual_delivery_manager_rule" model="ir.rule">
+            <field name="name">Manual Delivery Manager Access</field>
+            <field name="model_id" ref="model_manual_delivery"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('sales_team.group_sale_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Manager Line Access Rule -->
+        <record id="manual_delivery_line_manager_rule" model="ir.rule">
+            <field name="name">Manual Delivery Line Manager Access</field>
+            <field name="model_id" ref="model_manual_delivery_line"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('sales_team.group_sale_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+    </data>
+</odoo>

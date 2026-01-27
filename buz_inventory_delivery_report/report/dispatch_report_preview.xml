@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Preview Template for Testing Positions -->
+    <template id="dispatch_report_preview">
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs" t-as="config">
+                <!-- Convert px to mm: 96 DPI = 1px = 0.2646mm -->
+                <t t-set="px_to_mm" t-value="0.2646"/>
+                
+                <div class="page" style="width: 210mm; height: 297mm; position: relative; font-family: 'Sarabun', sans-serif; font-size: 14px; page-break-after: always; margin: 0; padding: 0; overflow: visible; box-sizing: border-box; border: 2px solid #333; background: #ffffff;">
+                    
+                    <!-- Background Image (if uploaded and enabled) -->
+                    <t t-if="config.background_image and config.show_background">
+                        <div t-attf-style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('data:image/png;base64,{{config.background_image.decode()}}'); background-size: 100% 100%; background-repeat: no-repeat; opacity: {{config.background_opacity}}; pointer-events: none; z-index: 1;"/>
+                    </t>
+                    
+                    <!-- Grid lines for reference -->
+                    <style>
+                        @font-face {
+                            font-family: 'Sarabun';
+                            src: url('/buz_inventory_delivery_report/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                        }
+                        
+                        @font-face {
+                            font-family: 'Sarabun';
+                            src: url('/buz_inventory_delivery_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                        }
+                        
+                        @page {
+                            size: A4 portrait;
+                            margin: 0mm;
+                        }
+                        
+                        * {
+                            box-sizing: border-box;
+                        }
+                        
+                        html, body {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            width: 210mm !important;
+                            height: 297mm !important;
+                        }
+                        
+                        .page {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            width: 210mm !important;
+                            height: 297mm !important;
+                        }
+                        
+                        html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+                            font-family: 'Sarabun', sans-serif !important;
+                            font-size: 16px;
+                        }
+                        
+                        .grid-overlay {
+                            position: absolute;
+                            width: 100%;
+                            height: 100%;
+                            background-image: 
+                                repeating-linear-gradient(0deg, transparent, transparent 49px, #e0e0e0 49px, #e0e0e0 50px),
+                                repeating-linear-gradient(90deg, transparent, transparent 49px, #e0e0e0 49px, #e0e0e0 50px);
+                            opacity: 0.3;
+                            pointer-events: none;
+                            z-index: 2;
+                        }
+                        .position-label {
+                            background: rgba(255, 255, 0, 0.7);
+                            padding: 2px 5px;
+                            border: 1px solid #ff0000;
+                            font-size: 10px;
+                            color: #000;
+                            font-family: 'Sarabun', sans-serif !important;
+                            position: relative;
+                            z-index: 3;
+                            white-space: nowrap !important;
+                            display: inline-block !important;
+                        }
+                    </style>
+                    
+                    <div class="grid-overlay" style="z-index: 2;"></div>
+                    
+                    <!-- Document Number -->
+                    <div t-attf-style="position: absolute; top: {{config.doc_number_top * px_to_mm}}mm; left: {{config.doc_number_left * px_to_mm}}mm; z-index: 3; white-space: nowrap;">
+                        <span class="position-label">เลขที่: DO001</span>
+                    </div>
+                    
+                    <!-- Document Date -->
+                    <div t-attf-style="position: absolute; top: {{config.doc_date_top * px_to_mm}}mm; left: {{config.doc_date_left * px_to_mm}}mm; z-index: 3; white-space: nowrap;">
+                        <span class="position-label">วันที่: 22/12/2025</span>
+                    </div>
+                    
+                    <!-- Customer Name -->
+                    <div t-attf-style="position: absolute; top: {{config.customer_name_top * px_to_mm}}mm; left: {{config.customer_name_left * px_to_mm}}mm; z-index: 3; white-space: nowrap;">
+                        <span class="position-label">ชื่อลูกค้า: บริษัท ทดสอบ จำกัด</span>
+                    </div>
+                    
+                    <!-- Customer Address -->
+                    <div t-attf-style="position: absolute; top: {{config.customer_address_top * px_to_mm}}mm; left: {{config.customer_address_left * px_to_mm}}mm; max-width: 80mm; z-index: 3;">
+                        <span class="position-label">ที่อยู่: 123 ถนนทดสอบ แขวงทดสอบ เขททดสอบ กรุงเทพฯ 10100</span>
+                    </div>
+                    
+                    <!-- Customer Phone -->
+                    <div t-attf-style="position: absolute; top: {{config.customer_phone_top * px_to_mm}}mm; left: {{config.customer_phone_left * px_to_mm}}mm; z-index: 3;">
+                        <span class="position-label">โทร: 02-123-4567</span>
+                    </div>
+                    
+                    <!-- Vehicle Type -->
+                    <div t-attf-style="position: absolute; top: {{config.vehicle_type_top * px_to_mm}}mm; left: {{config.vehicle_type_left * px_to_mm}}mm; z-index: 3;">
+                        <span class="position-label">ประเภทรถ: รถกระบะ</span>
+                    </div>
+                    
+                    <!-- Vehicle Plate -->
+                    <div t-attf-style="position: absolute; top: {{config.vehicle_plate_top * px_to_mm}}mm; left: {{config.vehicle_plate_left * px_to_mm}}mm; z-index: 3;">
+                        <span class="position-label">ทะเบียน: กก-1234</span>
+                    </div>
+                    
+                    <!-- Driver Name -->
+                    <div t-attf-style="position: absolute; top: {{config.driver_name_top * px_to_mm}}mm; left: {{config.driver_name_left * px_to_mm}}mm; z-index: 3;">
+                        <span class="position-label">คนขับ: นายทดสอบ</span>
+                    </div>
+                    
+                    <!-- Dispatch Location -->
+                    <div t-attf-style="position: absolute; top: {{config.dispatch_location_top * px_to_mm}}mm; left: {{config.dispatch_location_left * px_to_mm}}mm; z-index: 3;">
+                        <span class="position-label">สถานที่จ่ายสินค้า: คลังสินค้าหลัก</span>
+                    </div>
+                    
+                    <!-- Product Table Header -->
+                    <div t-attf-style="position: absolute; top: {{(config.table_top - 20) * px_to_mm}}mm; left: {{config.table_left * px_to_mm}}mm; z-index: 3;">
+                        <span style="font-weight: bold; background: #e0e0e0; padding: 2px 5px;">ตารางสินค้า</span>
+                    </div>
+                    
+                    <!-- Sample Product Lines -->
+                    <div t-attf-style="position: absolute; top: {{config.table_top * px_to_mm}}mm; left: {{config.table_left * px_to_mm}}mm; z-index: 3;">
+                        <t t-foreach="[1, 2, 3]" t-as="idx">
+                            <t t-set="current_top" t-value="(idx - 1) * config.line_height * px_to_mm"/>
+                            
+                            <!-- Line Number -->
+                            <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_no_left * px_to_mm}}mm;">
+                                <span class="position-label" t-esc="idx"/>
+                            </div>
+                            
+                            <!-- Product Code -->
+                            <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_code_left * px_to_mm}}mm;">
+                                <span class="position-label">PROD<t t-esc="idx"/></span>
+                            </div>
+                            
+                            <!-- Product Name -->
+                            <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_name_left * px_to_mm}}mm;">
+                                <span class="position-label">สินค้าทดสอบ <t t-esc="idx"/></span>
+                            </div>
+                            
+                            <!-- Quantity -->
+                            <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_qty_left * px_to_mm}}mm;">
+                                <span class="position-label">10</span>
+                            </div>
+                            
+                            <!-- Unit -->
+                            <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_unit_left * px_to_mm}}mm;">
+                                <span class="position-label">ชิ้น</span>
+                            </div>
+                            
+                            <!-- Remark -->
+                            <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_remark_left * px_to_mm}}mm;">
+                                <span class="position-label">-</span>
+                            </div>
+                        </t>
+                    </div>
+                    
+                    <!-- Total Quantity -->
+                    <div t-attf-style="position: absolute; top: {{config.total_qty_top * px_to_mm}}mm; left: {{config.total_qty_left * px_to_mm}}mm; z-index: 3;">
+                        <span class="position-label">รวม: 30</span>
+                    </div>
+                    
+                    <!-- Sender Signature -->
+                    <div t-attf-style="position: absolute; top: {{config.signature_sender_top * px_to_mm}}mm; left: {{config.signature_sender_left * px_to_mm}}mm; z-index: 3;">
+                        <div style="border: 1px dashed #000; padding: 20px 40px;">
+                            <span class="position-label">ผู้จ่าย/ผู้ส่ง</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Receiver Signature -->
+                    <div t-attf-style="position: absolute; top: {{config.signature_receiver_top * px_to_mm}}mm; left: {{config.signature_receiver_left * px_to_mm}}mm; z-index: 3;">
+                        <div style="border: 1px dashed #000; padding: 20px 40px;">
+                            <span class="position-label">ผู้รับ</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Position indicators -->
+                    <div style="position: absolute; bottom: 10px; left: 10px; font-size: 10px; background: rgba(255,255,255,0.9); padding: 5px; border: 1px solid #000; z-index: 3;">
+                        <strong>Config:</strong> <span t-field="config.name"/><br/>
+                        <strong>Page:</strong> <span t-esc="config.page_width"/>×<span t-esc="config.page_height"/>px<br/>
+                        <strong>Size:</strong> <span t-esc="config.page_width_mm"/>×<span t-esc="config.page_height_mm"/>mm (A4 Full Coverage)<br/>
+                        <strong>Font:</strong> <span t-esc="config.font_size"/>px <span t-field="config.font_family"/><br/>
+                        <strong>DPI:</strong> <span t-esc="config.dpi"/>
+                    </div>
+                    
+                    <!-- Corner markers for positioning reference -->
+                    <div style="position: absolute; top: 0; left: 0; width: 20px; height: 20px; border-top: 2px solid red; border-left: 2px solid red; z-index: 4;"></div>
+                    <div style="position: absolute; top: 0; right: 0; width: 20px; height: 20px; border-top: 2px solid red; border-right: 2px solid red; z-index: 4;"></div>
+                    <div style="position: absolute; bottom: 0; left: 0; width: 20px; height: 20px; border-bottom: 2px solid red; border-left: 2px solid red; z-index: 4;"></div>
+                    <div style="position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; border-bottom: 2px solid red; border-right: 2px solid red; z-index: 4;"></div>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <!-- Preview Report Action -->
+    <record id="action_dispatch_report_preview" model="ir.actions.report">
+        <field name="name">Preview Position Layout</field>
+        <field name="model">dispatch.report.config</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_inventory_delivery_report.dispatch_report_preview</field>
+        <field name="report_file">buz_inventory_delivery_report.dispatch_report_preview</field>
+        <field name="print_report_name">'Position Preview - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_dispatch_report_config"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_dispatch_report"/>
+    </record>
+    
+    <!-- Add Preview button to form -->
+    <record id="view_dispatch_report_config_form_preview" model="ir.ui.view">
+        <field name="name">dispatch.report.config.form.preview</field>
+        <field name="model">dispatch.report.config</field>
+        <field name="inherit_id" ref="buz_inventory_delivery_report.view_dispatch_report_config_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_preview_layout" 
+                        string="Preview Layout" 
+                        type="object" 
+                        class="oe_highlight"
+                        icon="fa-eye"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Tax Report Config Action -->
+        <record id="action_tax_report_config" model="ir.actions.act_window">
+            <field name="name">Tax Report Configurations</field>
+            <field name="res_model">tax.report.config</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first tax report configuration!
+                </p>
+                <p>
+                    Configure predefined tax report settings for easy report generation.
+                </p>
+            </field>
+        </record>
+
+        <!-- Tax Report Wizard Action -->
+        <record id="action_tax_report_wizard" model="ir.actions.act_window">
+            <field name="name">Tax Report</field>
+            <field name="res_model">tax.report.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_tax_report_wizard_form"/>
+            <field name="target">new</field>
+        </record>
+
+        <!-- Report Menu -->
+        <menuitem id="menu_tax_report_xlsx"
+                  name="Tax Report (Excel)"
+                  parent="account.menu_finance_reports"
+                  action="action_tax_report_wizard"
+                  sequence="50"/>
+
+        <!-- Configuration Menu -->
+        <menuitem id="menu_tax_report_config"
+                  name="Tax Report Configurations"
+                  parent="account.menu_finance_configuration"
+                  action="action_tax_report_config"
+                  sequence="60"/>
+    </data>
+</odoo>

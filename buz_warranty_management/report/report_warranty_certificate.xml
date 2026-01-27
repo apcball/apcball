@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Warranty Certificate Report Template -->
+    <template id="report_warranty_certificate_document">
+        <t t-call="web.external_layout">
+            <t t-foreach="docs" t-as="o">
+                <div class="page">
+                    <div class="text-center" style="border: 3px solid #000; padding: 20px; margin-bottom: 30px;">
+                        <h2 style="margin: 0;">
+                            <strong>WARRANTY CERTIFICATE</strong>
+                        </h2>
+                        <h3 style="margin: 10px 0 0 0;">
+                            <span t-field="o.name"/>
+                        </h3>
+                    </div>
+
+                    <div class="row mt-4 mb-4">
+                        <div class="col-6">
+                            <strong>Customer Information:</strong>
+                            <div t-field="o.partner_id" 
+                                 t-options='{"widget": "contact", "fields": ["address", "name", "phone", "email"], "no_marker": True}'/>
+                        </div>
+                        <div class="col-6">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Warranty Number:</strong></td>
+                                    <td><span t-field="o.name"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Issue Date:</strong></td>
+                                    <td><span t-field="o.start_date"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Expiry Date:</strong></td>
+                                    <td><span t-field="o.end_date"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        <span t-if="o.state == 'active'" class="badge badge-success">Active</span>
+                                        <span t-if="o.state == 'expired'" class="badge badge-danger">Expired</span>
+                                        <span t-if="o.state == 'draft'" class="badge badge-secondary">Draft</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <h4 class="mt-4 mb-3">Product Information</h4>
+                    <table class="table table-sm table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Serial/Lot Number</th>
+                                <th>Warranty Type</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span t-field="o.product_id"/></td>
+                                <td><span t-field="o.lot_id"/></td>
+                                <td><span t-field="o.warranty_type"/></td>
+                                <td>
+                                    <span t-field="o.warranty_duration"/>
+                                    <span t-if="o.warranty_period_unit == 'year'"> Year(s)</span>
+                                    <span t-else=""> Month(s)</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div t-if="o.sale_order_id or o.picking_id" class="row mt-3">
+                        <div class="col-12">
+                            <h5>Reference Documents</h5>
+                            <p t-if="o.sale_order_id">
+                                <strong>Sale Order:</strong> <span t-field="o.sale_order_id.name"/>
+                            </p>
+                            <p t-if="o.picking_id">
+                                <strong>Delivery Order:</strong> <span t-field="o.picking_id.name"/>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div t-if="o.condition" class="mt-4" style="border-top: 2px solid #ccc; padding-top: 20px;">
+                        <h5>Warranty Terms and Conditions</h5>
+                        <div t-field="o.condition" style="white-space: pre-wrap;"/>
+                    </div>
+
+                    <div class="mt-5 pt-4" style="border-top: 2px solid #ccc;">
+                        <div class="row">
+                            <div class="col-6 text-center">
+                                <p>_______________________</p>
+                                <p><strong>Customer Signature</strong></p>
+                            </div>
+                            <div class="col-6 text-center">
+                                <p>_______________________</p>
+                                <p><strong>Authorized Signature</strong></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4" style="font-size: 10px; color: #666;">
+                        <p>This warranty certificate is valid only with the original purchase receipt.</p>
+                        <p>Please keep this certificate in a safe place for warranty claims.</p>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <!-- Report Action -->
+    <record id="action_report_warranty_certificate" model="ir.actions.report">
+        <field name="name">Warranty Certificate</field>
+        <field name="model">warranty.card</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_warranty_management.report_warranty_certificate_document</field>
+        <field name="report_file">buz_warranty_management.report_warranty_certificate_document</field>
+        <field name="binding_model_id" ref="model_warranty_card"/>
+        <field name="binding_type">report</field>
+    </record>
+
+</odoo>

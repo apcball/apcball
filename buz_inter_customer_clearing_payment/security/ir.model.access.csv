@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_clearing_payment_wizard_user,buz.clearing.payment.wizard.user,model_buz_clearing_payment_wizard,account.group_account_invoice,1,1,1,0
+access_buz_clearing_payment_line_user,buz.clearing.payment.line.user,model_buz_clearing_payment_line,account.group_account_invoice,1,1,1,0
+access_buz_clearing_payment_credit_line_user,buz.clearing.payment.credit.line.user,model_buz_clearing_payment_credit_line,account.group_account_invoice,1,1,1,0
+access_buz_clearing_link_user,buz.clearing.link.user,model_buz_clearing_link,account.group_account_invoice,1,1,1,0
+access_buz_clearing_link_manager,buz.clearing.link.manager,model_buz_clearing_link,account.group_account_manager,1,1,1,1

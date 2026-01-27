@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_pricelist_view_inherit_installation" model="ir.ui.view">
+        <field name="name">product.pricelist.form.inherit.installation</field>
+        <field name="model">product.pricelist</field>
+        <field name="inherit_id" ref="product.product_pricelist_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='pricelist_config']" position="inside">
+                <group name="installation_settings" string="Installation Cost Settings">
+                    <field name="is_retail_installation" groups="sales_team.group_sale_manager"/>
+                    <field name="is_project_installation" groups="sales_team.group_sale_manager"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

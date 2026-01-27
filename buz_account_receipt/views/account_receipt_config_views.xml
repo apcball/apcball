@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Form view for Account Receipt Configuration -->
+    <record id="view_account_receipt_config_form" model="ir.ui.view">
+        <field name="name">account.receipt.config.form</field>
+        <field name="model">account.receipt.config</field>
+        <field name="arch" type="xml">
+            <form string="Account Receipt Preprint Configuration">
+                <header>
+                    <button name="action_reset_to_letter_defaults" 
+                            string="Reset to Letter Defaults" 
+                            type="object" 
+                            class="btn-secondary"
+                            icon="fa-refresh"
+                            confirm="This will reset all positions to default Letter (8.5x11) values. Continue?"/>
+                    <button name="action_preview_receipt" 
+                            string="Preview Receipt" 
+                            type="object" 
+                            class="btn-primary"
+                            icon="fa-eye"
+                            help="Preview receipt with current configuration"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object"
+                                class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button"
+                                options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="is_default"/>
+                        </group>
+                        <group string="Font Settings (ตั้งค่าขนาดตัวอักษร)">
+                            <label for="font_size" string="Font Size (px)"/>
+                            <div class="o_row">
+                                <field name="font_size" class="oe_inline" style="width: 80px;"/>
+                                <span class="text-muted">px (ขนาดปกติ: 12-16)</span>
+                            </div>
+                            <field name="font_size_header"/>
+                            <field name="font_size_small"/>
+                            <field name="font_family" placeholder="e.g., Sarabun, Arial, sans-serif"/>
+                        </group>
+                    </group>
+                    
+                    <div class="alert alert-success" role="alert" style="margin: 10px 0;">
+                        <strong>💡 Font Size Tips (คำแนะนำขนาดตัวอักษร):</strong><br/>
+                        • Small (เล็ก): 10-12px - เหมาะสำหรับหมายเหตุ<br/>
+                        • Normal (ปกติ): 14-16px - เหมาะสำหรับเนื้อหาทั่วไป<br/>
+                        • Large (ใหญ่): 18-24px - เหมาะสำหรับหัวข้อ<br/>
+                    </div>
+                    
+                    <notebook>
+                        <!-- Page Layout Tab -->
+                        <page string="Page Layout (หน้ากระดาษ)" name="page_layout">
+                            <group>
+                                <group string="Paper Size (ขนาดกระดาษ)">
+                                    <field name="paper_size"/>
+                                    <field name="page_width_mm"/>
+                                    <field name="page_height_mm"/>
+                                    <field name="page_width" readonly="1"/>
+                                    <field name="page_height" readonly="1"/>
+                                    <field name="dpi"/>
+                                </group>
+                                <group string="Margins (ระยะขอบ)">
+                                    <field name="margin_top"/>
+                                    <field name="margin_bottom"/>
+                                    <field name="margin_left"/>
+                                    <field name="margin_right"/>
+                                </group>
+                                <group string="Display Options">
+                                    <field name="show_header"/>
+                                    <field name="show_footer"/>
+                                    <field name="show_borders"/>
+                                </group>
+                                <group string="Print Quality">
+                                    <field name="print_mode"/>
+                                    <field name="line_spacing"/>
+                                    <field name="text_align"/>
+                                    <field name="header_align"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- Header Positions Tab -->
+                        <page string="Header (หัวกระดาษ)" name="header_positions">
+                            <group>
+                                <group string="Receipt Information (ข้อมูลใบเสร็จ)">
+                                    <label for="receipt_number_top" string="Receipt Number Position"/>
+                                    <div class="o_row">
+                                        <field name="receipt_number_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="receipt_number_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                    
+                                    <label for="receipt_date_top" string="Receipt Date Position"/>
+                                    <div class="o_row">
+                                        <field name="receipt_date_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="receipt_date_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- Customer Information Tab -->
+                        <page string="Customer (ลูกค้า)" name="customer_info">
+                            <group>
+                                <group string="Customer Details (รายละเอียดลูกค้า)">
+                                    <label for="customer_code_top" string="Customer Code"/>
+                                    <div class="o_row">
+                                        <field name="customer_code_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="customer_code_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                    
+                                    <label for="customer_name_top" string="Customer Name"/>
+                                    <div class="o_row">
+                                        <field name="customer_name_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="customer_name_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                    
+                                    <label for="customer_address_top" string="Address Line 1"/>
+                                    <div class="o_row">
+                                        <field name="customer_address_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="customer_address_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                        <field name="customer_address_width" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Width)</span>
+                                    </div>
+                                    
+                                    <label for="customer_address_line2_top" string="Address Line 2"/>
+                                    <div class="o_row">
+                                        <field name="customer_address_line2_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="customer_address_line2_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                    
+                                    <label for="customer_phone_top" string="Phone"/>
+                                    <div class="o_row">
+                                        <field name="customer_phone_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="customer_phone_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                    
+                                    <label for="customer_taxid_top" string="Tax ID"/>
+                                    <div class="o_row">
+                                        <field name="customer_taxid_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="customer_taxid_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- Invoice Table Tab -->
+                        <page string="Invoice Table (ตารางใบแจ้งหนี้)" name="table_layout">
+                            <group>
+                                <group string="Table Position (ตำแหน่งตาราง)">
+                                    <label for="table_top" string="Table Position"/>
+                                    <div class="o_row">
+                                        <field name="table_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="table_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                    <field name="table_width"/>
+                                    <field name="table_header_height"/>
+                                    <field name="line_height"/>
+                                    <field name="max_lines_per_page"/>
+                                </group>
+                                
+                                <group string="Column Layout (เลย์เอาต์คอลัมน์)">
+                                    <label for="col_no_left" string="No. Column"/>
+                                    <div class="o_row">
+                                        <field name="col_no_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                        <field name="col_no_width" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Width)</span>
+                                    </div>
+                                    
+                                    <label for="col_invoice_left" string="Invoice Column"/>
+                                    <div class="o_row">
+                                        <field name="col_invoice_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                        <field name="col_invoice_width" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Width)</span>
+                                    </div>
+                                    
+                                    <label for="col_date_left" string="Date Column"/>
+                                    <div class="o_row">
+                                        <field name="col_date_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                        <field name="col_date_width" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Width)</span>
+                                    </div>
+                                    
+                                    <label for="col_total_left" string="Total Column"/>
+                                    <div class="o_row">
+                                        <field name="col_total_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                        <field name="col_total_width" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Width)</span>
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- Footer Tab -->
+                        <page string="Footer (ส่วนท้าย)" name="footer_section">
+                            <group>
+                                <group string="Summary Positions (ตำแหน่งสรุปยอด)">
+                                    <field name="summary_top"/>
+                                    
+                                    <label for="total_payment_top" string="Total Payment"/>
+                                    <div class="o_row">
+                                        <field name="total_payment_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="total_payment_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                    
+                                    <label for="amount_in_words_top" string="Amount in Words (จำนวนเงินตัวอักษร)"/>
+                                    <div class="o_row">
+                                        <field name="amount_in_words_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="amount_in_words_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                        <field name="amount_in_words_width" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Width)</span>
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- Background Tab -->
+                        <page string="Background (พื้นหลัง)" name="background">
+                            <group>
+                                <group string="Background Image (รูปพื้นหลัง)">
+                                    <field name="background_image" widget="image" class="oe_avatar"/>
+                                    <field name="background_image_filename" invisible="1"/>
+                                    <field name="show_background"/>
+                                    <field name="background_opacity"/>
+                                </group>
+                                <group string="Border Settings (เส้นขอบ)">
+                                    <field name="border_width"/>
+                                    <field name="border_color" widget="color"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                <strong>ℹ️ Background Image Tip:</strong><br/>
+                                อัพโหลดภาพสแกนของฟอร์มกระดาษที่ต้องการพิมพ์ทับ เพื่อช่วยในการตั้งค่าตำแหน่งต่างๆ ให้ตรงกับฟอร์มจริง
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Tree view for Account Receipt Configuration -->
+    <record id="view_account_receipt_config_tree" model="ir.ui.view">
+        <field name="name">account.receipt.config.tree</field>
+        <field name="model">account.receipt.config</field>
+        <field name="arch" type="xml">
+            <tree string="Receipt Configurations">
+                <field name="name"/>
+                <field name="is_default"/>
+                <field name="paper_size"/>
+                <field name="font_size"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Action for Account Receipt Configuration -->
+    <record id="action_account_receipt_config" model="ir.actions.act_window">
+        <field name="name">Receipt Print Configuration</field>
+        <field name="res_model">account.receipt.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create Receipt Print Configuration
+            </p>
+            <p>
+                Configure print positions for preprint receipt forms.<br/>
+                Adjust positions to match your preprinted receipt paper.
+            </p>
+        </field>
+    </record>
+    
+    <!-- Menu item -->
+    <menuitem id="menu_account_receipt_config"
+              name="Receipt Print Config"
+              parent="account.menu_finance_configuration"
+              action="action_account_receipt_config"
+              sequence="100"/>
+</odoo>

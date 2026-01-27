@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_move_form_inherit_advance" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.advance</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Smart button for viewing WHT certificates -->
+            <div name="button_box" position="inside">
+                <button name="action_view_wht_certificates" 
+                        type="object" 
+                        class="oe_stat_button" 
+                        icon="fa-certificate"
+                        invisible="wht_cert_count == 0">
+                    <field name="wht_cert_count" widget="statinfo" string="WHT Certificates"/>
+                </button>
+            </div>
+            
+            <!-- Add debug fields for WHT Clear conditions -->
+            <xpath expr="//sheet//group[1]" position="after">
+                <group string="Advance/WHT Debug Info" invisible="context.get('hide_debug_info', True)">
+                    <group>
+                        <field name="expense_sheet_id" readonly="1"/>
+                        <field name="advance_box_id" readonly="1"/>
+                        <field name="is_expense_advance_bill" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="amount_residual" readonly="1"/>
+                        <field name="state" readonly="1"/>
+                        <field name="move_type" readonly="1"/>
+                    </group>
+                </group>
+            </xpath>
+            
+            <xpath expr="//header" position="inside">
+                
+        <button name="action_open_wht_clear_advance_wizard_from_bill" 
+            type="object" 
+            string="Clear Advance (WHT)" 
+            class="btn-warning" 
+            invisible="state != 'posted' or not advance_box_id or payment_state in ('paid', 'in_payment')"
+            help="Clear advance with withholding tax calculation (only available when bill is posted, has an advance box selected, and is not yet paid)"/>
+                        
+        <!-- Debug button removed to clean up header UI -->
+
+            </xpath>
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Advance Info">
+                    <group string="Advance Info">
+                        <field name="is_expense_advance_bill" readonly="1"/>
+                        <field name="advance_box_id"/>
+                        <field name="expense_sheet_id"/>
+                        <field name="has_wht_line" invisible="1"/>
+                        <field name="has_wht_certs_available" invisible="1"/>
+                    </group>
+                    <group string="WHT Information" invisible="not is_advance_clearing">
+                        <field name="is_advance_clearing" readonly="1"/>
+                        <field name="wht_tax_id" readonly="1"/>
+                        <field name="wht_base_amount" readonly="1"/>
+                        <field name="wht_amount" readonly="1"/>
+                        <field name="wht_cert_count" invisible="1"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Action to show bill with debug info -->
+    <record id="action_account_move_debug_wht" model="ir.actions.act_window">
+        <field name="name">Bill Debug - WHT Clear</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'hide_debug_info': False}</field>
+        <field name="target">current</field>
+    </record>
+
+</odoo>

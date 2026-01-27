@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Main Menu -->
+    <menuitem id="menu_warranty_root"
+              name="Warranty"
+              sequence="60"
+              web_icon="buz_warranty_management,static/description/icon.png"/>
+
+    <!-- Warranty Dashboard Menu -->
+    <menuitem id="menu_warranty_dashboard"
+              name="Dashboard"
+              parent="menu_warranty_root"
+              action="action_warranty_dashboard"
+              sequence="5"/>
+
+    <!-- Warranty Cards Menu -->
+    <menuitem id="menu_warranty_cards"
+              name="Warranty Cards"
+              parent="menu_warranty_root"
+              action="action_warranty_card"
+              sequence="10"/>
+
+    <!-- Warranty Claims Menu -->
+    <menuitem id="menu_warranty_claims" 
+              name="Warranty Claims"
+              parent="menu_warranty_root"
+              action="action_warranty_claim"
+              sequence="20"/>
+
+    <!-- Reporting Menu -->
+    <menuitem id="menu_warranty_reporting" 
+              name="Reporting"
+              parent="menu_warranty_root"
+              sequence="90"/>
+
+    <!-- Configuration Menu -->
+    <menuitem id="menu_warranty_configuration" 
+              name="Configuration"
+              parent="menu_warranty_root"
+              sequence="100"/>
+
+</odoo>

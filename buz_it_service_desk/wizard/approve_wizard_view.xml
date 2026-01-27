@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Approval Wizard Form View -->
+    <record id="view_approve_wizard_form" model="ir.ui.view">
+        <field name="name">approve.wizard.form</field>
+        <field name="model">approve.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Approval">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="request_id" invisible="1"/>
+                            <field name="request_type" invisible="1"/>
+                            <field name="approve" widget="radio"/>
+                        </group>
+                    </group>
+                    <group string="Notes" invisible="approve">
+                        <field name="notes" nolabel="1" placeholder="Optional approval notes..."/>
+                    </group>
+                    <group string="Notes" invisible="not approve">
+                        <field name="notes" nolabel="1" placeholder="Please provide a reason for rejection..."/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_approve" string="Confirm" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Approval Wizard Action -->
+    <record id="action_approve_wizard" model="ir.actions.act_window">
+        <field name="name">Approve Request</field>
+        <field name="res_model">approve.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

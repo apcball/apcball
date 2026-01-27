@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- LINE Notification Settings -->
+    <record id="res_config_settings_view_form_line" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.line</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="LINE Notification" string="LINE Notification" name="line_portal_notification" groups="line_portal_notification.group_line_notification_admin">
+                    <block title="LINE Messaging API" name="line_api_settings">
+                        <setting id="line_channel_access_token_setting" 
+                                 string="Channel Access Token"
+                                 help="Enter your LINE Channel Access Token from LINE Developers Console">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="line_channel_access_token" class="col-lg-3 o_light_label"/>
+                                    <field name="line_channel_access_token" class="col-lg-6" password="True"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="line_channel_secret_setting"
+                                 string="Channel Secret"
+                                 help="Enter your LINE Channel Secret from LINE Developers Console">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="line_channel_secret" class="col-lg-3 o_light_label"/>
+                                    <field name="line_channel_secret" class="col-lg-6" password="True"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                    <block title="Token Settings" name="token_settings">
+                        <setting id="line_token_expiry_setting"
+                                 string="Token Expiry"
+                                 help="Number of days before approval tokens expire">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="line_token_expiry_days" class="col-lg-3 o_light_label"/>
+                                    <field name="line_token_expiry_days" class="col-lg-2"/>
+                                    <span class="col-lg-2">days</span>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="line_max_views_setting"
+                                 string="Max Token Views"
+                                 help="Maximum views before rate limiting">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="line_max_token_views" class="col-lg-3 o_light_label"/>
+                                    <field name="line_max_token_views" class="col-lg-2"/>
+                                    <span class="col-lg-2">views</span>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                    <block title="Message Template" name="message_template_settings">
+                        <setting id="line_message_template_setting"
+                                 string="Custom Message Template"
+                                 help="Optional: Customize the LINE message. Use {doc_name}, {amount}, {portal_url}">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <field name="line_message_template" class="col-lg-8" placeholder="Leave empty for default template"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

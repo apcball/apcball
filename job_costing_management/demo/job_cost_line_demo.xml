@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Demo Job Cost Lines for testing -->
+        <record id="demo_job_cost_line_material_1" model="job.cost.line">
+            <field name="cost_sheet_id" ref="demo_job_cost_sheet_1"/>
+            <field name="cost_type">material</field>
+            <field name="name">Concrete Mix</field>
+            <field name="planned_qty">100</field>
+            <field name="unit_cost">50.0</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <record id="demo_job_cost_line_material_2" model="job.cost.line">
+            <field name="cost_sheet_id" ref="demo_job_cost_sheet_1"/>
+            <field name="cost_type">material</field>
+            <field name="name">Steel Rebar</field>
+            <field name="planned_qty">50</field>
+            <field name="unit_cost">75.0</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <record id="demo_job_cost_line_labour_1" model="job.cost.line">
+            <field name="cost_sheet_id" ref="demo_job_cost_sheet_1"/>
+            <field name="cost_type">labour</field>
+            <field name="name">Construction Worker</field>
+            <field name="planned_qty">40</field>
+            <field name="unit_cost">25.0</field>
+            <field name="sequence">30</field>
+        </record>
+
+        <record id="demo_job_cost_line_overhead_1" model="job.cost.line">
+            <field name="cost_sheet_id" ref="demo_job_cost_sheet_1"/>
+            <field name="cost_type">overhead</field>
+            <field name="name">Equipment Rental</field>
+            <field name="planned_qty">10</field>
+            <field name="unit_cost">200.0</field>
+            <field name="sequence">40</field>
+        </record>
+
+    </data>
+</odoo>

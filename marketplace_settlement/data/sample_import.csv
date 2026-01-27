@@ -1,0 +1,8 @@
+document_reference,date,partner_name,description,amount,vat_rate,wht_rate,account_code
+TR2024010001,2024-01-15,Shopee Thailand,Platform Commission,5000.00,7.0,3.0,6201
+TR2024010001,2024-01-15,Shopee Thailand,Service Fees,1500.00,7.0,3.0,6202
+TR2024010001,2024-01-15,Shopee Thailand,Advertising Fees,800.00,7.0,3.0,6203
+RC2024010001,2024-01-15,SPX Technologies,Logistics Fees,2500.00,0.0,1.0,6204
+RC2024010001,2024-01-15,SPX Technologies,Shipping Charges,750.00,0.0,1.0,6205
+TR2024010002,2024-01-16,Shopee Thailand,Platform Commission,3200.00,7.0,3.0,6201
+RC2024010002,2024-01-16,SPX Technologies,Express Delivery,1200.00,0.0,1.0,6204

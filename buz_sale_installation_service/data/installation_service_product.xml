@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Default Installation Service Product -->
+        <record id="product_installation_service" model="product.product">
+            <field name="name">Installation Service</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="product.product_category_all"/>
+            <field name="list_price">0.0</field>
+            <field name="standard_price">0.0</field>
+            <field name="invoice_policy">order</field>
+            <field name="purchase_ok">False</field>
+            <field name="sale_ok">True</field>
+            <field name="detailed_type">service</field>
+            <field name="description">Default installation service product</field>
+        </record>
+    </data>
+</odoo>

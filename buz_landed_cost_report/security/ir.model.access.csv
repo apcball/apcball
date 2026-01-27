@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_landed_cost_report_wizard,buz.landed.cost.report.wizard,model_buz_landed_cost_report_wizard,stock.group_stock_user,1,1,1,1
+access_buz_landed_cost_report,buz.landed.cost.report,model_buz_landed_cost_report,stock.group_stock_user,1,0,0,0
+access_buz_landed_cost_report_detail,buz.landed.cost.report.detail,model_buz_landed_cost_report_detail,stock.group_stock_user,1,0,0,0

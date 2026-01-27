@@ -1,0 +1,49 @@
+<odoo>
+  <!-- Enhanced Action for Stock Valuation with Location Views -->
+  <record id="action_stock_valuation_layer_location" model="ir.actions.act_window">
+    <field name="name">Stock Valuation by Location</field>
+    <field name="res_model">stock.valuation.layer</field>
+    <field name="view_mode">tree,pivot,graph,form</field>
+    <field name="view_ids" eval="[
+      (5, 0, 0),
+      (0, 0, {'view_mode': 'tree', 'view_id': ref('stock_account.stock_valuation_layer_tree')}),
+      (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_stock_valuation_layer_pivot_location')}),
+      (0, 0, {'view_mode': 'graph', 'view_id': ref('view_stock_valuation_layer_graph_location')}),
+      (0, 0, {'view_mode': 'form', 'view_id': ref('stock_account.stock_valuation_layer_form')}),
+    ]"/>
+    <field name="search_view_id" ref="stock_account.view_inventory_valuation_search"/>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">
+        No stock valuation layers found
+      </p>
+      <p>
+        This view shows stock valuation layers with location information.
+        Use pivot and graph views to analyze valuation by location.
+      </p>
+    </field>
+  </record>
+
+  <!-- Menu item under Inventory > Reporting -->
+  <menuitem id="menu_stock_valuation_location"
+            name="Stock Valuation by Location"
+            parent="stock.menu_warehouse_report"
+            action="action_stock_valuation_layer_location"
+            sequence="120"/>
+
+  <!-- Action to recompute all SVL locations -->
+  <record id="action_recompute_all_svl_location" model="ir.actions.server">
+    <field name="name">Recompute All SVL Locations</field>
+    <field name="model_id" ref="stock_account.model_stock_valuation_layer"/>
+    <field name="state">code</field>
+    <field name="code">
+action = model.action_recompute_location()
+    </field>
+  </record>
+
+  <!-- Menu item under Inventory > Configuration -->
+  <menuitem id="menu_recompute_svl_location"
+            name="Recompute SVL Locations"
+            parent="stock.menu_stock_config_settings"
+            action="action_recompute_all_svl_location"
+            sequence="100"/>
+</odoo>

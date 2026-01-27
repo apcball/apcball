@@ -1,0 +1,12 @@
+# Module Icon
+
+This module requires an icon.png file (128x128 pixels) to be placed in:
+`/static/description/icon.png`
+
+The icon should represent tax reporting and Excel functionality.
+
+Suggested icon elements:
+- Tax symbol or percentage sign
+- Excel/spreadsheet representation
+- Professional accounting theme
+- Green/blue color scheme

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_internal_consume_request_reject_wizard" model="ir.ui.view">
+            <field name="name">internal.consume.request.reject.form</field>
+            <field name="model">internal.consume.request.reject</field>
+            <field name="arch" type="xml">
+                <form string="Reject Request">
+                    <group>
+                        <field name="request_id" invisible="1"/>
+                        <field name="reason" placeholder="Enter rejection reason..." required="1"/>
+                    </group>
+                    <footer>
+                        <button string="Reject" 
+                                name="action_reject_request" 
+                                type="object" 
+                                class="btn-primary"/>
+                        <button string="Cancel" 
+                                class="btn-secondary" 
+                                special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

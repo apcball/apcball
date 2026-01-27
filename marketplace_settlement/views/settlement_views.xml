@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Marketplace Settlement Tree View -->
+    <record id="view_marketplace_settlement_tree" model="ir.ui.view">
+        <field name="name">marketplace.settlement.tree</field>
+        <field name="model">marketplace.settlement</field>
+        <field name="arch" type="xml">
+            <tree decoration-bf="state == 'posted'" decoration-muted="state == 'reversed'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="marketplace_partner_id"/>
+                <field name="trade_channel"/>
+                <field name="invoice_count"/>
+                <field name="total_invoice_amount"/>
+                <field name="vendor_bill_count"/>
+                <field name="total_vendor_bills"/>
+                <field name="net_payout_amount"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Marketplace Settlement Form View -->
+    <record id="view_marketplace_settlement_form" model="ir.ui.view">
+        <field name="name">marketplace.settlement.form</field>
+        <field name="model">marketplace.settlement</field>
+        <field name="arch" type="xml">
+            <form string="Marketplace Settlement">
+                <header>
+                    <button name="action_view_move" type="object" string="View Settlement Move" 
+                            class="btn-info" invisible="not move_id"/>
+                    
+                    <!-- AR/AP Netting Buttons -->
+                    <button name="action_open_netting_wizard" type="object" string="AR/AP Netting Wizard" 
+                            class="btn-secondary" invisible="not can_perform_netting"/>
+                    <button name="action_quick_netoff_ar_ap" type="object" string="Quick Netting Off" 
+                            class="btn-primary" invisible="not can_perform_netting or not vendor_bill_ids"
+                            confirm="This will create a netting journal entry for all linked vendor bills. The netting move will be automatically posted and linked to this settlement. Continue?"/>
+                    <button name="action_netoff_ar_ap" type="object" string="Create AR/AP Netting" 
+                            class="btn-secondary" invisible="not can_perform_netting or not vendor_bill_ids"
+                            confirm="This will create a netting journal entry for all linked vendor bills. The netting move will be automatically posted and linked to this settlement. Continue?"/>
+                    <button name="action_view_netting_move" type="object" string="View Netting JE" 
+                            class="btn-success" invisible="not netting_move_id"/>
+                    <button name="action_reverse_netting" type="object" string="Reverse Netting" 
+                            class="btn-warning" invisible="not is_netted"
+                            confirm="This will reverse the AR/AP netting. Continue?"/>
+                    <button name="action_view_netting_history" type="object" string="Netting History" 
+                            class="btn-secondary" title="View all netting moves including reversed ones"/>
+                    
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted,reversed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_invoices" type="object" class="oe_stat_button" icon="fa-file-text-o">
+                            <field name="invoice_count" widget="statinfo" string="Invoices"/>
+                        </button>
+                        <button name="action_view_vendor_bills" type="object" class="oe_stat_button" icon="fa-money">
+                            <field name="vendor_bill_count" widget="statinfo" string="Vendor Bills"/>
+                        </button>
+                        <button name="action_create_linked_vendor_bill" type="object" class="oe_stat_button btn-success" icon="fa-plus"
+                                invisible="not profile_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Create</span>
+                                <span class="o_stat_text">Vendor Bill</span>
+                            </div>
+                        </button>
+                        <button name="action_view_fee_allocations" type="object" class="oe_stat_button" icon="fa-pie-chart">
+                            <field name="fee_allocation_count" widget="statinfo" string="Fee Allocations"/>
+                        </button>
+                        <button name="action_view_netting_move" type="object" class="oe_stat_button" icon="fa-exchange" 
+                                invisible="not netting_move_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">✅</span>
+                                <span class="o_stat_text">Netting JE</span>
+                            </div>
+                        </button>
+                        <button name="action_view_netting_history" type="object" class="oe_stat_button" icon="fa-history" 
+                                title="View all netting moves (including reversed)">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">📋</span>
+                                <span class="o_stat_text">Netting History</span>
+                            </div>
+                        </button>
+                        <button name="action_view_settlement_move" type="object" class="oe_stat_button" icon="fa-book" 
+                                invisible="not move_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">📖</span>
+                                <span class="o_stat_text">Settlement JE</span>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Settlement Reference"/>
+                        </h1>
+                    </div>
+                    
+                    <!-- Basic Information -->
+                    <group>
+                        <group>
+                            <field name="marketplace_partner_id"/>
+                            <field name="trade_channel"/>
+                            <field name="date"/>
+                            <field name="profile_id"/>
+                        </group>
+                        <group>
+                            <field name="journal_id"/>
+                            <field name="settlement_account_id"/>
+                            <field name="move_id" readonly="1"/>
+                            <field name="netting_move_id" readonly="1" invisible="not netting_move_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    
+                    <!-- Hidden fields for view conditions -->
+                    <group invisible="1">
+                        <field name="is_netted"/>
+                        <field name="can_perform_netting"/>
+                        <field name="netting_move_id"/>
+                        <field name="vendor_bill_ids"/>
+                    </group>
+                    
+                    <!-- Amount Summary -->
+                    <group string="Settlement Summary">
+                        <div class="alert alert-info" role="alert">
+                            <div class="row">
+                                <div class="col-md-2 text-center">
+                                    <h4><field name="total_invoice_amount" readonly="1" nolabel="1"/></h4>
+                                    <small>Total Invoice Amount</small>
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <h4><field name="total_vendor_bills" readonly="1" nolabel="1"/></h4>
+                                    <small>Total Vendor Bills</small>
+                                </div>
+                                <div class="col-md-2 text-center" invisible="not is_netted">
+                                    <h4><field name="netted_amount" readonly="1" nolabel="1"/></h4>
+                                    <small>Netted Amount</small>
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <h4><field name="net_payout_amount" readonly="1" nolabel="1"/></h4>
+                                    <small>Net Payout Amount</small>
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <span invisible="not is_netted">
+                                        <i class="fa fa-check-circle fa-2x text-success"></i>
+                                        <small>AR/AP Netted</small>
+                                    </span>
+                                    <span invisible="is_netted">
+                                        <i class="fa fa-clock-o fa-2x text-warning"></i>
+                                        <small>Pending Netting</small>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </group>
+
+                    <notebook>
+                        <page string="Invoices" name="invoices">
+                            <field name="invoice_ids" nolabel="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="invoice_date"/>
+                                    <field name="amount_total"/>
+                                    <field name="amount_residual"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        
+                        <page string="Linked Vendor Bills" name="vendor_bills">
+                            <field name="vendor_bill_ids" nolabel="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="invoice_date"/>
+                                    <field name="amount_untaxed"/>
+                                    <field name="amount_tax"/>
+                                    <field name="amount_total"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        
+                        <page string="Fee Allocations" name="fee_allocations">
+                            <field name="fee_allocation_ids" nolabel="1">
+                                <tree>
+                                    <field name="invoice_number"/>
+                                    <field name="invoice_partner_id"/>
+                                    <field name="allocation_base_amount"/>
+                                    <field name="allocation_percentage"/>
+                                    <field name="base_fee_alloc"/>
+                                    <field name="vat_input_alloc"/>
+                                    <field name="wht_alloc"/>
+                                    <field name="net_payout_alloc"/>
+                                </tree>
+                            </field>
+                        </page>
+                        
+                        <page string="AR/AP Netting" name="netting" invisible="not netting_move_id">
+                            <group>
+                                <div class="alert alert-success" role="alert">
+                                    <h4><i class="fa fa-check-circle"></i> AR/AP Netting Completed</h4>
+                                    <p>This settlement has been netted against vendor bills. The following journal entry was created:</p>
+                                </div>
+                            </group>
+                            
+                            <group string="Netting Details">
+                                <group>
+                                    <field name="netting_move_id" readonly="1"/>
+                                    <field name="netted_amount" readonly="1"/>
+                                    <field name="is_netted" readonly="1"/>
+                                </group>
+                                <group>
+                                    <button name="action_view_netting_move" type="object" string="View Netting Journal Entry" 
+                                            class="btn btn-primary"/>
+                                    <button name="action_reverse_netting" type="object" string="Reverse Netting" 
+                                            class="btn btn-warning"
+                                            confirm="This will reverse the AR/AP netting. Continue?"/>
+                                </group>
+                            </group>
+                            
+                            <group string="Netting Summary">
+                                <div class="alert alert-info" role="alert">
+                                    <div class="row">
+                                        <div class="col-md-3 text-center">
+                                            <h5><field name="total_invoice_amount" readonly="1" nolabel="1"/></h5>
+                                            <small>Total AR Amount</small>
+                                        </div>
+                                        <div class="col-md-3 text-center">
+                                            <h5><field name="total_vendor_bills" readonly="1" nolabel="1"/></h5>
+                                            <small>Total AP Amount</small>
+                                        </div>
+                                        <div class="col-md-3 text-center">
+                                            <h5><field name="netted_amount" readonly="1" nolabel="1"/></h5>
+                                            <small>Netted Amount</small>
+                                        </div>
+                                        <div class="col-md-3 text-center">
+                                            <h5><field name="net_payout_amount" readonly="1" nolabel="1"/></h5>
+                                            <small>Remaining Balance</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </group>
+                            
+                            <group string="Next Steps">
+                                <div class="alert alert-warning" role="alert">
+                                    <h5><i class="fa fa-info-circle"></i> What's Next?</h5>
+                                    <ul>
+                                        <li>The remaining balance (<field name="net_payout_amount" readonly="1" nolabel="1"/>) should be reconciled with bank statement</li>
+                                        <li>If the amount is positive, expect payment from marketplace</li>
+                                        <li>If the amount is negative, payment should be made to marketplace</li>
+                                        <li>Use the bank reconciliation module to match with actual bank transactions</li>
+                                    </ul>
+                                </div>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Settlement Action -->
+    <record id="action_marketplace_settlement" model="ir.actions.act_window">
+        <field name="name">Marketplace Settlements</field>
+        <field name="res_model">marketplace.settlement</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_filter_posted': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first marketplace settlement!
+            </p>
+            <p>
+                Use marketplace settlements to group customer invoices by trade channel
+                and create a single receivable entry to the marketplace platform.
+            </p>
+            <p>
+                This is useful for platforms like Shopee, Lazada, TikTok where customers
+                pay the platform and the platform pays you periodically.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Items -->
+    <menuitem id="menu_marketplace_settlement_root" name="Marketplace" parent="account.menu_finance" sequence="90"/>
+    <menuitem id="menu_marketplace_settlement" name="Settlements" 
+              parent="menu_marketplace_settlement_root" 
+              action="action_marketplace_settlement" sequence="10"/>
+</odoo>

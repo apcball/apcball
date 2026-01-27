@@ -20,18 +20,20 @@
                     <div class="page">
                         <style>
                             @font-face {
-                                font-family: 'Sarabun';
-                                src: url('/buz_custom_quotation/static/fonts/Sarabun-Bold.ttf') format('truetype');
-                                font-weight: bold;
+                                font-family: 'DB ADMAN X';
+                                src: url('/buz_custom_quotation/static/fonts/DB ADMAN X.TTF') format('truetype');
+                                font-weight: normal;
                                 font-style: normal;
                             }
                             .page {
                                 padding: 20px;
-                                font-family: 'Sarabun', 'THSarabunNew', sans-serif;
+                                font-family: 'DB ADMAN X', sans-serif;
                                 font-size: 20px;
                             }
                             .header-info {
                                 margin-bottom: 20px;
+                                background-color: #f0f0f0;
+                                padding: 10px;
                             }
                             .info-label {
                                 font-weight: bold;
@@ -69,94 +71,137 @@
                                 margin-top: 30px;
                                 font-size: 12px;
                             }
+                            .page-break {
+                                page-break-before: always;
+                                clear: both;
+                                display: block;
+                            }
                         </style>
+                     <t t-set="items_per_page" t-value="15"/>
+                     <t t-set="total_items" t-value="len(doc.order_line)"/>
+                     <t t-set="total_pages" t-value="(total_items + items_per_page - 1) // items_per_page"/>
 
-                        <!-- Title -->
-                        <div class="report-title" style="text-align: center; margin-bottom: 20px; font-weight: 900; font-size: 25px;">
-                            <h1 style="font-size: 28px; margin: 0; font-weight: 900;">ใบขออนุมัติราคา / Quotation</h1>
-                        </div>
+                 
+                    <t t-set="groups_of_10" t-value="[doc.order_line[i:i+10] for i in range(0, len(doc.order_line), 10)]"/>
+                    <t t-set="page_num" t-value="0"/>
+                    <t t-foreach="groups_of_10" t-as="group">
+                        <div t-attf-style="#{page_num != 0 and 'page-break-before: always;' or ''}">
 
-                        <div class="header-info" style="display: flex; justify-content: space-between;">
-                            <!-- Header Information -->
-                            <div style="width: 48%; margin-top: 20px;">
-                                <table style="width: 100%; border-spacing: 0;">
-                                    <tr>
-                                        <td style="width: 30%; padding: 2px;"><span class="info-label">Project Name</span></td>
-                                        <td style="width: 70%; padding: 2px;"><span t-field="doc.project_name"/></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 2px;"><span class="info-label">To</span></td>
-                                        <td style="padding: 2px;"><span t-field="doc.partner_id.name"/></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 2px;"><span class="info-label">Customer</span></td>
-                                        <td style="padding: 2px;"><span t-field="doc.partner_id"/></td>
-                                    </tr>
-                                </table>
+
+
+
+                            <!-- Title -->
+                            <div class="report-title" style="text-align: center; margin-bottom: 20px; font-weight: 900; font-size: 25px;">
+                                <h1 style="font-size: 28px; margin: 0; font-weight: 900;">ใบขออนุมัติราคา / Quotation</h1>
                             </div>
-                            <div style="width: 48%; margin-top: 20px;">
-                                <table style="width: 100%; border-spacing: 0;">
-                                    <tr>
-                                        <td style="width: 30%; padding: 2px;"><span class="info-label">Date</span></td>
-                                        <td style="width: 70%; padding: 2px;"><span t-field="doc.date_order" t-options='{"widget": "date"}'/></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 2px;"><span class="info-label">Proposal No</span></td>
-                                        <td style="padding: 2px;"><span t-field="doc.proposal_no"/></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 2px;"><span class="info-label">Sale Name: </span><span t-field="doc.user_id.name"/></td>
-                                        <td style="padding: 2px;"><span class="info-label">Sale Tel: </span><span t-field="doc.user_id.phone"/></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="2" style="padding: 2px;"><span class="info-label">Sale Condition: </span><span t-field="doc.payment_term_id.name"/></td>
-                                    </tr>
-                                </table>
+                            <div class="header-info" style="display: flex; justify-content: space-between;">
+                                <!-- Header Information -->
+                                <div style="width: 48%; margin-top: 20px;">
+                                    <table style="width: 100%; border-spacing: 0;">
+                                        <tr>
+                                            <td style="width: 30%; padding: 2px;"><span class="info-label">Project Name</span></td>
+                                            <td style="width: 70%; padding: 2px;"><span t-field="doc.project_name"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 2px;"><span class="info-label">To</span></td>
+                                            <td style="padding: 2px;"><span t-field="doc.customer_name"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 2px;"><span class="info-label">Customer</span></td>
+                                            <td style="padding: 2px;"><span t-field="doc.partner_id"/></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div style="width: 48%; margin-top: 20px;">
+                                    <table style="width: 100%; border-spacing: 0;">
+                                        <tr>
+                                            <td style="width: 30%; padding: 2px;"><span class="info-label">Date</span></td>
+                                            <td style="width: 70%; padding: 2px;"><span t-field="doc.date_order" t-options='{"widget": "date"}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 2px;"><span class="info-label">Proposal No</span></td>
+                                            <td style="padding: 2px;"><span t-field="doc.proposal_no"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 2px;"><span class="info-label">Sale Name: </span><span t-field="doc.user_id.name"/></td>
+                                            <td style="padding: 2px;"><span class="info-label">Sale Tel: </span><span t-field="doc.user_id.phone"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="2" style="padding: 2px;"><span class="info-label">Sale Condition: </span><span t-field="doc.payment_term_id.name"/></td>
+                                        </tr>
+                                    </table>
+                                </div>
                             </div>
+                            <!-- Order Lines Table -->
+                            <table class="table table-sm" style="margin-top: 20px; font-size: 20px; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background-color: #8B9B7C; border: none;">
+                                        <th style="width: 5%; color: white; border: none; background-color: #1E3A78;"></th>
+                                        <th style="width: 35%; color: white; border: none; background-color: #1E3A78;">Product Description</th>
+                                        <th style="width: 10%; color: white; border: none; background-color: #898989;">Quantity</th>
+                                        <th style="width: 10%; color: white; border: none; background-color: #898989;">Cost</th>
+                                        <th style="width: 10%; color: white; border: none; background-color: #898989;">GP</th>
+                                        <th style="width: 15%; color: white; border: none; background-color: #898989;">Net Price</th>
+                                        <th style="width: 15%; color: white; border: none; background-color: #898989;">Net Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-set="start_index" t-value="page_num * 10"/>
+                                    <t t-foreach="group" t-as="line" t-index="line_index">
+                                        <tr style="border-bottom: 1px solid #8B9B7C;">
+                                            <td style="text-align: center; border: none; padding: 10px 0;">
+                                                <span style="background-color: #1E3A78; color: white; padding: 3px 8px; border-radius: 4px;">
+                                                    No.<t t-esc="start_index + line_index + 1"/>
+                                                </span>
+                                            </td>
+                                            <td style="border: none; padding: 10px 0;">
+                                                <div><span t-field="line.name"/></div>
+                                            </td>
+                                            <td style="text-align: center; border: none; padding: 10px 0;">
+                                                <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom.name"/>
+                                            </td>
+                                            <td style="text-align: right; border: none; padding: 10px 0;">
+                                                <t t-set="total_cost" t-value="line.product_uom_qty * line.purchase_price"/>
+                                                <span t-esc="total_cost" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                            </td>
+                                            <td style="text-align: right; border: none; padding: 10px 0;">
+                                                <t t-if="line.price_unit and line.purchase_price and line.price_unit != 0">
+                                                    <span t-esc="((line.price_unit - line.purchase_price) / line.price_unit * 100)" t-options='{"widget": "float", "precision": 2}'/>%
+                                                </t>
+                                            </td>
+                                            <td style="text-align: right; border: none; padding: 10px 0;">
+                                                <span t-field="line.price_unit"
+                                                    t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                            </td>
+                                            <td style="text-align: right; border: none; padding: 10px 0;">
+                                                <span t-field="line.price_subtotal"
+                                                    t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
                         </div>
-
-                         <!-- Order Lines Table -->
-    <table class="table table-sm" style="margin-top: 20px; font-size: 20px; border-collapse: collapse;">
-        <thead>
-            <tr style="background-color: #8B9B7C; border: none;">
-                <th style="width: 5%; color: white; border: none;"></th>
-                <th style="width: 35%; color: white; border: none;">Product Description</th>
-                <th style="width: 10%; color: white; border: none;">Quantity</th>
-                <th style="width: 10%; color: white; border: none;">Cost</th>
-                <th style="width: 10%; color: white; border: none;">GP</th>
-                <th style="width: 15%; color: white; border: none;">Net Price</th>
-                <th style="width: 15%; color: white; border: none;">Net Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr t-foreach="doc.order_line" t-as="line" style="border-bottom: 1px solid #8B9B7C;">
-                <td style="text-align: center; border: none; padding: 10px 0;"><span style="background-color: #8B9B7C; color: white; padding: 3px 8px; border-radius: 4px;">No.<t t-esc="line_index + 1"/></span></td>
-                <td style="border: none; padding: 10px 0;">
-                    <div><span t-field="line.name"/></div>
-                </td>
-                <td style="text-align: center; border: none; padding: 10px 0;">
-                    <span t-field="line.product_uom_qty"/> <span t-field="line.product_uom.name"/>
-                </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
-                    <t t-set="total_cost" t-value="line.product_uom_qty * line.purchase_price"/>
-                    <span t-esc="total_cost" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
-                    <t t-if="line.price_unit and line.purchase_price and line.price_unit != 0">
-                        <span t-esc="((line.price_unit - line.purchase_price) / line.price_unit * 100)" t-options='{"widget": "float", "precision": 2}'/>%
+                        <t t-set="page_num" t-value="page_num + 1"/>
                     </t>
-                </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
-                    <span t-field="line.price_unit"
-                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                </td>
-                <td style="text-align: right; border: none; padding: 10px 0;">
-                    <span t-field="line.price_subtotal" 
-                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                </td>
-            </tr>
-        </tbody>
-    </table>                       
+  
+    <t t-if="len(doc.order_line) > 0">
+        <!-- Signature Section -->
+        <div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
+            <div style="width: 200px; display: inline-block; text-align: center;">
+                <p style="margin-bottom: 40px;">ผู้อนุมัติราคา</p>
+                <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- Terms and Conditions section -->
+        <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
+            <div class="col-12">
+                <h2 style="color: #1E3A78; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Terms and Conditions</h2>
+                <div t-field="doc.note" t-attf-style="#{'text-align:justify;text-justify:inter-word;' if doc.company_id.terms_type != 'html' else ''}" name="order_note"/>
+            </div>
+        </div>
+    </t>
 
     <!-- Totals Section -->
     <div class="row justify-content-end" style="margin-top: 20px; font-size: 20px;">
@@ -180,7 +225,7 @@
                               t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </td>
                 </tr>
-                <tr style="border-bottom: 2px solid #FFA500;">
+                <tr style="border-bottom: 2px solid #1E3A78;">
                     <td style="border: none; padding: 10px 0;">
                         <span style="color: #000000; padding: 3px 8px;">Including vat:</span>
                     </td>
@@ -221,39 +266,17 @@
             </table>
         </div>
     </div>
- <!-- Conditional page break based on number of items -->
-     <t t-if="len(doc.order_line) > 7">
-         <div style="page-break-before: always;"></div>
-     </t>
-                        <!-- Signature Section -->
-                        <div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
-                            <div style="width: 200px; display: inline-block; text-align: center;">
-                                <p style="margin-bottom: 40px;">ผู้อนุมัติราคา</p>
-                                <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
-                            </div>
-                        </div>
-
-                        <!-- Terms and Conditions -->
-                        <div class="conditions">
-                            <p><strong>เงื่อนไข:</strong></p>
-                            <ol>
-                                <li>ราคาดังกล่าวข้างต้นยืนยันราคาถึงวันที่ <span t-field="doc.validity_date"/></li>
-                                <li>หากมีการเปลี่ยนแปลงรายการใดๆ ข้างต้น จะต้องแจ้งให้บริษัทฯ ทราบล่วงหน้าไม่น้อยกว่า 30 วัน ก่อนส่งสินค้า</li>
-                                <li>สามารถทยอยส่งสินค้าได้ 60 วัน หลังจากได้รับเอกสารยืนยันการสั่งซื้อ</li>
-                                <li>ระยะทางการยกของให้สูงสุดไม่เกินระยะทาง 25 เมตร จากจุดจอดรถ</li>
-                                <li>ทางเดินต้องกว้างพอให้สามารถยกของได้ 2 คนต่อกล่อง</li>
-                                <li>ราคาสินค้าไม่รวมบริการติดตั้ง</li>
-                                <li>ราคาเสนอถึงโครงการ <span t-field="doc.project_name"/></li>
-                            </ol>
-                        </div>
-                    </div>
-                </div>
+    
+    
+</div>
+</div>
+</t>
             </t>
-        </t>
+            
     </template>
 
     <record id="action_report_sale_quotation_custom" model="ir.actions.report">
-        <field name="name">Custom Quotation</field>
+        <field name="name">ใบขออนุมัติราคา</field>
         <field name="model">sale.order</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_custom_quotation.report_sale_quotation_custom</field>

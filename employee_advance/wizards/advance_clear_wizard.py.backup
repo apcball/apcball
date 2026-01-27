@@ -1,0 +1,740 @@
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
+from odoo.tools.float_utils import float_round
+
+
+class AdvanceClearWizardLine(models.TransientModel):
+    """
+    Line model for the advance clear wizard to handle bill allocations
+    """
+    _name = 'advance.clear.wizard.line'
+    _description = 'Advance Clear Wizard Line'
+
+    wizard_id = fields.Many2one(
+        'advance.clear.wizard',
+        string='Wizard',
+        required=True,
+        ondelete='cascade',
+        help='Reference to the main wizard'
+    )
+    move_id = fields.Many2one(
+        'account.move',
+        string='Vendor Bill',
+        required=True,
+        domain=[
+            ('move_type', 'in', ['in_invoice', 'in_refund']),
+            ('state', '=', 'posted'),
+            ('payment_state', 'in', ['not_paid', 'partial'])
+        ],
+        help='Vendor bill to allocate against'
+    )
+    open_amount = fields.Monetary(
+        string='Due Amount',
+        readonly=True,
+        currency_field='currency_id',
+        help='Open/residual amount of the vendor bill'
+    )
+    allocate_amount = fields.Monetary(
+        string='Allocate Amount',
+        currency_field='currency_id',
+        required=True,
+        default=0.0,
+        help='Amount to allocate from this bill'
+    )
+    currency_id = fields.Many2one(
+        'res.currency',
+        related='move_id.currency_id',
+        string='Currency',
+        readonly=True,
+        help='Currency of the vendor bill'
+    )
+
+    @api.onchange('move_id')
+    def _onchange_move_id(self):
+        """
+        Update open amount when bill is selected
+        """
+        if self.move_id:
+            self.open_amount = self.move_id.amount_residual
+            self.allocate_amount = self.move_id.amount_residual
+
+    @api.onchange('allocate_amount')
+    def _onchange_allocate_amount(self):
+        """
+        Validate allocation amount doesn't exceed open amount
+        """
+        if self.allocate_amount and self.open_amount:
+            if self.allocate_amount > self.open_amount:
+                self.allocate_amount = self.open_amount
+            elif self.allocate_amount < 0:
+                self.allocate_amount = 0
+
+
+class AdvanceClearWizard(models.TransientModel):
+    """
+    Wizard to clear vendor bills using an employee's advance box with Thai WHT support
+    """
+    _name = 'advance.clear.wizard'
+    _description = 'Clear with Advance Wizard'
+
+    # Main fields
+    partner_id = fields.Many2one(
+        'res.partner',
+        string='Vendor',
+        required=True,
+        domain=[('supplier_rank', '>', 0)],
+        help='Vendor to clear bills for'
+    )
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='Currency',
+        required=True,
+        default=lambda self: self.env.company.currency_id
+    )
+    date = fields.Date(
+        string='Date',
+        required=True,
+        default=fields.Date.context_today,
+        help='Date for the clearing journal entry'
+    )
+    journal_id = fields.Many2one(
+        'account.journal',
+        string='Journal',
+        required=True,
+        domain=[('type', '=', 'general')],
+        default=lambda self: self._default_journal_id()
+    )
+    advance_box_id = fields.Many2one(
+        'employee.advance.box',
+        string='Advance Box',
+        required=True,
+        help='Employee advance box to clear against',
+        ondelete='cascade'
+    )
+    communication = fields.Char(
+        string='Memo',
+        help='Reference or memo for the clearing'
+    )
+    company_id = fields.Many2one(
+        'res.company',
+        string='Company',
+        required=True,
+        default=lambda self: self.env.company
+    )
+
+    # WHT fields (at wizard level with defaults)
+    wht_base = fields.Monetary(
+        string='WHT Base',
+        currency_field='currency_id',
+        default=0.0,
+        help='Withholding tax base amount'
+    )
+    wht_rate = fields.Float(
+        string='WHT Rate %',
+        digits=(16, 2),
+        help='Withholding tax rate percentage'
+    )
+    wht_amount = fields.Monetary(
+        string='WHT Amount',
+        currency_field='currency_id',
+        default=0.0,
+        help='Withholding tax amount calculated as base * rate/100'
+    )
+    wht_tax_id = fields.Many2one(
+        'account.tax',
+        string='WHT Tax',
+        domain=lambda self: self._get_wht_tax_domain(),
+        help='Thai WHT tax record'
+    )
+    wht_account_id = fields.Many2one(
+        'account.account',
+        string='WHT Payable Account',
+        help='Account for WHT payable'
+    )
+    partner_branch = fields.Char(
+        string='Partner Branch',
+        help='Partner branch for WHT certificate'
+    )
+
+    # One2many to bill allocation lines
+    line_ids = fields.One2many(
+        'advance.clear.wizard.line',
+        'wizard_id',
+        string='Bill Allocations',
+        help='Lines for allocating amounts to vendor bills'
+    )
+
+    # Computed helper fields
+    amount_allocated = fields.Monetary(
+        string='Total Allocated',
+        currency_field='currency_id',
+        compute='_compute_amount_allocated',
+        store=True
+    )
+    amount_advance_credit = fields.Monetary(
+        string='Advance Credit',
+        currency_field='currency_id',
+        compute='_compute_amount_advance_credit',
+        store=True,
+        help='Net amount credited to advance box (allocated - WHT)'
+    )
+
+    @api.model
+    def default_get(self, fields):
+        """
+        Prefill the wizard with relevant data based on the context
+        """
+        res = super().default_get(fields)
+        
+        active_model = self.env.context.get('active_model')
+        active_id = self.env.context.get('active_id')
+        active_ids = self.env.context.get('active_ids', [])
+        
+        # Set default company
+        res['company_id'] = self.env.company.id
+
+        if active_model == 'account.move' and active_id:
+            # Called from vendor bill
+            move = self.env['account.move'].browse(active_id)
+            if move.is_invoice(include_receipts=True) and move.state == 'posted':
+                res.update({
+                    'partner_id': move.partner_id.id,
+                    'currency_id': move.currency_id.id,
+                    'line_ids': [(0, 0, {
+                        'move_id': move.id,
+                        'open_amount': move.amount_residual,
+                        'allocate_amount': move.amount_residual,
+                        'currency_id': move.currency_id.id,
+                    })],
+                    'wht_base': move.amount_residual,  # Default WHT base to total
+                })
+        elif active_model == 'hr.expense.sheet' and active_id:
+            # Called from expense sheet - find related vendor bills
+            expense_sheet = self.env['hr.expense.sheet'].browse(active_id)
+            # Get vendor bills linked to this expense sheet
+            vendor_bills = expense_sheet.expense_line_ids.mapped('move_id').filtered(
+                lambda m: m.move_type in ['in_invoice', 'in_refund'] and m.state == 'posted'
+            )
+            bill_lines = []
+            total_residual = 0
+            for bill in vendor_bills:
+                if bill.payment_state in ['not_paid', 'partial']:
+                    bill_lines.append((0, 0, {
+                        'move_id': bill.id,
+                        'open_amount': bill.amount_residual,
+                        'allocate_amount': bill.amount_residual,
+                        'currency_id': bill.currency_id.id,
+                    }))
+                    total_residual += bill.amount_residual
+            
+            if vendor_bills:
+                partner = vendor_bills[0].partner_id
+                res.update({
+                    'partner_id': partner.id,
+                    'currency_id': vendor_bills[0].currency_id.id,
+                    'line_ids': bill_lines,
+                    'wht_base': total_residual,
+                })
+
+        return res
+
+    @api.model
+    def _default_journal_id(self):
+        """
+        Default journal for clearing entries
+        """
+        journal = self.env['account.journal'].search([
+            ('type', '=', 'general'),
+            ('company_id', '=', self.env.company.id)
+        ], limit=1)
+        return journal
+
+    def _get_wht_tax_domain(self):
+        """Return domain for WHT taxes from l10n_th_account_tax"""
+        # Check if l10n_th_account_tax module is installed and properly configured
+        if self.env.get('account.withholding.tax'):
+            # Look for taxes that are related to withholding tax
+            wht_taxes = self.env['account.tax'].search([
+                ('company_id', '=', self.env.company.id),
+                ('amount', '<', 0),  # WHT is typically negative amounts
+            ])
+            return [('id', 'in', wht_taxes.ids), ('amount_type', '=', 'percent')]
+        else:
+            # General domain for negative taxes that might be WHT
+            return [('amount', '<', 0), ('type_tax_use', 'in', ['purchase', 'all'])]
+
+    def _is_th_wht_tax(self, tax):
+        """Check if an account.tax record is a Thai WHT tax"""
+        # Check if it's in the WHT model
+        if self.env.get('account.withholding.tax'):
+            # Check if the tax is linked to a Thai withholding tax
+            # This is a simplified check - in a production environment, 
+            # you might have more complex logic to identify Thai WHT taxes
+            return hasattr(tax, 'is_wht') or 'wht' in (tax.name or '').lower()
+        else:
+            # For now, we'll check if the tax amount is negative (WHT) and it's for purchase
+            return tax.amount < 0 and tax.type_tax_use in ['purchase', 'all']
+        return False
+
+    @api.onchange('wht_base', 'wht_rate')
+    def _onchange_wht_fields(self):
+        """
+        Synchronize base/rate/amount; default wht_base = amount_allocated
+        """
+        for w in self:
+            if w.wht_base is not None and w.wht_rate is not None:
+                w.wht_amount = float_round(
+                    w.wht_base * (w.wht_rate or 0.0) / 100.0, 
+                    precision_rounding=w.currency_id.rounding
+                )
+            if w.wht_amount > w.amount_allocated:
+                raise UserError(_("WHT amount cannot exceed allocated amount."))
+
+    @api.onchange('wht_tax_id')
+    def _onchange_wht_tax_id(self):
+        """Update rate from WHT tax and set default WHT account"""
+        if self.wht_tax_id and self._is_th_wht_tax(self.wht_tax_id):
+            # Try to set the rate from the tax if not already set
+            if not self.wht_rate:
+                self.wht_rate = abs(self.wht_tax_id.amount)
+            # Set default WHT account from company setting or tax settings if available
+            # This would require checking if the tax has a default account
+            if not self.wht_account_id:
+                # In a real implementation, you'd get the WHT payable account
+                # from company settings or tax configuration
+                pass
+
+    @api.onchange('wht_amount', 'amount_allocated')
+    def _onchange_wht_amount(self):
+        """Update advance credit when WHT amount changes"""
+        for wizard in self:
+            wizard.amount_advance_credit = wizard.amount_allocated - wizard.wht_amount
+
+    @api.model
+    def create_wht_cert_from_clear_move(self, move, bills):
+        """
+        Create WHT certificate from clearing move
+        Only if module installed and self.wht_amount > 0.
+        - Create certificate with:
+          partner, company, date=wizard.date, branch=wizard.partner_branch (if used),
+          lines = [{ base=self.wht_base, rate=self.wht_rate, amount=self.wht_amount,
+                     tax_id=self.wht_tax_id (if provided), ref=wizard.communication }]
+        - Link certificate to:
+          * source vendor bill(s) (mapped_bills)
+          * clearing move (move)
+        - Return created cert; expose smart button to open/print.
+        """
+        # Check if l10n_th_account_wht_cert_form module is installed
+        if not self.env.get('withholding.tax.cert') or self.wht_amount <= 0:
+            return None
+
+        Cert = self.env['withholding.tax.cert']
+        
+        # Prepare certificate values
+        cert_vals = {
+            'company_id': self.company_id.id,
+            'partner_id': self.partner_id.id,
+            'date': self.date,
+            'income_tax_form': self.wht_tax_id.income_tax_form if self.wht_tax_id else 'pnd53',
+            'tax_payer': 'withholding',
+            'move_id': move.id,
+            'partner_vat': self.partner_id.vat,
+            'partner_branch': self.partner_branch or getattr(self.partner_id, 'branch', False),
+        }
+        
+        # Create certificate lines
+        cert_line_vals = [(0, 0, {
+            'wht_cert_income_type': self.wht_tax_id.wht_cert_income_type if self.wht_tax_id else '5',
+            'base': self.wht_base,
+            'wht_percent': self.wht_rate,
+            'amount': self.wht_amount,
+            'wht_tax_id': self.wht_tax_id.id if self.wht_tax_id else False,
+            'wht_cert_income_desc': self.communication or '/',
+        })]
+        
+        cert_vals['wht_line'] = cert_line_vals
+        
+        # Create the certificate
+        cert = Cert.create(cert_vals)
+        
+        # Link to vendor bills if the certificate model supports it
+        if hasattr(cert, 'payment_id') and not cert.payment_id:
+            # Link to the clearing move if payment_id field exists
+            cert.payment_id = move.id
+            
+        # If there's a bills field to link to the original bills, set it
+        if hasattr(cert, 'bill_ids') and bills:
+            cert.bill_ids = [(6, 0, bills.ids)]
+        
+        return cert
+
+    @api.depends('line_ids.allocate_amount')
+    def _compute_amount_allocated(self):
+        """
+        Compute total allocated amount from all lines
+        """
+        for wizard in self:
+            wizard.amount_allocated = sum(line.allocate_amount for line in wizard.line_ids)
+
+    @api.depends('amount_allocated', 'wht_amount')
+    def _compute_amount_advance_credit(self):
+        """
+        Compute advance credit amount (allocated - WHT)
+        """
+        for wizard in self:
+            wizard.amount_advance_credit = wizard.amount_allocated - wizard.wht_amount
+
+    def action_confirm_clear(self):
+        """
+        Main method to confirm clearing and create journal entry
+        """
+        self.ensure_one()
+        
+        # Validation checks
+        self._validate_inputs()
+        
+        # Create the journal entry for clearing
+        move_vals = self._prepare_move_vals()
+        move = self.env['account.move'].create(move_vals)
+        
+        # Post the journal entry
+        move.action_post()
+        
+        # Reconcile with the bills
+        self._reconcile_against_bills(move)
+        
+        # Create WHT certificate if needed
+        if self.env.get('wht.certificate') and self.wht_amount > 0:
+            self._create_wht_certificate_if_needed(move)
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Clearing Journal Entry'),
+            'res_model': 'account.move',
+            'res_id': move.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def _validate_inputs(self):
+        """
+        Validate all inputs before creating the journal entry
+        """
+        # Check required fields
+        if not self.journal_id:
+            raise UserError(_("Journal is required. Please configure a general journal."))
+        
+        if not self.advance_box_id:
+            raise UserError(_("Advance Box is required. Please select an employee advance box."))
+        
+        # Check if the advance box has an account
+        if not self.advance_box_id.account_id:
+            raise UserError(_("Advance Box Account is required. Please configure the account in the advance box."))
+        
+        if not self.wht_account_id:
+            raise UserError(_("WHT Payable Account is required. Please select a WHT payable account."))
+        
+        # Validate allocation amounts
+        if not self.line_ids:
+            raise UserError(_("At least one bill must be selected for allocation."))
+        
+        for line in self.line_ids:
+            if line.allocate_amount <= 0:
+                raise UserError(_("Allocation amount must be greater than zero for all bills."))
+            if line.allocate_amount > line.open_amount:
+                raise UserError(_(
+                    "Allocation amount (%s) cannot exceed the open amount (%s) for bill %s.",
+                    line.allocate_amount, line.open_amount, line.move_id.name
+                ))
+        
+        # Validate total allocations
+        if self.amount_allocated <= 0:
+            raise UserError(_("Total allocated amount must be greater than zero."))
+        
+        # Validate advance credit is not negative
+        if self.amount_advance_credit < 0:
+            raise UserError(_("Advance credit amount cannot be negative."))
+        
+        # Validate WHT amount
+        if self.wht_amount < 0:
+            raise UserError(_("WHT amount cannot be negative."))
+        if self.wht_amount > self.amount_allocated:
+            raise UserError(_("WHT amount cannot exceed the allocated amount."))
+        
+        # Check if there are multiple currencies to handle
+        currencies = set(line.currency_id.id for line in self.line_ids)
+        if len(currencies) > 1:
+            # For now, we'll warn about multiple currencies - in a real implementation,
+            # we might need to create separate journal entries per currency
+            raise UserError(_("Multiple currencies detected. Please ensure all bills are in the same currency."))
+
+    def _prepare_move_vals(self):
+        """
+        Prepare values for the clearing journal entry
+        """
+        move_vals = {
+            'date': self.date,
+            'ref': self.communication or _('Clear with Advance'),
+            'journal_id': self.journal_id.id,
+            'company_id': self.env.company.id,
+            'line_ids': [],
+        }
+        
+        # Prepare move lines for the entry
+        move_lines = self._prepare_move_lines_grouped()
+        
+        # Add all lines to move
+        move_vals['line_ids'] = [(0, 0, line_vals) for line_vals in move_lines]
+        
+        return move_vals
+
+    def _prepare_move_lines_grouped(self):
+        """
+        Prepare journal entry lines, grouping AP lines by account and currency
+        """
+        lines = []
+        
+        # Group allocations by payable account and currency
+        ap_line_groups = {}
+        for line in self.line_ids:
+            # Get the original bill's payable line to determine the account
+            payable_line = line.move_id.line_ids.filtered(
+                lambda l: l.account_id.user_type_id.type == 'payable' and 
+                         l.partner_id.commercial_partner_id == self.partner_id.commercial_partner_id
+            )
+            
+            if payable_line:
+                payable_account = payable_line.account_id
+            else:
+                # Fallback to partner's payable account
+                payable_account = line.move_id.partner_id.property_account_payable_id or self.env['account.account'].search([
+                    ('user_type_id.type', '=', 'payable'),
+                    ('company_id', '=', self.env.company.id)
+                ], limit=1)
+            
+            group_key = (payable_account.id, line.currency_id.id)
+            if group_key not in ap_line_groups:
+                ap_line_groups[group_key] = {
+                    'account_id': payable_account.id,
+                    'currency_id': line.currency_id.id,
+                    'debit': 0.0,
+                    'credit': 0.0,
+                    'amount_currency': 0.0,
+                }
+            
+            # Add to the group total
+            if self.env.company.currency_id == line.currency_id:
+                ap_line_groups[group_key]['debit'] += line.allocate_amount
+                ap_line_groups[group_key]['amount_currency'] += line.allocate_amount
+            else:
+                ap_line_groups[group_key]['amount_currency'] += line.allocate_amount
+        
+        # Create debit lines for AP (one per account/currency combination)
+        for group_vals in ap_line_groups.values():
+            lines.append({
+                'account_id': group_vals['account_id'],
+                'partner_id': self.partner_id.id,
+                'debit': group_vals['debit'],
+                'credit': 0.0,
+                'currency_id': group_vals['currency_id'],
+                'amount_currency': group_vals['amount_currency'],
+                'name': _('Accounts Payable for Bills'),
+            })
+        
+        # Credit to Advance Box account
+        if self.amount_advance_credit > 0:
+            lines.append({
+                'account_id': self.advance_box_id.account_id.id,
+                'partner_id': self.partner_id.id,
+                'debit': 0.0,
+                'credit': self.amount_advance_credit,
+                'currency_id': self.currency_id.id,
+                'amount_currency': -self.amount_advance_credit if self.currency_id != self.env.company.currency_id else False,
+                'name': _('Advance Box Credit'),
+            })
+        
+        # Credit to WHT Payable account
+        if self.wht_amount > 0:
+            lines.append({
+                'account_id': self.wht_account_id.id,
+                'partner_id': self.partner_id.id,
+                'debit': 0.0,
+                'credit': self.wht_amount,
+                'currency_id': self.currency_id.id,
+                'amount_currency': -self.wht_amount if self.currency_id != self.env.company.currency_id else False,
+                'name': _('WHT Payable'),
+            })
+        
+        return lines
+
+    def _reconcile_against_bills(self, move):
+        """
+        Reconcile the AP debit lines against the corresponding bill's payable lines
+        """
+        for line in self.line_ids:
+            # Get the original bill's payable line
+            payable_line = line.move_id.line_ids.filtered(
+                lambda l: l.account_id.user_type_id.type == 'payable' and 
+                         l.partner_id.commercial_partner_id == self.partner_id.commercial_partner_id
+            )
+            
+            if payable_line:
+                # Find the corresponding debit line in our new move
+                # We need to find the line that debits the same payable account
+                new_payable_line = move.line_ids.filtered(
+                    lambda l: l.account_id == payable_line.account_id and 
+                             l.debit > 0  # Our debit line that matches the bill's payable account
+                )
+                
+                if new_payable_line:
+                    # For partial reconciliation, we create a partial reconcile
+                    # by handling it at the amount level
+                    try:
+                        # The lines are already prepared to match the allocation amount
+                        # So we can reconcile them directly if they're in the same currency
+                        to_reconcile = payable_line + new_payable_line
+                        if to_reconcile:
+                            to_reconcile.reconcile()
+                    except Exception as e:
+                        # If full reconciliation fails, try to skip gracefully
+                        continue
+
+    def _validate_inputs(self):
+        """
+        Validate all inputs before creating the journal entry
+        """
+        # Check required fields
+        if not self.journal_id:
+            raise UserError(_("Journal is required. Please configure a general journal."))
+        
+        if not self.advance_box_id:
+            raise UserError(_("Advance Box is required. Please select an employee advance box."))
+        
+        # Check if the advance box has an account
+        if not self.advance_box_id.account_id:
+            raise UserError(_("Advance Box Account is required. Please configure the account in the advance box."))
+        
+        # Validate WHT account when there's a WHT amount
+        if self.wht_amount > 0 and not self.wht_account_id:
+            raise UserError(_("WHT Payable Account is required when WHT amount is greater than 0. Please select a WHT payable account."))
+        
+        # Validate allocation amounts
+        if not self.line_ids:
+            raise UserError(_("At least one bill must be selected for allocation."))
+        
+        for line in self.line_ids:
+            if line.allocate_amount <= 0:
+                raise UserError(_("Allocation amount must be greater than zero for all bills."))
+            if line.allocate_amount > line.open_amount:
+                raise UserError(_(
+                    "Allocation amount (%s) cannot exceed the open amount (%s) for bill %s.",
+                    line.allocate_amount, line.open_amount, line.move_id.name
+                ))
+        
+        # Validate total allocations
+        if self.amount_allocated <= 0:
+            raise UserError(_("Total allocated amount must be greater than zero."))
+        
+        # Validate advance credit is not negative
+        if self.amount_advance_credit < 0:
+            raise UserError(_("Advance credit amount cannot be negative."))
+        
+        # Validate WHT amount
+        if self.wht_amount < 0:
+            raise UserError(_("WHT amount cannot be negative."))
+        if self.wht_amount > self.amount_allocated:
+            raise UserError(_("WHT amount cannot exceed the allocated amount."))
+        
+        # Validate WHT tax if provided
+        if self.wht_tax_id and not self._is_th_wht_tax(self.wht_tax_id):
+            raise UserError(_("Selected tax is not a valid Thai Withholding Tax."))
+        
+        # Check if there are multiple currencies to handle
+        currencies = set(line.currency_id.id for line in self.line_ids)
+        if len(currencies) > 1:
+            # For now, we'll warn about multiple currencies - in a real implementation,
+            # we might need to create separate journal entries per currency
+            raise UserError(_("Multiple currencies detected. Please ensure all bills are in the same currency."))
+
+    def action_confirm_clear(self):
+        """
+        Main method to confirm clearing and create journal entry
+        """
+        self.ensure_one()
+        
+        # Validation checks
+        self._validate_inputs()
+        
+        # Create the journal entry for clearing
+        move_vals = self._prepare_move_vals()
+        move = self.env['account.move'].create(move_vals)
+        
+        # Post the journal entry
+        move.action_post()
+        
+        # Reconcile with the bills
+        self._reconcile_against_bills(move)
+        
+        # Create WHT certificate if WHT module installed and there's a WHT amount
+        if self.env['ir.module.module'].search([('name', '=', 'l10n_th_account_wht_cert_form'), ('state', '=', 'installed')], limit=1) and self.wht_amount > 0:
+            self.create_wht_cert_from_clear_move(move, self.line_ids.mapped('move_id'))
+
+        # Return action to close the wizard
+        return {'type': 'ir.actions.act_window_close'}
+
+    def create_wht_cert_from_clear_move(self, move, bills):
+        """
+        Create WHT certificate from clearing move
+        Only if module installed and self.wht_amount > 0.
+        - Create certificate with:
+          partner, company, date=wizard.date, branch=wizard.partner_branch (if used),
+          lines = [{ base=self.wht_base, rate=self.wht_rate, amount=self.wht_amount,
+                     tax_id=self.wht_tax_id (if provided), ref=wizard.communication }]
+        - Link certificate to:
+          * source vendor bill(s) (mapped_bills)
+          * clearing move (move)
+        - Return created cert; expose smart button to open/print.
+        """
+        # Check if l10n_th_account_wht_cert_form module is installed
+        if not self.env.get('withholding.tax.cert') or self.wht_amount <= 0:
+            return None
+
+        Cert = self.env['withholding.tax.cert']
+        
+        # Prepare certificate values
+        cert_vals = {
+            'company_id': self.company_id.id,
+            'partner_id': self.partner_id.id,
+            'date': self.date,
+            'income_tax_form': self.wht_tax_id.income_tax_form if hasattr(self.wht_tax_id, 'income_tax_form') else 'pnd53',
+            'tax_payer': 'withholding',
+            'move_id': move.id,
+            'partner_vat': self.partner_id.vat,
+            'partner_branch': self.partner_branch or getattr(self.partner_id, 'branch', False) or '00000',
+        }
+        
+        # Create certificate lines
+        cert_line_vals = [(0, 0, {
+            'wht_cert_income_type': getattr(self.wht_tax_id, 'wht_cert_income_type', '5') if self.wht_tax_id else '5',
+            'base': self.wht_base,
+            'wht_percent': self.wht_rate,
+            'amount': self.wht_amount,
+            'wht_tax_id': self.wht_tax_id.id if self.wht_tax_id else False,
+            'wht_cert_income_desc': self.communication or '/',
+        })]
+        
+        cert_vals['wht_line'] = cert_line_vals
+        
+        # Create the certificate
+        cert = Cert.create(cert_vals)
+        
+        # Link to vendor bills if the certificate model supports it
+        if hasattr(cert, 'payment_id') and not cert.payment_id:
+            # Link to the clearing move if payment_id field exists
+            cert.payment_id = move.id
+            
+        # If there's a bills field to link to the original bills, set it
+        if hasattr(cert, 'bill_ids') and bills:
+            cert.bill_ids = [(6, 0, bills.ids)]
+        
+        return cert

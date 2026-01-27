@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add action button to currency form -->
+    <record id="view_currency_form_inherit" model="ir.ui.view">
+        <field name="name">res.currency.form.inherit</field>
+        <field name="model">res.currency</field>
+        <field name="inherit_id" ref="base.view_currency_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <header>
+                    <button name="action_force_update_decimal_places" 
+                            string="Force Update to 2 Decimals" 
+                            type="object"
+                            class="oe_highlight"
+                            invisible="name != 'THB'"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+</odoo>

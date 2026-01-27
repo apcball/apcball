@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- LINE Notification Admin Group -->
+    <record id="group_line_notification_admin" model="res.groups">
+        <field name="name">LINE Notification Administrator</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="comment">
+            Users in this group can configure LINE notification settings,
+            view approval tokens, and access audit logs.
+        </field>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+
+    <!-- LINE Notification User Group (can send notifications) -->
+    <record id="group_line_notification_user" model="res.groups">
+        <field name="name">LINE Notification User</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="comment">
+            Users in this group can send LINE approval notifications.
+        </field>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Record rules for approval tokens -->
+    <record id="approval_token_rule_admin" model="ir.rule">
+        <field name="name">Approval Tokens: Admin Full Access</field>
+        <field name="model_id" ref="model_approval_token"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_line_notification_admin'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <record id="approval_token_rule_user" model="ir.rule">
+        <field name="name">Approval Tokens: User Read Own</field>
+        <field name="model_id" ref="model_approval_token"/>
+        <field name="domain_force">[('approver_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- Record rules for audit logs -->
+    <record id="approval_audit_log_rule_admin" model="ir.rule">
+        <field name="name">Audit Logs: Admin Full Access</field>
+        <field name="model_id" ref="model_approval_audit_log"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_line_notification_admin'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="approval_audit_log_rule_user" model="ir.rule">
+        <field name="name">Audit Logs: User Read Own</field>
+        <field name="model_id" ref="model_approval_audit_log"/>
+        <field name="domain_force">[('approver_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- Record rules for LINE Users -->
+    <record id="line_user_rule_admin" model="ir.rule">
+        <field name="name">LINE Users: Admin Full Access</field>
+        <field name="model_id" ref="model_line_user"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_line_notification_admin'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <record id="line_user_rule_user" model="ir.rule">
+        <field name="name">LINE Users: User Read Only</field>
+        <field name="model_id" ref="model_line_user"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+</odoo>

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Default Receipt Print Configuration -->
+        <record id="receipt_print_config_default" model="receipt.print.config">
+            <field name="name">Default Receipt Layout</field>
+            <field name="is_default" eval="True"/>
+            
+            <!-- Receipt Header Section -->
+            <field name="receipt_number_top">207</field>
+            <field name="receipt_number_left">470</field>
+            <field name="receipt_date_top">244</field>
+            <field name="receipt_date_left">470</field>
+            
+            <!-- Payer Information -->
+            <field name="payer_name_top">300</field>
+            <field name="payer_name_left">95</field>
+            <field name="payer_name_width">370</field>
+            <field name="payer_address_top">337</field>
+            <field name="payer_address_left">95</field>
+            <field name="payer_address_width">560</field>
+            
+            <!-- Payment Description -->
+            <field name="payment_description_top">413</field>
+            <field name="payment_description_left">95</field>
+            <field name="payment_description_width">560</field>
+            
+            <!-- Amount Section -->
+            <field name="amount_numbers_top">490</field>
+            <field name="amount_numbers_left">464</field>
+            <field name="amount_words_top">490</field>
+            <field name="amount_words_left">95</field>
+            <field name="amount_words_width">340</field>
+            
+            <!-- Payment Method -->
+            <field name="payment_method_top">526</field>
+            <field name="payment_method_left">95</field>
+            
+            <!-- Order Lines / Items Table -->
+            <field name="show_order_lines" eval="True"/>
+            <field name="order_lines_top">430</field>
+            <field name="order_lines_left">95</field>
+            <field name="order_lines_width">620</field>
+            <field name="order_lines_font_size">14</field>
+            <field name="order_lines_max_lines">10</field>
+            <field name="order_lines_line_height">20</field>
+            
+            <!-- Check/Transfer Details -->
+            <field name="check_number_top">563</field>
+            <field name="check_number_left">148</field>
+            <field name="bank_name_top">563</field>
+            <field name="bank_name_left">345</field>
+            <field name="check_date_top">563</field>
+            <field name="check_date_left">541</field>
+            
+            <!-- Signatures -->
+            <field name="signature_section_top">800</field>
+            <field name="signature_payer_top">840</field>
+            <field name="signature_payer_left">95</field>
+            <field name="signature_receiver_top">840</field>
+            <field name="signature_receiver_left">464</field>
+            <field name="signature_line_height">60</field>
+            <field name="signature_date_offset">30</field>
+            
+            <!-- Global Settings -->
+            <field name="font_size">16</field>
+            <field name="font_size_header">18</field>
+            <field name="font_size_small">14</field>
+            <field name="font_family">THSarabunNew, TH Sarabun New, Arial</field>
+            <field name="line_spacing">1.2</field>
+            
+            <!-- Page Settings - Letter Size -->
+            <field name="paper_size">letter</field>
+            <field name="page_width">816</field>
+            <field name="page_height">1056</field>
+            <field name="page_width_mm">216.0</field>
+            <field name="page_height_mm">279.0</field>
+            <field name="dpi">96</field>
+            
+            <!-- Margins -->
+            <field name="margin_top">3</field>
+            <field name="margin_bottom">3</field>
+            <field name="margin_left">3</field>
+            <field name="margin_right">3</field>
+            
+            <!-- Display Settings -->
+            <field name="print_mode">screen</field>
+            <field name="text_align">left</field>
+            <field name="header_align">center</field>
+            <field name="show_header" eval="True"/>
+            <field name="show_footer" eval="True"/>
+            <field name="show_signatures" eval="True"/>
+            <field name="show_company_logo" eval="True"/>
+            <field name="show_tax_id" eval="True"/>
+            <field name="show_borders" eval="False"/>
+            <field name="show_background" eval="True"/>
+            <field name="background_opacity">0.3</field>
+            
+            <!-- Logo Position -->
+            <field name="logo_top">30</field>
+            <field name="logo_left">40</field>
+            <field name="logo_width">100</field>
+            
+            <!-- Tax ID Position -->
+            <field name="tax_id_top">600</field>
+            <field name="tax_id_left">95</field>
+            
+            <!-- Border Settings -->
+            <field name="border_width">1</field>
+            <field name="border_color">#000000</field>
+        </record>
+    </data>
+</odoo>

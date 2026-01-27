@@ -1,0 +1,278 @@
+================================================================================
+                     MARKETPLACE SETTLEMENT MODULE - วิเคราะห์โมดูล
+================================================================================
+วันที่วิเคราะห์: 1 กันยายน 2568
+เวอร์ชัน: 17.0.1.0.0
+ผู้พัฒนา: Ball + Manow
+
+================================================================================
+1. จุดประสงค์หลัก (Purpose)
+================================================================================
+
+Module นี้สร้างขึ้นเพื่อจัดการการรวมบิล (Settlement) จากลูกค้าหลายรายใน
+แต่ละ marketplace (เช่น Shopee, Lazada, TikTok) ให้เป็นยอดเดียวกันที่ 
+marketplace จะจ่ายมาให้บริษัท
+
+ปัญหาที่แก้ไข:
+- ลูกค้าจ่ายเงินให้ marketplace แต่ละคนแยกกัน
+- Marketplace จ่ายเงินมาให้บริษัทเป็นยอดรวม (หลังหักค่าธรรมเนียม)
+- ต้องมีการ reconcile ระหว่างบิลลูกค้าแต่ละรายกับยอดที่ได้รับจริง
+
+================================================================================
+2. โครงสร้าง Module (Module Structure)
+================================================================================
+
+2.1 Models หลัก:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ marketplace.settlement           - เก็บข้อมูล settlement records       │
+│ marketplace.settlement.wizard    - wizard สำหรับสร้าง settlement       │
+│ marketplace.settlement.profile   - profile การตั้งค่าแต่ละ channel     │
+│ sale.order (extend)              - เพิ่มฟิลด์ trade_channel            │
+│ account.move (extend)            - เพิ่มฟิลด์ trade_channel            │
+└─────────────────────────────────────────────────────────────────────────┘
+
+2.2 ไฟล์สำคัญ:
+├── models/
+│   ├── settlement.py              - Model หลักสำหรับ settlement
+│   ├── sale_account_extension.py  - ขยาย sale order และ invoice
+│   └── profile.py                 - Model สำหรับ profile ตั้งค่า
+├── wizards/
+│   └── marketplace_settlement_wizard.py - Wizard สร้าง settlement
+├── views/
+│   ├── marketplace_settlement_wizard_views.xml
+│   ├── profile_views.xml
+│   ├── sale_order_view_inherit.xml
+│   └── account_move_view_inherit.xml
+├── security/
+│   └── ir.model.access.csv
+└── data/
+    └── demo_data.xml
+
+================================================================================
+3. ฟีเจอร์สำคัญ (Key Features)
+================================================================================
+
+3.1 Trade Channel Management:
+    ✓ รองรับ 5 channels: Shopee, Lazada, Noc Noc, TikTok, Other
+    ✓ การกรองบิลอัตโนมัติตาม trade channel
+    ✓ การคัดลอก trade channel จาก Sale Order ไป Invoice อัตโนมัติ
+
+3.2 ระบบหักเงิน (Deductions System):
+    ✓ Marketplace Fee - ค่าธรรมเนียม marketplace
+    ✓ VAT on Fee - ภาษีมูลค่าเพิ่มจากค่าธรรมเนียม
+    ✓ Withholding Tax (WHT) - ภาษีหัก ณ ที่จ่าย
+
+3.3 การคำนวณอัตโนมัติ:
+    Net Settlement = Total Invoice Amount - Total Deductions
+    Total Deductions = Fee + VAT on Fee + WHT
+
+3.4 Profile System:
+    ✓ เก็บค่าเริ่มต้นแต่ละ channel (marketplace partner, journal, account)
+    ✓ Auto-load ค่าเริ่มต้นเมื่อเลือก trade channel
+
+================================================================================
+4. Journal Entry Structure (โครงสร้างรายการบัญชี)
+================================================================================
+
+เมื่อสร้าง Settlement ระบบจะสร้าง Journal Entry ดังนี้:
+
+Dr. ลูกหนี้ลูกค้า A (Customer 1 A/R)        XXX,XXX.XX
+Dr. ลูกหนี้ลูกค้า B (Customer 2 A/R)        XXX,XXX.XX
+Dr. ลูกหนี้ลูกค้า C (Customer 3 A/R)        XXX,XXX.XX
+Dr. ค่าธรรมเนียม marketplace (Fee Expense)    XX,XXX.XX
+Dr. ภาษีซื้อ (VAT Input Tax)                   X,XXX.XX
+Dr. ภาษีหัก ณ ที่จ่าย (WHT Payable)            X,XXX.XX
+    Cr. ลูกหนี้ Marketplace (Marketplace A/R)         XXX,XXX.XX (ยอดสุทธิ)
+
+ผลลัพธ์:
+- ลูกหนี้ของลูกค้าแต่ละรายจะถูก clear (reconcile)
+- เหลือลูกหนี้ marketplace เป็นยอดสุทธิที่จะได้รับจริง
+- บันทึกค่าใช้จ่ายและภาษีต่างๆ ที่ถูกหัก
+
+================================================================================
+5. ขั้นตอนการใช้งาน (Usage Workflow)
+================================================================================
+
+5.1 การตั้งค่าเริ่มต้น:
+    ① สร้าง Marketplace Partners (Shopee, Lazada, etc.)
+    ② ตั้งค่า Profile แต่ละ channel (ถ้าต้องการ)
+    ③ ตั้งค่า Chart of Accounts สำหรับ fee, VAT, WHT
+
+5.2 การใช้งานประจำ:
+    ① สร้าง Sale Order → ระบุ Trade Channel
+    ② สร้าง Invoice จาก Sale Order (Trade Channel จะคัดลอกไปอัตโนมัติ)
+    ③ Post Invoice ให้เรียบร้อย
+    ④ เรียกใช้ Settlement Wizard: Accounting > Marketplace > Create Settlement
+    ⑤ เลือก Trade Channel → ระบบกรองบิลอัตโนมัติ
+    ⑥ ระบุ Marketplace Partner, Journal, Settlement Account
+    ⑦ ใส่ยอดหักเงิน (Fee, VAT, WHT) และเลือก Account
+    ⑧ ตรวจสอบยอดสุทธิ
+    ⑨ สร้าง Settlement → ระบบสร้าง Journal Entry อัตโนมัติ
+
+================================================================================
+6. ฟีเจอร์อัตโนมัติ (Automatic Features)
+================================================================================
+
+✓ Auto-filtering invoices ตาม trade channel และช่วงวันที่
+✓ Auto-naming settlement reference (SETTLE-SHOPEE-20250901)
+✓ Auto-reconciliation ระหว่าง invoice กับ settlement entry
+✓ Auto-calculation ยอดสุทธิแบบ real-time
+✓ Auto-load profile defaults เมื่อเลือก trade channel
+✓ Auto-copy trade channel จาก Sale Order ไป Invoice
+
+================================================================================
+7. การตรวจสอบ (Validation & Security)
+================================================================================
+
+7.1 Validation Rules:
+    ✓ ตรวจสอบ account ที่เลือกเมื่อมียอดหักเงิน
+    ✓ ป้องกันการใช้ receivable account เป็น settlement account
+    ✓ ตรวจสอบสถานะบิล (ต้อง posted และมี amount_residual > 0)
+    ✓ ตรวจสอบความครบถ้วนของข้อมูลก่อนสร้าง settlement
+
+7.2 Error Prevention:
+    ✓ แสดงคำแนะนำ account code เมื่อเลือก account ผิดประเภท
+    ✓ แสดงเตือนเมื่อ settlement amount เป็นลบ
+    ✓ ป้องกันการสร้าง settlement ซ้ำ
+
+================================================================================
+8. User Interface (ส่วนติดต่อผู้ใช้)
+================================================================================
+
+8.1 Wizard Interface:
+    - Tab 1: Settlement Details (ข้อมูลพื้นฐาน)
+    - Tab 2: Invoices (รายการบิลที่จะ settle)
+    - Tab 3: Deductions (ค่าธรรมเนียมและภาษี)
+    - Summary: แสดงยอดรวม, ยอดหัก, ยอดสุทธิ
+
+8.2 Menu Structure:
+    Accounting > Marketplace > Create Settlement (Wizard)
+    Accounting > Marketplace > Settlement Records (รายการ settlement)
+    Accounting > Marketplace > Profiles (การตั้งค่า profile)
+
+8.3 Field Enhancements:
+    Sale Order: เพิ่มฟิลด์ Trade Channel
+    Invoice: เพิ่มฟิลด์ Trade Channel (auto-copy จาก Sale Order)
+
+================================================================================
+9. State Management (การจัดการสถานะ)
+================================================================================
+
+Settlement States:
+┌─────────┬─────────────────────────────────────────────────────────────────┐
+│ Draft   │ ยังไม่ได้สร้าง journal entry                                   │
+│ Posted  │ สร้าง journal entry แล้วและ post แล้ว                         │
+│ Reversed│ ยกเลิก settlement แล้ว (มี reverse entry)                     │
+└─────────┴─────────────────────────────────────────────────────────────────┘
+
+Actions Available:
+✓ Create Settlement - สร้าง journal entry
+✓ View Settlement Move - ดู journal entry ที่สร้าง
+✓ View Invoices - ดูรายการบิลใน settlement
+✓ Reverse Settlement - ยกเลิก settlement (สำหรับแก้ไข)
+
+================================================================================
+10. Technical Implementation (การใช้งานเทคนิค)
+================================================================================
+
+10.1 Key Fields:
+    Settlement Model:
+    - name: Settlement reference
+    - marketplace_partner_id: Marketplace partner
+    - trade_channel: ช่องทางการขาย
+    - invoice_ids: รายการบิลที่ settle
+    - fee_amount, vat_on_fee_amount, wht_amount: ยอดหักเงิน
+    - fee_account_id, vat_account_id, wht_account_id: Account สำหรับหักเงิน
+    - total_invoice_amount, total_deductions, net_settlement_amount: ยอดสรุป
+
+10.2 Computed Fields:
+    - invoice_count: จำนวนบิล
+    - state: สถานะ settlement
+    - total_amounts: ยอดรวมต่างๆ (คำนวณอัตโนมัติ)
+
+10.3 Methods:
+    - action_create_settlement(): สร้าง journal entry
+    - action_reverse_settlement(): ยกเลิก settlement
+    - action_view_invoices(): ดูรายการบิล
+    - _compute_amounts(): คำนวณยอดรวม
+
+================================================================================
+11. Demo Data (ข้อมูลตัวอย่าง)
+================================================================================
+
+Module มาพร้อมข้อมูลตัวอย่าง:
+✓ Marketplace Partners: Shopee, Lazada, TikTok Shop
+✓ Sample customers สำหรับแต่ละ marketplace
+✓ Profile ตัวอย่างสำหรับ testing
+
+================================================================================
+12. การแก้ไขปัญหา (Troubleshooting)
+================================================================================
+
+12.1 ปัญหาที่อาจพบ:
+    
+    Q: ไม่เจอบิลใน wizard
+    A: ตรวจสอบ:
+       - บิลต้อง posted แล้ว (ไม่ใช่ draft)
+       - ต้องมี trade_channel ตรงกัน
+       - ต้องมี amount_residual > 0
+
+    Q: สร้าง settlement ไม่ได้
+    A: ตรวจสอบ:
+       - กรอกข้อมูลครบทุกฟิลด์ที่ required
+       - Marketplace partner ต้องมี receivable account
+       - Customer ต้องมี receivable account
+
+    Q: Account ใน journal entry ผิด
+    A: ตรวจสอบ:
+       - Settlement account ต้องไม่เป็น receivable account
+       - ใช้ bank/liquidity account สำหรับ settlement account
+       - ตั้งค่า default account ใน journal
+
+12.2 Best Practices:
+    ✓ ใช้ profile เพื่อกำหนดค่าเริ่มต้นแต่ละ channel
+    ✓ ตั้งค่า default account ใน journal เป็น bank account
+    ✓ ตรวจสอบ chart of accounts ให้มี account สำหรับ fee, VAT, WHT
+    ✓ ทำ settlement เป็นระยะๆ เพื่อไม่ให้บิลสะสมมากเกินไป
+
+================================================================================
+13. การขยายการใช้งาน (Extensions & Customizations)
+================================================================================
+
+13.1 การปรับแต่งที่เป็นไปได้:
+    ✓ เพิ่ม trade channel ใหม่
+    ✓ เพิ่มฟิลด์ deduction ประเภทอื่น
+    ✓ ปรับแต่ง settlement reference naming
+    ✓ เพิ่มรายงานสรุป settlement
+    ✓ Integration กับระบบ bank reconciliation
+
+13.2 API Integration:
+    ✓ สามารถ integrate กับ API ของ marketplace เพื่อ auto-import ข้อมูล
+    ✓ Auto-create settlement จาก settlement report ของ marketplace
+
+================================================================================
+14. สรุปข้อดี (Benefits Summary)
+================================================================================
+
+✅ การจัดการที่ถูกต้อง: แยกลูกหนี้ลูกค้ากับลูกหนี้ marketplace อย่างถูกต้อง
+✅ ประหยัดเวลา: ไม่ต้องสร้าง journal entry manual
+✅ ลดความผิดพลาด: validation และ auto-calculation
+✅ ตรวจสอบได้ง่าย: เชื่อมโยงข้อมูลระหว่าง settlement กับบิลได้
+✅ รองรับภาษี: จัดการ VAT และ WHT ได้อย่างถูกต้อง
+✅ ยืดหยุ่น: สามารถ reverse และแก้ไขได้
+✅ ใช้งานง่าย: wizard interface ที่เข้าใจง่าย
+
+================================================================================
+15. ข้อมูลเพิ่มเติม (Additional Information)
+================================================================================
+
+License: LGPL-3
+Odoo Version: 17.0
+Dependencies: account, sale
+Category: Accounting/Localizations
+
+สำหรับการสนับสนุนหรือปรับแต่ง ติดต่อ: Ball + Manow
+
+================================================================================
+                              สิ้นสุดการวิเคราะห์
+================================================================================

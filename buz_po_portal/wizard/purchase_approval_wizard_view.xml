@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_purchase_order_approval_wizard_form" model="ir.ui.view">
+        <field name="name">purchase.order.approval.wizard.form</field>
+        <field name="model">purchase.order.approval.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Sign &amp; Confirm">
+                <group>
+                    <field name="signature_type" widget="radio" options="{'horizontal': true}"/>
+                    <field name="approval_stage" invisible="1"/>
+                    <field name="draw_signature" widget="signature" invisible="signature_type != 'draw'" required="signature_type == 'draw'"/>
+                    <field name="upload_signature" widget="binary" invisible="signature_type != 'upload'" required="signature_type == 'upload'"/>
+                    <field name="order_id" invisible="1"/>
+                </group>
+                <footer>
+                    <button name="action_approve" string="Confirm" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

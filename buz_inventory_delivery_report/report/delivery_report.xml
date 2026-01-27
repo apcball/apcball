@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="action_report_delivery" model="ir.actions.report">
+        <field name="name">ใบส่งสินค้า-กรณีเครมต่างรุ่น</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_inventory_delivery_report.report_delivery_document</field>
+        <field name="report_file">buz_inventory_delivery_report.report_delivery_document</field>
+        <field name="print_report_name">'Delivery Report - %s' % object.name</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_delivery_document"/>
+    </record>
+</odoo>

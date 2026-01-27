@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_move_form_inherit_undue" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.undue</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="l10n_th_account_tax.view_move_form"/>
+        <field name="arch" type="xml">
+            <field name="invoice_date" position="after">
+                <field name="has_vat_undue" invisible="1"/>
+            </field>
+            
+            <!-- Make Tax Invoice tab visible when has_vat_undue -->
+            <xpath expr="//page[@name='tax_invoice']" position="attributes">
+                <attribute name="invisible">not tax_invoice_ids and not has_vat_undue</attribute>
+            </xpath>
+            
+            <!-- Add Tax Invoice Number and Date to Tax Invoice tab -->
+            <xpath expr="//page[@name='tax_invoice']/field[@name='tax_invoice_ids']" position="before">
+                <group invisible="not has_vat_undue">
+                    <group>
+                        <field name="tax_invoice_number" required="has_vat_undue"/>
+                    </group>
+                    <group>
+                        <field name="tax_invoice_date" required="has_vat_undue"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

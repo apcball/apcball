@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit tree view to show legacy data indicator -->
+    <record id="view_account_move_tax_invoice_tree" model="ir.ui.view">
+        <field name="name">account.move.tax.invoice.tree.inherit</field>
+        <field name="model">account.move.tax.invoice</field>
+        <field name="inherit_id" ref="l10n_th_account_tax.view_tax_invoice_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tax_invoice_number']" position="after">
+                <field name="move_line_id" optional="hide"/>
+            </xpath>
+            <xpath expr="//tree" position="attributes">
+                <attribute name="decoration-info">move_line_id == False</attribute>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Inherit form view to support legacy data fields -->
+    <record id="view_account_move_tax_invoice_form" model="ir.ui.view">
+        <field name="name">account.move.tax.invoice.form.inherit</field>
+        <field name="model">account.move.tax.invoice</field>
+        <field name="inherit_id" ref="l10n_th_account_tax.view_tax_invoice_form"/>
+        <field name="arch" type="xml">
+            <!-- Add fields for legacy data when no move_line_id -->
+            <xpath expr="//field[@name='move_line_id']" position="after">
+                <field name="tax_id" 
+                       invisible="move_line_id != False" 
+                       required="move_line_id == False"/>
+            </xpath>
+            <xpath expr="//field[@name='company_id']" position="attributes">
+                <attribute name="invisible">0</attribute>
+                <attribute name="readonly">move_line_id != False</attribute>
+            </xpath>
+            <xpath expr="//field[@name='account_id']" position="attributes">
+                <attribute name="readonly">move_line_id != False</attribute>
+            </xpath>
+            <xpath expr="//field[@name='tax_base_amount']" position="after">
+                <field name="tax_amount" 
+                       invisible="move_line_id != False" 
+                       required="move_line_id == False"/>
+            </xpath>
+            <xpath expr="//field[@name='balance']" position="attributes">
+                <attribute name="invisible">move_line_id == False</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

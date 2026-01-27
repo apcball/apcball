@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- BOQ Report Template -->
+        <template id="report_boq_document">
+            <t t-call="web.external_layout">
+                <t t-set="doc" t-value="doc.with_context(lang=doc.env.lang)"/>
+                <div class="page">
+                    <div class="oe_structure"/>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h2>
+                                <span t-field="doc.name"/>
+                                <small class="text-muted">
+                                    - <span t-field="doc.title"/>
+                                </small>
+                            </h2>
+                        </div>
+                    </div>
+
+                    <div class="row mt32 mb32">
+                        <div class="col-6">
+                            <strong>Project:</strong> <span t-field="doc.project_id.name"/><br/>
+                            <strong>Job Order:</strong> <span t-field="doc.job_order_id.name"/><br/>
+                            <strong>BOQ Date:</strong> <span t-field="doc.boq_date"/><br/>
+                            <strong>Revision:</strong> <span t-field="doc.revision"/><br/>
+                        </div>
+                        <div class="col-6">
+                            <strong>Prepared by:</strong> <span t-field="doc.prepared_by.name"/><br/>
+                            <strong>Approved by:</strong> <span t-field="doc.approved_by.name"/><br/>
+                            <strong>Approved Date:</strong> <span t-field="doc.approved_date"/><br/>
+                            <strong>Status:</strong> <span t-field="doc.state"/><br/>
+                        </div>
+                    </div>
+
+                    <div class="row" t-if="doc.description">
+                        <div class="col-12">
+                            <h4>Description</h4>
+                            <p t-field="doc.description"/>
+                        </div>
+                    </div>
+
+                    <div class="row mt32">
+                        <div class="col-12">
+                            <h4>Bill of Quantities</h4>
+                            <table class="table table-sm o_main_table">
+                                <thead>
+                                    <tr>
+                                        <th>Item Code</th>
+                                        <th>Description</th>
+                                        <th>Specification</th>
+                                        <th>Quantity</th>
+                                        <th>Unit</th>
+                                        <th>Unit Cost</th>
+                                        <th>Total Cost</th>
+                                        <th>Waste %</th>
+                                        <th>Adj. Quantity</th>
+                                        <th>Adj. Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-set="current_category" t-value="None"/>
+                                    <t t-foreach="doc.line_ids" t-as="line">
+                                        <t t-if="line.category_id and line.category_id != current_category">
+                                            <tr style="background-color: #f8f9fa;">
+                                                <td colspan="10">
+                                                    <strong t-field="line.category_id.name"/>
+                                                    <span t-if="line.category_id.description"> - <t t-field="line.category_id.description"/></span>
+                                                </td>
+                                            </tr>
+                                            <t t-set="current_category" t-value="line.category_id"/>
+                                        </t>
+                                        <tr>
+                                            <td><span t-field="line.item_code"/></td>
+                                            <td><span t-field="line.description"/></td>
+                                            <td><span t-field="line.specification"/></td>
+                                            <td class="text-right"><span t-field="line.quantity"/></td>
+                                            <td><span t-field="line.uom_id.name"/></td>
+                                            <td class="text-right"><span t-field="line.unit_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                            <td class="text-right"><span t-field="line.total_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                            <td class="text-right"><span t-field="line.waste_percentage"/>%</td>
+                                            <td class="text-right"><span t-field="line.adjusted_quantity"/></td>
+                                            <td class="text-right"><span t-field="line.adjusted_total_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="6" class="text-right"><strong>Total Quantity:</strong></td>
+                                        <td class="text-right"><strong t-field="doc.total_quantity"/></td>
+                                        <td colspan="2" class="text-right"><strong>Total Cost:</strong></td>
+                                        <td class="text-right"><strong t-field="doc.total_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="oe_structure"/>
+                </div>
+            </t>
+        </template>
+
+        <!-- BOQ Report -->
+        <record id="action_report_boq" model="ir.actions.report">
+            <field name="name">BOQ Report</field>
+            <field name="model">boq.boq</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">job_costing_management.report_boq_document</field>
+            <field name="report_file">job_costing_management.report_boq_document</field>
+            <field name="binding_model_id" ref="model_boq_boq"/>
+            <field name="binding_type">report</field>
+        </record>
+
+    </data>
+</odoo>

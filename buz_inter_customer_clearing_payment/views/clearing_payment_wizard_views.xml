@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Views -->
+    
+    <!-- Header Step View -->
+    <record id="view_clearing_payment_wizard_header" model="ir.ui.view">
+        <field name="name">clearing.payment.wizard.header</field>
+        <field name="model">buz.clearing.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Receive Clearing Payment">
+                <header>
+                    <button name="action_next" string="Next" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        <p><strong>Step 1: Select Paying Customer</strong></p>
+                        <p>Select a customer who is making the payment. The system will automatically find all invoices from customers with the <strong>same Tax ID</strong>, allowing you to allocate the payment across multiple branches/entities with the same Tax ID.</p>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="paying_partner_id" required="1" 
+                                options="{'no_quick_create': True}"/>
+                            <field name="paying_partner_tax_id" readonly="1"/>
+                            <field name="journal_id" required="1"/>
+                        </group>
+                        <group>
+                            <field name="payment_date" required="1"/>
+                            <field name="currency_id" required="1"/>
+                            <field name="amount" required="1"/>
+                            <field name="reference"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <div class="oe_clear">
+                        <button name="action_next" string="Next" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </div>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Allocation Step View -->
+    <record id="view_clearing_payment_wizard_form" model="ir.ui.view">
+        <field name="name">clearing.payment.wizard.form</field>
+        <field name="model">buz.clearing.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Allocate Invoices">
+                <header>
+                    <button name="action_previous" string="Previous" type="object" class="btn-secondary"/>
+                    <button name="action_next" string="Next" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        <p><strong>Step 3: Select &amp; Allocate Invoices</strong></p>
+                        <p>Below are all <strong>unpaid and partially paid invoices</strong> from customers with <strong>Tax ID: <field name="paying_partner_tax_id"/></strong>.</p>
+                        <p>Select invoices you want to allocate this payment to, and specify the allocation amount for each.</p>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="paying_partner_id" readonly="1"/>
+                            <field name="paying_partner_tax_id" readonly="1"/>
+                            <field name="currency_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="amount" readonly="1" string="Payment Amount"/>
+                            <field name="total_credit_note" readonly="1"/>
+                            <field name="total_available" readonly="1"/>
+                            <field name="total_allocated" readonly="1"/>
+                            <field name="remaining_amount" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Invoice Allocation">
+                            <field name="allocation_line_ids">
+                                <tree editable="bottom" colors="blue:selected==False;darkgreen:selected==True">
+                                    <field name="selected"/>
+                                    <field name="invoice_number"/>
+                                    <field name="invoice_date"/>
+                                    <field name="invoice_partner_id"/>
+                                    <field name="partner_tax_id"/>
+                                    <field name="branch_id"/>
+                                    <field name="residual_amount"/>
+                                    <field name="allocate_amount"/>
+                                    <field name="currency_id" invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                    
+                    <group class="oe_button_box">
+                        <button name="action_auto_fill_fifo" string="Auto-fill FIFO" type="object" class="btn-secondary"/>
+                        <button name="action_clear_allocation" string="Clear Allocation" type="object" class="btn-secondary"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <div class="oe_clear">
+                        <button name="action_previous" string="Previous" type="object" class="btn-secondary"/>
+                        <button name="action_next" string="Next" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </div>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Review Step View -->
+    <record id="view_clearing_payment_wizard_review" model="ir.ui.view">
+        <field name="name">clearing.payment.wizard.review</field>
+        <field name="model">buz.clearing.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Review &amp; Confirm">
+                <header>
+                    <button name="action_previous" string="Previous" type="object" class="btn-secondary"/>
+                    <button name="action_confirm_and_post" string="Confirm &amp; Post" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        <p><strong>Step 4: Review &amp; Confirm</strong></p>
+                        <p>Please review the payment details and allocations below. Click "Confirm &amp; Post" to process the inter-customer clearing payment.</p>
+                    </div>
+                    <group string="Payment Summary">
+                        <group>
+                            <field name="paying_partner_id" readonly="1"/>
+                            <field name="paying_partner_tax_id" readonly="1"/>
+                            <field name="journal_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="payment_date" readonly="1"/>
+                            <field name="amount" readonly="1"/>
+                            <field name="currency_id" readonly="1"/>
+                            <field name="reference" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Allocation Summary">
+                        <field name="total_credit_note" readonly="1"/>
+                        <field name="total_available" readonly="1"/>
+                        <field name="total_allocated" readonly="1"/>
+                        <field name="remaining_amount" readonly="1"/>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Credit Notes" invisible="total_credit_note == 0">
+                            <field name="credit_line_ids" readonly="1">
+                                <tree>
+                                    <field name="credit_note_number"/>
+                                    <field name="credit_note_date"/>
+                                    <field name="credit_note_partner_id"/>
+                                    <field name="partner_tax_id"/>
+                                    <field name="residual_amount"/>
+                                    <field name="use_amount"/>
+                                    <field name="currency_id" invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Invoice Allocation Details">
+                            <field name="allocation_line_ids" readonly="1">
+                                <tree>
+                                    <field name="invoice_number"/>
+                                    <field name="invoice_date"/>
+                                    <field name="invoice_partner_id"/>
+                                    <field name="partner_tax_id"/>
+                                    <field name="branch_id"/>
+                                    <field name="residual_amount"/>
+                                    <field name="allocate_amount"/>
+                                    <field name="currency_id" invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <div class="oe_clear">
+                        <button name="action_previous" string="Previous" type="object" class="btn-secondary"/>
+                        <button name="action_confirm_and_post" string="Confirm &amp; Post" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </div>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Credit Notes Step View -->
+    <record id="view_clearing_payment_wizard_credit_notes" model="ir.ui.view">
+        <field name="name">clearing.payment.wizard.credit.notes</field>
+        <field name="model">buz.clearing.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Select Credit Notes">
+                <header>
+                    <button name="action_previous" string="Previous" type="object" class="btn-secondary"/>
+                    <button name="action_next" string="Next" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        <p><strong>Step 2: Select Credit Notes (Optional)</strong></p>
+                        <p>Below are all <strong>available credit notes</strong> from customers with <strong>Tax ID: <field name="paying_partner_tax_id"/></strong>.</p>
+                        <p>Select credit notes you want to use along with the payment, and specify the amount to use for each.</p>
+                        <p><em>This step is optional. You can skip it by clicking "Next" to proceed to invoice allocation.</em></p>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="paying_partner_id" readonly="1"/>
+                            <field name="paying_partner_tax_id" readonly="1"/>
+                            <field name="amount" readonly="1" string="Payment Amount"/>
+                            <field name="currency_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="total_credit_note" readonly="1"/>
+                            <field name="total_available" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Available Credit Notes">
+                            <field name="credit_line_ids">
+                                <tree editable="bottom" colors="blue:selected==False;darkgreen:selected==True">
+                                    <field name="selected"/>
+                                    <field name="credit_note_number"/>
+                                    <field name="credit_note_date"/>
+                                    <field name="credit_note_partner_id"/>
+                                    <field name="partner_tax_id"/>
+                                    <field name="residual_amount"/>
+                                    <field name="use_amount"/>
+                                    <field name="currency_id" invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <div class="oe_clear">
+                        <button name="action_previous" string="Previous" type="object" class="btn-secondary"/>
+                        <button name="action_next" string="Next" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </div>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

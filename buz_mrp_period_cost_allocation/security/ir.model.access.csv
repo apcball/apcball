@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mrp_period_cost_manager,mrp.period.cost manager,model_mrp_period_cost,mrp.group_mrp_manager,1,1,1,1
+access_mrp_period_cost_account_manager,mrp.period.cost account manager,model_mrp_period_cost,account.group_account_manager,1,1,1,1
+access_mrp_period_cost_user,mrp.period.cost user,model_mrp_period_cost,mrp.group_mrp_user,1,0,0,0
+access_mrp_period_cost_line_manager,mrp.period.cost.line manager,model_mrp_period_cost_line,mrp.group_mrp_manager,1,1,1,1
+access_mrp_period_cost_line_account_manager,mrp.period.cost.line account manager,model_mrp_period_cost_line,account.group_account_manager,1,1,1,1
+access_mrp_period_cost_line_user,mrp.period.cost.line user,model_mrp_period_cost_line,mrp.group_mrp_user,1,0,0,0

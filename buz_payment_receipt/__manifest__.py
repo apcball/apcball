@@ -13,6 +13,7 @@
         'security/ir.model.access.csv',
         'reports/payment_receipt_template.xml',
         'reports/payment_receipt_report.xml',
+        'reports/payment_voucher_report.xml',
     ],
     'installable': True,
     'application': False,

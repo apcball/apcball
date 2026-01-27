@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Valuation Regenerate Rollback Wizard Form View -->
+    <record id="view_valuation_regenerate_rollback_wizard_form" model="ir.ui.view">
+        <field name="name">valuation.regenerate.rollback.wizard.form</field>
+        <field name="model">valuation.regenerate.rollback.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Rollback Valuation Regeneration">
+                <header>
+                    <button name="action_perform_rollback" string="Confirm Rollback" type="object" 
+                            class="oe_highlight btn-danger"
+                            invisible="not confirm_rollback"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Warning!</strong> This action will attempt to rollback the regeneration by:
+                        <ul>
+                            <li>Deleting newly created SVLs and Journal Entries</li>
+                            <li>Restoring the old SVLs and Journal Entries from backup</li>
+                        </ul>
+                        This is a complex operation and may not be fully reversible if other transactions have occurred since the regeneration.
+                    </div>
+                    
+                    <group>
+                        <group>
+                            <field name="log_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="confirm_rollback" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <field name="notes" placeholder="Enter any notes about why you're performing this rollback..."/>
+                    </group>
+                    
+                    <div class="alert alert-info" role="alert">
+                        <strong>Note:</strong> You must check "Confirm Rollback Action" before proceeding.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

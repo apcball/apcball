@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menu structure for Advance Box Refill feature -->
+    
+    <!-- Main Menu: Advance Box under Accounting -->
+    <menuitem id="menu_advance_box_root"
+              name="Advance Box"
+              parent="account.menu_finance"
+              sequence="50"/>
+
+    <!-- Submenu: Advance Boxes -->
+    <menuitem id="menu_advance_box_boxes"
+              name="Advance Boxes"
+              parent="menu_advance_box_root"
+              action="action_employee_advance_box"
+              sequence="10"/>
+
+    <!-- Submenu: Refill History -->
+    <menuitem id="menu_advance_box_refill_history"
+              name="Refill History"
+              parent="menu_advance_box_root"
+              action="action_advance_box_refill"
+              sequence="20"/>
+
+    <!-- Submenu: Refill Box (Wizard) -->
+    <menuitem id="menu_advance_box_refill_wizard"
+              name="New Refill"
+              parent="menu_advance_box_root"
+              action="action_wizard_refill_advance_box"
+              sequence="30"/>
+
+</odoo>

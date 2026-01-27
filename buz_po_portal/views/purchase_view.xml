@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View -->
+    <record id="purchase_order_form_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <header position="inside">
+                <button name="action_submit_for_review" string="Send for Review" type="object" class="oe_highlight" 
+                    invisible="approval_state != 'draft'"/>
+
+                <button name="action_review_signature" string="Check &amp; Sign" type="object" class="oe_highlight"
+                    invisible="not can_review"/>
+
+                <button name="action_approve_signature" string="Approve &amp; Sign" type="object" class="oe_highlight"
+                    invisible="not can_approve" groups="purchase.group_purchase_manager"/>
+
+
+
+                <button name="action_reset_approval_draft" string="Reset Approval" type="object"
+                    invisible="approval_state not in ('rejected', 'to_approve', 'to_review', 'approved')"/>
+            </header>
+
+            <xpath expr="//header/field[@name='state']" position="before">
+                 <field name="approval_state" widget="statusbar" statusbar_visible="draft,to_review,to_approve,approved,rejected"/>
+                 <field name="can_review" invisible="1"/>
+                 <field name="can_approve" invisible="1"/>
+            </xpath>
+            
+            <field name="currency_id" position="after">
+            </field>
+
+            <xpath expr="//notebook" position="inside">
+                <page string="Approval Signatures" name="approval_page">
+                    <group col="3">
+                        <group string="Prepared By (ผู้จัดทำ)">
+                            <field name="create_uid" readonly="1"/>
+                            <field name="prepared_date" readonly="1"/>
+                            <field name="prepared_signature" widget="signature" readonly="1"/>
+                        </group>
+                        <group string="Reviewed By (ผู้ตรวจสอบ)">
+                            <field name="reviewer_id" readonly="1"/>
+                            <field name="reviewed_date" readonly="1"/>
+                            <field name="reviewed_signature" widget="signature" readonly="1"/>
+                        </group>
+                        <group string="Approved By (ผู้อนุมัติ)">
+                            <field name="approver_id" readonly="1"/>
+                            <field name="approval_date" readonly="1"/>
+                            <field name="approval_signature" widget="signature" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="LINE Notification Status">
+                        <field name="approval_token_id" readonly="1"/>
+                        <field name="line_notification_sent" readonly="1"/>
+                        <field name="line_notification_datetime" readonly="1"/>
+                        <div class="oe_right">
+                             <button name="action_send_line_approval_request" 
+                                string="Send LINE Approval Request" 
+                                type="object" 
+                                class="btn-info"
+                                invisible="approval_state != 'to_approve'"/>
+                        </div>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="purchase_order_search_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.search.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.view_purchase_order_filter"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="department_id"/>
+                <field name="requested_by_id"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Tree View -->
+    <record id="purchase_order_tree_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.tree.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_tree"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="department_id"/>
+            </field>
+        </field>
+    </record>
+</odoo>

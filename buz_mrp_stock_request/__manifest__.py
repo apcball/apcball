@@ -1,0 +1,33 @@
+{
+    "name": "MRP Stock Request (BUZ)",
+    "version": "17.0.1.0.0",
+    "license": "LGPL-3",
+    "author": "OpenERP SA, Odoo Community, BUZ",
+    "website": "https://www.odoo.com",
+    "category": "Manufacturing",
+    "depends": [
+        "mrp",
+        "stock",
+        "mail",
+    ],
+    "data": [
+        "security/mrp_stock_request_security.xml",
+        "security/ir.model.access.csv",
+        "data/sequence_data.xml",
+        "views/mrp_stock_request_views.xml",
+        # Allocate wizard views disabled - simplified workflow without allocation
+        # "views/mrp_stock_request_wizard_views.xml",
+        "views/mrp_stock_request_confirm_wizard_views.xml",
+        # "views/mrp_stock_request_allocate_multi_wizard_views.xml",
+        # "views/mrp_production_allocate_wizard_views.xml",
+        "views/mrp_production_views.xml",
+        "views/stock_picking_views.xml",
+        "views/res_config_settings_views.xml",
+        # "views/mrp_stock_request_mark_done_wizard_views.xml",
+    ],
+    "demo": [
+    ],
+    "installable": True,
+    "auto_install": False,
+    "application": False,
+}

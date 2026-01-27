@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_manual_delivery_user,manual.delivery user,model_manual_delivery,sale_manual_delivery.group_manual_delivery,1,1,1,1
+access_manual_delivery_line_user,manual.delivery.line user,model_manual_delivery_line,sale_manual_delivery.group_manual_delivery,1,1,1,1
+access_manual_delivery_manager,manual.delivery manager,model_manual_delivery,sales_team.group_sale_manager,1,1,1,1
+access_manual_delivery_line_manager,manual.delivery.line manager,model_manual_delivery_line,sales_team.group_sale_manager,1,1,1,1
+access_manual_delivery_read,manual.delivery read,model_manual_delivery,sales_team.group_sale_salesman,1,0,0,0
+access_manual_delivery_line_read,manual.delivery.line read,model_manual_delivery_line,sales_team.group_sale_salesman,1,0,0,0
+access_manual_delivery_wizard,access.manual.delivery.wizard,model_manual_delivery,sale_manual_delivery.group_manual_delivery,1,1,1,1
+access_manual_delivery_wizard_line,access.manual.delivery.wizard.line,model_manual_delivery_line,sale_manual_delivery.group_manual_delivery,1,1,1,1
+access_ir_actions_act_window,access.ir.actions.act_window,base.model_ir_actions_act_window,sale_manual_delivery.group_manual_delivery,1,0,0,0
+access_ir_actions_act_window_view,access.ir.actions.act_window.view,base.model_ir_actions_act_window_view,sale_manual_delivery.group_manual_delivery,1,0,0,0
+access_ir_ui_view,access.ir.ui.view,base.model_ir_ui_view,sale_manual_delivery.group_manual_delivery,1,0,0,0
+access_ir_ui_menu,access.ir.ui.menu,base.model_ir_ui_menu,sale_manual_delivery.group_manual_delivery,1,0,0,0

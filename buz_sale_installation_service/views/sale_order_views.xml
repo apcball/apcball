@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Sale Order Form View -->
+    <record id="view_order_form_installation" model="ir.ui.view">
+        <field name="name">sale.order.form.installation</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Add include_installation checkbox in order lines -->
+            <xpath expr="//field[@name='order_line']/tree/field[@name='product_uom_qty']" position="after">
+                <field name="include_installation" 
+                       readonly="is_installation_line" 
+                       invisible="is_installation_line"/>
+                <field name="is_installation_line" column_invisible="1"/>
+                <field name="installation_parent_line_id" column_invisible="1"/>
+                <field name="installation_child_line_id" column_invisible="1"/>
+            </xpath>
+
+            <!-- Make installation lines readonly -->
+            <xpath expr="//field[@name='order_line']/tree/field[@name='name']" position="attributes">
+                <attribute name="readonly">is_installation_line</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='order_line']/tree/field[@name='product_id']" position="attributes">
+                <attribute name="readonly">is_installation_line</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='order_line']/tree/field[@name='product_uom_qty']" position="attributes">
+                <attribute name="readonly">is_installation_line</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='order_line']/tree/field[@name='price_unit']" position="attributes">
+                <attribute name="readonly">is_installation_line</attribute>
+            </xpath>
+
+            <!-- Style installation lines differently -->
+            <xpath expr="//field[@name='order_line']/tree" position="attributes">
+                <attribute name="decoration-muted">is_installation_line</attribute>
+                <attribute name="decoration-bf">not is_installation_line</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

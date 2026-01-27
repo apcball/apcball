@@ -1,0 +1,33 @@
+<odoo>
+    <record id="view_stock_current_export_wizard_form" model="ir.ui.view">
+        <field name="name">stock.current.export.wizard.form</field>
+        <field name="model">stock.current.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Current Stock">
+                <group>
+                    <group string="Date Range">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group string="Filters (Optional)">
+                        <field name="location_ids" widget="many2many_tags" placeholder="All internal locations"/>
+                        <field name="product_ids" widget="many2many_tags" placeholder="All products"/>
+                        <field name="category_ids" widget="many2many_tags" placeholder="All categories"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_export_excel" string="Export Excel" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Report action for Excel export -->
+    <record id="action_report_stock_current_xlsx" model="ir.actions.report">
+        <field name="name">Current Stock Excel Report</field>
+        <field name="model">stock.current.export.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_stock_current_report.stock_current_report_xlsx</field>
+    </record>
+</odoo>

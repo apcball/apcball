@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_warranty_replacement_issue_wizard_form" model="ir.ui.view">
+        <field name="name">warranty.replacement.issue.wizard.form</field>
+        <field name="model">warranty.replacement.issue.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Issue Replacement">
+                <group>
+                    <group>
+                        <field name="claim_id" readonly="1"/>
+                        <field name="partner_id" readonly="1"/>
+                        <field name="is_under_warranty" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="picking_type_id" required="1"/>
+                        <field name="location_id" required="1"/>
+                        <field name="create_sale_order"/>
+                    </group>
+                </group>
+                
+                <notebook>
+                    <page string="Replacement Items">
+                        <div class="alert alert-warning d-flex align-items-center"
+                             invisible="line_ids">
+                            <i class="fa fa-exclamation-triangle me-2"/>
+                            <div>
+                                <strong>No Replacement Items Found:</strong>
+                                No claim lines were marked for replacement.
+                                Please go back to the claim and mark the required items with "Need Replacement".
+                            </div>
+                        </div>
+                        <field name="line_ids">
+                            <tree editable="bottom">
+                                <field name="product_id"/>
+                                <field name="qty"/>
+                                <field name="lot_id"/>
+                                <field name="unit_price"/>
+                                <field name="currency_id" invisible="1"/>
+                            </tree>
+                        </field>
+                    </page>
+                    <page string="Notes">
+                        <field name="notes" placeholder="Enter shipping or handling notes..."/>
+                    </page>
+                </notebook>
+                
+                <footer>
+                    <button string="Issue Replacement" name="action_issue_replacement" 
+                            type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

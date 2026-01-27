@@ -1,0 +1,46 @@
+<odoo>
+  <record id="view_printnode_config_form" model="ir.ui.view">
+    <field name="name">printnode.configuration.form</field>
+    <field name="model">printnode.configuration</field>
+    <field name="arch" type="xml">
+      <form string="PrintNode Configuration" create="false">
+        <sheet>
+            <group>
+                <field name="api_key_print_node" password="1"/>
+            </group>
+            <group>
+                <field name="multiple_printers"/>
+            </group>
+            <group invisible="multiple_printers != False">
+                <field name="available_printers_id" options="{'no_create': True, 'no_open': True}"/>
+            </group>
+            <group invisible="multiple_printers == False">
+                <field name="printers_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
+            </group>
+
+            <header>
+                <button name="action_validate_api_key" type="object" class="btn-primary" string="Validate API Key" context="{'skip_printer_validation': True}"/>
+                <button name="action_check_printers" type="object" class="btn-secondary" string="Check Printers" context="{'skip_printer_check': True}"/>
+                <button name="action_apply_settings" type="object" class="btn-success" string="Apply Settings"/>
+            </header>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_printnode_config" model="ir.actions.act_window">
+    <field name="name">PrintNode Configuration</field>
+    <field name="res_model">printnode.configuration</field>
+    <field name="view_mode">form</field>
+    <field name="view_id" ref="view_printnode_config_form"/>
+    <field name="target">current</field>
+    <field name="context">{'form_view_initial_mode': 'edit'}</field>
+    <field name="domain">[]</field>
+  </record>
+
+    <menuitem id="menu_printnode_root" name="Direct Print" sequence="10"/>
+    <menuitem id="menu_printnode_config" name="Configuration"
+            parent="menu_printnode_root"
+            action="action_printnode_config"/>
+</odoo>
+

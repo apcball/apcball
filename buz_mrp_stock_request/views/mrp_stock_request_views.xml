@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Stock Request Tree View -->
+    <record id="view_mrp_stock_request_tree" model="ir.ui.view">
+        <field name="name">mrp.stock.request.tree</field>
+        <field name="model">mrp.stock.request</field>
+        <field name="arch" type="xml">
+            <tree string="Stock Requests" decoration-info="state == 'draft'" 
+                  decoration-success="state == 'done'" decoration-muted="state == 'cancel'">
+                <field name="name"/>
+                <field name="request_date"/>
+                <field name="location_id"/>
+                <field name="location_dest_id"/>
+                <field name="qty_issued_total"/>
+                <field name="qty_remaining_total"/>
+                <field name="requested_by"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" 
+                       decoration-warning="state == 'requested'" 
+                       decoration-success="state == 'done'" 
+                       decoration-danger="state == 'cancel'"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Stock Request Form View -->
+    <record id="view_mrp_stock_request_form" model="ir.ui.view">
+        <field name="name">mrp.stock.request.form</field>
+        <field name="model">mrp.stock.request</field>
+        <field name="arch" type="xml">
+            <form string="Stock Request">
+                <header>
+                    <button name="action_prepare_from_mos" type="object" string="Prepare from MOs" 
+                            class="oe_highlight" invisible="state != 'draft' or not mo_ids" 
+                            help="Auto-populate request lines from selected Manufacturing Orders"/>
+                    <button name="action_confirm" type="object" string="Confirm" 
+                            class="oe_highlight" invisible="state != 'draft'" 
+                            help="Confirm the request to create the internal transfer"/>
+                    <!-- DISABLED: Allocate button removed - simplified workflow -->
+                    <!-- Materials automatically available at destination location after validate picking -->
+                    <!-- <button name="action_allocate_wizard" type="object" string="Allocate to MO"
+                            class="oe_highlight" invisible="state != 'requested'"
+                            help="Allocate issued materials to specific Manufacturing Orders"/> -->
+                    <button name="action_cancel" type="object" string="Cancel" 
+                            invisible="state not in ['draft', 'requested']" 
+                            confirm="Are you sure you want to cancel this request?"/>
+                    <button name="action_draft" type="object" string="Reset to Draft" 
+                            invisible="state != 'cancel'" 
+                            groups="buz_mrp_stock_request.group_mrp_stock_request_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,requested,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_pickings" type="object" 
+                                class="oe_stat_button" icon="fa-exchange"
+                                invisible="not picking_ids">
+                            <field name="picking_ids" widget="statinfo" string="Transfers"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id" invisible="1"/>
+                            <field name="mo_ids" widget="many2many_tags"
+                                   domain="[('company_id', '=', company_id), ('state', 'in', ['confirmed', 'progress', 'to_close'])]"
+                                   context="{'form_view_ref': 'mrp.mrp_production_form_view'}"
+                                   placeholder="Select Manufacturing Orders..."
+                                   readonly="state != 'draft'"/>
+                            <field name="picking_type_id"
+                                   domain="[('code', '=', 'internal'), ('company_id', '=', company_id)]"
+                                   readonly="state != 'draft'"/>
+                            <field name="request_date" readonly="state != 'draft'"/>
+                            <field name="requested_by" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="location_id" 
+                                   domain="[('usage', '=', 'internal'), ('company_id', 'in', [company_id, False])]"
+                                   required="1"
+                                   readonly="state != 'draft'"/>
+                            <field name="location_dest_id" 
+                                   domain="[('usage', '=', 'internal'), ('company_id', 'in', [company_id, False])]"
+                                   required="1"
+                                   readonly="state != 'draft'"/>
+                            <field name="qty_issued_total" readonly="1"/>
+                            <field name="qty_remaining_total" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Request Lines" name="lines">
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <tree editable="bottom" decoration-success="qty_remaining == 0" 
+                                      decoration-warning="qty_remaining > 0">
+                                    <field name="product_id" 
+                                           domain="[('type', '=', 'product')]"
+                                           options="{'no_create_edit': True}"/>
+                                    <field name="uom_id" 
+                                           options="{'no_create': True, 'no_open': True}"/>
+                                    <field name="qty_requested" widget="float"/>
+                                    <field name="qty_issued" widget="float" readonly="1" optional="show"/>
+                                    <field name="qty_allocated" widget="float" readonly="1" optional="show"/>
+                                    <field name="qty_remaining" widget="float" readonly="1"/>
+                                    <field name="qty_available_to_allocate" widget="float" readonly="1" optional="show"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Manufacturing Orders" name="mos">
+                            <field name="mo_ids" mode="tree">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="product_id"/>
+                                    <field name="product_qty"/>
+                                    <field name="date_deadline"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Transfers" name="pickings">
+                            <field name="picking_ids" mode="tree">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="picking_type_id"/>
+                                    <field name="location_id"/>
+                                    <field name="location_dest_id"/>
+                                    <field name="scheduled_date"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Moves" name="moves" groups="base.group_no_one">
+                            <field name="move_ids" mode="tree">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="product_id"/>
+                                    <field name="product_uom_qty"/>
+                                    <field name="product_uom"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="note" placeholder="Add any notes about this stock request..." 
+                                   readonly="state != 'draft'"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Stock Request Search View -->
+    <record id="view_mrp_stock_request_search" model="ir.ui.view">
+        <field name="name">mrp.stock.request.search</field>
+        <field name="model">mrp.stock.request</field>
+        <field name="arch" type="xml">
+            <search string="Stock Requests">
+                <field name="name" string="Reference"/>
+                <field name="mo_ids" string="Manufacturing Orders"/>
+                <field name="location_id" string="Source Location"/>
+                <field name="location_dest_id" string="Destination Location"/>
+                <field name="requested_by" string="Requested By"/>
+                <separator/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Requested" name="requested" domain="[('state', '=', 'requested')]"/>
+                <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                <filter string="Cancelled" name="cancelled" domain="[('state', '=', 'cancel')]"/>
+                <separator/>
+                <filter string="My Requests" name="my_requests" domain="[('requested_by', '=', uid)]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Requested By" name="group_requested_by" context="{'group_by': 'requested_by'}"/>
+                    <filter string="Request Date" name="group_request_date" context="{'group_by': 'request_date'}"/>
+                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}" 
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Stock Request Kanban View -->
+    <record id="view_mrp_stock_request_kanban" model="ir.ui.view">
+        <field name="name">mrp.stock.request.kanban</field>
+        <field name="model">mrp.stock.request</field>
+        <field name="arch" type="xml">
+            <kanban string="Stock Requests" class="o_kanban_mobile">
+                <field name="name"/>
+                <field name="mo_ids"/>
+                <field name="state"/>
+                <field name="requested_by"/>
+                <field name="request_date"/>
+                <field name="qty_issued_total"/>
+                <field name="qty_remaining_total"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_top">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title"><field name="name"/></strong>
+                                    <div class="o_kanban_record_subtitle">
+                                        <t t-esc="record.request_date.value"/>
+                                    </div>
+                                </div>
+                                <span class="float-end">
+                                    <field name="state" widget="label_selection" 
+                                           options="{'classes': {'draft': 'secondary', 'requested': 'warning', 'done': 'success', 'cancel': 'danger'}}"/>
+                                </span>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <ul>
+                                    <li>MOs: <field name="mo_ids" widget="many2many_tags"/></li>
+                                    <li>Issued: <t t-esc="record.qty_issued_total.value"/></li>
+                                    <li>Remaining: <t t-esc="record.qty_remaining_total.value"/></li>
+                                    <li>Requested by: <field name="requested_by"/></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Actions and Menus -->
+    <record id="action_mrp_stock_request" model="ir.actions.act_window">
+        <field name="name">Stock Requests</field>
+        <field name="res_model">mrp.stock.request</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Stock Request!
+            </p><p>
+                A Stock Request allows you to issue materials once and allocate them across multiple Manufacturing Orders.
+            </p><p>
+                Click <b>Create</b> to start a new stock request.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_mrp_stock_request_root" name="Stock Requests" 
+              parent="mrp.menu_mrp_manufacturing" sequence="30"/>
+    
+    <menuitem id="menu_mrp_stock_request" name="Stock Requests" 
+              parent="menu_mrp_stock_request_root" 
+              action="action_mrp_stock_request" sequence="10"/>
+
+</odoo>

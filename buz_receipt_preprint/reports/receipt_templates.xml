@@ -16,55 +16,26 @@
         <field name="dpi">90</field>
     </record>
 
-    <record id="action_report_receipt_preprint" model="ir.actions.report">
-        <field name="name">Pre-printed Receipt</field>
-        <field name="model">account.payment</field>
-        <field name="report_type">qweb-pdf</field>
-        <field name="report_name">buz_receipt_preprint.report_receipt_preprint</field>
-        <field name="report_file">buz_receipt_preprint.report_receipt_preprint</field>
-        <field name="print_report_name">'Receipt - %s' % object.name</field>
-        <field name="paperformat_id" ref="paperformat_receipt"/>
-        <field name="binding_model_id" ref="account.model_account_payment"/>
-        <field name="binding_type">report</field>
-    </record>
     <template id="report_receipt_preprint_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
+                <!-- Get print configuration -->
+                <t t-set="config" t-value="o.get_print_config()"/>
+                
                 <t t-call="web.basic_layout">
                 <div class="page" style="margin: 0; padding: 0;">
                 <style>
-                    :root {
-                        /* Font Sizes */
-                        --font-size-normal: 16px;
-                        --font-size-large: 18px;
-                        --font-size-small: 14px;
-                        
-                        /* Vertical Positions */
-                        --receipt-number-top: 55mm;
-                        --date-top: 65mm;
-                        --customer-info-top: 80mm;
-                        --description-top: 110mm;
-                        --amount-words-top: 130mm;
-                        --signatures-bottom: 45mm;
-                        
-                        /* Horizontal Positions */
-                        --left-margin: 25mm;
-                        --right-margin: 30mm;
-                        --customer-info-width: 100mm;
-                        --description-width: 110mm;
-                        --amount-words-width: 170mm;
-                    }
-                    
                     @font-face {
                         font-family: 'THSarabunNew';
                         src: url('/buz_receipt_preprint/static/fonts/THSarabunNew.ttf') format('truetype');
                     }
                     
                     body {
-                        font-family: 'THSarabunNew', sans-serif;
+                        font-family: <t t-esc="config.font_family"/>;
                         margin: 0;
                         padding: 0;
-                        font-size: var(--font-size-normal);
+                        font-size: <t t-esc="config.font_size"/>px;
+                        line-height: <t t-esc="config.line_spacing"/>;
                     }
                     
                     .page {
@@ -74,28 +45,32 @@
                     
                     .receipt-body {
                         position: relative;
-                        width: 216mm;
-                        height: 279mm;
+                        width: <t t-esc="config.page_width"/>px;
+                        height: <t t-esc="config.page_height"/>px;
                         margin: 0;
                         padding: 0;
                     }
                     
                     .text-normal {
-                        font-size: var(--font-size-normal);
+                        font-size: <t t-esc="config.font_size"/>px;
                     }
                     
                     .text-large {
-                        font-size: var(--font-size-large);
+                        font-size: <t t-esc="config.font_size_header"/>px;
                     }
                     
                     .text-small {
-                        font-size: var(--font-size-small);
+                        font-size: <t t-esc="config.font_size_small"/>px;
+                    }
+                    
+                    .field-position {
+                        position: absolute;
                     }
                     
                     @media print {
                         @page {
-                            size: 216mm 279mm;
-                            margin: 3mm;
+                            size: <t t-esc="config.page_width_mm"/>mm <t t-esc="config.page_height_mm"/>mm;
+                            margin: <t t-esc="config.margin_top"/>mm <t t-esc="config.margin_right"/>mm <t t-esc="config.margin_bottom"/>mm <t t-esc="config.margin_left"/>mm;
                         }
                         body {
                             margin: 0;
@@ -110,56 +85,123 @@
 
                 <!-- Content -->
                 <div class="receipt-body">
-                    <!-- Customer Info Section -->
-                    <div style="position: absolute; top: var(--customer-info-top); left: 0; width: var(--customer-info-width);">
-                        <div t-field="o.partner_id.name" class="text-normal" style="margin-bottom: 3mm;"/>
-                        <div t-field="o.partner_id.street" class="text-normal" style="margin-bottom: 2mm;"/>
-                        <div t-field="o.partner_id.street2" class="text-normal" style="margin-bottom: 2mm;"/>
-                        <div class="text-normal">
-                            <t t-if="o.partner_id.city" t-esc="o.partner_id.city"/>
-                            <t t-if="o.partner_id.state_id" t-esc="o.partner_id.state_id.name"/>
-                            <t t-if="o.partner_id.zip" t-esc="o.partner_id.zip"/>
+                    <!-- Background Image (if configured and enabled) -->
+                    <t t-if="config.show_background and config.background_image">
+                        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;">
+                            <img t-att-src="'data:image/png;base64,' + config.background_image.decode('utf-8')" 
+                                 style="width: 100%; height: 100%; object-fit: contain;"
+                                 t-att-style="'opacity: ' + str(config.background_opacity) + ';'"/>
                         </div>
-                    </div>
-
+                    </t>
+                    
                     <!-- Receipt Number -->
-                    <div style="position: absolute; top: var(--receipt-number-top); right: var(--right-margin); text-align: right;" class="text-normal">
+                    <div class="field-position text-normal" 
+                         t-att-style="'top: ' + str(config.receipt_number_top) + 'px; left: ' + str(config.receipt_number_left) + 'px;'">
                         <span t-field="o.name"/>
                     </div>
 
-                    <!-- Date -->
-                    <div style="position: absolute; top: var(--date-top); right: var(--right-margin); text-align: right;" class="text-normal">
+                    <!-- Receipt Date -->
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.receipt_date_top) + 'px; left: ' + str(config.receipt_date_left) + 'px;'">
                         <span t-field="o.date" t-options='{"format": "dd/MM/yyyy"}'/>
                     </div>
 
-                    <!-- Description -->
-                    <div style="position: absolute; top: var(--description-top); left: var(--left-margin); width: var(--description-width);" class="text-normal">
+                    <!-- Payer Name -->
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.payer_name_top) + 'px; left: ' + str(config.payer_name_left) + 'px; max-width: ' + str(config.payer_name_width) + 'px;'">
+                        <span t-field="o.partner_id.name"/>
+                    </div>
+                    
+                    <!-- Payer Address -->
+                    <div class="field-position text-small"
+                         t-att-style="'top: ' + str(config.payer_address_top) + 'px; left: ' + str(config.payer_address_left) + 'px; max-width: ' + str(config.payer_address_width) + 'px;'">
+                        <t t-if="o.partner_id.street">
+                            <span t-field="o.partner_id.street"/>
+                        </t>
+                        <t t-if="o.partner_id.street2">
+                            <span t-field="o.partner_id.street2"/>
+                        </t>
+                        <t t-if="o.partner_id.city">
+                            <span t-field="o.partner_id.city"/>
+                        </t>
+                        <t t-if="o.partner_id.state_id">
+                            <span t-field="o.partner_id.state_id.name"/>
+                        </t>
+                        <t t-if="o.partner_id.zip">
+                            <span t-field="o.partner_id.zip"/>
+                        </t>
+                    </div>
+
+                    <!-- Payment Description -->
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.payment_description_top) + 'px; left: ' + str(config.payment_description_left) + 'px; max-width: ' + str(config.payment_description_width) + 'px;'">
                         <span t-field="o.ref"/>
                     </div>
 
-                    <!-- Amount -->
-                    <div style="position: absolute; top: var(--description-top); right: var(--right-margin); text-align: right;" class="text-normal">
+                    <!-- Amount in Numbers -->
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.amount_numbers_top) + 'px; left: ' + str(config.amount_numbers_left) + 'px;'">
                         <span t-field="o.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                     </div>
 
                     <!-- Amount in Words -->
-                    <div style="position: absolute; top: var(--amount-words-top); left: var(--left-margin); width: var(--amount-words-width);" class="text-normal">
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.amount_words_top) + 'px; left: ' + str(config.amount_words_left) + 'px; max-width: ' + str(config.amount_words_width) + 'px;'">
                         <span t-esc="o.currency_id.amount_to_text(o.amount)"/>
                     </div>
+                    
+                    <!-- Payment Method -->
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.payment_method_top) + 'px; left: ' + str(config.payment_method_left) + 'px;'">
+                        <span t-field="o.payment_method_line_id.name"/>
+                    </div>
+                    
+                    <!-- Check Number (if payment by check) -->
+                    <t t-if="o.payment_method_line_id.code == 'check_printing'">
+                        <div class="field-position text-normal"
+                             t-att-style="'top: ' + str(config.check_number_top) + 'px; left: ' + str(config.check_number_left) + 'px;'">
+                            <span t-field="o.check_number"/>
+                        </div>
+                    </t>
+                    
+                    <!-- Bank Name -->
+                    <t t-if="o.journal_id.bank_account_id">
+                        <div class="field-position text-normal"
+                             t-att-style="'top: ' + str(config.bank_name_top) + 'px; left: ' + str(config.bank_name_left) + 'px;'">
+                            <span t-field="o.journal_id.bank_account_id.bank_id.name"/>
+                        </div>
+                    </t>
 
-                    <!-- Signatures -->
-                    <div style="position: absolute; bottom: var(--signatures-bottom); width: 100%;">
-                        <div style="margin: 0 var(--left-margin); display: flex; justify-content: space-between;">
-                            <div style="text-align: center; width: 45%;">
-                                <div style="border-bottom: 1px solid black; margin-bottom: 2mm;">&#160;</div>
-                                <div style="margin-top: 2mm;" class="text-normal">ผู้รับเงิน / Received By</div>
-                            </div>
-                            <div style="text-align: center; width: 45%;">
-                                <div style="border-bottom: 1px solid black; margin-bottom: 2mm;">&#160;</div>
-                                <div style="margin-top: 2mm;" class="text-normal">ผู้จ่ายเงิน / Paid By</div>
+                    <!-- Signatures Section -->
+                    <t t-if="config.show_signatures">
+                        <!-- Payer Signature -->
+                        <div class="field-position text-normal"
+                             t-att-style="'top: ' + str(config.signature_payer_top) + 'px; left: ' + str(config.signature_payer_left) + 'px;'">
+                            <div style="text-align: center; width: 200px;">
+                                <div t-att-style="'height: ' + str(config.signature_line_height) + 'px;'">&#160;</div>
+                                <div style="border-top: 1px solid black; padding-top: 5px;">
+                                    ผู้จ่ายเงิน / Payer
+                                </div>
+                                <div class="text-small" t-att-style="'margin-top: ' + str(config.signature_date_offset) + 'px;'">
+                                    วันที่ / Date: ______________
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        
+                        <!-- Receiver Signature -->
+                        <div class="field-position text-normal"
+                             t-att-style="'top: ' + str(config.signature_receiver_top) + 'px; left: ' + str(config.signature_receiver_left) + 'px;'">
+                            <div style="text-align: center; width: 200px;">
+                                <div t-att-style="'height: ' + str(config.signature_line_height) + 'px;'">&#160;</div>
+                                <div style="border-top: 1px solid black; padding-top: 5px;">
+                                    ผู้รับเงิน / Receiver
+                                </div>
+                                <div class="text-small" t-att-style="'margin-top: ' + str(config.signature_date_offset) + 'px;'">
+                                    วันที่ / Date: ______________
+                                </div>
+                            </div>
+                        </div>
+                    </t>
                 </div>
             </div>
             </t>
@@ -174,16 +216,248 @@
             </t>
         </t>
     </template>
+    
+    <!-- Template for Invoice - use invoice data directly -->
+    <template id="report_receipt_preprint_from_invoice">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <!-- Get print configuration -->
+                <t t-set="config" t-value="o.get_print_config()"/>
+                
+                <t t-call="web.basic_layout">
+                <div class="page" style="margin: 0; padding: 0;">
+                <style>
+                    @font-face {
+                        font-family: 'THSarabunNew';
+                        src: url('/buz_receipt_preprint/static/fonts/THSarabunNew.ttf') format('truetype');
+                    }
+                    
+                    body {
+                        font-family: <t t-esc="config.font_family"/>;
+                        margin: 0;
+                        padding: 0;
+                        font-size: <t t-esc="config.font_size"/>px;
+                        line-height: <t t-esc="config.line_spacing"/>;
+                    }
+                    
+                    .page {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    
+                    .receipt-body {
+                        position: relative;
+                        width: <t t-esc="config.page_width"/>px;
+                        height: <t t-esc="config.page_height"/>px;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    
+                    .text-normal {
+                        font-size: <t t-esc="config.font_size"/>px;
+                    }
+                    
+                    .text-large {
+                        font-size: <t t-esc="config.font_size_header"/>px;
+                    }
+                    
+                    .text-small {
+                        font-size: <t t-esc="config.font_size_small"/>px;
+                    }
+                    
+                    .field-position {
+                        position: absolute;
+                    }
+                    
+                    @media print {
+                        @page {
+                            size: <t t-esc="config.page_width_mm"/>mm <t t-esc="config.page_height_mm"/>mm;
+                            margin: <t t-esc="config.margin_top"/>mm <t t-esc="config.margin_right"/>mm <t t-esc="config.margin_bottom"/>mm <t t-esc="config.margin_left"/>mm;
+                        }
+                        body {
+                            margin: 0;
+                            padding: 0;
+                        }
+                        .page {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+                    }
+                </style>
 
-    <!-- Report Action -->
+                <!-- Content -->
+                <div class="receipt-body">
+                    <!-- Background Image (if configured and enabled) -->
+                    <t t-if="config.show_background and config.background_image">
+                        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;">
+                            <img t-att-src="'data:image/png;base64,' + config.background_image.decode('utf-8')" 
+                                 style="width: 100%; height: 100%; object-fit: contain;"
+                                 t-att-style="'opacity: ' + str(config.background_opacity) + ';'"/>
+                        </div>
+                    </t>
+                    
+                    <!-- Receipt Number (use invoice number) -->
+                    <div class="field-position text-normal" 
+                         t-att-style="'top: ' + str(config.receipt_number_top) + 'px; left: ' + str(config.receipt_number_left) + 'px;'">
+                        <span t-field="o.name"/>
+                    </div>
+
+                    <!-- Receipt Date (use invoice date) -->
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.receipt_date_top) + 'px; left: ' + str(config.receipt_date_left) + 'px;'">
+                        <span t-field="o.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
+                    </div>
+
+                    <!-- Payer Name -->
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.payer_name_top) + 'px; left: ' + str(config.payer_name_left) + 'px; max-width: ' + str(config.payer_name_width) + 'px;'">
+                        <span t-field="o.partner_id.name"/>
+                    </div>
+                    
+                    <!-- Payer Address -->
+                    <div class="field-position text-small"
+                         t-att-style="'top: ' + str(config.payer_address_top) + 'px; left: ' + str(config.payer_address_left) + 'px; max-width: ' + str(config.payer_address_width) + 'px;'">
+                        <t t-if="o.partner_id.street">
+                            <span t-field="o.partner_id.street"/>
+                        </t>
+                        <t t-if="o.partner_id.street2">
+                            <span t-field="o.partner_id.street2"/>
+                        </t>
+                        <t t-if="o.partner_id.city">
+                            <span t-field="o.partner_id.city"/>
+                        </t>
+                        <t t-if="o.partner_id.state_id">
+                            <span t-field="o.partner_id.state_id.name"/>
+                        </t>
+                        <t t-if="o.partner_id.zip">
+                            <span t-field="o.partner_id.zip"/>
+                        </t>
+                    </div>
+
+                    <!-- Payment Description (use invoice ref or narration) -->
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.payment_description_top) + 'px; left: ' + str(config.payment_description_left) + 'px; max-width: ' + str(config.payment_description_width) + 'px;'">
+                        <span t-field="o.ref"/>
+                    </div>
+
+                    <!-- Amount in Numbers (use invoice amount_total) -->
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.amount_numbers_top) + 'px; left: ' + str(config.amount_numbers_left) + 'px;'">
+                        <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                    </div>
+
+                    <!-- Amount in Words -->
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.amount_words_top) + 'px; left: ' + str(config.amount_words_left) + 'px; max-width: ' + str(config.amount_words_width) + 'px;'">
+                        <span t-esc="o.currency_id.amount_to_text(o.amount_total)"/>
+                    </div>
+                    
+                    <!-- Payment Method (use journal) -->
+                    <div class="field-position text-normal"
+                         t-att-style="'top: ' + str(config.payment_method_top) + 'px; left: ' + str(config.payment_method_left) + 'px;'">
+                        <span t-field="o.journal_id.name"/>
+                    </div>
+
+                    <!-- Order Lines / Items Table -->
+                    <t t-if="config.show_order_lines and o.invoice_line_ids">
+                        <div class="field-position" 
+                             t-att-style="'top: ' + str(config.order_lines_top) + 'px; left: ' + str(config.order_lines_left) + 'px; width: ' + str(config.order_lines_width) + 'px;'">
+                            <table style="width: 100%; border-collapse: collapse;" 
+                                   t-att-style="'font-size: ' + str(config.order_lines_font_size) + 'px;'">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid #000;">
+                                        <th style="text-align: left; padding: 2px;">รายการ / Description</th>
+                                        <th style="text-align: center; padding: 2px; width: 60px;">จำนวน / Qty</th>
+                                        <th style="text-align: right; padding: 2px; width: 80px;">ราคา/หน่วย / Price</th>
+                                        <th style="text-align: right; padding: 2px; width: 90px;">จำนวนเงิน / Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-set="line_count" t-value="0"/>
+                                    <t t-foreach="o.invoice_line_ids" t-as="line">
+                                        <!-- Skip if max lines exceeded (0 = no limit) -->
+                                        <t t-if="config.order_lines_max_lines == 0 or line_count &lt; config.order_lines_max_lines">
+                                            <tr t-att-style="'height: ' + str(config.order_lines_line_height) + 'px;'">
+                                                <td style="padding: 2px; vertical-align: top;">
+                                                    <span t-field="line.name"/>
+                                                </td>
+                                                <td style="text-align: center; padding: 2px; vertical-align: top;">
+                                                    <span t-field="line.quantity"/>
+                                                    <t t-if="line.product_uom_id">
+                                                        <span t-field="line.product_uom_id" t-options='{"widget": "text"}'/>
+                                                    </t>
+                                                </td>
+                                                <td style="text-align: right; padding: 2px; vertical-align: top;">
+                                                    <span t-field="line.price_unit" 
+                                                          t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                </td>
+                                                <td style="text-align: right; padding: 2px; vertical-align: top;">
+                                                    <span t-field="line.price_subtotal" 
+                                                          t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                </td>
+                                            </tr>
+                                            <t t-set="line_count" t-value="line_count + 1"/>
+                                        </t>
+                                    </t>
+                                    <!-- Show "..." if there are more lines -->
+                                    <t t-if="config.order_lines_max_lines > 0 and len(o.invoice_line_ids) > config.order_lines_max_lines">
+                                        <tr>
+                                            <td colspan="4" style="text-align: center; padding: 5px; font-style: italic;">
+                                                ... และอื่นๆ (total <t t-esc="len(o.invoice_line_ids)"/> items)
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+
+                    <!-- Signatures Section -->
+                    <t t-if="config.show_signatures">
+                        <!-- Payer Signature -->
+                        <div class="field-position text-normal"
+                             t-att-style="'top: ' + str(config.signature_payer_top) + 'px; left: ' + str(config.signature_payer_left) + 'px;'">
+                            <div style="text-align: center; width: 200px;">
+                                <div t-att-style="'height: ' + str(config.signature_line_height) + 'px;'">&#160;</div>
+                                <div style="border-top: 1px solid black; padding-top: 5px;">
+                                    ผู้จ่ายเงิน / Payer
+                                </div>
+                                <div class="text-small" t-att-style="'margin-top: ' + str(config.signature_date_offset) + 'px;'">
+                                    วันที่ / Date: ______________
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Receiver Signature -->
+                        <div class="field-position text-normal"
+                             t-att-style="'top: ' + str(config.signature_receiver_top) + 'px; left: ' + str(config.signature_receiver_left) + 'px;'">
+                            <div style="text-align: center; width: 200px;">
+                                <div t-att-style="'height: ' + str(config.signature_line_height) + 'px;'">&#160;</div>
+                                <div style="border-top: 1px solid black; padding-top: 5px;">
+                                    ผู้รับเงิน / Receiver
+                                </div>
+                                <div class="text-small" t-att-style="'margin-top: ' + str(config.signature_date_offset) + 'px;'">
+                                    วันที่ / Date: ______________
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+            </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Report Action for Invoice Only -->
     <record id="action_report_receipt_preprint" model="ir.actions.report">
         <field name="name">Receipt Preprint</field>
-        <field name="model">account.payment</field>
+        <field name="model">account.move</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">buz_receipt_preprint.report_receipt_preprint</field>
-        <field name="report_file">buz_receipt_preprint.report_receipt_preprint</field>
+        <field name="report_name">buz_receipt_preprint.report_receipt_preprint_from_invoice</field>
+        <field name="report_file">buz_receipt_preprint.report_receipt_preprint_from_invoice</field>
         <field name="print_report_name">'Receipt - %s' % object.name</field>
-        <field name="binding_model_id" ref="account.model_account_payment"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
         <field name="binding_type">report</field>
         <field name="paperformat_id" ref="buz_receipt_preprint.paperformat_receipt"/>
     </record>

@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Coordinate Helper View - To help users understand positioning -->
+    <template id="dispatch_coordinate_helper">
+        <div class="container-fluid mt-3">
+            <div class="row">
+                <div class="col-12">
+                    <h3>A4 Full Page Coordinate System Guide</h3>
+                    <p class="lead">ระบบพิกัดสำหรับการวางตำแหน่งแบบเต็มหน้ากระดาษ A4</p>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5>A4 Page Dimensions / ขนาดหน้ากระดาษ A4</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Measurement</th>
+                                        <th>Value</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Width / ความกว้าง</strong></td>
+                                        <td><span class="badge badge-info">794 px</span></td>
+                                        <td>210 mm</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Height / ความสูง</strong></td>
+                                        <td><span class="badge badge-info">1123 px</span></td>
+                                        <td>297 mm</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>DPI</strong></td>
+                                        <td><span class="badge badge-success">96</span></td>
+                                        <td>Standard Screen</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Left Range / แนวนอน</strong></td>
+                                        <td><span class="badge badge-warning">0 - 794 px</span></td>
+                                        <td>จากซ้ายไปขวา</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Top Range / แนวตั้ง</strong></td>
+                                        <td><span class="badge badge-warning">0 - 1123 px</span></td>
+                                        <td>จากบนลงล่าง</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5>Key Positions / ตำแหน่งสำคัญ</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Position</th>
+                                        <th>Top (px)</th>
+                                        <th>Left (px)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="table-primary">
+                                        <td><strong>มุมซ้ายบน (Top Left)</strong></td>
+                                        <td>0</td>
+                                        <td>0</td>
+                                    </tr>
+                                    <tr class="table-primary">
+                                        <td><strong>มุมขวาบน (Top Right)</strong></td>
+                                        <td>0</td>
+                                        <td>794</td>
+                                    </tr>
+                                    <tr class="table-info">
+                                        <td><strong>ตรงกลาง (Center)</strong></td>
+                                        <td>561</td>
+                                        <td>397</td>
+                                    </tr>
+                                    <tr class="table-warning">
+                                        <td><strong>มุมซ้ายล่าง (Bottom Left)</strong></td>
+                                        <td>1123</td>
+                                        <td>0</td>
+                                    </tr>
+                                    <tr class="table-warning">
+                                        <td><strong>มุมขวาล่าง (Bottom Right)</strong></td>
+                                        <td>1123</td>
+                                        <td>794</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5>Visual Reference / ภาพอ้างอิง</h5>
+                        </div>
+                        <div class="card-body">
+                            <div style="position: relative; width: 397px; height: 561px; border: 2px solid #333; margin: 0 auto; background: white;">
+                                <!-- Corner markers -->
+                                <div style="position: absolute; top: 0; left: 0; width: 20px; height: 20px; border-top: 3px solid red; border-left: 3px solid red;"></div>
+                                <div style="position: absolute; top: 0; right: 0; width: 20px; height: 20px; border-top: 3px solid red; border-right: 3px solid red;"></div>
+                                <div style="position: absolute; bottom: 0; left: 0; width: 20px; height: 20px; border-bottom: 3px solid red; border-left: 3px solid red;"></div>
+                                <div style="position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; border-bottom: 3px solid red; border-right: 3px solid red;"></div>
+                                
+                                <!-- Labels -->
+                                <div style="position: absolute; top: 5px; left: 25px; font-size: 10px; background: yellow; padding: 2px 5px;">0,0</div>
+                                <div style="position: absolute; top: 5px; right: 25px; font-size: 10px; background: yellow; padding: 2px 5px;">0,794</div>
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10px; background: lightblue; padding: 2px 5px;">561,397 (Center)</div>
+                                <div style="position: absolute; bottom: 5px; left: 25px; font-size: 10px; background: yellow; padding: 2px 5px;">1123,0</div>
+                                <div style="position: absolute; bottom: 5px; right: 25px; font-size: 10px; background: yellow; padding: 2px 5px;">1123,794</div>
+                                
+                                <!-- Dimension labels -->
+                                <div style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-weight: bold;">794px (210mm)</div>
+                                <div style="position: absolute; left: -60px; top: 50%; transform: translateY(-50%) rotate(-90deg); font-weight: bold; width: 200px; text-align: center;">1123px (297mm)</div>
+                            </div>
+                            <p class="text-center mt-3"><small>ภาพแสดงสัดส่วนครึ่งหนึ่งของขนาดจริง (50% scale for display)</small></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-warning">
+                            <h5>Quick Conversion Table / ตารางแปลงหน่วยด่วน</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Millimeters to Pixels (96 DPI)</h6>
+                                    <table class="table table-sm table-bordered">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>mm</th>
+                                                <th>px</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr><td>5</td><td>19</td><td>~0.5 cm</td></tr>
+                                            <tr><td>10</td><td>38</td><td>~1 cm</td></tr>
+                                            <tr><td>25</td><td>94</td><td>~2.5 cm</td></tr>
+                                            <tr><td>50</td><td>189</td><td>~5 cm</td></tr>
+                                            <tr><td>75</td><td>283</td><td>~7.5 cm</td></tr>
+                                            <tr><td>100</td><td>378</td><td>~10 cm</td></tr>
+                                            <tr><td>150</td><td>567</td><td>~15 cm</td></tr>
+                                            <tr><td>200</td><td>756</td><td>~20 cm</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Common Measurements / ขนาดทั่วไป</h6>
+                                    <table class="table table-sm table-bordered">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>Description</th>
+                                                <th>mm</th>
+                                                <th>px</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr><td>Quarter page (1/4)</td><td>52.5</td><td>198</td></tr>
+                                            <tr><td>Half width (1/2)</td><td>105</td><td>397</td></tr>
+                                            <tr><td>Three quarters (3/4)</td><td>157.5</td><td>595</td></tr>
+                                            <tr><td>Full width</td><td>210</td><td>794</td></tr>
+                                            <tr class="table-info"><td colspan="3"><strong>Height</strong></td></tr>
+                                            <tr><td>Quarter height (1/4)</td><td>74.25</td><td>281</td></tr>
+                                            <tr><td>Half height (1/2)</td><td>148.5</td><td>561</td></tr>
+                                            <tr><td>Three quarters (3/4)</td><td>222.75</td><td>842</td></tr>
+                                            <tr><td>Full height</td><td>297</td><td>1123</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-4 mb-4">
+                <div class="col-12">
+                    <div class="alert alert-success" role="alert">
+                        <h5 class="alert-heading">วิธีใช้งาน (How to Use)</h5>
+                        <ol>
+                            <li><strong>อัพโหลด Background Image:</strong> ไปที่ Configuration Form > แท็บ "Background Image" > อัพโหลดรูปแบบฟอร์มที่สแกนหรือถ่ายไว้</li>
+                            <li><strong>Preview Layout:</strong> คลิกปุ่ม "Preview Layout" เพื่อดูตำแหน่งที่ตั้งค่าทับกับรูปพื้นหลัง</li>
+                            <li><strong>ปรับตำแหน่ง:</strong> ใช้ค่า Top และ Left ในตารางด้านบนเป็นแนวทางปรับค่าในแต่ละ field</li>
+                            <li><strong>ทดสอบซ้ำ:</strong> Preview และพิมพ์ทดสอบจนกว่าจะได้ตำแหน่งที่ต้องการ</li>
+                        </ol>
+                        <hr/>
+                        <p class="mb-0"><strong>💡 เคล็ดลับ:</strong> ใช้ Grid overlay ใน Preview mode และ Corner markers สีแดง เพื่อช่วยในการวัดตำแหน่งให้แม่นยำ</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <!-- Note: For coordinate helper, use the static HTML file:
+         /buz_inventory_delivery_report/static/A4_Position_Calculator.html
+         Open it directly in your browser or access via:
+         http://your-odoo-server/buz_inventory_delivery_report/static/A4_Position_Calculator.html
+    -->
+</odoo>

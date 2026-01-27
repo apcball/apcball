@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Shopee Trade Channel Profile -->
+        <record id="profile_shopee" model="marketplace.settlement.profile">
+            <field name="name">Shopee Thailand</field>
+            <field name="trade_channel">shopee</field>
+            <field name="notes">Default profile for Shopee marketplace operations in Thailand</field>
+            <field name="invoice_pattern">TR</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- SPX Trade Channel Profile -->
+        <record id="profile_spx" model="marketplace.settlement.profile">
+            <field name="name">SPX Express</field>
+            <field name="trade_channel">spx</field>
+            <field name="notes">Default profile for SPX delivery services</field>
+            <field name="receipt_pattern">RC</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Lazada Trade Channel Profile -->
+        <record id="profile_lazada" model="marketplace.settlement.profile">
+            <field name="name">Lazada Thailand</field>
+            <field name="trade_channel">lazada</field>
+            <field name="notes">Default profile for Lazada marketplace operations in Thailand</field>
+            <field name="invoice_pattern">LZ</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- TikTok Shop Trade Channel Profile -->
+        <record id="profile_tiktok" model="marketplace.settlement.profile">
+            <field name="name">TikTok Shop Thailand</field>
+            <field name="trade_channel">tiktok</field>
+            <field name="notes">Default profile for TikTok Shop marketplace operations in Thailand</field>
+            <field name="invoice_pattern">TT</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- J&amp;T Express Trade Channel Profile -->
+        <record id="profile_jnt" model="marketplace.settlement.profile">
+            <field name="name">J&amp;T Express</field>
+            <field name="trade_channel">other</field>
+            <field name="notes">Default profile for J&amp;T Express delivery services</field>
+            <field name="receipt_pattern">JT</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

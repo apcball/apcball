@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pricelist_price_history_tree" model="ir.ui.view">
+        <field name="name">pricelist.price.history.tree</field>
+        <field name="model">pricelist.price.history</field>
+        <field name="arch" type="xml">
+            <tree string="Price History" create="0" delete="0" edit="0" default_order="create_date desc">
+                <field name="date_change"/>
+                <field name="user_id"/>
+                <field name="pricelist_id"/>
+                <field name="product_tmpl_id" optional="hide"/>
+                <field name="product_id"/>
+                <field name="old_price"/>
+                <field name="new_price"/>
+                <field name="old_installation_price"/>
+                <field name="new_installation_price"/>
+                <field name="origin" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_pricelist_price_history_search" model="ir.ui.view">
+        <field name="name">pricelist.price.history.search</field>
+        <field name="model">pricelist.price.history</field>
+        <field name="arch" type="xml">
+            <search string="Search Price History">
+                <field name="product_id"/>
+                <field name="pricelist_id"/>
+                <field name="user_id"/>
+                <group expand="1" string="Group By">
+                    <filter string="Pricelist" name="group_pricelist" context="{'group_by':'pricelist_id'}"/>
+                    <filter string="Product" name="group_product" context="{'group_by':'product_id'}"/>
+                    <filter string="User" name="group_user" context="{'group_by':'user_id'}"/>
+                    <filter string="Date" name="group_date" context="{'group_by':'date_change:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_pricelist_price_history" model="ir.actions.act_window">
+        <field name="name">History Price</field>
+        <field name="res_model">pricelist.price.history</field>
+        <field name="view_mode">tree</field>
+        <field name="search_view_id" ref="view_pricelist_price_history_search"/>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            No price history found.
+          </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_pricelist_price_history"
+              name="History Price"
+              parent="sale.product_menu_catalog"
+              action="action_pricelist_price_history"
+              groups="buz_pricelist_product_manager.group_pricelist_product_manager"
+              sequence="20"/>
+</odoo>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Product Template Form View -->
+    <record id="view_product_template_form_installation" model="ir.ui.view">
+        <field name="name">product.template.form.installation</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <!-- Add Installation section in Sales tab -->
+            <xpath expr="//page[@name='sales']/group[@name='sale']" position="inside">
+                <group string="Installation Service" name="installation_service">
+                    <field name="installation_fee" widget="monetary"/>
+                    <field name="installation_service_product_id" 
+                           options="{'no_create': True, 'no_create_edit': True}"
+                           invisible="installation_fee == 0"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Product Variant Form View -->
+    <record id="view_product_product_form_installation" model="ir.ui.view">
+        <field name="name">product.product.form.installation</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <!-- Add Installation fields -->
+            <xpath expr="//group[@name='group_general']" position="after">
+                <group string="Installation Service" name="installation_service">
+                    <field name="installation_fee" widget="monetary"/>
+                    <field name="installation_service_product_id" 
+                           options="{'no_create': True, 'no_create_edit': True}"
+                           invisible="installation_fee == 0"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

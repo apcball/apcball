@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Default Dispatch Report Configuration -->
+        <record id="dispatch_report_config_default" model="dispatch.report.config">
+            <field name="name">Default Preprint Layout</field>
+            <field name="is_default" eval="True"/>
+            
+            <!-- Header Section (scaled for A4 794x1123) -->
+            <field name="doc_number_top">110</field>
+            <field name="doc_number_left">580</field>
+            <field name="doc_date_top">110</field>
+            <field name="doc_date_left">195</field>
+            
+            <!-- SO Number -->
+            <field name="so_number_top">145</field>
+            <field name="so_number_left">195</field>
+            
+            <!-- Customer Information -->
+            <field name="customer_name_top">180</field>
+            <field name="customer_name_left">195</field>
+            <field name="customer_address_top">215</field>
+            <field name="customer_address_left">195</field>
+            <field name="customer_phone_top">285</field>
+            <field name="customer_phone_left">195</field>
+            
+            <!-- Vehicle Information -->
+            <field name="vehicle_type_top">180</field>
+            <field name="vehicle_type_left">580</field>
+            <field name="vehicle_plate_top">215</field>
+            <field name="vehicle_plate_left">580</field>
+            <field name="driver_name_top">250</field>
+            <field name="driver_name_left">580</field>
+            
+            <!-- Dispatch Location -->
+            <field name="dispatch_location_top">285</field>
+            <field name="dispatch_location_left">195</field>
+            
+            <!-- Product Table (scaled for A4) -->
+            <field name="table_top">375</field>
+            <field name="table_left">65</field>
+            <field name="line_height">38</field>
+            
+            <!-- Column Positions (scaled for A4) -->
+            <field name="col_no_left">13</field>
+            <field name="col_code_left">78</field>
+            <field name="col_name_left">207</field>
+            <field name="col_qty_left">545</field>
+            <field name="col_unit_left">635</field>
+            <field name="col_remark_left">700</field>
+            
+            <!-- Footer (scaled for A4) -->
+            <field name="total_qty_top">920</field>
+            <field name="total_qty_left">545</field>
+            <field name="signature_sender_top">990</field>
+            <field name="signature_sender_left">130</field>
+            <field name="signature_receiver_top">990</field>
+            <field name="signature_receiver_left">520</field>
+            
+            <!-- Global Settings -->
+            <field name="font_size">16</field>
+            <field name="font_family">Sarabun, Arial, sans-serif</field>            
+            <!-- Page Settings -->
+            <field name="paper_size">letter</field>            
+            <field name="page_width">816</field>
+            <field name="page_height">1056</field>
+        </record>
+    </data>
+</odoo>

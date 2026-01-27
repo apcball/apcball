@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+stock_report_cr.access_stock_reports,access_stock_reports,stock_report_cr.model_stock_reports,base.group_user,1,1,1,1

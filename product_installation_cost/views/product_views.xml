@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_template_form_view_inherit_installation_cost" model="ir.ui.view">
+        <field name="name">product.template.common.form.inherit.installation.cost</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales']" position="inside">
+                <group name="group_installation_cost" string="Installation Cost" groups="sales_team.group_sale_manager">
+                    <field name="installation_cost_retail" widget="monetary"/>
+                    <field name="installation_cost_project" widget="monetary"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Approval Token Tree View -->
+    <record id="approval_token_view_tree" model="ir.ui.view">
+        <field name="name">approval.token.tree</field>
+        <field name="model">approval.token</field>
+        <field name="arch" type="xml">
+            <tree string="Approval Tokens" decoration-danger="state == 'expired'" decoration-success="state == 'used'" decoration-muted="state == 'cancelled'">
+                <field name="res_name"/>
+                <field name="res_model"/>
+                <field name="approver_id"/>
+                <field name="state" widget="badge" 
+                       decoration-success="state == 'used'"
+                       decoration-warning="state == 'active'"
+                       decoration-danger="state == 'expired'"
+                       decoration-muted="state == 'cancelled'"/>
+                <field name="expiry_datetime"/>
+                <field name="used_datetime"/>
+                <field name="action_taken"/>
+                <field name="view_count"/>
+                <field name="create_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Approval Token Form View -->
+    <record id="approval_token_view_form" model="ir.ui.view">
+        <field name="name">approval.token.form</field>
+        <field name="model">approval.token</field>
+        <field name="arch" type="xml">
+            <form string="Approval Token" create="false" edit="false">
+                <header>
+                    <button name="action_resend_notification" string="Resend LINE Approval" type="object" class="btn-primary" invisible="state != 'active'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Token Information">
+                            <field name="token"/>
+                            <field name="state"/>
+                            <field name="expiry_datetime"/>
+                            <field name="is_expired"/>
+                        </group>
+                        <group string="Document">
+                            <field name="res_model"/>
+                            <field name="res_id"/>
+                            <field name="res_name"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Approver">
+                            <field name="approver_id"/>
+                            <field name="line_user_id"/>
+                        </group>
+                        <group string="Usage">
+                            <field name="used_datetime"/>
+                            <field name="action_taken"/>
+                            <field name="view_count"/>
+                            <field name="last_view_datetime"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Approval Token Search View -->
+    <record id="approval_token_view_search" model="ir.ui.view">
+        <field name="name">approval.token.search</field>
+        <field name="model">approval.token</field>
+        <field name="arch" type="xml">
+            <search string="Search Approval Tokens">
+                <field name="token"/>
+                <field name="res_name"/>
+                <field name="res_model"/>
+                <field name="approver_id"/>
+                <filter name="active" string="Active" domain="[('state', '=', 'active')]"/>
+                <filter name="used" string="Used" domain="[('state', '=', 'used')]"/>
+                <filter name="expired" string="Expired" domain="[('state', '=', 'expired')]"/>
+                <separator/>
+                <filter name="approved" string="Approved" domain="[('action_taken', '=', 'approved')]"/>
+                <filter name="rejected" string="Rejected" domain="[('action_taken', '=', 'rejected')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+                    <filter name="group_approver" string="Approver" context="{'group_by': 'approver_id'}"/>
+                    <filter name="group_model" string="Document Model" context="{'group_by': 'res_model'}"/>
+                    <filter name="group_action" string="Action Taken" context="{'group_by': 'action_taken'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Approval Token Action -->
+    <record id="approval_token_action" model="ir.actions.act_window">
+        <field name="name">Approval Tokens</field>
+        <field name="res_model">approval.token</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="approval_token_view_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No approval tokens found
+            </p>
+            <p>
+                Approval tokens are generated when LINE approval requests are sent.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_line_notification_root"
+              name="LINE Notification"
+              groups="line_portal_notification.group_line_notification_admin"
+              web_icon="line_portal_notification,static/description/icon.png"
+              sequence="100"/>
+    
+    <menuitem id="menu_approval_tokens"
+              name="Approval Tokens"
+              parent="menu_line_notification_root"
+              action="approval_token_action"
+              sequence="10"/>
+</odoo>

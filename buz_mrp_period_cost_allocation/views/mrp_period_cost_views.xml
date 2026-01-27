@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_mrp_period_cost_tree" model="ir.ui.view">
+        <field name="name">mrp.period.cost.tree</field>
+        <field name="model">mrp.period.cost</field>
+        <field name="arch" type="xml">
+            <tree string="Period Cost Allocation">
+                <field name="name"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'posted'"/>
+                <field name="allocation_base"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_mrp_period_cost_form" model="ir.ui.view">
+        <field name="name">mrp.period.cost.form</field>
+        <field name="model">mrp.period.cost</field>
+        <field name="arch" type="xml">
+            <form string="Manufacturing Period Cost Allocation">
+                <header>
+                    <button name="action_load_mos" string="Load MOs" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_preview_allocation" string="Preview Allocation" type="object" class="btn-secondary" invisible="state != 'draft'"/>
+                    <button name="action_post" string="Post Adjustment" type="object" class="btn-success" invisible="state != 'draft'" confirm="Are you sure you want to post this cost adjustment? This will update inventory valuation layers."/>
+                    <button name="%(action_report_mrp_period_cost_pdf)d" string="Print PDF" type="action" class="btn-secondary"/>
+                    <button name="%(action_report_mrp_period_cost_xlsx)d" string="Print Excel" type="action" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="date_from" readonly="state == 'posted'"/>
+                            <field name="date_to" readonly="state == 'posted'"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state == 'posted'"/>
+                        </group>
+                        <group>
+                            <field name="allocation_base" readonly="state == 'posted'"/>
+                            <field name="inventory_only" readonly="state == 'posted'"/>
+                            <field name="allow_accounting_entry" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <group string="Cost Allocation">
+                        <group string="Standard Costs (System)">
+                            <field name="total_std_dl"/>
+                            <field name="total_std_idl"/>
+                            <field name="total_std_oh"/>
+                            <field name="total_std_material"/>
+                        </group>
+                        <group string="Actual Costs (Input)">
+                            <field name="actual_dl" readonly="state == 'posted'"/>
+                            <field name="actual_idl" readonly="state == 'posted'"/>
+                            <field name="actual_oh" readonly="state == 'posted'"/>
+                        </group>
+                        <group string="Differences (To Allocate)">
+                            <field name="diff_dl"/>
+                            <field name="diff_idl"/>
+                            <field name="diff_oh"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Manufacturing Orders">
+                            <field name="line_ids" readonly="1">
+                                <tree string="Cost Lines">
+                                    <field name="mo_id"/>
+                                    <field name="product_id"/>
+                                    <field name="quantity_produced"/>
+                                    <field name="total_duration" sum="Total Duration"/>
+                                    <field name="standard_total_cost" sum="Total Std Cost"/>
+                                    <field name="allocation_weight"/>
+                                    <field name="allocated_dl" optional="hide"/>
+                                    <field name="allocated_idl" optional="hide"/>
+                                    <field name="allocated_oh" optional="hide"/>
+                                    <field name="final_total_cost" sum="Total Final Cost" optional="show"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mrp_period_cost" model="ir.actions.act_window">
+        <field name="name">Period Cost Allocation</field>
+        <field name="res_model">mrp.period.cost</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new Period Cost Allocation
+            </p>
+            <p>
+                Allocates actual manufacturing costs to MOs based on a chosen period.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_mrp_period_cost"
+              name="Period Cost Allocation"
+              parent="mrp.menu_mrp_reporting"
+              action="action_mrp_period_cost"
+              sequence="100"/>
+</odoo>

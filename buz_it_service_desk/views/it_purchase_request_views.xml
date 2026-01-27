@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- IT Purchase Request Tree View -->
+    <record id="view_it_purchase_request_tree" model="ir.ui.view">
+        <field name="name">it.purchase.request.tree</field>
+        <field name="model">it.purchase.request</field>
+        <field name="arch" type="xml">
+            <tree string="ขอหรือเปลี่ยนอุปกรณ์ไอทีภายในบริษัท">
+                <field name="name"/>
+                <field name="request_date"/>
+                <field name="requester_id"/>
+                <field name="department_id"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- IT Purchase Request Form View -->
+    <record id="view_it_purchase_request_form" model="ir.ui.view">
+        <field name="name">it.purchase.request.form</field>
+        <field name="model">it.purchase.request</field>
+        <field name="arch" type="xml">
+            <form string="ขอหรือเปลี่ยนอุปกรณ์ไอทีภายในบริษัท">
+                <header>
+                    <button name="action_submit" string="Submit" type="object"
+                            invisible="state != 'draft'" class="btn-primary"/>
+                    <button name="action_manager_approve" string="Manager Approve" type="object"
+                            invisible="state != 'submitted'" class="btn-primary"
+                            groups="buz_it_service_desk.group_it_manager"/>
+                    <button name="action_complete" string="Complete" type="object"
+                            invisible="state != 'manager_approved'" class="btn-primary"
+                            groups="buz_it_service_desk.group_it_officer"/>
+                    <field name="state" widget="statusbar" 
+                           statusbar_visible="draft,submitted,manager_approved,done"/>
+                </header>
+                <sheet>
+                    <!-- Section 1: Request Header -->
+                    <group string="ข้อมูลผู้ขอ" name="header_section">
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="request_date"/>
+                            <field name="requester_id"/>
+                        </group>
+                        <group>
+                            <field name="department_id"/>
+                        </group>
+                    </group>
+
+                    <separator string="อุปกรณ์ไอที (Computer / Printer / Hardware / Software) ที่ต้องการใช้งาน หรือเปลี่ยนการใช้งาน"/>
+
+                    <!-- Section 2: IT Equipment Request Lines -->
+                    <field name="line_ids" string="รายการอุปกรณ์" nolabel="1">
+                        <tree string="รายการขอ/เปลี่ยนอุปกรณ์ไอที" editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="item_name"/>
+                            <field name="item_type"/>
+                            <field name="cost_center_code"/>
+                        </tree>
+                        <form string="รายละเอียดอุปกรณ์">
+                            <group>
+                                <field name="item_name"/>
+                                <field name="item_type"/>
+                            </group>
+                            <group>
+                                <field name="cost_center_code"/>
+                            </group>
+                            <field name="change_reason" nolabel="1"/>
+                        </form>
+                    </field>
+
+                    <!-- Section 3: Warning Note -->
+                    <group>
+                        <div class="alert alert-info" role="alert">
+                            <strong>*** กรุณากรอกข้อมูลให้ครบถ้วนและชัดเจน ***</strong>
+                        </div>
+                    </group>
+
+                    <!-- Section 4: Approval / Signature -->
+                    <separator string="ลงนาม"/>
+                    <group string="การอนุมัติ" name="approval_section">
+                        <group string="ผู้ขอ">
+                            <field name="requester_id" readonly="1"/>
+                            <field name="request_date" readonly="1"/>
+                        </group>
+                        <group string="ผู้อนุมัติ">
+                            <field name="manager_approved_by" readonly="state not in ['submitted', 'manager_approved', 'done']"/>
+                            <field name="manager_approved_date" readonly="state not in ['submitted', 'manager_approved', 'done']"/>
+                        </group>
+                        <group string="ไอที ได้รับ">
+                            <field name="it_received_by" readonly="state != 'done'"/>
+                            <field name="it_received_date" readonly="state != 'done'"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- IT Purchase Request Search View -->
+    <record id="view_it_purchase_request_search" model="ir.ui.view">
+        <field name="name">it.purchase.request.search</field>
+        <field name="model">it.purchase.request</field>
+        <field name="arch" type="xml">
+            <search string="ขอหรือเปลี่ยนอุปกรณ์ไอที">
+                <field name="name"/>
+                <field name="requester_id"/>
+                <field name="department_id"/>
+                <separator/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Submitted" name="submitted" domain="[('state', '=', 'submitted')]"/>
+                <filter string="Manager Approved" name="manager_approved" domain="[('state', '=', 'manager_approved')]"/>
+                <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter string="My Requests" name="my_requests" domain="[('requester_id', '=', uid)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Requester" name="group_requester" context="{'group_by': 'requester_id'}"/>
+                    <filter string="Department" name="group_department" context="{'group_by': 'department_id'}"/>
+                    <filter string="Request Date" name="group_date" context="{'group_by': 'request_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- IT Purchase Request Action -->
+    <record id="action_it_purchase_request" model="ir.actions.act_window">
+        <field name="name">ขอหรือเปลี่ยนอุปกรณ์ไอที</field>
+        <field name="res_model">it.purchase.request</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_it_purchase_request_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                ยังไม่มีการขอหรือเปลี่ยนอุปกรณ์ไอที
+            </p>
+            <p>
+                กรุณาคลิก "สร้าง" เพื่อเพิ่มการขอหรือเปลี่ยนอุปกรณ์ไอที
+            </p>
+        </field>
+    </record>
+</odoo>

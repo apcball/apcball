@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Customer Code: C00001, C00002, ... -->
+    <record id="seq_partner_code_customer" model="ir.sequence">
+        <field name="name">Partner Code (Customer)</field>
+        <field name="code">custom_partner_code.customer</field>
+        <field name="prefix">C</field>
+        <field name="padding">5</field>
+        <field name="implementation">no_gap</field>
+        <!-- company_id not set = ใช้ข้ามบริษัทเดียวกันได้; ถ้าต้องการแยกตามบริษัทให้เติม company_id -->
+    </record>
+
+    <!-- Vendor Code: V00001, V00002, ... -->
+    <record id="seq_partner_code_vendor" model="ir.sequence">
+        <field name="name">Partner Code (Vendor)</field>
+        <field name="code">custom_partner_code.vendor</field>
+        <field name="prefix">V</field>
+        <field name="padding">5</field>
+        <field name="implementation">no_gap</field>
+    </record>
+</odoo>

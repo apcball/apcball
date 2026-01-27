@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit the stock picking form view to add new buttons -->
+    <record id="view_picking_form_inherit_easy_transfer_plus" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.easy.transfer.plus</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+        <xpath expr="//form" position="inside">
+        <!-- invisible helper field stored on the model to toggle some buttons -->
+        <field name="is_from_batch" invisible="1"/>
+        </xpath>
+        <xpath expr="//header" position="inside">
+        <button name="action_select_all_products" type="object"
+            string="Select All Products"
+            class="oe_highlight"
+            invisible="state not in ['draft'] or not is_from_batch"/>
+        <!-- Add to Batch Transfer button for receipts -->
+        <button name="action_add_to_batch" type="object"
+            string="Add to Batch Transfer"
+            class="oe_highlight"
+            invisible="picking_type_code != 'incoming' or state in ['done', 'cancel'] or batch_id"/>
+        <!-- Removed 'Clear Lines' and 'Transfer Now' buttons as requested -->
+        </xpath>
+        </field>
+    </record>
+</odoo>

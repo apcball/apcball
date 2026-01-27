@@ -1,0 +1,12 @@
+<odoo>
+    <record id="action_report_stock_report" model="ir.actions.report">
+        <field name="name">report_stock_report</field>
+        <field name="model">stock.reports</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">stock_report_cr.report_stock_report</field>
+        <field name="report_file">stock_report_cr.report_stock_report</field>
+        <field name="binding_model_id" ref="model_stock_reports"/>
+        <field name="binding_type">report</field>
+    </record>
+
+</odoo>

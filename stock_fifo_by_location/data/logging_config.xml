@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Logging Configuration Parameters -->
+        
+        <!-- Verbose Logging (show all debug messages) -->
+        <record id="config_verbose_logging" model="ir.config_parameter">
+            <field name="key">stock_fifo_by_location.verbose_logging</field>
+            <field name="value">False</field>
+        </record>
+        
+        <!-- Log FIFO Operations -->
+        <record id="config_log_fifo_operations" model="ir.config_parameter">
+            <field name="key">stock_fifo_by_location.log_fifo_operations</field>
+            <field name="value">True</field>
+        </record>
+        
+        <!-- Log Warehouse Operations -->
+        <record id="config_log_warehouse_operations" model="ir.config_parameter">
+            <field name="key">stock_fifo_by_location.log_warehouse_operations</field>
+            <field name="value">True</field>
+        </record>
+        
+        <!-- Log Cost Calculations -->
+        <record id="config_log_cost_calculations" model="ir.config_parameter">
+            <field name="key">stock_fifo_by_location.log_cost_calculations</field>
+            <field name="value">False</field>
+        </record>
+        
+        <!-- Log Performance Metrics -->
+        <record id="config_log_performance" model="ir.config_parameter">
+            <field name="key">stock_fifo_by_location.log_performance</field>
+            <field name="value">False</field>
+        </record>
+        
+    </data>
+</odoo>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tax_form_inherit_undue" model="ir.ui.view">
+        <field name="name">account.tax.form.inherit.undue</field>
+        <field name="model">account.tax</field>
+        <field name="inherit_id" ref="account.view_tax_form"/>
+        <field name="arch" type="xml">
+            <field name="country_id" position="after">
+                <field name="is_vat_undue"/>
+                <field name="undue_conversion_tax_id" invisible="not is_vat_undue" required="is_vat_undue"/>
+                <field name="undue_input_vat_account_id" invisible="not is_vat_undue" required="is_vat_undue" 
+                       options="{'no_create': True}"
+                       domain="[('account_type', 'in', ['asset_current', 'liability_current'])]"/>
+            </field>
+        </field>
+    </record>
+</odoo>

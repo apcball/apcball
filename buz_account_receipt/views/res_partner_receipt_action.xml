@@ -1,0 +1,13 @@
+<odoo>
+    <!-- Action for creating receipt directly from customer contact form -->
+    <record id="action_create_receipt_from_partner" model="ir.actions.server">
+        <field name="name">Create Receipt</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="state">code</field>
+        <field name="code">
+records._action_create_receipt_from_partner()
+        </field>
+        <field name="binding_view_types">form</field>
+    </record>
+</odoo>

@@ -1,0 +1,12 @@
+<odoo>
+    <record id="product_pricelist_view_form_inherit_standard_cost" model="ir.ui.view">
+        <field name="name">product.pricelist.form.standard.cost</field>
+        <field name="model">product.pricelist</field>
+        <field name="inherit_id" ref="product.product_pricelist_view"/>
+        <field name="arch" type="xml">
+            <field name="currency_id" position="after">
+                <field name="is_standard_cost_pricelist" groups="buz_sale_pricelist_standard_cost.group_pricing_admin"/>
+            </field>
+        </field>
+    </record>
+</odoo>

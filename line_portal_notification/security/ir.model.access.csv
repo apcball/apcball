@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_approval_token_admin,approval.token admin,model_approval_token,line_portal_notification.group_line_notification_admin,1,1,1,1
+access_approval_token_user,approval.token user,model_approval_token,base.group_user,1,0,0,0
+access_approval_audit_log_admin,approval.audit.log admin,model_approval_audit_log,line_portal_notification.group_line_notification_admin,1,0,1,0
+access_approval_audit_log_user,approval.audit.log user,model_approval_audit_log,base.group_user,1,0,0,0
+access_line_channel_verification_admin,line.channel.verification admin,model_line_channel_verification,line_portal_notification.group_line_notification_admin,1,1,1,1
+access_line_user_admin,line.user admin,model_line_user,line_portal_notification.group_line_notification_admin,1,1,1,1
+access_line_user_user,line.user user,model_line_user,base.group_user,1,0,0,0

@@ -11,6 +11,8 @@
     'depends': [
         'base',
         'account',
+        'stock',
+        'sale',
     ],
     'data': [
         'security/ir.model.access.csv',
@@ -18,8 +20,10 @@
         'report/paperformat.xml',
         'report/report_action.xml',
         'report/commercial_invoice_report.xml',
+        'report/commercial_invoice_sale_order_report.xml',
         'views/account_move_view.xml',
-        
+        'views/stock_picking_view.xml',
+        'views/sale_order_view.xml',
     ],
     'assets': {
         'web.assets_backend': [

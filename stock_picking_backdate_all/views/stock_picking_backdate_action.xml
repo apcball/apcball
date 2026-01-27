@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="model_stock_picking_action_open_backdate_wizard" model="ir.actions.server" >
+        <field name="name">Backdate Picking</field>
+        <field name="model_id" ref="stock_picking_backdate_all.model_stock_picking_backdate_wiz"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="groups_id" eval="[(4, ref('stock_picking_backdate_all.stock_picking_backdate_assign_group'))]"/>
+		<field name="state">code</field>
+        <field name="binding_view_types">list,form</field>
+         <field name="code">
+            action = model.change_to_backdate_wizard()
+        </field>
+    </record>
+</odoo>

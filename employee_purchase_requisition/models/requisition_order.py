@@ -39,6 +39,18 @@ class RequisitionOrder(models.Model):
         string="Unit Price",
         help="Enter the custom unit price for this product"
     )
+    price_subtotal = fields.Float(
+        string="Subtotal",
+        compute="_compute_price_subtotal",
+        store=True,
+        help="Automatically calculated as quantity × unit price"
+    )
+
+    @api.depends('quantity', 'unit_price')
+    def _compute_price_subtotal(self):
+        """Calculate subtotal for each line item"""
+        for line in self:
+            line.price_subtotal = line.quantity * line.unit_price
 
     @api.onchange('product_id')
     def _onchange_product_id(self):

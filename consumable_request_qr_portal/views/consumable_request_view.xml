@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_internal_consume_request_form_inherit_qr" model="ir.ui.view">
+        <field name="name">internal.consume.request.form.qr</field>
+        <field name="model">internal.consume.request</field>
+        <field name="inherit_id" ref="internal_consume_request.view_internal_consume_request_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                 <button name="action_cancel" 
+                        string="Cancel" 
+                        type="object" 
+                        invisible="state != 'approved'" 
+                        confirm="Are you sure you want to cancel this approved request?"/>
+                 <button name="action_issue_goods" 
+                        string="Issue Goods" 
+                        type="object" 
+                        class="oe_highlight" 
+                        invisible="state != 'approved'"
+                        groups="stock.group_stock_user"/>
+            </xpath>
+
+            <xpath expr="//field[@name='state']" position="attributes">
+                <attribute name="statusbar_visible">draft,to_approve,approved,issued,done</attribute>
+            </xpath>
+
+            <xpath expr="//header" position="after">
+                 <div class="alert alert-success" role="alert" invisible="not portal_confirmed">
+                    <strong>Items Received!</strong> Confirmed via Portal on <field name="received_date" readonly="1"/>
+                </div>
+                <div class="alert alert-info" role="alert" invisible="state != 'approved'">
+                    <strong>Processing:</strong> Waiting for Warehouse to Issue goods.
+                </div>
+            </xpath>
+            <xpath expr="//sheet/div[@name='button_box']" position="after">
+                <widget name="web_ribbon" title="Received" bg_color="bg-success" invisible="not portal_confirmed"/>
+            </xpath>
+             <xpath expr="//group[@name='location_info']" position="after">
+                 <group string="QR Portal" invisible="not qr_token">
+                     <field name="qr_token" invisible="1"/>
+                     <field name="issued_by" invisible="not issued_by"/>
+                     <field name="issued_date" invisible="not issued_date"/>
+                     <field name="qr_code" widget="image" options="{'size': [120, 120]}"/>
+                     <field name="signature" widget="image" options="{'size': [200, 100]}"/>
+                     <field name="portal_confirmed" readonly="1"/>
+                 </group>
+             </xpath>
+        </field>
+    </record>
+</odoo>

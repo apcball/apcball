@@ -4,8 +4,8 @@
         <record id="sequence_commercial_invoice" model="ir.sequence">
             <field name="name">Commercial Invoice Sequence</field>
             <field name="code">commercial.invoice.sequence</field>
-            <field name="prefix">CIV-%(y)s%(month)s</field>
-            <field name="padding">4</field>
+            <field name="prefix">CIV-</field>
+            <field name="padding">6</field>
             <field name="company_id" eval="False"/>
         </record>
     </data>

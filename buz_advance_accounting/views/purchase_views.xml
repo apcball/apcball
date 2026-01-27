@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Actions only - no view inheritance to avoid field conflicts -->
+
+    <record id="action_purchase_advance_accrual" model="ir.actions.act_window">
+        <field name="name">Advance Accruals</field>
+        <field name="res_model">purchase.advance.accrual</field>
+        <field name="view_mode">tree,form</field>
+    <field name="groups_id" eval="[(4, ref('buz_advance_accounting.group_advance_accounting'))]"/>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="view_purchase_advance_accrual_tree" model="ir.ui.view">
+        <field name="name">purchase.advance.accrual.tree</field>
+        <field name="model">purchase.advance.accrual</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="date"/>
+                <field name="purchase_id"/>
+                <field name="move_id"/>
+                <field name="amount"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="exchange_rate" string="Rate" optional="show"/>
+                <field name="amount_thb" string="Amount (THB)" optional="show"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_purchase_advance_accrual_form" model="ir.ui.view">
+        <field name="name">purchase.advance.accrual.form</field>
+        <field name="model">purchase.advance.accrual</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="date"/>
+                            <field name="purchase_id"/>
+                            <field name="move_id"/>
+                            <field name="reversal_move_id"/>
+                        </group>
+                        <group>
+                            <field name="amount"/>
+                            <field name="currency_id"/>
+                            <field name="state"/>
+                        </group>
+                    </group>
+                    <group string="Exchange Rate Information" invisible="not exchange_rate">
+                        <group>
+                            <field name="exchange_rate" string="Exchange Rate (USD → THB)"/>
+                            <field name="amount_thb" string="Amount in THB"/>
+                            <field name="company_currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_reverse" type="object" string="Reversal" class="btn-secondary" invisible="[('state','!=','posted')]"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Add buttons to Purchase Order form using specific targeting -->
+    <record id="view_purchase_order_advance_buttons" model="ir.ui.view">
+        <field name="name">purchase.order.advance.buttons</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="priority" eval="99"/>
+        <field name="arch" type="xml">
+            <!-- Add smart buttons to button_box -->
+            <div name="button_box" position="inside">
+                <button class="oe_stat_button" type="object" name="action_open_advance_bill_wizard" icon="fa-plus" groups="buz_advance_accounting.group_advance_accounting">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Create Advance</span>
+                    </div>
+                </button>
+                <button class="oe_stat_button" type="object" name="action_open_advance_accruals" icon="fa-book" groups="buz_advance_accounting.group_advance_accounting">
+                    <field string="Advance Entries" name="advance_accrual_count" widget="statinfo"/>
+                </button>
+                <button class="oe_stat_button" type="object" name="action_reverse_all_advance_accruals" icon="fa-undo" groups="buz_advance_accounting.group_advance_accounting">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Reverse All</span>
+                    </div>
+                </button>
+            </div>
+            
+            <!-- Add tab for advance accruals -->
+            <notebook position="inside">
+                <page string="Advance Accruals">
+                    <field name="advance_accrual_ids" context="{'default_purchase_id': active_id}" readonly="1">
+                        <tree>
+                            <field name="date"/>
+                            <field name="name"/>
+                            <field name="move_id"/>
+                            <field name="amount"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="exchange_rate" string="Rate" optional="show"/>
+                            <field name="amount_thb" string="Amount (THB)" optional="show"/>
+                            <field name="state"/>
+                        </tree>
+                        <form>
+                            <group>
+                                <group>
+                                    <field name="purchase_id"/>
+                                    <field name="move_id"/>
+                                    <field name="reversal_move_id"/>
+                                </group>
+                                <group>
+                                    <field name="amount"/>
+                                    <field name="currency_id"/>
+                                    <field name="state"/>
+                                </group>
+                            </group>
+                            <group string="Exchange Rate" invisible="not exchange_rate">
+                                <field name="exchange_rate" string="Rate (USD → THB)"/>
+                                <field name="amount_thb" string="THB"/>
+                                <field name="company_currency_id" invisible="1"/>
+                            </group>
+                            <footer>
+                                <button name="action_reverse" type="object" string="Reversal" class="btn-secondary" invisible="[('state','!=','posted')]"/>
+                                <button string="Close" class="btn-secondary" special="cancel"/>
+                            </footer>
+                        </form>
+                    </field>
+                </page>
+            </notebook>
+        </field>
+    </record>
+</odoo>

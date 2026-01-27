@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- WHT Tax 3% for Services -->
+        <record id="wht_tax_service_3" model="account.tax">
+            <field name="name">WHT Service 3%</field>
+            <field name="type_tax_use">purchase</field>
+            <field name="amount_type">percent</field>
+            <field name="amount">-3</field>
+            <field name="description">WHT3</field>
+            <field name="sequence">1</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        
+        <!-- WHT Tax 5% for Rent -->
+        <record id="wht_tax_rent_5" model="account.tax">
+            <field name="name">WHT Rent 5%</field>
+            <field name="type_tax_use">purchase</field>
+            <field name="amount_type">percent</field>
+            <field name="amount">-5</field>
+            <field name="description">WHT5</field>
+            <field name="sequence">2</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        
+        <!-- WHT Tax 1% for Others -->
+        <record id="wht_tax_other_1" model="account.tax">
+            <field name="name">WHT Other 1%</field>
+            <field name="type_tax_use">purchase</field>
+            <field name="amount_type">percent</field>
+            <field name="amount">-1</field>
+            <field name="description">WHT1</field>
+            <field name="sequence">3</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+    </data>
+</odoo>

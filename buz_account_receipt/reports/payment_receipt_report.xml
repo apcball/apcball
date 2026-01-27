@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Paper Format for Payment Receipt -->
+    <record id="paperformat_account_receipt" model="report.paperformat">
+        <field name="name">Payment Receipt A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- Create our new report -->
+    <record id="action_report_buz_account_receipt" model="ir.actions.report">
+        <field name="name">ใบเสร็จรับเงิน / Payment Receipt</field>
+        <field name="model">account.receipt</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_account_receipt.report_buz_account_receipt</field>
+        <field name="report_file">buz_account_receipt.report_buz_account_receipt</field>
+        <field name="print_report_name">'Payment Receipt - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_account_receipt"/>
+        <field name="binding_model_id" ref="buz_account_receipt.model_account_receipt"/>
+        <field name="binding_type">report</field>
+    </record>
+    
+    <!-- Modify the binding of the original report -->
+    <function model="ir.actions.report" name="unlink_action">
+        <value eval="[ref('account.action_report_payment_receipt')]"/>
+    </function>
+</odoo>

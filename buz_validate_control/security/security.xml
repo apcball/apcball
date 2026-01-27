@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Create category for validate control -->
+        <record id="module_category_validate_control" model="ir.module.category">
+            <field name="name">Validate Control</field>
+            <field name="description">Control document validation permissions</field>
+            <field name="sequence">25</field>
+        </record>
+
+        <!-- Validate Privileged Group -->
+        <record id="group_validate_privileged" model="res.groups">
+            <field name="name">Validate Privileged</field>
+            <field name="category_id" ref="module_category_validate_control"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">Users who can validate/post documents</field>
+        </record>
+    </data>
+</odoo>

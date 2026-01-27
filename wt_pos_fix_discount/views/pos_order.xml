@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+	<record id="wt_view_pos_pos_form" model="ir.ui.view">
+		<field name="name">pos.order.form.wt.discount</field>
+		<field name="model">pos.order</field>
+		<field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+		<field name="arch" type="xml">
+			<field name="discount" position="after">
+				<field name="discount_percentage" readonly="1"/>
+				<field name="discount_fix" readonly="1"/>
+			</field>
+			<field name="discount" position="attributes">
+				<attribute name="column_invisible">1</attribute>
+			</field>
+		</field>
+	</record>
+	<record id="wt_view_pos_order_line" model="ir.ui.view">
+		<field name="name">pos.order.line.tree.wt.discount</field>
+		<field name="model">pos.order.line</field>
+		<field name="inherit_id" ref="point_of_sale.view_pos_order_line"/>
+		<field name="arch" type="xml">
+			<field name="discount" position="after">
+				<field name="discount_percentage" readonly="1"/>
+				<field name="discount_fix" readonly="1"/>
+			</field>
+			<field name="discount" position="attributes">
+				<attribute name="column_invisible">1</attribute>
+			</field>
+		</field>
+	</record>
+</odoo>

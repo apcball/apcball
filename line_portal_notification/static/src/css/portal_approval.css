@@ -1,0 +1,38 @@
+/* Portal Approval Styles */
+.o_portal_approval .card {
+    border-radius: 8px;
+}
+
+.o_portal_approval .card-header {
+    border-radius: 8px 8px 0 0;
+}
+
+.o_portal_approval .btn-lg {
+    min-width: 150px;
+}
+
+.o_portal_approval .table th {
+    font-weight: 600;
+}
+
+/* Success/Error page styling */
+.o_portal_approval_result .fa {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .o_portal_approval .btn-lg {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .o_portal_approval .d-flex.gap-3 {
+        flex-direction: column;
+    }
+}

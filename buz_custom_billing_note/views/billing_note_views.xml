@@ -1,57 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Custom List View for Invoice Selection -->
-    <record id="view_move_select_list" model="ir.ui.view">
-        <field name="name">account.move.select.list</field>
-        <field name="model">account.move</field>
-        <field name="arch" type="xml">
-            <tree string="Select Invoices" create="0" edit="0" delete="0" multi_edit="0">                <field name="company_id" invisible="1"/>                <field name="name"/>
-                <field name="partner_id"/>
-                <field name="invoice_date"/>
-                <field name="invoice_date_due"/>
-                <field name="amount_total"/>
-                <field name="amount_residual"/>
-                <field name="payment_state"/>                <field name="currency_id" invisible="1"/>
-                <field name="move_type" invisible="1"/>            </tree>
-        </field>
-    </record>
-
+    <!-- Tree View -->
     <record id="view_billing_note_tree" model="ir.ui.view">
         <field name="name">billing.note.tree</field>
         <field name="model">billing.note</field>
         <field name="arch" type="xml">
-            <tree>
+            <tree string="Billing Notes">
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="date"/>
-                <field name="due_date"/>
-                <field name="amount_total"/>
-                <field name="amount_paid"/>
-                <field name="amount_residual"/>
-                <field name="payment_state"/>
-                <field name="state"/>
-                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="due_date" widget="remaining_days" decoration-success="due_date &gt; context_today()" 
+                                     decoration-warning="due_date &gt;= context_today() and due_date &lt;= context_today() + relativedelta(days=7)"
+                                     decoration-danger="due_date &lt; context_today()"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="amount_residual" sum="Due"/>
+                <field name="payment_state" widget="badge" decoration-danger="payment_state == 'not_paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-success="payment_state == 'paid'"/>
+                <field name="state" widget="badge" decoration-primary="state == 'draft'" decoration-warning="state == 'confirm'" decoration-success="state == 'done'" decoration-danger="state == 'cancel'"/>
             </tree>
         </field>
     </record>
 
+    <!-- Form View -->
     <record id="view_billing_note_form" model="ir.ui.view">
         <field name="name">billing.note.form</field>
         <field name="model">billing.note</field>
         <field name="arch" type="xml">
-            <form>
+            <form string="Billing Note">
                 <header>
-                    <button name="action_confirm" string="Confirm" type="object" class="oe_highlight"
-                            invisible="state != 'draft'"/>
-                    <button name="action_done" string="Mark as Done" type="object" class="oe_highlight"
-                            invisible="state != 'confirm'"/>
-                    <button name="action_cancel" string="Cancel" type="object"
-                            invisible="state not in ('draft', 'confirm')"/>
-                    <button name="action_draft" string="Set to Draft" type="object"
-                            invisible="state != 'cancel'"/>
-                    <button name="action_register_payment" string="Register Payment" type="object" class="oe_highlight"
-                            invisible="state not in ('confirm', 'done') or payment_state == 'paid'"/>
-                    <field name="state" widget="statusbar"/>
+                    <button name="action_confirm" string="Confirm" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_done" string="Mark as Done" type="object" class="oe_highlight" invisible="state != 'confirm'"/>
+                    <button name="action_draft" string="Reset to Draft" type="object" invisible="state != 'confirm'"/>
+                    <button name="action_cancel" string="Cancel" type="object" invisible="state not in ('draft', 'confirm')"/>
+                    <button name="action_register_batch_payment" 
+                            string="Register Payment" 
+                            type="object" 
+                            class="oe_highlight"
+                            groups="account.group_account_invoice"
+                            invisible="state != 'confirm' or payment_state == 'paid'"
+                            context="{'default_payment_type': 'inbound' if note_type == 'receivable' else 'outbound',
+                                     'default_partner_type': 'customer' if note_type == 'receivable' else 'supplier'}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirm,done"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -59,25 +47,34 @@
                             <field name="name" readonly="1"/>
                         </h1>
                     </div>
-                    <group>
-                        <group>
-                            <field name="partner_id"/>
+                    <group col="2">
+                        <group string="Customer Information">
+                            <field name="partner_id" readonly="state != 'draft'"/>
+                            <field name="partner_delivery_address" readonly="0"/>
                             <field name="date"/>
                             <field name="due_date"/>
-                            <field name="days_before_due"/>
+                        </group>
+                        <group string="Sale &amp; Payment Info" col="2">
+                            <field name="sale_order_number" readonly="1"/>
+                            <field name="invoice_due_date" readonly="1"/>
+                            <field name="salesperson_name" readonly="1"/>
+                            <field name="payment_term_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="available_invoice_ids" invisible="1"/>
+                    <group>
+                        <group>
+                            <field name="note_type" readonly="state != 'draft'"/>
                         </group>
                         <group>
-                            <field name="note_type"/>
                             <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="currency_id" invisible="1"/>
-                            <field name="notification_sent" readonly="1"/>
+                            <field name="currency_id" groups="base.group_multi_currency"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Documents" name="documents">
-                            <field name="available_invoice_ids" invisible="1"/>
-                            <field name="invoice_ids" readonly="state != 'draft'" options="{'no_create': True, 'no_open': True}">
-                                <tree editable="bottom">
+                        <page string="Documents">
+                            <field name="invoice_ids" readonly="state != 'draft'">
+                                <tree>
                                     <field name="name"/>
                                     <field name="invoice_date"/>
                                     <field name="invoice_date_due"/>
@@ -86,32 +83,28 @@
                                     <field name="payment_state"/>
                                 </tree>
                             </field>
-                            <group class="oe_subtotal_footer">
-                                <field name="amount_total" widget="monetary"/>
-                                <field name="amount_paid" widget="monetary"/>
-                                <field name="amount_residual" widget="monetary" class="oe_subtotal_footer_separator"/>
-                                <field name="payment_state" widget="badge" 
-                                    decoration-success="payment_state == 'paid'"
-                                    decoration-warning="payment_state == 'partial'"
-                                    decoration-danger="payment_state == 'not_paid'"/>
+                            <group class="oe_subtotal_footer" name="billing_note_totals">
+                                <field name="amount_total" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
+                                <field name="amount_residual" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
+                                <field name="payment_state" class="oe_subtotal_footer_separator" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'not_paid'"/>
                             </group>
                         </page>
-                        <page string="Payments" name="payments" invisible="not payment_line_ids">
-                            <field name="payment_line_ids" readonly="1">
+                        <page string="Payments" invisible="1">
+                            <field name="payment_line_ids">
                                 <tree>
                                     <field name="payment_date"/>
-                                    <field name="name"/>
-                                    <field name="payment_method"/>
+                                    <field name="payment_id"/>
                                     <field name="amount"/>
-                                    <field name="notes"/>
                                 </tree>
                             </field>
                         </page>
-                        <page string="Other Information" name="other_info">
+                        <page string="Tracking Information">
                             <group>
-                                <group string="การติดตามเอกสาร">
+                                <group string="Messenger">
                                     <field name="messenger_sent_date"/>
                                     <field name="messenger_received_date"/>
+                                </group>
+                                <group string="AR/AP">
                                     <field name="ar_sent_date"/>
                                     <field name="ar_received_date"/>
                                     <field name="expected_payment_date"/>
@@ -132,21 +125,19 @@
         </field>
     </record>
 
+    <!-- Search View -->
     <record id="view_billing_note_search" model="ir.ui.view">
         <field name="name">billing.note.search</field>
         <field name="model">billing.note</field>
         <field name="arch" type="xml">
-            <search>
+            <search string="Search Billing Notes">
                 <field name="name"/>
                 <field name="partner_id"/>
-                <field name="date"/>
-                <field name="due_date"/>
+                <field name="note"/>
                 <separator/>
                 <filter string="Draft" name="draft" domain="[('state','=','draft')]"/>
-                <filter string="Confirmed" name="confirm" domain="[('state','=','confirm')]"/>
+                <filter string="Confirmed" name="confirmed" domain="[('state','=','confirm')]"/>
                 <filter string="Done" name="done" domain="[('state','=','done')]"/>
-                <filter string="Cancelled" name="cancel" domain="[('state','=','cancel')]"/>
-                <separator/>
                 <filter string="Not Paid" name="not_paid" domain="[('payment_state','=','not_paid')]"/>
                 <filter string="Partially Paid" name="partial" domain="[('payment_state','=','partial')]"/>
                 <filter string="Paid" name="paid" domain="[('payment_state','=','paid')]"/>
@@ -154,18 +145,18 @@
                     <filter string="Partner" name="partner" context="{'group_by':'partner_id'}"/>
                     <filter string="Status" name="status" context="{'group_by':'state'}"/>
                     <filter string="Payment Status" name="payment_status" context="{'group_by':'payment_state'}"/>
-                    <filter string="Date" name="date" context="{'group_by':'date'}"/>
-                    <filter string="Due Date" name="due_date" context="{'group_by':'due_date'}"/>
+                    <filter string="Month" name="month" context="{'group_by':'date:month'}"/>
                 </group>
             </search>
         </field>
     </record>
 
+    <!-- Action -->
     <record id="action_billing_note" model="ir.actions.act_window">
         <field name="name">Billing Notes</field>
         <field name="res_model">billing.note</field>
         <field name="view_mode">tree,form</field>
-        <field name="context">{'search_default_draft': 1}</field>
+        <field name="context">{}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Create your first billing note!
@@ -173,14 +164,21 @@
         </field>
     </record>
 
-    <menuitem id="menu_billing_note_root" 
+    <!-- Menu -->
+    <menuitem id="menu_billing_note_main" 
         name="Billing Notes"
-        parent="account.menu_finance"
-        sequence="4"/>
+        parent="account.menu_finance" 
+        sequence="5"/>
 
     <menuitem id="menu_billing_note" 
         name="Billing Notes"
-        parent="menu_billing_note_root"
-        action="action_billing_note"
+        parent="menu_billing_note_main" 
+        action="action_billing_note" 
         sequence="1"/>
+
+    <menuitem id="menu_billing_note_reporting" 
+        name="Reporting"
+        parent="menu_billing_note_main" 
+        sequence="99"/>
+
 </odoo>

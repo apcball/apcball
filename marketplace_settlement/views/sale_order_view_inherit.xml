@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add trade channel to sale order form view -->
+    <record id="view_sale_order_form_trade_channel" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.trade.channel</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Insert Trade Channel after the partner field -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="trade_channel"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Add trade channel to sale order tree view -->
+    <record id="view_sale_order_tree_trade_channel" model="ir.ui.view">
+        <field name="name">sale.order.tree.inherit.trade.channel</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="trade_channel" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

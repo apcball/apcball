@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+    Example: Backend Button for Purchase Order
+    ===========================================
+    
+    This shows how to add the "Send LINE Approval Request" button
+    to a form view. Adapt for your specific model.
+    
+    To use with Purchase Orders:
+    1. Add 'purchase' to depends in __manifest__.py
+    2. Uncomment the record below
+    3. Customize the attrs/invisible condition as needed
+    -->
+
+    <!--
+    <record id="purchase_order_form_line_approval" model="ir.ui.view">
+        <field name="name">purchase.order.form.line.approval</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_send_line_approval_request"
+                        string="Send LINE Approval Request"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state != 'to approve'"
+                        groups="line_portal_notification.group_line_notification_user"/>
+            </xpath>
+        </field>
+    </record>
+    -->
+
+    <!--
+    Generic Example for Custom Models
+    ==================================
+    
+    For your own models, create a view like this:
+    
+    <record id="your_model_form_line_approval" model="ir.ui.view">
+        <field name="name">your.model.form.line.approval</field>
+        <field name="model">your.model</field>
+        <field name="inherit_id" ref="your_module.your_model_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_send_line_approval_request"
+                        string="Send LINE Approval Request"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state != 'waiting_approval'"
+                        groups="line_portal_notification.group_line_notification_user"/>
+            </xpath>
+            
+            <xpath expr="//sheet" position="after">
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+    -->
+</odoo>

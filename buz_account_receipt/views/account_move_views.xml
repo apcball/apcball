@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit the invoice form to add a Create Receipt button -->
+    <record id="view_move_form_inherit_buz_create_receipt" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.buz.create.receipt</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="/form/header" position="inside">
+                <!-- Show button only for customer invoices/refunds and posted state -->
+                <!-- Odoo 17 removed attrs/states usage on views; use invisible attribute with expression -->
+                <button name="action_create_receipt_from_invoices" type="object"
+                        string="Create Receipt" class="btn btn-primary"
+                        invisible="context.get('default_move_type') not in ['out_invoice','out_refund'] or state != 'posted'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Also add the action to the list view (optional) -->
+    <record id="action_create_receipt_from_invoices_action" model="ir.actions.server">
+        <field name="name">Create Receipt</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="state">code</field>
+           <field name="code">moves = env[env.context.get('active_model')].browse(env.context.get('active_ids') or []); action = moves.action_create_receipt_from_invoices()</field>
+    </record>
+</odoo>

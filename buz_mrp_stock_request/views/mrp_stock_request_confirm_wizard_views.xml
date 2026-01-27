@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Confirmation Wizard Form View -->
+    <record id="view_mrp_stock_request_confirm_wizard_form" model="ir.ui.view">
+        <field name="name">mrp.stock.request.confirm.wizard.form</field>
+        <field name="model">mrp.stock.request.confirm.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Confirm Stock Request">
+                <group>
+                    <field name="request_id" readonly="1"/>
+                </group>
+                
+                <div class="alert alert-warning" role="alert">
+                    <strong>⚠️ Confirmation Required</strong><br/>
+                    Please review the transfer details below before confirming.
+                </div>
+                
+                <group string="Transfer Details">
+                    <group>
+                        <field name="location_id" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="location_dest_id" readonly="1"/>
+                    </group>
+                </group>
+                
+                <notebook>
+                    <page string="Materials to Transfer" name="materials">
+                        <field name="line_ids">
+                            <tree>
+                                <field name="product_id"/>
+                                <field name="uom_id"/>
+                                <field name="qty_requested"/>
+                            </tree>
+                        </field>
+                    </page>
+                    <page string="Summary" name="summary">
+                        <group>
+                            <field name="notes" readonly="1" nolabel="1"/>
+                        </group>
+                    </page>
+                </notebook>
+                
+                <footer>
+                    <button string="Confirm Transfer" name="action_confirm" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Confirmation Wizard Action -->
+    <record id="action_mrp_stock_request_confirm_wizard" model="ir.actions.act_window">
+        <field name="name">Confirm Stock Request</field>
+        <field name="res_model">mrp.stock.request.confirm.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

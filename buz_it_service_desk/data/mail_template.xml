@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Ticket Created Email Template -->
+        <record id="email_template_ticket_created" model="mail.template">
+            <field name="name">IT Ticket Created</field>
+            <field name="model_id" ref="model_it_ticket"/>
+            <field name="email_from">${object.requester_id.email_formatted | safe}</field>
+            <field name="subject">IT Ticket ${object.name}: ${object.subject}</field>
+            <field name="partner_to">${object.assigned_to_id.partner_id.id or ''}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="lang">${object.requester_id.lang}</field>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Hello ${object.assigned_to_id.name or 'IT Team'},</p>
+                    <p>A new IT ticket has been created:</p>
+                    <ul>
+                        <li><strong>Ticket Number:</strong> ${object.name}</li>
+                        <li><strong>Subject:</strong> ${object.subject}</li>
+                        <li><strong>Type:</strong> ${object.ticket_type}</li>
+                        <li><strong>Priority:</strong> ${object.priority}</li>
+                        <li><strong>Requester:</strong> ${object.requester_id.name}</li>
+                    </ul>
+                    <p><strong>Description:</strong></p>
+                    <p>${object.description}</p>
+                    <p>Please review and take appropriate action.</p>
+                    <p>Thank you,<br/>
+                    IT Service Desk</p>
+                </div>
+            </field>
+        </record>
+
+        <!-- Ticket Assigned Email Template -->
+        <record id="email_template_ticket_assigned" model="mail.template">
+            <field name="name">IT Ticket Assigned</field>
+            <field name="model_id" ref="model_it_ticket"/>
+            <field name="email_from">${object.requester_id.email_formatted | safe}</field>
+            <field name="subject">IT Ticket ${object.name} Assigned to You</field>
+            <field name="partner_to">${object.assigned_to_id.partner_id.id}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="lang">${object.assigned_to_id.lang}</field>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Hello ${object.assigned_to_id.name},</p>
+                    <p>Ticket ${object.name} has been assigned to you:</p>
+                    <ul>
+                        <li><strong>Subject:</strong> ${object.subject}</li>
+                        <li><strong>Type:</strong> ${object.ticket_type}</li>
+                        <li><strong>Priority:</strong> ${object.priority}</li>
+                        <li><strong>Requester:</strong> ${object.requester_id.name}</li>
+                    </ul>
+                    <p><strong>Description:</strong></p>
+                    <p>${object.description}</p>
+                    <p>Please review and take appropriate action.</p>
+                    <p>Thank you,<br/>
+                    IT Service Desk</p>
+                </div>
+            </field>
+        </record>
+
+        <!-- Service Request Approval Email Template -->
+        <record id="email_template_service_request_approval" model="mail.template">
+            <field name="name">Service Request Approval</field>
+            <field name="model_id" ref="model_it_service_request"/>
+            <field name="email_from">${object.requester_id.email_formatted | safe}</field>
+            <field name="subject">Service Request Approval Required - ${object.ticket_id.name}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="lang">${object.requester_id.lang}</field>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Hello,</p>
+                    <p>A service request requires your approval:</p>
+                    <ul>
+                        <li><strong>Ticket:</strong> ${object.ticket_id.name} - ${object.ticket_id.subject}</li>
+                        <li><strong>System:</strong> ${object.system_name}</li>
+                        <li><strong>Access Type:</strong> ${object.access_type}</li>
+                        <li><strong>Requester:</strong> ${object.requester_id.name}</li>
+                        <li><strong>Start Date:</strong> ${object.start_date}</li>
+                        <li><strong>End Date:</strong> ${object.end_date or 'Not specified'}</li>
+                    </ul>
+                    <p>Please review and approve or reject this request.</p>
+                    <p>Thank you,<br/>
+                    IT Service Desk</p>
+                </div>
+            </field>
+        </record>
+
+        <!-- Purchase Request Approval Email Template -->
+        <record id="email_template_purchase_request_approval" model="mail.template">
+            <field name="name">Purchase Request Approval</field>
+            <field name="model_id" ref="model_it_purchase_request"/>
+            <field name="email_from">${object.requester_id.email_formatted | safe}</field>
+            <field name="subject">Purchase Request Approval Required - ${object.ticket_id.name}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="lang">${object.requester_id.lang}</field>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Hello,</p>
+                    <p>A purchase request requires your approval:</p>
+                    <ul>
+                        <li><strong>Ticket:</strong> ${object.ticket_id.name} - ${object.ticket_id.subject}</li>
+                        <li><strong>Product:</strong> ${object.product_name}</li>
+                        <li><strong>Quantity:</strong> ${object.quantity}</li>
+                        <li><strong>Estimated Price:</strong> ${object.estimated_price}</li>
+                        <li><strong>Vendor:</strong> ${object.vendor or 'Not specified'}</li>
+                        <li><strong>Requester:</strong> ${object.requester_id.name}</li>
+                    </ul>
+                    <p><strong>Specification:</strong></p>
+                    <p>${object.specification or 'Not specified'}</p>
+                    <p>Please review and approve or reject this request.</p>
+                    <p>Thank you,<br/>
+                    IT Service Desk</p>
+                </div>
+            </field>
+        </record>
+
+        <!-- SLA Warning Email Template -->
+        <record id="email_template_sla_warning" model="mail.template">
+            <field name="name">SLA Warning</field>
+            <field name="model_id" ref="model_it_ticket"/>
+            <field name="email_from">${(object.assigned_to_id and object.assigned_to_id.email_formatted) or (object.company_id and object.company_id.email) or ''}</field>
+            <field name="subject">SLA Warning - Ticket ${object.name}</field>
+            <field name="partner_to">${object.assigned_to_id.partner_id.id or ''}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="lang">${object.assigned_to_id.lang or 'en_US'}</field>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Hello ${object.assigned_to_id.name or 'IT Team'},</p>
+                    <p>This is a warning that the following ticket is approaching its SLA deadline:</p>
+                    <ul>
+                        <li><strong>Ticket:</strong> ${object.name} - ${object.subject}</li>
+                        <li><strong>Priority:</strong> ${object.priority}</li>
+                        <li><strong>SLA Deadline:</strong> ${object.sla_deadline}</li>
+                        <li><strong>Requester:</strong> ${object.requester_id.name}</li>
+                    </ul>
+                    <p>Please take appropriate action to ensure the ticket is resolved within the SLA timeframe.</p>
+                    <p>Thank you,<br/>
+                    IT Service Desk</p>
+                </div>
+            </field>
+        </record>
+    </data>
+</odoo>

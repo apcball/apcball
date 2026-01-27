@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tax_undue_line_admin,tax.undue.line.admin,model_tax_undue_line,base.group_system,1,1,1,1
+access_tax_undue_line_manager,tax.undue.line.manager,model_tax_undue_line,account.group_account_manager,1,1,1,0
+access_tax_undue_line_user,tax.undue.line.user,model_tax_undue_line,account.group_account_user,1,1,1,0
+access_vat_undue_use_wizard,vat.undue.use.wizard,model_vat_undue_use_wizard,account.group_account_user,1,1,1,1
+access_vat_undue_diagnostic_wizard,vat.undue.diagnostic.wizard,model_vat_undue_diagnostic_wizard,account.group_account_user,1,1,1,1

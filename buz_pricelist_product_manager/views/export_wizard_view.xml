@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_export_pricelist_excel_form" model="ir.ui.view">
+        <field name="name">export.pricelist.excel.form</field>
+        <field name="model">export.pricelist.excel</field>
+        <field name="arch" type="xml">
+            <form string="Export Pricelist">
+                <group>
+                    <field name="pricelist_id" readonly="context.get('default_pricelist_id')"/>
+                    <field name="export_option"/>
+                    <field name="file_name" invisible="1"/>
+                    <field name="file_data" filename="file_name" readonly="1" invisible="not file_data"/>
+                </group>
+                <footer>
+                    <button name="action_export" string="Export" type="object" class="btn-primary" invisible="file_data"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_export_pricelist_excel" model="ir.actions.act_window">
+        <field name="name">Export Pricelist</field>
+        <field name="res_model">export.pricelist.excel</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_pricelist_product_matrix"/>
+        <field name="binding_view_types">list</field>
+    </record>
+</odoo>

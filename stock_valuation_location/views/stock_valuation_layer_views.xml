@@ -1,0 +1,91 @@
+<odoo>
+  <record id="view_stock_valuation_layer_form_inherit_loc" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.form.location</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="inherit_id" ref="stock_account.stock_valuation_layer_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='product_id']" position="after">
+        <field name="location_id" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="location_type" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="location_complete_name" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="view_stock_valuation_layer_tree_inherit_loc" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.tree.location</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="inherit_id" ref="stock_account.stock_valuation_layer_tree"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='product_id']" position="after">
+        <field name="location_id" optional="show" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="location_type" optional="hide" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="warehouse_id" optional="hide" groups="stock_valuation_location.group_stock_valuation_location_view_warehouse"/>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="view_stock_valuation_layer_search_inherit_loc" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.search.location</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="inherit_id" ref="stock_account.view_inventory_valuation_search"/>
+    <field name="arch" type="xml">
+      <xpath expr="//search" position="inside">
+        <field name="location_id" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="location_type" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="warehouse_id" groups="stock_valuation_location.group_stock_valuation_location_view_warehouse"/>
+        <separator/>
+        <filter string="Internal Location" name="filter_internal" domain="[('location_type', '=', 'internal')]" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <filter string="Transit Location" name="filter_transit" domain="[('location_type', '=', 'transit')]" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <filter string="Has Location" name="filter_has_location" domain="[('location_id', '!=', False)]" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <filter string="Group By Location Type" name="group_by_location_type" context="{'group_by':'location_type'}"/>
+        <filter string="Group By Warehouse" name="group_by_warehouse" context="{'group_by':'warehouse_id'}"/>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- Pivot View for Valuation Analysis by Location -->
+  <record id="view_stock_valuation_layer_pivot_location" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.pivot.location</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="arch" type="xml">
+      <pivot string="Stock Valuation by Location Analysis">
+        <field name="location_type" type="row" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="location_id" type="row" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="product_id" type="row"/>
+        <field name="company_id" type="col"/>
+        <field name="value" type="measure"/>
+        <field name="remaining_value" type="measure"/>
+        <field name="quantity" type="measure"/>
+        <field name="remaining_qty" type="measure"/>
+      </pivot>
+    </field>
+  </record>
+
+  <!-- Graph View for Valuation Visualization -->
+  <record id="view_stock_valuation_layer_graph_location" model="ir.ui.view">
+    <field name="name">stock.valuation.layer.graph.location</field>
+    <field name="model">stock.valuation.layer</field>
+    <field name="arch" type="xml">
+      <graph string="Stock Valuation by Location" type="bar">
+        <field name="location_id" groups="stock_valuation_location.group_stock_valuation_location_view_location"/>
+        <field name="remaining_value" type="measure"/>
+        <field name="remaining_qty" type="measure"/>
+      </graph>
+    </field>
+  </record>
+
+  <!-- Action for manual recompute -->
+  <record id="action_recompute_svl_location" model="ir.actions.server">
+    <field name="name">Recompute Location</field>
+    <field name="model_id" ref="stock_account.model_stock_valuation_layer"/>
+    <field name="binding_model_id" ref="stock_account.model_stock_valuation_layer"/>
+    <field name="binding_view_types">list</field>
+    <field name="state">code</field>
+    <field name="code">
+if records:
+    action = records.action_recompute_location()
+    </field>
+  </record>
+
+</odoo>

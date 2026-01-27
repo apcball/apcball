@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates id="template" xml:space="preserve">
+    
+    <!-- Base Chart Template -->
+    <t t-name="buz_warranty_management.DashboardChart" owl="1">
+        <div class="chart-container">
+            <div class="chart-canvas-container" style="height: 300px; position: relative;">
+                <canvas t-ref="canvasRef" 
+                        t-att-id="props.chartId or 'chart_' + props.id"
+                        style="width: 100%; height: 100%;"/>
+            </div>
+            <div class="chart-loading text-center p-4" t-if="state.loading">
+                <i class="fa fa-spinner fa-spin fa-2x text-primary"/> 
+                <p class="mt-2">Loading chart...</p>
+            </div>
+            <div class="chart-error alert alert-danger m-3" t-if="state.error">
+                <i class="fa fa-exclamation-triangle me-2"/> 
+                <strong>Error loading chart</strong>
+                <p class="mb-0 mt-2" t-if="state.errorMessage">
+                    <small t-esc="state.errorMessage"/>
+                </p>
+                <button class="btn btn-sm btn-outline-danger mt-2" 
+                        t-on-click="renderChart">
+                    <i class="fa fa-refresh me-1"/> Retry
+                </button>
+            </div>
+        </div>
+    </t>
+    
+    <!-- Pie Chart Template -->
+    <t t-name="buz_warranty_management.PieChart" owl="1">
+        <div class="chart-container pie-chart">
+            <div class="chart-canvas-container" style="height: 300px; position: relative;">
+                <canvas t-ref="canvasRef" 
+                        t-att-id="props.chartId or 'chart_' + props.id"
+                        style="width: 100%; height: 100%;"/>
+            </div>
+            <div class="chart-loading text-center p-4" t-if="state.loading">
+                <i class="fa fa-spinner fa-spin fa-2x text-primary"/>
+                <p class="mt-2">Loading...</p>
+            </div>
+            <div class="chart-error alert alert-danger m-3" t-if="state.error">
+                <i class="fa fa-exclamation-triangle"/> 
+                <strong>Error loading chart</strong>
+                <p class="mb-0 mt-2" t-if="state.errorMessage">
+                    <small t-esc="state.errorMessage"/>
+                </p>
+            </div>
+        </div>
+    </t>
+    
+    <!-- Line Chart Template -->
+    <t t-name="buz_warranty_management.LineChart" owl="1">
+        <div class="chart-container line-chart">
+            <div class="chart-canvas-container" style="height: 300px; position: relative;">
+                <canvas t-ref="canvasRef" 
+                        t-att-id="props.chartId or 'chart_' + props.id"
+                        style="width: 100%; height: 100%;"/>
+            </div>
+            <div class="chart-loading text-center p-4" t-if="state.loading">
+                <i class="fa fa-spinner fa-spin fa-2x text-primary"/>
+                <p class="mt-2">Loading...</p>
+            </div>
+            <div class="chart-error alert alert-danger m-3" t-if="state.error">
+                <i class="fa fa-exclamation-triangle"/> 
+                <strong>Error loading chart</strong>
+                <p class="mb-0 mt-2" t-if="state.errorMessage">
+                    <small t-esc="state.errorMessage"/>
+                </p>
+            </div>
+        </div>
+    </t>
+    
+    <!-- Bar Chart Template -->
+    <t t-name="buz_warranty_management.BarChart" owl="1">
+        <div class="chart-container bar-chart">
+            <div class="chart-canvas-container" style="height: 300px; position: relative;">
+                <canvas t-ref="canvasRef" 
+                        t-att-id="props.chartId or 'chart_' + props.id"
+                        style="width: 100%; height: 100%;"/>
+            </div>
+            <div class="chart-loading text-center p-4" t-if="state.loading">
+                <i class="fa fa-spinner fa-spin fa-2x text-primary"/>
+                <p class="mt-2">Loading...</p>
+            </div>
+            <div class="chart-error alert alert-danger m-3" t-if="state.error">
+                <i class="fa fa-exclamation-triangle"/> 
+                <strong>Error loading chart</strong>
+                <p class="mb-0 mt-2" t-if="state.errorMessage">
+                    <small t-esc="state.errorMessage"/>
+                </p>
+            </div>
+        </div>
+    </t>
+    
+    <!-- Chart Export Menu Template -->
+    <t t-name="buz_warranty_management.ChartExportMenu" owl="1">
+        <div class="chart-export-menu dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                    type="button" 
+                    data-bs-toggle="dropdown">
+                <i class="fa fa-download me-1"/> Export
+            </button>
+            
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item" href="#" t-on-click="exportAsPNG">
+                        <i class="fa fa-image me-2"/> Export as PNG
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="#" t-on-click="exportAsJPG">
+                        <i class="fa fa-image me-2"/> Export as JPG
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="#" t-on-click="exportAsPDF">
+                        <i class="fa fa-file-pdf-o me-2"/> Export as PDF
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"/></li>
+                <li>
+                    <a class="dropdown-item" href="#" t-on-click="exportDataAsCSV">
+                        <i class="fa fa-table me-2"/> Export Data (CSV)
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </t>
+    
+    <!-- Dashboard Filters Template -->
+    <t t-name="buz_warranty_management.DashboardFilters" owl="1">
+        <div class="dashboard-filters card bg-light mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fa fa-filter me-2"/> Dashboard Filters
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Date Range Filter -->
+                    <div class="col-md-3">
+                        <label class="form-label">Date Range:</label>
+                        <select class="form-select" t-model="state.dateRange">
+                            <option value="7">Last 7 Days</option>
+                            <option value="30">Last 30 Days</option>
+                            <option value="90">Last 3 Months</option>
+                            <option value="180">Last 6 Months</option>
+                            <option value="365">Last Year</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Custom Date Range -->
+                    <div class="col-md-3" t-if="state.dateRange === 'custom'">
+                        <label class="form-label">Start Date:</label>
+                        <input type="date" class="form-control" t-model="state.customStartDate"/>
+                    </div>
+                    
+                    <div class="col-md-3" t-if="state.dateRange === 'custom'">
+                        <label class="form-label">End Date:</label>
+                        <input type="date" class="form-control" t-model="state.customEndDate"/>
+                    </div>
+                    
+                    <!-- Product Filter -->
+                    <div class="col-md-3">
+                        <label class="form-label">Products:</label>
+                        <select class="form-select" multiple="true" t-model="state.productIds">
+                            <option value="">All Products</option>
+                            <t t-foreach="availableProducts" t-as="product" t-key="product.id">
+                                <option t-att-value="product.id" t-esc="product.display_name"/>
+                            </t>
+                        </select>
+                    </div>
+                    
+                    <!-- Customer Filter -->
+                    <div class="col-md-3">
+                        <label class="form-label">Customers:</label>
+                        <select class="form-select" multiple="true" t-model="state.customerIds">
+                            <option value="">All Customers</option>
+                            <t t-foreach="availableCustomers" t-as="customer" t-key="customer.id">
+                                <option t-att-value="customer.id" t-esc="customer.display_name"/>
+                            </t>
+                        </select>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="col-md-3 d-flex align-items-end">
+                        <div class="btn-group w-100">
+                            <button class="btn btn-primary" t-on-click="applyFilters">
+                                <i class="fa fa-filter me-1"/> Apply
+                            </button>
+                            <button class="btn btn-secondary" t-on-click="resetFilters">
+                                <i class="fa fa-refresh me-1"/> Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+    
+    <!-- Time Range Selector Template -->
+    <t t-name="buz_warranty_management.TimeRangeSelector" owl="1">
+        <div class="time-range-selector">
+            <div class="btn-group" role="group">
+                <t t-foreach="state.presetRanges" t-as="preset" t-key="preset.value">
+                    <button type="button" 
+                            class="btn btn-outline-primary"
+                            t-att-class="state.selectedRange === preset.value ? 'active' : ''"
+                            t-on-click="() => { state.selectedRange = preset.value; onTimeRangeChange(); }">
+                        <t t-esc="preset.label"/>
+                    </button>
+                </t>
+            </div>
+            
+            <div class="custom-range mt-2" t-if="state.selectedRange === 'custom'">
+                <div class="row">
+                    <div class="col-md-5">
+                        <label class="form-label">Start Date:</label>
+                        <input type="date" class="form-control" t-model="state.customStart"/>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">End Date:</label>
+                        <input type="date" class="form-control" t-model="state.customEnd"/>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-primary" t-on-click="onTimeRangeChange">Apply</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+    
+</templates>

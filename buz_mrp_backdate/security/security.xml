@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Security Group for MRP Backdate -->
+        <record id="group_mrp_backdate" model="res.groups">
+            <field name="name">MRP Backdate</field>
+            <field name="category_id" ref="base.module_category_manufacturing"/>
+            <field name="comment">Users with this access right can backdate Manufacturing Orders.</field>
+            <field name="implied_ids" eval="[(4, ref('mrp.group_mrp_user'))]"/>
+        </record>
+    </data>
+</odoo>

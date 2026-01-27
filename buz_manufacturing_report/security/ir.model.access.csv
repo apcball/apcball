@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_manufacturing_report_user,manufacturing.report.user,model_manufacturing_report,mrp.group_mrp_user,1,1,1,0
+access_manufacturing_report_manager,manufacturing.report.manager,model_manufacturing_report,mrp.group_mrp_manager,1,1,1,1
+access_manufacturing_report_wizard_user,manufacturing.report.wizard.user,model_manufacturing_report_wizard,mrp.group_mrp_user,1,1,1,0
+access_manufacturing_report_wizard_manager,manufacturing.report.wizard.manager,model_manufacturing_report_wizard,mrp.group_mrp_manager,1,1,1,1

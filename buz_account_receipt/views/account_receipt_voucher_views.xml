@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- AR Receipt Voucher Views -->
+    
+    <!-- Action for Receipt Voucher -->
+    <record id="action_account_receipt_voucher_tree" model="ir.actions.act_window">
+        <field name="name">Receipt Vouchers</field>
+        <field name="res_model">account.receipt.voucher</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new receipt voucher
+            </p>
+        </field>
+    </record>
+
+    <!-- Tree View for Receipt Voucher -->
+    <record id="view_account_receipt_voucher_tree" model="ir.ui.view">
+        <field name="name">account.receipt.voucher.tree</field>
+        <field name="model">account.receipt.voucher</field>
+        <field name="arch" type="xml">
+            <tree string="Receipt Vouchers">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="amount_total"/>
+                <field name="payment_state" widget="badge" decoration-info="payment_state=='not_paid'" decoration-warning="payment_state=='partial'" decoration-success="payment_state=='paid'" decoration-danger="payment_state=='overpaid'"/>
+                <field name="state"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View for Receipt Voucher -->
+    <record id="view_account_receipt_voucher_form" model="ir.ui.view">
+        <field name="name">account.receipt.voucher.form</field>
+        <field name="model">account.receipt.voucher</field>
+        <field name="arch" type="xml">
+            <form string="Receipt Voucher">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm" 
+                            class="oe_highlight" 
+                            invisible="state != 'draft'"
+                            confirm="Are you sure you want to confirm this voucher? This will create and post all related payments."/>
+                    <button name="action_reset_to_draft" type="object" string="Reset to Draft" 
+                            class="oe_highlight" 
+                            invisible="state != 'confirmed'"
+                            confirm="Are you sure you want to reset this voucher to draft? This will cancel all related payments and journal entries."/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_related_payments" type="object" class="oe_stat_button" icon="fa-money">
+                            <field name="payment_count" string="Payments" widget="statinfo"/>
+                        </button>
+                        <button name="action_view_payments" type="object" class="oe_stat_button" icon="fa-pencil-square-o">
+                            <field name="amount_total" string="Total Amount" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" string="Receipt Voucher Number" class="oe_edit_only"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="date"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <!-- Payment Status and Amount Information -->
+                    <group col="4" colspan="4" name="payment_status_info" string="Payment Information" invisible="state == 'draft'">
+                        <group name="payment_status_group" string="Payment Status" colspan="2">
+                            <field name="payment_state" readonly="1" string="Payment Status" widget="badge" decoration-info="payment_state=='not_paid'" decoration-warning="payment_state=='partial'" decoration-success="payment_state=='paid'" decoration-danger="payment_state=='overpaid'"/>
+                        </group>
+                        <group name="payment_amounts" string="Amounts" colspan="2" col="2">
+                            <field name="amount_paid" readonly="1" string="Paid Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+                            <field name="amount_residual" readonly="1" string="Residual Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Receipt Lines">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="receipt_id" 
+                                           domain="[('state','=','posted')]"/>
+                                    <field name="partner_id" readonly="1"/>
+                                    <field name="amount_to_receive"/>
+                                    <field name="payment_state"/>
+                                    <button name="action_register_payment_line" type="object" string="Register Payment" icon="fa-credit-card"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Receipt Voucher Menu -->
+    <menuitem id="menu_buz_account_receipt_01" 
+              name="Receipt Vouchers" 
+              parent="account.menu_finance_receivables" 
+              action="action_account_receipt_voucher_tree"
+              sequence="20"/>
+
+</odoo>

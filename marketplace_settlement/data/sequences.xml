@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Sequence for Marketplace Vendor Bills -->
+        <record id="seq_marketplace_vendor_bill" model="ir.sequence">
+            <field name="name">Marketplace Vendor Bill</field>
+            <field name="code">marketplace.vendor.bill</field>
+            <field name="prefix">MVB%(year)s</field>
+            <field name="suffix"></field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

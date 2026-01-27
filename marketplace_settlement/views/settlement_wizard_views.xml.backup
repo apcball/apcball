@@ -1,0 +1,68 @@
+<odoo>
+    <record id="view_marketplace_settlement_wizard_simple" model="ir.ui.view">
+        <field name="name">marketplace.settlement.wizard.simple.form</field>
+        <field name="model">marketplace.settlement.wizard.simple</field>
+        <field name="arch" type="xml">
+            <form string="Marketplace Settlement" create="false" edit="true">
+                    <group>
+                        <group>
+                            <field name="company_id" readonly="1"/>
+                            <field name="date"/>
+                            <field name="journal_id" options="{'no_create_edit': True}"/>
+                        </group>
+                    <group>
+                        <field name="marketplace_partner_id" options="{'no_create_edit': False}" placeholder="Shopee/Lazada partner"/>
+                        <field name="settlement_ref" placeholder="SHOPEE-SETT-YYYYMMDD"/>
+                        <field name="trade_channel"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                </group>
+                <separator string="Invoices to settle"/>
+                <field name="line_ids" context="{'default_currency_id': currency_id}" nolabel="1">
+                    <tree editable="bottom">
+                        <!-- dynamic domain filters invoice by wizard.trade_channel using parent.trade_channel -->
+                        <field name="invoice_id" string="Invoice" domain="[('move_type','in',['out_invoice','out_refund']), ('state','=','posted'), ('amount_residual','!=',0.0)]"/>
+                        <field name="partner_id" string="Customer" readonly="1"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="amount"/>
+                        <field name="residual_company" readonly="1"/>
+                    </tree>
+                </field>
+                
+                <!-- Deductions Section -->
+                <separator string="Deductions"/>
+                <group name="deductions">
+                    <group>
+                        <field name="fee_amount"/>
+                        <field name="fee_account_id" invisible="not fee_amount"/>
+                        <field name="vat_on_fee_amount"/>
+                        <field name="vat_account_id" invisible="not vat_on_fee_amount"/>
+                    </group>
+                    <group>
+                        <field name="wht_amount"/>
+                        <field name="wht_account_id" invisible="not wht_amount"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                </group>
+                    <footer>
+                    <button name="action_create_entry" type="object" class="btn-primary" string="Create Settlement Entry &amp; Reconcile"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action Window to open wizard -->
+    <record id="action_marketplace_settlement_wizard_simple" model="ir.actions.act_window">
+        <field name="name">Marketplace Settlement (Simple)</field>
+        <field name="res_model">marketplace.settlement.wizard.simple</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'active_model': 'account.move', 'default_company_id': company_id}</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_view_types">list</field>
+    </record>
+
+    <!-- Menu definitions moved to marketplace_settlement_wizard_views.xml to centralize menu layout -->
+</odoo>

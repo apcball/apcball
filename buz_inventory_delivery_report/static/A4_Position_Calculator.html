@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A4 Position Calculator - คำนวณตำแหน่งบนกระดาษ A4</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        
+        .calculator-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .calculator {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        .calculator h3 {
+            color: #2980b9;
+            margin-bottom: 15px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #34495e;
+            font-weight: 600;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #bdc3c7;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .result {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 15px;
+        }
+        
+        .reference-table {
+            margin-top: 30px;
+        }
+        
+        .reference-table h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        
+        th {
+            background: #3498db;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .dimensions {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .dimensions h2 {
+            color: #2980b9;
+            margin-bottom: 15px;
+        }
+        
+        .dim-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .dim-item {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .dim-label {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .dim-value {
+            color: #2c3e50;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .visual-guide {
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .a4-paper {
+            position: relative;
+            width: 397px;
+            height: 561px;
+            margin: 20px auto;
+            border: 2px solid #2c3e50;
+            background: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        
+        .corner-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+        }
+        
+        .corner-marker.tl {
+            top: 0;
+            left: 0;
+            border-top: 3px solid #e74c3c;
+            border-left: 3px solid #e74c3c;
+        }
+        
+        .corner-marker.tr {
+            top: 0;
+            right: 0;
+            border-top: 3px solid #e74c3c;
+            border-right: 3px solid #e74c3c;
+        }
+        
+        .corner-marker.bl {
+            bottom: 0;
+            left: 0;
+            border-bottom: 3px solid #e74c3c;
+            border-left: 3px solid #e74c3c;
+        }
+        
+        .corner-marker.br {
+            bottom: 0;
+            right: 0;
+            border-bottom: 3px solid #e74c3c;
+            border-right: 3px solid #e74c3c;
+        }
+        
+        .position-label {
+            position: absolute;
+            background: #f39c12;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .center-marker {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: #3498db;
+            border-radius: 50%;
+        }
+        
+        .alert {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border-left: 4px solid;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            border-color: #0c5460;
+            color: #0c5460;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border-color: #155724;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧮 A4 Position Calculator</h1>
+        <p class="subtitle">เครื่องมือคำนวณตำแหน่งบนกระดาษ A4 สำหรับ Dispatch Report</p>
+        
+        <div class="dimensions">
+            <h2>📏 A4 Page Dimensions / ขนาดกระดาษ A4</h2>
+            <div class="dim-grid">
+                <div class="dim-item">
+                    <div class="dim-label">Width / ความกว้าง</div>
+                    <div class="dim-value">794 px</div>
+                    <div class="dim-label">210 mm</div>
+                </div>
+                <div class="dim-item">
+                    <div class="dim-label">Height / ความสูง</div>
+                    <div class="dim-value">1123 px</div>
+                    <div class="dim-label">297 mm</div>
+                </div>
+                <div class="dim-item">
+                    <div class="dim-label">DPI</div>
+                    <div class="dim-value">96</div>
+                    <div class="dim-label">Screen Standard</div>
+                </div>
+                <div class="dim-item">
+                    <div class="dim-label">Conversion</div>
+                    <div class="dim-value">3.78</div>
+                    <div class="dim-label">1 mm = 3.78 px</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="calculator-section">
+            <div class="calculator">
+                <h3>📐 MM → Pixels</h3>
+                <div class="input-group">
+                    <label for="mmTop">ตำแหน่งบน (mm)</label>
+                    <input type="number" id="mmTop" placeholder="เช่น 35" oninput="convertMmToPx()">
+                </div>
+                <div class="input-group">
+                    <label for="mmLeft">ตำแหน่งซ้าย (mm)</label>
+                    <input type="number" id="mmLeft" placeholder="เช่น 60" oninput="convertMmToPx()">
+                </div>
+                <div class="result" id="mmResult">
+                    Top: - px | Left: - px
+                </div>
+            </div>
+            
+            <div class="calculator">
+                <h3>📐 Pixels → MM</h3>
+                <div class="input-group">
+                    <label for="pxTop">ตำแหน่งบน (px)</label>
+                    <input type="number" id="pxTop" placeholder="เช่น 132" oninput="convertPxToMm()">
+                </div>
+                <div class="input-group">
+                    <label for="pxLeft">ตำแหน่งซ้าย (px)</label>
+                    <input type="number" id="pxLeft" placeholder="เช่น 227" oninput="convertPxToMm()">
+                </div>
+                <div class="result" id="pxResult">
+                    Top: - mm | Left: - mm
+                </div>
+            </div>
+        </div>
+        
+        <div class="visual-guide">
+            <h2>🎯 Visual Position Guide</h2>
+            <p style="margin-bottom: 20px;">ภาพแสดงกระดาษ A4 ขนาด 50% พร้อมตำแหน่งสำคัญ</p>
+            <div class="a4-paper">
+                <div class="corner-marker tl"></div>
+                <div class="corner-marker tr"></div>
+                <div class="corner-marker bl"></div>
+                <div class="corner-marker br"></div>
+                
+                <div class="position-label" style="top: 5px; left: 25px;">0, 0</div>
+                <div class="position-label" style="top: 5px; right: 25px;">0, 794</div>
+                <div class="position-label" style="bottom: 5px; left: 25px;">1123, 0</div>
+                <div class="position-label" style="bottom: 5px; right: 25px;">1123, 794</div>
+                
+                <div class="center-marker"></div>
+                <div class="position-label" style="top: 50%; left: 50%; transform: translate(-50%, -120%);">Center: 561, 397</div>
+            </div>
+        </div>
+        
+        <div class="reference-table">
+            <h2>📋 Quick Reference Table / ตารางอ้างอิงด่วน</h2>
+            
+            <h3 style="margin-top: 20px;">MM to Pixels Conversion</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Millimeters (mm)</th>
+                        <th>Pixels (px)</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>5 mm</td><td>19 px</td><td>~0.5 cm</td></tr>
+                    <tr><td>10 mm</td><td>38 px</td><td>~1 cm</td></tr>
+                    <tr><td>25 mm</td><td>94 px</td><td>~2.5 cm</td></tr>
+                    <tr><td>50 mm</td><td>189 px</td><td>~5 cm</td></tr>
+                    <tr><td>75 mm</td><td>283 px</td><td>~7.5 cm</td></tr>
+                    <tr><td>100 mm</td><td>378 px</td><td>~10 cm</td></tr>
+                    <tr><td>150 mm</td><td>567 px</td><td>~15 cm</td></tr>
+                    <tr><td>200 mm</td><td>756 px</td><td>~20 cm</td></tr>
+                </tbody>
+            </table>
+            
+            <h3 style="margin-top: 20px;">Key Positions / ตำแหน่งสำคัญ</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Position</th>
+                        <th>Top (px)</th>
+                        <th>Left (px)</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Top Left / มุมซ้ายบน</td><td>0</td><td>0</td><td>จุดเริ่มต้น</td></tr>
+                    <tr><td>Top Right / มุมขวาบน</td><td>0</td><td>794</td><td>ขอบขวาบน</td></tr>
+                    <tr><td>Center / ตรงกลาง</td><td>561</td><td>397</td><td>จุดกึ่งกลาง</td></tr>
+                    <tr><td>Quarter Width / หนึ่งในสี่กว้าง</td><td>-</td><td>198</td><td>1/4 ของความกว้าง</td></tr>
+                    <tr><td>Half Width / ครึ่งกว้าง</td><td>-</td><td>397</td><td>กึ่งกลางแนวนอน</td></tr>
+                    <tr><td>Three Quarter Width</td><td>-</td><td>595</td><td>3/4 ของความกว้าง</td></tr>
+                    <tr><td>Quarter Height / หนึ่งในสี่สูง</td><td>281</td><td>-</td><td>1/4 ของความสูง</td></tr>
+                    <tr><td>Half Height / ครึ่งสูง</td><td>561</td><td>-</td><td>กึ่งกลางแนวตั้ง</td></tr>
+                    <tr><td>Bottom Left / มุมซ้ายล่าง</td><td>1123</td><td>0</td><td>ขอบล่างซ้าย</td></tr>
+                    <tr><td>Bottom Right / มุมขวาล่าง</td><td>1123</td><td>794</td><td>ขอบล่างขวา</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="alert alert-info">
+            <strong>💡 เคล็ดลับการใช้งาน:</strong><br>
+            1. วัดตำแหน่งจริงบนแบบฟอร์มเป็น mm<br>
+            2. ใส่ค่าใน Calculator ด้านบน<br>
+            3. นำค่า px ที่ได้ไปใส่ใน Odoo Configuration<br>
+            4. ใช้ Preview เช็คความถูกต้อง<br>
+            5. พิมพ์ทดสอบและปรับแต่งตามต้องการ
+        </div>
+        
+        <div class="alert alert-success">
+            <strong>✅ การตั้งค่าที่ถูกต้อง:</strong><br>
+            • Paper Size: A4 (210 × 297 mm)<br>
+            • DPI: 96 (standard screen)<br>
+            • Margins: 0 mm ทุกด้าน<br>
+            • Scaling: 100% / Actual Size<br>
+            • ไม่เลือก "Fit to Page" หรือ "Shrink to Fit"
+        </div>
+    </div>
+    
+    <script>
+        function convertMmToPx() {
+            const mmTop = parseFloat(document.getElementById('mmTop').value) || 0;
+            const mmLeft = parseFloat(document.getElementById('mmLeft').value) || 0;
+            
+            const pxTop = Math.round(mmTop * 3.78);
+            const pxLeft = Math.round(mmLeft * 3.78);
+            
+            document.getElementById('mmResult').textContent = 
+                `Top: ${pxTop} px | Left: ${pxLeft} px`;
+        }
+        
+        function convertPxToMm() {
+            const pxTop = parseFloat(document.getElementById('pxTop').value) || 0;
+            const pxLeft = parseFloat(document.getElementById('pxLeft').value) || 0;
+            
+            const mmTop = (pxTop / 3.78).toFixed(2);
+            const mmLeft = (pxLeft / 3.78).toFixed(2);
+            
+            document.getElementById('pxResult').textContent = 
+                `Top: ${mmTop} mm | Left: ${mmLeft} mm`;
+        }
+    </script>
+</body>
+</html>

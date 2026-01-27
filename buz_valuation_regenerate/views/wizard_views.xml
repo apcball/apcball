@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Valuation Regenerate Wizard Form View -->
+    <record id="view_valuation_regenerate_wizard_form" model="ir.ui.view">
+        <field name="name">valuation.regenerate.wizard.form</field>
+        <field name="model">valuation.regenerate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Re-Generate Valuation Layers">
+                <header>
+                    <button name="action_compute_plan" string="Compute Plan (Preview)" type="object" class="oe_highlight" />
+                    <button name="action_clear_selection" string="Clear Selection" type="object" class="btn-secondary" invisible="not product_ids"/>
+                    <button name="action_apply_regeneration" string="Apply Regeneration" type="object" 
+                            class="btn-danger" 
+                            invisible="dry_run"
+                            confirm="⚠️ WARNING: This will DELETE and RECREATE valuation layers and journal entries. This action cannot be easily undone. Are you absolutely sure?"/>
+                    <field name="dry_run" widget="boolean_toggle" string="Dry Run Mode (Preview Only)"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="mode"/>
+                        </group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="location_ids" widget="many2many_tags" placeholder="All locations (leave empty for all)"/>
+                    </group>
+                    <group invisible="not location_ids">
+                        <field name="auto_detect_products"/>
+                        <field name="check_missing_account_moves" invisible="not auto_detect_products"/>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Scope" name="scope">
+                            <group>
+                                <field name="product_ids" 
+                                       invisible="mode != 'product'"
+                                       required="mode == 'product'"/>
+                                <field name="categ_ids" 
+                                       invisible="mode != 'category'"
+                                       required="mode == 'category'"/>
+                                <field name="domain_str" 
+                                       invisible="mode != 'domain'"
+                                       required="mode == 'domain'"
+                                       placeholder="e.g. [('categ_id', '=', 1), ('type', '=', 'product')]" />
+                            </group>
+                        </page>
+                        
+                        <page string="Options" name="options">
+                            <group>
+                                <group>
+                                    <field name="rebuild_valuation_layers"/>
+                                    <field name="rebuild_account_moves"/>
+                                    <field name="include_landed_cost_layers"/>
+                                </group>
+                                <group>
+                                    <field name="recompute_cost_method"/>
+                                    <field name="post_new_moves"/>
+                                    <field name="force_rebuild_even_if_locked"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Preview" name="preview">
+                            <field name="line_preview_ids">
+                                <tree>
+                                    <field name="svl_id"/>
+                                    <field name="move_id"/>
+                                    <field name="product_id"/>
+                                    <field name="date"/>
+                                    <field name="old_value"/>
+                                    <field name="old_unit_cost"/>
+                                    <field name="description"/>
+                                </tree>
+                            </field>
+                        </page>
+                        
+                        <page string="Notes" name="notes">
+                            <field name="notes" placeholder="Enter any notes about this regeneration..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action to open the wizard -->
+    <record id="action_valuation_regenerate_wizard" model="ir.actions.act_window">
+        <field name="name">Re-Generate Valuation Layers</field>
+        <field name="res_model">valuation.regenerate.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="stock.model_product_product"/>
+    </record>
+</odoo>

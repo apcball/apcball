@@ -1,0 +1,47 @@
+<odoo>
+    <data>
+        <!-- Wizard Form View -->
+        <record id="view_vat_undue_diagnostic_wizard_form" model="ir.ui.view">
+            <field name="name">vat.undue.diagnostic.wizard.form</field>
+            <field name="model">vat.undue.diagnostic.wizard</field>
+            <field name="arch" type="xml">
+                <form string="VAT Undue Diagnostic">
+                    <sheet>
+                        <group>
+                            <field name="has_issues" invisible="1"/>
+                            <field name="move_ids" invisible="1"/>
+                        </group>
+                        
+                        <group string="🔍 ผลการตรวจสอบ">
+                            <field name="diagnostic_result" nolabel="1" widget="text"/>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button string="🔍 ตรวจสอบ" name="action_diagnose" type="object" class="btn-primary"/>
+                        <button string="📋 ดูรายการที่มีปัญหา" name="action_view_problematic_moves" 
+                                type="object" class="btn-secondary" invisible="not has_issues"/>
+                        <button string="🔧 แก้ไขปัญหาทั้งหมด" name="action_fix_issues" 
+                                type="object" class="btn-warning" invisible="not has_issues"
+                                confirm="คุณแน่ใจหรือไม่ที่จะยกเลิกและสร้าง Journal Entries ใหม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้"/>
+                        <button string="ปิด" special="cancel" class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Action to open wizard -->
+        <record id="action_vat_undue_diagnostic_wizard" model="ir.actions.act_window">
+            <field name="name">🔍 ตรวจสอบ VAT Undue</field>
+            <field name="res_model">vat.undue.diagnostic.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <!-- Menu item -->
+        <menuitem id="menu_vat_undue_diagnostic"
+                  name="🔍 ตรวจสอบ VAT Undue"
+                  parent="account.menu_finance_configuration"
+                  action="action_vat_undue_diagnostic_wizard"
+                  sequence="99"/>
+    </data>
+</odoo>

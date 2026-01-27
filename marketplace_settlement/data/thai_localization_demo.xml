@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Thai Localization Demo Data -->
+    
+    <!-- Demo Partner with Thai WHT Configuration -->
+    <record id="demo_partner_shopee_thailand" model="res.partner">
+        <field name="name">Shopee Thailand Co., Ltd.</field>
+        <field name="is_company" eval="True"/>
+        <field name="vat">0107537000019</field>
+        <field name="country_id" ref="base.th"/>
+        <field name="default_thai_income_tax_form">pnd3</field>
+        <field name="default_thai_wht_income_type">2</field>
+        <field name="is_thai_wht_enabled" eval="True"/>
+        <field name="supplier_rank">1</field>
+        <field name="customer_rank">1</field>
+    </record>
+
+    <record id="demo_partner_lazada_thailand" model="res.partner">
+        <field name="name">Lazada Thailand Co., Ltd.</field>
+        <field name="is_company" eval="True"/>
+        <field name="vat">0107536000018</field>
+        <field name="country_id" ref="base.th"/>
+        <field name="default_thai_income_tax_form">pnd3</field>
+        <field name="default_thai_wht_income_type">2</field>
+        <field name="is_thai_wht_enabled" eval="True"/>
+        <field name="supplier_rank">1</field>
+        <field name="customer_rank">1</field>
+    </record>
+
+    <!-- Demo Settlement Profile with Thai Configuration -->
+    <record id="demo_profile_thai_marketplace" model="marketplace.settlement.profile">
+        <field name="name">Thai Marketplace</field>
+        <field name="trade_channel">shopee</field>
+        <field name="marketplace_partner_id" ref="demo_partner_shopee_thailand"/>
+        <field name="invoice_pattern">SH-TH</field>
+        <field name="receipt_pattern">REC-SH</field>
+    </record>
+
+    <record id="demo_profile_lazada_thai" model="marketplace.settlement.profile">
+        <field name="name">Lazada Thailand</field>
+        <field name="trade_channel">lazada</field>
+        <field name="marketplace_partner_id" ref="demo_partner_lazada_thailand"/>
+        <field name="invoice_pattern">LZ-TH</field>
+        <field name="receipt_pattern">REC-LZ</field>
+    </record>
+
+</odoo>

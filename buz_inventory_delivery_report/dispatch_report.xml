@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Paper Format for delivery document Reports -->
+    <record id="paperformat_dispatch_report" model="report.paperformat">
+        <field name="name">Dispatch Report Letter</field>
+        <field name="default" eval="True"/>
+        <field name="format">Letter</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">6</field>
+        <field name="margin_right">6</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+    <template id="dispatch_report_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="text-center">
+                            <img t-att-src="'/buz_inventory_delivery_report/static/src/img/Dispatch_Report.jpg'" style="max-width: 100%;"/>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+
+    <record id="action_distributor_delivery_export" model="ir.actions.report">
+        <field name="name">ใบจ่ายสินค้า</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_inventory_delivery_report.dispatch_report_document</field>
+        <field name="report_file">buz_inventory_delivery_report.dispatch_report_document</field>
+        <field name="print_report_name">'Delivery Report - %s' % object.name</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_dispatch_report"/>
+    </record>
+</odoo>

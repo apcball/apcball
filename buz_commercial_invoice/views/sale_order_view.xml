@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Sale Order Form View - Add Commercial Invoice Tab -->
+    <record id="view_order_form_inherit_commercial_invoice" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.commercial.invoice</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Commercial Invoice Tab -->
+            <xpath expr="//page[1]" position="after">
+                <page id="commercial_invoice_tab" string="Commercial Invoice">
+                    <group>
+                        <group name="commercial_invoice_main">
+                            <field name="commercial_invoice_enabled"/>
+                            <field name="commercial_invoice_number" readonly="1"/>
+                        </group>
+                        <group name="commercial_invoice_details">
+                            <field name="incoterms_id"/>
+                            <field name="loading_date"/>
+                            <field name="shipping_mark"/>
+                            <field name="shipping_by"/>
+                            <field name="bank_info"/>
+                        </group>
+                    </group>
+                    <separator string="Generated Amount"/>
+                    <group>
+                        <field name="amount_text" readonly="1"/>
+                    </group>
+                    <!-- Print Button -->
+                    <group>
+                        <button name="action_print_commercial_invoice" 
+                                type="object" 
+                                string="Print Commercial Invoice" 
+                                class="btn-primary"
+                                invisible="not commercial_invoice_enabled"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Sale Order List View - Add Commercial Invoice Number Column -->
+    <record id="view_order_tree_inherit_commercial_invoice" model="ir.ui.view">
+        <field name="name">sale.order.tree.inherit.commercial.invoice</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="commercial_invoice_number"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

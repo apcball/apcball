@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_etax_config_manager,etax.config.manager,model_etax_config,account.group_account_manager,1,1,1,1
+access_etax_config_user,etax.config.user,model_etax_config,account.group_account_user,1,0,0,0
+access_etax_transaction_manager,etax.transaction.manager,model_etax_transaction,account.group_account_manager,1,1,1,1
+access_etax_transaction_user,etax.transaction.user,model_etax_transaction,account.group_account_user,1,1,1,0
+access_etax_transaction_line_manager,etax.transaction.line.manager,model_etax_transaction_line,account.group_account_manager,1,1,1,1
+access_etax_transaction_line_user,etax.transaction.line.user,model_etax_transaction_line,account.group_account_user,1,1,1,1

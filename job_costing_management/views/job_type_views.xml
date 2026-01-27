@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Job Type Tree View -->
+        <record id="view_job_type_tree" model="ir.ui.view">
+            <field name="name">job.type.tree</field>
+            <field name="model">job.type</field>
+            <field name="arch" type="xml">
+                <tree string="Job Types">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="description"/>
+                    <field name="project_count"/>
+                    <field name="active"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Job Type Form View -->
+        <record id="view_job_type_form" model="ir.ui.view">
+            <field name="name">job.type.form</field>
+            <field name="model">job.type</field>
+            <field name="arch" type="xml">
+                <form string="Job Type">
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_view_projects" type="object"
+                                    class="oe_stat_button" icon="fa-building">
+                                <field name="project_count" widget="statinfo" string="Projects"/>
+                            </button>
+                        </div>
+                        <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" 
+                                invisible="active"/>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="sequence"/>
+                                <field name="active"/>
+                            </group>
+                            <group>
+                                <field name="color" widget="color"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="description"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Job Type Kanban View -->
+        <record id="view_job_type_kanban" model="ir.ui.view">
+            <field name="name">job.type.kanban</field>
+            <field name="model">job.type</field>
+            <field name="arch" type="xml">
+                <kanban>
+                    <field name="name"/>
+                    <field name="description"/>
+                    <field name="project_count"/>
+                    <field name="color"/>
+                    <templates>
+                        <t t-name="kanban-box">
+                            <div t-attf-class="oe_kanban_color_#{kanban_getcolor(record.color.raw_value)} oe_kanban_card oe_kanban_global_click">
+                                <div class="oe_kanban_content">
+                                    <div class="oe_kanban_details">
+                                        <strong><field name="name"/></strong>
+                                        <div t-if="record.description.value">
+                                            <field name="description"/>
+                                        </div>
+                                        <div class="oe_kanban_bottom_right">
+                                            <span class="badge badge-secondary">
+                                                <field name="project_count"/> Projects
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- Job Type Action -->
+        <record id="action_job_type" model="ir.actions.act_window">
+            <field name="name">Job Types</field>
+            <field name="res_model">job.type</field>
+            <field name="view_mode">tree,form,kanban</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first job type!
+                </p>
+                <p>
+                    Job types help you categorize different kinds of work 
+                    your company performs (Construction, Electrical, Plumbing, etc.).
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

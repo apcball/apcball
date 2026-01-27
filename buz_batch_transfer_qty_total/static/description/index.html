@@ -1,0 +1,43 @@
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <div class="oe_span12">
+            <h2 class="oe_slogan">Batch Transfer Quantity Total</h2>
+            <p class="oe_mt32">
+                This module adds a total quantity field to batch transfers in Odoo 17, 
+                providing users with a quick overview of the total quantity of all products within a batch.
+            </p>
+        </div>
+    </div>
+</section>
+
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <div class="oe_span12">
+            <h3>Key Features</h3>
+            <ul class="oe_mt16">
+                <li>Displays the total quantity of all products in a batch transfer</li>
+                <li>Shows the total in the form view under a "Summary" section</li>
+                <li>Adds a summary column in the tree/list view</li>
+                <li>Displays total quantity in the kanban view</li>
+                <li>Uses quantity_done if available, otherwise falls back to product_uom_qty</li>
+                <li>Excludes cancelled transfers from the total calculation</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <div class="oe_span12">
+            <h3>Technical Details</h3>
+            <p class="oe_mt32">
+                The module extends the <code>stock.picking.batch</code> model with a new computed field 
+                <code>total_qty</code> that calculates the sum of all quantities from transfers within a batch.
+            </p>
+            <p>
+                The calculation uses <code>quantity_done</code> if available, otherwise falls back to 
+                <code>product_uom_qty</code>, and excludes cancelled transfers.
+            </p>
+        </div>
+    </div>
+</section>

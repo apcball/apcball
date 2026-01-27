@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Search View -->
+    <record id="view_tax_undue_line_search" model="ir.ui.view">
+        <field name="name">tax.undue.line.search</field>
+        <field name="model">tax.undue.line</field>
+        <field name="arch" type="xml">
+            <search string="Tax Undue Search">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="tax_invoice_date"/>
+                <field name="move_id"/>
+                <filter string="Undue" name="filter_undue" domain="[('state', '=', 'undue')]"/>
+                <filter string="Refund" name="filter_refund" domain="[('state', '=', 'refund')]"/>
+                <filter string="Used" name="filter_used" domain="[('state', '=', 'used')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Partner" name="group_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Tax Invoice Date" name="group_date" context="{'group_by': 'tax_invoice_date'}"/>
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Tree View -->
+    <record id="view_tax_undue_line_tree" model="ir.ui.view">
+        <field name="name">tax.undue.line.tree</field>
+        <field name="model">tax.undue.line</field>
+        <field name="arch" type="xml">
+            <tree string="Tax Undue Lines" create="false" edit="false" decoration-muted="state == 'used'">
+                <field name="currency_id" column_invisible="True"/>
+                <field name="move_id"/>
+                <field name="name"/>
+                <field name="tax_invoice_date"/>
+                <field name="partner_id"/>
+                <field name="tax_id"/>
+                <field name="account_id" optional="hide"/>
+                <field name="tax_rate" optional="hide"/>
+                <field name="tax_base" sum="Total Tax Base"/>
+                <field name="tax_amount" sum="Total Tax Amount"/>
+                <field name="used_tax_amount" optional="hide" sum="Total Used Tax Amount"/>
+                <field name="remaining_tax_amount" sum="Total Remaining Tax Amount"/>
+                <field name="state" widget="badge" decoration-success="state == 'used'" decoration-warning="state == 'undue'" decoration-info="state == 'refund'"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Server Action for Batch Usage -->
+    <record id="action_server_use_vat" model="ir.actions.server">
+        <field name="name">Use VAT</field>
+        <field name="model_id" ref="model_tax_undue_line"/>
+        <field name="binding_model_id" ref="model_tax_undue_line"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="groups_id" eval="[(4, ref('account.group_account_manager'))]"/>
+        <field name="code">
+            action = records.action_use_vat()
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_tax_undue_line" model="ir.actions.act_window">
+        <field name="name">Taxes Undue</field>
+        <field name="res_model">tax.undue.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_filter_undue': 1}</field>
+    </record>
+</odoo>

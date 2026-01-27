@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- 
+        Sample configuration for VAT Undue Tax.
+        This file is a placeholder. You should configure the tax in the UI or via a Chart Template.
+        -->
+    </data>
+</odoo>

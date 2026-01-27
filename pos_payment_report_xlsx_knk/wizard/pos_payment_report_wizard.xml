@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_pos_payment_report_wizard" model="ir.ui.view">
+        <field name="name">pos.payment.report.wizard.form</field>
+        <field name="model">pos.payment.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="POS Payment Report">
+                <group>
+                    <field name="date_start" />
+                    <field name="date_end" />
+                    <field name="payment_method_ids" widget="many2many_tags" />
+                    <field name="generated_xlsx_file" invisible="1" />
+                </group>
+                <form class="o_form_label oe_bold">If you don't specify a date range, the report will be generated using all available data up to the present, and same logic will be applicable for payment method.</form>
+                <footer>
+                    <button name="action_generate_xlsx_report" type="object" string="Download XLSX" class="btn-primary" />
+                    <button string="Cancel" class="btn-secondary" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_pos_payment_report_wizard" model="ir.actions.act_window">
+        <field name="name">POS Payment Report</field>
+        <field name="res_model">pos.payment.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <menuitem id="menu_pos_payment_report_wizard" name="POS Payment Report" action="action_pos_payment_report_wizard" parent="point_of_sale.menu_point_rep" groups="point_of_sale.group_pos_manager" sequence="5" />
+</odoo>

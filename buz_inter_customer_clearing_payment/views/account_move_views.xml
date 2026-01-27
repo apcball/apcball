@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Account Move Form View - Add Clearing Information -->
+    <record id="view_move_form_inherit_clearing" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.clearing</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_date_due']" position="after">
+                <field name="clearing_payment_amount" invisible="clearing_payment_amount == 0"/>
+            </xpath>
+            
+            <xpath expr="//notebook" position="inside">
+                <page string="Clearing Payments" invisible="not clearing_payment_ids">
+                    <field name="clearing_payment_ids">
+                        <tree>
+                            <field name="payment_id"/>
+                            <field name="clearing_move_id"/>
+                            <field name="amount"/>
+                            <field name="date"/>
+                            <field name="paying_partner_id"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Account Payment Form View - Add Clearing Information -->
+    <record id="view_payment_form_inherit_clearing" model="ir.ui.view">
+        <field name="name">account.payment.form.inherit.clearing</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='payment_type']" position="after">
+                <field name="is_clearing_payment" invisible="1"/>
+            </xpath>
+            
+            <xpath expr="//group[@name='group2']" position="inside">
+                <field name="clearing_advance_amount" invisible="not is_clearing_payment"/>
+            </xpath>
+            
+            <xpath expr="//notebook" position="inside">
+                <page string="Clearing Links" invisible="not clearing_payment_ids">
+                    <field name="clearing_payment_ids">
+                        <tree>
+                            <field name="invoice_id"/>
+                            <field name="clearing_move_id"/>
+                            <field name="amount"/>
+                            <field name="date"/>
+                            <field name="invoice_partner_id"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

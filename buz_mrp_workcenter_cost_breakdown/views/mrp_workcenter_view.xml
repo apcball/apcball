@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_workcenter_form_inherit_cost_breakdown" model="ir.ui.view">
+        <field name="name">mrp.workcenter.form.cost.breakdown</field>
+        <field name="model">mrp.workcenter</field>
+        <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Costing Information" name="costing_information">
+                    <group string="Cost Breakdown per Hour">
+                        <group>
+                            <field name="dl_per_hour" 
+                                   help="Direct Labor cost per hour for this work center"/>
+                            <field name="idl_per_hour" 
+                                   help="Indirect Labor cost per hour for this work center"/>
+                            <field name="oh_per_hour" 
+                                   help="Overhead cost per hour for this work center"/>
+                        </group>
+                        <group>
+                            <field name="costs_hour" 
+                                   readonly="1" 
+                                   widget="monetary" 
+                                   options="{'currency_field': 'currency_id'}"
+                                   class="oe_highlight"
+                                   help="Total cost per hour (DL + IDL + OH)"/>
+                        </group>
+                    </group>
+                    <group string="Cost Calculation Summary">
+                        <div class="alert alert-info">
+                            <strong>Cost per Hour Formula:</strong> DL per Hour + IDL per Hour + OH per Hour = Total Cost per Hour
+                        </div>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Enhanced Kanban Card Template for Odoo 17 -->
+    <t t-name="buz_stock_current_report.KanbanCard">
+        <div class="oe_kanban_card oe_kanban_global_click">
+            <div class="o_kanban_record_top">
+                <div class="o_kanban_record_headings">
+                    <strong class="o_kanban_record_title">
+                        <field name="product_id"/>
+                    </strong>
+                    <div class="o_kanban_record_subtitle text-muted">
+                        <field name="location_id"/>
+                    </div>
+                </div>
+            </div>
+            <div class="o_kanban_record_body">
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Qty:</strong> 
+                        <span class="stock-quantity">
+                            <field name="quantity" widget="float" digits="[16,2]"/>
+                        </span>
+                    </div>
+                    <div class="col-6">
+                        <strong>Value:</strong> <field name="total_value" widget="monetary"/>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-12">
+                        <small class="text-muted">
+                            Unit Cost: <field name="unit_cost" widget="monetary"/>
+                            <span class="float-end">
+                                <t t-if="record.incoming.raw_value > 0">
+                                    <span class="badge bg-info">+<field name="incoming"/></span>
+                                </t>
+                                <t t-if="record.outgoing.raw_value > 0">
+                                    <span class="badge bg-warning">-<field name="outgoing"/></span>
+                                </t>
+                            </span>
+                        </small>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-12">
+                        <button class="btn btn-sm btn-primary float-end" 
+                                name="action_view_product_moves" type="object">
+                            <i class="fa fa-arrows-alt"/> View Moves
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Dashboard Quick Filters Template for Odoo 17 -->
+    <t t-name="buz_stock_current_report.QuickFilters">
+        <div class="stock_quick_filters mb-3">
+            <h5>Quick Filters</h5>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary stock_quick_filter" 
+                        data-filter="low_stock" data-domain="[('quantity', '&lt;', 10)]"
+                        t-on-click="onQuickFilterClick">
+                    <i class="fa fa-exclamation-triangle"/> Low Stock
+                </button>
+                <button type="button" class="btn btn-outline-danger stock_quick_filter" 
+                        data-filter="out_of_stock" data-domain="[('quantity', '&lt;=', 0)]"
+                        t-on-click="onQuickFilterClick">
+                    <i class="fa fa-times-circle"/> Out of Stock
+                </button>
+                <button type="button" class="btn btn-outline-success stock_quick_filter" 
+                        data-filter="in_stock" data-domain="[('quantity', '&gt;', 0)]"
+                        t-on-click="onQuickFilterClick">
+                    <i class="fa fa-check-circle"/> In Stock
+                </button>
+            </div>
+            <div class="form-check mt-2">
+                <input type="checkbox" class="form-check-input stock_zero_qty_toggle" 
+                       id="showZeroQty" t-on-change="onZeroQtyToggle"/>
+                <label class="form-check-label" for="showZeroQty">
+                    Show Zero Quantity Items
+                </label>
+            </div>
+        </div>
+    </t>
+
+    <!-- Warehouse Hierarchy Template for Odoo 17 -->
+    <t t-name="buz_stock_current_report.WarehouseHierarchy">
+        <div class="warehouse-hierarchy">
+            <div class="warehouse-item" t-foreach="warehouses" t-as="warehouse" t-key="warehouse.id">
+                <div class="warehouse-header">
+                    <i class="fa fa-building"/> <t t-esc="warehouse.name"/>
+                    <span class="badge bg-primary float-end">
+                        <t t-esc="warehouse.location_count"/> locations
+                    </span>
+                </div>
+                <div class="location-list ms-3">
+                    <div class="location-item" t-foreach="warehouse.locations" t-as="location" t-key="location.id">
+                        <i class="fa fa-map-marker"/> <t t-esc="location.name"/>
+                        <span class="badge bg-info float-end">
+                            <t t-esc="location.product_count"/> products
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Stock Status Indicator Template for Odoo 17 -->
+    <t t-name="buz_stock_current_report.StatusIndicator">
+        <span t-attf-class="stock-status-indicator #{status_class}">
+            <i t-attf-class="fa #{status_icon}"/>
+            <t t-esc="status_text"/>
+        </span>
+    </t>
+
+    <!-- Enhanced Warehouse Sidebar Template -->
+    <t t-name="buz_stock_current_report.WarehouseSidebar">
+        <div class="warehouse-sidebar">
+            <div class="warehouse-sidebar-header">
+                <h5 class="mb-3">
+                    <i class="fa fa-building me-2"/>Warehouses &amp; Locations
+                </h5>
+                
+                <!-- Search Box -->
+                <div class="sidebar-search mb-3">
+                    <div class="input-group input-group-sm">
+                        <input type="text"
+                               class="form-control"
+                               placeholder="Search warehouses or locations..."
+                               t-model="state.searchTerm"/>
+                        <button class="btn btn-outline-secondary"
+                                type="button"
+                                t-on-click="refreshData"
+                                title="Refresh">
+                            <i class="fa fa-refresh"/>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Quick Filters -->
+                <div class="sidebar-filters mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               id="showOnlyWithStock"
+                               t-model="state.showOnlyWithStock"/>
+                        <label class="form-check-label" for="showOnlyWithStock">
+                            Show only with stock
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Clear Filters Button -->
+                <button class="btn btn-sm btn-outline-secondary w-100 mb-3"
+                        t-on-click="onClearFilters">
+                    <i class="fa fa-times me-1"/>Clear All Filters
+                </button>
+            </div>
+            
+            <!-- Loading State -->
+            <div t-if="state.loading" class="text-center p-4">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="mt-2">Loading warehouses...</div>
+            </div>
+            
+            <!-- Warehouse List -->
+            <div t-else="" class="warehouse-list">
+                <div t-if="this.filteredWarehouses.length === 0" class="text-center p-3 text-muted">
+                    <i class="fa fa-search fa-2x mb-2"/>
+                    <div>No warehouses found</div>
+                </div>
+                
+                <div t-foreach="this.filteredWarehouses" t-as="warehouse" t-key="warehouse.id"
+                     class="warehouse-item mb-3">
+                    
+                    <!-- Warehouse Header -->
+                    <div class="warehouse-header card">
+                        <div class="card-body p-2">
+                            <div class="d-flex justify-content-between align-items-center"
+                                 t-att-class="this.isWarehouseSelected(warehouse.id) ? 'text-primary' : ''"
+                                 t-on-click.stop="() => this.onWarehouseClick(warehouse)">
+                                <div class="d-flex align-items-center flex-grow-1">
+                                    <i t-att-class="this.isWarehouseExpanded(warehouse.id) ? 'fa fa-chevron-down me-2' : 'fa fa-chevron-right me-2'"
+                                       class="cursor-pointer text-muted"
+                                       t-on-click.stop="() => this.toggleWarehouse(warehouse.id)"/>
+                                    <div>
+                                        <strong class="d-block">
+                                            <i class="fa fa-building me-1"/>
+                                            <t t-esc="warehouse.name"/>
+                                        </strong>
+                                        <small class="text-muted" t-if="warehouse.code">
+                                            Code: <t t-esc="warehouse.code"/>
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="badge bg-primary rounded-pill">
+                                        <t t-esc="warehouse.location_count"/> locations
+                                    </div>
+                                    <div class="small text-muted mt-1">
+                                        <t t-esc="warehouse.total_products"/> products
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Warehouse Summary -->
+                            <div t-if="warehouse.total_value > 0" class="mt-2">
+                                <small class="text-muted">
+                                    Total Value:
+                                    <strong t-esc="this.formatMonetary(warehouse.total_value)"/>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Locations List -->
+                    <div t-if="this.isWarehouseExpanded(warehouse.id)" class="location-list ms-3 mt-2">
+                        <!-- Internal Locations Section -->
+                        <div class="location-section mb-3">
+                            <div class="location-type-header mb-2">
+                                <small class="text-muted fw-bold">
+                                    <i class="fa fa-home me-1"/>Internal Locations
+                                </small>
+                            </div>
+                            <div t-if="warehouse.internal_locations.length === 0" class="text-center p-3 text-muted bg-light rounded">
+                                <small>No internal locations found</small>
+                            </div>
+                            
+                            <div t-foreach="warehouse.internal_locations" t-as="location" t-key="location.id"
+                                 class="location-item mb-2">
+                                <div class="card border-0 bg-light">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex justify-content-between align-items-center"
+                                             t-att-class="this.isLocationSelected(location.id) ? 'bg-success text-white rounded' : ''"
+                                             t-on-click.stop="() => this.onLocationClick(location)">
+                                            <div class="d-flex align-items-center flex-grow-1">
+                                                <i t-att-class="this.getLocationTypeIcon(location.usage) + ' me-2 text-muted'"/>
+                                                <div>
+                                                    <div class="fw-bold">
+                                                        <t t-esc="location.name"/>
+                                                    </div>
+                                                    <small class="text-muted" t-if="!this.isLocationSelected(location.id)">
+                                                        <t t-esc="location.complete_name"/>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="badge bg-info rounded-pill">
+                                                    <t t-esc="location.product_count"/> products
+                                                </div>
+                                                <div class="small mt-1">
+                                                    <span t-att-class="this.getStockStatusClass(location.total_quantity)">
+                                                        Qty: <t t-esc="this.formatQuantity(location.total_quantity)"/>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Location Value -->
+                                        <div t-if="location.total_value > 0" class="mt-2">
+                                            <small class="text-muted">
+                                                Value: <strong t-esc="this.formatMonetary(location.total_value)"/>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Transit Locations Section -->
+                        <div t-if="warehouse.transit_locations and warehouse.transit_locations.length > 0"
+             class="transit-location-list mb-3">
+            <div class="location-type-header mb-2">
+                <small class="text-muted fw-bold">
+                    <i class="fa fa-exchange-alt me-1"/>Transit Locations
+                </small>
+            </div>
+            <div t-foreach="warehouse.transit_locations" t-as="location" t-key="location.id"
+                 class="location-item mb-2">
+                <div class="card border-0 bg-light">
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center"
+                             t-att-class="this.isLocationSelected(location.id) ? 'bg-warning text-dark rounded' : ''"
+                             t-on-click.stop="() => this.onLocationClick(location)">
+                            <div class="d-flex align-items-center flex-grow-1">
+                                <i class="fa fa-exchange-alt me-2 text-warning"/>
+                                <div>
+                                    <div class="fw-bold">
+                                        <t t-esc="location.name"/>
+                                    </div>
+                                    <small class="text-muted" t-if="!this.isLocationSelected(location.id)">
+                                        <t t-esc="location.complete_name"/>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="badge bg-warning text-dark rounded-pill">
+                                    <t t-esc="location.product_count"/> products
+                                </div>
+                                <div class="small mt-1">
+                                    <span t-att-class="this.getStockStatusClass(location.total_quantity)">
+                                        Qty: <t t-esc="this.formatQuantity(location.total_quantity)"/>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Location Value -->
+                        <div t-if="location.total_value > 0" class="mt-2">
+                            <small class="text-muted">
+                                Value: <strong t-esc="this.formatMonetary(location.total_value)"/>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Summary Section -->
+            <div class="warehouse-summary mt-3 p-3 bg-light rounded">
+                <h6 class="mb-2">Summary</h6>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Warehouses</small>
+                        <strong t-esc="state.warehouses.length"/>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Locations</small>
+                        <strong t-esc="state.warehouses.reduce((sum, wh) => sum + wh.location_count, 0)"/>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Total Products</small>
+                        <strong t-esc="state.warehouses.reduce((sum, wh) => sum + wh.total_products, 0)"/>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Total Value</small>
+                        <strong t-esc="this.formatMonetary(state.warehouses.reduce((sum, wh) => sum + wh.total_value, 0))"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

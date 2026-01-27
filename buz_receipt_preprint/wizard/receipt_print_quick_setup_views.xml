@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_receipt_print_quick_setup_form" model="ir.ui.view">
+        <field name="name">receipt.print.quick.setup.form</field>
+        <field name="model">receipt.print.quick.setup</field>
+        <field name="arch" type="xml">
+            <form string="Quick Setup - Receipt Print Configuration">
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        <strong>⚡ Quick Adjustments</strong><br/>
+                        Use this wizard to quickly adjust all field positions or font sizes at once.
+                    </div>
+                    
+                    <group>
+                        <group>
+                            <field name="config_id" 
+                                   options="{'no_create': True}"
+                                   placeholder="Select existing config or create new"/>
+                            <field name="config_name" invisible="config_id"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Position Adjustments">
+                        <group>
+                            <label for="move_all_horizontal" string="Move Horizontally"/>
+                            <div class="o_row">
+                                <field name="move_all_horizontal" class="oe_inline"/>
+                                <span class="text-muted">px (+ = right, - = left)</span>
+                            </div>
+                        </group>
+                        <group>
+                            <label for="move_all_vertical" string="Move Vertically"/>
+                            <div class="o_row">
+                                <field name="move_all_vertical" class="oe_inline"/>
+                                <span class="text-muted">px (+ = down, - = up)</span>
+                            </div>
+                        </group>
+                    </group>
+                    
+                    <group string="Font Size Adjustment">
+                        <group>
+                            <label for="adjust_font_size" string="Adjust Font Size"/>
+                            <div class="o_row">
+                                <field name="adjust_font_size" class="oe_inline"/>
+                                <span class="text-muted">px (+ = bigger, - = smaller)</span>
+                            </div>
+                        </group>
+                    </group>
+                    
+                    <div class="alert alert-warning" role="alert">
+                        <strong>💡 Tips:</strong><br/>
+                        • Enter positive values to move right/down or increase size<br/>
+                        • Enter negative values to move left/up or decrease size<br/>
+                        • Changes will be applied to ALL fields in the configuration
+                    </div>
+                </sheet>
+                <footer>
+                    <button string="Apply Adjustments" 
+                            name="action_apply_adjustments" 
+                            type="object" 
+                            class="btn-primary"/>
+                    <button string="Reset to Default" 
+                            name="action_reset_to_default" 
+                            type="object" 
+                            class="btn-secondary"
+                            invisible="not config_id"
+                            confirm="This will reset the configuration to default values. Continue?"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Action -->
+    <record id="action_receipt_print_quick_setup" model="ir.actions.act_window">
+        <field name="name">Quick Setup - Receipt Print</field>
+        <field name="res_model">receipt.print.quick.setup</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

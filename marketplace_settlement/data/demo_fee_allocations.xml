@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Demo Fee Allocations for Demo Settlement -->
+        
+        <!-- Fee allocation for Invoice 1 (proportional method) -->
+        <record id="demo_fee_allocation_1" model="marketplace.fee.allocation">
+            <field name="settlement_id" ref="demo_settlement_1"/>
+            <field name="invoice_id" ref="demo_customer_invoice_1"/>
+            <field name="allocation_method">proportional</field>
+            <field name="allocation_base_amount">50000.00</field>
+            <field name="base_fee_alloc">2000.00</field>
+            <field name="vat_input_alloc">140.00</field>
+            <field name="wht_alloc">60.00</field>
+            <field name="net_payout_alloc">47800.00</field>
+        </record>
+
+        <!-- Fee allocation for Invoice 2 (proportional method) -->
+        <record id="demo_fee_allocation_2" model="marketplace.fee.allocation">
+            <field name="settlement_id" ref="demo_settlement_1"/>
+            <field name="invoice_id" ref="demo_customer_invoice_2"/>
+            <field name="allocation_method">proportional</field>
+            <field name="allocation_base_amount">30000.00</field>
+            <field name="base_fee_alloc">1200.00</field>
+            <field name="vat_input_alloc">84.00</field>
+            <field name="wht_alloc">36.00</field>
+            <field name="net_payout_alloc">28680.00</field>
+        </record>
+
+        <!-- Fee allocation for Invoice 3 (exact method) -->
+        <record id="demo_fee_allocation_3" model="marketplace.fee.allocation">
+            <field name="settlement_id" ref="demo_settlement_1"/>
+            <field name="invoice_id" ref="demo_customer_invoice_3"/>
+            <field name="allocation_method">exact</field>
+            <field name="allocation_base_amount">25000.00</field>
+            <field name="base_fee_alloc">1150.00</field>
+            <field name="vat_input_alloc">80.50</field>
+            <field name="wht_alloc">31.25</field>
+            <field name="net_payout_alloc">23738.25</field>
+        </record>
+
+        <!-- Additional demo settlement with fee allocations for Lazada -->
+        <record id="demo_settlement_lazada" model="marketplace.settlement">
+            <field name="name">LAZADA-2024-001</field>
+            <field name="marketplace_partner_id" ref="demo_partner_lazada"/>
+            <field name="journal_id" ref="account.sales_journal"/>
+            <field name="date" eval="(DateTime.now() - timedelta(days=10)).strftime('%Y-%m-%d')"/>
+            <field name="trade_channel">lazada</field>
+            <field name="fee_amount">1500.00</field>
+            <field name="vat_on_fee_amount">105.00</field>
+            <field name="wht_amount">45.00</field>
+            <field name="allocation_method">exact</field>
+        </record>
+
+        <!-- Demo Lazada Partner -->
+        <record id="demo_partner_lazada" model="res.partner">
+            <field name="name">Lazada Thailand</field>
+            <field name="is_company">True</field>
+            <field name="supplier_rank">1</field>
+            <field name="customer_rank">1</field>
+            <field name="email">noreply@lazada.co.th</field>
+            <field name="phone">+66-2-123-4567</field>
+        </record>
+
+        <!-- Demo Customer Invoice for Lazada -->
+        <record id="demo_customer_invoice_lazada" model="account.move">
+            <field name="move_type">out_invoice</field>
+            <field name="partner_id" ref="base.res_partner_2"/>
+            <field name="invoice_date" eval="(DateTime.now() - timedelta(days=12)).strftime('%Y-%m-%d')"/>
+            <field name="trade_channel">lazada</field>
+            <field name="state">posted</field>
+        </record>
+
+        <!-- Demo Invoice Line for Lazada -->
+        <record id="demo_invoice_line_lazada" model="account.move.line">
+            <field name="move_id" ref="demo_customer_invoice_lazada"/>
+            <field name="product_id" ref="product.product_product_8"/>
+            <field name="quantity">15</field>
+            <field name="price_unit">1200.00</field>
+            <field name="account_id" ref="account.a_sale"/>
+        </record>
+
+        <!-- Link Lazada invoice to settlement -->
+        <function model="marketplace.settlement" name="write">
+            <value model="marketplace.settlement" eval="[ref('demo_settlement_lazada')]"/>
+            <value eval="{'invoice_ids': [(6, 0, [ref('demo_customer_invoice_lazada')])]}"/>
+        </function>
+
+        <!-- Fee allocation for Lazada invoice (exact method from CSV) -->
+        <record id="demo_fee_allocation_lazada" model="marketplace.fee.allocation">
+            <field name="settlement_id" ref="demo_settlement_lazada"/>
+            <field name="invoice_id" ref="demo_customer_invoice_lazada"/>
+            <field name="allocation_method">exact</field>
+            <field name="allocation_base_amount">18000.00</field>
+            <field name="base_fee_alloc">1500.00</field>
+            <field name="vat_input_alloc">105.00</field>
+            <field name="wht_alloc">45.00</field>
+            <field name="net_payout_alloc">16350.00</field>
+        </record>
+
+    </data>
+</odoo>

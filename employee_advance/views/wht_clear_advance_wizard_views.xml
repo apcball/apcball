@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- WHT Clear Advance Wizard Form View -->
+    <record id="view_wht_clear_advance_wizard_form" model="ir.ui.view">
+        <field name="name">wht.clear.advance.wizard.form</field>
+        <field name="model">wht.clear.advance.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Clear Advance with WHT">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="expense_sheet_id" readonly="1" 
+                                   invisible="not expense_sheet_id"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </h1>
+                        <h2>
+                            Clear Advance with Withholding Tax
+                        </h2>
+                    </div>
+                    
+                    <group>
+                        <group name="context_info" string="Context Information">
+                            <field name="employee_id" readonly="1"/>
+                            <field name="advance_box_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                            <field name="currency_id" readonly="1"/>
+                        </group>
+                        
+                        <group name="partner_details" string="Partner Information">
+                            <field name="partner_id" required="1" string="Partner (from Bill)"
+                                   options="{'no_quick_create': True}"/>
+                            <field name="wht_partner_id" required="1" string="WHT Partner (Vendor)"
+                                   context="{'default_is_company': True, 'default_supplier_rank': 1}"
+                                   options="{'no_quick_create': True}"/>
+                            <label for="partner_id" colspan="2">
+                                <div class="text-info">
+                                    <i class="fa fa-info-circle"/> ดึงมาจาก Vendor ในบิล (ใช้สำหรับบัญชี AP)
+                                </div>
+                            </label>
+                            <label for="wht_partner_id" colspan="2">
+                                <div class="text-info">
+                                    <i class="fa fa-certificate"/> Vendor สำหรับออกใบหัก ณ ที่จ่าย (PND)
+                                </div>
+                            </label>
+                        </group>
+                        
+                        <group name="wht_details" string="WHT Details (Optional)">
+                            <field name="wht_config_id" 
+                                   options="{'no_create': True, 'no_open': True}"/>
+                            <field name="wht_tax_rate" readonly="1" invisible="not wht_config_id"/>
+                            <field name="amount_base" invisible="not wht_config_id"/>
+                            <field name="wht_amount" readonly="1" invisible="not wht_config_id"/>
+                            <label for="wht_config_id" colspan="2">
+                                <div class="alert alert-info" role="alert">
+                                    <i class="fa fa-info-circle"/> <strong>การเลือก WHT Configuration ที่ถูกต้อง:</strong><br/>
+                                    <ul class="mb-1">
+                                        <li>เลือกจาก Withholding Tax Configuration ที่ตั้งค่าไว้</li>
+                                        <li>เช่น WHT 3% C S, WHT 5% C S เป็นต้น</li>
+                                        <li>คลิก <strong>"Show Available WHT Taxes"</strong> เพื่อดูรายการที่มีให้เลือก</li>
+                                        <li>หากไม่มีการหัก ณ ที่จ่าย ให้ปล่อยฟิลด์นี้ว่างไว้</li>
+                                    </ul>
+                                    <small class="text-muted">
+                                        <i class="fa fa-lightbulb-o"/> ระบบจะใช้อัตราและ account จาก configuration โดยตรง
+                                    </small>
+                                </div>
+                            </label>
+                            <label for="wht_amount" colspan="2" invisible="not wht_config_id">
+                                <div class="text-success">
+                                    <i class="fa fa-calculator"/> การคำนวณ: Base Amount × Tax Rate = WHT Amount
+                                </div>
+                            </label>
+                            <div colspan="2" class="alert alert-warning" role="alert" invisible="not wht_config_id">
+                                <strong>คำเตือน:</strong> ตรวจสอบให้แน่ใจว่าเลือก <strong>WHT Configuration</strong> ที่ถูกต้อง 
+                                เพราะจะส่งผลต่อการคำนวณยอดเงินและใบหัก ณ ที่จ่าย
+                            </div>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="amounts" string="Clearing Amounts">
+                            <field name="current_balance" readonly="1" widget="monetary"/>
+                            <field name="clear_amount" required="1"/>
+                            <field name="net_amount" readonly="1" widget="monetary"/>
+                            <label for="net_amount" colspan="2">
+                                <div class="text-info">
+                                    <i class="fa fa-info-circle"/> Net Amount = Clear Amount - WHT Amount<br/>
+                                    This amount will be deducted from the advance box.
+                                </div>
+                            </label>
+                        </group>
+                        
+                        <group name="journal_info" string="Journal Entry Details">
+                            <field name="journal_id" required="1"
+                                   domain="[('type', '=', 'general'), ('company_id', '=', company_id)]"/>
+                            <field name="date" required="1"/>
+                            <field name="show_accounting_date" widget="boolean_toggle"/>
+                            <field name="accounting_date" 
+                                   invisible="show_accounting_date == False"
+                                   required="show_accounting_date == True"
+                                   placeholder="Accounting date for the journal entry"/>
+                            <field name="ref" placeholder="Reference for journal entry"/>
+                            <field name="auto_reconcile" widget="boolean_toggle"/>
+                            <label for="auto_reconcile" colspan="2">
+                                <div class="text-info">
+                                    <i class="fa fa-info-circle"/> Auto Reconcile is enabled by default
+                                </div>
+                            </label>
+                        </group>
+                    </group>
+                    
+                    <div class="alert alert-info" role="alert">
+                        <h4>Journal Entry Preview:</h4>
+                        <div name="journal_preview">
+                            <strong>Dr</strong> Partner Payable: <field name="clear_amount" readonly="1" nolabel="1"/> ฿<br/>
+                            <strong>Cr</strong> Advance Account: <field name="net_amount" readonly="1" nolabel="1"/> ฿<br/>
+                            <div invisible="not wht_config_id or wht_amount == 0">
+                                <strong>Cr</strong> WHT Payable: <field name="wht_amount" readonly="1" nolabel="1"/> ฿
+                            </div>
+                        </div>
+                    </div>
+                </sheet>
+                
+                <footer>
+                    <button name="create_journal_entry" string="Create &amp; Post Journal Entry" 
+                            type="object" class="oe_highlight"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- WHT Clear Advance Wizard Action -->
+    <record id="action_wht_clear_advance_wizard" model="ir.actions.act_window">
+        <field name="name">Clear Advance with WHT</field>
+        <field name="res_model">wht.clear.advance.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Menu Item removed - wizard should only be accessible via buttons -->
+</odoo>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add trade channel to invoice form view header area -->
+    <record id="view_account_move_tree_trade_channel" model="ir.ui.view">
+        <field name="name">account.move.tree.inherit.trade.channel</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <!-- Insert into the first tree element to avoid relying on a specific field position -->
+            <xpath expr="(//tree)[1]" position="inside">
+                <!-- place the column after existing columns; optional attribute allows graceful fallback -->
+                <field name="trade_channel" optional="show"/>
+                <field name="is_settled" optional="show" string="Settled"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Add trade channel to invoice form view header area -->
+    <record id="view_account_move_form_trade_channel_header" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.trade.channel.header</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <!-- Show trade_channel for both customer invoices and vendor bills (invoice and refunds) -->
+                <field name="trade_channel" invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Also add trade_channel into the main form sheet so the field label is visible -->
+    <record id="view_account_move_form_trade_channel_sheet" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.trade.channel.sheet</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Insert a labelled field at the top of the sheet so the label is rendered for both invoices and bills -->
+            <xpath expr="//sheet" position="inside">
+                <group>
+                    <!-- Explicit label so the field label is visible on the form -->
+                    <label for="trade_channel" string="Trade Channel" invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')"/>
+                    <field name="trade_channel" invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')"/>
+                    
+                    <!-- Settlement status fields for customer invoices -->
+                    <label for="is_settled" string="Settlement Status" invisible="move_type not in ('out_invoice', 'out_refund')"/>
+                    <div invisible="move_type not in ('out_invoice', 'out_refund')">
+                        <field name="is_settled" readonly="1"/>
+                        <button name="action_view_settlements" type="object" 
+                                string="View Settlements" class="oe_link"
+                                invisible="not settlement_count"/>
+                        <field name="settlement_count" invisible="1"/>
+                        <field name="settlement_ids" invisible="1"/>
+                    </div>
+                    
+                    <!-- Settlement linking fields for vendor bills -->
+                    <label for="x_settlement_id" string="Marketplace Settlement" invisible="move_type not in ('in_invoice', 'in_refund')"/>
+                    <div invisible="move_type not in ('in_invoice', 'in_refund')">
+                        <field name="x_settlement_id" readonly="linked_settlement_state == 'posted'" 
+                               domain="[('company_id','=',company_id), ('marketplace_partner_id','=',partner_id), ('state', '=', 'draft')]"/>
+                        <button name="action_link_to_settlement" type="object" 
+                                string="Link to Settlement" class="oe_link"
+                                invisible="x_settlement_id or not can_link_to_settlement"/>
+                        <button name="action_view_linked_settlement" type="object" 
+                                string="View Settlement" class="oe_link"
+                                invisible="not x_settlement_id"/>
+                        <field name="can_link_to_settlement" invisible="1"/>
+                        <field name="linked_settlement_state" invisible="1"/>
+                    </div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Add trade channel to invoice tree view (robust xpath) -->
+    <record id="view_account_move_tree_trade_channel" model="ir.ui.view">
+        <field name="name">account.move.tree.inherit.trade.channel</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <!-- Insert into the first tree element to avoid relying on a specific field position -->
+            <xpath expr="(//tree)[1]" position="inside">
+                <!-- place the column after existing columns; optional attribute allows graceful fallback -->
+                <field name="trade_channel" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

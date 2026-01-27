@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Shortage Resolution Wizard Form -->
+    <record id="view_stock_shortage_resolution_wizard_form" model="ir.ui.view">
+        <field name="name">stock.shortage.resolution.wizard.form</field>
+        <field name="model">stock.shortage.resolution.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Resolve Stock Shortage">
+                <sheet>
+                    <div class="alert alert-warning" role="alert">
+                        <strong>⚠️ Stock Shortage Detected</strong>
+                        <p>The destination warehouse does not have enough stock. Please select how to resolve this shortage.</p>
+                    </div>
+                    
+                    <group>
+                        <group string="Shortage Information">
+                            <field name="product_id" readonly="1"/>
+                            <field name="dest_warehouse_id" readonly="1"/>
+                            <field name="quantity_needed" readonly="1"/>
+                            <field name="quantity_available" readonly="1"/>
+                            <field name="shortage_qty" readonly="1" 
+                                   decoration-danger="shortage_qty > 0"/>
+                        </group>
+                        
+                        <group string="Resolution Options">
+                            <field name="resolution_type" widget="radio"/>
+                            <field name="auto_confirm" 
+                                   invisible="resolution_type != 'transfer'"/>
+                        </group>
+                    </group>
+                    
+                    <notebook invisible="resolution_type != 'transfer'">
+                        <page string="Available in Other Warehouses" 
+                              name="fallback_warehouses">
+                            <field name="fallback_line_ids">
+                                <tree editable="bottom" decoration-success="selected">
+                                    <field name="selected" widget="boolean_toggle"/>
+                                    <field name="source_warehouse_id" readonly="1"/>
+                                    <field name="available_qty" readonly="1"/>
+                                    <field name="transfer_qty" 
+                                           readonly="not selected"/>
+                                </tree>
+                            </field>
+                            
+                            <div class="alert alert-info mt-3" role="alert" 
+                                 invisible="fallback_line_ids">
+                                <strong>ℹ️ No Stock Available</strong>
+                                <p>No other warehouses have this product in stock. Consider purchasing or adjusting inventory.</p>
+                            </div>
+                        </page>
+                        
+                        <page string="Notes" name="notes">
+                            <field name="notes" placeholder="Additional notes or instructions..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                
+                <footer>
+                    <button name="action_create_transfers" 
+                            type="object" 
+                            string="Create Transfer(s)" 
+                            class="btn-primary"
+                            invisible="resolution_type != 'transfer'"/>
+                    <button name="action_cancel" 
+                            type="object" 
+                            string="Cancel" 
+                            class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Shortage Resolution Wizard Action -->
+    <record id="action_stock_shortage_resolution_wizard" model="ir.actions.act_window">
+        <field name="name">Resolve Stock Shortage</field>
+        <field name="res_model">stock.shortage.resolution.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="product.model_product_product"/>
+    </record>
+</odoo>

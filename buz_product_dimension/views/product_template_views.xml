@@ -7,17 +7,17 @@
         <field name="arch" type="xml">
             <xpath expr="//page[@name='inventory']" position="inside">
                 <group name="dimensions_container" string="Product Specifications">
-                    <group name="box_specifications">
-                        <field name="box_width" string="Box Width"/>
-                        <field name="box_depth" string="Box Depth"/>
-                        <field name="box_height" string="Box Height"/>
-                        <field name="box_weight" string="Box Weight"/>
-                    </group>
                     <group name="physical_dimensions">
-                        <field name="gross_width" string="Gross Width"/>
-                        <field name="gross_depth" string="Gross Depth"/>
-                        <field name="gross_height" string="Gross Height"/>
-                        <field name="cubic_meter" string="Cubic Meter"/>
+                        <field name="gross_width" string="Net Width"/>
+                        <field name="gross_depth" string="Net Depth"/>
+                        <field name="gross_height" string="Net Height"/>
+                        <field name="cubic_meter" string="Net Weight"/>
+                    </group>
+                    <group name="box_specifications">
+                        <field name="box_width" string="Gross Width"/>
+                        <field name="box_depth" string="Gross Depth"/>
+                        <field name="box_height" string="Gross Height"/>
+                        <field name="box_weight" string="Gross Weight"/>
                     </group>
                 </group>
             </xpath>

@@ -364,7 +364,7 @@
     <menuitem
         id="menu_blanket_order_config"
         parent="sale.sale_order_menu"
-        groups="sales_team.group_sale_manager"
+        groups="group_sale_blanket_order_user,group_sale_blanket_order_manager"
         sequence="20"
         action="act_open_blanket_order_view"
     />

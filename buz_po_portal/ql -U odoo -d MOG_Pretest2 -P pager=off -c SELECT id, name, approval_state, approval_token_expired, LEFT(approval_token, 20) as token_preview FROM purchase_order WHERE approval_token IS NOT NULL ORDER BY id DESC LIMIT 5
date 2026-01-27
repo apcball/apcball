@@ -1,0 +1,5 @@
+ id |  name  | approval_state | approval_token_expired |               approval_token                
+----+--------+----------------+------------------------+---------------------------------------------
+ 14 | P00014 | approved       | t                      | fqzEl61Ad8rbtOVah0VjRUtTOt5RHWZ7J3WDBjIXDZE
+(1 row)
+

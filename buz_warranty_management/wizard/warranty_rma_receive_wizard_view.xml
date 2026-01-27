@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_warranty_rma_receive_wizard_form" model="ir.ui.view">
+        <field name="name">warranty.rma.receive.wizard.form</field>
+        <field name="model">warranty.rma.receive.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create RMA IN">
+                <group>
+                    <group>
+                        <field name="claim_id" readonly="1"/>
+                        <field name="partner_id" readonly="1"/>
+                        <field name="main_product_already_rma" invisible="1"/>
+                    </group>
+                    <group>
+                        <field name="picking_type_id" required="1"/>
+                        <field name="location_dest_id" required="1"/>
+                        <field name="generate_return_label"/>
+                    </group>
+                </group>
+                
+                <!-- Warning Section for Existing RMA -->
+                <div class="alert alert-warning d-flex align-items-center" role="alert"
+                     invisible="main_product_already_rma == False">
+                    <i class="fa fa-exclamation-triangle me-2"/>
+                    <div>
+                        <strong>Warning:</strong> The main product from this claim is already in an existing RMA picking.
+                        No duplicate product will be added.
+                    </div>
+                </div>
+                
+                <notebook>
+                    <page string="Return Items">
+                        <div class="oe_button_box" name="return_items_buttons">
+                            <button name="action_fetch_claim_products"
+                                    type="object"
+                                    class="oe_stat_button o_button_primary"
+                                    icon="fa-download"
+                                    invisible="claim_id == False">
+                                <span>Fetch Claim Products</span>
+                            </button>
+                        </div>
+                        <field name="line_ids">
+                            <tree editable="bottom">
+                                <field name="product_id"/>
+                                <field name="qty"/>
+                                <field name="uom_id" readonly="1"/>
+                                <field name="lot_id"/>
+                                <field name="reason" placeholder="Reason for return..."/>
+                                <field name="is_auto_populated" widget="boolean" readonly="1"
+                                       string="Auto" help="Auto-populated from claim"/>
+                            </tree>
+                        </field>
+                    </page>
+                    <page string="Notes">
+                        <field name="notes" placeholder="Enter notes about the returned items..."/>
+                    </page>
+                </notebook>
+                
+                <footer>
+                    <button string="Create RMA IN" name="action_create_rma_picking"
+                            type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Access rights for stock.current.report model -->
+        <record id="access_stock_current_report_user" model="ir.model.access">
+            <field name="name">stock.current.report user</field>
+            <field name="model_id" ref="model_stock_current_report"/>
+            <field name="group_id" ref="stock.group_stock_user"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="access_stock_current_report_manager" model="ir.model.access">
+            <field name="name">stock.current.report manager</field>
+            <field name="model_id" ref="model_stock_current_report"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Stock Cost Viewer Group -->
+        <record id="group_stock_cost_viewer" model="res.groups">
+            <field name="name">Stock Cost Viewer</field>
+            <field name="comment">Users who can view cost information in stock reports</field>
+        </record>
+
+        <!-- Access rights for stock.current.report model for cost viewers -->
+        <record id="access_stock_current_report_cost_viewer" model="ir.model.access">
+            <field name="name">stock.current.report cost viewer</field>
+            <field name="model_id" ref="model_stock_current_report"/>
+            <field name="group_id" ref="group_stock_cost_viewer"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Access rights for stock.current.export.wizard model -->
+        <record id="access_stock_current_export_wizard_user" model="ir.model.access">
+            <field name="name">stock.current.export.wizard user</field>
+            <field name="model_id" ref="model_stock_current_export_wizard"/>
+            <field name="group_id" ref="stock.group_stock_user"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="access_stock_current_export_wizard_manager" model="ir.model.access">
+            <field name="name">stock.current.export.wizard manager</field>
+            <field name="model_id" ref="model_stock_current_export_wizard"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Access rights for stock.current.transfer.wizard model -->
+        <record id="access_stock_current_transfer_wizard_user" model="ir.model.access">
+            <field name="name">stock.current.transfer.wizard user</field>
+            <field name="model_id" ref="model_stock_current_transfer_wizard"/>
+            <field name="group_id" ref="stock.group_stock_user"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="access_stock_current_transfer_wizard_manager" model="ir.model.access">
+            <field name="name">stock.current.transfer.wizard manager</field>
+            <field name="model_id" ref="model_stock_current_transfer_wizard"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Access rights for stock.current.transfer.wizard.line model -->
+        <record id="access_stock_current_transfer_wizard_line_user" model="ir.model.access">
+            <field name="name">stock.current.transfer.wizard.line user</field>
+            <field name="model_id" ref="model_stock_current_transfer_wizard_line"/>
+            <field name="group_id" ref="stock.group_stock_user"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="access_stock_current_transfer_wizard_line_manager" model="ir.model.access">
+            <field name="name">stock.current.transfer.wizard.line manager</field>
+            <field name="model_id" ref="model_stock_current_transfer_wizard_line"/>
+            <field name="group_id" ref="stock.group_stock_manager"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+    </data>
+</odoo>

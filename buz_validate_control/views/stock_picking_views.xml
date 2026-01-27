@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit stock picking form to add groups attribute to Validate button -->
+    <record id="view_picking_form_inherit_validate_control" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.validate.control</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <!-- Add groups attribute to Validate button -->
+            <xpath expr="//button[@name='button_validate']" position="attributes">
+                <attribute name="groups">buz_validate_control.group_validate_privileged</attribute>
+            </xpath>
+            
+        </field>
+    </record>
+</odoo>

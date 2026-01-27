@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<odoo>
+
+	<record id="view_account_journal_form_extends_to_add_extra_bank_charge_account_field" model="ir.ui.view">
+		<field name="name">view.account.journal.form.extends.to.add.extra.bank.charge.account.field</field>
+		<field name="model">account.journal</field>
+		<field name="inherit_id" ref="account.view_account_journal_form" />
+		<field name="arch" type="xml">
+			<xpath expr="//notebook/page[@name='bank_account']/group/group[1]/field[@name='suspense_account_id']" position="before">
+				<field name="default_bank_charge_account_id" invisible="type != 'bank'" />
+			</xpath>
+		</field>
+	</record>
+	
+</odoo>

@@ -1,0 +1,34 @@
+<odoo>
+    <record id="sale_order_form_inherit" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <field name="partner_shipping_id" position="after">
+                <field name="picking_location_id" options="{'no_open': True, 'no_create': True}" required="1"
+                string="Deliver From" readonly="state not in ('draft','sent') "/>
+                <field name="picking_type_id" force_save="1" readonly="1" invisible="1"
+                       options="{'no_open': True, 'no_create': True}"/>
+            </field>
+            <xpath expr="//page/field[@name='order_line']/form/group/group/div[@name='ordered_qty']/field[@name='product_uom']" position="after">
+                <field name="picking_type_id" invisible="1"/>
+                <field name="src_location_id" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//field[@name='price_unit']" position="after">
+                <field name="purchase_price" groups="base.group_user"/>
+            </xpath>
+             <xpath expr="//field[@name='order_line']/tree//field[@name='price_unit']" position="after">
+                <field name="purchase_price" optional="hide"/>
+            </xpath>
+            <xpath expr="//page/field[@name='order_line']/tree//field[@name='qty_delivered']" position="after">
+                <field name="picking_type_id" invisible="1"/>
+                <field name="src_location_id" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']" position="attributes">
+                <attribute name="readonly">state in ('done','cancel') and picking_type_id == False</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

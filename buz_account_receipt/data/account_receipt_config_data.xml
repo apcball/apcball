@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Default Account Receipt Preprint Configuration (Will NOT be updated on module upgrade) -->
+        <record id="account_receipt_config_default" model="account.receipt.config">
+            <field name="name">Default Receipt Preprint</field>
+            <field name="is_default" eval="True"/>
+            
+            <!-- Header Section -->
+            <field name="receipt_number_top">110</field>
+            <field name="receipt_number_left">580</field>
+            <field name="receipt_date_top">110</field>
+            <field name="receipt_date_left">195</field>
+            
+            <!-- Customer Information -->
+            <field name="customer_code_top">180</field>
+            <field name="customer_code_left">125</field>
+            <field name="customer_name_top">180</field>
+            <field name="customer_name_left">195</field>
+            <field name="customer_address_top">215</field>
+            <field name="customer_address_left">195</field>
+            <field name="customer_address_line2_top">245</field>
+            <field name="customer_address_line2_left">195</field>
+            <field name="customer_phone_top">275</field>
+            <field name="customer_phone_left">195</field>
+            <field name="customer_taxid_top">305</field>
+            <field name="customer_taxid_left">195</field>
+            
+            <!-- Invoice Table -->
+            <field name="table_top">375</field>
+            <field name="table_left">40</field>
+            <field name="table_width">720</field>
+            <field name="table_header_height">30</field>
+            <field name="line_height">28</field>
+            <field name="max_lines_per_page">15</field>
+            
+            <!-- Column Positions -->
+            <field name="col_no_left">10</field>
+            <field name="col_no_width">40</field>
+            <field name="col_invoice_left">55</field>
+            <field name="col_invoice_width">120</field>
+            <field name="col_date_left">180</field>
+            <field name="col_date_width">90</field>
+            <field name="col_total_left">275</field>
+            <field name="col_total_width">100</field>
+            
+            <!-- Summary/Footer -->
+            <field name="summary_top">800</field>
+            <field name="total_payment_top">820</field>
+            <field name="total_payment_left">275</field>
+            
+            <!-- Amount in Words -->
+            <field name="amount_in_words_top">840</field>
+            <field name="amount_in_words_left">35</field>
+            <field name="amount_in_words_width">720</field>
+            
+            <!-- General Settings -->
+            <field name="font_size">14</field>
+            <field name="font_size_header">16</field>
+            <field name="font_size_small">12</field>
+            <field name="font_family">Sarabun, TH Sarabun New, Arial</field>
+            <field name="line_spacing">1.2</field>
+            
+            <!-- Page Settings -->
+            <field name="paper_size">letter</field>
+            <field name="page_width">816</field>
+            <field name="page_height">1056</field>
+            <field name="page_width_mm">215.9</field>
+            <field name="page_height_mm">279.4</field>
+            <field name="dpi">96</field>
+            <field name="print_mode">screen</field>
+            
+            <!-- Display Options -->
+            <field name="text_align">left</field>
+            <field name="header_align">center</field>
+            <field name="show_header" eval="True"/>
+            <field name="show_footer" eval="True"/>
+            <field name="show_borders" eval="False"/>
+            <field name="show_background" eval="True"/>
+            <field name="background_opacity">0.3</field>
+            
+            <!-- Margins (0 for full coverage) -->
+            <field name="margin_top">0</field>
+            <field name="margin_bottom">0</field>
+            <field name="margin_left">0</field>
+            <field name="margin_right">0</field>
+            
+            <!-- Border Settings -->
+            <field name="border_width">1</field>
+            <field name="border_color">#000000</field>
+        </record>
+    </data>
+</odoo>

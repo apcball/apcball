@@ -55,3 +55,5 @@ class AccountPayment(models.Model):
             payment.order_lines = payment.reconciled_bill_ids.mapped('invoice_line_ids')
 
     order_lines = fields.One2many('account.move.line', compute='_compute_order_lines')
+    check_pay_to = fields.Char(string="Check Pay To")
+    check_number = fields.Char(string="Check Number")

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Email Template for Target Confirmation -->
+    <record id="email_template_target_confirmed" model="mail.template">
+        <field name="name">Sales Target Confirmed</field>
+        <field name="model_id" ref="model_sales_target"/>
+        <field name="subject">Sales Target Confirmed: ${object.display_name}</field>
+        <field name="email_to">${object.responsible_id.email}</field>
+        <field name="body_html" type="html">
+            <div style="margin: 0px; padding: 0px;">
+                <p>Dear ${object.responsible_id.name},</p>
+                <p>Your sales target has been confirmed with the following details:</p>
+                <ul>
+                    <li><strong>Description:</strong> ${object.name}</li>
+                    <li><strong>Target Amount:</strong> ${object.target_amount} ${object.currency_id.name}</li>
+                    <li><strong>Target Point:</strong> ${object.target_point}</li>
+                    <li><strong>Period:</strong> ${object.date_start} to ${object.date_end}</li>
+                </ul>
+                <p>Best of luck achieving your target!</p>
+                <p>Sales Management Team</p>
+            </div>
+        </field>
+    </record>
+
+    <!-- Email Template for Target Closure -->
+    <record id="email_template_target_closed" model="mail.template">
+        <field name="name">Sales Target Closed</field>
+        <field name="model_id" ref="model_sales_target"/>
+        <field name="subject">Sales Target Closed: ${object.display_name}</field>
+        <field name="email_to">${object.responsible_id.email}</field>
+        <field name="body_html" type="html">
+            <div style="margin: 0px; padding: 0px;">
+                <p>Dear ${object.responsible_id.name},</p>
+                <p>Your sales target has been closed with the following results:</p>
+                <ul>
+                    <li><strong>Description:</strong> ${object.name}</li>
+                    <li><strong>Target Amount:</strong> ${object.target_amount} ${object.currency_id.name}</li>
+                    <li><strong>Achieved Amount:</strong> ${object.achieved_amount} ${object.currency_id.name}</li>
+                    <li><strong>Achievement:</strong> ${object.percent_achieved}%</li>
+                    <li><strong>Period:</strong> ${object.date_start} to ${object.date_end}</li>
+                </ul>
+                % if object.percent_achieved >= 100:
+                    <p style="color: green;"><strong>Congratulations! You have achieved your target!</strong></p>
+                % else:
+                    <p>Thank you for your efforts. Keep striving for the next target!</p>
+                % endif
+                <p>Sales Management Team</p>
+            </div>
+        </field>
+    </record>
+
+    <!-- Email Template for Manual Notification -->
+    <record id="email_template_target_manual" model="mail.template">
+        <field name="name">Sales Target Manual Notification</field>
+        <field name="model_id" ref="model_sales_target"/>
+        <field name="subject">Sales Target Update: ${object.display_name}</field>
+        <field name="email_to">${object.responsible_id.email}</field>
+        <field name="body_html" type="html">
+            <div style="margin: 0px; padding: 0px;">
+                <p>Dear ${object.responsible_id.name},</p>
+                <p>Here's an update on your sales target:</p>
+                <ul>
+                    <li><strong>Description:</strong> ${object.name}</li>
+                    <li><strong>Target Amount:</strong> ${object.target_amount} ${object.currency_id.name}</li>
+                    <li><strong>Achieved Amount:</strong> ${object.achieved_amount} ${object.currency_id.name}</li>
+                    <li><strong>Achievement:</strong> ${object.percent_achieved}%</li>
+                    <li><strong>Theoretical Achievement:</strong> ${object.theoretical_percent}%</li>
+                    <li><strong>Period:</strong> ${object.date_start} to ${object.date_end}</li>
+                </ul>
+                % if object.theoretical_status == 'above':
+                    <p style="color: green;">You are performing above the theoretical target! Keep it up!</p>
+                % elif object.theoretical_status == 'below':
+                    <p style="color: orange;">You are below the theoretical target. Consider increasing your efforts.</p>
+                % endif
+                <p>Sales Management Team</p>
+            </div>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Approval Audit Log Tree View -->
+    <record id="approval_audit_log_view_tree" model="ir.ui.view">
+        <field name="name">approval.audit.log.tree</field>
+        <field name="model">approval.audit.log</field>
+        <field name="arch" type="xml">
+            <tree string="Approval Audit Logs" create="false" edit="false" delete="false"
+                  decoration-success="action == 'approved'"
+                  decoration-danger="action in ('rejected', 'invalid_access', 'rate_limited')">
+                <field name="action_datetime"/>
+                <field name="res_name"/>
+                <field name="action" widget="badge"
+                       decoration-success="action == 'approved'"
+                       decoration-danger="action in ('rejected', 'invalid_access')"
+                       decoration-warning="action == 'rate_limited'"
+                       decoration-info="action in ('notification_sent', 'portal_viewed')"/>
+                <field name="approver_id"/>
+                <field name="ip_address"/>
+                <field name="notes" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Approval Audit Log Form View -->
+    <record id="approval_audit_log_view_form" model="ir.ui.view">
+        <field name="name">approval.audit.log.form</field>
+        <field name="model">approval.audit.log</field>
+        <field name="arch" type="xml">
+            <form string="Approval Audit Log" create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <group string="Action Details">
+                            <field name="action"/>
+                            <field name="action_datetime"/>
+                            <field name="notes"/>
+                        </group>
+                        <group string="Document">
+                            <field name="res_model"/>
+                            <field name="res_id"/>
+                            <field name="res_name"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Approver">
+                            <field name="approver_id"/>
+                            <field name="line_user_id"/>
+                        </group>
+                        <group string="Request Information">
+                            <field name="ip_address"/>
+                            <field name="user_agent"/>
+                            <field name="token_value"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Approval Audit Log Search View -->
+    <record id="approval_audit_log_view_search" model="ir.ui.view">
+        <field name="name">approval.audit.log.search</field>
+        <field name="model">approval.audit.log</field>
+        <field name="arch" type="xml">
+            <search string="Search Audit Logs">
+                <field name="res_name"/>
+                <field name="res_model"/>
+                <field name="approver_id"/>
+                <field name="ip_address"/>
+                <filter name="notification_sent" string="Notifications Sent" domain="[('action', '=', 'notification_sent')]"/>
+                <filter name="portal_viewed" string="Portal Viewed" domain="[('action', '=', 'portal_viewed')]"/>
+                <filter name="approved" string="Approved" domain="[('action', '=', 'approved')]"/>
+                <filter name="rejected" string="Rejected" domain="[('action', '=', 'rejected')]"/>
+                <separator/>
+                <filter name="security_events" string="Security Events" domain="[('action', 'in', ('invalid_access', 'rate_limited'))]"/>
+                <separator/>
+                <filter name="today" string="Today" domain="[('action_datetime', '>=', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <filter name="this_week" string="This Week" domain="[('action_datetime', '>=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_action" string="Action" context="{'group_by': 'action'}"/>
+                    <filter name="group_approver" string="Approver" context="{'group_by': 'approver_id'}"/>
+                    <filter name="group_model" string="Document Model" context="{'group_by': 'res_model'}"/>
+                    <filter name="group_date" string="Date" context="{'group_by': 'action_datetime:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Approval Audit Log Action -->
+    <record id="approval_audit_log_action" model="ir.actions.act_window">
+        <field name="name">Audit Logs</field>
+        <field name="res_model">approval.audit.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="approval_audit_log_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No audit logs found
+            </p>
+            <p>
+                Audit logs track all approval-related actions for security and compliance.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_approval_audit_logs"
+              name="Audit Logs"
+              parent="menu_line_notification_root"
+              action="approval_audit_log_action"
+              sequence="20"/>
+</odoo>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_import_pricelist_excel_form" model="ir.ui.view">
+        <field name="name">import.pricelist.excel.form</field>
+        <field name="model">import.pricelist.excel</field>
+        <field name="arch" type="xml">
+            <form string="Import Pricelist">
+                <field name="state" invisible="1"/>
+                
+                <sheet>
+                    <group invisible="state != 'upload'">
+                        <field name="pricelist_id"/>
+                        <field name="file_data" filename="file_name"/>
+                        <field name="file_name" invisible="1"/>
+                    </group>
+                    
+                    <notebook invisible="state != 'preview'">
+                        <page string="Preview Diff">
+                             <field name="preview_ids">
+                                <tree decoration-success="status=='ok' and action=='update'" 
+                                      decoration-info="status=='ok' and action=='create'"
+                                      decoration-warning="action=='skip'"
+                                      decoration-danger="status=='error'"
+                                      create="0" delete="0" edit="0">
+                                    <field name="product_xml_id" optional="hide"/>
+                                    <field name="product_name"/>
+                                    <field name="old_price"/>
+                                    <field name="new_price"/>
+                                    <field name="old_installation_price"/>
+                                    <field name="new_installation_price"/>
+                                    <field name="min_qty"/>
+                                    <field name="action"/>
+                                    <field name="status"/>
+                                    <field name="error_message" invisible="status == 'ok'"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                
+                <footer>
+                    <button name="action_preview" string="Validate &amp; Preview" type="object" class="btn-primary" invisible="state != 'upload'"/>
+                    <button name="action_import" string="Confirm Import" type="object" class="btn-primary" invisible="state != 'preview'"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_import_pricelist_excel" model="ir.actions.act_window">
+        <field name="name">Import Pricelist</field>
+        <field name="res_model">import.pricelist.excel</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_pricelist_product_matrix"/>
+        <field name="binding_view_types">list</field>
+    </record>
+</odoo>

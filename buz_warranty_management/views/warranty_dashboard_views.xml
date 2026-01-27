@@ -1,0 +1,750 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Warranty Dashboard Form View -->
+    <record id="view_warranty_dashboard_form" model="ir.ui.view">
+        <field name="name">warranty.dashboard.form</field>
+        <field name="model">warranty.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="Warranty Dashboard" create="false" edit="false" delete="false">
+                <header>
+                    <button name="action_refresh_cache" type="object"
+                            string="Refresh Now"
+                            class="btn-primary"
+                            invisible="cache_status == 'updating'"/>
+                    <button name="action_force_refresh" type="object"
+                            string="Force Refresh"
+                            class="btn-secondary"
+                            confirm="This will force a complete refresh of all dashboard data. Continue?"/>
+                    <button name="action_rebuild_cache" type="object"
+                            string="Rebuild Cache"
+                            class="btn-warning"
+                            confirm="This will completely rebuild the dashboard cache from scratch. Use this if the dashboard is showing errors. Continue?"/>
+                    <field name="cache_status" widget="badge"
+                           invisible="cache_status == False"/>
+                </header>
+                
+                <sheet>
+                    <div class="oe_title mb-4">
+                        <h1 class="text-center d-flex align-items-center justify-content-center">
+                            <i class="fa fa-tachometer me-2"/>
+                            Warranty Management Dashboard
+                            <span class="ms-3 badge"
+                                  t-att-class="'badge-' + (cache_status == 'valid' and 'success' or cache_status == 'expired' and 'warning' or cache_status == 'error' and 'danger' or 'info')"
+                                  invisible="cache_status == False">
+                                <span invisible="cache_status != 'valid'">
+                                    <i class="fa fa-check-circle me-1"/> Live
+                                </span>
+                                <span invisible="cache_status != 'expired'">
+                                    <i class="fa fa-clock-o me-1"/> Stale
+                                </span>
+                                <span invisible="cache_status != 'error'">
+                                    <i class="fa fa-exclamation-triangle me-1"/> Error
+                                </span>
+                                <span invisible="cache_status != 'updating'">
+                                    <i class="fa fa-spinner fa-spin me-1"/> Updating
+                                </span>
+                            </span>
+                        </h1>
+                        
+                        <!-- Last Update Information -->
+                        <div class="text-center text-muted mb-3">
+                            <div class="row align-items-center justify-content-center">
+                                <div class="col-auto">
+                                    <i class="fa fa-clock me-1"/>
+                                    <span>Last updated: </span>
+                                    <field name="last_update" widget="relative"/>
+                                </div>
+                                <div class="col-auto" invisible="update_duration == 0">
+                                    <i class="fa fa-tachometer me-1"/>
+                                    <span>Update took: </span>
+                                    <field name="update_duration" widget="duration"/>s
+                                </div>
+                            </div>
+                            
+                            <!-- Auto-refresh Countdown -->
+                            <div class="mt-2" invisible="cache_status != 'valid'">
+                                <small class="text-muted">
+                                    <i class="fa fa-refresh me-1"/>
+                                    Next auto-refresh in:
+                                    <span class="auto-refresh-countdown">--:--</span>
+                                </small>
+                            </div>
+                            
+                            <!-- Updating Indicator -->
+                            <div class="mt-2" invisible="cache_status != 'updating'">
+                                <div class="progress" style="height: 4px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar" style="width: 100%"></div>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="fa fa-spinner fa-spin me-1"/>
+                                    Updating dashboard data...
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Cache Status Alert -->
+                    <div class="row mb-3"
+                         invisible="cache_status in ['valid', False]">
+                        <div class="col-12">
+                            <div class="alert d-flex align-items-center"
+                                 t-att-class="'alert-' + (cache_status == 'expired' and 'warning' or cache_status == 'error' and 'danger' or 'info')">
+                                <i class="fa fa-exclamation-triangle me-3 fa-2x"/>
+                                <div class="flex-grow-1">
+                                    <h5 class="alert-heading mb-1">
+                                        <span invisible="cache_status != 'expired'">Data is Stale</span>
+                                        <span invisible="cache_status != 'error'">Update Error</span>
+                                        <span invisible="cache_status != 'updating'">Updating...</span>
+                                    </h5>
+                                    <p class="mb-0">
+                                        <span invisible="cache_status != 'expired'">
+                                            Dashboard data was last updated <field name="last_update" widget="relative"/>.
+                                            Click "Refresh Now" to see the latest data.
+                                        </span>
+                                        <span invisible="cache_status != 'error'">
+                                            There was an error updating the dashboard.
+                                            Last successful update was <field name="last_update" widget="relative"/>.
+                                        </span>
+                                        <span invisible="cache_status != 'updating'">
+                                            Dashboard is currently being updated. This should complete shortly.
+                                        </span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <button name="action_refresh_cache" type="object"
+                                            class="btn btn-primary"
+                                            invisible="cache_status == 'updating'">
+                                        <i class="fa fa-refresh me-1"/> Refresh Now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- KPI Cards Section -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card border-primary shadow-sm h-100">
+                                <div class="card-header bg-primary text-white text-center">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-shield me-2"/> Total Warranties
+                                    </h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h2 class="display-4 text-primary">
+                                        <field name="total_warranties"/>
+                                    </h2>
+                                    <button name="action_view_all_warranties" type="object" 
+                                            class="btn btn-outline-primary btn-sm mt-2">
+                                        <i class="fa fa-eye me-1"/> View All
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="card border-success shadow-sm h-100">
+                                <div class="card-header bg-success text-white text-center">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-check-circle me-2"/> Active Warranties
+                                    </h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h2 class="display-4 text-success">
+                                        <field name="active_warranties"/>
+                                    </h2>
+                                    <div class="progress mt-2">
+                                        <div class="progress-bar bg-success">
+                                            <field name="active_percentage" widget="percentage"/>%
+                                        </div>
+                                    </div>
+                                    <button name="action_view_active_warranties" type="object" 
+                                            class="btn btn-outline-success btn-sm mt-2">
+                                        <i class="fa fa-eye me-1"/> View Active
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="card border-danger shadow-sm h-100">
+                                <div class="card-header bg-danger text-white text-center">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-times-circle me-2"/> Expired Warranties
+                                    </h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h2 class="display-4 text-danger">
+                                        <field name="expired_warranties"/>
+                                    </h2>
+                                    <div class="progress mt-2">
+                                        <div class="progress-bar bg-danger">
+                                            <field name="expired_percentage" widget="percentage"/>%
+                                        </div>
+                                    </div>
+                                    <button name="action_view_expired_warranties" type="object" 
+                                            class="btn btn-outline-danger btn-sm mt-2">
+                                        <i class="fa fa-eye me-1"/> View Expired
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="card border-warning shadow-sm h-100">
+                                <div class="card-header bg-warning text-white text-center">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-exclamation-triangle me-2"/> Claimed Warranties
+                                    </h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h2 class="display-4 text-warning">
+                                        <field name="claimed_warranties"/>
+                                    </h2>
+                                    <div class="progress mt-2">
+                                        <div class="progress-bar bg-warning">
+                                            <field name="claimed_percentage" widget="percentage"/>%
+                                        </div>
+                                    </div>
+                                    <button name="action_view_claimed_warranties" type="object" 
+                                            class="btn btn-outline-warning btn-sm mt-2">
+                                        <i class="fa fa-eye me-1"/> View Claimed
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Near Expiry Alert -->
+                    <div class="row mb-4" invisible="near_expiry_warranties == 0">
+                        <div class="col-12">
+                            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                                <i class="fa fa-clock-o me-3 fa-2x"/>
+                                <div class="flex-grow-1">
+                                    <h5 class="alert-heading mb-1">Near Expiry Warning</h5>
+                                    <p class="mb-0">
+                                        You have <strong><field name="near_expiry_warranties"/></strong> warranty(ies) expiring within the next 30 days.
+                                    </p>
+                                </div>
+                                <button name="action_view_near_expiry_warranties" type="object" 
+                                        class="btn btn-warning">
+                                    <i class="fa fa-eye me-1"/> View Near Expiry
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Additional Metrics Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fa fa-chart-line me-2"/> Additional Metrics
+                                        <small class="text-muted ms-2">
+                                            (Updated <field name="last_update" widget="relative"/>)
+                                        </small>
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="text-center">
+                                                <h4 class="text-info">
+                                                    <field name="claims_this_month"/>
+                                                </h4>
+                                                <p class="mb-0">Claims This Month</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="text-center">
+                                                <h4 class="text-secondary">
+                                                    <field name="claims_last_month"/>
+                                                </h4>
+                                                <p class="mb-0">Claims Last Month</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="text-center">
+                                                <h4 class="text-warning">
+                                                    <field name="trigger_count"/>
+                                                </h4>
+                                                <p class="mb-0">Updates Today</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Charts Section -->
+                    <notebook>
+                        <!-- Overview Charts Tab -->
+                        <page string="Overview Charts" name="overview_charts">
+                            <div class="row">
+                                <!-- Warranty Status Pie Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-pie-chart me-2"/> Warranty Status
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="warranty_status_chart" 
+                                                   widget="pie_chart"
+                                                   chartId="warranty_status_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Claims Trend Line Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-line-chart me-2"/> Claims Trend
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="claims_trend_chart" 
+                                                   widget="line_chart"
+                                                   chartId="claims_trend_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-3">
+                                <!-- Monthly Comparison Bar Chart -->
+                                <div class="col-md-12">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-bar-chart me-2"/> Monthly Comparison
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="monthly_comparison_chart" 
+                                                   widget="bar_chart"
+                                                   chartId="monthly_comparison_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </page>
+                        
+                        <!-- Product &amp; Customer Analytics Tab -->
+                        <page string="Product &amp; Customer Analytics" name="product_customer_charts">
+                            <div class="row">
+                                <!-- Top Products Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-cube me-2"/> Top Products
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="top_products_chart" 
+                                                   widget="bar_chart"
+                                                   chartId="top_products_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Top Customers Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-users me-2"/> Top Customers
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="top_customers_chart" 
+                                                   widget="bar_chart"
+                                                   chartId="top_customers_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </page>
+                        
+                        <!-- Claims Analytics Tab -->
+                        <page string="Claims Analytics" name="claims_charts">
+                            <div class="row">
+                                <!-- Claim Types Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-wrench me-2"/> Claim Types
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="claim_types_chart" 
+                                                   widget="line_chart"
+                                                   chartId="claim_types_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Warranty Expiry Chart -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fa fa-clock-o me-2"/> Upcoming Expiries
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <field name="warranty_expiry_chart" 
+                                                   widget="bar_chart"
+                                                   chartId="warranty_expiry_chart"
+                                                   nolabel="1"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </page>
+                        
+                        <!-- Warranty Lists Tab -->
+                        <page string="Warranty Lists" name="warranty_lists">
+                            <field name="active_warranty_ids" nolabel="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="product_id"/>
+                                    <field name="start_date"/>
+                                    <field name="end_date"/>
+                                    <field name="days_remaining"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="claim_count"/>
+                                </tree>
+                            </field>
+                        </page>
+                        
+                        <page string="Expired Warranties" name="expired_warranties">
+                            <field name="expired_warranty_ids" nolabel="1">
+                                <tree decoration-danger="state == 'expired'">
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="product_id"/>
+                                    <field name="start_date"/>
+                                    <field name="end_date"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="claim_count"/>
+                                </tree>
+                            </field>
+                        </page>
+                        
+                        <page string="Near Expiry (30 days)" name="near_expiry_warranties">
+                            <field name="near_expiry_warranty_ids" nolabel="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="product_id"/>
+                                    <field name="end_date"/>
+                                    <field name="days_remaining"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="claim_count"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Warranty Dashboard Action - Opens singleton record -->
+        <!-- Warranty Dashboard Action -->
+    <record id="action_warranty_dashboard" model="ir.actions.server">
+        <field name="name">Warranty Dashboard</field>
+        <field name="model_id" ref="model_warranty_dashboard"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_dashboard()</field>
+    </record>
+    
+    <!-- Active Warranties Tree View -->
+    <record id="view_warranty_card_active_tree" model="ir.ui.view">
+        <field name="name">warranty.card.active.tree</field>
+        <field name="model">warranty.card</field>
+        <field name="arch" type="xml">
+            <tree string="Active Warranties" decoration-success="days_remaining &gt; 90" decoration-warning="days_remaining &lt;= 90 and days_remaining &gt; 30">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="days_remaining"/>
+                <field name="claim_count"/>
+                <field name="warranty_type"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Active Warranties Search View -->
+    <record id="view_warranty_card_active_search" model="ir.ui.view">
+        <field name="name">warranty.card.active.search</field>
+        <field name="model">warranty.card</field>
+        <field name="arch" type="xml">
+            <search string="Active Warranties">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="lot_id"/>
+                <filter string="Expiring Soon (30 days)" name="expiring_soon"
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Expiring Soon (90 days)" name="expiring_soon_90"
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=90)).strftime('%Y-%m-%d'))]"/>
+                <filter string="With Claims" name="with_claims" domain="[('claim_count', '&gt;', 0)]"/>
+                <filter string="No Claims" name="no_claims" domain="[('claim_count', '=', 0)]"/>
+                <separator/>
+                <filter string="This Month" name="this_month"
+                        domain="[('start_date', '&gt;=', (context_today() - datetime.timedelta(days=context_today().day-1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Last 6 Months" name="last_6_months"
+                        domain="[('start_date', '&gt;=', (context_today() - datetime.timedelta(days=180)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Customer" name="group_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Product" name="group_product_type" context="{'group_by': 'product_id'}"/>
+                    <filter string="Start Date" name="group_start_date" context="{'group_by': 'start_date'}"/>
+                    <filter string="End Date" name="group_end_date" context="{'group_by': 'end_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Expired Warranties Tree View -->
+    <record id="view_warranty_card_expired_tree" model="ir.ui.view">
+        <field name="name">warranty.card.expired.tree</field>
+        <field name="model">warranty.card</field>
+        <field name="arch" type="xml">
+            <tree string="Expired Warranties" decoration-danger="state == 'expired'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="days_since_expiry" widget="integer"/>
+                <field name="claim_count"/>
+                <field name="state" widget="badge"/>
+                <field name="warranty_type"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Expired Warranties Search View -->
+    <record id="view_warranty_card_expired_search" model="ir.ui.view">
+        <field name="name">warranty.card.expired.search</field>
+        <field name="model">warranty.card</field>
+        <field name="arch" type="xml">
+            <search string="Expired Warranties">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="lot_id"/>
+                <filter string="Expired This Month" name="expired_this_month"
+                        domain="[('end_date', '&gt;=', (context_today() - datetime.timedelta(days=context_today().day-1)).strftime('%Y-%m-%d')), ('end_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Expired Last 3 Months" name="expired_last_3_months"
+                        domain="[('end_date', '&gt;=', (context_today() - datetime.timedelta(days=90)).strftime('%Y-%m-%d')), ('end_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Expired Last 6 Months" name="expired_last_6_months"
+                        domain="[('end_date', '&gt;=', (context_today() - datetime.timedelta(days=180)).strftime('%Y-%m-%d')), ('end_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="With Claims" name="with_claims" domain="[('claim_count', '&gt;', 0)]"/>
+                <filter string="No Claims" name="no_claims" domain="[('claim_count', '=', 0)]"/>
+                <separator/>
+                <filter string="Manually Expired" name="manually_expired" domain="[('state', '=', 'expired')]"/>
+                <filter string="Auto Expired" name="auto_expired" domain="[('state', '=', 'active'), ('end_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Customer" name="group_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Product" name="group_product_type" context="{'group_by': 'product_id'}"/>
+                    <filter string="Expiry Date" name="group_end_date" context="{'group_by': 'end_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Claimed Warranties Tree View -->
+    <record id="view_warranty_card_claimed_tree" model="ir.ui.view">
+        <field name="name">warranty.card.claimed.tree</field>
+        <field name="model">warranty.card</field>
+        <field name="arch" type="xml">
+            <tree string="Warranties with Claims" decoration-info="claim_count == 1" decoration-warning="claim_count &gt; 1 and claim_count &lt;= 3" decoration-danger="claim_count &gt; 3">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="claim_count"/>
+                <field name="last_claim_date"/>
+                <field name="state" widget="badge"/>
+                <field name="warranty_type"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Claimed Warranties Search View -->
+    <record id="view_warranty_card_claimed_search" model="ir.ui.view">
+        <field name="name">warranty.card.claimed.search</field>
+        <field name="model">warranty.card</field>
+        <field name="arch" type="xml">
+            <search string="Warranties with Claims">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="lot_id"/>
+                <filter string="Single Claim" name="single_claim" domain="[('claim_count', '=', 1)]"/>
+                <filter string="Multiple Claims (2-3)" name="multiple_claims" domain="[('claim_count', '&gt;=', 2), ('claim_count', '&lt;=', 3)]"/>
+                <filter string="High Claims (4+)" name="high_claims" domain="[('claim_count', '&gt;=', 4)]"/>
+                <filter string="Active with Claims" name="active_with_claims" domain="[('state', '=', 'active'), ('claim_count', '&gt;', 0)]"/>
+                <filter string="Expired with Claims" name="expired_with_claims" domain="[('state', '=', 'expired'), ('claim_count', '&gt;', 0)]"/>
+                <separator/>
+                <filter string="Claimed This Month" name="claimed_this_month"
+                        domain="[('last_claim_date', '&gt;=', (context_today() - datetime.timedelta(days=context_today().day-1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Claimed Last 3 Months" name="claimed_last_3_months"
+                        domain="[('last_claim_date', '&gt;=', (context_today() - datetime.timedelta(days=90)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Claimed Last 6 Months" name="claimed_last_6_months"
+                        domain="[('last_claim_date', '&gt;=', (context_today() - datetime.timedelta(days=180)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Customer" name="group_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Status" name="group_claim_status" context="{'group_by': 'state'}"/>
+                    <filter string="Product" name="group_product_type" context="{'group_by': 'product_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Near Expiry Warranties Tree View -->
+    <record id="view_warranty_card_near_expiry_tree" model="ir.ui.view">
+        <field name="name">warranty.card.near_expiry.tree</field>
+        <field name="model">warranty.card</field>
+        <field name="arch" type="xml">
+            <tree string="Warranties Near Expiry" decoration-danger="days_remaining &lt;= 7" decoration-warning="days_remaining &gt; 7 and days_remaining &lt;= 15">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="end_date"/>
+                <field name="days_remaining"/>
+                <field name="claim_count"/>
+                <field name="warranty_type"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Near Expiry Warranties Search View -->
+    <record id="view_warranty_card_near_expiry_search" model="ir.ui.view">
+        <field name="name">warranty.card.near_expiry.search</field>
+        <field name="model">warranty.card</field>
+        <field name="arch" type="xml">
+            <search string="Warranties Near Expiry">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="lot_id"/>
+                <filter string="Expiring in 7 days" name="expiring_7_days"
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Expiring in 15 days" name="expiring_15_days"
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=15)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Expiring in 30 days" name="expiring_30_days"
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                <filter string="With Claims" name="with_claims" domain="[('claim_count', '&gt;', 0)]"/>
+                <filter string="No Claims" name="no_claims" domain="[('claim_count', '=', 0)]"/>
+                <separator/>
+                <filter string="Critical (7 days)" name="critical"
+                        domain="[('end_date', '&lt;=', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Warning (15 days)" name="warning"
+                        domain="[('end_date', '&gt;', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d')), ('end_date', '&lt;=', (context_today() + datetime.timedelta(days=15)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Alert (30 days)" name="alert"
+                        domain="[('end_date', '&gt;', (context_today() + datetime.timedelta(days=15)).strftime('%Y-%m-%d')), ('end_date', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Customer" name="group_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Product" name="group_product_type" context="{'group_by': 'product_id'}"/>
+                    <filter string="Days Remaining" name="group_days_remaining" context="{'group_by': 'end_date'}"/>
+                    <filter string="End Date" name="group_end_date" context="{'group_by': 'end_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Category-Specific Actions -->
+    <record id="action_warranty_card_active" model="ir.actions.act_window">
+        <field name="name">Active Warranties</field>
+        <field name="res_model">warranty.card</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '=', 'active')]</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No Active Warranties
+            </p>
+            <p>
+                Active warranties are currently valid and can be used for claims.
+            </p>
+        </field>
+    </record>
+    
+    <record id="action_warranty_card_expired" model="ir.actions.act_window">
+        <field name="name">Expired Warranties</field>
+        <field name="res_model">warranty.card</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">['|', ('state', '=', 'expired'), ('end_date', '&lt;', context_today().strftime('%Y-%m-%d'))]</field>
+        <field name="context">{'search_default_expired': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No Expired Warranties
+            </p>
+            <p>
+                Expired warranties are no longer valid for claims.
+            </p>
+        </field>
+    </record>
+    
+    <record id="action_warranty_card_claimed" model="ir.actions.act_window">
+        <field name="name">Warranties with Claims</field>
+        <field name="res_model">warranty.card</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('claim_count', '&gt;', 0)]</field>
+        <field name="context">{'search_default_claimed': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No Warranties with Claims
+            </p>
+            <p>
+                These warranties have one or more claims associated with them.
+            </p>
+        </field>
+    </record>
+    
+    <record id="action_warranty_card_near_expiry" model="ir.actions.act_window">
+        <field name="name">Warranties Near Expiry</field>
+        <field name="res_model">warranty.card</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '=', 'active'), ('end_date', '&gt;=', context_today().strftime('%Y-%m-%d')), ('end_date', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]</field>
+        <field name="context">{'search_default_near_expiry': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No Warranties Near Expiry
+            </p>
+            <p>
+                These warranties will expire within the next 30 days.
+            </p>
+        </field>
+    </record>
+    
+</odoo>

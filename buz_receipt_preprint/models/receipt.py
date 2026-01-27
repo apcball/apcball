@@ -33,3 +33,23 @@ class AccountPayment(models.Model):
                 return base64.b64encode(f.read()).decode()
         except Exception as e:
             return False
+    
+    def get_print_config(self):
+        """Get the print configuration for receipt"""
+        config_obj = self.env['receipt.print.config']
+        config = config_obj.get_default_config()
+        if not config:
+            # Return default values if no config exists
+            config = config_obj.create({'name': 'Auto-generated Default'})
+        return config
+
+class AccountMove(models.Model):
+    _inherit = 'account.move'
+    
+    def get_print_config(self):
+        """Get the print configuration for receipt from invoice"""
+        config_obj = self.env['receipt.print.config']
+        config = config_obj.get_default_config()
+        if not config:
+            config = config_obj.create({'name': 'Auto-generated Default'})
+        return config

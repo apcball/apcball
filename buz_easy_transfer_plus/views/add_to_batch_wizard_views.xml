@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Define the wizard form view -->
+    <record id="add_to_batch_wizard_form_view" model="ir.ui.view">
+        <field name="name">add.to.batch.wizard.form</field>
+        <field name="model">add.to.batch.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Add Receipt to Batch">
+                <group>
+                    <field name="picking_id" invisible="1"/>
+                    <field name="batch_option" widget="radio"/>
+                </group>
+                <group invisible="batch_option != 'existing'">
+                    <field name="existing_batch_id" options="{'no_create': True}"/>
+                </group>
+                <group invisible="batch_option != 'new'">
+                    <field name="new_batch_name"/>
+                </group>
+                <footer>
+                    <button name="add_to_batch" type="object" 
+                            string="Add to Batch" 
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Action to open the wizard -->
+    <record id="action_add_to_batch_wizard" model="ir.actions.act_window">
+        <field name="name">Add to Batch Transfer</field>
+        <field name="res_model">add.to.batch.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

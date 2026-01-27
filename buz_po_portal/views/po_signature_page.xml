@@ -1,0 +1,453 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="po_signature_page_public" name="Purchase Order Signature">
+        <t t-call="portal.portal_layout">
+            <t t-set="wrapwrap_classes" t-value="'o_portal_bg_dark'"/>
+
+            <div class="row mt16 o_portal_sidebar">
+                <!-- Sidebar -->
+                <div class="col-lg-3 d-none d-lg-block">
+                    <div class="o_portal_sidebar_content">
+                        <div class="d-grid gap-2 col-12 mx-auto mb-3">
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalaccept" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time">
+                                <i class="fa fa-check"/> Approve &amp; Sign
+                            </button>
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalreject" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time">
+                                <i class="fa fa-times"/> Reject
+                            </button>
+                            <button type="button" class="btn btn-success" disabled="disabled" t-if="po.approval_token_expired or po.approval_signature">
+                                <i class="fa fa-check"/> Approved
+                            </button>
+                            <div class="alert alert-info small mb-0" t-if="po.approval_token_expired">
+                                <i class="fa fa-info-circle"/> This order has already been approved.
+                            </div>
+                            <div class="alert alert-warning small mb-0" t-if="token_expired_by_time">
+                                <i class="fa fa-exclamation-triangle"/> This link has expired.
+                            </div>
+                            <a class="btn btn-secondary" t-attf-href="/purchase/approve/print/#{po.approval_token}" title="Download">
+                                <i class="fa fa-download"/> Download / Print
+                            </a>
+                            <a t-if="request.session.uid" class="btn btn-secondary" t-attf-href="/web#id=#{po.id}&amp;view_type=form&amp;model=purchase.order" title="Back to PO">
+                                <i class="fa fa-arrow-left"/> Back to PO
+                            </a>
+                        </div>
+                        
+                        <div class="small mb-3">
+                            <strong class="d-block text-muted">Request Date:</strong>
+                            <span t-field="po.date_order" t-options='{"widget": "date"}'/>
+                        </div>
+                        <div class="small mb-3">
+                            <strong class="d-block text-muted">Vendor:</strong>
+                            <span t-field="po.partner_id"/>
+                        </div>
+                        <div class="small mb-3">
+                            <strong class="d-block text-muted">Buyer:</strong>
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <span t-field="po.create_uid.name"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="small mb-3" t-if="po.approval_date">
+                            <strong class="d-block text-muted">Approved Date:</strong>
+                            <span t-field="po.approval_date" t-options='{"widget": "datetime"}'/>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Content -->
+                <div class="col-lg-9 o_portal_content">
+                    <!-- Mobile Actions -->
+                    <div class="d-lg-none card mb-3">
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalaccept" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time">
+                                    <i class="fa fa-check"/> Approve &amp; Sign
+                                </button>
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalreject" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time">
+                                    <i class="fa fa-times"/> Reject
+                                </button>
+                                <button type="button" class="btn btn-success" disabled="disabled" t-if="po.approval_token_expired or po.approval_signature">
+                                    <i class="fa fa-check"/> Approved
+                                </button>
+                                <div class="alert alert-info small mb-0" t-if="po.approval_token_expired">
+                                    <i class="fa fa-info-circle"/> This order has already been approved.
+                                </div>
+                                <div class="alert alert-warning small mb-0" t-if="token_expired_by_time">
+                                    <i class="fa fa-exclamation-triangle"/> This link has expired.
+                                </div>
+                                <a class="btn btn-secondary" t-attf-href="/purchase/approve/print/#{po.approval_token}" title="Download">
+                                    <i class="fa fa-download"/> Download / Print
+                                </a>
+                                <a t-if="request.session.uid" class="btn btn-secondary" t-attf-href="/web#id=#{po.id}&amp;view_type=form&amp;model=purchase.order" title="Back to PO">
+                                    <i class="fa fa-arrow-left"/> Back to PO
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4" style="border: 1px solid #ddd; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+                        <div class="card-body p-3 p-lg-5" style="font-family: 'Sarabun', sans-serif; background-color: white; color: black;">
+                            <style>
+                                @font-face {
+                                    font-family: 'Sarabun';
+                                    src: url('/buz_po_portal/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                                }
+                                @font-face {
+                                    font-family: 'Sarabun';
+                                    src: url('/buz_po_portal/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                    font-weight: bold;
+                                }
+                                .po-report-content {
+                                    font-family: 'Sarabun', sans-serif !important;
+                                    font-size: 20px;
+                                }
+                                .po-report-content table {
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                }
+                                .po-report-content th, .po-report-content td {
+                                    border-color: black !important;
+                                }
+                                .table-bordered th, .table-bordered td {
+                                    border: 1px solid black !important;
+                                }
+                                .vendor-box { border: 1px solid #000; padding: 10px; }
+                                .shipto-box { border: 1px solid #000; padding: 10px; border-left: none; }
+                                @media (max-width: 767px) {
+                                    .shipto-box { border-left: 1px solid #000 !important; border-top: none !important; }
+                                }
+                            </style>
+                            
+                            <div class="po-report-content">
+                                <!-- Header -->
+                                <div class="row mb-2">
+                                    <div class="col-12 col-md-8 mb-3 mb-md-0">
+                                        <div style="font-size: 16px;">
+                                            <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
+                                            <div>9 หมู่ 12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จ.ปทุมธานี 12150</div>
+                                            <div>เลขที่ประจำตัวผู้เสียภาษี 0105547076103</div>
+                                            <div>โทร 02 1509710 E-mail: contact@mogen.co.th</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-4 text-center text-md-end">
+                                        <img t-if="po.company_id.logo" t-att-src="image_data_uri(po.company_id.logo)" style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                                    </div>
+                                </div>
+
+                                <!-- Title -->
+                                <div class="row mb-4">
+                                    <div class="col-12 text-center">
+                                        <h2 style="font-weight: bold; font-size: 24px; text-decoration: underline;">ใบสั่งซื้อ / PURCHASE ORDER</h2>
+                                    </div>
+                                </div>
+
+                                <!-- Document Info -->
+                                <div class="row mb-2">
+                                    <div class="col-12 col-md-8 mb-2 mb-md-0">
+                                        <p style="margin-bottom: 0; font-size: 16px;">กรุณาแนบใบสั่งซื้อทุกครั้งที่ส่งของและวางบิล</p>
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <div class="text-start text-md-end" style="font-size: 14px; line-height: 1.5;">
+                                            <div>เลขที่/NO: <strong><span t-field="po.name"/></strong></div>
+                                            <div>วันที่/DATE: <strong><span t-field="po.date_order" t-options='{"widget": "date"}'/></strong></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Vendor & Ship To Box -->
+                                <div style="width: 100%; border: 0px solid #000; margin-bottom: 20px;">
+                                <div class="row g-0">
+                                        <!-- Left: Vendor -->
+                                        <div class="col-12 col-md-6 vendor-box">
+                                            <div><strong>ผู้จำหน่าย / VENDOR</strong></div>
+                                            <div>Code: <span t-field="po.partner_id.ref"/></div>
+                                            <div>Name: <span t-field="po.partner_id.name"/></div>
+                                            <div>Address: <span t-field="po.partner_id" t-options='{"widget": "contact", "fields": ["address"], "no_marker": True}'/></div>
+                                            <div>Tel: <span t-field="po.partner_id.phone"/> Fax: <span t-field="po.partner_id.mobile"/></div>
+                                            <div>Contact: <span t-field="po.partner_contact_id.name"/></div>
+                                        </div>
+
+                                        <!-- Right: Deliver To -->
+                                        <div class="col-12 col-md-6 shipto-box">
+                                            <div><strong>สถานที่ส่งของ / SHIP TO</strong></div>
+                                            <div><span t-field="po.picking_type_id.warehouse_id.name"/></div>
+                                            <div><span t-field="po.picking_type_id.warehouse_id.partner_id" t-options='{"widget": "contact", "fields": ["address"], "no_marker": True}'/></div>
+                                            <div>Tax ID: <span t-field="po.company_id.vat"/> (Head Office)</div>
+                                            <div>Payment Term: <span t-field="po.payment_term_id.name"/></div>
+                                            <div>Delivery Date: <span t-field="po.date_planned" t-options='{"widget": "date"}'/></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- TABLE -->
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm mt-4 order-line-table" style="min-width: 600px;">
+                                        <thead style="background-color: #f8f9fa;">
+                                            <tr>
+                                                <th class="text-center">ลำดับ<br/><small>(No)</small></th>
+                                                <th class="text-center">รหัสสินค้า<br/><small>(Item No)</small></th>
+                                                <th class="text-center">รายการสินค้า<br/><small>(Description)</small></th>
+                                                <th class="text-center">วันที่ส่ง<br/><small>(Delivery Date)</small></th>
+                                                <th class="text-right">จำนวน<br/><small>(Qty)</small></th>
+                                                <th class="text-center">หน่วย<br/><small>(Unit)</small></th>
+                                                <th class="text-right">ราคา/หน่วย<br/><small>(Unit Price)</small></th>
+                                                <th class="text-center">ส่วนลด<br/><small>(Discount)</small></th>
+                                                <th class="text-right">จำนวนเงิน<br/><small>(Amount)</small></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="po.order_line" t-as="line">
+                                                <tr>
+                                                    <td class="text-center"><span t-esc="line_index + 1"/></td>
+                                                    <td class="text-center"><span t-field="line.product_id.default_code"/></td>
+                                                    <td><span t-field="line.name"/></td>
+                                                    <td class="text-center"><span t-field="line.date_planned" t-options='{"widget": "date"}'/></td>
+                                                    <td class="text-end"><span t-field="line.product_qty"/></td>
+                                                    <td class="text-center"><span t-field="line.product_uom"/></td>
+                                                    <td class="text-end"><span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": po.currency_id}'/></td>
+                                                    <td class="text-center"><span t-field="line.discount"/>%</td>
+                                                    <td class="text-end"><span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": po.currency_id}'/></td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Totals Area -->
+                                <div class="row mt-4">
+                                    <div class="col-12 col-md-7 mb-3 mb-md-0">
+                                        <div style="border: 1px solid black; padding: 10px; height: 100%;">
+                                            <strong>หมายเหตุ / Remark:</strong>
+                                            <p t-field="po.notes"/>
+                                            <div class="mt-2">
+                                                <strong>จำนวนเงินตัวอักษร: </strong> <span t-field="po.amount_total_text_th"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-5">
+                                        <table class="table table-bordered mb-0">
+                                                <tr>
+                                                    <td class="text-end">ราคารวม/Total:</td>
+                                                    <td class="text-end"><span t-field="po.amount_untaxed" t-options='{"widget": "monetary", "display_currency": po.currency_id}'/></td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-end">ภาษีมูลค่าเพิ่ม 7%:</td>
+                                                    <td class="text-end"><span t-field="po.amount_tax" t-options='{"widget": "monetary", "display_currency": po.currency_id}'/></td>
+                                                </tr>
+                                                <tr style="background-color: #eee;">
+                                                    <td class="text-end"><strong>จำนวนเงินรวมทั้งสิ้น:</strong></td>
+                                                    <td class="text-end"><strong><span t-field="po.amount_total" t-options='{"widget": "monetary", "display_currency": po.currency_id}'/></strong></td>
+                                                </tr>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Signatures -->
+                                <div class="row mt-5">
+                                    <style>
+                                        .sig-box { border-top: 1px solid black; width: 80%; margin: 0 auto; margin-top: 50px; text-align: center; padding-top: 10px;}
+                                        .sig-img { height: 60px; max-width: 100%; display: block; margin: 0 auto; margin-bottom: -10px;}
+                                        .sig-col { text-align: center; }
+                                    </style>
+                                    
+                                    <!-- Prepared -->
+                                    <div class="col-12 col-md-4 sig-col mb-4 mb-md-0">
+                                        <t t-if="po.prepared_signature">
+                                            <img t-att-src="image_data_uri(po.prepared_signature)" class="sig-img"/>
+                                        </t>
+                                        <div style="height: 50px;" t-else=""/>
+                                        <div class="sig-box">
+                                            <div>ผู้จัดทำ</div>
+                                            <div><span t-field="po.create_uid.name"/></div>
+                                            <div>Date: <span t-field="po.create_date" t-options='{"widget": "date"}'/></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Reviewed -->
+                                    <div class="col-12 col-md-4 sig-col mb-4 mb-md-0">
+                                        <t t-if="po.reviewed_signature">
+                                            <img t-att-src="image_data_uri(po.reviewed_signature)" class="sig-img"/>
+                                        </t>
+                                        <div style="height: 50px;" t-else=""/>
+                                            <div class="sig-box">
+                                            <div>ผู้ตรวจสอบ</div>
+                                            <div>
+                                                <span t-if="po.reviewer_id" t-field="po.reviewer_id.name"/>
+                                                <span t-else="">(.......................................................)</span>
+                                            </div>
+                                            <div>Date: <span t-if="po.reviewed_date" t-field="po.reviewed_date" t-options='{"widget": "date"}'/></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Approved -->
+                                    <div class="col-12 col-md-4 sig-col">
+                                            <t t-if="po.approval_signature">
+                                            <img t-att-src="image_data_uri(po.approval_signature)" class="sig-img"/>
+                                        </t>
+                                        <div style="height: 50px;" t-else=""/>
+                                            <div class="sig-box">
+                                            <div>ผู้อนุมัติ</div>
+                                            <div>
+                                                <span t-if="po.approver_id" t-field="po.approver_id.name"/>
+                                                <span t-else="">(.......................................................)</span>
+                                            </div>
+                                            <div>Date: <span t-if="po.approval_date" t-field="po.approval_date" t-options='{"widget": "date"}'/></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-5">
+                                    <div class="col-12" style="font-size: 12px;">
+                                        <strong>เงื่อนไขและการส่งมอบ / CONDITION:</strong>
+                                        <ol>
+                                            <li>การส่งสินค้าทุกครั้งต้องระบุเลขที่ใบสั่งซื้อในใบส่งของ / Please specify PO No. in Delivery Order.</li>
+                                            <li>ส่งสินค้าไม่ตรงตามกำหนด บริษัทสงวนสิทธิ์ยกเลิกใบสั่งซื้อ / Right to cancel if delivery delayed.</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reject Modal -->
+            <div role="dialog" class="modal fade" id="modalreject">
+                <div class="modal-dialog">
+                    <form id="reject" method="POST" t-att-data-order-id="po.id" t-att-data-token="po.approval_token" class="js_reject_json modal-content">
+                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                        <input type="hidden" name="po_id" t-att-value="po.id"/>
+                        <header class="modal-header bg-danger text-white">
+                            <h4 class="modal-title">Reject Purchase Order</h4>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </header>
+                        <main class="modal-body" id="reject-dialog">
+                            <div class="alert alert-warning">
+                                <i class="fa fa-exclamation-triangle"/> คุณกำลังจะไม่อนุมัติใบสั่งซื้อนี้
+                            </div>
+                            <p><strong>กรุณาระบุเหตุผลในการไม่อนุมัติ:</strong></p>
+                            <div class="mb-3">
+                                <textarea 
+                                    class="form-control" 
+                                    id="reject_reason" 
+                                    name="reject_reason" 
+                                    rows="4" 
+                                    placeholder="กรุณาระบุเหตุผลในการไม่อนุมัติ"
+                                    required="required"
+                                ></textarea>
+                                <div class="invalid-feedback" id="reject_reason_error">
+                                    กรุณาระบุเหตุผลในการไม่อนุมัติ
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">
+                                        <i class="fa fa-times"/> Cancel
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button type="button" class="btn btn-danger w-100" id="submitRejection">
+                                        <i class="fa fa-ban"/> Confirm Reject
+                                    </button>
+                                </div>
+                            </div>
+                        </main>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Signature Modal -->
+            <div role="dialog" class="modal fade" id="modalaccept">
+                <div class="modal-dialog">
+                    <form id="accept" method="POST" t-att-data-order-id="po.id" t-att-data-token="po.approval_token" class="js_accept_json modal-content">
+                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                         <input type="hidden" name="po_id" t-att-value="po.id"/>
+                        <header class="modal-header">
+                            <h4 class="modal-title">Approve &amp; Sign</h4>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </header>
+                        <main class="modal-body" id="sign-dialog">
+                            <p>
+                                I agree to approve this Purchase Order.
+                            </p>
+                            
+                            <!-- Signature Type Selection -->
+                            <div class="mb-3">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="signature_type" id="sig_type_draw" value="draw" checked="checked"/>
+                                    <label class="form-check-label" for="sig_type_draw">Draw Signature</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="signature_type" id="sig_type_upload" value="upload"/>
+                                    <label class="form-check-label" for="sig_type_upload">Upload File</label>
+                                </div>
+                            </div>
+
+                            <!-- Custom Signature Form -->
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <!-- Draw Container -->
+                                    <div id="draw_container">
+                                        <label for="signature" class="form-label">Signature</label>
+                                        <div class="signature-container border rounded p-2" style="background-color: #f8f9fa;">
+                                            <canvas id="signature" class="signature-canvas" width="500" height="200" style="border: 1px solid #dee2e6; background-color: white; cursor: crosshair; display: block; margin: 0 auto; max-width: 100%;"></canvas>
+                                        </div>
+                                        <div class="mt-2">
+                                            <button type="button" class="btn btn-sm btn-secondary" id="clearSignature">
+                                                <i class="fa fa-eraser"/> Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Upload Container -->
+                                    <div id="upload_container" class="d-none">
+                                        <label for="signature_file" class="form-label">Upload Signature Image</label>
+                                        <input type="file" class="form-control" id="signature_file" name="signature_file" accept="image/png, image/jpeg, image/jpg"/>
+                                        <div class="form-text text-muted">Supported formats: PNG, JPG</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-primary w-100" id="submitApproval">
+                                        <i class="fa fa-check"/> Approve &amp; Sign
+                                    </button>
+                                </div>
+                            </div>
+                        </main>
+                    </form>
+                </div>
+            </div>
+            
+        </t>
+    </template>
+    
+    <template id="approval_success_page" name="Approval Success">
+         <t t-call="portal.portal_layout">
+            <t t-set="wrapwrap_classes" t-value="'o_portal_bg_dark'"/>
+             <div class="row mt16">
+                 <div class="col-lg-12">
+                     <div class="alert alert-success d-print-none" role="alert">
+                         Purchase Order <strong t-esc="po.name"/> has been successfully approved!
+                     </div>
+                     <div class="card">
+                         <div class="card-body text-center">
+                             <h1><i class="fa fa-check-circle text-success" /> Approved</h1>
+                             <p>Thank you for your approval.</p>
+                             <div class="d-flex justify-content-center gap-2">
+                                <a t-attf-href="/purchase/approve/token/#{po.approval_token}" class="btn btn-primary">
+                                    View Document
+                                </a>
+                                <a t-if="request.session.uid" t-attf-href="/web#id=#{po.id}&amp;view_type=form&amp;model=purchase.order" class="btn btn-secondary">
+                                    Back to PO
+                                </a>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+         </t>
+    </template>
+</odoo>

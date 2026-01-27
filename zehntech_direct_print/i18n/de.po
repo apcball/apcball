@@ -1,0 +1,302 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* zehntech_direct_print
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 18.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-06-12 08:40+0000\n"
+"PO-Revision-Date: 2025-06-12 08:40+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+"Language: de\n"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printnode_configuration__api_key_print_node
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_res_company__api_key_print_node
+msgid "API Key"
+msgstr "API-Schlüssel"
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "API Key is valid and computers are found."
+msgstr "API-Schlüssel ist gültig und Computer wurden gefunden."
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "API Key is valid, but no computers found."
+msgstr "API-Schlüssel ist gültig, aber keine Computer gefunden."
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,help:zehntech_direct_print.field_res_company__api_key_print_node
+msgid "API Key of the printNode"
+msgstr "API-Schlüssel von PrintNode"
+
+#. module: zehntech_direct_print
+#: model_terms:ir.ui.view,arch_db:zehntech_direct_print.view_printnode_config_form
+msgid "Apply Settings"
+msgstr "Einstellungen anwenden"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printnode_configuration__available_printers_id
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_res_company__available_printers_id
+msgid "Available Printers"
+msgstr "Verfügbare Drucker"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,help:zehntech_direct_print.field_res_company__available_printers_id
+msgid "Available printers in the connected computer"
+msgstr "Verfügbare Drucker auf dem verbundenen Computer"
+
+#. module: zehntech_direct_print
+#: model_terms:ir.ui.view,arch_db:zehntech_direct_print.view_printnode_config_form
+msgid "Check Printers"
+msgstr "Drucker überprüfen"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,help:zehntech_direct_print.field_printnode_configuration__available_printers_id
+msgid "Check your available printers and choose one for the report."
+msgstr "Prüfen Sie Ihre verfügbaren Drucker und wählen Sie einen für den Bericht aus."
+
+#. module: zehntech_direct_print
+#: model:ir.model,name:zehntech_direct_print.model_res_company
+msgid "Companies"
+msgstr "Unternehmen"
+
+#. module: zehntech_direct_print
+#: model:ir.ui.menu,name:zehntech_direct_print.menu_printnode_config
+msgid "Configuration"
+msgstr "Konfiguration"
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Configuration has been saved to your company."
+msgstr "Konfiguration wurde für Ihr Unternehmen gespeichert."
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printer_details__create_uid
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printnode_configuration__create_uid
+msgid "Created by"
+msgstr "Erstellt von"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printer_details__create_date
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printnode_configuration__create_date
+msgid "Created on"
+msgstr "Erstellt am"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printer_details__display_name
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printnode_configuration__display_name
+msgid "Display Name"
+msgstr "Anzeigename"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,help:zehntech_direct_print.field_res_company__multiple_printers
+msgid "Enable if you have Multiple Printers"
+msgstr "Aktivieren Sie diese Option, wenn Sie mehrere Drucker haben"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,help:zehntech_direct_print.field_printnode_configuration__api_key_print_node
+msgid "Enter your PrintNode API Key here."
+msgstr "Geben Sie hier Ihren PrintNode API-Schlüssel ein."
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Failed to fetch printers: %s"
+msgstr "Abrufen der Drucker fehlgeschlagen: %s"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printer_details__id
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printnode_configuration__id
+msgid "ID"
+msgstr "ID"
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Invalid PrintNode API Key."
+msgstr "Ungültiger PrintNode API-Schlüssel."
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Invalid data format for Printers Details."
+msgstr "Ungültiges Datenformat für Druckerdetails."
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printer_details__write_uid
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printnode_configuration__write_uid
+msgid "Last Updated by"
+msgstr "Zuletzt aktualisiert von"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printer_details__write_date
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printnode_configuration__write_date
+msgid "Last Updated on"
+msgstr "Zuletzt aktualisiert am"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printnode_configuration__multiple_printers
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_res_company__multiple_printers
+msgid "Multiple Printers"
+msgstr "Mehrere Drucker"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,help:zehntech_direct_print.field_printnode_configuration__printers_ids
+#: model:ir.model.fields,help:zehntech_direct_print.field_res_company__printers_ids
+msgid "Multiple Printers can connect and print."
+msgstr "Mehrere Drucker können sich verbinden und drucken."
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "No connected computers found."
+msgstr "Keine verbundenen Computer gefunden."
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "No printers found."
+msgstr "Keine Drucker gefunden."
+
+#. module: zehntech_direct_print
+#: model:ir.model.constraint,message:zehntech_direct_print.constraint_printnode_configuration_only_one_row
+msgid "Only one PrintNode Configuration is allowed."
+msgstr "Nur eine PrintNode-Konfiguration ist erlaubt."
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Please provide a PrintNode API Key."
+msgstr "Bitte geben Sie einen PrintNode API-Schlüssel an."
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Please provide a valid API Key first."
+msgstr "Bitte geben Sie zuerst einen gültigen API-Schlüssel an."
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/controllers/direct_print.py:0
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Please select a printer."
+msgstr "Bitte wählen Sie einen Drucker aus."
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/controllers/direct_print.py:0
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Please select at least one printer."
+msgstr "Bitte wählen Sie mindestens einen Drucker aus."
+
+#. module: zehntech_direct_print
+#: model:ir.actions.act_window,name:zehntech_direct_print.action_printnode_config
+#: model_terms:ir.ui.view,arch_db:zehntech_direct_print.view_printnode_config_form
+msgid "PrintNode Configuration"
+msgstr "PrintNode-Konfiguration"
+
+#. module: zehntech_direct_print
+#: model:ir.model,name:zehntech_direct_print.model_printnode_configuration
+msgid "PrintNode Configuration Wizard"
+msgstr "PrintNode-Konfigurationsassistent"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printer_details__printer_description
+msgid "Printer Description"
+msgstr "Druckerbeschreibung"
+
+#. module: zehntech_direct_print
+#: model:ir.model,name:zehntech_direct_print.model_printer_details
+msgid "Printer Details"
+msgstr "Druckerdetails"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printer_details__id_of_printer
+msgid "Printer ID"
+msgstr "Drucker-ID"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printer_details__printers_name
+msgid "Printer Name"
+msgstr "Druckername"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printnode_configuration__printers_ids
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_res_company__printers_ids
+msgid "Printers Details"
+msgstr "Details der Drucker"
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Printers Loaded"
+msgstr "Drucker geladen"
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Printers were successfully fetched."
+msgstr "Drucker wurden erfolgreich abgerufen."
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Settings Applied"
+msgstr "Einstellungen angewendet"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,field_description:zehntech_direct_print.field_printer_details__state
+msgid "Status"
+msgstr "Status"
+
+#. module: zehntech_direct_print
+#. odoo-python
+#: code:addons/zehntech_direct_print/models/printnode_configuration.py:0
+msgid "Success"
+msgstr "Erfolg"
+
+#. module: zehntech_direct_print
+#: model_terms:ir.ui.view,arch_db:zehntech_direct_print.view_printnode_config_form
+msgid "Validate API Key"
+msgstr "API-Schlüssel validieren"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,help:zehntech_direct_print.field_printnode_configuration__multiple_printers
+msgid "You can select more than one printer only after enabling this option."
+msgstr "Sie können mehr als einen Drucker nur nach Aktivierung dieser Option auswählen."
+
+#. module: zehntech_direct_print
+#: model:ir.ui.menu,name:zehntech_direct_print.menu_printnode_root
+msgid "Direct Print"
+msgstr "Direktdruck"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,help:zehntech_direct_print.field_printer_details__printer_description
+msgid "description of printer"
+msgstr "Beschreibung des Druckers"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,help:zehntech_direct_print.field_printer_details__id_of_printer
+msgid "id of printer"
+msgstr "ID des Druckers"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,help:zehntech_direct_print.field_printer_details__printers_name
+msgid "name of printer"
+msgstr "Name des Druckers"
+
+#. module: zehntech_direct_print
+#: model:ir.model.fields,help:zehntech_direct_print.field_printer_details__state
+msgid "status of printer"
+msgstr "Status des Druckers"

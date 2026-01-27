@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_mrp_period_cost">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page" style="font-size: 11px;">
+                        <div class="oe_structure"/>
+                        
+                        <!-- Header -->
+                        <div class="text-center mb-4">
+                            <h3>Manufacturing Period Cost Allocation</h3>
+                            <h5><span t-field="o.name"/></h5>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-3"><strong>Date From:</strong> <span t-field="o.date_from"/></div>
+                            <div class="col-3"><strong>Date To:</strong> <span t-field="o.date_to"/></div>
+                            <div class="col-3"><strong>Base:</strong> <span t-field="o.allocation_base"/></div>
+                            <div class="col-3"><strong>Status:</strong> <span t-field="o.state"/></div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Section 1: Cost Summary -->
+                            <div class="col-6">
+                                <h6>1. Cost Summary (Standard vs Actual)</h6>
+                                <table class="table table-sm table-bordered">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Cost Type</th>
+                                            <th class="text-right">Actual</th>
+                                            <th class="text-right">Standard</th>
+                                            <th class="text-right">Variance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Direct Labor</td>
+                                            <td class="text-right"><span t-field="o.actual_dl" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                            <td class="text-right"><span t-field="o.total_std_dl" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                            <td class="text-right"><span t-field="o.diff_dl" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Indirect Labor</td>
+                                            <td class="text-right"><span t-field="o.actual_idl" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                            <td class="text-right"><span t-field="o.total_std_idl" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                            <td class="text-right"><span t-field="o.diff_idl" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Overhead</td>
+                                            <td class="text-right"><span t-field="o.actual_oh" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                            <td class="text-right"><span t-field="o.total_std_oh" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                            <td class="text-right"><span t-field="o.diff_oh" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                        </tr>
+                                        <tr class="font-weight-bold">
+                                            <td>Manufacturing Total</td>
+                                            <td class="text-right"><span t-esc="o.actual_dl + o.actual_idl + o.actual_oh" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                            <td class="text-right"><span t-esc="o.total_std_dl + o.total_std_idl + o.total_std_oh" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                            <td class="text-right"><span t-esc="o.diff_dl + o.diff_idl + o.diff_oh" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Material (Ref)</td>
+                                            <td class="text-right text-muted">-</td>
+                                            <td class="text-right text-muted"><span t-field="o.total_std_material" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                            <td class="text-right text-muted">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <small class="text-muted">* Material cost excluded from adjustment.</small>
+                            </div>
+
+                            <!-- Section 2: Variance Distribution -->
+                            <div class="col-6">
+                                <h6>2. Variance Distribution</h6>
+                                <table class="table table-sm table-bordered">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Distribution</th>
+                                            <th class="text-right">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Allocated to Inventory (Capitalized)</td>
+                                            <td class="text-right">
+                                                <span t-esc="sum(l.allocated_inventory_total for l in o.line_ids)" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Period Manufacturing Variance (Expense)</td>
+                                            <td class="text-right">
+                                                <span t-esc="sum(l.allocated_period_expense for l in o.line_ids)" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
+                                            </td>
+                                        </tr>
+                                        <tr class="font-weight-bold">
+                                            <td>Total Variance</td>
+                                            <td class="text-right">
+                                                <span t-esc="o.diff_dl + o.diff_idl + o.diff_oh" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div class="alert alert-info p-1" style="font-size: 10px;">
+                                    <strong>CRITICAL:</strong> Only on-hand inventory variance is capitalized.
+                                    Expenses for sold goods are recognized in the period.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Allocation Details -->
+                        <h6 class="mt-3">3. Allocation Details by MO</h6>
+                        <table class="table table-sm table-striped" style="font-size: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>MO</th>
+                                    <th>Product</th>
+                                    <th class="text-right">Qty Prod.</th>
+                                    <th class="text-right">On Hand</th>
+                                    <th class="text-right">Ratio %</th>
+                                    <th class="text-right">Alloc DL</th>
+                                    <th class="text-right">Alloc IDL</th>
+                                    <th class="text-right">Alloc OH</th>
+                                    <th class="text-right">Inv Adj.</th>
+                                    <th class="text-right">Final Inv Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="o.line_ids" t-as="line">
+                                    <tr>
+                                        <td><span t-field="line.mo_id"/></td>
+                                        <td><span t-field="line.product_id"/></td>
+                                        <td class="text-right"><span t-field="line.quantity_produced"/></td>
+                                        <td class="text-right"><span t-field="line.qty_on_hand"/></td>
+                                        <td class="text-right"><span t-field="line.inventory_ratio"/>%</td>
+                                        <td class="text-right"><span t-field="line.allocated_dl" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                        <td class="text-right"><span t-field="line.allocated_idl" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                        <td class="text-right"><span t-field="line.allocated_oh" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                        <td class="text-right font-weight-bold"><span t-field="line.allocated_inventory_total" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                        <td class="text-right"><span t-esc="line.standard_total_cost + line.allocated_inventory_total" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- Section 4: Period Variance Breakdown (Optional/Informational) -->
+                        <h6 class="mt-3">4. Period Variance Breakdown (Non-Capitalized)</h6>
+                        <table class="table table-sm w-50" style="font-size: 10px;">
+                             <thead>
+                                <tr>
+                                    <th>MO Reference</th>
+                                    <th class="text-right">Sold / Issued Qty</th>
+                                    <th class="text-right">Period Variance (Expense)</th>
+                                </tr>
+                             </thead>
+                             <tbody>
+                                <t t-foreach="o.line_ids" t-as="line">
+                                    <tr t-if="line.allocated_period_expense != 0">
+                                        <td><span t-field="line.mo_id"/></td>
+                                        <td class="text-right"><span t-field="line.qty_sold"/></td>
+                                        <td class="text-right"><span t-field="line.allocated_period_expense" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
+                                    </tr>
+                                </t>
+                             </tbody>
+                        </table>
+
+                        <!-- Section 5: Accounting Note -->
+                         <div class="card mt-3 bg-light">
+                            <div class="card-body p-2">
+                                <h6 class="card-title">5. Accounting &amp; Valuation Note</h6>
+                                <p class="card-text mb-0" style="font-size: 10px;">
+                                    Inventory valuation method: <strong>Periodic</strong> (No real-time accounting unless enabled).<br/>
+                                    This report adjusts inventory valuation only. It does <strong>NOT</strong> modify historical COGS or repost stock moves.
+                                    Accounting entries are optional and generated only if real-time valuation is enabled.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="oe_structure"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

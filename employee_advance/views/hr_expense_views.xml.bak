@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add Clear with Advance button to expense sheet form view if the view exists -->
+    <record id="view_expense_sheet_form_inherit_advance_clear" model="ir.ui.view">
+        <field name="name">hr.expense.sheet.form.inherit.advance.clear</field>
+        <field name="model">hr.expense.sheet</field>
+        <field name="inherit_id" ref="hr_expense.view_expense_sheet_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="%(action_open_advance_clear_wizard)d" 
+                        type="action"
+                        string="Clear with Advance" 
+                        class="oe_highlight"
+                        attrs="{'invisible': [('id', '=', False)]}"
+                        groups="hr_expense.group_hr_expense_user"/>
+            </div>
+        </field>
+    </record>
+</odoo>

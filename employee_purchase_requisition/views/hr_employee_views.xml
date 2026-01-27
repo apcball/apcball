@@ -11,7 +11,7 @@
              <page name="requisition_settings" string="Purchase Requisition Settings">
                  <group>
                      <group>
-                         <field name="employee_location_id"/>
+                         <field name="employee_location_id" groups="base.group_user,employee_purchase_requisition.employee_requisition_user"/>
                      </group>
                  </group>
              </page>

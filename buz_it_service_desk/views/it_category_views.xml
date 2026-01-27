@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- IT Category Tree View -->
+    <record id="view_it_category_tree" model="ir.ui.view">
+        <field name="name">it.category.tree</field>
+        <field name="model">it.category</field>
+        <field name="arch" type="xml">
+            <tree string="IT Categories">
+                <field name="name"/>
+                <field name="ticket_type"/>
+                <field name="parent_id"/>
+                <field name="team_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- IT Category Form View -->
+    <record id="view_it_category_form" model="ir.ui.view">
+        <field name="name">it.category.form</field>
+        <field name="model">it.category</field>
+        <field name="arch" type="xml">
+            <form string="IT Category">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="ticket_type"/>
+                            <field name="parent_id"/>
+                            <field name="team_id"/>
+                        </group>
+                        <group>
+                            <field name="active"/>
+                            <field name="color" widget="color"/>
+                        </group>
+                    </group>
+                    <group string="Description">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- IT Category Search View -->
+    <record id="view_it_category_search" model="ir.ui.view">
+        <field name="name">it.category.search</field>
+        <field name="model">it.category</field>
+        <field name="arch" type="xml">
+            <search string="IT Categories">
+                <field name="name"/>
+                <field name="ticket_type"/>
+                <filter string="Incident" name="incident" domain="[('ticket_type', '=', 'incident')]"/>
+                <filter string="Service Request" name="service" domain="[('ticket_type', '=', 'service')]"/>
+                <filter string="Purchase Request" name="purchase" domain="[('ticket_type', '=', 'purchase')]"/>
+                <separator/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Ticket Type" name="group_ticket_type" context="{'group_by': 'ticket_type'}"/>
+                    <filter string="Parent Category" name="group_parent_id" context="{'group_by': 'parent_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- IT Category Action -->
+    <record id="action_it_category" model="ir.actions.act_window">
+        <field name="name">IT Categories</field>
+        <field name="res_model">it.category</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first IT Category
+            </p>
+            <p>
+                Categories help you organize and classify tickets by type.
+            </p>
+        </field>
+    </record>
+
+    <!-- IT Category Action for Incidents -->
+    <record id="action_it_category_incidents" model="ir.actions.act_window">
+        <field name="name">Incident Categories</field>
+        <field name="res_model">it.category</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('ticket_type', '=', 'incident')]</field>
+        <field name="context">{'default_ticket_type': 'incident'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Incident Category
+            </p>
+            <p>
+                Categories help you organize and classify incidents.
+            </p>
+        </field>
+    </record>
+
+    <!-- IT Category Action for Service Requests -->
+    <record id="action_it_category_service" model="ir.actions.act_window">
+        <field name="name">Service Request Categories</field>
+        <field name="res_model">it.category</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('ticket_type', '=', 'service')]</field>
+        <field name="context">{'default_ticket_type': 'service'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Service Request Category
+            </p>
+            <p>
+                Categories help you organize and classify service requests.
+            </p>
+        </field>
+    </record>
+
+    <!-- IT Category Action for Purchase Requests -->
+    <record id="action_it_category_purchase" model="ir.actions.act_window">
+        <field name="name">Purchase Request Categories</field>
+        <field name="res_model">it.category</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('ticket_type', '=', 'purchase')]</field>
+        <field name="context">{'default_ticket_type': 'purchase'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Purchase Request Category
+            </p>
+            <p>
+                Categories help you organize and classify purchase requests.
+            </p>
+        </field>
+    </record>
+</odoo>

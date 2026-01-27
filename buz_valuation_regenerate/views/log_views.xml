@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Valuation Regenerate Log Tree View -->
+    <record id="view_valuation_regenerate_log_tree" model="ir.ui.view">
+        <field name="name">valuation.regenerate.log.tree</field>
+        <field name="model">valuation.regenerate.log</field>
+        <field name="arch" type="xml">
+            <tree string="Valuation Regeneration Logs">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="company_id"/>
+                <field name="executed_at"/>
+                <field name="rebuild_valuation_layers"/>
+                <field name="rebuild_account_moves"/>
+                <field name="dry_run"/>
+                <field name="scope_date_from"/>
+                <field name="scope_date_to"/>
+                <field name="scope_products" widget="many2many_tags"/>
+                <field name="scope_location_ids" widget="many2many_tags"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Valuation Regenerate Log Form View -->
+    <record id="view_valuation_regenerate_log_form" model="ir.ui.view">
+        <field name="name">valuation.regenerate.log.form</field>
+        <field name="model">valuation.regenerate.log</field>
+        <field name="arch" type="xml">
+            <form string="Valuation Regeneration Log">
+                <header>
+                    <button name="action_rollback" string="Rollback" type="object" 
+                            class="oe_highlight"
+                            invisible="dry_run == True"/>
+                    <button name="action_export_csv_report" string="Export CSV Report" type="object" 
+                            invisible="not attachment_ids"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_impacted_moves" type="object" 
+                                class="oe_stat_button" icon="fa-exchange">
+                            <field name="id" invisible="1"/>
+                            <div class="o_form_field o_stat_info">
+                                <span class="o_stat_text">Impacted Moves</span>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="user_id"/>
+                            <field name="company_id"/>
+                            <field name="executed_at"/>
+                        </group>
+                        <group>
+                            <field name="rebuild_valuation_layers"/>
+                            <field name="rebuild_account_moves"/>
+                            <field name="include_landed_cost_layers"/>
+                            <field name="dry_run"/>
+                            <field name="post_new_moves"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Scope" name="scope">
+                            <group>
+                                <group>
+                                    <field name="scope_products" widget="many2many_tags"/>
+                                    <field name="scope_location_ids" widget="many2many_tags"/>
+                                    <field name="scope_date_from"/>
+                                    <field name="scope_date_to"/>
+                                </group>
+                                <group>
+                                    <field name="recompute_cost_method"/>
+                                    <field name="notes"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Data Backup" name="backup">
+                            <group>
+                                <group string="Old SVL Count">
+                                    <field name="old_svl_data" invisible="1"/>
+                                    <p>Count: <field name="id" 
+                                        decoration-danger="not old_svl_data" 
+                                        decoration-success="old_svl_data"
+                                        string="0" nolabel="1"/></p>
+                                </group>
+                                <group string="Old Journal Entries Count">
+                                    <field name="old_move_data" invisible="1"/>
+                                    <p>Count: <field name="id" 
+                                        decoration-danger="not old_move_data" 
+                                        decoration-success="old_move_data"
+                                        string="0" nolabel="1"/></p>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Newly Created Data" name="new_data">
+                            <group>
+                                <group string="New SVL Count">
+                                    <field name="new_svl_ids" invisible="1"/>
+                                    <p>Count: <field name="id" 
+                                        decoration-danger="not new_svl_ids" 
+                                        decoration-success="new_svl_ids"
+                                        string="0" nolabel="1"/></p>
+                                </group>
+                                <group string="New Journal Entries Count">
+                                    <field name="new_move_ids" invisible="1"/>
+                                    <p>Count: <field name="id" 
+                                        decoration-danger="not new_move_ids" 
+                                        decoration-success="new_move_ids"
+                                        string="0" nolabel="1"/></p>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Attachments" name="attachments">
+                            <field name="attachment_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="create_date"/>
+                                    <field name="file_size"/>
+                                    <field name="mimetype"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action to open the log -->
+    <record id="action_valuation_regenerate_log" model="ir.actions.act_window">
+        <field name="name">Valuation Regeneration Logs</field>
+        <field name="res_model">valuation.regenerate.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No valuation regeneration logs found.
+            </p><p>
+                Logs of all valuation regeneration processes will appear here.
+            </p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="employee_purchase_requisition_view_form_inherit_buz_auto_analytic" model="ir.ui.view">
+        <field name="name">employee.purchase.requisition.view.form.inherit.buz.auto.analytic</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="inherit_id" ref="employee_purchase_requisition.employee_purchase_requisition_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='requisition_date']" position="after">
+                <field name="analytic_auto_sync" widget="boolean_toggle"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

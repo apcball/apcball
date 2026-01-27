@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <menuitem id="menu_buz_advance_root" name="Advance Accounting" parent="account.menu_finance" sequence="90"/>
+    <menuitem id="menu_buz_advance_entries" name="Advance Accruals" parent="menu_buz_advance_root" action="action_purchase_advance_accrual" groups="buz_advance_accounting.group_advance_accounting"/>
+</odoo>

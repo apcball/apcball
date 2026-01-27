@@ -1,0 +1,146 @@
+<odoo>
+
+    <!-- Enhanced Kanban View with Sidebar -->
+    <record id="view_stock_current_report_kanban_with_sidebar" model="ir.ui.view">
+        <field name="name">stock.current.report.kanban.with.sidebar</field>
+        <field name="model">stock.current.report</field>
+        <field name="arch" type="xml">
+            <kanban string="Stock Overview with Warehouse Sidebar"
+                    class="o_kanban_mobile stock_current_report_kanban"
+                    js_class="stock_current_kanban">
+                <field name="product_id"/>
+                <field name="location_id"/>
+                <field name="warehouse_id"/>
+                <field name="quantity"/>
+                <field name="free_to_use"/>
+                <field name="total_value"/>
+                <field name="unit_cost"/>
+                <field name="incoming"/>
+                <field name="outgoing"/>
+                <field name="uom_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="o_kanban_record_has_image_fill position-relative">
+                            <div class="oe_kanban_details">
+                                <div class="o_kanban_record_top mb-2">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title fs-5">
+                                            <field name="product_id"/>
+                                        </strong>
+                                    </div>
+                                    <div class="o_kanban_record_subtitle">
+                                        <i class="fa fa-map-marker text-muted"/> <field name="location_id"/>
+                                        <t t-if="record.warehouse_id.value">
+                                            | <i class="fa fa-building text-muted"/> <field name="warehouse_id"/>
+                                        </t>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_record_body">
+                                    <div class="row mb-2">
+                                        <div class="col-6">
+                                            <span class="badge bg-primary fs-6">
+                                                <i class="fa fa-cube"/> <field name="quantity"/> <field name="uom_id"/>
+                                            </span>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <span class="badge bg-success fs-6">
+                                                ฿ <field name="total_value" widget="monetary"/>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-6">
+                                            <small class="text-muted">Free to Use:</small>
+                                            <br/>
+                                            <strong><field name="free_to_use"/></strong>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">Unit Cost:</small>
+                                            <br/>
+                                            <strong><field name="unit_cost" widget="monetary"/></strong>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-2" t-if="record.incoming.raw_value > 0 or record.outgoing.raw_value > 0">
+                                        <div class="col-6" t-if="record.incoming.raw_value > 0">
+                                            <span class="badge bg-info">
+                                                <i class="fa fa-arrow-down"/> +<field name="incoming"/>
+                                            </span>
+                                        </div>
+                                        <div class="col-6" t-if="record.outgoing.raw_value > 0">
+                                            <span class="badge bg-warning">
+                                                <i class="fa fa-arrow-up"/> -<field name="outgoing"/>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_record_bottom mt-2">
+                                    <div class="oe_kanban_bottom_left">
+                                        <!-- transfer button removed -->
+                                        <button class="btn btn-sm btn-primary me-1"
+                                                name="action_view_product_moves" type="object">
+                                            <i class="fa fa-arrows-alt"/> Moves
+                                        </button>
+                                        <button class="btn btn-sm btn-info"
+                                                type="object" name="action_open_record"
+                                                title="View Details">
+                                            <i class="fa fa-info-circle"/> Details
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- product selection checkbox removed -->
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Enhanced List View with Sidebar -->
+    <record id="view_stock_current_report_tree_with_sidebar" model="ir.ui.view">
+        <field name="name">stock.current.report.tree.with.sidebar</field>
+        <field name="model">stock.current.report</field>
+        <field name="arch" type="xml">
+            <tree string="Current Stock Report with Warehouse Sidebar"
+                  edit="false" create="false" delete="false"
+                  js_class="stock_current_list">
+                <field name="warehouse_id" optional="show"/>
+                <field name="location_id"/>
+                <field name="product_id"/>
+                <field name="quantity" string="On Hand" sum="Total"/>
+                <field name="free_to_use" string="Free to Use" sum="Total" optional="show"/>
+                <field name="incoming" sum="Total" optional="show"/>
+                <field name="outgoing" sum="Total" optional="show"/>
+                <field name="unit_cost" string="Unit Cost" sum="Total" widget="monetary"/>
+                <field name="total_value" string="Total Value" sum="Total" widget="monetary"/>
+                <field name="uom_id" string="Unit" optional="hide"/>
+                <button name="action_view_product_moves" type="object" string="Stock Moves" icon="fa-arrows-alt" invisible="quantity == 0"/>
+                <!-- transfer button removed -->
+            </tree>
+        </field>
+    </record>
+
+    <!-- Update Action to use sidebar views -->
+    <record id="action_stock_current_report_sidebar" model="ir.actions.act_window">
+        <field name="name">Current Stock View</field>
+        <field name="res_model">stock.current.report</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_stock_current_report_kanban_with_sidebar')}),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_stock_current_report_tree_with_sidebar')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_stock_current_report_form')})
+        ]"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Current Stock Report with Warehouse Navigation
+            </p>
+            <p>
+                Navigate warehouses and locations using the sidebar on the left. Click on warehouses to expand and see locations,
+                then click on any location to filter the stock report for that specific location.
+            </p>
+        </field>
+    </record>
+
+</odoo>

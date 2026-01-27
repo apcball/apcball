@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Form View Extension -->
+        <record id="view_stock_picking_batch_form_inherit" model="ir.ui.view">
+            <field name="name">stock.picking.batch.form.inherit</field>
+            <field name="model">stock.picking.batch</field>
+            <field name="inherit_id" ref="stock_picking_batch.stock_picking_batch_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="after">
+                    <group string="Summary" name="summary_group">
+                        <field name="total_qty" readonly="1" nolabel="0"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Tree View Extension -->
+        <record id="view_stock_picking_batch_tree_inherit" model="ir.ui.view">
+            <field name="name">stock.picking.batch.tree.inherit</field>
+            <field name="model">stock.picking.batch</field>
+            <field name="inherit_id" ref="stock_picking_batch.stock_picking_batch_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//tree" position="inside">
+                    <field name="total_qty" sum="Total Qty"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Kanban View Extension -->
+        <record id="view_stock_picking_batch_kanban_inherit" model="ir.ui.view">
+            <field name="name">stock.picking.batch.kanban.inherit</field>
+            <field name="model">stock.picking.batch</field>
+            <field name="inherit_id" ref="stock_picking_batch.stock_picking_batch_kanban"/>
+            <field name="arch" type="xml">
+                <xpath expr="//templates" position="before">
+                    <field name="total_qty"/>
+                </xpath>
+                <xpath expr="//div[@class='oe_kanban_bottom_right']" position="inside">
+                    <small>Total Qty: <field name="total_qty"/></small>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Search View Extension -->
+        <record id="view_stock_picking_batch_search_inherit" model="ir.ui.view">
+            <field name="name">stock.picking.batch.search.inherit</field>
+            <field name="model">stock.picking.batch</field>
+            <field name="inherit_id" ref="stock_picking_batch.stock_picking_batch_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//group[@expand='0']" position="inside">
+                    <filter string="Total Quantity" name="group_total_qty" context="{'group_by': 'total_qty'}"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

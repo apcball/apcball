@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Server Action for Creating Payment Voucher from Bills -->
+    <record id="action_create_payment_voucher_from_bills" model="ir.actions.server">
+        <field name="name">Create Payment Voucher</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="state">code</field>
+        <field name="code">
+# Create a payment voucher from selected vendor bills
+active_ids = env.context.get('active_ids')
+active_model = env.context.get('active_model')
+
+if active_model == 'account.move' and active_ids:
+    moves = env[active_model].browse(active_ids)
+    
+    # Filter to only valid bills (posted, vendor invoices or refunds)
+    valid_moves = moves.filtered(
+        lambda m: m.state == 'posted' and m.move_type in ['in_invoice', 'in_refund']
+    )
+    
+    if not valid_moves:
+        raise UserError("No valid bills selected. Please select posted vendor invoices or refunds.")
+
+    # Check if any bills are already in an active Payment Voucher
+    existing_lines = env['account.payment.voucher.line'].search([
+        ('move_id', 'in', valid_moves.ids),
+        ('voucher_id.state', '!=', 'cancel')
+    ])
+    
+    if existing_lines:
+        error_msg = "The following bills are already included in active Payment Vouchers:\n"
+        for line in existing_lines:
+            error_msg += "- %s (in Voucher: %s)\n" % (line.move_id.name, line.voucher_id.name)
+        raise UserError(error_msg)
+    
+    # Ensure all bills are from the same vendor
+    partners = valid_moves.mapped('partner_id')
+    if len(partners) > 1:
+        raise UserError("All selected bills must belong to the same vendor. Found: %s" % ", ".join(partners.mapped('name')))
+    
+    # Create line values
+    line_values = []
+    for move in valid_moves:
+        line_values.append((0, 0, {
+            'move_id': move.id,
+            'amount_to_pay_gross': abs(move.amount_residual_signed),
+            'wht_base_amount': abs(move.amount_residual_signed),
+        }))
+    
+    # Create the payment voucher with lines
+    voucher = env['account.payment.voucher'].create({
+        'partner_id': partners[0].id,
+        'line_ids': line_values
+    })
+    
+    # Open the created payment voucher
+    action = {
+        'type': 'ir.actions.act_window',
+        'res_model': 'account.payment.voucher',
+        'view_mode': 'form',
+        'res_id': voucher.id,
+        'target': 'current'
+    }
+        </field>
+    </record>
+
+</odoo>

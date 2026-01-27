@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_mrp_period_cost_pdf" model="ir.actions.report">
+        <field name="name">Cost Allocation Report (PDF)</field>
+        <field name="model">mrp.period.cost</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_mrp_period_cost_allocation.report_mrp_period_cost</field>
+        <field name="report_file">buz_mrp_period_cost_allocation.report_mrp_period_cost</field>
+        <field name="print_report_name">'Cost_Allocation_%s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_mrp_period_cost"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_mrp_period_cost_xlsx" model="ir.actions.report">
+        <field name="name">Cost Allocation Report (Excel)</field>
+        <field name="model">mrp.period.cost</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_mrp_period_cost_allocation.report_xlsx</field>
+        <field name="report_file">Cost_Allocation</field>
+        <field name="print_report_name">'Cost_Allocation_%s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_mrp_period_cost"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

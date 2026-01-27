@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Group for margin approvers -->
+        <record id="group_margin_approval" model="res.groups">
+            <field name="name">Sales Margin Approvers</field>
+            <field name="category_id" ref="base.module_category_sales_sales"/>
+            <field name="comment">Users in this group can approve sales orders with margins below thresholds</field>
+        </record>
+        
+        <!-- Group for sales users who must use Confirm To SO flow -->
+        <record id="group_sales_margin_approver_user" model="res.groups">
+            <field name="name">Sales Margin Approver User</field>
+            <field name="category_id" ref="base.module_category_sales_sales"/>
+            <field name="comment">Sales users who must use 'Confirm To SO' flow instead of direct confirmation</field>
+        </record>
+        
+        <!-- Group for admin who can see and approve all pending orders regardless of margin range -->
+        <record id="group_margin_approval_admin" model="res.groups">
+            <field name="name">Sales Margin Approval Admin</field>
+            <field name="category_id" ref="base.module_category_sales_sales"/>
+            <field name="implied_ids" eval="[(4, ref('group_margin_approval'))]"/>
+            <field name="comment">Administrators who can see and approve all pending orders regardless of margin range restrictions</field>
+        </record>
+    </data>
+</odoo>

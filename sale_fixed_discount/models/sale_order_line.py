@@ -11,7 +11,7 @@ class SaleOrderLine(models.Model):
 
     discount_fixed = fields.Float(
         string="Discount (Fixed)",
-        digits="Product Price",
+        digits=(16, 4),
         help="Fixed amount discount.",
     )
 

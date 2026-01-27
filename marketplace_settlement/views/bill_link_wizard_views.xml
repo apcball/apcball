@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Bill Link Wizard Form View -->
+    <record id="bill_link_wizard_form_view" model="ir.ui.view">
+        <field name="name">bill.link.wizard.form</field>
+        <field name="model">bill.link.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Link Vendor Bills to Settlement">
+                <group>
+                    <group>
+                        <field name="mode" invisible="1"/>
+                        <field name="settlement_id" readonly="1" invisible="mode != 'settlement'"/>
+                        <field name="vendor_bill_id" readonly="1" invisible="mode != 'vendor_bill'"/>
+                        <field name="partner_id" readonly="1"/>
+                        <field name="company_id" invisible="1"/>
+                    </group>
+                </group>
+                
+                <!-- Settlement Mode: Select bills to link -->
+                <group invisible="mode != 'settlement'">
+                    <group string="Available Vendor Bills">
+                        <field name="available_bill_ids" nolabel="1" readonly="1">
+                            <tree string="Available Bills">
+                                <field name="name"/>
+                                <field name="invoice_date"/>
+                                <field name="amount_residual" widget="monetary"/>
+                                <field name="currency_id" invisible="1"/>
+                            </tree>
+                        </field>
+                    </group>
+                    
+                    <group string="Select Bills to Link">
+                        <field name="selected_bill_ids" nolabel="1" widget="many2many_checkboxes">
+                            <tree string="Selected Bills">
+                                <field name="name"/>
+                                <field name="invoice_date"/>
+                                <field name="amount_residual" widget="monetary"/>
+                                <field name="currency_id" invisible="1"/>
+                            </tree>
+                        </field>
+                    </group>
+                </group>
+                
+                <!-- Vendor Bill Mode: Select settlement to link to -->
+                <group invisible="mode != 'vendor_bill'">
+                    <group string="Available Settlements">
+                        <field name="available_settlement_ids" nolabel="1" readonly="1">
+                            <tree string="Available Settlements">
+                                <field name="name"/>
+                                <field name="date"/>
+                                <field name="net_settlement_amount" widget="monetary"/>
+                                <field name="company_currency_id" invisible="1"/>
+                            </tree>
+                        </field>
+                    </group>
+                    
+                    <group string="Select Settlement">
+                        <field name="selected_settlement_id" nolabel="1"/>
+                    </group>
+                    
+                    <group string="Debug Information" col="1">
+                        <field name="debug_info" nolabel="1" readonly="1" widget="text"/>
+                    </group>
+                </group>
+                
+                <footer>
+                    <!-- Settlement mode buttons -->
+                    <button name="action_auto_select_bills" type="object" 
+                            string="Auto Select" class="btn-secondary"
+                            invisible="mode != 'settlement'"/>
+                    <button name="action_link_bills" type="object" 
+                            string="Link Bills" class="btn-primary"
+                            invisible="mode != 'settlement'"/>
+                    
+                    <!-- Vendor bill mode buttons -->
+                    <button name="action_link_bills" type="object" 
+                            string="Link to Settlement" class="btn-primary"
+                            invisible="mode != 'vendor_bill'"/>
+                    
+                    <!-- Common buttons -->
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Bill Link Wizard Action -->
+    <record id="bill_link_wizard_action" model="ir.actions.act_window">
+        <field name="name">Link Vendor Bills</field>
+        <field name="res_model">bill.link.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="bill_link_wizard_form_view"/>
+    </record>
+</odoo>

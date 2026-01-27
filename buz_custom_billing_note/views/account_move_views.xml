@@ -10,7 +10,7 @@
                         type="object" 
                         string="Create Billing Note" 
                         class="oe_highlight"
-                        invisible="state != 'posted'"/>
+                        invisible="state != 'posted' or move_type not in ('out_invoice', 'in_invoice')"/>
             </button>
             <notebook position="inside">
                 <page string="Billing Notes">

@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+        <!-- Paper Format for Production Order Reports -->
+        <record id="paperformat_production_order_report" model="report.paperformat">
+            <field name="name">Production Order Report A4</field>
+            <field name="default" eval="True"/>
+            <field name="format">A4</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">10</field>
+            <field name="margin_bottom">10</field>
+            <field name="margin_left">4</field>
+            <field name="margin_right">4</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">90</field>
+        </record>
+        
+        <!-- Main Template -->
+        <template id="buz_manufacturing_report.production_order_report">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <div class="page" style="padding: 10px;">
+                            
+                            <style>
+                                 @font-face {
+                                    font-family: 'Sarabun';
+                                    src: url('/buz_manufacturing_report/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                }
+                                @page {
+                                    margin-top: 0mm;
+                                    margin-bottom: 10mm;
+                                    margin-left: 10mm;
+                                    margin-right: 10mm;
+                                }
+                                
+                                body, .page, .row {
+                                    margin-top: 0 !important;
+                                    padding-top: 0 !important;
+                                }
+                                
+                                html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+                                    font-family: 'Sarabun', sans-serif !important;
+                                    font-size: 20px;
+                                }
+                                
+                                .table {
+                                    border-collapse: collapse !important;
+                                    width: 100%;
+                                }
+                                
+                                .table td,
+                                .table th {
+                                    border-width: 0.5px !important;
+                                    border-style: solid !important;
+                                    border-color: #000 !important;
+                                    padding:  1px 1px;
+                                }
+    
+                                .order-line-table th,
+                                .order-line-table td {
+                                    padding-top: 20px !important;
+                                    padding-bottom: 20px !important;
+                                   line-height: 1.1 !important;
+                                }
+                                
+                                .no-inner-borders td,
+                                .no-inner-borders th {
+                                    border: none !important;
+                                }
+                                
+                                .table-bordered,
+                                .table-bordered td,
+                                .table-bordered th {
+                                    border: none !important;
+                                }
+                                
+                                .vendor-info, .delivery-info {
+                                    font-size: 14px;
+                                }
+                            </style>
+                        
+
+                             <!-- Order Lines -->
+                         <t t-set="move_list" t-value="o.move_raw_ids"/>
+                         <t t-set="groups_of_7" t-value="[move_list[i:i+7] for i in range(0, len(move_list), 7)]"/>
+                         <t t-set="page_number" t-value="1"/>
+                         <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
+                         <t t-set="line_number" t-value="1"/>
+                         <t t-foreach="groups_of_7" t-as="group">
+                             <t t-set="total_qty" t-value="0"/>
+                             <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+                                 <div>
+                             <!-- เงื่อนไขแสดงเลขหน้าเฉพาะถ้ามีหลายหน้า -->
+                                    <t t-if="total_pages &gt; 1">
+                                        <div style="text-align: right; font-weight: bold; font-size: 14px; margin-bottom: 5px;">
+                                            หน้า <t t-esc="page_number"/> / <t t-esc="total_pages"/>
+                                        </div>
+                                    </t>
+
+                            <!-- Company Info Section -->
+                        <div class="row mb-1">
+                            <div class="col-8">
+                                <div class="company-header mb-1" style="font-size: 24px; font-weight: bold;">
+                                    บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
+                                </div>
+                                <div class="company-info" style="font-size: 20px;">
+                                    9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150
+                                </div>
+                                <div class="company-info" style="font-size: 20px;">
+                                    เลขที่ประจําตัวผู้เสียภาษี 0105547076103
+                                </div>
+                                <div class="company-info" style="font-size: 20px;">
+                                    โทร 02 1509710 แฟกซ์ 02 1528803
+                                </div>
+                                <div class="company-info" style="font-size: 20px;">
+                                    E-mail: contact@mogen.co.th
+                                </div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                            </div>
+                        </div>
+                        
+                        <!-- Document Title -->
+                        <div class="row mb-3">
+                            <div class="col-4 offset-4 text-center">
+                                <div class="doc-title" style="border: 1px solid black; padding: 10px; font-size: 28px;">
+                                    ใบเปิด JOB
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Customer and Document Info -->   
+                        <div class="row" style="display: flex; justify-content: space-between; font-size: 20px; margin-bottom: 20px;">
+                          <!-- ฝั่งซ้าย -->
+                            <div style="width: 50%;">
+                                <div class="mb-1">
+                                    <strong style="display: inline-block; width: 30%;">แผนกที่เปิด:</strong>
+                                    <span t-field="o.user_id.department_id.name"/>
+                                </div>
+                                <div class="mb-1">
+                                    <strong style="display: inline-block; width: 30%;">ชื่อ:</strong>
+                                    <span t-field="o.user_id.name"/>
+                                </div>
+                                <div class="mb-1">
+                                    <strong style="display: inline-block; width: 30%;">เปิดเพื่อ:</strong>
+                                    <span t-field="o.origin"/>
+                                </div>
+                            </div>
+                        
+                            <!-- ฝั่งขวา -->
+                            <div style="width: 50%; text-align: right;">
+                                <div class="mb-1">
+                                    <strong style="display: inline-block; width: 45%;">เลขที่เอกสาร:</strong>
+                                    <span t-field="o.name"/>
+                                </div>
+                                <div class="mb-1">
+                                    <strong style="display: inline-block; width: 45%;">วันที่ออกเอกสาร:</strong>
+                                    <span t-field="o.create_date" t-options="{&quot;widget&quot;: &quot;date&quot;}"/>
+                                </div>
+                                <div class="mb-1">
+                                    <strong style="display: inline-block; width: 45%;">วันที่ต้องการสินค้า:</strong>
+                                    <span t-field="o.date_deadline" t-options="{&quot;widget&quot;: &quot;date&quot;}"/>
+                                </div>
+                                <div class="mb-1">
+                                    <strong style="display: inline-block; width: 45%;">วันที่เริ่มผลิต:</strong>
+                                    <span t-field="o.date_start" t-options="{&quot;widget&quot;: &quot;date&quot;}"/>
+                                </div>
+                            </div>
+                        
+                        </div>
+                        
+                            
+                      <!-- Order Lines -->
+                        <table class="table table-sm" style="border-collapse: collapse; min-height: 10px; width: 100%; margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2" style="width: 2%; padding: 6px 6px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold; line-height: 1.1;">
+                                        ลำดับ<br/><span style="font-size: 20px; font-weight: normal;">(No)</span>
+                                    </th>
+                                    <th rowspan="2" style="width: 4%; padding: 6px 6px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold; line-height: 1.1;">
+                                        รหัสสินค้า<br/><span style="font-size: 20px; font-weight: normal;">(Item Code)</span>
+                                    </th>
+                                    <th rowspan="2" style=" width: 28%; padding: 6px 6px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold; line-height: 1.1;">
+                                        ชื่อสินค้า<br/><span style="font-size: 20px; font-weight: normal;">(Product Name)</span>
+                                    </th>
+                                    <th rowspan="2" style=" width: 10%; padding: 6px 6px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold; line-height: 1.1;">
+                                        จำนวน<br/><span style="font-size: 20px; font-weight: normal;">(Quantity)</span>
+                                    </th>
+                                    <th rowspan="2" style=" width: 8%; padding: 6px 6px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold; line-height: 1.1;">
+                                        หน่วย<br/><span style="font-size: 20px; font-weight: normal;">(Unit)</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                                <tbody>
+                                    <t t-foreach="group" t-as="move">
+                                        <tr style="font-size: 20px;">
+                                            <td style="text-align: center; border: 1px solid black; padding: 6px 6px; line-height: 1.2;"><span t-esc="line_number"/></td>
+                                            <td style="border: 1px solid black; padding: 6px 6px; line-height: 1.2;"><span t-field="move.product_id.default_code"/></td>
+                                            <td style="border: 1px solid black; padding: 6px 6px; line-height: 1.2;"><span t-esc="move.product_id.display_name"/></td>
+                                            <td style="text-align: center; border: 1px solid black; padding: 6px 6px; line-height: 1.2;"><span t-field="move.product_uom_qty"/></td>
+                                            <td style="text-align: center; border: 1px solid black; padding: 6px 6px; line-height: 1.2;"><span t-field="move.product_uom"/></td>
+                                        </tr>
+                                        <t t-set="total_qty" t-value="total_qty + move.product_uom_qty"/>
+                                        <t t-set="line_number" t-value="line_number + 1"/>
+                                    </t>
+                                    <t t-if="len(group) &lt; 7">
+                                        <t t-set="empty_rows" t-value="7 - len(group)"/>
+                                        <t t-foreach="range(empty_rows)" t-as="i">
+                                            <tr class="data-row" style="font-size: 20px; height: 50px; line-height: 50px;">
+                                                <td style="text-align: center;"/>
+                                                <td/><td/><td/><td/>
+                                            </tr>
+                                        </t>
+                                    </t>
+                                    <!-- Summary row เฉพาะหน้าสุดท้าย -->
+                                    <t t-if="page_number == total_pages">
+                                        <tr class="data-row" style="font-size: 20px; font-weight: bold; background-color: #E3F2FD;">
+                                            <td colspan="4" style="text-align: right; border: 1px solid black; padding: 4px 2px; line-height: 1.2;">รวมทั้งหมด</td>
+                                            <td style="text-align: center; border: 1px solid black; padding: 4px 2px; line-height: 1.2;">
+                                                <span t-esc="'%.0f' % total_qty"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                        <t t-set="page_number" t-value="page_number + 1"/>
+                    </div>
+                </t>
+                <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
+                <t t-if="page_number &gt; total_pages">
+                    <!-- ลายเซ็นหรือหมายเหตุ -->
+                        
+
+                        <!-- หมายเหตุ -->
+                        <div style="padding: 20px; font-size: 22px; ">
+                            <div style="margin-bottom: 10px;">
+                                <strong style="font-size: 24px;">หมายเหตุ:</strong>
+                            </div>
+                            <div style="min-height: 20px; padding: 10px; ">
+                                <t t-if="'note' in o._fields">
+                                    <span t-field="o.note" style="font-size: 22px;"/>
+                                </t>
+                            </div>
+                        </div>
+
+
+                        <!-- Signature section -->
+                        <div style="margin-top: 20px; min-height: 60px;">
+                            <div class="row">                        
+                                <div style="border: 1px solid black; padding: 10px;">
+                                    <table style="width: 100%; table-layout: fixed; margin-bottom: 4px;">
+                                        <tr>
+                                            <td style="width: 25%; text-align: center; padding: 10px;">
+                                                <p>_____________________</p>
+                                                <p style="margin: 5px 0;">ผู้บันทึกรายการ</p>
+                                                <p>____/____/____</p>
+                                            </td>
+                                            <td style="width: 25%; text-align: center; padding: 10px;">
+                                                <p>_____________________</p>
+                                                <p style="margin: 5px 0;">ผู้จรวจสอบ</p>
+                                                <p>____/____/____</p>
+                                            </td>
+                                            <td style="width: 25%; text-align: center; padding: 10px;">
+                                                <p>_____________________</p>
+                                                <p style="margin: 5px 0;">ผู้อนุมัติ</p>
+                                                <p>____/____/____</p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    
+                    </t>
+                    </div>
+                </t>
+          </t>
+        </t>
+    </template>
+        
+       
+        <!-- Add Production Order Report to Manufacturing Orders -->
+        <record id="action_report_production_order" model="ir.actions.report">
+            <field name="name">ใบเปิด JOB</field>
+            <field name="model">mrp.production</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">buz_manufacturing_report.production_order_report</field>
+            <field name="report_file">buz_manufacturing_report.production_order_report</field>
+            <field name="binding_model_id" ref="mrp.model_mrp_production"/>
+            <field name="binding_type">report</field>
+            <field name="print_report_name">'Production Order Report - %s' % (object.name)</field>
+            <field name="paperformat_id" ref="buz_manufacturing_report.paperformat_production_order_report"/>
+        </record>
+</odoo>

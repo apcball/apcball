@@ -1,1 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_receipt_print_config_user,receipt.print.config.user,model_receipt_print_config,account.group_account_user,1,1,1,0
+access_receipt_print_config_manager,receipt.print.config.manager,model_receipt_print_config,account.group_account_manager,1,1,1,1
+access_receipt_print_quick_setup,receipt.print.quick.setup,model_receipt_print_quick_setup,account.group_account_user,1,1,1,1

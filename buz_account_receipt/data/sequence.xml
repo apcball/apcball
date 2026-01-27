@@ -1,0 +1,25 @@
+
+<odoo>
+  <data noupdate="0">
+    <record id="seq_buz_account_receipt" model="ir.sequence">
+      <field name="name">buz Account Receipt</field>
+      <field name="code">buz.account.receipt</field>
+      <field name="prefix">REC/%(year)s/</field>
+      <field name="padding">4</field>
+    </record>
+    
+    <record id="seq_buz_account_receipt_voucher" model="ir.sequence">
+      <field name="name">buz Account Receipt Voucher</field>
+      <field name="code">buz.account.receipt.voucher</field>
+      <field name="prefix">RV/%(year)s/</field>
+      <field name="padding">4</field>
+    </record>
+    
+    <record id="seq_buz_account_payment_voucher" model="ir.sequence">
+      <field name="name">buz Account Payment Voucher</field>
+      <field name="code">buz.account.payment.voucher</field>
+      <field name="prefix">PV/%(year)s/</field>
+      <field name="padding">4</field>
+    </record>
+  </data>
+</odoo>

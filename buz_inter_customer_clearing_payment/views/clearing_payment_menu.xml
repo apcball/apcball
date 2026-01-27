@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Action -->
+    <record id="action_clearing_payment_wizard" model="ir.actions.act_window">
+        <field name="name">Receive Clearing Payment</field>
+        <field name="res_model">buz.clearing.payment.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_clearing_payment_wizard_header"/>
+    </record>
+    
+    <!-- Menu Item -->
+    <menuitem id="menu_clearing_payment"
+              name="Receive Clearing Payment"
+              parent="account.menu_finance_receivables"
+              action="buz_inter_customer_clearing_payment.action_clearing_payment_wizard"
+              sequence="30"/>
+</odoo>

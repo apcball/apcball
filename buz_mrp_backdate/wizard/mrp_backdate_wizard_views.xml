@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- MRP Backdate Wizard Form View -->
+    <record id="view_mrp_backdate_wizard_form" model="ir.ui.view">
+        <field name="name">mrp.backdate.wizard.form</field>
+        <field name="model">mrp.backdate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Set Manufacturing Order Backdate">
+                <div class="alert alert-info" role="alert">
+                    This function allows you to change the accounting date of stock moves, 
+                    valuation layers, and journal entries for a completed Manufacturing Order.
+                </div>
+                <group>
+                    <group>
+                        <field name="production_id" readonly="1"/>
+                        <field name="backdate"/>
+                    </group>
+                    <group>
+                        <field name="backdate_remark" 
+                               placeholder="Please provide a reason for backdating this manufacturing order..."/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_apply_backdate" 
+                            string="Apply Backdate" 
+                            type="object" 
+                            class="btn-primary"/>
+                    <button string="Cancel" 
+                            class="btn-secondary" 
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_mrp_backdate_wizard" model="ir.actions.act_window">
+        <field name="name">Set Backdate</field>
+        <field name="res_model">mrp.backdate.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

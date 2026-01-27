@@ -1,0 +1,23 @@
+<odoo>
+    <record id="res_config_settings_view_form_standard_cost" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.standard.cost</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Using Odoo 17 <block> structure -->
+            <xpath expr="//block[@name='quotation_order_setting_container']" position="after">
+                <block title="Standard Cost &amp; Margin" name="standard_cost_setting_container">
+                    <setting help="Block confirmation if sales price is lower than standard cost">
+                        <field name="block_negative_margin"/>
+                    </setting>
+                    <setting help="Minimum required margin per order (%)">
+                         <field name="minimum_margin_percent"/>
+                    </setting>
+                    <setting help="Select the pricelist that serves as the Standard Cost source.">
+                         <field name="standard_cost_pricelist_id"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

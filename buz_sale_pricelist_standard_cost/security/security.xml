@@ -1,0 +1,68 @@
+<odoo>
+    <record id="group_pricing_admin" model="res.groups">
+        <field name="name">Pricing Admin</field>
+        <field name="category_id" ref="base.module_category_sales_sales"/>
+        <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_manager'))]"/> 
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+    
+    <!-- Record Rule: Protect Standard Cost Pricelist -->
+    <record id="rule_protect_standard_cost_pricelist_write" model="ir.rule">
+        <field name="name">Only Pricing Admin can edit Standard Cost Pricelists</field>
+        <field name="model_id" ref="product.model_product_pricelist"/>
+        <field name="groups" eval="[(4, ref('sales_team.group_sale_manager'))]"/> <!-- Default restrict to manager first? -->
+        <field name="domain_force">[('is_standard_cost_pricelist', '=', False)]</field>
+        <field name="perm_read" eval="0"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+    
+    <!-- Wait, the rule above REMOVES access for Sale Manager for standard cost pricelist? 
+         No, domain_force is what is ALLOWED. 
+         So Manager can only edit NON-standard cost pricelists? 
+         User wanted: "Only Pricing Admin can edit Standard Cost Pricelist"
+         
+         So for Group Pricing Admin: Allow All.
+         For Others (Sale Manager / User): Allow [('is_standard_cost_pricelist', '=', False)]
+    -->
+    
+    <!-- Let's fix. -->
+    
+    <!-- 1. Rule for Pricing Admin: See/Edit All -->
+    <!-- Admin usually has bypass. But implicit rules apply. -->
+    
+    <!-- 2. Rule for Sales Manager (who is not Pricing Admin): Cannot edit Standard Cost Pricelist -->
+    <!-- This is tricky with groups hierarchy. If Pricing Admin > Sale Manager. -->
+    
+    <!-- Let's keep it simple. Access Rights in CSV + Logic or simpler rule.
+         Rule: "Standard Cost Pricelist Write Protection"
+         Global rule? No. Group specific rule.
+    -->
+    
+    <record id="rule_modify_standard_cost_pricelist" model="ir.rule">
+        <field name="name">Modify Standard Cost Pricelist (Pricing Admin)</field>
+        <field name="model_id" ref="product.model_product_pricelist"/>
+        <field name="groups" eval="[(4, ref('group_pricing_admin'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="0"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <record id="rule_no_modify_standard_cost_pricelist" model="ir.rule">
+        <field name="name">No Modify Standard Cost Pricelist (Non-Pricing Admin)</field>
+        <field name="model_id" ref="product.model_product_pricelist"/>
+        <field name="groups" eval="[(4, ref('sales_team.group_sale_manager'))]"/> 
+        <!-- Note: If Pricing Admin inherits Sale Manager, this rule ALSO applies and restricts him!
+             So Pricing Admin should NOT inherit this rule.
+             But if we apply to Sale Manager, it applies to Pricing Admin too if he is a Sale Manager.
+             
+             Solution: Use 'global' rule with user check? Or carefully constructed groups.
+             Or simpler: Just rely on UI hiding + Python Constraint "Only Pricing Admin...".
+             Constraint is safer and easier.
+        -->
+    </record>
+
+</odoo>

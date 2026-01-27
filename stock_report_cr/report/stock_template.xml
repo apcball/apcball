@@ -1,0 +1,124 @@
+<odoo>
+    <template id="report_stock_report">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <div class="text-center">
+                        <h1>
+                            <u>
+                                <em>stock report</em>
+                            </u>
+                        </h1>
+                    </div>
+                    <div>
+                        <table class="table .table-striped .table-bordered">
+                            <thead>
+                                <tr class="font-weight-bold bg-light" style="font-size:16px;">
+                                    <td>Warehouse</td>
+                                    <td class="text-center">
+                                        <t t-esc="report_company_id"/>
+                                    </td>
+                                </tr>
+                                <tr class="font-weight-bold bg-light" style="font-size:16px;">
+                                    <td>location</td>
+                                    <td class="text-center">
+                                        <t t-esc="report_location"/>
+                                    </td>
+                                </tr>
+                                <tr class="font-weight-bold bg-light" style="font-size:16px;">
+                                    <td>Date From</td>
+                                    <td class="text-center">
+                                        <t t-esc="report_start_date"/>
+                                    </td>
+                                </tr>
+                                <tr class="font-weight-bold bg-light" style="font-size:16px;">
+                                    <td>To Date</td>
+                                    <td class="text-center">
+                                        <t t-esc="report_end_date"/>
+                                    </td>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr class="font-weight-bold bg-light" style="font-size:16px;">
+                                    <th name="refrence" class="text-left">Refrence</th>
+                                    <th name="designation" class="text-right">Designation</th>
+                                    <th name="uom" class="text-right">UoM</th>
+                                    <th name="initial" class="text-right">Initial Stock</th>
+                                    <th name="in" class="text-right">In</th>
+                                    <th name="out" class="text-right">Out</th>
+                                    <th name="balance" class="text-right">Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <div class="stock_report">
+                                    <t t-foreach="serach_record" t-as="element">
+                                        <th class="center" style="font-size:17px;">
+                                            Category by:-
+                                            <t t-esc="element"/>
+                                        </th>
+                                        <t t-foreach="serach_record[element]" t-as="line">
+                                            <tr t-att-class="'font-weight-bold o_line_section'">
+                                                <td name="reference" style="font-size:14px;">
+                                                    <span t-esc="line['default_code']"/>
+                                                </td>
+                                                <td name="designation" class="text-right" style="font-size:14px;">
+                                                    <span t-esc="line['product']"/>
+                                                </td>
+                                                <td name="uom" class="text-right" style="font-size:14px;">
+                                                    <span t-esc="line['uom']"/>
+                                                </td>
+                                                <td name="uom" class="text-right" style="font-size:14px;">
+                                                    <span t-esc="line['initial_stock']"/>
+                                                </td>
+                                                <td name="in" class="text-right" style="font-size:14px;">
+                                                    <span t-esc="line['in']"/>
+                                                </td>
+                                                <td name="out" class="text-right" style="font-size:14px;">
+                                                    <span t-esc="line['out']"/>
+                                                </td>
+                                                <td name="out" class="text-right" style="font-size:19px;">
+                                                    <span t-esc="line['balance']"/>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </t>
+                                </div>
+                                <div class="stock_report">
+                                    <t t-foreach="search_record" t-as="dec">
+                                        <tr t-att-class="'font-weight-bold o_line_section'">
+                                            <td name="reference" style="font-size:14px;">
+                                                <span t-esc="dec['default_code']"/>
+                                            </td>
+                                            <td name="designation" class="text-right" style="font-size:14px;">
+                                                <span t-esc="dec['product']"/>
+                                            </td>
+                                            <td name="uom" class="text-right" style="font-size:14px;">
+                                                <span t-esc="dec['uom']"/>
+                                            </td>
+                                            <td name="uom" class="text-right" style="font-size:14px;">
+                                                <span t-esc="dec['initial_stock']"/>
+                                            </td>
+                                            <td name="in" class="text-right" style="font-size:14px;">
+                                                <span t-esc="dec['in']"/>
+                                            </td>
+                                            <td name="out" class="text-right" style="font-size:14px;">
+                                                <span t-esc="dec['out']"/>
+                                            </td>
+                                            <td name="out" class="text-right" style="font-size:19px;">
+                                                <span t-esc="dec['balance']"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- VAT Undue Use Wizard Form View -->
+    <record id="view_vat_undue_use_wizard_form" model="ir.ui.view">
+        <field name="name">vat.undue.use.wizard.form</field>
+        <field name="model">vat.undue.use.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Use VAT - Select Accounting Date">
+                <group>
+                    <group>
+                        <field name="line_count" string="จำนวนรายการ" readonly="1"/>
+                        <field name="total_amount" widget="monetary" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="accounting_date" required="1"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                </group>
+                
+                <notebook>
+                    <page string="Tax Undue Lines" name="undue_lines">
+                        <field name="undue_line_ids" nolabel="1" readonly="1">
+                            <tree>
+                                <field name="name" string="Tax Invoice No"/>
+                                <field name="partner_id"/>
+                                <field name="tax_invoice_date"/>
+                                <field name="tax_id"/>
+                                <field name="tax_base" sum="Total Tax Base"/>
+                                <field name="remaining_tax_amount" sum="Total Amount" widget="monetary"/>
+                                <field name="state"/>
+                            </tree>
+                        </field>
+                    </page>
+                </notebook>
+                
+                <footer>
+                    <button name="action_confirm_use_vat" 
+                            string="Confirm Use VAT" 
+                            type="object" 
+                            class="btn-primary"/>
+                    <button string="Cancel" 
+                            class="btn-secondary" 
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

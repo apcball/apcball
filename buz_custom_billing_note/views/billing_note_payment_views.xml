@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Tree View -->
     <record id="view_billing_note_payment_tree" model="ir.ui.view">
         <field name="name">billing.note.payment.tree</field>
         <field name="model">billing.note.payment</field>
@@ -10,43 +11,58 @@
                 <field name="payment_date"/>
                 <field name="payment_method"/>
                 <field name="amount"/>
+                <field name="currency_id" invisible="1"/>
             </tree>
         </field>
     </record>
 
+    <!-- Form View -->
     <record id="view_billing_note_payment_form" model="ir.ui.view">
         <field name="name">billing.note.payment.form</field>
         <field name="model">billing.note.payment</field>
         <field name="arch" type="xml">
             <form string="Payment">
                 <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
                     <group>
                         <group>
                             <field name="billing_note_id"/>
-                            <field name="name"/>
+                            <field name="payment_id"/>
                             <field name="payment_date"/>
                         </group>
                         <group>
                             <field name="payment_method"/>
                             <field name="amount"/>
-                            <field name="currency_id" invisible="1"/>
+                            <field name="currency_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
-                    <field name="notes"/>
+                    <notebook>
+                        <page string="Notes">
+                            <field name="notes" placeholder="Add any notes or remarks here..."/>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
     </record>
 
+    <!-- Action -->
     <record id="action_billing_note_payment" model="ir.actions.act_window">
         <field name="name">Payments</field>
         <field name="res_model">billing.note.payment</field>
         <field name="view_mode">tree,form</field>
     </record>
 
+    <!-- Menu -->
     <menuitem id="menu_billing_note_payment"
-        name="Payments"
-        parent="menu_billing_note_root"
-        action="action_billing_note_payment"
-        sequence="2"/>
+              name="Payments"
+              parent="menu_billing_note_main"
+              action="action_billing_note_payment"
+              sequence="2"/>
+
 </odoo>

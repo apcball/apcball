@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo                    <group>
+                        <group name="amounts" string="Clearing Amounts">
+                            <field name="current_balance" readonly="1" widget="monetary"/>
+                            <field name="clear_amount" required="1"/>
+                            <field name="net_amount" readonly="1" widget="monetary"/>
+                            <label for="net_amount" colspan="2">
+                                <div class="text-info">
+                                    <i class="fa fa-info-circle"/> Net Amount = Clear Amount - WHT Amount<br/>
+                                    This amount will be deducted from the advance box.
+                                </div>
+                            </label>!-- WHT Clear Advance Wizard Form View -->
+    <record id="view_wht_clear_advance_wizard_form" model="ir.ui.view">
+        <field name="name">wht.clear.advance.wizard.form</field>
+        <field name="model">wht.clear.advance.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Clear Advance with WHT">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="expense_sheet_id" readonly="1" 
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </h1>
+                        <h2>
+                            Clear Advance with Withholding Tax
+                        </h2>
+                    </div>
+                    
+                    <group>
+                        <group name="context_info" string="Context Information">
+                            <field name="employee_id" readonly="1"/>
+                            <field name="advance_box_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                            <field name="currency_id" readonly="1"/>
+                        </group>
+                        
+                        <group name="wht_details" string="WHT Details">
+                            <field name="partner_id" required="1" 
+                                   context="{'default_is_company': True, 'default_supplier_rank': 1}"
+                                   options="{'no_quick_create': True}"/>
+                            <field name="wht_tax_id" required="1"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                            <field name="wht_tax_rate" readonly="1"/>
+                            <field name="amount_base" required="1"/>
+                            <field name="wht_amount" readonly="1"/>
+                            <label for="wht_amount" colspan="2">
+                                <div class="text-muted">
+                                    WHT will be calculated as: Base Amount × Tax Rate
+                                </div>
+                            </label>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group name="amounts" string="Clearing Amounts">
+                            <field name="clear_amount" required="1"/>
+                            <label for="clear_amount" colspan="2">
+                                <div class="text-muted">
+                                    Advance will be reduced by: Clear Amount - WHT Amount
+                                </div>
+                            </label>
+                        </group>
+                        
+                        <group name="journal_info" string="Journal Entry">
+                            <field name="journal_id" required="1"
+                                   domain="[('type', '=', 'general'), ('company_id', '=', company_id)]"
+                                   options="{'no_create': True}"/>
+                            <field name="date" required="1"/>
+                            <field name="ref" placeholder="Optional reference"/>
+                        </group>
+                    </group>
+                    
+                    <div class="alert alert-info" role="alert">
+                        <strong>Journal Entry Preview:</strong>
+                        <ul class="list-unstyled">
+                            <li><strong>Dr</strong> Partner Payable: <span class="text-success">฿<field name="clear_amount" nolabel="1" readonly="1"/></span></li>
+                            <li><strong>Cr</strong> Advance Account: <span class="text-danger">฿<span class="computed_advance_credit"/></span></li>
+                            <li><strong>Cr</strong> WHT Payable: <span class="text-danger">฿<field name="wht_amount" nolabel="1" readonly="1"/></span></li>
+                        </ul>
+                    </div>
+                </sheet>
+                
+                <footer>
+                    <button name="action_create_and_post" string="Create &amp; Post Journal Entry" 
+                            type="object" class="btn-primary" 
+                            confirm="Are you sure you want to create and post this journal entry? This action cannot be undone."/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- WHT Clear Advance Wizard Action -->
+    <record id="action_wht_clear_advance_wizard" model="ir.actions.act_window">
+        <field name="name">Clear Advance with WHT</field>
+        <field name="res_model">wht.clear.advance.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{
+            'default_expense_sheet_id': active_id,
+            'default_employee_id': context.get('default_employee_id'),
+            'default_advance_box_id': context.get('default_advance_box_id'),
+            'default_company_id': context.get('default_company_id'),
+        }</field>
+    </record>
+</odoo>

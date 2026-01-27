@@ -9,4 +9,13 @@
             <field name="company_id" eval="False"/>
         </record>
     </data>
+    <data noupdate="1">
+        <record id="seq_sale_quotation" model="ir.sequence">
+            <field name="name">Quotation Number</field>
+            <field name="code">sale.quotation</field>
+            <field name="prefix">QT</field>
+            <field name="padding">7</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
 </odoo>

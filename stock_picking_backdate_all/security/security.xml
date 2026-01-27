@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="stock_picking_backdate_assign_group" model="res.groups">
+        <field name="name">Stock Picking Backdate</field>
+        <field name="category_id" ref="base.module_category_hidden" />
+    </record>
+</odoo>

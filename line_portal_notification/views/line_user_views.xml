@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- LINE User Tree View -->
+    <record id="line_user_view_tree" model="ir.ui.view">
+        <field name="name">line.user.tree</field>
+        <field name="model">line.user</field>
+        <field name="arch" type="xml">
+            <tree string="LINE Users" default_order="last_event_date desc">
+                <field name="display_name"/>
+                <field name="line_user_id"/>
+                <field name="employee_id"/>
+                <field name="user_id"/>
+                <field name="last_event_date"/>
+                <field name="event_count"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- LINE User Form View -->
+    <record id="line_user_view_form" model="ir.ui.view">
+        <field name="name">line.user.form</field>
+        <field name="model">line.user</field>
+        <field name="arch" type="xml">
+            <form string="LINE User">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object"
+                                class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button"
+                                   options="{'terminology': 'archive'}"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="display_name" placeholder="LINE Display Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="LINE Information">
+                            <field name="line_user_id" readonly="1"/>
+                            <field name="last_event_date"/>
+                            <field name="event_count"/>
+                        </group>
+                        <group string="Odoo Mapping">
+                            <field name="user_id"/>
+                            <field name="employee_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes" name="notes">
+                            <field name="notes" placeholder="Internal notes about this LINE user..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- LINE User Search View -->
+    <record id="line_user_view_search" model="ir.ui.view">
+        <field name="name">line.user.search</field>
+        <field name="model">line.user</field>
+        <field name="arch" type="xml">
+            <search string="Search LINE Users">
+                <field name="display_name"/>
+                <field name="line_user_id"/>
+                <field name="user_id"/>
+                <field name="employee_id"/>
+                <filter name="filter_active" string="Active" domain="[('active', '=', True)]"/>
+                <filter name="filter_inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="filter_mapped" string="Mapped" 
+                        domain="['|', ('user_id', '!=', False), ('employee_id', '!=', False)]"/>
+                <filter name="filter_unmapped" string="Unmapped" 
+                        domain="[('user_id', '=', False), ('employee_id', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_user" string="Odoo User" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_by_employee" string="Employee" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_by_active" string="Active" context="{'group_by': 'active'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- LINE User Action -->
+    <record id="line_user_action" model="ir.actions.act_window">
+        <field name="name">LINE Users</field>
+        <field name="res_model">line.user</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="line_user_view_search"/>
+        <field name="context">{'search_default_filter_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No LINE users registered yet!
+            </p>
+            <p>
+                LINE users are automatically captured when they interact with your LINE Official Account.
+                Configure the webhook URL in LINE Developers Console:
+                <br/><br/>
+                <code>https://your-domain.com/line/webhook</code>
+                <br/><br/>
+                After users are captured, you can link them to Odoo users or employees for notification delivery.
+            </p>
+        </field>
+    </record>
+
+    <!-- LINE Menu -->
+    <menuitem id="menu_line_root"
+              name="LINE"
+              parent="base.menu_custom"
+              sequence="90"/>
+    
+    <menuitem id="menu_line_users"
+              name="LINE Users"
+              parent="menu_line_root"
+              action="line_user_action"
+              sequence="10"/>
+
+</odoo>

@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Demo Partners -->
+        <record id="partner_shopee_thailand" model="res.partner">
+            <field name="name">Shopee Thailand</field>
+            <field name="is_company">True</field>
+            <field name="supplier_rank">1</field>
+            <field name="customer_rank">1</field>
+            <field name="vat">0105557172345</field>
+            <field name="street">999/9 The Offices at CentralWorld</field>
+            <field name="city">Bangkok</field>
+            <field name="zip">10330</field>
+            <field name="country_id" ref="base.th"/>
+        </record>
+
+        <record id="partner_spx_technologies" model="res.partner">
+            <field name="name">SPX Technologies</field>
+            <field name="is_company">True</field>
+            <field name="supplier_rank">1</field>
+            <field name="vat">0105558123456</field>
+            <field name="street">888/8 Logistics Center</field>
+            <field name="city">Bangkok</field>
+            <field name="zip">10400</field>
+            <field name="country_id" ref="base.th"/>
+        </record>
+
+        <record id="partner_lazada_thailand" model="res.partner">
+            <field name="name">Lazada Thailand</field>
+            <field name="is_company">True</field>
+            <field name="supplier_rank">1</field>
+            <field name="customer_rank">1</field>
+            <field name="vat">0105559234567</field>
+            <field name="street">777/7 Digital Mall</field>
+            <field name="city">Bangkok</field>
+            <field name="zip">10110</field>
+            <field name="country_id" ref="base.th"/>
+        </record>
+
+        <record id="partner_tiktok_shop" model="res.partner">
+            <field name="name">TikTok Shop Thailand</field>
+            <field name="is_company">True</field>
+            <field name="supplier_rank">1</field>
+            <field name="customer_rank">1</field>
+            <field name="vat">0105560345678</field>
+            <field name="street">555/5 Social Commerce Tower</field>
+            <field name="city">Bangkok</field>
+            <field name="zip">10220</field>
+            <field name="country_id" ref="base.th"/>
+        </record>
+
+        <!-- Demo Accounts -->
+        <record id="account_marketplace_commission" model="account.account">
+            <field name="code">6201</field>
+            <field name="name">Marketplace Commission</field>
+            <field name="account_type">expense</field>
+        </record>
+
+        <record id="account_service_fees" model="account.account">
+            <field name="code">6202</field>
+            <field name="name">Service Fees</field>
+            <field name="account_type">expense</field>
+        </record>
+
+        <record id="account_advertising_expense" model="account.account">
+            <field name="code">6203</field>
+            <field name="name">Advertising Expense</field>
+            <field name="account_type">expense</field>
+        </record>
+
+        <record id="account_logistics_expense" model="account.account">
+            <field name="code">6204</field>
+            <field name="name">Logistics Expense</field>
+            <field name="account_type">expense</field>
+        </record>
+
+        <record id="account_shipping_expense" model="account.account">
+            <field name="code">6205</field>
+            <field name="name">Shipping Expense</field>
+            <field name="account_type">expense</field>
+        </record>
+
+        <!-- Demo Taxes -->
+        <record id="tax_vat_purchase_7" model="account.tax">
+            <field name="name">VAT Purchase 7%</field>
+            <field name="amount">7.0</field>
+            <field name="amount_type">percent</field>
+            <field name="type_tax_use">purchase</field>
+            <field name="description">VAT 7%</field>
+        </record>
+
+        <record id="tax_wht_purchase_3" model="account.tax">
+            <field name="name">WHT Purchase 3%</field>
+            <field name="amount">-3.0</field>
+            <field name="amount_type">percent</field>
+            <field name="type_tax_use">purchase</field>
+            <field name="description">WHT 3%</field>
+        </record>
+
+        <record id="tax_wht_purchase_1" model="account.tax">
+            <field name="name">WHT Purchase 1%</field>
+            <field name="amount">-1.0</field>
+            <field name="amount_type">percent</field>
+            <field name="type_tax_use">purchase</field>
+            <field name="description">WHT 1%</field>
+        </record>
+
+        <!-- Trade Channel Profiles -->
+        <record id="profile_shopee" model="marketplace.settlement.profile">
+            <field name="name">Shopee Thailand Profile</field>
+            <field name="trade_channel">shopee</field>
+            <field name="marketplace_partner_id" ref="partner_shopee_thailand"/>
+            <field name="journal_id" ref="account.sales_journal"/>
+            <field name="commission_account_id" ref="account_marketplace_commission"/>
+            <field name="service_fee_account_id" ref="account_service_fees"/>
+            <field name="advertising_account_id" ref="account_advertising_expense"/>
+            <field name="logistics_account_id" ref="account_logistics_expense"/>
+            <field name="other_expense_account_id" ref="account_service_fees"/>
+            <field name="invoice_pattern">TR</field>
+            <field name="notes">Default configuration for Shopee Thailand marketplace operations</field>
+        </record>
+
+        <record id="profile_spx" model="marketplace.settlement.profile">
+            <field name="name">SPX Technologies Profile</field>
+            <field name="trade_channel">spx</field>
+            <field name="logistics_account_id" ref="account_logistics_expense"/>
+            <field name="other_expense_account_id" ref="account_shipping_expense"/>
+            <field name="receipt_pattern">RC</field>
+            <field name="notes">Configuration for SPX logistics and shipping operations</field>
+        </record>
+
+        <record id="profile_lazada" model="marketplace.settlement.profile">
+            <field name="name">Lazada Thailand Profile</field>
+            <field name="trade_channel">lazada</field>
+            <field name="marketplace_partner_id" ref="partner_lazada_thailand"/>
+            <field name="journal_id" ref="account.sales_journal"/>
+            <field name="commission_account_id" ref="account_marketplace_commission"/>
+            <field name="service_fee_account_id" ref="account_service_fees"/>
+            <field name="advertising_account_id" ref="account_advertising_expense"/>
+            <field name="other_expense_account_id" ref="account_service_fees"/>
+            <field name="invoice_pattern">LZ</field>
+            <field name="notes">Default configuration for Lazada marketplace operations</field>
+        </record>
+
+        <record id="profile_tiktok" model="marketplace.settlement.profile">
+            <field name="name">TikTok Shop Profile</field>
+            <field name="trade_channel">tiktok</field>
+            <field name="marketplace_partner_id" ref="partner_tiktok_shop"/>
+            <field name="journal_id" ref="account.sales_journal"/>
+            <field name="commission_account_id" ref="account_marketplace_commission"/>
+            <field name="service_fee_account_id" ref="account_service_fees"/>
+            <field name="advertising_account_id" ref="account_advertising_expense"/>
+            <field name="other_expense_account_id" ref="account_service_fees"/>
+            <field name="invoice_pattern">TT</field>
+            <field name="notes">Configuration for TikTok Shop marketplace operations</field>
+        </record>
+
+        <!-- Demo Vendor Bills -->
+        <record id="demo_vendor_bill_shopee_tr" model="marketplace.vendor.bill">
+            <field name="name">MVB2024/00001</field>
+            <field name="document_reference">TR2024010001</field>
+            <field name="document_type">shopee_tr</field>
+            <field name="profile_id" ref="profile_shopee"/>
+            <field name="partner_id" ref="partner_shopee_thailand"/>
+            <field name="date" eval="context_today()"/>
+            <field name="journal_id" ref="account.expenses_journal"/>
+            <field name="notes">Demo Shopee Tax Invoice for marketplace fees</field>
+        </record>
+
+        <record id="demo_vendor_bill_line_commission" model="marketplace.vendor.bill.line">
+            <field name="bill_id" ref="demo_vendor_bill_shopee_tr"/>
+            <field name="sequence">10</field>
+            <field name="description">Platform Commission - January 2024</field>
+            <field name="account_id" ref="account_marketplace_commission"/>
+            <field name="amount">5000.00</field>
+            <field name="vat_rate">7.0</field>
+            <field name="wht_rate">3.0</field>
+        </record>
+
+        <record id="demo_vendor_bill_line_service" model="marketplace.vendor.bill.line">
+            <field name="bill_id" ref="demo_vendor_bill_shopee_tr"/>
+            <field name="sequence">20</field>
+            <field name="description">Service Fees - Payment Processing</field>
+            <field name="account_id" ref="account_service_fees"/>
+            <field name="amount">1500.00</field>
+            <field name="vat_rate">7.0</field>
+            <field name="wht_rate">3.0</field>
+        </record>
+
+        <record id="demo_vendor_bill_spx_rc" model="marketplace.vendor.bill">
+            <field name="name">MVB2024/00002</field>
+            <field name="document_reference">RC2024010001</field>
+            <field name="document_type">spx_rc</field>
+            <field name="profile_id" ref="profile_spx"/>
+            <field name="partner_id" ref="partner_spx_technologies"/>
+            <field name="date" eval="context_today()"/>
+            <field name="journal_id" ref="account.expenses_journal"/>
+            <field name="notes">Demo SPX Receipt for logistics charges</field>
+        </record>
+
+        <record id="demo_vendor_bill_line_logistics" model="marketplace.vendor.bill.line">
+            <field name="bill_id" ref="demo_vendor_bill_spx_rc"/>
+            <field name="sequence">10</field>
+            <field name="description">Logistics Fees - Package Delivery</field>
+            <field name="account_id" ref="account_logistics_expense"/>
+            <field name="amount">2500.00</field>
+            <field name="vat_rate">0.0</field>
+            <field name="wht_rate">1.0</field>
+        </record>
+
+    </data>
+</odoo>

@@ -2,5 +2,7 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_billing_note_user,billing.note.user,model_billing_note,account.group_account_user,1,1,1,1
 access_billing_note_line_user,billing.note.line.user,model_billing_note_line,account.group_account_user,1,1,1,1
 access_billing_note_payment_user,billing.note.payment.user,model_billing_note_payment,account.group_account_user,1,1,1,1
+access_billing_note_payment_summary_user,billing.note.payment.summary.user,model_billing_note_payment_summary,account.group_account_user,1,0,0,0
+access_billing_note_batch_payment_wizard_user,billing.note.batch.payment.wizard.user,model_billing_note_batch_payment_wizard,account.group_account_user,1,1,1,0
+access_billing_note_batch_payment_line_wizard_user,billing.note.batch.payment.line.wizard.user,model_billing_note_batch_payment_line_wizard,account.group_account_user,1,1,1,0
 access_billing_note_payment_wizard_user,billing.note.payment.wizard.user,model_billing_note_payment_wizard,account.group_account_user,1,1,1,0
-access_add_bills_wizard_user,add.bills.wizard.user,model_add_bills_wizard,account.group_account_user,1,1,1,0

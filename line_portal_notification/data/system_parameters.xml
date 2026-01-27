@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- LINE API Configuration -->
+    <record id="config_line_channel_access_token" model="ir.config_parameter">
+        <field name="key">line_portal_notification.channel_access_token</field>
+        <field name="value"></field>
+    </record>
+
+    <record id="config_line_channel_secret" model="ir.config_parameter">
+        <field name="key">line_portal_notification.channel_secret</field>
+        <field name="value"></field>
+    </record>
+
+    <!-- Token Configuration -->
+    <record id="config_token_expiry_days" model="ir.config_parameter">
+        <field name="key">line_portal_notification.token_expiry_days</field>
+        <field name="value">7</field>
+    </record>
+
+    <record id="config_max_token_views" model="ir.config_parameter">
+        <field name="key">line_portal_notification.max_token_views</field>
+        <field name="value">50</field>
+    </record>
+
+    <!-- Message Template (optional) -->
+    <record id="config_message_template" model="ir.config_parameter">
+        <field name="key">line_portal_notification.message_template</field>
+        <field name="value"></field>
+    </record>
+
+    <!-- Scheduled Action: Expire old tokens -->
+    <record id="ir_cron_expire_tokens" model="ir.cron">
+        <field name="name">LINE Notification: Expire Old Tokens</field>
+        <field name="model_id" ref="model_approval_token"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_expire_tokens()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

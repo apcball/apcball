@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_line_channel_verification_form" model="ir.ui.view">
+        <field name="name">line.channel.verification.form</field>
+        <field name="model">line.channel.verification</field>
+        <field name="arch" type="xml">
+            <form string="LINE Channel Verification">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_refresh_bot_info" 
+                                type="object" 
+                                class="oe_stat_button" 
+                                icon="fa-refresh"
+                                string="Refresh Bot Info"/>
+                    </div>
+                    
+                    <group>
+                        <group string="Current Bot Configuration">
+                            <field name="token_configured" invisible="1"/>
+                            <field name="bot_display_name"/>
+                            <field name="bot_basic_id" widget="url" 
+                                   text="Add as Friend" 
+                                   invisible="not bot_basic_id"/>
+                            <field name="bot_user_id"/>
+                            <field name="bot_chat_mode"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Test User Friendship">
+                        <field name="test_user_id" placeholder="e.g., U12fc5ae09e3182f9a34f192e29e49eec"/>
+                        <field name="test_result" widget="text" invisible="not test_result"/>
+                    </group>
+                    
+                    <div class="alert alert-info" role="alert" invisible="not bot_basic_id">
+                        <strong>📱 Add Friend Link:</strong><br/>
+                        <code>https://line.me/R/ti/p/<field name="bot_basic_id" readonly="1" nolabel="1"/></code><br/>
+                        <small>Share this link with users to add the correct LINE Official Account</small>
+                    </div>
+                    
+                    <footer>
+                        <button name="action_test_user_id" 
+                                string="Test User ID" 
+                                type="object" 
+                                class="btn-primary"/>
+                        <button string="Close" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_line_channel_verification" model="ir.actions.act_window">
+        <field name="name">LINE Channel Verification</field>
+        <field name="res_model">line.channel.verification</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    
+    <menuitem id="menu_line_channel_verification"
+              name="Channel Verification"
+              parent="base.menu_administration"
+              action="action_line_channel_verification"
+              sequence="100"/>
+</odoo>

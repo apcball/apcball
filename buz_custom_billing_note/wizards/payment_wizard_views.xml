@@ -9,11 +9,14 @@
                     <group>
                         <field name="billing_note_id" invisible="1"/>
                         <field name="currency_id" invisible="1"/>
+                        <field name="partner_id" invisible="1"/>
                         <field name="amount"/>
                         <field name="payment_date"/>
                     </group>
                     <group>
                         <field name="payment_method"/>
+                        <field name="journal_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="partner_bank_id" invisible="payment_method == 'cash'" required="payment_method == 'bank'" options="{'no_create': True}"/>
                         <field name="reference"/>
                     </group>
                 </group>

@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dispatch_report_config_user,access.dispatch.report.config.user,model_dispatch_report_config,stock.group_stock_user,1,1,1,1
+access_dispatch_report_config_manager,access.dispatch.report.config.manager,model_dispatch_report_config,stock.group_stock_manager,1,1,1,1
+access_dispatch_report_quick_setup_user,access.dispatch.report.quick.setup.user,model_dispatch_report_quick_setup,stock.group_stock_user,1,1,1,1

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Stock Picking Form View to Add Stock Request Link -->
+    <record id="view_stock_picking_stock_request_form" model="ir.ui.view">
+        <field name="name">stock.picking.stock.request.form</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <field name="origin" position="after">
+                <field name="stock_request_id" 
+                       invisible="not stock_request_id"/>
+            </field>
+            
+            <header position="inside">
+                <button name="action_open_stock_request" type="object" 
+                        string="Open Stock Request" 
+                        invisible="not stock_request_id"/>
+            </header>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- PDF Report Action -->
+    <record id="action_report_manufacturing" model="ir.actions.report">
+        <field name="name">Manufacturing Report</field>
+        <field name="model">manufacturing.report</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_manufacturing_report.report_manufacturing</field>
+        <field name="report_file">buz_manufacturing_report.report_manufacturing</field>
+        <field name="print_report_name">'Manufacturing Report - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_manufacturing_report"/>
+        <field name="binding_type">report</field>
+    </record>
+    
+    <!-- XLSX Report Action -->
+    <record id="action_report_manufacturing_xlsx" model="ir.actions.report">
+        <field name="name">Manufacturing Report (XLSX)</field>
+        <field name="model">manufacturing.report</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_manufacturing_report.manufacturing_report_xlsx</field>
+        <field name="report_file">buz_manufacturing_report.manufacturing_report_xlsx</field>
+        <field name="print_report_name">'Manufacturing Report - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_manufacturing_report"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

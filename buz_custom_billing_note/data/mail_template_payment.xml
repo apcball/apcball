@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Payment Received Template -->
+        <record id="email_template_billing_note_payment" model="mail.template">
+            <field name="name">Billing Note: Payment Received</field>
+            <field name="model_id" ref="model_billing_note"/>
+            <field name="subject">Payment Received: {{ object.name }}</field>
+            <field name="email_from">{{ user.email_formatted }}</field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                        Dear {{ object.partner_id.name }},<br/><br/>
+                        We have received a payment for billing note {{ object.name }}.<br/><br/>
+                        Payment Details:<br/>
+                        - Amount: {{ format_amount(object.amount_paid, object.currency_id) }}<br/>
+                        - Date: {{ format_date(object.payment_line_ids[-1].date) }}<br/>
+                        - Remaining Balance: {{ format_amount(object.amount_residual, object.currency_id) }}<br/><br/>
+                        Thank you for your business.<br/><br/>
+                        Best regards,<br/>
+                        {{ user.company_id.name }}
+                    </p>
+                </div>
+            </field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+    </data>
+</odoo>

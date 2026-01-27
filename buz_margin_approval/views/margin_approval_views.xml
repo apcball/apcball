@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Margin Approval Rule Form View -->
+    <record id="view_margin_approval_rule_form" model="ir.ui.view">
+        <field name="name">margin.approval.rule.form</field>
+        <field name="model">margin.approval.rule</field>
+        <field name="arch" type="xml">
+            <form string="Margin Approval Rule">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Sales Users" name="sales_users">
+                            <field name="user_ids" widget="many2many_tags">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="login"/>
+                                </tree>
+                            </field>
+                            <p class="text-muted">
+                                Sales users who must follow this margin approval rule.
+                            </p>
+                        </page>
+                        <page string="Margin Lines" name="margin_lines">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="min_margin"/>
+                                    <field name="max_margin"/>
+                                    <field name="approver_ids" widget="many2many_tags"/>
+                                    <field name="approval_type"/>
+                                </tree>
+                            </field>
+                            <p class="text-muted">
+                                Define margin ranges and assign approvers for each range.
+                            </p>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Margin Approval Rule Tree View -->
+    <record id="view_margin_approval_rule_tree" model="ir.ui.view">
+        <field name="name">margin.approval.rule.tree</field>
+        <field name="model">margin.approval.rule</field>
+        <field name="arch" type="xml">
+            <tree string="Margin Approval Rules">
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Margin Approval Rule Search View -->
+    <record id="view_margin_approval_rule_search" model="ir.ui.view">
+        <field name="name">margin.approval.rule.search</field>
+        <field name="model">margin.approval.rule</field>
+        <field name="arch" type="xml">
+            <search string="Search Margin Approval Rules">
+                <field name="name"/>
+                <field name="user_ids"/>
+                <filter string="Active" name="active" domain="[('active','=',True)]"/>
+                <filter string="Archived" name="inactive" domain="[('active','=',False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Company" name="company" domain="[]" context="{'group_by':'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Margin Approval Rules Action -->
+    <record id="action_margin_approval_rules" model="ir.actions.act_window">
+        <field name="name">Margin Approval Rules</field>
+        <field name="res_model">margin.approval.rule</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_margin_approval_rule_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first margin approval rule!
+            </p>
+            <p>
+                Define which sales users must follow this rule and set up margin ranges with their approvers.
+            </p>
+        </field>
+    </record>
+
+    <!-- Add Margin Rules to Configuration Menu -->
+    <menuitem id="menu_margin_approval_rules"
+              name="Margin Approval Rules"
+              action="action_margin_approval_rules"
+              parent="sale.menu_sale_config"
+              sequence="20"/>
+              
+    <!-- Action for pending approvals -->
+    <record id="action_sale_orders_pending_approval" model="ir.actions.act_window">
+        <field name="name">Orders Pending Approval</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('approval_state', '=', 'pending'), ('can_current_user_approve', '=', True)]</field>
+        <field name="context">{'search_default_pending_approval': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No sales orders pending your approval!
+            </p>
+        </field>
+    </record>
+
+    <!-- Add menu for pending approvals -->
+    <menuitem id="menu_sale_orders_pending_approval"
+              name="Margin Approvals"
+              action="action_sale_orders_pending_approval" 
+              parent="sale.menu_sale_order"
+              sequence="5"
+              groups="buz_margin_approval.group_margin_approval"/>
+    
+    <!-- Action for Confirm To SO orders -->
+    <record id="action_sale_orders_confirm_to_so" model="ir.actions.act_window">
+        <field name="name">Confirm To SO</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('confirm_flow_state', '=', 'confirm_to_so')]</field>
+        <field name="context">{'search_default_confirm_to_so': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No orders in Confirm To SO state!
+            </p>
+        </field>
+    </record>
+
+    <!-- Add menu for Confirm To SO -->
+    <menuitem id="menu_sale_orders_confirm_to_so"
+              name="Confirm To SO"
+              action="action_sale_orders_confirm_to_so" 
+              parent="sale.menu_sale_order"
+              sequence="6"/>
+
+</odoo>

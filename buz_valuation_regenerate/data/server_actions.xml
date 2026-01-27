@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Server action to add to product context menu -->
+    <record id="server_action_regen_valuation_layer" model="ir.actions.server">
+        <field name="name">Re-Generate Valuation Layer</field>
+        <field name="model_id" ref="stock.model_product_product"/>
+        <field name="binding_model_id" ref="stock.model_product_product"/>
+        <field name="state">code</field>
+        <field name="code">
+            action = {
+                'type': 'ir.actions.act_window',
+                'res_model': 'valuation.regenerate.wizard',
+                'view_mode': 'form',
+                'target': 'new',
+                'context': {
+                    'default_mode': 'product',
+                    'default_product_ids': active_ids,
+                }
+            }
+        </field>
+    </record>
+</odoo>

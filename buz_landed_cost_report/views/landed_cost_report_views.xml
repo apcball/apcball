@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- SEARCH VIEW -->
+    <record id="view_buz_landed_cost_report_search" model="ir.ui.view">
+        <field name="name">buz.landed.cost.report.search</field>
+        <field name="model">buz.landed.cost.report</field>
+        <field name="arch" type="xml">
+            <search string="Landed Cost Search">
+                 <field name="doc_no"/>
+                 <field name="product_id"/>
+                 <field name="inventory_name"/>
+                 <group expand="1" string="Group By">
+                     <filter string="Product" name="group_product" context="{'group_by':'product_id'}"/>
+                     <filter string="Landed Cost" name="group_lc" context="{'group_by':'inventory_name'}"/>
+                 </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- PIVOT VIEW (DESIGN 1) -->
+    <record id="view_buz_landed_cost_report_pivot" model="ir.ui.view">
+        <field name="name">buz.landed.cost.report.pivot</field>
+        <field name="model">buz.landed.cost.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Landed Cost Analysis">
+                <field name="product_id" type="row"/>
+                <field name="inventory_name" type="row"/>
+                <field name="date" type="col" interval="month"/>
+                
+                <field name="qty" type="measure"/>
+                <field name="total_cost_thb" type="measure"/>
+                <field name="unit_cost_thb" type="measure"/>
+                <field name="total_expense_thb" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- TREE VIEW (DESIGN 2 - Summary) -->
+    <record id="view_buz_landed_cost_report_tree" model="ir.ui.view">
+        <field name="name">buz.landed.cost.report.tree</field>
+        <field name="model">buz.landed.cost.report</field>
+        <field name="arch" type="xml">
+            <tree string="Landed Cost Summary" decoration-info="unit_cost_thb &gt; 0">
+                <field name="doc_no"/>
+                <field name="date"/>
+                <field name="product_id"/>
+                <field name="qty"/>
+                
+                <!-- Base Cost Group -->
+                <field name="price_unit_usd" optional="show"/>
+                <field name="cost_usd" optional="show"/>
+                <field name="rate" optional="show"/>
+                
+                <!-- Landed Cost Group -->
+                <field name="total_cost_thb" widget="monetary" decoration-bf="1"/>
+                <field name="unit_cost_thb" widget="monetary" decoration-bf="1"/>
+                
+                <field name="inventory_name"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- FORM VIEW (DESIGN 3 - Drill Down) -->
+    <record id="view_buz_landed_cost_report_form" model="ir.ui.view">
+        <field name="name">buz.landed.cost.report.form</field>
+        <field name="model">buz.landed.cost.report</field>
+        <field name="arch" type="xml">
+            <form string="Landed Cost Detail">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="product_id"/></h1>
+                    </div>
+                    <group col="4">
+                        <field name="doc_no"/>
+                        <field name="date"/>
+                        <field name="inventory_name"/>
+                        <field name="ref_no"/>
+                        <field name="rate"/>
+                    </group>
+                    <group string="Financials" col="4">
+                        <field name="qty"/>
+                        <field name="cost_usd"/>
+                        <field name="total_expense_thb"/>
+                        <field name="total_cost_thb" decoration-bf="1"/>
+                        <field name="unit_cost_thb" decoration-bf="1"/>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Cost Breakdown">
+                            <field name="detail_ids">
+                                <tree string="Cost Lines" editable="bottom" create="0" delete="0">
+                                    <field name="cost_line_name"/>
+                                    <field name="account_code"/>
+                                    <field name="account_name"/>
+                                    <field name="amount_thb" sum="Total"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Extension to Stock Landed Cost Form to show Type -->
+    <record id="view_stock_landed_cost_form_inherit_buz" model="ir.ui.view">
+        <field name="name">stock.landed.cost.form.inherit.buz</field>
+        <field name="model">stock.landed.cost</field>
+        <field name="inherit_id" ref="stock_landed_costs.view_stock_landed_cost_form"/>
+        <field name="arch" type="xml">
+            <field name="date" position="after">
+                <field name="currency_rate"/>
+            </field>
+            <xpath expr="//field[@name='cost_lines']/tree/field[@name='product_id']" position="after">
+                <field name="cost_line_type"/>
+            </xpath>
+            <xpath expr="//field[@name='cost_lines']/form/group/group/field[@name='product_id']" position="after">
+                <field name="cost_line_type"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Report Action -->
+    <record id="action_report_landed_cost_xlsx" model="ir.actions.report">
+        <field name="name">Landed Cost Excel Report</field>
+        <field name="model">buz.landed.cost.report.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_landed_cost_report.xlsx</field>
+        <field name="report_file">Landed_Cost_Report</field>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

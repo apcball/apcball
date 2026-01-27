@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id,perm_read,perm_write,perm_create,perm_unlink
+access_transfer_from_batch_wizard,access_transfer_from_batch_wizard,model_transfer_from_batch_wizard,,1,1,1,0
+access_add_to_batch_wizard,access_add_to_batch_wizard,model_add_to_batch_wizard,,1,1,1,0

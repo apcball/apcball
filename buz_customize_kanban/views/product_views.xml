@@ -5,6 +5,13 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_kanban_view"/>
         <field name="arch" type="xml">
+            <xpath expr="//kanban" position="inside">
+                <field name="product_tag_ids"/>
+                <field name="qty_available"/>
+                <field name="incoming_qty"/>
+                <field name="outgoing_qty"/>
+                <field name="available_qty"/>
+            </xpath>
             <xpath expr="//div[hasclass('o_kanban_record_top')]" position="replace">
                 <div class="o_kanban_record_top">
                     <div class="o_kanban_record_headings">
@@ -35,6 +42,17 @@
             </field>
             <field name="list_price" position="after">
                 <field name="price_with_vat" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <!-- Stock Information -->
+                <div class="mt-2">
+                    <div class="d-flex gap-1">
+                        <span><strong>Available:</strong></span>
+                        <span><strong><field name="available_qty" widget="float" options="{'digits': [16,2]}"/> <field name="uom_id"/></strong></span>
+                    </div>
+                </div>
+                <!-- Add product tags below the price -->
+                <div class="mt-2">
+                    <field name="product_tag_ids" widget="many2many_tags"/>
+                </div>
             </field>
         </field>
     </record>

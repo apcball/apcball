@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Form view for Receipt Print Configuration -->
+    <record id="view_receipt_print_config_form" model="ir.ui.view">
+        <field name="name">receipt.print.config.form</field>
+        <field name="model">receipt.print.config</field>
+        <field name="arch" type="xml">
+            <form string="Receipt Print Configuration">
+                <header>
+                    <button name="action_reset_to_defaults" 
+                            string="Reset to Defaults" 
+                            type="object" 
+                            class="btn-secondary"
+                            icon="fa-refresh"
+                            confirm="This will reset all positions to default values. Continue?"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object"
+                                class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button"
+                                options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="is_default"/>
+                        </group>
+                        <group string="Font Settings (ตั้งค่าขนาดตัวอักษร)">
+                            <label for="font_size" string="Font Size (px)"/>
+                            <div class="o_row">
+                                <field name="font_size" class="oe_inline" style="width: 80px;"/>
+                                <span class="text-muted">px (ขนาดปกติ: 14-18)</span>
+                            </div>
+                            <field name="font_family" placeholder="e.g., THSarabunNew, Arial"/>
+                        </group>
+                    </group>
+                    
+                    <div class="alert alert-success" role="alert" style="margin: 10px 0;">
+                        <strong>💡 Font Size Tips (คำแนะนำขนาดตัวอักษร):</strong><br/>
+                        • Small (เล็ก): 12-14px - เหมาะสำหรับหมายเหตุ<br/>
+                        • Normal (ปกติ): 16-18px - เหมาะสำหรับเนื้อหาทั่วไป<br/>
+                        • Large (ใหญ่): 20-24px - เหมาะสำหรับหัวข้อ<br/>
+                        • คุณสามารถปรับได้ตั้งแต่ 6-72px
+                    </div>
+                    
+                    <div class="alert alert-info" role="alert" style="margin: 10px 0;">
+                        <strong>Letter Size Receipt Guide:</strong><br/>
+                        • Page Size: 816px wide × 1056px high (216mm × 279mm at 96 DPI)<br/>
+                        • Position Range: Top (0-1056px), Left (0-816px)<br/>
+                        • Use Preview to test positioning with your preprint receipt form<br/>
+                        • All fields can be positioned anywhere on the page
+                    </div>
+                    
+                    <notebook>
+                        <page string="Font Settings" name="fonts" priority="1">
+                            <group>
+                                <group string="Font Sizes (ขนาดตัวอักษร)">
+                                    <label for="font_size" string="Base Font Size"/>
+                                    <div class="o_row">
+                                        <field name="font_size" class="oe_inline" style="width: 100px;"/>
+                                        <span class="text-muted">px (ขนาดพื้นฐาน)</span>
+                                    </div>
+                                    
+                                    <label for="font_size_header" string="Header Font Size"/>
+                                    <div class="o_row">
+                                        <field name="font_size_header" class="oe_inline" style="width: 100px;"/>
+                                        <span class="text-muted">px (ขนาดหัวข้อ)</span>
+                                    </div>
+                                    
+                                    <label for="font_size_small" string="Small Font Size"/>
+                                    <div class="o_row">
+                                        <field name="font_size_small" class="oe_inline" style="width: 100px;"/>
+                                        <span class="text-muted">px (ขนาดเล็ก)</span>
+                                    </div>
+                                    
+                                    <field name="font_family" placeholder="e.g., THSarabunNew, Arial"/>
+                                    <field name="line_spacing" widget="float" digits="[16,2]"/>
+                                </group>
+                                <group string="Font Size Guidelines">
+                                    <div class="alert alert-info" role="alert">
+                                        <strong>📏 Recommended Font Sizes:</strong><br/><br/>
+                                        <strong>For Preprint Receipt Forms:</strong><br/>
+                                        • Base: 14-16px (ข้อมูลทั่วไป)<br/>
+                                        • Header: 16-20px (หัวข้อ)<br/>
+                                        • Small: 12-14px (หมายเหตุ)<br/><br/>
+                                        
+                                        <strong>Valid Range:</strong> 6-72px<br/>
+                                        <strong>Default Values:</strong> Base=16, Header=18, Small=14
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Receipt Header" name="header">
+                            <group>
+                                <group string="Receipt Number">
+                                    <field name="receipt_number_top"/>
+                                    <field name="receipt_number_left"/>
+                                </group>
+                                <group string="Receipt Date">
+                                    <field name="receipt_date_top"/>
+                                    <field name="receipt_date_left"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Payer Information" name="payer">
+                            <group>
+                                <group string="Payer Name">
+                                    <field name="payer_name_top"/>
+                                    <field name="payer_name_left"/>
+                                    <field name="payer_name_width"/>
+                                </group>
+                                <group string="Payer Address">
+                                    <field name="payer_address_top"/>
+                                    <field name="payer_address_left"/>
+                                    <field name="payer_address_width"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Payment Details" name="payment">
+                            <group>
+                                <group string="Payment Description">
+                                    <field name="payment_description_top"/>
+                                    <field name="payment_description_left"/>
+                                    <field name="payment_description_width"/>
+                                </group>
+                                <group string="Amount (Numbers)">
+                                    <field name="amount_numbers_top"/>
+                                    <field name="amount_numbers_left"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Amount (Words)">
+                                    <field name="amount_words_top"/>
+                                    <field name="amount_words_left"/>
+                                    <field name="amount_words_width"/>
+                                </group>
+                                <group string="Payment Method">
+                                    <field name="payment_method_top"/>
+                                    <field name="payment_method_left"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Order Lines / Items" name="order_lines">
+                            <group>
+                                <group string="Display Settings">
+                                    <field name="show_order_lines"/>
+                                    <field name="order_lines_max_lines" 
+                                           help="0 = Show all lines"/>
+                                </group>
+                                <group string="Font Settings">
+                                    <field name="order_lines_font_size"/>
+                                    <field name="order_lines_line_height" 
+                                           help="Height of each line item row"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Position (ตำแหน่ง)">
+                                    <field name="order_lines_top"/>
+                                    <field name="order_lines_left"/>
+                                    <field name="order_lines_width"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info mt-3">
+                                <strong>Order Lines Format:</strong><br/>
+                                The order lines table will display:<br/>
+                                • Product/Service Description<br/>
+                                • Quantity<br/>
+                                • Unit Price<br/>
+                                • Subtotal Amount<br/>
+                                Adjust position and width to fit your preprint receipt template.
+                            </div>
+                        </page>
+                        
+                        <page string="Check/Transfer Details" name="check">
+                            <group>
+                                <group string="Check Number">
+                                    <field name="check_number_top"/>
+                                    <field name="check_number_left"/>
+                                </group>
+                                <group string="Bank Name">
+                                    <field name="bank_name_top"/>
+                                    <field name="bank_name_left"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Check Date">
+                                    <field name="check_date_top"/>
+                                    <field name="check_date_left"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Signatures" name="signatures">
+                            <group>
+                                <group string="Payer Signature">
+                                    <field name="signature_payer_top"/>
+                                    <field name="signature_payer_left"/>
+                                </group>
+                                <group string="Receiver Signature">
+                                    <field name="signature_receiver_top"/>
+                                    <field name="signature_receiver_left"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Signature Settings">
+                                    <field name="signature_line_height"/>
+                                    <field name="signature_date_offset"/>
+                                    <field name="show_signatures"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Page Settings" name="page">
+                            <group>
+                                <group string="Paper Settings">
+                                    <field name="paper_size"/>
+                                    <field name="page_width"/>
+                                    <field name="page_height"/>
+                                    <field name="page_width_mm"/>
+                                    <field name="page_height_mm"/>
+                                    <field name="dpi"/>
+                                </group>
+                                <group string="Margins">
+                                    <field name="margin_top"/>
+                                    <field name="margin_bottom"/>
+                                    <field name="margin_left"/>
+                                    <field name="margin_right"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Print Settings">
+                                    <field name="print_mode"/>
+                                    <field name="text_align"/>
+                                    <field name="header_align"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Display Options" name="display">
+                            <group>
+                                <group string="Visibility">
+                                    <field name="show_header"/>
+                                    <field name="show_footer"/>
+                                    <field name="show_signatures"/>
+                                    <field name="show_company_logo"/>
+                                    <field name="show_tax_id"/>
+                                    <field name="show_borders"/>
+                                </group>
+                                <group string="Company Logo">
+                                    <field name="logo_top" invisible="not show_company_logo"/>
+                                    <field name="logo_left" invisible="not show_company_logo"/>
+                                    <field name="logo_width" invisible="not show_company_logo"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Tax ID Position">
+                                    <field name="tax_id_top" invisible="not show_tax_id"/>
+                                    <field name="tax_id_left" invisible="not show_tax_id"/>
+                                </group>
+                                <group string="Border Settings">
+                                    <field name="border_width" invisible="not show_borders"/>
+                                    <field name="border_color" widget="color" invisible="not show_borders"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Background Template" name="background">
+                            <group>
+                                <group string="Background Image">
+                                    <field name="background_image" widget="image" filename="background_image_filename"/>
+                                    <field name="background_image_filename" invisible="1"/>
+                                    <field name="show_background"/>
+                                    <field name="background_opacity" widget="float" digits="[16,2]"/>
+                                </group>
+                                <group string="Background Guide">
+                                    <div class="alert alert-warning" role="alert">
+                                        <strong>📋 Using Background Template:</strong><br/><br/>
+                                        1. Upload your preprint receipt form as background image<br/>
+                                        2. Enable "Show Background in Preview"<br/>
+                                        3. Adjust opacity to see both template and data<br/>
+                                        4. Use preview mode to align field positions<br/>
+                                        5. The background won't appear in final print
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Tree view for Receipt Print Configuration -->
+    <record id="view_receipt_print_config_tree" model="ir.ui.view">
+        <field name="name">receipt.print.config.tree</field>
+        <field name="model">receipt.print.config</field>
+        <field name="arch" type="xml">
+            <tree string="Receipt Print Configurations">
+                <field name="name"/>
+                <field name="is_default"/>
+                <field name="paper_size"/>
+                <field name="font_size"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Action for Receipt Print Configuration -->
+    <record id="action_receipt_print_config" model="ir.actions.act_window">
+        <field name="name">Receipt Print Configuration</field>
+        <field name="res_model">receipt.print.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a Receipt Print Configuration
+            </p>
+            <p>
+                Configure the print positions for your preprint receipt forms.<br/>
+                You can create multiple configurations for different receipt templates.
+            </p>
+        </field>
+    </record>
+    
+    <!-- Menu item -->
+    <menuitem id="menu_receipt_print_config"
+              name="Receipt Print Config"
+              parent="account.menu_finance_configuration"
+              action="action_receipt_print_config"
+              sequence="100"/>
+</odoo>

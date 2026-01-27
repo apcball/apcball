@@ -1,0 +1,554 @@
+/* Enhanced Stock Report CSS - STRICTLY SCOPED TO stock_current_report_kanban ONLY */
+
+/* Full-width Kanban View - Like Product View */
+.o_kanban_view.stock_current_report_kanban.o_kanban_mobile {
+    padding: 8px;
+}
+
+.o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
+    width: 100%;
+    max-width: 400px;
+    min-width: 300px;
+    margin: 8px;
+    display: inline-block;
+    vertical-align: top;
+}
+
+.o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record.o_kanban_ghost {
+    height: 0;
+    min-height: 0;
+    visibility: hidden;
+}
+
+/* Kanban Card Styling */
+.o_kanban_view.stock_current_report_kanban .oe_kanban_global_click {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.2s ease-in-out;
+    padding: 16px;
+}
+
+.o_kanban_view.stock_current_report_kanban .oe_kanban_global_click:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+    border-color: #007bff;
+}
+
+/* Kanban Card Selected State */
+.o_kanban_view.stock_current_report_kanban .oe_kanban_global_click.kanban-card-selected {
+    background-color: #e7f3ff;
+    border-color: #0056b3;
+    border-width: 2px;
+    box-shadow: 0 0 8px rgba(0, 86, 179, 0.3);
+}
+
+/* Product Selection Checkbox */
+.o_kanban_view.stock_current_report_kanban .product-selection-checkbox {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.o_kanban_view.stock_current_report_kanban .form-check {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.o_kanban_view.stock_current_report_kanban .form-check-input {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    margin-top: 0;
+    cursor: pointer;
+}
+
+.o_kanban_view.stock_current_report_kanban .form-check-input:checked {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+/* Kanban Record Details */
+.o_kanban_view.stock_current_report_kanban .oe_kanban_details {
+    width: 100%;
+}
+
+.o_kanban_view.stock_current_report_kanban .o_kanban_record_title {
+    font-size: 1.1rem;
+    color: #212529;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.o_kanban_view.stock_current_report_kanban .o_kanban_record_subtitle {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 12px;
+}
+
+/* Badge Styling */
+.o_kanban_view.stock_current_report_kanban .badge {
+    font-weight: 500;
+    padding: 6px 12px;
+}
+
+/* Text styling for card body - specific white text */
+.o_kanban_view.stock_current_report_kanban .o_kanban_record_body .row:first-child strong {
+    color: #ffffff;
+}
+
+.o_kanban_view.stock_current_report_kanban .o_kanban_record_body .row:first-child > div {
+    color: #ffffff;
+}
+
+/* Responsive Grid Layout */
+@media (min-width: 1400px) {
+    .o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
+        width: calc(20% - 16px);
+    }
+}
+
+@media (min-width: 1200px) and (max-width: 1399px) {
+    .o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
+        width: calc(25% - 16px);
+    }
+}
+
+@media (min-width: 992px) and (max-width: 1199px) {
+    .o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
+        width: calc(33.333% - 16px);
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
+        width: calc(50% - 16px);
+    }
+}
+
+@media (max-width: 767px) {
+    .o_kanban_view.stock_current_report_kanban.o_kanban_mobile .o_kanban_record {
+        width: 100%;
+        margin: 8px 0;
+    }
+    
+    .o_kanban_view.stock_current_report_kanban .o_kanban_record_title {
+        font-size: 1rem;
+    }
+    
+    .o_kanban_view.stock_current_report_kanban .badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+}
+
+/* Dashboard card styling - SCOPED */
+.o_kanban_view.stock_current_report_kanban .stock-dashboard-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out;
+}
+
+.o_kanban_view.stock_current_report_kanban .stock-dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Stock quantity badge - SCOPED */
+.o_kanban_view.stock_current_report_kanban .stock-quantity {
+    font-weight: 600;
+    color: #007bff;
+}
+
+/* Status indicators - SCOPED */
+.o_kanban_view.stock_current_report_kanban .stock-status-low {
+    color: #000000;
+    font-weight: bold;
+}
+
+.o_kanban_view.stock_current_report_kanban .stock-status-medium {
+    color: #000000;
+    font-weight: bold;
+}
+
+.o_kanban_view.stock_current_report_kanban .stock-status-high {
+    color: #000000;
+    font-weight: bold;
+}
+
+/* Warehouse Sidebar Styles */
+.warehouse-sidebar {
+    border-right: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    overflow-y: auto;
+}
+
+.warehouse-sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid #dee2e6;
+    background-color: white;
+}
+
+.warehouse-item {
+    margin-bottom: 8px;
+}
+
+.warehouse-header {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.warehouse-header:hover {
+    background-color: #e9ecef;
+}
+
+.warehouse-header .card-body {
+    padding: 12px;
+}
+
+.location-list {
+    padding: 0 8px;
+}
+
+.location-section {
+    margin-bottom: 16px;
+}
+
+/* Disable transfer UI and selection checkbox (feature removed) */
+.product-selection-checkbox,
+.transfer-product-btn,
+.transfer-selected-button,
+.stock-transfer-btn,
+.stock-transfer-bulk-btn {
+    display: none !important;
+}
+
+.location-type-header {
+    border-bottom: 1px dashed #dee2e6;
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Transit locations styling */
+.transit-location-list {
+    border-left: 3px solid #ffc107;
+    padding-left: 12px;
+    margin-left: 4px;
+}
+
+.transit-location-list .location-item {
+    opacity: 0.9;
+    transition: opacity 0.2s ease;
+}
+
+.transit-location-list .location-item:hover {
+    opacity: 1;
+}
+
+.transit-location-list .card {
+    border-left: 3px solid #ffc107;
+}
+
+/* Location item styling */
+.location-item .card {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.location-item .card:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.location-item .badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+}
+
+/* Summary section styling */
+.warehouse-summary {
+    margin: 16px;
+    padding: 12px;
+    background-color: white;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.warehouse-summary h6 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.warehouse-summary .row {
+    font-size: 0.8125rem;
+}
+
+/* Loading state */
+.warehouse-sidebar .spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+/* Search box styling */
+.sidebar-search .input-group-sm .form-control {
+    font-size: 0.875rem;
+}
+
+.sidebar-search .btn {
+    border-color: #ced4da;
+}
+
+/* Filters styling */
+.sidebar-filters .form-check {
+    margin-bottom: 8px;
+}
+
+.sidebar-filters .form-check-label {
+    font-size: 0.875rem;
+    color: #495057;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .warehouse-sidebar {
+        min-height: auto;
+        border-right: none;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .warehouse-sidebar-header {
+        padding: 12px;
+    }
+    
+    .location-list {
+        padding: 0 4px;
+    }
+    
+    .transit-location-list {
+        padding-left: 8px;
+        margin-left: 2px;
+    }
+}
+
+/* Transfer Feature Styles */
+.product-selection-checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: #28a745;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.product-selection-checkbox:hover {
+    transform: scale(1.1);
+    border-color: #28a745;
+}
+
+.product-selection-checkbox:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.product-selection-container {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    z-index: 10;
+    background: white;
+    border-radius: 6px;
+    padding: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 0;
+    transition: all 0.3s ease;
+}
+
+.product-selection-container:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    transform: scale(1.05);
+}
+
+.kanban-card-selected {
+    border: 3px solid #28a745 !important;
+    background-color: #f0f8f4 !important;
+    box-shadow: 0 4px 12px rgba(40,167,69,0.4) !important;
+}
+
+.kanban-card-selected .product-selection-container {
+    background: #28a745;
+    box-shadow: 0 4px 12px rgba(40,167,69,0.5);
+}
+
+.kanban-card-selected .product-selection-checkbox {
+    border-color: white;
+    background-color: white;
+}
+
+.transfer-selected-button {
+    position: fixed !important;
+    bottom: 30px !important;
+    right: 30px !important;
+    z-index: 9999 !important;
+    border-radius: 30px !important;
+    padding: 14px 28px !important;
+    box-shadow: 0 6px 20px rgba(0,123,255,0.4) !important;
+    transition: all 0.3s ease !important;
+    animation: slideInUp 0.5s ease-out !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    border: none !important;
+}
+
+.transfer-selected-button:hover {
+    transform: translateY(-4px) scale(1.05) !important;
+    box-shadow: 0 10px 30px rgba(0,123,255,0.5) !important;
+}
+
+.transfer-product-btn {
+    opacity: 0.8;
+    transition: all 0.2s ease;
+}
+
+.transfer-product-btn:hover {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+/* Quantity validation styling */
+.quantity-warning {
+    color: #dc3545;
+    font-weight: bold;
+    background-color: #f8d7da;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.quantity-success {
+    color: #155724;
+    font-weight: bold;
+    background-color: #d4edda;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* Transfer wizard enhancements */
+.o_form_view.o_stock_current_transfer_wizard .o_form_sheet {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.o_form_view.o_stock_current_transfer_wizard .o_field_widget.o_list_editable {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.o_form_view.o_stock_current_transfer_wizard .o_list_table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Transfer button animations */
+@keyframes slideInUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+    }
+}
+
+.transfer-selected-button.pulse {
+    animation: pulse 2s infinite;
+}
+
+.product-selection-container label {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    user-select: none;
+}
+
+.kanban-card-selected .product-selection-container label {
+    color: white;
+    font-weight: 600;
+}
+
+/* Responsive adjustments for transfer features */
+@media (max-width: 768px) {
+    .transfer-selected-button {
+        bottom: 15px !important;
+        right: 15px !important;
+        padding: 12px 20px !important;
+        font-size: 1rem !important;
+    }
+    
+    .product-selection-checkbox {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .product-selection-container {
+        bottom: 10px;
+        right: 10px;
+        padding: 6px;
+    }
+    
+    .transfer-product-btn {
+        padding: 6px 8px;
+        font-size: 0.75rem;
+    }
+}
+
+/* Transfer status indicators */
+.transfer-status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.transfer-status-confirmed {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.transfer-status-done {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.transfer-status-cancelled {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}

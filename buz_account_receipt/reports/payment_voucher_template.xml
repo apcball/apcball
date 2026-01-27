@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Payment Voucher Report Template (Adapted from buz_payment_receipt) -->
+    <template id="report_account_payment_voucher">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_custom_quotation/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            }
+                            .page {
+                                font-family: 'Sarabun', sans-serif;
+                                font-size: 16px; /* Slightly smaller to fit everything */
+                                padding: 0;
+                                width: 100%;
+                                margin: 0;
+                                color: #000;
+                            }
+                            .table-bordered {
+                                border: 1px solid black;
+                                width: 100%;
+                                border-collapse: collapse;
+                            }
+                            .table-bordered th, .table-bordered td {
+                                border: 1px solid black;
+                                padding: 4px;
+                            }
+                            .table-header th {
+                                text-align: center;
+                                vertical-align: middle;
+                            }
+                            .no-border-bottom {
+                                border-bottom: none !important;
+                            }
+                        </style>
+
+                        <!-- Header Area -->
+                        <div class="row mb-2">
+                            <!-- Left: Logo -->
+                            <div class="col-4">
+                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                     style="max-height: 80px; max-width: 200px;" alt="Company Logo"/>
+                            </div>
+                            
+                            <!-- Center: Title -->
+                            <div class="col-4 text-center">
+                                <div style="font-size: 22px; font-weight: bold;">ใบสำคัญจ่ายเงิน</div>
+                                <div style="font-size: 20px; font-weight: bold;">PAYMENT VOUCHER</div>
+                            </div>
+
+                            <!-- Right: Boxed Number Info -->
+                            <div class="col-4">
+                                <div style="border: 1px solid black; margin-left: auto; width: 220px;">
+                                    <div style="text-align: center; font-size: 14px; border-top: 1px solid black; border-bottom: 1px solid black; background-color: #f0f0f0;">
+                                        หน้า 1 / 1
+                                    </div>
+                                    <div style="text-align: center; font-weight: bold; border-bottom: 1px solid black; padding: 2px;">
+                                        VOUCHER NO.
+                                    </div>
+                                    <div style="padding: 5px;">
+                                        <div><strong>No.</strong> <span t-field="o.name"/></div>
+                                        <div><strong>Date.</strong> <span t-field="o.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 1. Vendor / Bill Table -->
+                        <table class="table-bordered" style="margin-top: 10px;">
+                            <thead>
+                                <tr class="table-header">
+                                    <th style="width: 15%;">รหัสเจ้าหนี้</th>
+                                    <th style="width: 30%;">ชื่อเจ้าหนี้</th>
+                                    <th style="width: 20%;">เอกสาร</th>
+                                    <th style="width: 20%;">เลขที่เอกสาร</th>
+                                    <th style="width: 15%;">จำนวนเงิน</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Vendor Info Row (First Row Only) -->
+                                <tr style="height: auto; vertical-align: top;">
+                                    <td class="text-center" style="vertical-align: middle; rowspan: 1">
+                                        <span t-if="o.partner_id.partner_code" t-field="o.partner_id.partner_code"/>
+                                        <span t-else="">-</span>
+                                    </td>
+                                    <td style="vertical-align: middle;">
+                                        <span t-field="o.partner_id.name"/>
+                                    </td>
+                                    <td colspan="2" style="padding: 0;">
+                                        <!-- Bill Numbers List -->
+                                        <table style="width: 100%; border-collapse: collapse; margin: 0; border: none;">
+                                            <tr t-foreach="o.line_ids" t-as="line" style="height: 20px;">
+                                                <!-- Inner TD 1: Clear inherited borders, add right border, add bottom if not last -->
+                                                <td t-att-style="'width: 50%; text-align: center; padding: 2px; border: none; border-right: 1px solid black; ' + ('border-bottom: 1px solid black;' if not line_last else '')">
+                                                    <t t-if="line.move_id">
+                                                        <span t-if="line.move_id.move_type == 'in_invoice'">ใบรับวางบิล</span>
+                                                        <span t-elif="line.move_id.move_type == 'in_refund'">ใบลดหนี้</span>
+                                                        <span t-else="" t-field="line.move_id.move_type"/>
+                                                    </t>
+                                                    <span t-else="">-</span>
+                                                </td>
+                                                <!-- Inner TD 2: Clear inherited borders, add bottom if not last -->
+                                                <td t-att-style="'width: 50%; text-align: center; padding: 2px; border: none; ' + ('border-bottom: 1px solid black;' if not line_last else '')">
+                                                    <span t-if="line.move_id" t-field="line.move_id.name"/>
+                                                    <span t-else="">-</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    <td class="text-end" style="vertical-align: middle;">
+                                        <span t-field="o.amount_total_gross" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                </tr>
+                                <!-- Total Row -->
+                                <tr>
+                                    <td colspan="4" class="text-end" style="font-weight: bold; padding-right: 10px;">
+                                        จำนวนเงิน
+                                    </td>
+                                    <td class="text-end" style="font-weight: bold;">
+                                        <span t-field="o.amount_total_gross" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- 2. Payment Method Table -->
+                        <table class="table-bordered" style="margin-top: 15px;">
+                            <thead>
+                                <tr class="table-header">
+                                    <th style="width: 10%;">ชำระ</th>
+                                    <th style="width: 20%;">ชื่อ</th>
+                                    <th style="width: 15%;">เลขที่</th>
+                                    <th style="width: 15%;">วันที่</th>
+                                    <th style="width: 20%;">สั่งจ่ายเช็คใน</th>
+                                    <th style="width: 10%;">ตัดบัญชีธนาคาร</th>
+                                    <th style="width: 10%;">จำนวนเงิน</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Line 1: Main Payment (Net) -->
+                                <tr style="vertical-align: top;">
+                                    <td class="text-center">
+                                        <span t-if="o.payment_type == 'check'">เช็ค</span>
+                                        <span t-elif="o.payment_type == 'transfer'">โอนเงิน</span>
+                                        <span t-elif="o.payment_type == 'cash'">เงินสด</span>
+                                    </td>
+                                    <td>
+                                        <span t-field="o.destination_journal_id.name"/>
+                                    </td>
+                                    <td class="text-center">
+                                        <span t-field="o.check_number"/>
+                                    </td>
+                                    <td class="text-center">
+                                        <span t-if="o.payment_type == 'check'" t-field="o.check_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                        <span t-else="" t-field="o.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                    </td>
+                                    <td>
+                                        <span t-field="o.check_pay_to"/>
+                                    </td>
+                                    <td></td> <!-- Placeholder for 'cut bank account' -->
+                                    <td class="text-end">
+                                        <span t-field="o.amount_total_net" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                </tr>
+
+                                <!-- Line 2: WHT (If exists) -->
+                                <tr t-if="o.amount_total_wht > 0" style="vertical-align: top;">
+                                    <td class="text-center">
+                                        หัก ณ.ที่จ่าย
+                                    </td>
+                                    <td>
+                                        ค่าบริการ <!-- Or try to fetch name from first tax: o.line_ids[:1].wht_tax_id.name -->
+                                    </td>
+                                    <td></td>
+                                    <td class="text-center">
+                                        <span t-field="o.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                    </td>
+                                    <td>
+                                        <!-- Pay to/Vendor? -->
+                                    </td>
+                                    <td></td>
+                                    <td class="text-end">
+                                        <span t-field="o.amount_total_wht" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                </tr>
+
+                                <!-- Total Row -->
+                                <tr>
+                                    <td colspan="6" class="text-end" style="font-weight: bold; padding-right: 10px;">
+                                        จำนวนเงิน
+                                    </td>
+                                    <td class="text-end" style="font-weight: bold;">
+                                        <span t-field="o.amount_total_gross" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- 3. Journal Entry Preview Table -->
+                        <div class="text-end" style="margin-top: 5px; font-weight: bold; border-top: 1px solid transparent;">
+                            Amount
+                        </div>
+                        <t t-set="preview_lines" t-value="o.get_preview_moves()"/>
+                        <table class="table-bordered" style="margin-top: 0px;">
+                            <thead>
+                                <tr class="table-header">
+                                    <th style="width: 15%;">เลขที่บัญชี</th>
+                                    <th style="width: 35%;">ชื่อบัญชี</th>
+                                    <th style="width: 20%;">เลขที่เอกสาร</th>
+                                    <th style="width: 15%;">วันที่</th>
+                                    <th style="width: 7.5%;">Dr.</th>
+                                    <th style="width: 7.5%;">Cr.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="preview_lines" t-as="line">
+                                    <td class="text-center"><span t-esc="line['code']"/></td>
+                                    <td><span t-esc="line['name']"/></td>
+                                    <td class="text-center"><span t-esc="line['ref']"/></td>
+                                    <td class="text-center"><span t-esc="line['date']" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></td>
+                                    <td class="text-end">
+                                        <t t-if="line['debit'] > 0">
+                                            <span t-esc="line['debit']" t-options='{"widget": "float", "precision": 2}'/>
+                                        </t>
+                                        <t t-else="">0.00</t>
+                                    </td>
+                                    <td class="text-end">
+                                        <t t-if="line['credit'] > 0">
+                                            <span t-esc="line['credit']" t-options='{"widget": "float", "precision": 2}'/>
+                                        </t>
+                                        <t t-else="">0.00</t>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Total Row -->
+                                <t t-set="total_top_debit" t-value="sum(l['debit'] for l in preview_lines)"/>
+                                <t t-set="total_top_credit" t-value="sum(l['credit'] for l in preview_lines)"/>
+                                <tr>
+                                    <td colspan="4" class="text-end" style="font-weight: bold; padding-right: 10px;">
+                                        Total
+                                    </td>
+                                    <td class="text-end" style="font-weight: bold;">
+                                        <span t-esc="total_top_debit" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                    <td class="text-end" style="font-weight: bold;">
+                                        <span t-esc="total_top_credit" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Note -->
+                        <div style="margin-top: 10px;">
+                            <strong>หมายเหตุ:</strong> <span t-field="o.note"/>
+                        </div>
+
+                        <!-- Signatures -->
+                         <table style="width: 100%; text-align: center; margin-top: 40px; border: 1px solid #000; border-collapse: collapse;">
+                             <thead>
+                                 <tr>
+                                     <th style="border: 1px solid #000; padding: 5px;">Prepare By:</th>
+                                     <th style="border: 1px solid #000; padding: 5px;">Checked(1):</th>
+                                     <th style="border: 1px solid #000; padding: 5px;">Checked(2):</th>
+                                     <th style="border: 1px solid #000; padding: 5px;">Approved By:</th>
+                                     <th style="border: 1px solid #000; padding: 5px;">Received By:</th>
+                                 </tr>
+                            </thead>
+                             <tbody>
+                                 <tr>
+                                    <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
+                                         <div t-if="o.prepared_by" style="margin-bottom: 5px;"><span t-field="o.prepared_by.name"/></div>
+                                         <div t-else="" style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="font-size: 12px;">
+                                            Date <span t-if="o.prepared_date" t-field="o.prepared_date"/> <span t-else="">.../.../...</span>
+                                         </div>
+                                     </td>
+                                     <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
+                                         <div t-if="o.checked1_by" style="margin-bottom: 5px;"><span t-field="o.checked1_by.name"/></div>
+                                         <div t-else="" style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="font-size: 12px;">
+                                            Date <span t-if="o.checked1_date" t-field="o.checked1_date"/> <span t-else="">.../.../...</span>
+                                         </div>
+                                     </td>
+                                     <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
+                                         <div t-if="o.checked2_by" style="margin-bottom: 5px;"><span t-field="o.checked2_by.name"/></div>
+                                         <div t-else="" style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="font-size: 12px;">
+                                            Date <span t-if="o.checked2_date" t-field="o.checked2_date"/> <span t-else="">.../.../...</span>
+                                         </div>
+                                     </td>
+                                     <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
+                                         <div t-if="o.approved_by" style="margin-bottom: 5px;"><span t-field="o.approved_by.name"/></div>
+                                         <div t-else="" style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="font-size: 12px;">
+                                            Date <span t-if="o.approved_date" t-field="o.approved_date"/> <span t-else="">.../.../...</span>
+                                         </div>
+                                     </td>
+                                     <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
+                                         <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="font-size: 12px;">Date .../.../...</div>
+                                     </td>
+                                 </tr>
+                             </tbody>
+                         </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

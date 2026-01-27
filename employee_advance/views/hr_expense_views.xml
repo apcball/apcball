@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Update the expense form view to add vendor field - already added in expense_sheet_views.xml -->
+</odoo>

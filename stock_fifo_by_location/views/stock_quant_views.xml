@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Enhance Inventory Adjustment Tree View with Cost Configuration Fields -->
+    <record id="view_inventory_adjustment_wizard" model="ir.ui.view">
+        <field name="name">stock.quant.inventory.tree.fifo.warehouse</field>
+        <field name="model">stock.quant</field>
+        <field name="inherit_id" ref="stock.view_stock_quant_tree_inventory_editable"/>
+        <field name="arch" type="xml">
+            <!-- Add cost rule fields after inventory_quantity in inventory adjustment tree -->
+            <field name="inventory_quantity" position="after">
+                <field name="inventory_cost_rule" optional="show"/>
+                <field name="inventory_manual_cost" optional="show"/>
+            </field>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Out-of-Warranty Wizard Form View -->
+    <record id="view_warranty_out_wizard_form" model="ir.ui.view">
+        <field name="name">warranty.out.wizard.form</field>
+        <field name="model">warranty.out.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Out-of-Warranty Quotation">
+                <group>
+                    <group>
+                        <field name="claim_id" readonly="1"/>
+                        <field name="partner_id" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="product_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="quantity"/>
+                    </group>
+                </group>
+                <group>
+                    <field name="repair_cost"/>
+                </group>
+                <group>
+                    <field name="description" placeholder="Additional details for the quotation..."/>
+                </group>
+                <footer>
+                    <button string="Create Quotation" name="action_create_quotation" 
+                            type="object" class="oe_highlight"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

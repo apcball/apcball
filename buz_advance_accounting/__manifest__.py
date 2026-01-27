@@ -1,0 +1,25 @@
+# -*- coding: utf-8 -*-
+{
+    'name': 'buz_advance_accounting',
+    'summary': 'Advance expense accrual on Purchase Orders with reversal and currency exchange rate handling',
+    'description': 'Post accrual journal entries from PO, keep a link, and allow reversal when creating vendor bill. Supports custom exchange rates and automatic currency difference calculation for multi-currency transactions.',
+    'version': '17.0.1.0.24',
+    'author': 'apcball',
+    'license': 'LGPL-3',
+    'depends': ['purchase', 'account', 'stock'],
+    'data': [
+    'security/advance_accounting_groups.xml',
+    'security/advance_accounting_rule.xml',
+        'security/ir.model.access.csv',
+        'views/purchase_views.xml',
+        'views/account_move_views.xml',
+        'views/stock_picking_views.xml',
+        'views/menu.xml',
+        'wizards/advance_bill_wizard_views.xml',
+        'wizards/reverse_accrual_wizard_views.xml',
+    ],
+    'assets': {},
+    'icon': 'static/description/icon.png',
+    'installable': True,
+    'application': False,
+}

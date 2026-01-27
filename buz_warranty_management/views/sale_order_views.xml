@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Sale Order Form View Inherit -->
+    <record id="view_sale_order_form_inherit_warranty" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.warranty</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Create Warranty Card button in header -->
+            <xpath expr="//button[@name='action_view_invoice']" position="after">
+                <button name="action_create_warranty_card" 
+                        string="Create Warranty Card" 
+                        type="object" 
+                        class="btn-primary"
+                        invisible="state not in ['sale', 'done']"/>
+            </xpath>
+            
+            <!-- Add warranty cards smart button -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_warranty_cards" 
+                        type="object" 
+                        class="oe_stat_button" 
+                        icon="fa-shield"
+                        invisible="warranty_card_count == 0">
+                    <field name="warranty_card_count" widget="statinfo" string="Warranty Cards"/>
+                </button>
+            </xpath>
+            
+        </field>
+    </record>
+
+</odoo>

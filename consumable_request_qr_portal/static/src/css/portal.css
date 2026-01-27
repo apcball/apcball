@@ -1,0 +1,15 @@
+.signature-pad {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  font-size: 10px;
+  width: 100%;
+}
+
+.signature-pad--body canvas {
+    width: 100% !important;
+    height: 200px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    touch-action: none; /* Prevent scrolling when signing */
+}

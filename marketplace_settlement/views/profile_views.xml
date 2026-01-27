@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketplace_settlement_profile_tree" model="ir.ui.view">
+        <field name="name">marketplace.settlement.profile.tree</field>
+        <field name="model">marketplace.settlement.profile</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="trade_channel"/>
+                <field name="marketplace_partner_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_marketplace_settlement_profile_form" model="ir.ui.view">
+        <field name="name">marketplace.settlement.profile.form</field>
+        <field name="model">marketplace.settlement.profile</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_create_settlement_with_profile" type="object" 
+                                class="oe_stat_button btn-primary" icon="fa-plus">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Create</span>
+                                <span class="o_stat_text">Settlement</span>
+                            </div>
+                        </button>
+                        <button name="action_create_vendor_bill_with_profile" type="object" 
+                                class="oe_stat_button btn-success" icon="fa-file-text">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Create</span>
+                                <span class="o_stat_text">Vendor Bill</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" type="action" icon="fa-file-text-o" 
+                                name="%(marketplace_vendor_bill_action)d"
+                                context="{'search_default_profile_id': active_id}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Vendor Bills</span>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <widget name="web_ribbon" title="Archived" bg_color="bg-danger" 
+                            invisible="active"/>
+                    
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="e.g., Shopee Thailand Profile"/>
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group>
+                            <field name="trade_channel"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="invoice_pattern" placeholder="e.g., TR"/>
+                            <field name="receipt_pattern" placeholder="e.g., RC"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Settlement Configuration">
+                            <group string="Customer Settlement">
+                                <group>
+                                    <field name="marketplace_partner_id" 
+                                           context="{'default_is_company': True, 'default_customer_rank': 1}"/>
+                                    <field name="journal_id"/>
+                                </group>
+                                <group>
+                                    <field name="settlement_account_id"/>
+                                </group>
+                            </group>
+                            
+                            <group string="Default Expense Accounts">
+                                <group>
+                                    <field name="commission_account_id"/>
+                                    <field name="service_fee_account_id"/>
+                                    <field name="advertising_account_id"/>
+                                </group>
+                                <group>
+                                    <field name="logistics_account_id"/>
+                                    <field name="other_expense_account_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Notes">
+                            <field name="notes" placeholder="Additional configuration notes for this trade channel..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_marketplace_settlement_profile" model="ir.actions.act_window">
+        <field name="name">Marketplace Profiles</field>
+        <field name="res_model">marketplace.settlement.profile</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Configure default partner/journal/account per trade channel.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_marketplace_profiles" name="Profiles" parent="menu_marketplace_settlement" action="action_marketplace_settlement_profile"/>
+
+    <!-- Reconcile action: point to account.move.line unreconciled items -->
+    <record id="action_marketplace_reconcile" model="ir.actions.act_window">
+        <field name="name">Reconcile Models</field>
+        <field name="res_model">account.move.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_unreconciled': 1}</field>
+        <field name="help" type="html">
+            <p>Use this view to manually reconcile marketplace-related journal items such as fees.</p>
+        </field>
+    </record>
+
+</odoo>

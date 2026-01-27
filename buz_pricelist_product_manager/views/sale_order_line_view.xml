@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_pricelist_manager" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.pricelist.manager</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/tree//field[@name='price_unit']" position="attributes">
+               <attribute name="readonly">include_installation</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/tree//field[@name='price_unit']" position="before">
+                <field name="include_installation" optional="show"/>
+                <field name="installation_price" optional="show" readonly="1"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//field[@name='price_unit']" position="attributes">
+               <attribute name="readonly">include_installation</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//field[@name='price_unit']" position="before">
+                 <field name="include_installation"/>
+                 <field name="installation_price" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

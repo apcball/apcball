@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Form view for Dispatch Report Configuration -->
+    <record id="view_dispatch_report_config_form" model="ir.ui.view">
+        <field name="name">dispatch.report.config.form</field>
+        <field name="model">dispatch.report.config</field>
+        <field name="arch" type="xml">
+            <form string="Dispatch Report Configuration">
+                <header>
+                    <button name="action_reset_to_a4_defaults" 
+                            string="Reset to A4 Defaults" 
+                            type="object" 
+                            class="btn-secondary"
+                            icon="fa-refresh"
+                            confirm="This will reset all positions to default A4 values. Continue?"/>
+                    <button name="action_apply_full_page_layout" 
+                            string="Optimize for Full Page" 
+                            type="object" 
+                            class="btn-primary"
+                            icon="fa-arrows-alt"
+                            help="Optimize layout to use full A4 page coverage"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object"
+                                class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button"
+                                options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="is_default"/>
+                        </group>
+                        <group string="Font Settings (ตั้งค่าขนาดตัวอักษร)">
+                            <label for="font_size" string="Font Size (px)"/>
+                            <div class="o_row">
+                                <field name="font_size" class="oe_inline" style="width: 80px;"/>
+                                <span class="text-muted">px (ขนาดปกติ: 12-16)</span>
+                            </div>
+                            <field name="font_family" placeholder="e.g., Sarabun, Arial, sans-serif"/>
+                        </group>
+                    </group>
+                    
+                    <div class="alert alert-success" role="alert" style="margin: 10px 0;">
+                        <strong>💡 Font Size Tips (คำแนะนำขนาดตัวอักษร):</strong><br/>
+                        • Small (เล็ก): 10-12px - เหมาะสำหรับหมายเหตุ<br/>
+                        • Normal (ปกติ): 14-16px - เหมาะสำหรับเนื้อหาทั่วไป<br/>
+                        • Large (ใหญ่): 18-24px - เหมาะสำหรับหัวข้อ<br/>
+                        • คุณสามารถปรับได้ตั้งแต่ 6-72px
+                    </div>
+                    
+                    <div class="alert alert-info" role="alert" style="margin: 10px 0;">
+                        <strong>A4 Full Page Coverage Guide:</strong><br/>
+                        • Page Size: 794px wide × 1123px high (210mm × 297mm at 96 DPI)<br/>
+                        • Position Range: Top (0-1123px), Left (0-794px)<br/>
+                        • Use Preview to test positioning with your preprint form background<br/>
+                        • All fields can be positioned anywhere on the full page
+                    </div>
+                    
+                    <notebook>
+                        <page string="Font Settings" name="fonts" priority="1">
+                            <group>
+                                <group string="Font Sizes (ขนาดตัวอักษร)">
+                                    <label for="font_size" string="Base Font Size"/>
+                                    <div class="o_row">
+                                        <field name="font_size" class="oe_inline" style="width: 100px;"/>
+                                        <span class="text-muted">px (ขนาดพื้นฐาน)</span>
+                                    </div>
+                                    
+                                    <label for="font_size_header" string="Header Font Size"/>
+                                    <div class="o_row">
+                                        <field name="font_size_header" class="oe_inline" style="width: 100px;"/>
+                                        <span class="text-muted">px (ขนาดหัวข้อ)</span>
+                                    </div>
+                                    
+                                    <label for="font_size_small" string="Small Font Size"/>
+                                    <div class="o_row">
+                                        <field name="font_size_small" class="oe_inline" style="width: 100px;"/>
+                                        <span class="text-muted">px (ขนาดเล็ก)</span>
+                                    </div>
+                                    
+                                    <field name="font_family" placeholder="e.g., Sarabun, Arial, sans-serif"/>
+                                    <field name="line_spacing" widget="float" digits="[16,2]"/>
+                                </group>
+                                <group string="Font Size Guidelines">
+                                    <div class="alert alert-info" role="alert">
+                                        <strong>📏 Recommended Font Sizes:</strong><br/><br/>
+                                        <strong>For Preprint Forms:</strong><br/>
+                                        • Base: 12-14px (ข้อมูลทั่วไป)<br/>
+                                        • Header: 14-16px (หัวข้อ)<br/>
+                                        • Small: 10-12px (หมายเหตุ)<br/><br/>
+                                        
+                                        <strong>For Blank Paper:</strong><br/>
+                                        • Base: 14-16px (ข้อมูลทั่วไป)<br/>
+                                        • Header: 16-20px (หัวข้อ)<br/>
+                                        • Small: 12-14px (หมายเหตุ)<br/><br/>
+                                        
+                                        <strong>Valid Range:</strong> 6-72px<br/>
+                                        <strong>Default Values:</strong> Base=14, Header=16, Small=12
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Header Positions" name="header">
+                            <group>
+                                <group string="Document Number">
+                                    <field name="doc_number_top"/>
+                                    <field name="doc_number_left"/>
+                                </group>
+                                <group string="Document Date">
+                                    <field name="doc_date_top"/>
+                                    <field name="doc_date_left"/>
+                                </group>
+                                <group string="SO Number (เลขที่ SO)">
+                                    <field name="so_number_top"/>
+                                    <field name="so_number_left"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Customer Info Positions" name="customer">
+                            <group>
+                                <group string="Customer Name">
+                                    <field name="customer_name_top"/>
+                                    <field name="customer_name_left"/>
+                                </group>
+                                <group string="Customer Address Line 1">
+                                    <field name="customer_address_top"/>
+                                    <field name="customer_address_left"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Customer Address Line 2">
+                                    <field name="customer_address_line2_top"/>
+                                    <field name="customer_address_line2_left"/>
+                                </group>
+                                <group string="Customer Phone">
+                                    <field name="customer_phone_top"/>
+                                    <field name="customer_phone_left"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Vehicle Info Positions" name="vehicle">
+                            <group>
+                                <group string="Vehicle Type">
+                                    <field name="vehicle_type_top"/>
+                                    <field name="vehicle_type_left"/>
+                                </group>
+                                <group string="Vehicle Plate">
+                                    <field name="vehicle_plate_top"/>
+                                    <field name="vehicle_plate_left"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Driver Name">
+                                    <field name="driver_name_top"/>
+                                    <field name="driver_name_left"/>
+                                </group>
+                                <group string="Dispatch Location">
+                                    <field name="dispatch_location_top"/>
+                                    <field name="dispatch_location_left"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Table Positions" name="table">
+                            <group>
+                                <group string="Table Position">
+                                    <field name="table_top"/>
+                                    <field name="table_left"/>
+                                    <field name="line_height"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Column Offsets">
+                                    <field name="col_no_left"/>
+                                    <field name="col_code_left"/>
+                                    <field name="col_name_left"/>
+                                    <field name="col_qty_left"/>
+                                    <field name="col_unit_left"/>
+                                    <field name="col_remark_left"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Footer Positions" name="footer">
+                            <group>
+                                <group string="Total Quantity">
+                                    <field name="total_qty_top"/>
+                                    <field name="total_qty_left"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Sender Signature">
+                                    <field name="signature_sender_top"/>
+                                    <field name="signature_sender_left"/>
+                                </group>
+                                <group string="Receiver Signature">
+                                    <field name="signature_receiver_top"/>
+                                    <field name="signature_receiver_left"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Page Settings" name="page">
+                            <group>
+                                <group string="Paper Size">
+                                    <field name="paper_size"/>
+                                    <field name="dpi"/>
+                                    <field name="print_mode"/>
+                                    <div class="alert alert-info" role="alert" style="margin-top: 10px;">
+                                        <strong>A4 Full Coverage at 96 DPI:</strong><br/>
+                                        • Dimensions: 794px × 1123px<br/>
+                                        • Equals: 210mm × 297mm<br/>
+                                        • All margins set to 0 for full coverage<br/>
+                                        • You can position fields from 0,0 to 794,1123
+                                    </div>
+                                </group>
+                                <group string="Page Dimensions (Full Coverage)">
+                                    <field name="page_width" readonly="paper_size != 'custom'"/>
+                                    <field name="page_height" readonly="paper_size != 'custom'"/>
+                                    <field name="page_width_mm"/>
+                                    <field name="page_height_mm"/>
+                                    <field name="margin_top"/>
+                                    <field name="margin_bottom"/>
+                                    <field name="margin_left"/>
+                                    <field name="margin_right"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Background Image" name="background">
+                            <group>
+                                <group string="Form Template Image">
+                                    <field name="background_image" widget="image" class="oe_avatar"/>
+                                    <field name="background_image_filename" invisible="1"/>
+                                    <field name="show_background"/>
+                                    <field name="background_opacity" widget="float" 
+                                           invisible="not show_background"/>
+                                    <div class="alert alert-warning" role="alert" style="margin-top: 10px;">
+                                        <strong>Tips:</strong><br/>
+                                        • Upload a scan of your preprint form template<br/>
+                                        • The background will only show in the preview<br/>
+                                        • Adjust opacity to see the background and fields clearly<br/>
+                                        • Use the preview to align field positions accurately
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Tree view for Dispatch Report Configuration -->
+    <record id="view_dispatch_report_config_tree" model="ir.ui.view">
+        <field name="name">dispatch.report.config.tree</field>
+        <field name="model">dispatch.report.config</field>
+        <field name="arch" type="xml">
+            <tree string="Dispatch Report Configurations">
+                <field name="name"/>
+                <field name="is_default"/>
+                <field name="paper_size"/>
+                <field name="font_size"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Action for Dispatch Report Configuration -->
+    <record id="action_dispatch_report_config" model="ir.actions.act_window">
+        <field name="name">Dispatch Report Print Config</field>
+        <field name="res_model">dispatch.report.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new dispatch report configuration
+            </p>
+            <p>
+                Configure print positions for preprint forms to align with your paper layout.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu item -->
+    <menuitem id="menu_dispatch_report_config"
+              name="Dispatch Report Config"
+              parent="stock.menu_stock_config_settings"
+              action="action_dispatch_report_config"
+              sequence="100"/>
+</odoo>

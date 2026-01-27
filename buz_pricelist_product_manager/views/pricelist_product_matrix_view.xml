@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pricelist_product_matrix_search" model="ir.ui.view">
+        <field name="name">pricelist.product.matrix.search</field>
+        <field name="model">pricelist.product.matrix</field>
+        <field name="arch" type="xml">
+            <search string="Pricelist Product Search">
+                <field name="product_tmpl_id" filter_domain="['|', '|', ('product_tmpl_id.name', 'ilike', self), ('product_variant_id.default_code', 'ilike', self), ('product_variant_id.barcode', 'ilike', self)]"/>
+                <field name="category_id"/>
+                <field name="rule_type"/>
+                
+                <searchpanel>
+                    <field name="pricelist_id" icon="fa-list" select="one" enable_counters="1"/>
+                    <field name="category_id" icon="fa-folder" enable_counters="1"/>
+                </searchpanel>
+                
+                <filter string="Has Rule" name="has_rule" domain="[('rule_id', '!=', False)]"/>
+                <filter string="No Rule" name="no_rule" domain="[('rule_id', '=', False)]"/>
+                <separator/>
+                <filter string="Valid Rules" name="valid_rule" domain="['|', ('date_end', '=', False), ('date_end', '>=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Expired Rules" name="expired_rule" domain="[('date_end', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_pricelist_product_matrix_tree" model="ir.ui.view">
+        <field name="name">pricelist.product.matrix.tree</field>
+        <field name="model">pricelist.product.matrix</field>
+        <field name="arch" type="xml">
+            <tree string="Pricelist Product Matrix" editable="bottom" create="0" delete="0">
+                <field name="pricelist_id" readonly="1" column_invisible="True"/> <!-- Hidden as selected in search panel -->
+                <field name="product_variant_id" readonly="1"/>
+                <field name="product_tmpl_id" optional="hide"/>
+                <field name="category_id" optional="show" readonly="1"/>
+                <field name="base_price" readonly="1" optional="show"/>
+                
+                <field name="rule_type"/>
+                <field name="price" invisible="rule_type != 'fixed'" required="rule_type == 'fixed'"/>
+                <field name="percent_price" invisible="rule_type != 'percentage'" required="rule_type == 'percentage'"/>
+                <field name="installation_price" optional="show"/>
+                <field name="min_quantity"/>
+                <field name="date_start" optional="hide"/>
+                <field name="date_end" optional="hide"/>
+                
+                <field name="computed_price" readonly="1" decoration-info="True"/>
+                <field name="rule_id" optional="hide" readonly="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_data_pricelist_product_manager" model="ir.actions.act_window">
+        <field name="name">Pricelist Product Manager</field>
+        <field name="res_model">pricelist.product.matrix</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_pricelist_product_matrix_search"/>
+        <field name="context">{'search_default_has_rule': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Select a Pricelist to manage prices.
+            </p>
+        </field>
+    </record>
+    
+    <!-- Menu -->
+    <menuitem id="menu_pricelist_product_manager"
+              name="Pricelist Product Manager"
+              parent="sale.product_menu_catalog"
+              action="action_data_pricelist_product_manager"
+              groups="buz_pricelist_product_manager.group_pricelist_product_manager"
+              sequence="10"/>
+
+</odoo>

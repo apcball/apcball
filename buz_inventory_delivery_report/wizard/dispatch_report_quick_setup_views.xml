@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Quick Setup Wizard Form -->
+    <record id="view_dispatch_report_quick_setup_form" model="ir.ui.view">
+        <field name="name">dispatch.report.quick.setup.form</field>
+        <field name="model">dispatch.report.quick.setup</field>
+        <field name="arch" type="xml">
+            <form string="Quick Position Adjustment">
+                <group>
+                    <group>
+                        <field name="config_id" options="{'no_create': True}"/>
+                        <field name="config_name" invisible="config_id" required="not config_id"/>
+                    </group>
+                </group>
+                
+                <separator string="Quick Adjustments"/>
+                <group>
+                    <group string="Move All Elements">
+                        <label for="move_all_horizontal" string="Horizontal Movement"/>
+                        <div>
+                            <field name="move_all_horizontal" class="oe_inline"/>
+                            <span class="oe_inline"> px (+ right / - left)</span>
+                        </div>
+                        
+                        <label for="move_all_vertical" string="Vertical Movement"/>
+                        <div>
+                            <field name="move_all_vertical" class="oe_inline"/>
+                            <span class="oe_inline"> px (+ down / - up)</span>
+                        </div>
+                    </group>
+                    
+                    <group string="Fine Tuning">
+                        <label for="adjust_line_spacing" string="Line Spacing"/>
+                        <div>
+                            <field name="adjust_line_spacing" class="oe_inline"/>
+                            <span class="oe_inline"> px</span>
+                        </div>
+                        
+                        <label for="adjust_font_size" string="Font Size"/>
+                        <div>
+                            <field name="adjust_font_size" class="oe_inline"/>
+                            <span class="oe_inline"> px</span>
+                        </div>
+                    </group>
+                </group>
+                
+                <group>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Tips:</strong><br/>
+                        • ใส่ค่าบวก (+) เพื่อเลื่อนไปทางขวาหรือลง<br/>
+                        • ใส่ค่าลบ (-) เพื่อเลื่อนไปทางซ้ายหรือขึ้น<br/>
+                        • แนะนำให้ปรับทีละ 5-10 px<br/>
+                        • ใช้ Preview Layout เพื่อดูผลลัพธ์
+                    </div>
+                </group>
+                
+                <footer>
+                    <button name="action_apply_adjustments" 
+                            string="Apply Adjustments" 
+                            type="object" 
+                            class="btn-primary"/>
+                    <button name="action_reset_to_default" 
+                            string="Reset to Default" 
+                            type="object" 
+                            class="btn-secondary"
+                            invisible="not config_id"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Quick Setup Wizard Action -->
+    <record id="action_dispatch_report_quick_setup" model="ir.actions.act_window">
+        <field name="name">Quick Position Setup</field>
+        <field name="res_model">dispatch.report.quick.setup</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    
+    <!-- Add to Configuration Form -->
+    <record id="view_dispatch_report_config_form_with_wizard" model="ir.ui.view">
+        <field name="name">dispatch.report.config.form.wizard</field>
+        <field name="model">dispatch.report.config</field>
+        <field name="inherit_id" ref="view_dispatch_report_config_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="%(action_dispatch_report_quick_setup)d" 
+                        string="Quick Adjust" 
+                        type="action" 
+                        class="btn-secondary"
+                        context="{'default_config_id': active_id}"
+                        icon="fa-magic"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Wizard Form View -->
+    <record id="view_stock_valuation_recalculate_wizard_form" model="ir.ui.view">
+        <field name="name">stock.valuation.recalculate.wizard.form</field>
+        <field name="model">stock.valuation.recalculate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Recalculate Stock Valuation">
+                <header>
+                    <button name="action_recalculate" 
+                            string="Start Recalculation" 
+                            type="object" 
+                            class="oe_highlight"
+                            invisible="state != 'draft'"/>
+                    <button name="action_close" 
+                            string="Close" 
+                            type="object" 
+                            class="btn-secondary"
+                            invisible="state != 'done'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,processing,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title" invisible="state != 'draft'">
+                        <h1>
+                            <i class="fa fa-calculator"/> Recalculate Stock Valuation by Warehouse
+                        </h1>
+                    </div>
+                    
+                    <group invisible="state != 'draft'">
+                        <group>
+                            <field name="warehouse_ids" widget="many2many_tags" 
+                                   options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Operations to Perform" invisible="state != 'draft'">
+                        <field name="fix_null_remaining"/>
+                        <field name="fix_negative_remaining"/>
+                        <field name="fix_excess_remaining"/>
+                        <field name="recalculate_remaining"/>
+                        <field name="fix_value_mismatch"/>
+                        <field name="fix_value_mismatch_per_warehouse"/>
+                    </group>
+                    
+                    <notebook invisible="state != 'draft'">
+                        <page string="ℹ️ Information">
+                            <group>
+                                <div style="padding: 10px; background: #f0f8ff; border-left: 4px solid #2196F3; margin: 10px 0;">
+                                    <h4 style="margin-top: 0; color: #1976D2;">
+                                        <i class="fa fa-info-circle"/> What does this wizard do?
+                                    </h4>
+                                    <p>
+                                        This wizard recalculates stock valuation layers to ensure FIFO is correctly 
+                                        applied per warehouse. It fixes six common issues:
+                                    </p>
+                                    <ol>
+                                        <li><b>NULL remaining values:</b> Sets remaining_value=0.0 for negative layers</li>
+                                        <li><b>Negative remaining qty:</b> Fixes positive layers with negative remaining (impossible)</li>
+                                        <li><b>Excess remaining qty:</b> Fixes layers where remaining > quantity (over-consumed)</li>
+                                        <li><b>Incorrect remaining qty:</b> Recalculates remaining_qty using FIFO per warehouse</li>
+                                        <li><b>Value mismatch (Product):</b> Fixes products where qty=0 but value≠0 globally</li>
+                                        <li><b>Value mismatch (Warehouse):</b> Fixes qty=0 but value≠0 per warehouse (recommended!)</li>
+                                    </ol>
+                                </div>
+                                
+                                <div style="padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; margin: 10px 0;">
+                                    <h4 style="margin-top: 0; color: #ff9800;">
+                                        <i class="fa fa-exclamation-triangle"/> When to use?
+                                    </h4>
+                                    <ul>
+                                        <li>After upgrading to a new version of stock_fifo_by_location</li>
+                                        <li>When valuation reports show incorrect remaining quantities</li>
+                                        <li>After importing historical stock data</li>
+                                        <li>When products show value but no quantity</li>
+                                    </ul>
+                                </div>
+                                
+                                <div style="padding: 10px; background: #d4edda; border-left: 4px solid #28a745; margin: 10px 0;">
+                                    <h4 style="margin-top: 0; color: #155724;">
+                                        <i class="fa fa-check-circle"/> Safe to run
+                                    </h4>
+                                    <p>
+                                        ✅ This operation is <b>safe</b> and can be run multiple times<br/>
+                                        ✅ Changes are committed in batches (every 100 products)<br/>
+                                        ✅ No data is deleted, only recalculated
+                                    </p>
+                                </div>
+                                
+                                <div style="padding: 10px; background: #f8d7da; border-left: 4px solid #dc3545; margin: 10px 0;">
+                                    <h4 style="margin-top: 0; color: #721c24;">
+                                        <i class="fa fa-warning"/> Important Notes
+                                    </h4>
+                                    <ul>
+                                        <li>⏱️ Processing time depends on the number of products and layers</li>
+                                        <li>🔒 Backup your database before running on production</li>
+                                        <li>👥 Other users can continue working during recalculation</li>
+                                    </ul>
+                                </div>
+                            </group>
+                        </page>
+                    </notebook>
+                    
+                    <!-- Results Display -->
+                    <div invisible="state != 'done'">
+                        <field name="result_message" nolabel="1"/>
+                    </div>
+                    
+                    <div invisible="state != 'processing'" style="text-align: center; padding: 50px;">
+                        <h3>
+                            <i class="fa fa-spinner fa-spin"/> Processing...
+                        </h3>
+                        <p>Please wait while recalculation is in progress.</p>
+                    </div>
+                    
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Action -->
+    <record id="action_stock_valuation_recalculate" model="ir.actions.act_window">
+        <field name="name">Recalculate Valuation</field>
+        <field name="res_model">stock.valuation.recalculate.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    
+    <!-- Menu -->
+    <menuitem id="menu_stock_valuation_recalculate"
+              name="Recalculate Valuation"
+              parent="stock.menu_warehouse_config"
+              action="action_stock_valuation_recalculate"
+              sequence="100"
+              groups="stock.group_stock_manager"/>
+    
+</odoo>

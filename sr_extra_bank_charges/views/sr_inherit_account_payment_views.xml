@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<odoo>
+
+	<record id="view_account_payment_form_extends_to_add_extra_bank_charge_field" model="ir.ui.view">
+		<field name="name">view.account.payment.form.extends.to.add.extra.bank.charge.field</field>
+		<field name="model">account.payment</field>
+		<field name="inherit_id" ref="account.view_account_payment_form" />
+		<field name="arch" type="xml">
+			<xpath expr="//field[@name='currency_id']" position="after">
+				<field name="journal_type" invisible="1"/>
+				<field name="bank_charge_currency_id" invisible="1"/>
+				<field name="bank_charge_amount" invisible="journal_type != 'bank'" widget="monetary" options="{'currency_field': 'bank_charge_currency_id'}" />
+				<field name="bank_charge_thb_note" invisible="journal_type != 'bank' or not bank_charge_amount" readonly="1" string="THB Amount"/>
+			</xpath>
+		</field>
+	</record>
+	
+</odoo>

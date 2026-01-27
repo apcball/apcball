@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Receipt Voucher Report Action -->
+    <record id="action_report_account_receipt_voucher" model="ir.actions.report">
+        <field name="name">Receipt Voucher</field>
+        <field name="model">account.receipt.voucher</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_account_receipt.report_account_receipt_voucher</field>
+        <field name="report_file">buz_account_receipt.report_account_receipt_voucher</field>
+        <field name="print_report_name">'Receipt Voucher - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_account_receipt_voucher"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

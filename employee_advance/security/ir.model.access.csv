@@ -1,0 +1,17 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_employee_advance_box_user,employee.advance.box.user,model_employee_advance_box,base.group_user,1,0,0,0
+access_employee_advance_box_manager,employee.advance.box.manager,model_employee_advance_box,base.group_erp_manager,1,1,1,1
+access_advance_box_refill_user,advance.box.refill.user,model_advance_box_refill,base.group_user,1,0,0,0
+access_advance_box_refill_accountant,advance.box.refill.accountant,model_advance_box_refill,account.group_account_user,1,1,1,0
+access_advance_box_refill_manager,advance.box.refill.manager,model_advance_box_refill,account.group_account_manager,1,1,1,1
+access_wizard_refill_advance_box_user,wizard.refill.advance.box.user,model_wizard_refill_advance_box,base.group_user,1,0,0,0
+access_wizard_refill_advance_box_accountant,wizard.refill.advance.box.accountant,model_wizard_refill_advance_box,account.group_account_user,1,1,1,1
+access_wizard_refill_advance_box_manager,wizard.refill.advance.box.manager,model_wizard_refill_advance_box,account.group_account_manager,1,1,1,1
+access_mark_as_done_confirmation_wizard_user,mark.as.done.confirmation.wizard.user,model_mark_as_done_confirmation_wizard,base.group_user,1,1,1,1
+access_mark_as_done_confirmation_wizard_manager,mark.as.done.confirmation.wizard.manager,model_mark_as_done_confirmation_wizard,base.group_erp_manager,1,1,1,1
+access_wht_clear_advance_wizard_user,wht.clear.advance.wizard.user,model_wht_clear_advance_wizard,base.group_user,1,1,1,1
+access_wht_clear_advance_wizard_manager,wht.clear.advance.wizard.manager,model_wht_clear_advance_wizard,base.group_erp_manager,1,1,1,1
+access_advance_refill_base_wizard_user,advance.refill.base.wizard.user,model_advance_refill_base_wizard,base.group_user,1,1,1,1
+access_advance_refill_base_wizard_manager,advance.refill.base.wizard.manager,model_advance_refill_base_wizard,base.group_erp_manager,1,1,1,1
+access_advance_settlement_wizard_user,advance.settlement.wizard.user,model_advance_settlement_wizard,base.group_user,1,1,1,1
+access_advance_settlement_wizard_manager,advance.settlement.wizard.manager,model_advance_settlement_wizard,base.group_erp_manager,1,1,1,1

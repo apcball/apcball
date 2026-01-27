@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<odoo>
+    <!-- Groups -->
+    <record id="group_sale_blanket_order_user" model="res.groups">
+        <field name="name">Sale Blanket Order / User</field>
+        <field name="category_id" ref="base.module_category_sales_sales"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">User can create and modify blanket orders</field>
+    </record>
+
+    <record id="group_sale_blanket_order_manager" model="res.groups">
+        <field name="name">Sale Blanket Order / Manager</field>
+        <field name="category_id" ref="base.module_category_sales_sales"/>
+        <field name="implied_ids" eval="[(4, ref('group_sale_blanket_order_user'))]"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        <field name="comment">Manager can manage all blanket orders</field>
+    </record>
+
+    <record model="res.groups" id="blanket_orders_disable_adding_lines">
+        <field name="name">Disable adding more lines to SOs from Blanket Orders</field>
+    </record>
+</odoo>

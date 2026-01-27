@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        
+        <!-- Demo Job Cost Sheet -->
+        <record id="demo_job_cost_sheet_construction" model="job.cost.sheet">
+            <field name="name">Construction Project Cost Sheet</field>
+            <field name="project_id" ref="project.project_project_data"/>
+            <field name="state">approved</field>
+            <field name="date_start" eval="(DateTime.now() - timedelta(days=30)).strftime('%Y-%m-%d')"/>
+            <field name="notes">Demo construction project cost sheet for testing</field>
+        </record>
+        
+        <!-- Demo Job Cost Lines - Material -->
+        <record id="demo_job_cost_line_cement" model="job.cost.line">
+            <field name="cost_sheet_id" ref="demo_job_cost_sheet_construction"/>
+            <field name="cost_type">material</field>
+            <field name="name">Portland Cement</field>
+            <field name="planned_qty">100</field>
+            <field name="unit_cost">150.00</field>
+            <field name="sequence">10</field>
+        </record>
+        
+        <record id="demo_job_cost_line_steel" model="job.cost.line">
+            <field name="cost_sheet_id" ref="demo_job_cost_sheet_construction"/>
+            <field name="cost_type">material</field>
+            <field name="name">Steel Reinforcement Bar</field>
+            <field name="planned_qty">50</field>
+            <field name="unit_cost">800.00</field>
+            <field name="sequence">20</field>
+        </record>
+        
+        <!-- Demo Job Cost Lines - Labour -->
+        <record id="demo_job_cost_line_mason" model="job.cost.line">
+            <field name="cost_sheet_id" ref="demo_job_cost_sheet_construction"/>
+            <field name="cost_type">labour</field>
+            <field name="name">Mason Work</field>
+            <field name="planned_qty">40</field>
+            <field name="unit_cost">500.00</field>
+            <field name="sequence">30</field>
+        </record>
+        
+        <!-- Demo Job Cost Lines - Overhead -->
+        <record id="demo_job_cost_line_equipment" model="job.cost.line">
+            <field name="cost_sheet_id" ref="demo_job_cost_sheet_construction"/>
+            <field name="cost_type">overhead</field>
+            <field name="name">Equipment Rental</field>
+            <field name="planned_qty">10</field>
+            <field name="unit_cost">2000.00</field>
+            <field name="sequence">40</field>
+        </record>
+        
+    </data>
+</odoo>

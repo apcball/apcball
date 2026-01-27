@@ -1,0 +1,328 @@
+/** @odoo-module **/
+
+import { registry } from "@web/core/registry";
+import { listView } from "@web/views/list/list_view";
+import { ListController } from "@web/views/list/list_controller";
+import { kanbanView } from "@web/views/kanban/kanban_view";
+import { KanbanController } from "@web/views/kanban/kanban_controller";
+import { Component, useState, onWillStart } from "@odoo/owl";
+import { useService } from "@web/core/utils/hooks";
+import { _t } from "@web/core/l10n/translation";
+
+/**
+ * Enhanced List Controller for Stock Current Report
+ * Provides quick filters and zero quantity toggle
+ */
+export class StockListController extends ListController {
+    setup() {
+        super.setup();
+    }
+
+    /**
+     * Handle quick filter clicks - Compatible with Odoo 17
+     */
+    onQuickFilterClick(ev) {
+        const filterName = ev.target.dataset.filter;
+        const domain = JSON.parse(ev.target.dataset.domain || "[]");
+        
+        // Toggle active state
+        ev.target.classList.toggle('active');
+        
+        // Update search domain using model
+        if (this.model) {
+            this.model.load({ domain });
+        }
+    }
+
+    /**
+     * Handle zero quantity toggle - Compatible with Odoo 17
+     */
+    onZeroQtyToggle(ev) {
+        const showZero = ev.target.checked;
+        const domain = showZero ? [] : [['quantity', '!=', 0]];
+        
+        // Update search domain using model
+        if (this.model) {
+            this.model.load({ domain });
+        }
+    }
+}
+
+/**
+ * Enhanced Kanban Controller for Stock Current Report
+ * Adds color coding based on stock levels
+ */
+export class StockKanbanController extends KanbanController {
+    setup() {
+        super.setup();
+    }
+
+    /**
+     * Get record color class based on quantity
+     */
+    getRecordColorClass(record) {
+        const quantity = record.data?.quantity || 0;
+        
+        if (quantity <= 0) {
+            return 'oe_kanban_color_4'; // Red for out of stock
+        } else if (quantity < 10) {
+            return 'oe_kanban_color_2'; // Orange for low stock
+        }
+        return 'oe_kanban_color_0'; // Default color
+    }
+}
+
+/**
+ * Stock List View with enhanced controller
+ */
+export const stockListView = {
+    ...listView,
+    Controller: StockListController,
+};
+
+/**
+ * Stock Kanban View with enhanced controller
+ */
+export const stockKanbanView = {
+    ...kanbanView,
+    Controller: StockKanbanController,
+};
+
+/**
+ * Warehouse Sidebar Component
+ * Displays warehouse hierarchy with locations and product counts
+ */
+export class WarehouseSidebar extends Component {
+    static template = "buz_stock_current_report.WarehouseSidebar";
+    
+    setup() {
+        this.orm = useService("orm");
+        this.action = useService("action");
+        this.notification = useService("notification");
+        this.state = useState({
+            warehouses: [],
+            expandedWarehouses: new Set(),
+            loading: true,
+            selectedWarehouse: null,
+            selectedLocation: null,
+            searchTerm: '',
+            showOnlyWithStock: false
+        });
+        
+        onWillStart(async () => {
+            await this.loadWarehouses();
+        });
+    }
+
+    async loadWarehouses() {
+        try {
+            this.state.loading = true;
+            const result = await this.orm.call(
+                'stock.current.report',
+                'get_warehouses_with_internal_locations',
+                [],
+                {}
+            );
+            this.state.warehouses = result || [];
+        } catch (error) {
+            console.error('Error loading warehouses:', error);
+            this.notification.add(
+                _t("Error loading warehouses: ") + (error.message || error.toString()),
+                { type: "danger" }
+            );
+            this.state.warehouses = [];
+        } finally {
+            this.state.loading = false;
+        }
+    }
+
+    get filteredWarehouses() {
+        let warehouses = this.state.warehouses;
+        
+        if (this.state.searchTerm) {
+            const term = this.state.searchTerm.toLowerCase();
+            warehouses = warehouses.filter(wh =>
+                wh.name.toLowerCase().includes(term) ||
+                wh.code.toLowerCase().includes(term) ||
+                wh.locations.some(loc =>
+                    loc.name.toLowerCase().includes(term) ||
+                    loc.complete_name.toLowerCase().includes(term)
+                )
+            );
+        }
+        
+        if (this.state.showOnlyWithStock) {
+            warehouses = warehouses.filter(wh =>
+                wh.total_products > 0 ||
+                wh.locations.some(loc => loc.product_count > 0)
+            );
+        }
+        
+        return warehouses;
+    }
+
+    toggleWarehouse(warehouseId) {
+        if (this.state.expandedWarehouses.has(warehouseId)) {
+            this.state.expandedWarehouses.delete(warehouseId);
+        } else {
+            this.state.expandedWarehouses.add(warehouseId);
+        }
+        // OWL 2.0+ doesn't need manual render() call
+        // this.render();
+    }
+
+    async onWarehouseClick(warehouse) {
+        this.state.selectedWarehouse = warehouse.id;
+        this.state.selectedLocation = null;
+        
+        const domain = [['location_id.warehouse_id', '=', warehouse.id]];
+        await this.updateDomain(domain);
+        
+        this.notification.add(
+            _t("Filtered by warehouse: %s", warehouse.name),
+            { type: "info" }
+        );
+    }
+
+    async onLocationClick(location) {
+        this.state.selectedLocation = location.id;
+        this.state.selectedWarehouse = null;
+        
+        const domain = [['location_id', '=', location.id]];
+        await this.updateDomain(domain);
+        
+        this.notification.add(
+            _t("Filtered by location: %s", location.name),
+            { type: "info" }
+        );
+    }
+
+    async onClearFilters() {
+        this.state.selectedWarehouse = null;
+        this.state.selectedLocation = null;
+        this.state.searchTerm = '';
+        this.state.showOnlyWithStock = false;
+        await this.updateDomain([]);
+        
+        this.notification.add(
+            _t("Filters cleared"),
+            { type: "info" }
+        );
+    }
+
+    async updateDomain(domain) {
+        // In Odoo 17, use action service to reload with new domain
+        if (this.env.config?.actionId) {
+            const action = await this.orm.call(
+                'ir.actions.act_window',
+                'read',
+                [this.env.config.actionId],
+                { fields: ['domain', 'context'] }
+            );
+            
+            if (action && action.length > 0) {
+                this.action.doAction({
+                    ...action[0],
+                    domain: domain,
+                }, {
+                    clearBreadcrumbs: false,
+                });
+            }
+        } else if (this.props.domain !== undefined) {
+            // Direct domain update if available
+            this.props.domain = domain;
+        }
+    }
+
+    async refreshData() {
+        await this.loadWarehouses();
+        this.notification.add(
+            _t("Warehouse data refreshed"),
+            { type: "success" }
+        );
+    }
+
+    getLocationTypeIcon(usage) {
+        const icons = {
+            'internal': 'fa-home',
+            'production': 'fa-industry',
+            'inventory': 'fa-warehouse',
+            'supplier': 'fa-truck',
+            'customer': 'fa-store',
+            'transit': 'fa-exchange-alt'
+        };
+        return icons[usage] || 'fa-map-marker';
+    }
+
+    getStockStatusClass(quantity) {
+        if (quantity <= 0) return 'text-danger';
+        if (quantity < 10) return 'text-warning';
+        return 'text-success';
+    }
+
+    formatMonetary(amount) {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+        }).format(amount || 0);
+    }
+
+    formatQuantity(quantity) {
+        return new Intl.NumberFormat().format(quantity || 0);
+    }
+
+    isWarehouseExpanded(warehouseId) {
+        return this.state.expandedWarehouses.has(warehouseId);
+    }
+
+    isWarehouseSelected(warehouseId) {
+        return this.state.selectedWarehouse === warehouseId;
+    }
+
+    isLocationSelected(locationId) {
+        return this.state.selectedLocation === locationId;
+    }
+}
+
+/**
+ * Enhanced List Controller with Warehouse Sidebar - Odoo 17 Compatible
+ */
+export class StockListControllerWithSidebar extends ListController {
+    setup() {
+        super.setup();
+        this.sidebarState = useState({
+            visible: true,
+            warehouseFilter: null,
+            locationFilter: null
+        });
+    }
+}
+
+/**
+ * Enhanced Kanban Controller with Warehouse Sidebar - Odoo 17 Compatible
+ */
+export class StockKanbanControllerWithSidebar extends KanbanController {
+    setup() {
+        super.setup();
+        this.sidebarState = useState({
+            visible: true,
+            warehouseFilter: null,
+            locationFilter: null
+        });
+    }
+}
+
+// Register the custom views
+registry.category("views").add("stock_current_list", stockListView);
+registry.category("views").add("stock_current_kanban", stockKanbanView);
+
+// Register enhanced views with sidebar
+registry.category("views").add("stock_current_list_sidebar", {
+    ...listView,
+    Controller: StockListControllerWithSidebar,
+});
+
+registry.category("views").add("stock_current_kanban_sidebar", {
+    ...kanbanView,
+    Controller: StockKanbanControllerWithSidebar,
+});

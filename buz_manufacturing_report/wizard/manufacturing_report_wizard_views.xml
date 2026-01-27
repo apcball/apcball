@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Manufacturing Report Wizard Form View -->
+    <record id="view_manufacturing_report_wizard_form" model="ir.ui.view">
+        <field name="name">manufacturing.report.wizard.form</field>
+        <field name="model">manufacturing.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generate Manufacturing Report">
+                <group>
+                    <group>
+                        <field name="production_id" options="{'no_create': True, 'no_open': False}"/>
+                        <field name="report_date"/>
+                    </group>
+                </group>
+                <group string="Notes">
+                    <field name="notes" nolabel="1" placeholder="Add any additional notes here..."/>
+                </group>
+                <footer>
+                    <button name="action_generate_report" string="Generate Report" type="object" class="btn-primary"/>
+                    <button name="action_print_report" string="Print PDF" type="object" class="btn-secondary"/>
+                    <button name="action_print_xlsx_report" string="Export XLSX" type="object" class="btn-secondary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Manufacturing Report Wizard Action -->
+    <record id="action_manufacturing_report_wizard" model="ir.actions.act_window">
+        <field name="name">Generate Manufacturing Report</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">manufacturing.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Manufacturing Report Menu Item -->
+    <menuitem id="menu_manufacturing_report_wizard"
+              name="Manufacturing Reports"
+              parent="mrp.menu_mrp_reporting"
+              action="action_manufacturing_report_wizard"
+              sequence="100"/>
+</odoo>

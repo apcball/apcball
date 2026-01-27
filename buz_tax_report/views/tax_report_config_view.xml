@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Tax Report Config Tree View -->
+        <record id="view_tax_report_config_tree" model="ir.ui.view">
+            <field name="name">tax.report.config.tree</field>
+            <field name="model">tax.report.config</field>
+            <field name="arch" type="xml">
+                <tree string="Tax Report Configurations">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="report_type"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="active"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Tax Report Config Form View -->
+        <record id="view_tax_report_config_form" model="ir.ui.view">
+            <field name="name">tax.report.config.form</field>
+            <field name="model">tax.report.config</field>
+            <field name="arch" type="xml">
+                <form string="Tax Report Configuration">
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_generate_report" type="object" class="oe_stat_button" icon="fa-file-excel-o">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">Generate</span>
+                                    <span class="o_stat_text">Report</span>
+                                </div>
+                            </button>
+                        </div>
+                        <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="sequence"/>
+                                <field name="active"/>
+                            </group>
+                            <group>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="report_type"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Taxes" name="taxes">
+                                <field name="tax_ids">
+                                    <tree string="Taxes">
+                                        <field name="name"/>
+                                        <field name="type_tax_use"/>
+                                        <field name="amount"/>
+                                        <field name="active"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="Description" name="description">
+                                <field name="description" placeholder="Description for this tax report configuration..."/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Tax Report Config Action -->
+        <record id="action_tax_report_config" model="ir.actions.act_window">
+            <field name="name">Tax Report Configurations</field>
+            <field name="res_model">tax.report.config</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create a new tax report configuration
+                </p>
+                <p>
+                    Configure different tax reports with specific tax selections and report types.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

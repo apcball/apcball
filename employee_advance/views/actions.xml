@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Main Menu for Advance Management -->
+    <menuitem id="menu_advance_box" 
+              name="Advance Management"
+              parent="hr.menu_hr_root"
+              sequence="15"
+              groups="base.group_user"/>
+
+    <!-- Action for Clear Advance Button -->
+    <record id="action_clear_advance" model="ir.actions.server">
+        <field name="name">Clear with Advance</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="state">code</field>
+        <field name="code">
+            if records:
+                action = records.action_clear_advance_from_bill()
+        </field>
+    </record>
+    
+</odoo>

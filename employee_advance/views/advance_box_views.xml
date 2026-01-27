@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Employee Advance Box Action -->
+    <record id="action_employee_advance_box" model="ir.actions.act_window">
+        <field name="name">Employee Advance Boxes</field>
+        <field name="res_model">employee.advance.box</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Employee Advance Box!
+            </p>
+            <p>
+                Manage employee advance boxes to track and control advance payments to employees.
+            </p>
+        </field>
+    </record>
+
+    <!-- Employee Advance Box Tree View -->
+    <record id="view_employee_advance_box_tree" model="ir.ui.view">
+        <field name="name">employee.advance.box.tree</field>
+        <field name="model">employee.advance.box</field>
+        <field name="arch" type="xml">
+            <tree string="Employee Advance Boxes" decoration-danger="balance &lt; 0" decoration-warning="balance &gt; 0 and balance &lt; 100" decoration-success="balance &gt;= 100">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="balance" sum="Total Balance"/>
+                <field name="remember_base_amount"/>
+                <field name="account_id" optional="hide"/>
+                <field name="journal_id" optional="hide"/>
+                <field name="company_id" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Employee Advance Box Form View -->
+    <record id="view_employee_advance_box_form" model="ir.ui.view">
+        <field name="name">employee.advance.box.form</field>
+        <field name="model">employee.advance.box</field>
+        <field name="arch" type="xml">
+            <form string="Employee Advance Box">
+                <header>
+                    <button name="action_open_settlement_wizard" 
+                            type="object" 
+                            string="Settle Advance" 
+                            class="btn-secondary"
+                            invisible="balance == 0"
+                            help="Settle the advance with appropriate journal entries"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb16">
+                        <h1 class="mt8">
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_refill_history" 
+                                type="object" 
+                                class="oe_stat_button" 
+                                icon="fa-history">
+                            <field name="refill_count" widget="statinfo" string="Refills"/>
+                        </button>
+                        <button name="action_refill_box_wizard" 
+                                type="object" 
+                                class="oe_stat_button" 
+                                icon="fa-money"
+                                invisible="not journal_id">
+                            <div class="o_form_field o_stat_info">
+                                <span class="o_stat_text">New Refill</span>
+                            </div>
+                        </button>
+                        <button name="action_open_settlement_wizard" 
+                                type="object" 
+                                class="oe_stat_button" 
+                                icon="fa-bank"
+                                invisible="balance == 0">
+                            <div class="o_form_field o_stat_info">
+                                <span class="o_stat_text">Settle Advance</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Financial Summary Card -->
+                    <div class="row mt16 o_kanban_card">
+                        <div class="col-12">
+                            <div class="card o_kanban_card_body d-flex">
+                                <div class="row">
+                                    <div class="col-4 text-center">
+                                        <h4 class="text-muted">Current Balance</h4>
+                                        <field name="balance" 
+                                               widget="monetary" 
+                                               options="{'currency_field': 'currency_id'}" 
+                                               class="fw-bold fs-3 text-success"/>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <h4 class="text-muted">Target Amount</h4>
+                                        <field name="remember_base_amount" 
+                                               widget="monetary" 
+                                               options="{'currency_field': 'currency_id'}" 
+                                               class="fw-bold fs-3 text-primary"/>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <h4 class="text-muted">Status</h4>
+                                        <div class="alert alert-info" role="alert">
+                                            <i class="fa fa-info-circle" aria-hidden="true"/> Balance Status
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <notebook>
+                        <page string="Details" name="details">
+                            <group>
+                                <group string="Employee Information" name="employee_info">
+                                    <field name="employee_id"/>
+                                    <field name="company_id" invisible="1"/>
+                                </group>
+                                <group string="Accounting Information" name="account_info">
+                                    <field name="account_id"/>
+                                    <field name="journal_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Configuration" name="configuration">
+                            <group string="Financial Configuration">
+                                <field name="remember_base_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="balance" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                <field name="currency_id" invisible="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Settlement Tree View -->
+    <record id="view_employee_advance_settlement_tree" model="ir.ui.view">
+        <field name="name">employee.advance.box.settlement.tree</field>
+        <field name="model">employee.advance.box</field>
+        <field name="arch" type="xml">
+            <tree string="Advance Box Settlements" decoration-danger="balance &lt; 0" decoration-info="balance &gt; 0">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="balance" sum="Total Balance"/>
+                <field name="account_id"/>
+                <field name="journal_id"/>
+                <field name="company_id" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Settlement Action -->
+    <record id="action_employee_advance_settlement" model="ir.actions.act_window">
+        <field name="name">Settlement</field>
+        <field name="res_model">employee.advance.box</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('balance', '!=', 0)]</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Settle advance boxes with outstanding balances
+            </p>
+        </field>
+    </record>
+</odoo>

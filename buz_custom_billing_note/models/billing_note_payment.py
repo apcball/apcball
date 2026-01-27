@@ -1,63 +1,43 @@
 from odoo import models, fields, api, _
-from odoo.exceptions import ValidationError
 
 class BillingNotePayment(models.Model):
     _name = 'billing.note.payment'
     _description = 'Billing Note Payment'
     _order = 'payment_date desc, id desc'
-    _rec_name = 'name'
 
-    billing_note_id = fields.Many2one('billing.note', string='Billing Note', required=True)
-    name = fields.Char(string='Reference', required=True)
-    amount = fields.Monetary(string='Amount', required=True)
-    payment_date = fields.Date(string='Payment Date', required=True, default=fields.Date.context_today)
+    name = fields.Char(string='Reference', compute='_compute_name', store=True)
+    billing_note_id = fields.Many2one('billing.note', string='Billing Note', required=True, ondelete='cascade')
+    payment_id = fields.Many2one('account.payment', string='Payment')
+    payment_date = fields.Date(string='Payment Date', required=True)
     payment_method = fields.Selection([
         ('cash', 'Cash'),
-        ('bank', 'Bank Transfer'),
+        ('transfer', 'Bank Transfer'),
         ('check', 'Check'),
-    ], string='Payment Method', required=True)
+        ('other', 'Other')
+    ], string='Payment Method', required=True, default='transfer')
+    amount = fields.Monetary(string='Amount', required=True)
+    currency_id = fields.Many2one('res.currency', string='Currency', 
+        default=lambda self: self.env.company.currency_id)
+    company_id = fields.Many2one('res.company', string='Company',
+        default=lambda self: self.env.company)
     notes = fields.Text(string='Notes')
-    company_id = fields.Many2one('res.company', related='billing_note_id.company_id', store=True)
-    currency_id = fields.Many2one('res.currency', related='billing_note_id.currency_id')
-    state = fields.Selection([
-        ('draft', 'Draft'),
-        ('posted', 'Posted'),
-        ('cancelled', 'Cancelled')
-    ], string='Status', default='draft', required=True)
     
-    total_amount = fields.Monetary(string='Total Amount', compute='_compute_amounts')
-    paid_amount = fields.Monetary(string='Paid Amount', compute='_compute_amounts')
-    remaining_amount = fields.Monetary(string='Remaining Amount', compute='_compute_amounts')
+    @api.depends('payment_id', 'payment_date')
+    def _compute_name(self):
+        for record in self:
+            if record.payment_id and record.payment_id.name:
+                record.name = record.payment_id.name
+            elif record.payment_date:
+                record.name = _('Payment %s') % record.payment_date.strftime('%Y/%m/%d')
+            else:
+                record.name = _('New Payment')
 
-    @api.depends('billing_note_id', 'billing_note_id.invoice_ids', 'billing_note_id.payment_line_ids')
-    def _compute_amounts(self):
-        for payment in self:
-            total_amount = sum(payment.billing_note_id.invoice_ids.mapped('amount_total'))
-            paid_amount = sum(payment.billing_note_id.payment_line_ids.filtered(
-                lambda p: p.id != payment.id and p.state == 'posted'
-            ).mapped('amount'))
-            payment.total_amount = total_amount
-            payment.paid_amount = paid_amount
-            payment.remaining_amount = total_amount - paid_amount
-
-    @api.constrains('amount')
-    def _check_amount(self):
-        for payment in self:
-            if payment.amount <= 0:
-                raise ValidationError(_('Payment amount must be positive.'))
-            
-            if payment.amount > payment.remaining_amount:
-                raise ValidationError(_(
-                    'Payment amount (%(amount)s) cannot exceed the remaining amount to pay (%(remaining)s).',
-                    amount=payment.currency_id.symbol + str(payment.amount),
-                    remaining=payment.currency_id.symbol + str(payment.remaining_amount)
-                ))
-
-    def name_get(self):
-        result = []
-        for payment in self:
-            name = payment.name
-            if payment.payment_date:
-                name = '%s (%s)' % (name, payment.payment_date)
-            result.append((payment.id, name))
-        return result
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        # Update payment state in billing note
+        billing_notes = records.mapped('billing_note_id')
+        for note in billing_notes:
+            note._compute_amount_paid()
+            note._compute_payment_state()
+        return records

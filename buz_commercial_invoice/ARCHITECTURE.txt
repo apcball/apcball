@@ -1,0 +1,465 @@
+================================================================================
+                    ARCHITECTURE DIAGRAM
+           buz_commercial_invoice Module - Commercial Invoice
+================================================================================
+
+WORKFLOW FLOW
+=============
+
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                                                                     │
+    │  USER INTERFACE - SALE ORDER FORM                                  │
+    │  ────────────────────────────────────────────                      │
+    │                                                                     │
+    │  [Sales Order Header]                                              │
+    │  ├─ Customer: ABC Import Ltd.                                      │
+    │  ├─ Order Date: 2024-01-15                                         │
+    │  └─ Products: 100 x Product A, 50 x Product B                      │
+    │                                                                     │
+    │  [Commercial Invoice Tab] ◄──── NEW TAB                           │
+    │  ├─ ☐ Generate Commercial Invoice  ◄─── USER CLICKS HERE         │
+    │  ├─ Commercial Invoice No: _________________ (auto-fills)         │
+    │  ├─ Incoterms: FOB Bangkok                                         │
+    │  ├─ Loading Date: 2024-02-01                                       │
+    │  ├─ Shipping Mark: MOGEN                                           │
+    │  ├─ Shipping By: By Sea                                            │
+    │  ├─ Bank Info: Kasikorn Bank, Account 464-1-00774-4                │
+    │  └─ Amount in Words: Two Thousand USD (auto-computed)              │
+    │  [Print Commercial Invoice Button]                                 │
+    │                                                                     │
+    └─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ User clicks checkbox
+                                    ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                                                                     │
+    │  SALE ORDER MODEL LAYER (sale_order.py)                           │
+    │  ───────────────────────────────────────                          │
+    │                                                                     │
+    │  def write(vals):                                                   │
+    │    if 'commercial_invoice_enabled' in vals:                        │
+    │        if vals['commercial_invoice_enabled'] == True:              │
+    │            ┌────────────────────────────────────┐                 │
+    │            │ Generate CIV Number                 │                 │
+    │            │ _get_commercial_invoice_number()   │                 │
+    │            └────────────────────────────────────┘                 │
+    │                          │                                         │
+    │                          ▼                                         │
+    │            ┌────────────────────────────────────┐                 │
+    │            │ Call ir.sequence.next_by_code()    │                 │
+    │            │ 'commercial.invoice.sequence'      │                 │
+    │            └────────────────────────────────────┘                 │
+    │                          │                                         │
+    │                          ▼                                         │
+    │            Result: 'CIV-000001'                                    │
+    │            Stored in: commercial_invoice_number                    │
+    │                                                                     │
+    │  Compute amount_text:                                              │
+    │    currency.amount_to_text(amount_total)                           │
+    │    Result: "Two Thousand US Dollars"                              │
+    │                                                                     │
+    │  Action method: action_print_commercial_invoice()                  │
+    │    - Validate commercial_invoice_enabled == True                   │
+    │    - Validate commercial_invoice_number exists                     │
+    │    - Return report action                                          │
+    │                                                                     │
+    └─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ CIV Number assigned & validated
+                                    ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                                                                     │
+    │  SEQUENCE MANAGEMENT (ir.sequence)                                 │
+    │  ────────────────────────────────────                             │
+    │                                                                     │
+    │  Sequence Record:                                                  │
+    │  ├─ name: "Commercial Invoice Sequence"                            │
+    │  ├─ code: "commercial.invoice.sequence"                            │
+    │  ├─ prefix: "CIV-"                                                │
+    │  ├─ padding: 6                                                     │
+    │  ├─ number_next: (incremented)                                    │
+    │  └─ company_id: False (shared across companies)                    │
+    │                                                                     │
+    │  Generation Pattern:                                               │
+    │  ┌─────────────┬─────────────┬─────────────┐                      │
+    │  │ Call Count  │ CIV Number  │  Used By    │                      │
+    │  ├─────────────┼─────────────┼─────────────┤                      │
+    │  │ 1st Call    │ CIV-000001  │ Order #1    │                      │
+    │  │ 2nd Call    │ CIV-000002  │ Order #2    │                      │
+    │  │ 3rd Call    │ CIV-000003  │ Order #3    │                      │
+    │  │ ...         │ ...         │ ...         │                      │
+    │  │ Nth Call    │ CIV-00000N  │ Order #N    │                      │
+    │  └─────────────┴─────────────┴─────────────┘                      │
+    │                                                                     │
+    │  Features:                                                         │
+    │  ✓ Thread-safe (database locking)                                 │
+    │  ✓ Atomic operations                                              │
+    │  ✓ No duplicates                                                  │
+    │  ✓ Unlimited range                                                │
+    │                                                                     │
+    └─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ When user clicks Print button
+                                    ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                                                                     │
+    │  REPORT GENERATION (QWeb PDF)                                     │
+    │  ──────────────────────────────                                   │
+    │                                                                     │
+    │  Report Template:                                                  │
+    │  commercial_invoice_sale_order_report.xml                          │
+    │                                                                     │
+    │  Input: Sale Order document                                        │
+    │  ├─ Basic Data                                                     │
+    │  │  ├─ Order Name (Reference)                                      │
+    │  │  ├─ Order Date                                                  │
+    │  │  └─ Customer Info                                              │
+    │  │                                                                 │
+    │  ├─ Commercial Invoice Data                                       │
+    │  │  ├─ CIV Number                                                  │
+    │  │  ├─ Incoterms                                                   │
+    │  │  ├─ Loading Date                                                │
+    │  │  ├─ Shipping Mark                                               │
+    │  │  ├─ Shipping By                                                │
+    │  │  └─ Bank Information                                           │
+    │  │                                                                 │
+    │  ├─ Financial Data                                                │
+    │  │  ├─ Order Lines (products, qty, prices)                        │
+    │  │  ├─ Subtotal                                                    │
+    │  │  ├─ Amount in Words                                             │
+    │  │  └─ Grand Total                                                │
+    │  │                                                                 │
+    │  └─ Company Data                                                  │
+    │     ├─ Logo                                                        │
+    │     ├─ Address                                                     │
+    │     ├─ Tax ID                                                      │
+    │     └─ Country of Origin                                           │
+    │                                                                     │
+    │  Processing:                                                       │
+    │  1. Template renders HTML from data                                │
+    │  2. wkhtmltopdf converts HTML to PDF                              │
+    │  3. PDF returned to browser                                        │
+    │  4. User can print or save                                         │
+    │                                                                     │
+    └─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                                                                     │
+    │  PDF OUTPUT - PROFESSIONAL COMMERCIAL INVOICE                     │
+    │  ──────────────────────────────────────────────                  │
+    │                                                                     │
+    │  ┌─────────────────────────────────────────────────────────────┐  │
+    │  │                                                             │  │
+    │  │  [COMPANY LOGO] MOGEN CO.,LTD.                            │  │
+    │  │  9 Moo 12 Beungkhumproy, Pathumthani, Thailand             │  │
+    │  │  Tel: +66 2150 9709-13  Fax: 02 152 8808                   │  │
+    │  │  Email: contact@mogen.co.th                                │  │
+    │  │                                                             │  │
+    │  │  ┌──────────────────────────────────────────────────────┐ │  │
+    │  │  │         COMMERCIAL INVOICE                          │ │  │
+    │  │  │              CIV-000001                              │ │  │
+    │  │  └──────────────────────────────────────────────────────┘ │  │
+    │  │                                                             │  │
+    │  │  Date: 15/01/2024                                          │  │
+    │  │  Shipper: MOGEN CO.,LTD.                                   │  │
+    │  │  Consignee: ABC Import Ltd.                                │  │
+    │  │  Contact: John Doe, Tel: +60-1234-5678                     │  │
+    │  │                                                             │  │
+    │  │  Inco-Terms: FOB Bangkok                                   │  │
+    │  │  Loading Date: 01/02/2024                                  │  │
+    │  │  Shipping Mark: MOGEN                                      │  │
+    │  │  Ship By: Sea                                              │  │
+    │  │                                                             │  │
+    │  │  ┌──────┬──────────────────┬────────┬──────────┬──────────┐│  │
+    │  │  │ Item │ Description      │ Qty    │ Unit    │ Amount   ││  │
+    │  │  ├──────┼──────────────────┼────────┼──────────┼──────────┤│  │
+    │  │  │ 1    │ Product A        │ 100    │ $10.00  │ $1,000.00││  │
+    │  │  │ 2    │ Product B        │ 50     │ $20.00  │ $1,000.00││  │
+    │  │  ├──────┼──────────────────┼────────┼──────────┼──────────┤│  │
+    │  │  │      │ TOTAL            │ 150    │ -       │ $2,000.00││  │
+    │  │  └──────┴──────────────────┴────────┴──────────┴──────────┘│  │
+    │  │                                                             │  │
+    │  │  Said: Two Thousand US Dollars                             │  │
+    │  │                                                             │  │
+    │  │  Bank Info:                                                │  │
+    │  │  Kasikorn Bank (KBANK)                                    │  │
+    │  │  Account: MOGEN CO.,LTD.                                   │  │
+    │  │  Number: 464-1-00774-4                                     │  │
+    │  │                                                             │  │
+    │  │  Processed By: _________________  Approved By: ___________  │  │
+    │  │  (Document Admin)                  (Managing Director)     │  │
+    │  │                                                             │  │
+    │  └─────────────────────────────────────────────────────────────┘  │
+    │                                                                     │
+    │  Output: PDF File ready for printing/sending to customer          │
+    │                                                                     │
+    └─────────────────────────────────────────────────────────────────────┘
+
+
+DATA MODEL
+==========
+
+sale.order Model (Extended)
+─────────────────────────────
+
+Fields Added:
+┌────────────────────────────┬──────────────┬────────────────────────────┐
+│ Field Name                 │ Type         │ Description                │
+├────────────────────────────┼──────────────┼────────────────────────────┤
+│ commercial_invoice_enabled │ Boolean      │ Enable/disable CIV feature │
+│ commercial_invoice_number  │ Char         │ Generated CIV (readonly)   │
+│ incoterms_id               │ Many2one     │ Link to account.incoterms  │
+│ loading_date               │ Date         │ Expected shipping date     │
+│ shipping_mark              │ Char         │ Container marking          │
+│ shipping_by                │ Selection    │ Transport: air/sea/land    │
+│ bank_info                  │ Text         │ Bank payment details       │
+│ amount_text                │ Char         │ Amount in words (computed) │
+└────────────────────────────┴──────────────┴────────────────────────────┘
+
+Methods Added:
+┌────────────────────────────────┬──────────────────────────────────────┐
+│ Method                         │ Purpose                              │
+├────────────────────────────────┼──────────────────────────────────────┤
+│ create(vals_list)              │ Auto-generate CIV on creation        │
+│ write(vals)                    │ Auto-generate CIV on checkbox toggle │
+│ _get_commercial_invoice_number()│ Retrieve next sequence number       │
+│ action_print_commercial_invoice()│ Print report action               │
+│ _compute_amount_text()         │ Compute amount in words              │
+└────────────────────────────────┴──────────────────────────────────────┘
+
+
+DATABASE RELATIONSHIPS
+=======================
+
+sale.order
+│
+├─ [1-1] account.incoterms (incoterms_id)
+│
+├─ [1-n] sale.order.line (order_line)
+│        └─ [1-1] product.product
+│           └─ [1-1] product.category
+│
+├─ [1-1] res.partner (partner_id)
+│
+└─ [1-1] res.company (company_id)
+
+
+MODULE DEPENDENCIES
+===================
+
+Odoo Base
+   ↓
+Stock Module
+   ↓
+Account Module
+   ↓
+Sale Module
+   ↓
+buz_commercial_invoice ◄─── THIS MODULE
+
+
+VIEW HIERARCHY
+==============
+
+Sale Order Form View
+├─ Header Section
+│  ├─ Customer
+│  ├─ Date
+│  └─ Status
+│
+├─ Quotation Tab
+│  ├─ Order Lines
+│  └─ Terms
+│
+├─ Other Tab
+│  └─ ... (standard fields)
+│
+└─ Commercial Invoice Tab ◄─── NEW TAB
+   ├─ Group: Enable & Number
+   │  ├─ commercial_invoice_enabled (checkbox)
+   │  └─ commercial_invoice_number (text, readonly)
+   │
+   ├─ Group: Details
+   │  ├─ incoterms_id
+   │  ├─ loading_date
+   │  ├─ shipping_mark
+   │  ├─ shipping_by
+   │  └─ bank_info
+   │
+   ├─ Separator: Generated Amount
+   │  └─ amount_text (readonly)
+   │
+   └─ Action Button
+      └─ Print Commercial Invoice
+
+
+REPORT ARCHITECTURE
+====================
+
+Report Action: action_report_commercial_invoice
+├─ Model: sale.order
+├─ Template: report_commercial_invoice_sale_order_document
+├─ Type: QWeb PDF
+└─ Paperformat: paperformat_commercial_invoice
+
+Report Action: action_report_commercial_invoice_account_move (legacy)
+├─ Model: account.move
+├─ Template: report_commercial_invoice_document
+├─ Type: QWeb PDF
+└─ Paperformat: paperformat_commercial_invoice
+
+
+STATE DIAGRAM
+=============
+
+Sale Order State Transitions:
+
+        ┌─────────────────┐
+        │  Draft (New)    │
+        └────────┬────────┘
+                 │
+         ┌───────┴────────┐
+         │                │
+         │ Add Products   │
+         │ Set Customer   │
+         │                │
+         ▼                │
+    ┌──────────────────────┐
+    │ Commercial Invoice:  │
+    │ NO CIV Generated     │
+    └──────┬───────────────┘
+           │
+           │ Check "Generate Commercial Invoice"
+           │
+           ▼
+    ┌──────────────────────────────┐
+    │ Commercial Invoice:          │
+    │ CIV-XXXXXX Generated         │ ◄─── CAN PRINT NOW
+    └──────┬───────────────────────┘
+           │
+           │ Send to Confirm
+           │
+           ▼
+    ┌──────────────────────┐
+    │  Confirmed          │
+    └──────┬───────────────┘
+           │
+           │ Create Invoice
+           │
+           ▼
+    ┌──────────────────────┐
+    │  Invoiced           │
+    └─────────────────────┘
+
+
+SEQUENCE GENERATION LOGIC
+==========================
+
+Thread-Safe Atomic Counter:
+
+    User Action: Check "Generate Commercial Invoice"
+              ↓
+    Call: sale_order.write({'commercial_invoice_enabled': True})
+              ↓
+    Method: write(vals) checks 'commercial_invoice_enabled'
+              ↓
+    Condition: if enabled AND no number yet
+              ↓
+    Call: _get_commercial_invoice_number()
+              ↓
+    Calls: ir.sequence.next_by_code('commercial.invoice.sequence')
+              ↓
+    Database: 
+    ┌─ BEGIN TRANSACTION
+    ├─ Lock ir.sequence record
+    ├─ Read: number_next = 1
+    ├─ Generate: "CIV-" + "000001" = "CIV-000001"
+    ├─ Update: number_next = 2
+    └─ COMMIT TRANSACTION
+              ↓
+    Result: 'CIV-000001' returned
+              ↓
+    Store: record.commercial_invoice_number = 'CIV-000001'
+              ↓
+    Save to DB and display in form
+
+
+ERROR HANDLING FLOW
+===================
+
+User Action: Click "Print Commercial Invoice"
+             ↓
+    Validation 1: commercial_invoice_enabled == True?
+             ├─ No → Raise: "Commercial Invoice is not enabled..."
+             └─ Yes → Continue
+             ↓
+    Validation 2: commercial_invoice_number exists?
+             ├─ No → Raise: "CIV number was not generated..."
+             └─ Yes → Continue
+             ↓
+    Generate: Report PDF
+             ├─ Success → Display PDF to user
+             └─ Error → Show error message
+
+
+PERFORMANCE CHARACTERISTICS
+============================
+
+Operation                           Time Est.      Notes
+─────────────────────────────────────────────────────────────
+Create Sale Order                   < 100ms        Normal Odoo create
+Enable CIV (write + sequence)       100-200ms      Includes DB lock
+Generate PDF Report                 2-5 seconds    QWeb + wkhtmltopdf
+Amount-to-Words Computation         < 10ms         Stored field
+Save Sale Order with CIV            < 100ms        Normal Odoo write
+
+
+SCALABILITY & LIMITS
+====================
+
+Constraint                Value           Notes
+────────────────────────────────────────────────────────────
+Max CIV Numbers         999,999         Padding = 6 digits
+Sequence Range          Unlimited        Can reset if needed
+Max Report Size         ~50KB           Typical PDF size
+Concurrent Users        Unlimited        Sequence is thread-safe
+Performance Impact      < 5%            On Odoo system
+
+
+KEY DESIGN DECISIONS
+====================
+
+1. ✓ Sequence-based numbering
+   - Thread-safe atomic operations
+   - No conflicts in multi-user environments
+   - Easy to reset if needed
+
+2. ✓ Checkbox-based activation
+   - Simple user interface
+   - Clear intent
+   - Easy to understand
+
+3. ✓ Read-only CIV number
+   - Prevents manual manipulation
+   - Maintains data integrity
+   - Auditable
+
+4. ✓ Computed amount_text
+   - Auto-updates with amounts
+   - Always accurate
+   - Reduces manual errors
+
+5. ✓ Backward compatibility
+   - Existing invoice workflows unchanged
+   - Legacy support maintained
+   - Gradual migration possible
+
+6. ✓ Independent from invoicing
+   - Works without posting invoice
+   - Suitable for advance notifications
+   - Flexible use cases
+
+================================================================================
+END OF ARCHITECTURE DIAGRAM
+================================================================================

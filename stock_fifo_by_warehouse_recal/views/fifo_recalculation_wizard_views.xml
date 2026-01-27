@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Form View for FIFO Recalculation Wizard -->
+        <record id="view_fifo_recalculation_wizard_form" model="ir.ui.view">
+            <field name="name">fifo.recalculation.wizard.form</field>
+            <field name="model">fifo.recalculation.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Recalculate FIFO by Warehouse">
+                    <header>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,preview,processing,done"/>
+                    </header>
+                    <sheet>
+                        <!-- Invisible fields used in domain/invisible conditions -->
+                        <field name="can_rollback" invisible="1"/>
+                        <field name="backup_id" invisible="1"/>
+                        <!-- Success Message (visible when done) -->
+                        <div class="alert alert-success text-center" role="alert" invisible="state != 'done'" style="padding: 20px; margin-bottom: 20px;">
+                            <h3 style="margin-bottom: 15px;">
+                                <i class="fa fa-check-circle fa-2x" style="margin-right: 10px; color: #5cb85c;"/> FIFO Recalculation Completed!
+                            </h3>
+                            <div style="margin: 20px 0;">
+                                <div style="font-size: 16px; font-weight: bold; color: #3c763d;">
+                                    <field name="progress_message" readonly="1" nolabel="1"/>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Indicator (visible when processing) -->
+                        <div class="alert alert-warning text-center" role="alert" invisible="state != 'processing'" style="padding: 20px; margin-bottom: 20px;">
+                            <h3 style="margin-bottom: 15px;">
+                                <i class="fa fa-spinner fa-spin fa-2x" style="margin-right: 10px;"/> Processing FIFO Recalculation...
+                            </h3>
+                            <div style="margin: 20px 0;">
+                                <div style="font-size: 16px; font-weight: bold; color: #8a6d3b; margin-bottom: 15px;">
+                                    <field name="progress_message" readonly="1" nolabel="1"/>
+                                </div>
+                                <div style="margin-top: 15px;">
+                                    <span style="font-size: 48px; font-weight: bold; color: #f0ad4e;">
+                                        <field name="progress_percent" readonly="1" nolabel="1" widget="float" digits="[16,1]"/>%
+                                    </span>
+                                </div>
+                            </div>
+                            <p class="text-muted" style="margin-top: 20px; font-size: 14px;">
+                                <i class="fa fa-info-circle"/> Processing in batches. Please wait until completion.<br/>
+                                Do not close this window or refresh the page.
+                            </p>
+                        </div>
+                        
+                        <group>
+                            <group string="Company &amp; Date Range">
+                                <field name="company_id" options="{'no_create': True}"/>
+                                <field name="date_from"/>
+                                <field name="date_to"/>
+                            </group>
+                            <group string="Filters">
+                                <field name="warehouse_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                                <field name="product_ids" widget="many2many_tags" options="{'no_create': True, 'no_open': True}"/>
+                                <field name="product_categ_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            </group>
+                        </group>
+                        
+                        <group>
+                            <group string="Recalculation Options">
+                                <field name="clear_old_layers"/>
+                                <field name="lock_after_recal"/>
+                                <field name="batch_size" 
+                                       help="Smaller batches = less memory, longer time. Larger batches = more memory, faster."/>
+                            </group>
+                            <group string="Safety">
+                                <field name="dry_run"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Preview" name="preview">
+                                <field name="line_ids" nolabel="1">
+                                    <tree string="Preview Lines" decoration-success="diff_qty > 0" decoration-danger="diff_qty &lt; 0">
+                                        <field name="product_id"/>
+                                        <field name="warehouse_id"/>
+                                        <field name="qty_before" sum="total_qty_before"/>
+                                        <field name="value_before" sum="total_value_before"/>
+                                        <field name="qty_after" sum="total_qty_after"/>
+                                        <field name="value_after" sum="total_value_after"/>
+                                        <field name="diff_qty" sum="total_diff_qty"/>
+                                        <field name="diff_value" sum="total_diff_value"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            
+                            <page string="Log" name="log">
+                                <field name="log_text" nolabel="1" widget="text"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    
+                    <footer>
+                        <button name="action_preview" 
+                                string="Preview" 
+                                type="object" 
+                                class="btn-primary"
+                                invisible="state in ('done', 'processing')"/>
+                        <button name="action_export_excel" 
+                                string="Export to Excel" 
+                                type="object" 
+                                class="btn-info"
+                                invisible="state not in ('preview', 'done')"/>
+                        <button name="action_apply" 
+                                string="Apply Recalculation" 
+                                type="object" 
+                                class="btn-primary"
+                                invisible="state != 'preview'"
+                                confirm="Are you sure you want to apply FIFO recalculation? This will modify valuation layers."/>
+                        <button name="action_rollback" 
+                                string="Rollback" 
+                                type="object" 
+                                class="btn-warning"
+                                invisible="not can_rollback"
+                                confirm="Are you sure you want to rollback this recalculation? This will restore all backed up layers."/>
+                        <button string="Close" special="cancel" class="btn-secondary" invisible="state == 'processing'"/>
+                        <button string="Processing... Please wait" class="btn-secondary" disabled="1" invisible="state != 'processing'"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+        
+        <!-- Tree View for Preview Lines -->
+        <record id="view_fifo_recalculation_wizard_line_tree" model="ir.ui.view">
+            <field name="name">fifo.recalculation.wizard.line.tree</field>
+            <field name="model">fifo.recalculation.wizard.line</field>
+            <field name="arch" type="xml">
+                <tree string="FIFO Recalculation Preview">
+                    <field name="product_id"/>
+                    <field name="warehouse_id"/>
+                    <field name="qty_before"/>
+                    <field name="value_before"/>
+                    <field name="qty_after"/>
+                    <field name="value_after"/>
+                    <field name="diff_qty"/>
+                    <field name="diff_value"/>
+                </tree>
+            </field>
+        </record>
+        
+        <!-- Action for FIFO Recalculation Wizard -->
+        <record id="action_fifo_recalculation_wizard" model="ir.actions.act_window">
+            <field name="name">Recalculate FIFO</field>
+            <field name="res_model">fifo.recalculation.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="view_fifo_recalculation_wizard_form"/>
+        </record>
+        
+        <!-- Menu Item -->
+        <menuitem id="menu_fifo_recalculation_wizard"
+                  name="Recalculate FIFO"
+                  parent="stock.menu_stock_warehouse_mgmt"
+                  action="action_fifo_recalculation_wizard"
+                  groups="group_fifo_recalculation,base.group_system"
+                  sequence="100"/>
+        
+    </data>
+</odoo>

@@ -20,14 +20,16 @@
             <form duplicate="false">
 <header>
     <field name="state" widget='statusbar'
-           statusbar_visible='new,waiting_head_approval,waiting_purchase_approval,approved,purchase_order_created,received'/>
+           statusbar_visible='draft,waiting_head_approval,waiting_purchase_approval,approved,purchase_order_created,received'/>
+    <field name="user_is_requester" invisible="1"/>
+    <field name="user_is_purchase" invisible="1"/>
     
     <!-- Submit Button -->
     <button name="action_confirm_requisition"
-            string="Confrim" 
+            string="Confirm"
             type="object"
             class="oe_highlight"
-            invisible="state != 'new'"
+            invisible="state != 'draft'"
             help="Submit to Head Approval"
             groups="employee_purchase_requisition.employee_requisition_user"/>
     
@@ -42,11 +44,19 @@
     
     <!-- Head Cancel -->
     <button name="action_head_cancel"
-            string="Reject" 
+            string="Reject"
             type="object"
             invisible="state != 'waiting_head_approval'"
             help="Head Reject Purchase Requisition"
             groups="employee_purchase_requisition.employee_requisition_manager"/>
+    
+    <!-- Requester Cancel Button for Head Approval -->
+    <button name="action_cancel_requisition"
+            string="Cancel"
+            type="object"
+            invisible="state != 'waiting_head_approval' or not user_is_requester"
+            help="Cancel and return to draft"
+            groups="employee_purchase_requisition.employee_requisition_user"/>
     
     <!-- Purchase Department Approval -->
     <button name="action_purchase_approval"
@@ -64,6 +74,14 @@
             invisible="state != 'waiting_purchase_approval'"
             help="Purchase Department Reject"
             groups="employee_purchase_requisition.employee_requisition_head"/>
+    
+    <!-- Requester Cancel Button for Purchase Approval -->
+    <button name="action_cancel_requisition"
+            string="Cancel"
+            type="object"
+            invisible="state != 'waiting_purchase_approval' or not user_is_requester"
+            help="Cancel and return to draft"
+            groups="employee_purchase_requisition.employee_requisition_user"/>
     
     <!-- Create PO Button -->
     <button name="action_create_purchase_order"
@@ -93,7 +111,7 @@
                                    name="purchase_count" 
                                    widget="statinfo"/>
                         </button>
-                        <button class="oe_stat_button" 
+                        <button class="oe_stat_button"
                                 type="object"
                                 name="get_internal_transfer"
                                 icon="fa-truck"
@@ -101,6 +119,14 @@
                             <field string="Internal Transfer"
                                    name="internal_transfer_count"
                                    widget="statinfo"/>
+                        </button>
+                        <button class="oe_stat_button"
+                                icon="fa-money"
+                                invisible="not total_amount">
+                            <field string="Total Amount"
+                                   name="total_amount"
+                                   widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"/>
                         </button>
                     </div>
                     <div class="oe_title">
@@ -110,33 +136,47 @@
                     </div>
                     <group>
                         <group>
-                            <field name="employee_id" readonly="state not in ['new']"/>
+                            <field name="employee_id" readonly="(state == 'waiting_purchase_approval' and not user_is_purchase) or state not in ['draft', 'waiting_purchase_approval']"/>
                             <field name="dept_id"/>
                             <field name="manager_user_id"/>
                             <field name="user_id"/>
-                            <field name="company_id" readonly="state not in ['new']"/>
+                            <field name="company_id" readonly="(state == 'waiting_purchase_approval' and not user_is_purchase) or state not in ['draft', 'waiting_purchase_approval']"/>
                         </group>
                         <group>
-                            <field name="requisition_date" readonly="state not in ['new']"/>
+                            <field name="requisition_date" readonly="(state == 'waiting_purchase_approval' and not user_is_purchase) or state not in ['draft', 'waiting_purchase_approval']"/>
                             <field name="receive_date"/>
-                            <field name="requisition_deadline" readonly="state not in ['new']"/>
+                            <field name="requisition_deadline" readonly="(state == 'waiting_purchase_approval' and not user_is_purchase) or state not in ['draft', 'waiting_purchase_approval']"/>
+                            <field name="destination_location_id" readonly="(state == 'waiting_purchase_approval' and not user_is_purchase) or state not in ['draft', 'waiting_purchase_approval']"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Requisition Orders">
-                            <field name="requisition_order_ids" 
-                                   readonly="state not in ['new','waiting_head_approval','waiting_purchase_approval']"/>
+                            <field name="requisition_order_ids"
+                                   readonly="(state == 'waiting_purchase_approval' and not user_is_purchase) or state not in ['draft', 'waiting_purchase_approval']">
+                                <tree editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="description"/>
+                                    <field name="analytic_distribution"
+                                           widget="analytic_distribution"
+                                           groups="analytic.group_analytic_accounting"
+                                           options="{'product_field': 'product_id'}"/>
+                                    <field name="unit_price" string="Unit Price"/>
+                                    <field name="quantity"/>
+                                    <field name="price_subtotal" string="Subtotal" readonly="1" widget="monetary"/>
+                                    <field name="uom"/>
+                                    <field name="partner_id"
+                                           groups="employee_purchase_requisition.employee_requisition_head,employee_purchase_requisition.employee_requisition_manager"/>
+                                </tree>
+                            </field>
+                            <group class="oe_subtotal_footer oe_right">
+                                <field name="total_amount" string="ยอดรวมทั้งหมด" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
+                            </group>
                         </page>
-                        <page string="Picking Details" 
+                        <page string="Picking Details"
                               groups="employee_purchase_requisition.employee_requisition_manager,employee_purchase_requisition.employee_requisition_head">
                             <group>
                                 <group>
-                                    <field name="source_location_id"/>
-                                    <field name="delivery_type_id"/>
-                                </group>
-                                <group>
-                                    <field name="destination_location_id"/>
-                                    <field name="internal_picking_id"/>
+                                    <!-- Destination location moved to main group, only editable in draft -->
                                 </group>
                             </group>
                         </page>
@@ -158,7 +198,7 @@
                         </page>
                     </notebook>
                     <group>
-                        <field name="requisition_description"/>
+                        <field name="requisition_description" readonly="(state == 'waiting_purchase_approval' and not user_is_purchase) or state not in ['draft', 'waiting_purchase_approval']"/>
                     </group>
                 </sheet>
                 <div class="oe_chatter">
@@ -180,6 +220,7 @@
                 <field name="dept_id"/>
                 <field name="user_id"/>
                 <field name="requisition_date"/>
+                <field name="total_amount" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
                 <field name="state" widget="badge"
                        decoration-success="state in ('approved','received')"
                        decoration-warning="state in ('waiting_head_approval','waiting_purchase_approval')"
@@ -215,6 +256,9 @@
                                         <field name="requisition_date"/>
                                     </div>
                                     <div>
+                                        <strong>Total: <field name="total_amount" widget="monetary"/></strong>
+                                    </div>
+                                    <div>
                                         <field name="state" widget="badge"
                                                decoration-success="state in ('approved','received')"
                                                decoration-warning="state in ('waiting_head_approval','waiting_purchase_approval')"
@@ -235,6 +279,9 @@
         <field name="model">employee.purchase.requisition</field>
         <field name="arch" type="xml">
             <search string="Search Tips">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="dept_id"/>
                 <group expand="1" string="Group By">
                     <filter string="Employee" name="employee_id"
                             context="{'group_by':'employee_id', 'residual_visible':True}"/>

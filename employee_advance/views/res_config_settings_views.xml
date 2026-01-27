@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Settings View to add Advance Configuration -->
+    <record id="res_config_settings_view_form_advance" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.advance</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="priority" eval="86"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Employee Advance" string="Employee Advance" name="employee_advance">
+                    <block title="Advance Management">
+                        <setting string="Default Clearing Journal" help="Journal used for clearing advances (Dr AP / Cr 141101)">
+                            <field name="advance_default_clearing_journal_id"/>
+                        </setting>
+                        <setting string="Notify User" help="User to notify when vendor bills are created from expenses">
+                            <field name="advance_notify_user_id"/>
+                        </setting>
+                        <setting string="Notify Group" help="Group to notify when vendor bills are created from expenses">
+                            <field name="advance_notify_group_id"/>
+                        </setting>
+                        <setting string="Activity Type" help="Activity type to use for vendor bill notifications">
+                            <field name="advance_notify_activity_type_id"/>
+                        </setting>
+                        <setting string="Deadline Days" help="Number of days for activity deadline">
+                            <field name="advance_notify_deadline_days"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

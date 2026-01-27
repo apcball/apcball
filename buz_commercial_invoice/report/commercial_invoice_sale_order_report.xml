@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_commercial_invoice_sale_order_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <style>
+                        .page {
+                            font-family: Arial, sans-serif;
+                            font-size: 13px;
+                            color: #000;
+                        }
+                        .table-sm th, .table-sm td {
+                            padding: 4px;
+                            vertical-align: top;
+                        }
+                        strong {
+                            color: #000;
+                        }
+                    </style>
+                    <div class="page">
+                        <!-- Custom Header Area -->
+                        <div class="row mb-4">
+                            <!-- Logo and Address -->
+                            <div class="col-7">
+                                <div class="row">
+                                    <div class="col-3">
+                                        <img src="/buz_commercial_invoice/static/img/LOGO MOGEN.png" style="max-height: 80px; max-width: 100%;" alt="Logo"/>
+                                    </div>
+                                    <div class="col-9 text-left small">
+                                        <strong style="font-size: 12px;">MOGEN CO.,LTD.</strong>
+                                        <div>9 Moo 12 Beungkhumproy, lumlukka, Pathumthani 12150 THAILAND</div>
+                                        <div><strong>MOGEN Customer Service Tel.</strong> +66 2150 9709-13</div>
+                                        <div><strong>Bangkok Service Center Tel.</strong> +66 2789 9980 Ext #801,802</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Right Contact Info -->
+                            <div class="col-5 text-left small">
+                                <div><strong>Fax :</strong> 02 152 8808</div>
+                                <div><strong>Mobile :</strong> +668 5479 8740, +668 6344 4175</div>
+                                <div><strong>E-mail :</strong> contact@mogen.co.th www.mogen.co.th</div>
+                                <div><strong>Showroom :</strong> S-two Building Crytal Design Center</div>
+                            </div>
+                        </div>
+
+                        <!-- Title -->
+                        <div class="text-center mb-3">
+                            <h3 class="font-weight-bold">Commercial Invoice</h3>
+                            <div class="mt-2"><span t-field="o.commercial_invoice_number"/></div>
+                        </div>
+
+                        <!-- Main Details -->
+                        <div class="row">
+                            <!-- Left Column -->
+                            <div class="col-6">
+                                <div class="row mb-1">
+                                    <div class="col-3 text-right pr-2"><strong>Date :</strong></div>
+                                    <div class="col-9"><span t-field="o.date_order" t-options='{"format": "dd/MM/yyyy"}'/></div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-3 text-right pr-2"><strong>Shipper</strong></div>
+                                    <div class="col-9">
+                                        <strong>MOGEN CO.,LTD.</strong>
+                                        <div>9 Moo 12 Beungkhumproy, lumlukka, Pathumthani 12150<br/>THAILAND</div>
+                                    </div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-3 text-right pr-2"><strong>Consignee :</strong></div>
+                                    <div class="col-9">
+                                        <strong t-field="o.partner_id.name"/>
+                                        <div t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address"], "no_marker": True}'/>
+                                    </div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-3 text-right pr-2"><strong>TEL :</strong></div>
+                                    <div class="col-9"><span t-field="o.partner_id.phone"/></div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-3 text-right pr-2"><strong>Notify :</strong></div>
+                                    <div class="col-9"></div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-3 text-right pr-2"><strong>Attn :</strong></div>
+                                    <div class="col-9"><span t-field="o.partner_id.name"/></div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-3 text-right pr-2"><strong>Payment Term :</strong></div>
+                                    <div class="col-9"><span t-field="o.payment_term_id.name"/></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Column -->
+                            <div class="col-6">
+                                <div class="row mb-1">
+                                    <div class="col-4 text-right pr-2"><strong>Tax Payer ID :</strong></div>
+                                    <div class="col-8"><span t-field="o.company_id.vat"/></div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-4 text-right pr-2"><strong>Inco-Terms :</strong></div>
+                                    <div class="col-8"><span t-field="o.incoterms_id.name"/></div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-4 text-right pr-2"><strong>Ref. :</strong></div>
+                                    <div class="col-8"><span t-field="o.client_order_ref"/></div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-4 text-right pr-2"><strong>Bank Info :</strong></div>
+                                    <div class="col-8">Kasikorn Bank (KBANK=กสิกรไทย) MOGEN CO.,LTD. KASITHBK Road Economic 1 Samut Sakhon. Current account 464-1-00774-4</div>
+                                </div>
+                                <br/>
+                                <br/>
+                                <br/>
+                                <div class="row mb-1">
+                                    <div class="col-4 text-right pr-2"><strong>Ship To :</strong></div>
+                                    <div class="col-8">
+                                        <span t-field="o.partner_shipping_id.city"/>, <span t-field="o.partner_shipping_id.country_id.name"/>
+                                    </div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-4 text-right pr-2"><strong>Loading Date :</strong></div>
+                                    <div class="col-8"><span t-field="o.loading_date" t-options='{"format": "dd/MM/yyyy"}'/></div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-4 text-right pr-2"><strong>Country of Origin :</strong></div>
+                                    <div class="col-8"><span t-field="o.company_id.country_id.name"/></div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-4 text-right pr-2"><strong>Shipping Mark :</strong></div>
+                                    <div class="col-8"><span t-field="o.shipping_mark" t-if="o.shipping_mark" t-options='{}'/><t t-else=''>MOGEN</t></div>
+                                </div>
+                                <div class="row mb-1">
+                                    <div class="col-4 text-right pr-2"><strong>Shipping By :</strong></div>
+                                    <div class="col-8"><span t-field="o.shipping_by" t-if="o.shipping_by"/><t t-else=''>JW SHIPPING CO.,LTD.</t></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sale Order Lines -->
+                        <table class="table table-bordered table-sm mt-3">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 5%">Item No.</th>
+                                    <th style="width: 45%">Description</th>
+                                    <th class="text-right" style="width: 15%">Quantity</th>
+                                    <th class="text-right" style="width: 15%">Unit Price</th>
+                                    <th class="text-right" style="width: 20%">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.order_line" t-as="line">
+                                    <td class="text-center"><span t-esc="line_index + 1"/></td>
+                                    <td>
+                                        <span t-field="line.product_id.name"/>
+                                        <t t-if="line.name != line.product_id.name">
+                                            <br/><span t-field="line.name"/>
+                                        </t>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                                <!-- Total Row -->
+                                <tr>
+                                    <td style="border: none;"></td>
+                                    <td class="text-right" style="border: 1px solid #dee2e6;"><strong>Total :</strong></td>
+                                    <td class="text-right" style="border: 1px solid #dee2e6;">
+                                        <span t-esc="sum(l.product_qty for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                    <td class="text-center" style="border: 1px solid #dee2e6;">
+                                        <span t-field="o.currency_id.name"/>
+                                    </td>
+                                    <td class="text-right" style="border: 1px solid #dee2e6;">
+                                        <span t-field="o.amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Amount in Words and Totals -->
+                        <div class="row mt-4">
+                            <div class="col-7">
+                                <div><strong>Said: </strong> <span t-field="o.amount_text"/></div>
+                            </div>
+                            <div class="col-5">
+                                <table class="table table-sm table-borderless text-right">
+                                    <tr>
+                                        <td>Add Handing Free</td>
+                                        <td>0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Add Freight Charge</td>
+                                        <td>0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Add Insurance</td>
+                                        <td>0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Less Free of charge for Promotion Set</td>
+                                        <td>0.00</td>
+                                    </tr>
+                                    <tr style="border-top: 1px solid black; border-bottom: 3px double black;">
+                                        <td><strong>Grand Total</strong></td>
+                                        <td><span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                         <!-- Signatures -->
+                         <div class="row mt-5" style="page-break-inside: avoid;">
+                            <div class="col-6">
+                                <div class="d-flex align-items-end">
+                                     <span class="mr-2">Processed By</span>
+                                     <div style="border-bottom: 1px solid black; width: 220px;"></div>
+                                </div>
+                                <div class="text-center mt-2" style="width: 300px;">
+                                    (Document Administrator)
+                                </div>
+                            </div>
+                            <div class="col-6 text-right">
+                                <div class="d-flex align-items-end justify-content-end">
+                                     <span class="mr-2">Approved By</span>
+                                     <div style="border-bottom: 1px solid black; width: 220px;"></div>
+                                </div>
+                                <div class="text-center mt-2 float-right" style="width: 300px;">
+                                    (Managing Director)
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

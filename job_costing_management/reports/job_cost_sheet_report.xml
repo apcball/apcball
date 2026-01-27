@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Job Cost Sheet Report -->
+        <record id="action_report_job_cost_sheet" model="ir.actions.report">
+            <field name="name">Job Cost Sheet</field>
+            <field name="model">job.cost.sheet</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">job_costing_management.report_job_cost_sheet</field>
+            <field name="report_file">job_costing_management.report_job_cost_sheet</field>
+            <field name="binding_model_id" ref="model_job_cost_sheet"/>
+            <field name="binding_type">report</field>
+        </record>
+
+        <!-- Job Cost Sheet Report Template -->
+        <template id="report_job_cost_sheet">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="doc">
+                    <t t-call="web.external_layout">
+                        <div class="page">
+                            <div class="oe_structure"/>
+                            <h2>Job Cost Sheet</h2>
+                            <div class="row">
+                                <div class="col-6">
+                                    <strong>Job Cost Sheet:</strong> <span t-field="doc.name"/><br/>
+                                    <strong>Project:</strong> <span t-field="doc.project_id.name"/><br/>
+                                    <strong>Job Order:</strong> <span t-field="doc.job_order_id.name"/><br/>
+                                    <strong>Start Date:</strong> <span t-field="doc.date_start"/><br/>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Status:</strong> <span t-field="doc.state"/><br/>
+                                    <strong>Total Planned Cost:</strong> <span t-field="doc.total_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/><br/>
+                                    <strong>Total Actual Cost:</strong> <span t-field="doc.actual_total_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/><br/>
+                                    <strong>Variance:</strong> <span t-field="doc.total_variance" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/><br/>
+                                </div>
+                            </div>
+                            
+                            <!-- Material Costs -->
+                            <h3>Material Costs</h3>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Description</th>
+                                        <th>Planned Qty</th>
+                                        <th>Actual Qty</th>
+                                        <th>Unit Cost</th>
+                                        <th>Total Cost</th>
+                                        <th>Actual Cost</th>
+                                        <th>Variance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="doc.material_cost_ids" t-as="line">
+                                        <tr>
+                                            <td><span t-field="line.name"/></td>
+                                            <td><span t-field="line.planned_qty"/></td>
+                                            <td><span t-field="line.actual_qty"/></td>
+                                            <td><span t-field="line.unit_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                            <td><span t-field="line.total_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                            <td><span t-field="line.actual_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                            <td><span t-field="line.cost_variance" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                            
+                            <!-- Labour Costs -->
+                            <h3>Labour Costs</h3>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Description</th>
+                                        <th>Planned Hours</th>
+                                        <th>Actual Hours</th>
+                                        <th>Rate</th>
+                                        <th>Total Cost</th>
+                                        <th>Actual Cost</th>
+                                        <th>Variance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="doc.labour_cost_ids" t-as="line">
+                                        <tr>
+                                            <td><span t-field="line.name"/></td>
+                                            <td><span t-field="line.planned_qty"/></td>
+                                            <td><span t-field="line.actual_qty"/></td>
+                                            <td><span t-field="line.unit_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                            <td><span t-field="line.total_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                            <td><span t-field="line.actual_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                            <td><span t-field="line.cost_variance" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                            
+                            <!-- Overhead Costs -->
+                            <h3>Overhead Costs</h3>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Description</th>
+                                        <th>Planned Qty</th>
+                                        <th>Actual Qty</th>
+                                        <th>Unit Cost</th>
+                                        <th>Total Cost</th>
+                                        <th>Actual Cost</th>
+                                        <th>Variance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="doc.overhead_cost_ids" t-as="line">
+                                        <tr>
+                                            <td><span t-field="line.name"/></td>
+                                            <td><span t-field="line.planned_qty"/></td>
+                                            <td><span t-field="line.actual_qty"/></td>
+                                            <td><span t-field="line.unit_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                            <td><span t-field="line.total_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                            <td><span t-field="line.actual_cost" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                            <td><span t-field="line.cost_variance" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                            
+                            <div class="oe_structure"/>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>

@@ -1,0 +1,15 @@
+<odoo>
+  <record id="ir_actions_server_recompute_location" model="ir.actions.server">
+    <field name="name">Recompute SVL Location (ORM)</field>
+    <field name="model_id" ref="stock_account.model_stock_valuation_layer"/>
+    <field name="state">code</field>
+    <field name="code">
+      action = env["stock.valuation.layer"].action_recompute_stock_valuation_location()
+    </field>
+  </record>
+
+  <menuitem id="menu_inventory_valuation_recompute_location"
+            name="Recompute SVL Location (ORM)"
+            parent="stock.menu_stock_inventory_control"
+            action="ir_actions_server_recompute_location"/>
+</odoo>

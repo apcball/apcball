@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_buz_po" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.buz.po</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="purchase.res_config_settings_view_form_purchase"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='purchase']" position="inside">
+                <block title="PO Custom Approval Matrix" id="buz_po_approval_matrix">
+                     <setting string="Approval Levels" help="Configure reviewers and approvers for Purchase Orders.">
+                        <div class="row mt16">
+                            <label for="po_reviewer_id" class="col-lg-4 o_light_label"/>
+                            <field name="po_reviewer_id" class="oe_inline"/>
+                        </div>
+                        <div class="row mt16">
+                            <label for="po_approver_id" class="col-lg-4 o_light_label"/>
+                            <field name="po_approver_id" class="oe_inline"/>
+                        </div>
+                        <div class="row mt16">
+                            <label for="po_approver_limit" class="col-lg-4 o_light_label"/>
+                            <field name="po_approver_limit" class="oe_inline"/>
+                        </div>
+                        <div class="row mt16">
+                            <label for="po_approver_above_limit_id" class="col-lg-4 o_light_label"/>
+                            <field name="po_approver_above_limit_id" class="oe_inline" invisible="not po_approver_limit"/>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

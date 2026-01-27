@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View สำหรับการตั้งค่า E-Tax -->
+    <record id="view_etax_config_form" model="ir.ui.view">
+        <field name="name">etax.config.form</field>
+        <field name="model">etax.config</field>
+        <field name="arch" type="xml">
+            <form string="การตั้งค่า E-Tax">
+                <header>
+                    <button name="test_connection" type="object" string="ทดสอบการเชื่อมต่อ" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-check" invisible="not active">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">ใช้งาน</span>
+                            </div>
+                        </button>
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-times" invisible="active">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">ไม่ใช้งาน</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="active"/>
+                            <field name="company_id"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="ข้อมูลการเชื่อมต่อ API">
+                            <group>
+                                <group string="URL และรหัสการเชื่อมต่อ">
+                                    <field name="api_url"/>
+                                    <field name="user_code"/>
+                                    <field name="service_code"/>
+                                </group>
+                                <group string="ข้อมูลผู้ส่ง">
+                                    <field name="seller_tax_id"/>
+                                    <field name="seller_branch_id"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="API Key">
+                                    <field name="api_key" password="True"/>
+                                </group>
+                                <group string="Access Key">
+                                    <field name="access_key" password="True"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="การตั้งค่า PDF">
+                            <group>
+                                <field name="pdf_template_id"/>
+                                <field name="send_mail_ind"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Tree View สำหรับการตั้งค่า E-Tax -->
+    <record id="view_etax_config_tree" model="ir.ui.view">
+        <field name="name">etax.config.tree</field>
+        <field name="model">etax.config</field>
+        <field name="arch" type="xml">
+            <tree string="การตั้งค่า E-Tax">
+                <field name="name"/>
+                <field name="seller_tax_id"/>
+                <field name="company_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Action สำหรับการตั้งค่า E-Tax -->
+    <record id="action_etax_config" model="ir.actions.act_window">
+        <field name="name">การตั้งค่า E-Tax</field>
+        <field name="res_model">etax.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                สร้างการตั้งค่า E-Tax ใหม่
+            </p>
+            <p>
+                ตั้งค่าการเชื่อมต่อไปยัง E-Tax API เพื่อส่งใบกำกับภาษีอิเล็กทรอนิกส์
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu สำหรับการตั้งค่า E-Tax -->
+    <menuitem id="menu_etax_config"
+              name="การตั้งค่า E-Tax"
+              parent="account.menu_finance_configuration"
+              action="action_etax_config"
+              sequence="50"/>
+</odoo>

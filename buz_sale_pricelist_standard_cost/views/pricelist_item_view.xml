@@ -1,0 +1,14 @@
+<odoo>
+    <record id="product_pricelist_item_form_view_inherit_standard_cost" model="ir.ui.view">
+        <field name="name">product.pricelist.item.form.standard.cost</field>
+        <field name="model">product.pricelist.item</field>
+        <field name="inherit_id" ref="product.product_pricelist_item_form_view"/>
+        <field name="arch" type="xml">
+            <field name="base" position="after">
+                <field name="base_pricelist_id" 
+                       invisible="base != 'standard_cost_pricelist'" 
+                       required="base == 'standard_cost_pricelist'"/>
+            </field>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,6 @@
+product_code,warehouse_code,quantity,unit_cost,description
+PROD001,WH/Stock,100,50.00,ยกยอดเริ่มต้น คลังหลัก
+PROD001,SCG,50,50.00,ยกยอดเริ่มต้น คลัง SCG
+PROD002,WH/Stock,200,30.00,ยกยอดเริ่มต้น
+PROD003,WH/Stock,150,45.00,ยกยอดเริ่มต้น
+PROD003,Dynasty,75,45.00,ยกยอดเริ่มต้น คลัง Dynasty

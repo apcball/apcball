@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Fee Allocation Tree View -->
+    <record id="view_marketplace_fee_allocation_tree" model="ir.ui.view">
+        <field name="name">marketplace.fee.allocation.tree</field>
+        <field name="model">marketplace.fee.allocation</field>
+        <field name="arch" type="xml">
+            <tree string="Fee Allocations" decoration-info="allocation_method=='proportional'" decoration-warning="allocation_method=='exact'">
+                <field name="settlement_id"/>
+                <field name="invoice_number"/>
+                <field name="invoice_date"/>
+                <field name="invoice_partner_id"/>
+                <field name="allocation_method"/>
+                <field name="allocation_base_amount" sum="Total Base"/>
+                <field name="allocation_percentage"/>
+                <field name="base_fee_alloc" sum="Total Fee"/>
+                <field name="vat_input_alloc" sum="Total VAT"/>
+                <field name="wht_alloc" sum="Total WHT"/>
+                <field name="total_deductions_alloc" sum="Total Deductions"/>
+                <field name="net_payout_alloc" sum="Total Net Payout"/>
+                <field name="company_currency_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Fee Allocation Form View -->
+    <record id="view_marketplace_fee_allocation_form" model="ir.ui.view">
+        <field name="name">marketplace.fee.allocation.form</field>
+        <field name="model">marketplace.fee.allocation</field>
+        <field name="arch" type="xml">
+            <form string="Fee Allocation">
+                <header>
+                    <button name="action_allocate_proportional" type="object" string="Calculate Proportional" 
+                            class="btn-primary" invisible="allocation_method != 'proportional'"/>
+                    <button name="action_view_invoice" type="object" string="View Invoice" class="btn-secondary"/>
+                    <button name="action_view_settlement" type="object" string="View Settlement" class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="display_name"/>
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group string="References">
+                            <field name="settlement_id" readonly="1"/>
+                            <field name="invoice_id" readonly="1"/>
+                            <field name="allocation_method"/>
+                        </group>
+                        <group string="Invoice Information">
+                            <field name="invoice_number"/>
+                            <field name="invoice_date"/>
+                            <field name="invoice_partner_id"/>
+                            <field name="invoice_amount_untaxed"/>
+                            <field name="invoice_amount_total"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Allocation Base">
+                            <field name="allocation_base_amount"/>
+                            <field name="allocation_percentage" widget="percentage"/>
+                        </group>
+                        <group string="Currency">
+                            <field name="company_currency_id"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Fee Allocations">
+                            <group>
+                                <group string="Allocated Amounts">
+                                    <field name="base_fee_alloc"/>
+                                    <field name="vat_input_alloc"/>
+                                    <field name="wht_alloc"/>
+                                    <field name="total_deductions_alloc"/>
+                                </group>
+                                <group string="Net Amounts">
+                                    <field name="net_payout_alloc"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Settlement Information">
+                            <group>
+                                <group string="Settlement Details">
+                                    <field name="settlement_id" readonly="1"/>
+                                    <field name="trade_channel" related="settlement_id.trade_channel" readonly="1"/>
+                                    <field name="settlement_date" related="settlement_id.date" readonly="1"/>
+                                </group>
+                                <group string="Settlement Totals (from linked vendor bills)">
+                                    <field name="settlement_fee_total" readonly="1" string="Total Settlement Fee"/>
+                                    <field name="settlement_vat_total" readonly="1" string="Total Settlement VAT"/>
+                                    <field name="settlement_wht_total" readonly="1" string="Total Settlement WHT"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Fee Allocation Search View -->
+    <record id="view_marketplace_fee_allocation_search" model="ir.ui.view">
+        <field name="name">marketplace.fee.allocation.search</field>
+        <field name="model">marketplace.fee.allocation</field>
+        <field name="arch" type="xml">
+            <search string="Search Fee Allocations">
+                <field name="settlement_id"/>
+                <field name="invoice_id"/>
+                <field name="invoice_number"/>
+                <field name="invoice_partner_id"/>
+                
+                <filter name="proportional" string="Proportional Allocation" 
+                        domain="[('allocation_method', '=', 'proportional')]"/>
+                <filter name="exact" string="Exact Allocation" 
+                        domain="[('allocation_method', '=', 'exact')]"/>
+                
+                <separator/>
+                <filter name="current_month" string="Current Month" 
+                        domain="[('invoice_date', '&gt;=', datetime.datetime.now().strftime('%Y-%m-01'))]"/>
+                <filter name="current_year" string="Current Year" 
+                        domain="[('invoice_date', '&gt;=', datetime.datetime.now().strftime('%Y-01-01'))]"/>
+                
+                <group expand="0" string="Group By">
+                    <filter name="group_settlement" string="Settlement" context="{'group_by': 'settlement_id'}"/>
+                    <filter name="group_customer" string="Customer" context="{'group_by': 'invoice_partner_id'}"/>
+                    <filter name="group_method" string="Allocation Method" context="{'group_by': 'allocation_method'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'invoice_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Fee Allocation Pivot View -->
+    <record id="view_marketplace_fee_allocation_pivot" model="ir.ui.view">
+        <field name="name">marketplace.fee.allocation.pivot</field>
+        <field name="model">marketplace.fee.allocation</field>
+        <field name="arch" type="xml">
+            <pivot string="Fee Allocation Analysis">
+                <field name="settlement_id" type="row"/>
+                <field name="invoice_partner_id" type="row"/>
+                <field name="allocation_base_amount" type="measure"/>
+                <field name="base_fee_alloc" type="measure"/>
+                <field name="vat_input_alloc" type="measure"/>
+                <field name="wht_alloc" type="measure"/>
+                <field name="net_payout_alloc" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Fee Allocation Graph View -->
+    <record id="view_marketplace_fee_allocation_graph" model="ir.ui.view">
+        <field name="name">marketplace.fee.allocation.graph</field>
+        <field name="model">marketplace.fee.allocation</field>
+        <field name="arch" type="xml">
+            <graph string="Fee Allocation Chart" type="bar">
+                <field name="settlement_id"/>
+                <field name="base_fee_alloc" type="measure"/>
+                <field name="vat_input_alloc" type="measure"/>
+                <field name="wht_alloc" type="measure"/>
+                <field name="net_payout_alloc" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Fee Allocation Action -->
+    <record id="action_marketplace_fee_allocation" model="ir.actions.act_window">
+        <field name="name">Fee Allocations</field>
+        <field name="res_model">marketplace.fee.allocation</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="search_view_id" ref="view_marketplace_fee_allocation_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a fee allocation record
+            </p>
+            <p>
+                Fee allocations help distribute marketplace fees, VAT, and withholding tax 
+                across individual invoices for detailed profitability analysis and reporting.
+            </p>
+        </field>
+    </record>
+
+    <!-- Add Fee Allocation menu item -->
+    <menuitem id="menu_marketplace_fee_allocation"
+              name="Fee Allocations"
+              parent="account.menu_finance_receivables"
+              action="action_marketplace_fee_allocation"
+              sequence="15"/>
+
+</odoo>

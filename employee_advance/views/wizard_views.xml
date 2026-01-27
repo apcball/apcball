@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mark as Done Confirmation Wizard View -->
+    <record id="mark_as_done_confirmation_wizard_form" model="ir.ui.view">
+        <field name="name">mark.as.done.confirmation.wizard.form</field>
+        <field name="model">mark.as.done.confirmation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Confirm Mark as Done">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="expense_sheet_id" readonly="1" 
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </h1>
+                        <h2>Mark Expense Sheet as Done Confirmation</h2>
+                    </div>
+                    
+                    <group>
+                        <div class="alert alert-warning" role="alert">
+                            <h4><i class="fa fa-exclamation-triangle"/> Important Confirmation Required</h4>
+                            <p>Before marking this expense sheet as done, please ensure that:</p>
+                            <ul>
+                                <li>All vendor bills have been created and posted</li>
+                                <li>All payments have been processed</li>
+                                <li>All advance clearings have been completed</li>
+                                <li>Any necessary withholding tax certificates have been created</li>
+                            </ul>
+                        </div>
+                        
+                        <group name="confirmation_details" string="Confirmation Details">
+                            <field name="employee_id" readonly="1"/>
+                            <field name="total_amount" readonly="1" widget="monetary" 
+                                   string="Expense Sheet Total"/>
+                            <field name="bills_count" readonly="1" 
+                                   string="Number of Bills Created"/>
+                            <field name="advance_cleared" readonly="1" 
+                                   widget="boolean_toggle"/>
+                        </group>
+                        
+                        <div class="alert alert-info" role="alert">
+                            <p><i class="fa fa-info-circle"/> Once marked as done, this expense sheet will be locked and cannot be modified.</p>
+                        </div>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Expense Details" name="expense_details">
+                            <field name="expense_line_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="product_id"/>
+                                    <field name="price_unit"/>
+                                    <field name="quantity"/>
+                                    <field name="tax_ids" widget="many2many_tags"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                
+                <footer>
+                    <div class="alert alert-danger" role="alert" style="display: inline-block;">
+                        <strong><i class="fa fa-lock"/> This action cannot be undone</strong>
+                    </div>
+                    <button name="action_confirm_mark_as_done" 
+                            type="object" 
+                            string="Confirm &amp; Mark as Done" 
+                            class="btn-danger"
+                            help="Confirm that all processing is complete and mark this expense sheet as done"/>
+                    <button string="Cancel" 
+                            class="btn-secondary" 
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Action to open the wizard -->
+    <record id="action_mark_as_done_confirmation_wizard" model="ir.actions.act_window">
+        <field name="name">Confirm Mark as Done</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">mark.as.done.confirmation.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="hr_expense.model_hr_expense_sheet"/>
+    </record>
+</odoo>

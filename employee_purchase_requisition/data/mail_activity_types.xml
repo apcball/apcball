@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Activity Type for Head Approval Request -->
+        <record id="mail_activity_type_head_approval" model="mail.activity.type">
+            <field name="name">PR Head Approval Required</field>
+            <field name="summary">PR Head Approval Required</field>
+            <field name="delay_unit">days</field>
+            <field name="delay_count">3</field>
+            <field name="category">default</field>
+            <field name="icon">fa-user-check</field>
+            <field name="res_model">employee.purchase.requisition</field>
+        </record>
+
+        <!-- Activity Type for Purchase Department Processing -->
+        <record id="mail_activity_type_purchase_approval" model="mail.activity.type">
+            <field name="name">PR Purchase Processing Required</field>
+            <field name="summary">PR Purchase Processing Required</field>
+            <field name="delay_unit">days</field>
+            <field name="delay_count">5</field>
+            <field name="category">default</field>
+            <field name="icon">fa-shopping-cart</field>
+            <field name="res_model">employee.purchase.requisition</field>
+        </record>
+
+        <!-- Activity Type for Approval Completion -->
+        <record id="mail_activity_type_pr_approved" model="mail.activity.type">
+            <field name="name">PR Approved</field>
+            <field name="summary">PR Approved - Ready for PO Creation</field>
+            <field name="delay_unit">days</field>
+            <field name="delay_count">1</field>
+            <field name="category">default</field>
+            <field name="icon">fa-check-circle</field>
+            <field name="res_model">employee.purchase.requisition</field>
+        </record>
+
+        <!-- Activity Type for Rejection Notification -->
+        <record id="mail_activity_type_pr_rejected" model="mail.activity.type">
+            <field name="name">PR Rejected</field>
+            <field name="summary">PR Rejected</field>
+            <field name="delay_unit">days</field>
+            <field name="delay_count">1</field>
+            <field name="category">default</field>
+            <field name="icon">fa-times-circle</field>
+            <field name="res_model">employee.purchase.requisition</field>
+        </record>
+    </data>
+</odoo>

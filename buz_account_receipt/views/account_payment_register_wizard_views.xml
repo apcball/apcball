@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_account_payment_register_wizard_form" model="ir.ui.view">
+        <field name="name">account.payment.register.wizard.form</field>
+        <field name="model">account.payment.register.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Register Payment">
+                <group>
+                    <group string="Bill Information">
+                        <field name="move_name" string="Bill Number"/>
+                        <field name="move_date" string="Bill Date"/>
+                        <field name="partner_id" string="Vendor"/>
+                        <field name="move_amount_total" string="Bill Total" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+                        <field name="move_amount_residual" string="Residual Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+                    </group>
+                    <group string="Payment Voucher Details">
+                        <field name="amount_to_pay_gross" string="Gross Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+                        <field name="wht_amount" string="WHT Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+                        <field name="amount_to_pay_net" string="Net Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+                    </group>
+                </group>
+                
+                <group string="Payment Details">
+                    <group>
+                        <field name="payment_date"/>
+                        <field name="journal_id"/>
+                    </group>
+                    <group>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="communication"/>
+                    </group>
+                </group>
+                
+                <footer>
+                    <button name="action_register_payment" string="Register Payment" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

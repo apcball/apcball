@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="paperformat_invoice1" model="report.paperformat">
+        <field name="name">Invoice A4</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">0</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <template id="report_saleorder_stair">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <style>
+                        @font-face {
+                            font-family: 'DB ADMAN X';
+                            src: url('/buz_custom_quotation/static/fonts/DB ADMAN X.TTF') format('truetype');
+                            font-weight: normal;
+                            font-style: normal;
+                        }
+                        body, div, p, span, h1, h2, h3, h4, h5, h6, table, tr, td, th, strong, li {
+                            font-family: 'DB ADMAN X' !important;
+                        }
+                        .page {
+                            font-family: 'DB ADMAN X' !important;
+                        }
+                        .o_report_layout_standard {
+                            font-family: 'DB ADMAN X' !important;
+                        }
+                    </style>
+                    <div class="page">
+                 <!-- Cover Image Section -->
+                    <div style="page-break-after: always; position: relative;">
+                    <div style="text-align: center; margin: -15mm -8mm -10mm -4mm;">
+                        <img t-att-src="'/buz_custom_quotation/static/img/cover/stair_cover_page.png'" 
+                             style="width: calc(100% + 12mm); height: 297mm; object-fit: cover; margin: 0;"/>
+                    </div>
+                    <div style="position: absolute; bottom: -90px; left: 15px; z-index: 2;">
+                        <img t-att-src="'/buz_custom_quotation/static/img/cover/logo-ci-mogen.png'"
+                             style="width: 50%;"/>
+                    </div>
+        
+           <!-- Project name saction -->
+                    <div style="position: absolute; bottom: -38%; left: 0; right: 0; z-index: 2;">
+                        <div style="line-height: 2.5; margin-bottom: 20px; padding: 0 5%;">
+                            <div style="margin-bottom: -3px;">
+                                <span style="font-size: 35px; color: black; font-weight: bold;">Project Name :</span>
+                                <span style="display: inline-block; width: 32px;"/>
+                                <span style="font-size: 35px; color: black; font-weight: bold;" t-field="doc.project_name"/>
+                            </div>
+            
+                            <div style="margin-bottom: -3px;">
+                                <span style="font-size: 26px; color: black; font-weight: bold;">Customer : </span>
+                                <span style="display: inline-block; width: 103px;"/>
+                                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.partner_id.name"/>
+                            </div>
+            
+
+                            <div style="margin-bottom: -3px;">
+                                <span style="font-size: 26px; color: black; font-weight: bold;">Quotation No. : </span>
+                                <span style="display: inline-block; width: 64px;"/>
+                                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.quotation_no"/>
+                            </div>
+
+                            <div style="margin-bottom: -3px;">
+                                <span style="font-size: 26px; color: black; font-weight: bold;">Date : </span>
+                                <span style="display: inline-block; width: 140px;"/>
+                                <span style="font-size: 26px; color: black; font-weight: bold;" t-field="doc.date_order" t-options="{&quot;widget&quot;: &quot;date&quot;, &quot;format&quot;: &quot;dd/MM/yyyy&quot;}"/>
+                            </div>
+                        </div>            
+    
+        <!-- Company Info Section -->
+        <div style="margin: 11px 0 0 0; border: 2px solid #1E3A78; background-color: #1E3A78; padding: 10px; width: 100%;">
+            <div style="text-align: left; padding: 0 5%;">
+                <div style="color: white; font-size: 18px; font-weight: bold;">MOGEN CO., LTD. (HEAD OFFICE)</div>
+                <div style="color: white; font-size: 18px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+                <div style="color: white; font-size: 18px;">Tel: 02 1509710 E-mail: contact@mogen.co.th</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Page 2:Page -->
+<t t-set="items_per_page" t-value="10"/>
+<t t-set="total_items" t-value="len(doc.order_line)"/>
+<t t-set="total_pages" t-value="(total_items + items_per_page - 1) // items_per_page"/>
+
+<t t-set="groups_of_10" t-value="[doc.order_line[i:i+10] for i in range(0, len(doc.order_line), 10)]"/>
+<t t-set="item_counter" t-value="0"/>
+<t t-foreach="groups_of_10" t-as="group" t-index="group_idx">
+   <div t-attf-style="#{group_idx != 0 and 'page-break-before: always;' or ''}">
+
+<div style="margin-top: 0;">
+    <div style="text-align: left; margin-right: -10mm; margin-left: -10mm; background-color: #1E3A78; padding-left: 10mm; padding-right: 10mm;">
+        <img t-att-src="'/buz_custom_quotation/static/img/cover/logo-ci-mogen.png'" style="width: 400px; margin-left: -5mm;"/>
+    </div>
+    <div style="text-align: left; margin-top: 0; margin-left: 0mm; margin-right: 0mm;">
+        <img t-att-src="'/buz_custom_quotation/static/img/cover/stair_header1.png'" style="width: calc(100% + 12mm); max-width: none; margin-bottom: 10px; margin-left: -5mm;"/>
+    </div>
+ <!-- Header Section -->
+    <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
+        <!-- Left Column -->
+        <div class="col-6" style="text-align: left;">
+            <table style="width: 95%; border: none; margin: 10px;">
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><strong>To:</strong></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.customer_name"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><strong>Company:</strong></td>
+                    <td style="padding: 5px; border: none;background-color: #f5f5f5; color: #000000;"><span t-field="doc.partner_id.name"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; vertical-align: top; border: none; background-color: #f5f5f5; color: #000000;"><strong>Address:</strong></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;">
+                        <span t-field="doc.partner_id.street"/>
+                        <span t-if="doc.partner_id.street2"><br/><span t-field="doc.partner_id.street2"/></span>
+                        <span t-if="doc.partner_id.city"><br/><span t-field="doc.partner_id.city"/></span>
+                        <span t-if="doc.partner_id.zip"><span t-field="doc.partner_id.zip"/></span>
+                    </td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><strong>Tel:</strong></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.partner_id.phone"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><strong>Email:</strong></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.partner_id.email"/></td>
+                </tr>
+            </table>
+        </div>
+        <!-- Right Column -->
+        <div class="col-6" style="text-align: left;">
+            <table style="width: 95%; border: none; margin: 10px;">
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none; border: none; background-color: #f5f5f5; color: #000000;"><strong>Date:</strong></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><strong>Quotation No:</strong></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.quotation_no"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><strong>Project:</strong></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.project_name"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><strong>Sale Condition:</strong></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.payment_term_id.name"/></td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none; border: none; background-color: #f5f5f5; color: #000000;"><strong>Ordered By:</strong></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;">
+                        <span t-if="doc.user_id.employee_ids" t-esc="doc.user_id.employee_ids[0].name"/>
+                        <span t-if="not doc.user_id.employee_ids" t-field="doc.user_id.partner_id.name"/>
+                    </td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><strong>Phone:</strong></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.user_id.phone"/></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <!-- Order Lines Table -->
+    <table class="table table-sm" style="margin-top: 20px; font-size: 20px; border: none; border-collapse: separate; border-spacing: 0 5px;">
+        <thead style="border: none;">
+            <tr style="border: none;">
+                <th style="width: 1%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;"></th>
+                <th style="width: 45%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Product Description</th>
+                <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Quantity</th>
+                <th style="width: 15%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Unit Price</th>
+                <th style="width: 19%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Net Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <t t-foreach="group" t-as="line">
+                <t t-set="item_counter" t-value="item_counter + 1"/>
+                <tr style="border-bottom: 1px solid #8B9B7C;">
+                    <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <span style="background-color: #1E3A78; color: white; padding: 3px 8px; border-radius: 4px; white-space: nowrap; display: inline-block;">No.<t t-esc="item_counter"/></span>
+                    </td>
+                    <td style="text-align: left; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <div><span t-field="line.name"/></div>
+                    </td>
+                    <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <span t-field="line.product_uom_qty" t-options='{"widget": "float", "precision": 0}'/> <span t-field="line.product_uom.name"/>
+                    </td>
+                    <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <t t-if="line.normal_price and line.normal_price != 0">
+                            <span t-field="line.normal_price"
+                                  t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                        </t>
+                        <t t-else="">
+                            <span t-field="line.price_unit"
+                                  t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                        </t>
+                    </td>
+                    <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
+                        <span t-field="line.price_subtotal"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+            </t>
+        </tbody>
+    </table>
+</div>
+ </div>
+</t>
+
+
+    <!-- Page 3: Conditions Page -->
+    <div style="page-break-before: always; margin-top: 0;">
+        <div style="text-align: left; margin-right: -10mm; margin-left: -10mm; background-color: #1E3A78; padding-left: 10mm; padding-right: 10mm;">
+            <img t-att-src="'/buz_custom_quotation/static/img/cover/logo-ci-mogen.png'" style="width: 400px; margin-left: -5mm;"/>
+        </div>
+        <div style="text-align: left; margin-top: 0; margin-left: 0mm; margin-right: 0mm;">
+            <img t-att-src="'/buz_custom_quotation/static/img/cover/stair_header1.png'" style="width: calc(100% + 12mm); max-width: none; margin-bottom: 10px; margin-left: -5mm;"/>
+        </div>
+ 
+           <!-- Totals Section -->
+    <div class="row justify-content-end" style="margin-top: 20px; font-size: 20px;">
+        <div class="col-4">
+            <table class="table table-sm" style="border-collapse: collapse; border: none;">
+                <tr style="border-bottom: 1px solid #1E3A78;">
+                    <td style="border: none; padding: 10px 0;">
+                        <span style="color: #000000; padding: 3px 8px;">Excluding vat:</span>
+                    </td>
+                    <td class="text-end" style="border: none; padding: 10px 0; background-color: #ffffffff; color: #000000;">
+                        <span t-field="doc.amount_untaxed"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #1E3A78;">
+                    <td style="border: none; padding: 10px 0;">
+                        <span style="color: #000000; padding: 3px 8px; background-color: #ffffffff;">Vat 7%:</span>
+                    </td>
+                    <td class="text-end" style="border: none; padding: 10px 0; background-color: #ffffffff;">
+                        <span t-field="doc.amount_tax"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 3px solid #1E3A78;">
+                    <td style="border: none; padding: 10px 0; background-color: #ffffffff; color: #000000;">
+                        <span style="color: #000000; padding: 3px 8px;">Including vat:</span>
+                    </td>
+                    <td class="text-end" style="border: none; padding: 10px 0; background-color: #ffffffff; color: #000000;">
+                        <span t-field="doc.amount_total"
+                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+
+    <!-- Signature Section -->
+        <div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
+            <div style="width: 200px; display: inline-block; text-align: center; margin-left: 600px;">
+                <p style="margin-bottom: 40px;">ผู้อนุมัติซื้อ</p>
+                <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
+                <div style="margin-top: 10px; font-size: 16px;">
+                    (____________________)
+                </div>
+                <div style="margin-top: 5px; font-size: 16px;">
+                    วันที่ .................................
+                </div>
+            </div>
+        </div>
+        
+ <!-- Replace the existing Terms and Conditions section with: -->
+ <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
+    <div class="col-12">
+        <h2 style="color: #1E3A78; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Terms and Conditions</h2>
+        <div t-field="doc.note" t-attf-style="#{'text-align:justify;text-justify:inter-word;' if doc.company_id.terms_type != 'html' else ''}" name="order_note"/>
+    </div>
+</div>
+                    </div>
+                </div>
+                    
+            </t>
+        </t>
+    </t>
+</template>
+
+    <record id="action_report_saleorder_stair" model="ir.actions.report">
+        <field name="name">Quotation / STAIR</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_custom_quotation.report_saleorder_stair</field>
+        <field name="report_file">buz_custom_quotation.report_saleorder_stair</field>
+        <field name="print_report_name">'Quotation - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="buz_custom_quotation.paperformat_invoice1"/>
+    </record>
+</odoo>

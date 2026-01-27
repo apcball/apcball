@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Quick Allocate Materials Wizard Form -->
+    <record id="view_mrp_production_allocate_wizard_form" model="ir.ui.view">
+        <field name="name">mrp.production.allocate.wizard.form</field>
+        <field name="model">mrp.production.allocate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Allocate Materials">
+                <sheet>
+                    <!-- Add the missing field to make it available for modifiers -->
+                    <field name="has_unallocated_materials" invisible="1"/>
+                    <separator string="Manufacturing Order"/>
+                    <group>
+                        <field name="mo_id" readonly="1"/>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Materials to Allocate" name="materials">
+                            <div class="alert alert-info" role="alert" invisible="line_ids">
+                                <h4>✓ No materials to allocate</h4>
+                                <p><strong>Possible reasons:</strong></p>
+                                <ul>
+                                    <li><strong>MO doesn't need materials</strong> - All required components already consumed</li>
+                                    <li><strong>No stock requests linked</strong> - Create a stock request for this MO first</li>
+                                    <li><strong>Materials not issued yet</strong> - Stock request picking needs to be validated</li>
+                                    <li><strong>All materials allocated</strong> - Everything already allocated to MOs</li>
+                                </ul>
+                                <p class="mb-0">
+                                    <strong>What to do:</strong> Check the MO's Components tab to see what's needed,
+                                    or close this wizard if everything is complete.
+                                </p>
+                            </div>
+                            <field name="line_ids">
+                                <tree editable="bottom" decoration-info="qty_to_consume > 0" 
+                                      decoration-muted="qty_to_consume == 0">
+                                    <field name="product_id" readonly="1"/>
+                                    <field name="available_qty" readonly="1" 
+                                           string="Available" 
+                                           widget="float"
+                                           decoration-success="available_qty > 0"/>
+                                    <field name="qty_to_consume" 
+                                           string="Qty to Allocate"
+                                           widget="float"/>
+                                    <field name="uom_id" readonly="1"/>
+                                    <field name="tracking" column_invisible="1"/>
+                                    <field name="lot_id" 
+                                           optional="show"
+                                           domain="[('product_id', '=', product_id)]"
+                                           context="{'default_product_id': product_id}"/>
+                                    <field name="request_line_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                    
+                    <div class="alert alert-info" role="alert" invisible="not line_ids">
+                        <strong>Tip:</strong> Adjust quantities as needed. Leave at 0 to skip allocation for that material.
+                        Products with lot/serial tracking require a lot/serial number.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_allocate" type="object" string="Allocate" 
+                            class="btn-primary" 
+                            invisible="not line_ids"
+                            help="Allocate selected materials to MO"/>
+                    <button name="action_mark_as_done" type="object"
+                            string="Mark as Done"
+                            class="btn-warning"
+                            invisible="not has_unallocated_materials"
+                            help="Transfer all unallocated materials and mark request as Done"/>
+                    <button name="action_complete" type="object" string="Complete &amp; Close" 
+                            class="btn-success" 
+                            invisible="line_ids"
+                            help="All materials allocated. Close wizard."/>
+                    <button string="Close" class="btn-secondary" special="cancel" 
+                            invisible="line_ids"
+                            help="Close wizard without allocating"/>
+                    <div class="alert alert-success mb-0 mt-2" invisible="line_ids" role="alert">
+                        <strong>✓ All materials allocated!</strong> You can close this wizard now.
+                    </div>
+                    <div class="alert alert-warning mb-0 mt-2" invisible="not line_ids" role="alert">
+                        <strong>⚠️ Materials remaining.</strong> Please continue allocating or adjust quantities.
+                    </div>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_import_pricelist_preview_tree" model="ir.ui.view">
+        <field name="name">import.pricelist.preview.tree</field>
+        <field name="model">import.pricelist.preview</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="action == 'update' and status == 'ok'" 
+                  decoration-info="action == 'create' and status == 'ok'"
+                  decoration-warning="action == 'skip'"
+                  decoration-danger="status == 'error'"
+                  create="0" delete="0" edit="0">
+                <field name="product_xml_id" optional="hide"/>
+                <field name="product_name"/>
+                <field name="old_price"/>
+                <field name="new_price"/>
+                <field name="old_installation_price"/>
+                <field name="new_installation_price"/>
+                <field name="min_qty"/>
+                <field name="action"/>
+                <field name="status"/>
+                <field name="error_message" invisible="status == 'ok'"/>
+            </tree>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,432 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Define Paper Format -->
+    <record id="paperformat_purchase_order_eng" model="report.paperformat">
+        <field name="name">Purchase Order A4 English</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">4</field>
+        <field name="margin_right">4</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">8</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- Report Template -->
+    <template id="report_purchaseorder_document_custom_eng">
+      <style>
+    @font-face {
+        font-family: 'Sarabun';
+        src: url('/buz_po_portal/static/fonts/Sarabun-Bold.ttf') format('truetype');
+        font-weight: bold;
+        font-style: normal;
+    }
+
+    html, body {
+        font-family: 'Sarabun', sans-serif !important;
+    }
+
+    .page {
+        font-family: 'Sarabun', sans-serif !important;
+        font-size: 14px;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+    }
+
+    table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+        font-family: 'Sarabun', sans-serif !important;
+    }
+    .table {
+        border-collapse: collapse !important;
+        width: 100%;
+    }
+    
+    .table td, 
+    .table th {
+        border-width: 0.5px !important;
+        border-style: solid !important;
+        border-color: #000 !important;
+        padding: 4px;
+    }
+    
+    .table-bordered,
+    .table-bordered td,
+    .table-bordered th {
+        border: none !important;
+    }
+    .vendor-info, .delivery-info {
+        font-size: 14px;
+    }
+</style>
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs" t-as="o">
+                <div class="page">
+                    <!-- Header -->
+                    <div class="row mb-2">
+                        <div class="col-8">
+                            <div style="font-size: 16px;">
+                                <div class="mb-1"><strong>MOGEN CO., LTD. (HEAD OFFICE)</strong></div>
+                                <div style="font-size: 14px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
+                                <div style="font-size: 14px;">Tax ID: 0105547076103</div>
+                                <div style="font-size: 14px;">Tel: 02 1509710 Fax: 02 1528803 E-mail: contact@mogen.co.th</div>
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                 style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                        </div>
+                    </div>
+
+                    <!-- Document Title -->
+                    <div class="row mb-2">
+                       <div class="col-12 text-center">
+                            <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 20px; margin-top: 10px;">PURCHASE ORDER</h2>
+                       </div>
+                    </div>
+
+                    <!-- Document Info -->
+                    <div class="row mb-2">
+                        <div class="col-8">
+                            <p style="margin-bottom: 0; margin-top: 20px; font-size: 14px;">Please attach this purchase order when delivering goods and billing</p>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-end" style="font-size: 14px;">
+                                <div>NO.: <strong><span t-field="o.name"/></strong></div>
+                                <div>DATE: <strong><span t-field="o.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></strong></div>
+                                <div>PAGE: 1 / 1</div>
+                            </div>
+                        </div>
+                    </div>
+
+<!-- Vendor and Delivery Info -->
+<div style="border: 1px solid #000; font-size: 14px; margin-top: 15px;">
+    <div style="display: flex; width: 100%;">
+        <!-- ซ้าย 50% -->
+        <div style="width: 50%; display: flex; flex-direction: column;">
+            <!-- Vendor -->
+            <div style="padding: 6px;">
+                <t t-if="o.partner_id">
+                    <strong>Vendor:
+                        <span t-field="o.partner_id.name"/>
+                    </strong><br/>
+                    <strong>Address:
+                        <span t-field="o.partner_id.street"/>
+                        <span t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
+                        <span t-if="o.partner_id.city"> <t t-esc="o.partner_id.city"/></span>
+                        <span t-if="o.partner_id.state_id"> <t t-esc="o.partner_id.state_id.name"/></span>
+                        <span t-if="o.partner_id.zip"> <t t-esc="o.partner_id.zip"/></span>
+                    </strong>
+                </t>
+            </div>
+        </div>
+
+        <!-- ขวา 50% -->
+        <div style="width: 50%; display: flex; flex-direction: column;">
+            <!-- แถวบน: 60 / 40 -->
+            <div style="display: flex;">
+                <!-- Place of Delivery -->
+                <div style="width: 60%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 6px;">
+                    <strong>Place of Delivery:</strong>
+                    Mogen (Thailand) Co. Ltd<br/>
+                    9 Moo 12, Beungkhumproy,<br/>
+                    Lumlukka, Pathum Thani 12150
+                </div>
+                <!-- Confirm Order -->
+                <div style="width: 40%; border-left: 1px solid #000; border-bottom: 1px solid #000; padding: 6px;">
+                    <strong>Confirm order from supplier</strong><br/>
+                    Date: <span t-field="o.date_order" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>;
+                </div>
+            </div>
+
+            <!-- แถวล่าง: 25 / 25 / 15 / 35 -->
+            <div style="display: flex;">
+                <!-- Contact Person -->
+                <div style="width: 25%; border-left: 1px solid #000; padding: 6px; border-top: 1px solid #000;">
+                    <strong>Contact Person:</strong><br/>
+                    <span t-field="o.employee_contact_id.name"/>
+                </div>
+                <!-- Payment Term -->
+                <div style="width: 25%; border-left: 1px solid #000; padding: 6px; border-top: 1px solid #000;">
+                    <strong>Payment Term:</strong><br/>
+                    <span t-field="o.payment_term_id.name"/>
+                </div>
+                <!-- Ref. Number -->
+                <div style="width: 50%; border-left: 1px solid #000; padding: 6px; border-top: 1px solid #000;">
+                    <strong>Ref. Number:</strong><br/>
+                    <span t-field="o.client_order_ref"/>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Order Lines -->
+<div class="row">
+    <div class="col-12">
+        <table class="table" style="font-size: 14px; width: 100%; margin: 0 0 20px 0; padding: 0; border-collapse: collapse;">
+            <thead>
+                <tr class="text-center" style="background-color: #f8f9fa;">
+                    <th style="width: 5%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">NO.</th>
+                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">IMAGE</th>
+                    <th style="width: 25%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">DESCRIPTION</th>
+                    <th style="width: 10%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">DELIVERY</th>
+                    <th style="width: 18%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">QTY/UNIT</th>
+                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">UNIT PRICE</th>
+                    <th style="width: 8%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">DISC %</th>
+                    <th style="width: 12%; padding: 4px; vertical-align: middle; border: 0.5px solid #dee2e6;">AMOUNT</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr t-foreach="o.order_line" t-as="line" t-foreach-index="line_index">
+                    <td style="text-align: center; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-esc="line_index + 1"/>
+                    </td>
+                    <td>
+                        <img t-if="line.product_id.image_128"
+                            t-att-src="image_data_uri(line.product_id.image_128)"
+                            style="width: 64px; height: 64px; object-fit: contain;"/>
+                    </td>
+                    <td style="padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.product_id.name_eng"/>
+                    </td>
+                    <td style="text-align: center; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.date_planned" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                    </td>
+                    <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/> <span t-field="line.product_uom.name"/>
+                    </td>
+                    <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.price_unit" t-options='{"widget": "float", "precision": 2}'/>
+                    </td>
+                    <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.discount" t-options='{"widget": "float", "precision": 2}'/>
+                    </td>
+                    <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                        <span t-field="line.price_subtotal" t-options='{"widget": "float", "precision": 2}'/>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Summary Section -->
+<div class="row" style="margin-top: 5px;">
+    <div class="col-7">
+        <!-- Notes Section -->
+        <div style="border: 0.5px solid #dee2e6; padding: 8px; min-height: 150px;">
+            <strong>Remark.</strong> <span t-field="o.notes"/>
+        </div>
+    </div>
+    <div class="col-5">
+        <!-- Summary Table -->
+        <table class="table" style="font-size: 14px; width: 100%; margin: 0; padding: 0; border-collapse: collapse;">
+            <t t-set="amount_untaxed" t-value="sum([line.product_qty * line.price_unit for line in o.order_line])"/>
+            <t t-set="total_discount" t-value="sum([(line.product_qty * line.price_unit * line.discount/100.0) for line in o.order_line])"/>
+            <t t-set="amount_after_discount" t-value="amount_untaxed - total_discount"/>
+            <t t-set="amount_tax" t-value="amount_after_discount * 0.07"/>
+            <t t-set="amount_total" t-value="amount_after_discount + amount_tax"/>
+
+            <tr>
+                <td style="width: 60%; text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                    <span>Total:</span>
+                </td>
+                <td style="width: 40%; text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                    <span t-esc="'{:,.2f}'.format(amount_untaxed)"/>
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                    <span>Discount:</span>
+                </td>
+                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                    <span t-esc="'{:,.2f}'.format(total_discount)"/>
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                    <span>Net:</span>
+                </td>
+                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                    <span t-esc="'{:,.2f}'.format(amount_after_discount)"/>
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                    <span>VAT 7%:</span>
+                </td>
+                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                    <span t-esc="'{:,.2f}'.format(amount_tax)"/>
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                    <span>Grand Total:</span>
+                </td>
+                <td style="text-align: right; padding: 4px; border: 0.5px solid #dee2e6;">
+                    <span t-esc="'{:,.2f}'.format(amount_total)"/>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<!-- Signature Section -->
+<div class="row mt-5" style="margin-top: calc(4rem - 80px) !important;">
+    <!-- Common styles for signature boxes -->
+    <style>
+        .signature-box {
+            font-size: 14px;
+            text-align: center;
+            width: 100%;
+        }
+        .signature-content {
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .signature-line {
+            border-top: 1px solid #000;
+            margin: 0 auto;
+            width: 80%;
+            padding-top: 5px;
+        }
+        .signature-title {
+            margin: 5px 0;
+            font-weight: normal;
+        }
+        .signature-date {
+            margin: 5px 0;
+        }
+        .signature-image {
+            width: 100px;
+            height: 60px;
+            object-fit: contain;
+            margin-bottom: 5px;
+        }
+        .signature-name {
+            margin: 0;
+            line-height: 1.5;
+        }
+    </style>
+
+    <!-- ผู้จัดทำ -->
+    <div class="col-4">
+        <div class="signature-box">
+            <div class="signature-content">
+                <div style="height: 60px;"></div> <!-- Placeholder for signature height -->
+                <p class="signature-name">
+                    <strong><span t-field="o.create_uid.name"/></strong>
+                </p>
+            </div>
+            <div class="signature-line">
+                <p class="signature-title">Prepared by</p>
+                <p class="signature-date">Date: <span t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ผู้ตรวจสอบ L1 -->
+    <div class="col-4">
+        <div class="signature-box">
+            <div class="signature-content">
+                <t t-if="o.l1_approved_by">
+                    <img src="/buz_po_portal/static/img/signature1.jpg" class="signature-image"/>
+                    <p class="signature-name">(Pornpetch Wasantakijkamjon)</p>
+                </t>
+                <t t-if="not o.l1_approved_by">
+                    <div style="height: 60px;"></div> <!-- Empty space for signature -->
+                    <p class="signature-name">&amp;nbsp;</p>
+                </t>
+            </div>
+            <div class="signature-line">
+                <p class="signature-title">Checked by</p>
+                <p class="signature-date">Date:
+                    <t t-if="o.l1_approved_date">
+                        <span t-field="o.l1_approved_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                    </t>
+                    <t t-if="not o.l1_approved_date">&amp;nbsp;</t>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ผู้อนุมัติ L2 -->
+    <div class="col-4">
+        <div class="signature-box">
+            <div class="signature-content">
+                <t t-if="o.approval_signature">
+                    <img t-att-src="image_data_uri(o.approval_signature)" class="signature-image"/>
+                    <p class="signature-name">(<span t-field="o.approver_id.name"/>)</p>
+                </t>
+                <t t-elif="o.l2_approved_by">
+                    <img src="/buz_po_portal/static/img/signature2.jpg" class="signature-image"/>
+                    <p class="signature-name">(Naphaksorn Wachirapanwichan)</p>
+                </t>
+                <t t-else="">
+                    <div style="height: 60px;"></div> <!-- Empty space for signature -->
+                    <p class="signature-name">&amp;nbsp;</p>
+                </t>
+            </div>
+            <div class="signature-line">
+                <p class="signature-title">Approved by</p>
+                <p class="signature-date">Date:
+                    <t t-if="o.approval_signature">
+                        <span t-field="o.approval_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                    </t>
+                    <t t-elif="o.l2_approved_date">
+                        <span t-field="o.l2_approved_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                    </t>
+                    <t t-else="">&amp;nbsp;</t>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Footer Section -->
+<div class="row mt-3" style="margin-top: 4rem !important; font-size: 12px;">
+    <div class="col-12">
+        <div style="border: 1px solid #000; padding: 8px;">
+            <div class="row">
+                <div class="col-12">
+                    <strong style="font-size: 15px;">CONDITIONS:</strong>
+                    <ol style="font-size: 12px; margin-bottom: 0px;">
+                        <li>ALL SUPPLIES ARE TO BE MADE STRICTLY IN ACCORDANCE WITH OUR SPECIFICATION</li>
+                        <li>THIS ORDER SHALL BE CANCELLED IF DELIVERY IS NOT MADE WITH TIME STATED</li>
+                        <li>ALL SUPPLIES SHOULD BE COVERED BY YOUR INVOICE IN TRIPLICATION</li>
+                        <li>TITLE AND RISK OF THE GOODS STATED ABOVE SHALL PASS FROM YOU TO US AT THE PLACE AND TIME OF DELIVERY</li>
+                        <li>INVOICE/DELIVERY NOTE MUST BE STATED THE NUMBER OF THIS ORDER AND OUR PART NUMBER OF MERCHANDISES WE ARE NOT LIABLE TO PAY FOR GOODS DELIVERY IN EXCESS OF THIS ORDER</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <!-- Report Action -->
+    <record id="action_report_purchase_order_custom_eng" model="ir.actions.report">
+        <field name="name">Purchase Order (English)</field>
+        <field name="model">purchase.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_po_portal.report_purchaseorder_document_custom_eng</field>
+        <field name="report_file">buz_po_portal.report_purchaseorder_document_custom_eng</field>
+        <field name="print_report_name">'Purchase Order - %s' % object.name</field>
+        <field name="binding_model_id" ref="purchase.model_purchase_order"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_purchase_order_eng"/>
+    </record>
+</odoo>

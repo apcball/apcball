@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="seq_mrp_stock_request" model="ir.sequence">
+            <field name="name">MRP Stock Request</field>
+            <field name="code">mrp.stock.request</field>
+            <field name="prefix">SRQ/%(year)s/</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>
