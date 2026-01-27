@@ -60,8 +60,21 @@ class ResConfigSettings(models.TransientModel):
 
     payment_voucher_approver_id = fields.Many2one(
         related='company_id.payment_voucher_approver_id',
-        string="Payment Voucher Approver",
+        string="Payment Voucher Approver (1)",
         readonly=False,
         help="User responsible for approving payment vouchers."
+    )
+
+    payment_voucher_enable_approval2 = fields.Boolean(
+        related='company_id.payment_voucher_enable_approval2',
+        string="Enable Second Approval",
+        readonly=False
+    )
+
+    payment_voucher_approver2_id = fields.Many2one(
+        related='company_id.payment_voucher_approver2_id',
+        string="Payment Voucher Approver (2)",
+        readonly=False,
+        help="User responsible for second approval of payment vouchers."
     )
 

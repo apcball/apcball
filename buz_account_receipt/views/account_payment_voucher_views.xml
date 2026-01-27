@@ -55,21 +55,26 @@
                             class="oe_highlight" 
                             invisible="state != 'checked1' or not is_current_user_checker2"/>
 
-                    <!-- Checked 2 -> Approved -->
-                    <button name="action_approve" type="object" string="Approve" 
+                    <!-- Checked 2 -> Approved 1 -->
+                    <button name="action_approve" type="object" string="Approve (1)" 
                             class="oe_highlight" 
                             invisible="state != 'checked2' or not is_current_user_approver"/>
+
+                    <!-- Approved 1 -> Approved 2 -->
+                    <button name="action_approve2" type="object" string="Approve (2)" 
+                            class="oe_highlight" 
+                            invisible="state != 'approved' or not is_current_user_approver2"/>
 
                     <!-- Approved -> Posted (Register Payment) -->
                     <button name="action_register_batch_payment" type="object" string="Register Payment" 
                             class="oe_highlight" 
-                            invisible="state not in ['approved', 'posted'] or payment_state in ['paid', 'overpaid']"/>
+                            invisible="state not in ['approved', 'approved2', 'posted'] or payment_state in ['paid', 'overpaid']"/>
 
                     <button name="action_reset_to_draft" type="object" string="Reset to Draft" 
                             invisible="state == 'draft'"
                             confirm="Are you sure you want to reset this voucher to draft?"/>
                             
-                    <field name="state" widget="statusbar" statusbar_visible="draft,prepared,checked1,checked2,approved,posted"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,prepared,checked1,checked2,approved,approved2,posted"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -88,6 +93,7 @@
                     <field name="is_current_user_checker1" invisible="1"/>
                     <field name="is_current_user_checker2" invisible="1"/>
                     <field name="is_current_user_approver" invisible="1"/>
+                    <field name="is_current_user_approver2" invisible="1"/>
                     <group>
                         <group name="header_left">
                             <field name="partner_id"/>
@@ -143,6 +149,24 @@
                         </page>
                         <page string="Notes">
                             <field name="note"/>
+                        </page>
+                        <page string="Signatures">
+                            <group>
+                                <group>
+                                    <field name="prepared_by" readonly="1"/>
+                                    <field name="prepared_date" readonly="1"/>
+                                    <field name="checked1_by" readonly="1"/>
+                                    <field name="checked1_date" readonly="1"/>
+                                    <field name="checked2_by" readonly="1"/>
+                                    <field name="checked2_date" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="approved_by" string="Approved (1) By" readonly="1"/>
+                                    <field name="approved_date" string="Approved (1) Date" readonly="1"/>
+                                    <field name="approved2_by" readonly="1" invisible="not is_current_user_approver2 and not approved2_by"/>
+                                    <field name="approved2_date" readonly="1" invisible="not is_current_user_approver2 and not approved2_by"/>
+                                </group>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>

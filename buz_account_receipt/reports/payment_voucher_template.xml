@@ -264,8 +264,8 @@
                                      <th style="border: 1px solid #000; padding: 5px;">Prepare By:</th>
                                      <th style="border: 1px solid #000; padding: 5px;">Checked(1):</th>
                                      <th style="border: 1px solid #000; padding: 5px;">Checked(2):</th>
-                                     <th style="border: 1px solid #000; padding: 5px;">Approved By:</th>
-                                     <th style="border: 1px solid #000; padding: 5px;">Received By:</th>
+                                     <th style="border: 1px solid #000; padding: 5px;">Approved(1):</th>
+                                     <th style="border: 1px solid #000; padding: 5px;">Approved(2):</th>
                                  </tr>
                             </thead>
                              <tbody>
@@ -299,8 +299,11 @@
                                          </div>
                                      </td>
                                      <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
-                                         <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
-                                         <div style="font-size: 12px;">Date .../.../...</div>
+                                         <div t-if="o.approved2_by" style="margin-bottom: 5px;"><span t-field="o.approved2_by.name"/></div>
+                                         <div t-else="" style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="font-size: 12px;">
+                                            Date <span t-if="o.approved2_date" t-field="o.approved2_date"/> <span t-else="">.../.../...</span>
+                                         </div>
                                      </td>
                                  </tr>
                              </tbody>

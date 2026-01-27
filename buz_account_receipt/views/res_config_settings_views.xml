@@ -88,6 +88,14 @@
                                         <label for="payment_voucher_approver_id" class="col-lg-4 o_light_label"/>
                                         <field name="payment_voucher_approver_id"/>
                                     </div>
+                                    <div class="row">
+                                        <label for="payment_voucher_enable_approval2" class="col-lg-4 o_light_label"/>
+                                        <field name="payment_voucher_enable_approval2"/>
+                                    </div>
+                                    <div class="row" invisible="not payment_voucher_enable_approval2">
+                                        <label for="payment_voucher_approver2_id" class="col-lg-4 o_light_label"/>
+                                        <field name="payment_voucher_approver2_id"/>
+                                    </div>
                                 </div>
                             </div>
                         </div>

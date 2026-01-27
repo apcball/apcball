@@ -21,7 +21,8 @@ class AccountPaymentVoucher(models.Model):
         ("prepared", "Prepared"),
         ("checked1", "Checked (1)"),
         ("checked2", "Checked (2)"),
-        ("approved", "Approved"),
+        ("approved", "Approved (1)"),
+        ("approved2", "Approved (2)"),
         ("posted", "Posted"),
         ("cancel", "Cancelled"),
     ], default="draft", tracking=True)
@@ -36,8 +37,11 @@ class AccountPaymentVoucher(models.Model):
     checked2_by = fields.Many2one('res.users', string="Checked (2) By", tracking=True, copy=False)
     checked2_date = fields.Date(string="Checked (2) Date", tracking=True, copy=False)
     
-    approved_by = fields.Many2one('res.users', string="Approved By", tracking=True, copy=False)
-    approved_date = fields.Date(string="Approved Date", tracking=True, copy=False)
+    approved_by = fields.Many2one('res.users', string="Approved (1) By", tracking=True, copy=False)
+    approved_date = fields.Date(string="Approved (1) Date", tracking=True, copy=False)
+    
+    approved2_by = fields.Many2one('res.users', string="Approved (2) By", tracking=True, copy=False)
+    approved2_date = fields.Date(string="Approved (2) Date", tracking=True, copy=False)
 
     billing_note = fields.Char(string="Billing Note", tracking=True)
 
@@ -70,6 +74,7 @@ class AccountPaymentVoucher(models.Model):
     is_current_user_checker1 = fields.Boolean(compute='_compute_user_visibility')
     is_current_user_checker2 = fields.Boolean(compute='_compute_user_visibility')
     is_current_user_approver = fields.Boolean(compute='_compute_user_visibility')
+    is_current_user_approver2 = fields.Boolean(compute='_compute_user_visibility')
 
     # Computed fields for totals
     amount_total_gross = fields.Monetary(string="Total Gross", currency_field="currency_id", compute="_compute_amount_totals", store=True)
@@ -147,7 +152,9 @@ class AccountPaymentVoucher(models.Model):
 
     @api.depends('company_id.payment_voucher_checker1_id',
                  'company_id.payment_voucher_checker2_id',
-                 'company_id.payment_voucher_approver_id')
+                 'company_id.payment_voucher_approver_id',
+                 'company_id.payment_voucher_approver2_id',
+                 'company_id.payment_voucher_enable_approval2')
     def _compute_user_visibility(self):
         current_user = self.env.user
         for voucher in self:
@@ -163,13 +170,20 @@ class AccountPaymentVoucher(models.Model):
             else:
                 voucher.is_current_user_checker2 = True
                 
-            # Approver
+            # Approver 1
             if voucher.company_id.payment_voucher_approver_id:
                 voucher.is_current_user_approver = (current_user == voucher.company_id.payment_voucher_approver_id)
             else:
                 voucher.is_current_user_approver = True
-
-    @api.depends('line_ids.payment_ids.state', 'line_ids.payment_ids.amount')
+            
+            # Approver 2
+            if voucher.company_id.payment_voucher_enable_approval2:
+                if voucher.company_id.payment_voucher_approver2_id:
+                    voucher.is_current_user_approver2 = (current_user == voucher.company_id.payment_voucher_approver2_id)
+                else:
+                    voucher.is_current_user_approver2 = True
+            else:
+                voucher.is_current_user_approver2 = False
     def _compute_amount_paid(self):
         for voucher in self:
             total_paid = 0
@@ -287,19 +301,58 @@ class AccountPaymentVoucher(models.Model):
         return True
 
     def action_approve(self):
-        """Final Approval (Checked 2 -> Approved)"""
+        """First Approval (Checked 2 -> Approved (1))"""
         for voucher in self:
             if voucher.state != 'checked2':
                 continue
-            voucher.write({
+            
+            vals = {
                 'state': 'approved',
                 'approved_by': self.env.user.id,
                 'approved_date': fields.Date.context_today(self)
-            })
-            voucher.message_post(body=_("Voucher approved. Ready for payment."))
+            }
             
-            # Mark Final Approver activity as done
-            voucher._mark_activity_done(voucher.company_id.payment_voucher_approver_id, feedback=_("Approved"))
+            voucher.write(vals)
+            
+            # Mark Final Approver activity as done (Approver 1)
+            voucher._mark_activity_done(voucher.company_id.payment_voucher_approver_id, feedback=_("Approved (1)"))
+
+            # Determine next step
+            if voucher.company_id.payment_voucher_enable_approval2:
+                # Schedule activity for Approver 2
+                approver2 = voucher.company_id.payment_voucher_approver2_id
+                if approver2:
+                    voucher.activity_schedule(
+                        'mail.mail_activity_data_todo',
+                        user_id=approver2.id,
+                        summary=_('Please approve payment voucher (Step 2)'),
+                        note=_('Voucher %s requires your approval.') % voucher.name,
+                    )
+                voucher.message_post(body=_("Voucher passed first approval. Waiting for second approval."))
+            else:
+                voucher.message_post(body=_("Voucher approved. Ready for payment."))
+            
+        return True
+
+    def action_approve2(self):
+        """Second Approval (Approved (1) -> Approved (2))"""
+        for voucher in self:
+            if voucher.state != 'approved':
+                continue
+            
+            if not voucher.company_id.payment_voucher_enable_approval2:
+                # Should not happen if button visibility is correct, but safety check
+                continue
+
+            voucher.write({
+                'state': 'approved2',
+                'approved2_by': self.env.user.id,
+                'approved2_date': fields.Date.context_today(self)
+            })
+            voucher.message_post(body=_("Voucher passed second approval. Ready for payment."))
+            
+            # Mark Approver 2 activity as done
+            voucher._mark_activity_done(voucher.company_id.payment_voucher_approver2_id, feedback=_("Approved (2)"))
             
         return True
         
@@ -332,8 +385,18 @@ class AccountPaymentVoucher(models.Model):
     def action_register_batch_payment(self):
         """Open payment register wizard with WHT handling (Thai Localization support)"""
         self.ensure_one()
-        if self.state not in ['approved', 'posted']:
-             raise UserError(_("Voucher must be approved before registering payment."))
+        
+        # Check permission based on approval flow
+        allowed_states = ['posted']
+        if self.company_id.payment_voucher_enable_approval2:
+            allowed_states.append('approved2')
+            if self.state == 'approved':
+                raise UserError(_("Voucher requires second approval before registering payment."))
+        else:
+            allowed_states.append('approved')
+            
+        if self.state not in allowed_states:
+             raise UserError(_("Voucher must be fully approved before registering payment."))
              
         # Increment Cheque Book Next Number if used
         if self.payment_type == 'check' and hasattr(self, 'cheque_book_id') and self.cheque_book_id and self.check_number == self.cheque_book_id.next_number:

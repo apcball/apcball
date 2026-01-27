@@ -20,3 +20,15 @@ class ResCompany(models.Model):
         string="Payment Voucher Approver",
         help="User responsible for final approval of payment vouchers."
     )
+
+    payment_voucher_enable_approval2 = fields.Boolean(
+        string="Enable Second Approval",
+        default=False,
+        help="Enable a second approval step for payment vouchers."
+    )
+
+    payment_voucher_approver2_id = fields.Many2one(
+        "res.users",
+        string="Payment Voucher Approver (2)",
+        help="User responsible for second approval of payment vouchers."
+    )
