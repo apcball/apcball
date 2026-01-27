@@ -308,6 +308,26 @@
                                  </tr>
                              </tbody>
                          </table>
+
+                         <!-- Receipt & Paid Box (Manual Entry) -->
+                         <div style="width: 100%; margin-top: 10px;">
+                             <table style="float: right; width: 21%; text-align: center; border: 1px solid #000; border-collapse: collapse;">
+                                 <thead>
+                                     <tr>
+                                         <th style="border: 1px solid #000; padding: 5px;">Received &amp; Paid</th>
+                                     </tr>
+                                </thead>
+                                 <tbody>
+                                     <tr>
+                                        <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
+                                             <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                             <div style="font-size: 12px;">Date .../.../...</div>
+                                         </td>
+                                     </tr>
+                                 </tbody>
+                             </table>
+                             <div style="clear: both;"></div>
+                         </div>
                     </div>
                 </t>
             </t>
