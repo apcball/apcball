@@ -222,21 +222,21 @@
 
                          <!-- Signatures -->
                          <div class="row mt-5" style="page-break-inside: avoid;">
-                            <div class="col-6">
-                                <div class="d-flex align-items-end">
+                            <div class="col-6 text-center">
+                                <div class="d-flex justify-content-center align-items-end">
                                      <span class="mr-2">Processed By</span>
                                      <div style="border-bottom: 1px solid black; width: 220px;"></div>
                                 </div>
-                                <div class="text-center mt-2" style="width: 300px;">
+                                <div class="mt-2">
                                     (Document Administrator)
                                 </div>
                             </div>
-                            <div class="col-6 text-right">
-                                <div class="d-flex align-items-end justify-content-end">
+                            <div class="col-6 text-center">
+                                <div class="d-flex justify-content-center align-items-end">
                                      <span class="mr-2">Approved By</span>
                                      <div style="border-bottom: 1px solid black; width: 220px;"></div>
                                 </div>
-                                <div class="text-center mt-2 float-right" style="width: 300px;">
+                                <div class="mt-2">
                                     (Managing Director)
                                 </div>
                             </div>
