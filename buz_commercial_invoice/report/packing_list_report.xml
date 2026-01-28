@@ -29,10 +29,10 @@
                     </style>
                     <div class="page">
                         <t t-set="line_list" t-value="o.order_line"/>
-                        <t t-set="groups_of_7" t-value="[line_list[i:i+7] for i in range(0, len(line_list), 7)]"/>
+                        <t t-set="groups_of_10" t-value="[line_list[i:i+10] for i in range(0, len(line_list), 10)]"/>
                         <t t-set="page_number" t-value="1"/>
-                        <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
-                        <t t-foreach="groups_of_7" t-as="group">
+                        <t t-set="total_pages" t-value="groups_of_10 and len(groups_of_10) or 0"/>
+                        <t t-foreach="groups_of_10" t-as="group">
                             <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
 <t t-if="page_number == 1">
                         <!-- Custom Header Area -->
@@ -161,7 +161,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <t t-set="current_line_number" t-value="((page_number - 1) * 7) + 1"/>
+                                <t t-set="current_line_number" t-value="((page_number - 1) * 10) + 1"/>
                                 <t t-foreach="group" t-as="line">
                                     <tr>
                                         <td class="text-center"><span t-esc="current_line_number"/></td>
@@ -211,39 +211,24 @@
                             <t t-set="page_number" t-value="page_number + 1"/>
                         </t>
 
-                        <!-- Amount in Words and Totals -->
+                        <!-- Amount in Words -->
                         <div class="row mt-4">
                             <div class="col-7">
                                 <div><strong>Said: </strong> <span t-field="o.amount_text"/></div>
                             </div>
-                            <div class="col-5">
-                                <table class="table table-sm table-borderless text-right">
-                                    <tr>
-                                        <td>Add Handing Free</td>
-                                        <td>0.00</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Add Freight Charge</td>
-                                        <td>0.00</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Add Insurance</td>
-                                        <td>0.00</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Less Free of charge for Promotion Set</td>
-                                        <td>0.00</td>
-                                    </tr>
-                                    <tr style="border-top: 1px solid black; border-bottom: 3px double black;">
-                                        <td><strong>Grand Total</strong></td>
-                                        <td><span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
-                                    </tr>
-                                </table>
+                        </div>
+                        <!-- Total -->
+                        <div class="row mt-2" style="margin-left: 20px;">
+                            <div class="col-7">
+                                <div><strong>Total Quantity :</strong> <span t-esc="sum(l.product_qty for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/><span> Carton</span></div>
+                                <div><strong>Total Net Weight (KG) :</strong> <span t-esc="sum(l.product_uom_qty * l.product_id.weight for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/><span> Kgs</span></div>
+                                <div><strong>Gross Weight (KG) :</strong> <span t-esc="sum(l.product_uom_qty * l.product_id.box_weight for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/><span> Kgs</span></div>
+
                             </div>
                         </div>
 
-                         <!-- Signatures -->
-                         <div class="row mt-5" style="page-break-inside: avoid;">
+                        <!-- Signatures -->
+                        <div class="row mt-5" style="page-break-inside: avoid;">
                             <div class="col-6 text-center">
                                 <div class="d-flex justify-content-center align-items-end">
                                      <span class="mr-2">Processed By</span>
