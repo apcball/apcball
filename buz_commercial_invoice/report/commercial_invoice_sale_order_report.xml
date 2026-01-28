@@ -28,6 +28,13 @@
                         }
                     </style>
                     <div class="page">
+                        <t t-set="line_list" t-value="o.order_line"/>
+                        <t t-set="groups_of_7" t-value="[line_list[i:i+7] for i in range(0, len(line_list), 7)]"/>
+                        <t t-set="page_number" t-value="1"/>
+                        <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
+                        <t t-foreach="groups_of_7" t-as="group">
+                            <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
+<t t-if="page_number == 1">
                         <!-- Custom Header Area -->
                         <div class="row mb-4">
                             <!-- Logo and Address -->
@@ -143,6 +150,22 @@
                             </div>
                         </div>
 
+                    </t>
+
+                    <t t-else="">
+
+                        <!-- Title for subsequent pages -->
+
+                        <div class="text-center mb-3">
+
+                            <h3 class="font-weight-bold">Commercial Invoice (Continued)</h3>
+
+                            <div class="mt-2"><span t-field="o.commercial_invoice_number"/></div>
+
+                        </div>
+
+                    </t>
+
                         <!-- Sale Order Lines -->
                         <table class="table table-bordered table-sm mt-3">
                             <thead>
@@ -156,41 +179,52 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr t-foreach="o.order_line" t-as="line">
-                                    <td class="text-center"><span t-esc="line_index + 1"/></td>
-                                    <td>
-                                        <span t-field="line.product_id.name_eng"/>
-                                    </td>
-                                    <td class="text-right">
-                                        <span t-field="line.name"/>
-                                    </td>
-                                    <td class="text-right">
-                                        <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
-                                    </td>
-                                    <td class="text-right">
-                                        <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                    </td>
-                                    <td class="text-right">
-                                        <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                    </td>
-                                </tr>
-                                <!-- Total Row -->
-                                <tr>
-                                    <td style="border: none;"></td>
-                                    <td style="border: none;"></td>
-                                    <td class="text-right" style="border: 1px solid #000;"><strong>Total :</strong></td>
-                                    <td class="text-right" style="border: 1px solid #000;">
-                                        <span t-esc="sum(l.product_qty for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/>
-                                    </td>
-                                    <td class="text-center" style="border: 1px solid #000;">
-                                        <span t-field="o.currency_id.name"/>
-                                    </td>
-                                    <td class="text-right" style="border: 1px solid #000;">
-                                        <span t-field="o.amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                    </td>
-                                </tr>
+                                <t t-set="current_line_number" t-value="((page_number - 1) * 7) + 1"/>
+                                <t t-foreach="group" t-as="line">
+                                    <tr>
+                                        <td class="text-center"><span t-esc="current_line_number"/></td>
+                                        <td>
+                                            <span t-field="line.product_id.name_eng"/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-field="line.name"/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                        <t t-set="current_line_number" t-value="current_line_number + 1"/>
+                                    </tr>
+                                </t>
                             </tbody>
+                            <t t-if="page_number == total_pages">
+                                <tbody>
+                                    <!-- Total Row -->
+                                    <tr>
+                                        <td style="border: none;"></td>
+                                        <td style="border: none;"></td>
+                                        <td class="text-right" style="border: 1px solid #000;"><strong>Total :</strong></td>
+                                        <td class="text-right" style="border: 1px solid #000;">
+                                            <span t-esc="sum(l.product_qty for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/>
+                                        </td>
+                                        <td class="text-center" style="border: 1px solid #000;">
+                                            <span t-field="o.currency_id.name"/>
+                                        </td>
+                                        <td class="text-right" style="border: 1px solid #000;">
+                                            <span t-field="o.amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </t>
                         </table>
+                            </div>
+                            <t t-set="page_number" t-value="page_number + 1"/>
+                        </t>
 
                         <!-- Amount in Words and Totals -->
                         <div class="row mt-4">
