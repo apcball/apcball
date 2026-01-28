@@ -1,18 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template id="report_commercial_invoice_sale_order_document">
+    <template id="report_commercial_invoice_sale_order_document_updated">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
                     <style>
+                        @font-face {
+                            font-family: 'Sarabun';
+                            src: url('/buz_commercial_invoice/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            font-weight: bold;
+                            font-style: normal;
+                        }
                         .page {
-                            font-family: Arial, sans-serif;
-                            font-size: 13px;
+                            font-family: 'Sarabun', Arial, sans-serif;
+                            font-size: 20px;
                             color: #000;
                         }
                         .table-sm th, .table-sm td {
                             padding: 4px;
                             vertical-align: top;
+                        }
+                        .table-bordered, .table-bordered th, .table-bordered td {
+                            border: 1px solid #000 !important;
                         }
                         strong {
                             color: #000;
@@ -56,7 +65,7 @@
                             <div class="col-6">
                                 <div class="row mb-1">
                                     <div class="col-3 text-right pr-2"><strong>Date :</strong></div>
-                                    <div class="col-9"><span t-field="o.date_order" t-options='{"format": "dd/MM/yyyy"}'/></div>
+                                    <div class="col-9"><strong><span t-field="o.date_order" t-options='{"format": "dd/MM/yyyy"}'/></strong></div>
                                 </div>
                                 <div class="row mb-2">
                                     <div class="col-3 text-right pr-2"><strong>Shipper</strong></div>
@@ -151,10 +160,7 @@
                                 <tr t-foreach="o.order_line" t-as="line">
                                     <td class="text-center"><span t-esc="line_index + 1"/></td>
                                     <td>
-                                        <span t-field="line.product_id.name"/>
-                                        <t t-if="line.name != line.product_id.name">
-                                            <br/><span t-field="line.name"/>
-                                        </t>
+                                        <span t-field="line.product_id.name_eng"/>
                                     </td>
                                     <td class="text-right">
                                         <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
@@ -169,14 +175,14 @@
                                 <!-- Total Row -->
                                 <tr>
                                     <td style="border: none;"></td>
-                                    <td class="text-right" style="border: 1px solid #dee2e6;"><strong>Total :</strong></td>
-                                    <td class="text-right" style="border: 1px solid #dee2e6;">
+                                    <td class="text-right" style="border: 1px solid #000;"><strong>Total :</strong></td>
+                                    <td class="text-right" style="border: 1px solid #000;">
                                         <span t-esc="sum(l.product_qty for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
-                                    <td class="text-center" style="border: 1px solid #dee2e6;">
+                                    <td class="text-center" style="border: 1px solid #000;">
                                         <span t-field="o.currency_id.name"/>
                                     </td>
-                                    <td class="text-right" style="border: 1px solid #dee2e6;">
+                                    <td class="text-right" style="border: 1px solid #000;">
                                         <span t-field="o.amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                     </td>
                                 </tr>

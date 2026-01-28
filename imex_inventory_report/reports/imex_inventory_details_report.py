@@ -26,6 +26,31 @@ class ImexInventoryDetailsReport(models.Model):
     product_out = fields.Float(readonly=True)
     picking_id = fields.Many2one(comodel_name="stock.picking", readonly=True)
 
+    def init(self):
+        tools.drop_view_if_exists(self.env.cr, self._table)
+        self.env.cr.execute("""CREATE or REPLACE VIEW %s as (
+            SELECT 
+                0 as id,
+                cast(null as timestamp) as date,
+                0 as product_id,
+                0.0 as product_qty,
+                0 as product_uom,
+                0 as product_category,
+                0.0 as unit_cost,
+                cast(null as varchar) as reference,
+                0 as partner_id,
+                cast(null as varchar) as origin,
+                0 as location_id,
+                0 as location_dest_id,
+                0.0 as initial,
+                0.0 as initial_amount,
+                0.0 as product_in,
+                0.0 as product_out,
+                0 as picking_id
+            FROM product_product
+            LIMIT 0
+        )""" % self._table)
+
     @api.depends('reference','picking_id.origin')
     def _compute_display_name(self):
         for rec in self:

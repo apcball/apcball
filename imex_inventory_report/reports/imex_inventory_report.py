@@ -22,6 +22,27 @@ class ImexInventoryReport(models.Model):
     balance = fields.Float(readonly=True)
     amount = fields.Float(readonly=True)
 
+    def init(self):
+        tools.drop_view_if_exists(self.env.cr, self._table)
+        self.env.cr.execute("""CREATE or REPLACE VIEW %s as (
+            SELECT 
+                0 as id,
+                0 as product_id,
+                0 as product_uom,
+                0 as product_category,
+                0 as location,
+                0.0 as initial,
+                0.0 as initial_amount,
+                0.0 as product_in,
+                0.0 as product_in_amount,
+                0.0 as product_out,
+                0.0 as product_out_amount,
+                0.0 as balance,
+                0.0 as amount
+            FROM product_product
+            LIMIT 0
+        )""" % self._table)
+
     # TODO: need a field to help these cases more clearly
     # case 1: location set
     #       => count internal transfer and group by location
