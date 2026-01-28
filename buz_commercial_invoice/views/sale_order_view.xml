@@ -13,6 +13,8 @@
                         <group name="commercial_invoice_main">
                             <field name="commercial_invoice_enabled"/>
                             <field name="commercial_invoice_number" readonly="1"/>
+                            <field name="packing_list_enabled"/>
+                            <field name="packing_list_number" readonly="1"/>
                         </group>
                         <group name="commercial_invoice_details">
                             <field name="incoterms_id"/>
@@ -33,6 +35,11 @@
                                 string="Print Commercial Invoice" 
                                 class="btn-primary"
                                 invisible="not commercial_invoice_enabled"/>
+                        <button name="action_print_packing_list" 
+                                type="object" 
+                                string="Print Packing List" 
+                                class="btn-primary"
+                                invisible="not packing_list_enabled"/>
                     </group>
                 </page>
             </xpath>
@@ -47,6 +54,7 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='name']" position="after">
                 <field name="commercial_invoice_number"/>
+                <field name="packing_list_number"/>
             </xpath>
         </field>
     </record>

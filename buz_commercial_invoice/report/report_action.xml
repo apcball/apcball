@@ -12,16 +12,16 @@
         <field name="binding_type">report</field>
         <field name="paperformat_id" ref="paperformat_commercial_invoice"/>
     </record>
-
-    <!-- Report Action for Account Move Commercial Invoice (Legacy) -->
-    <record id="action_report_commercial_invoice_account_move" model="ir.actions.report">
-        <field name="name">Commercial Invoice (Invoice)</field>
-        <field name="model">account.move</field>
+    
+    <!-- Report Action for Sale Order Packing List -->
+    <record id="action_report_packing_list" model="ir.actions.report">
+        <field name="name">Packing List</field>
+        <field name="model">sale.order</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">buz_commercial_invoice.report_commercial_invoice_document</field>
-        <field name="report_file">buz_commercial_invoice.report_commercial_invoice_document</field>
-        <field name="print_report_name">'Commercial Invoice - %s' % object.commercial_invoice_number</field>
-        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="report_name">buz_commercial_invoice.packing_list_report_document</field>
+        <field name="report_file">buz_commercial_invoice.packing_list_report_document</field>
+        <field name="print_report_name">'Packing List - %s' % object.packing_list_number</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
         <field name="binding_type">report</field>
         <field name="paperformat_id" ref="paperformat_commercial_invoice"/>
     </record>

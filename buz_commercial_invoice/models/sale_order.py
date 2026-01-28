@@ -20,6 +20,20 @@ class SaleOrder(models.Model):
         tracking=True,
     )
 
+    packing_list_enabled = fields.Boolean(
+        string='Generate Packing List',
+        default=False,
+        tracking=True,
+        help='Check this to generate a Packing List number for this Sales Order'
+    )
+    
+    packing_list_number = fields.Char(
+        string='Packing List No.',
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+
     incoterms_id = fields.Many2one(
         'account.incoterms',
         string='Incoterms',
@@ -60,21 +74,29 @@ class SaleOrder(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Override create method to generate CIV number when enabled."""
+        """Override create method to generate CIV and PL numbers when enabled."""
         for vals in vals_list:
             if vals.get('commercial_invoice_enabled') and not vals.get('commercial_invoice_number'):
                 vals['commercial_invoice_number'] = self._get_commercial_invoice_number()
+            if vals.get('packing_list_enabled') and not vals.get('packing_list_number'):
+                vals['packing_list_number'] = self._get_packing_list_number()
         return super().create(vals_list)
 
     def _get_commercial_invoice_number(self):
         """Get next commercial invoice number from sequence."""
         return self.env['ir.sequence'].next_by_code('commercial.invoice.sequence')
 
+    def _get_packing_list_number(self):
+        """Get next packing list number from sequence."""
+        return self.env['ir.sequence'].next_by_code('packing.list.sequence')
+
     def write(self, vals):
-        """Override write method to generate CIV number when checkbox is enabled."""
+        """Override write method to generate CIV and PL numbers when checkboxes are enabled."""
         for record in self:
             if 'commercial_invoice_enabled' in vals and vals['commercial_invoice_enabled'] and not record.commercial_invoice_number:
                 vals['commercial_invoice_number'] = self._get_commercial_invoice_number()
+            if 'packing_list_enabled' in vals and vals['packing_list_enabled'] and not record.packing_list_number:
+                vals['packing_list_number'] = self._get_packing_list_number()
         return super().write(vals)
 
     def action_print_commercial_invoice(self):
@@ -85,3 +107,12 @@ class SaleOrder(models.Model):
         if not self.commercial_invoice_number:
             raise UserError(_("Commercial Invoice number was not generated. Please enable the Commercial Invoice checkbox."))
         return self.env.ref('buz_commercial_invoice.action_report_commercial_invoice').report_action(self)
+
+    def action_print_packing_list(self):
+        """Action to print packing list from sale order."""
+        self.ensure_one()
+        if not self.packing_list_enabled:
+            raise UserError(_("Packing List is not enabled for this sales order."))
+        if not self.packing_list_number:
+            raise UserError(_("Packing List number was not generated. Please enable the Packing List checkbox."))
+        return self.env.ref('buz_commercial_invoice.action_report_packing_list').report_action(self)

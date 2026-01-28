@@ -8,5 +8,12 @@
             <field name="padding">6</field>
             <field name="company_id" eval="False"/>
         </record>
+        <record id="sequence_packing_list" model="ir.sequence">
+            <field name="name">Packing List Sequence</field>
+            <field name="code">packing.list.sequence</field>
+            <field name="prefix">PL-</field>
+            <field name="padding">6</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>
