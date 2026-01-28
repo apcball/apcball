@@ -23,15 +23,21 @@
                         .table-bordered, .table-bordered th, .table-bordered td {
                             border: 1px solid #000 !important;
                         }
+                        .text-wrap {
+                            word-wrap: break-word;
+                            word-break: break-word;
+                            overflow-wrap: break-word;
+                            max-width: 150px;
+                        }
                         strong {
                             color: #000;
                         }
                     </style>
                     <div class="page">
                         <t t-set="line_list" t-value="o.order_line"/>
-                        <t t-set="groups_of_7" t-value="[line_list[i:i+7] for i in range(0, len(line_list), 7)]"/>
+                        <t t-set="groups_of_7" t-value="[line_list[i:i+10] for i in range(0, len(line_list), 10)]"/>
                         <t t-set="page_number" t-value="1"/>
-                        <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
+                        <t t-set="total_pages" t-value="groups_of_10 and len(groups_of_10) or 0"/>
                         <t t-foreach="groups_of_7" t-as="group">
                             <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
 <t t-if="page_number == 1">
@@ -179,14 +185,14 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <t t-set="current_line_number" t-value="((page_number - 1) * 7) + 1"/>
+                                <t t-set="current_line_number" t-value="((page_number - 1) * 10) + 1"/>
                                 <t t-foreach="group" t-as="line">
                                     <tr>
                                         <td class="text-center"><span t-esc="current_line_number"/></td>
                                         <td>
                                             <span t-field="line.product_id.name_eng"/>
                                         </td>
-                                        <td class="text-right">
+                                        <td class="text-wrap">
                                             <span t-field="line.name"/>
                                         </td>
                                         <td class="text-right">
