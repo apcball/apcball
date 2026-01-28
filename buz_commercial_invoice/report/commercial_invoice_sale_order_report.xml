@@ -13,7 +13,7 @@
                         }
                         .page {
                             font-family: 'Sarabun', Arial, sans-serif;
-                            font-size: 20px;
+                            font-size: 18px;
                             color: #000;
                         }
                         .table-sm th, .table-sm td {
@@ -118,8 +118,6 @@
                                     <div class="col-8">Kasikorn Bank (KBANK=กสิกรไทย) MOGEN CO.,LTD. KASITHBK Road Economic 1 Samut Sakhon. Current account 464-1-00774-4</div>
                                 </div>
                                 <br/>
-                                <br/>
-                                <br/>
                                 <div class="row mb-1">
                                     <div class="col-4 text-right pr-2"><strong>Ship To :</strong></div>
                                     <div class="col-8">
@@ -150,10 +148,11 @@
                             <thead>
                                 <tr>
                                     <th class="text-center" style="width: 5%">Item No.</th>
-                                    <th style="width: 45%">Description</th>
-                                    <th class="text-right" style="width: 15%">Quantity</th>
-                                    <th class="text-right" style="width: 15%">Unit Price</th>
-                                    <th class="text-right" style="width: 20%">Amount</th>
+                                    <th class="text-center" style="width: 30%">Description</th>
+                                    <th class="text-center" style="width: 15%">HSCODE</th>
+                                    <th class="text-center" style="width: 15%">Quantity</th>
+                                    <th class="text-center" style="width: 15%">Unit Price</th>
+                                    <th class="text-center" style="width: 20%">Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -161,6 +160,9 @@
                                     <td class="text-center"><span t-esc="line_index + 1"/></td>
                                     <td>
                                         <span t-field="line.product_id.name_eng"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-field="line.name"/>
                                     </td>
                                     <td class="text-right">
                                         <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
@@ -174,6 +176,7 @@
                                 </tr>
                                 <!-- Total Row -->
                                 <tr>
+                                    <td style="border: none;"></td>
                                     <td style="border: none;"></td>
                                     <td class="text-right" style="border: 1px solid #000;"><strong>Total :</strong></td>
                                     <td class="text-right" style="border: 1px solid #000;">
