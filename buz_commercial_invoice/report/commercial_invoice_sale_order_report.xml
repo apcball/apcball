@@ -192,7 +192,7 @@
                                         <td>
                                             <span t-field="line.product_id.name_eng"/>
                                         </td>
-                                        <td class="text-wrap">
+                                        <td class="text-wrap text-center">
                                             <span t-field="line.name"/>
                                         </td>
                                         <td class="text-right">
