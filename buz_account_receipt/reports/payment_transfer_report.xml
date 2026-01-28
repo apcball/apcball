@@ -165,30 +165,24 @@
                         <tbody>
                             <t t-set="total_dr" t-value="0"/>
                             <t t-set="total_cr" t-value="0"/>
-                            <!-- Sorting moves by credit then debit to roughly match Dr first in listing if wanted, though usually we list by logic -->
-                            <tr t-foreach="o.move_id.line_ids.sorted(key=lambda l: (l.credit, l.debit))" t-as="line">
+
+                            <t t-set="transfer_acc_id" t-value="o.company_id.transfer_account_id.id if 'transfer_account_id' in o.company_id else False"/>
+                            
+                            <!-- Combine Current Move and Paired Move (for Internal Transfers) -->
+                            <t t-set="all_moves" t-value="o.move_id"/>
+                            <t t-if="'paired_internal_transfer_payment_id' in o._fields and o.paired_internal_transfer_payment_id">
+                                <t t-set="all_moves" t-value="all_moves | o.paired_internal_transfer_payment_id.move_id"/>
+                            </t>
+
+                            <t t-set="bank_lines"
+                               t-value="all_moves.line_ids.filtered(lambda l: l.account_id.account_type in ['asset_cash', 'asset_current', 'liability_credit_card', 'liability_current'] and l.account_id.id != transfer_acc_id)"/>
+
+                            <tr t-foreach="bank_lines" t-as="line">
                                 <td>
-                                    <t t-if="line.credit &gt; 0">
-                                        <span t-esc="source_journal and source_journal.default_account_id and source_journal.default_account_id.code or line.account_id.code"/>
-                                    </t>
-                                    <t t-elif="line.debit &gt; 0">
-                                        <span t-esc="dest_journal and dest_journal.default_account_id and dest_journal.default_account_id.code or line.account_id.code"/>
-                                    </t>
-                                    <t t-else="">
-                                         <span t-field="line.account_id.code"/>
-                                    </t>
+                                    <span t-esc="line.account_id.code"/>
                                 </td>
                                 <td>
-                                    <!-- Account Name: Journal Name based on side -->
-                                    <t t-if="line.credit &gt; 0">
-                                        <span t-esc="source_journal and source_journal.name or line.account_id.name"/>
-                                    </t>
-                                    <t t-elif="line.debit &gt; 0">
-                                        <span t-esc="dest_journal and dest_journal.name or line.account_id.name"/>
-                                    </t>
-                                    <t t-else="">
-                                        <span t-field="line.account_id.name"/>
-                                    </t>
+                                    <span t-esc="line.name"/>
                                 </td>
                                 <td><span t-field="o.name"/></td>
                                 <td><span t-field="line.date"/></td>
