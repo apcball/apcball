@@ -57,6 +57,7 @@
         "reports/receipt_voucher_template.xml",
         "reports/payment_voucher_report.xml",
         "reports/payment_voucher_template.xml",
+        "reports/payment_transfer_report.xml",
         "views/account_move_views.xml",
         "views/account_receipt_views.xml",
         "views/account_receipt_config_views.xml",
