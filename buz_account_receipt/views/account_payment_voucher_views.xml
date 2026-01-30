@@ -143,7 +143,7 @@
                                             <field name="wht_amount" readonly="1" force_save="1" sum="Total WHT"/>
                                             <field name="amount_to_pay_net" readonly="1" force_save="1" sum="Total Net"/>
                                             <field name="payment_state"/>
-                                            <button name="action_register_payment_line" type="object" string="Register Payment" icon="fa-credit-card"/>
+                                            <button name="action_register_payment_line" type="object" string="Register Payment" icon="fa-credit-card" invisible="1"/>
                                         </tree>
                                     </field>
                         </page>

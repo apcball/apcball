@@ -89,7 +89,7 @@
                                     <field name="partner_id" readonly="1"/>
                                     <field name="amount_to_receive"/>
                                     <field name="payment_state"/>
-                                    <button name="action_register_payment_line" type="object" string="Register Payment" icon="fa-credit-card"/>
+                                    <button name="action_register_payment_line" type="object" string="Register Payment" icon="fa-credit-card" invisible="1"/>
                                 </tree>
                             </field>
                         </page>
