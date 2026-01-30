@@ -71,7 +71,7 @@
                     <!-- Header -->
                     <div class="row mb-4">
                         <div class="col-4">
-                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="max-height: 80px; max-width: 100%;" alt="Logo"/>
+                            <img src="/buz_account_receipt/static/img/LOGO MOGEN.png" style="max-height: 80px; max-width: 80%;" alt="Logo"/>
                         </div>
                         <div class="col-4 text-center">
                             <h4 style="margin-bottom: 0;"><strong>ใบโอนเงินระหว่างธนาคาร</strong></h4>
@@ -217,6 +217,8 @@
                     <div class="row mt-4" style="border: 1px solid black; margin-left: 0; margin-right: 0;">
                         <div class="col-2 p-2" style="border-right: 1px solid black; height: 120px; position: relative;">
                             <span>Prepare By:</span>
+                            <br/>
+                            <span t-field="o.create_uid.name"/>
                             <div style="position: absolute; bottom: 5px; left: 5px; width: 90%;">
                                 <div style="border-bottom: 1px dotted black; margin-bottom: 5px;"></div>
                                 <span>Date <span style="margin-left: 5px;">...../...../.....</span></span>
