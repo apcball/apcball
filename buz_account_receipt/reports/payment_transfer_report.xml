@@ -18,12 +18,12 @@
 
         <record id="action_report_payment_transfer" model="ir.actions.report">
             <field name="name">Payment Transfer</field>
-            <field name="model">account.payment</field>
+            <field name="model">account.bank.transfer</field>
             <field name="report_type">qweb-pdf</field>
             <field name="report_name">buz_account_receipt.report_payment_transfer</field>
             <field name="report_file">buz_account_receipt.report_payment_transfer</field>
             <field name="print_report_name">'Payment Transfer - %s' % (object.name)</field>
-            <field name="binding_model_id" ref="account.model_account_payment"/>
+            <field name="binding_model_id" ref="model_account_bank_transfer"/>
             <field name="binding_type">report</field>
             <field name="paperformat_id" ref="paperformat_payment_transfer"/>
         </record>
@@ -163,42 +163,46 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <t t-set="total_dr" t-value="0"/>
-                            <t t-set="total_cr" t-value="0"/>
-
-                            <t t-set="transfer_acc_id" t-value="o.company_id.transfer_account_id.id if 'transfer_account_id' in o.company_id else False"/>
-                            
-                            <!-- Combine Current Move and Paired Move (for Internal Transfers) -->
-                            <t t-set="all_moves" t-value="o.move_id"/>
-                            <t t-if="'paired_internal_transfer_payment_id' in o._fields and o.paired_internal_transfer_payment_id">
-                                <t t-set="all_moves" t-value="all_moves | o.paired_internal_transfer_payment_id.move_id"/>
-                            </t>
-
-                            <t t-set="bank_lines"
-                               t-value="all_moves.line_ids.filtered(lambda l: l.account_id.account_type in ['asset_cash', 'asset_current', 'liability_credit_card', 'liability_current'] and l.account_id.id != transfer_acc_id)"/>
-
-                            <tr t-foreach="bank_lines" t-as="line">
+                            <!-- Simulated Source Account Line (Credit) -->
+                            <tr>
                                 <td>
-                                    <span t-esc="line.account_id.code"/>
+                                    <span t-field="o.journal_id.default_account_id.code"/>
                                 </td>
                                 <td>
-                                    <span t-esc="line.name"/>
+                                    <span t-field="o.journal_id.default_account_id.name"/>
                                 </td>
                                 <td><span t-field="o.name"/></td>
-                                <td><span t-field="line.date"/></td>
+                                <td><span t-field="o.date"/></td>
                                 <td class="text-end">
-                                    <span t-esc="line.debit" t-options="{'widget': 'float', 'precision': 2}"/>
-                                    <t t-set="total_dr" t-value="total_dr + line.debit"/>
+                                    <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
                                 </td>
                                 <td class="text-end">
-                                    <span t-esc="line.credit" t-options="{'widget': 'float', 'precision': 2}"/>
-                                    <t t-set="total_cr" t-value="total_cr + line.credit"/>
+                                    <span t-field="o.amount" t-options="{'widget': 'float', 'precision': 2}"/>
                                 </td>
                             </tr>
+                            
+                            <!-- Simulated Destination Account Line (Debit) -->
+                            <tr>
+                                <td>
+                                    <span t-field="o.destination_journal_id.default_account_id.code"/>
+                                </td>
+                                <td>
+                                    <span t-field="o.destination_journal_id.default_account_id.name"/>
+                                </td>
+                                <td><span t-field="o.name"/></td>
+                                <td><span t-field="o.date"/></td>
+                                <td class="text-end">
+                                    <span t-field="o.amount" t-options="{'widget': 'float', 'precision': 2}"/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
+                                </td>
+                            </tr>
+
                             <tr>
                                 <td colspan="4" class="text-end"><strong>Total</strong></td>
-                                <td class="text-end"><strong><span t-esc="total_dr" t-options="{'widget': 'float', 'precision': 2}"/></strong></td>
-                                <td class="text-end"><strong><span t-esc="total_cr" t-options="{'widget': 'float', 'precision': 2}"/></strong></td>
+                                <td class="text-end"><strong><span t-field="o.amount" t-options="{'widget': 'float', 'precision': 2}"/></strong></td>
+                                <td class="text-end"><strong><span t-field="o.amount" t-options="{'widget': 'float', 'precision': 2}"/></strong></td>
                             </tr>
                         </tbody>
                     </table>
@@ -277,7 +281,7 @@
         <template id="report_payment_transfer">
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="o">
-                    <t t-call="buz_account_receipt.report_payment_transfer_document" t-lang="o.partner_id.lang"/>
+                    <t t-call="buz_account_receipt.report_payment_transfer_document" t-lang="o.company_id.partner_id.lang"/>
                 </t>
             </t>
         </template>

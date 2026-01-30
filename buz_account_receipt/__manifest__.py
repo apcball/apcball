@@ -63,6 +63,7 @@
         "views/account_receipt_config_views.xml",
         "views/account_receipt_voucher_views.xml",
         "views/account_payment_voucher_views.xml",
+        "views/account_bank_transfer_views.xml",
         "views/account_payment_register_wizard_views.xml",
         "views/bill_display_wizard_views.xml",
         "views/bill_register_payment_wizard_views.xml",

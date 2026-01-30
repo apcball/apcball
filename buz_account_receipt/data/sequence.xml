@@ -21,5 +21,12 @@
       <field name="prefix">PV/%(year)s/</field>
       <field name="padding">4</field>
     </record>
+
+    <record id="seq_account_bank_transfer" model="ir.sequence">
+      <field name="name">Bank Transfer</field>
+      <field name="code">account.bank.transfer</field>
+      <field name="prefix">TR%(y)s</field>
+      <field name="padding">4</field>
+    </record>
   </data>
 </odoo>
