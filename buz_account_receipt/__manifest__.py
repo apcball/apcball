@@ -69,7 +69,7 @@
         "views/account_invoice_receipt_action.xml",
         "views/res_partner_receipt_action.xml",
         "views/res_config_settings_views.xml",
-        "views/account_wht_type_views.xml",
+
         "views/account_payment_views.xml"
     ],
     "installable": True,

@@ -507,41 +507,144 @@ class AccountPaymentVoucher(models.Model):
 
 
     def _create_wht_certificates(self, wht_lines, payment, partner):
-        """Create WHT certificates if the required module is installed"""
-        # Check if the l10n_th_account_wht_cert_form module is installed
-        module_installed = self.env['ir.module.module'].search([
-            ('name', '=', 'l10n_th_account_wht_cert_form'),
-            ('state', '=', 'installed')
+        """
+        Create WHT certificates for payment with withholding tax.
+        
+        This method bridges Payment Voucher with l10n_th_account_tax module's
+        certificate creation mechanism.
+        
+        Args:
+            wht_lines: Payment voucher lines with WHT
+            payment: The account.payment record
+            partner: The vendor partner
+        """
+        if not payment or not wht_lines:
+            return self.env['withholding.tax.cert'].browse()
+        
+        # Ensure payment is posted
+        if payment.state != 'posted':
+            _logger.warning(f"Payment {payment.name} is not posted yet, cannot create WHT certificates")
+            return self.env['withholding.tax.cert'].browse()
+        
+        # Check if WHT certificate already exists for this payment
+        existing_certs = self.env['withholding.tax.cert'].search([
+            ('payment_id', '=', payment.id)
         ])
         
-        if not module_installed:
-            _logger.info("l10n_th_account_wht_cert_form module not installed, skipping WHT certificate creation")
-            return
+        if existing_certs:
+            _logger.info(f"WHT certificates already exist for payment {payment.name}: {existing_certs.mapped('name')}")
+            self.message_post(
+                body=_("WHT Certificate(s) already exist: %s") % ', '.join(existing_certs.mapped('name'))
+            )
+            return existing_certs
         
-        # Create WHT certificates (Thailand-specific implementation)
+        # Check if withholding.tax.cert model is available
         try:
-            for line in wht_lines:
-                if line.wht_amount > 0:
-                    # Create WHT certificate
-                    wht_cert = self.env['withholding.tax.cert'].create({
-                        'payment_id': payment.id,
-                        'partner_id': partner.id,
-                        'date': self.date,
-                        'income_type': '4',  # Example: 4 for services, would depend on actual tax type
-                        'base': line.wht_base_amount,
-                        'rate': line.wht_rate * 100,  # Convert decimal to percentage
-                        'amount': line.wht_amount,
-                        'ref_wht_cert_id': line.move_id.id,
-                        'company_id': self.company_id.id,
-                    })
+            cert_model = self.env['withholding.tax.cert']
+            wht_move_model = self.env['account.withholding.move']
+        except KeyError:
+            _logger.error("Withholding tax models not available - l10n_th_account_tax module may not be installed")
+            raise UserError(_("Withholding Tax Certificate feature is not available. Please install l10n_th_account_tax module."))
+        
+        # Get journal entry
+        move = payment.move_id
+        if not move:
+            raise UserError(_("Payment %s has no journal entry.") % payment.name)
+        
+        # Check WHT move lines
+        wht_move_lines = move.line_ids.filtered('wht_tax_id')
+        _logger.info(f"Payment {payment.name} - Total move lines: {len(move.line_ids)}, WHT lines: {len(wht_move_lines)}")
+        
+        if not wht_move_lines:
+            raise UserError(_(
+                "Cannot create WHT certificate for payment %s\n\n"
+                "No withholding tax lines found in journal entry.\n\n"
+                "This payment was not created with WHT configuration.\n"
+                "Please re-register the payment through Payment Voucher with WHT Tax properly configured."
+            ) % payment.name)
+        
+        # Check or create WHT move records
+        wht_moves = move.wht_move_ids if hasattr(move, 'wht_move_ids') else self.env['account.withholding.move'].browse()
+        _logger.info(f"Payment {payment.name} - Existing WHT move records: {len(wht_moves)}")
+        
+        if not wht_moves:
+            _logger.info(f"Creating WHT move records for payment {payment.name}")
+            # Create WHT moves from WHT move lines
+            try:
+                for wht_ml in wht_move_lines:
+                    if not wht_ml.wht_tax_id:
+                        continue
                     
-                    # Add to chatter
-                    self.message_post(body=_("WHT Certificate %s created for partner %s") % (wht_cert.name, partner.name))
-        except Exception as e:
-            _logger.error(f"Error creating WHT certificates: {str(e)}")
-            # Don't block the payment process, just log the error
-
-            # Don't block the payment process, just log the error
+                    # Prepare WHT move values
+                    wht_vals = move._prepare_wht_move_vals(wht_ml) if hasattr(move, '_prepare_wht_move_vals') else {
+                        'move_id': move.id,
+                        'partner_id': wht_ml.partner_id.id,
+                        'amount_income': abs(wht_ml.tax_base_amount) if wht_ml.tax_base_amount else abs(wht_ml.balance),
+                        'amount_wht': abs(wht_ml.balance),
+                        'wht_tax_id': wht_ml.wht_tax_id.id,
+                        'wht_cert_income_type': wht_ml.wht_tax_id.wht_cert_income_type or '5',
+                        'company_id': wht_ml.company_id.id,
+                    }
+                    
+                    wht_move = wht_move_model.create(wht_vals)
+                    _logger.info(f"Created WHT move record {wht_move.id} for move line {wht_ml.id}")
+                    wht_moves |= wht_move
+                    
+            except Exception as e:
+                _logger.error(f"Error creating WHT move records: {str(e)}", exc_info=True)
+                raise UserError(_(
+                    "Failed to create WHT move records for payment %s:\n%s\n\n"
+                    "Please contact administrator."
+                ) % (payment.name, str(e)))
+        
+        # Ensure all WHT moves have income type
+        for wht_move in wht_moves:
+            if not wht_move.wht_cert_income_type:
+                income_type = '5'  # Default: ค่าจ้างทำของ ค่าบริการ ค่าเช่า ค่าขนส่ง ฯลฯ 3 เตรส
+                if wht_move.wht_tax_id and wht_move.wht_tax_id.wht_cert_income_type:
+                    income_type = wht_move.wht_tax_id.wht_cert_income_type
+                
+                wht_move.write({'wht_cert_income_type': income_type})
+                _logger.info(f"Set income type {income_type} for WHT move {wht_move.id}")
+        
+        # Now create certificates using standard method
+        if hasattr(payment, 'create_wht_cert'):
+            try:
+                _logger.info(f"Calling create_wht_cert() for payment {payment.name}")
+                payment.create_wht_cert()
+                
+                # Refresh to get newly created certificates
+                created_certs = self.env['withholding.tax.cert'].search([
+                    ('payment_id', '=', payment.id)
+                ])
+                
+                if created_certs:
+                    _logger.info(f"Successfully created {len(created_certs)} WHT certificate(s) for payment {payment.name}")
+                    self.message_post(
+                        body=_("WHT Certificate(s) created: %s") % ', '.join(created_certs.mapped('name'))
+                    )
+                else:
+                    _logger.error(f"create_wht_cert() completed but no certificates were found")
+                    raise UserError(_(
+                        "WHT certificate creation completed but no certificates were found.\n"
+                        "Please check payment %s manually."
+                    ) % payment.name)
+                    
+                return created_certs
+                
+            except UserError as e:
+                raise
+            except Exception as e:
+                _logger.error(f"Error calling create_wht_cert(): {str(e)}", exc_info=True)
+                raise UserError(_(
+                    "Failed to create WHT certificate for payment %s:\n%s\n\n"
+                    "Please check the system log for details."
+                ) % (payment.name, str(e)))
+        else:
+            raise UserError(_(
+                "WHT Certificate creation method not found.\n"
+                "Please ensure l10n_th_account_tax module is properly installed."
+            ))
 
 
     

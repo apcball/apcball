@@ -1,25 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_account_payment_form_wht" model="ir.ui.view">
-        <field name="name">account.payment.form.wht</field>
-        <field name="model">account.payment</field>
-        <field name="inherit_id" ref="account.view_account_payment_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//group[@name='group2']" position="after">
-                <!-- Apply WHT Checkbox -->
-                <group name="wht_group" invisible="partner_type != 'supplier' or payment_type != 'outbound'">
-                    <field name="apply_wht" widget="boolean_toggle"/>
-                </group>
-
-                <!-- WHT Details -->
-                <group name="wht_details" invisible="not apply_wht">
-                    <group>
-                        <field name="wht_type_id" required="apply_wht" options="{'no_create': True}"/>
-                        <field name="wht_base_amount" required="apply_wht"/>
-                        <field name="wht_amount" required="apply_wht" force_save="1"/>
-                    </group>
-                </group>
-            </xpath>
-        </field>
-    </record>
+    <!-- WHT functionality has been removed from this module -->
+    <!-- Use l10n_th_account_tax module for withholding tax features -->
 </odoo>

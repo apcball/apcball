@@ -5,6 +5,5 @@ from . import account_payment_voucher
 from . import account_payment_register  # Inherit payment register wizard
 from . import account_move  # Custom payment_state computation
 from . import res_config_settings  # Configuration settings
-from . import account_wht_type
 from . import account_payment
 from . import res_company

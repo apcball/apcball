@@ -96,11 +96,12 @@ class BillRegisterPaymentWizard(models.TransientModel):
         self.voucher_line_id.voucher_id._reconcile_payment_with_bills(payment, self.move_id)
         
         # Process WHT if applicable
+        # Note: WHT entries are automatically created by l10n_th_account_tax module
+        # when using account.payment.register with wht_tax_id context
+        # We only need to create WHT certificates here if needed
         if self.wht_amount > 0:
-            # Create WHT entries
-            self.voucher_line_id.voucher_id._create_wht_entries(self.voucher_line_id, payment, self.partner_id)
             # Create WHT certificates if module is installed
-            self.voucher_line_id.voucher_id._create_wht_certificates(self.voucher_line_id, payment, self.partner_id)
+            self.voucher_line_id.voucher_id._create_wht_certificates([self.voucher_line_id], payment, self.partner_id)
         
         # Success message
         message = _("Payment registered successfully!\nPayment: %s\nAmount: %.2f") % (payment.name, payment.amount)
