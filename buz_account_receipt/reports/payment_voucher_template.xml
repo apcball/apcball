@@ -136,7 +136,7 @@
                                     <th style="width: 25%;">ชื่อ</th>
                                     <th style="width: 15%;">เลขที่เช็ค</th>
                                     <th style="width: 15%;">วันที่</th>
-                                    <th style="width: 20%;">สั่งจ่ายเช็คใน</th>
+                                    <th style="width: 20%;">สั่งจ่ายเช็คในนาม</th>
                                     <th style="width: 15%;">จำนวนเงิน</th>
                                 </tr>
                             </thead>
