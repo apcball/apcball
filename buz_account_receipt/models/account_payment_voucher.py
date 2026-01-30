@@ -18,30 +18,9 @@ class AccountPaymentVoucher(models.Model):
     note = fields.Text(string="Note")
     state = fields.Selection([
         ("draft", "Draft"),
-        ("prepared", "Prepared"),
-        ("checked1", "Checked (1)"),
-        ("checked2", "Checked (2)"),
-        ("approved", "Approved (1)"),
-        ("approved2", "Approved (2)"),
         ("posted", "Posted"),
         ("cancel", "Cancelled"),
     ], default="draft", tracking=True)
-
-    # Tracking Fields
-    prepared_by = fields.Many2one('res.users', string="Prepared By", tracking=True, copy=False)
-    prepared_date = fields.Date(string="Prepared Date", tracking=True, copy=False)
-    
-    checked1_by = fields.Many2one('res.users', string="Checked (1) By", tracking=True, copy=False)
-    checked1_date = fields.Date(string="Checked (1) Date", tracking=True, copy=False)
-    
-    checked2_by = fields.Many2one('res.users', string="Checked (2) By", tracking=True, copy=False)
-    checked2_date = fields.Date(string="Checked (2) Date", tracking=True, copy=False)
-    
-    approved_by = fields.Many2one('res.users', string="Approved (1) By", tracking=True, copy=False)
-    approved_date = fields.Date(string="Approved (1) Date", tracking=True, copy=False)
-    
-    approved2_by = fields.Many2one('res.users', string="Approved (2) By", tracking=True, copy=False)
-    approved2_date = fields.Date(string="Approved (2) Date", tracking=True, copy=False)
 
     billing_note = fields.Char(string="Billing Note", tracking=True)
 
@@ -69,12 +48,6 @@ class AccountPaymentVoucher(models.Model):
     check_number = fields.Char(string="Check Number", tracking=True)
     check_date = fields.Date(string="Check Date", tracking=True)
     check_pay_to = fields.Char(string="Pay to in name of", tracking=True)
-
-    # Computed fields for user visibility (not stored, just for UI)
-    is_current_user_checker1 = fields.Boolean(compute='_compute_user_visibility')
-    is_current_user_checker2 = fields.Boolean(compute='_compute_user_visibility')
-    is_current_user_approver = fields.Boolean(compute='_compute_user_visibility')
-    is_current_user_approver2 = fields.Boolean(compute='_compute_user_visibility')
 
     # Computed fields for totals
     amount_total_gross = fields.Monetary(string="Total Gross", currency_field="currency_id", compute="_compute_amount_totals", store=True)
@@ -128,62 +101,25 @@ class AccountPaymentVoucher(models.Model):
     @api.depends('amount_total_net', 'line_ids.payment_state')
     def _compute_payment_state(self):
         for voucher in self:
-            if voucher.state == 'draft':
-                voucher.payment_state = 'not_paid'
-            else:
-                # Get the payment states of all lines in the voucher
-                line_payment_states = voucher.line_ids.mapped('payment_state')
-                
-                # If all lines are 'paid', set the voucher as 'paid'
-                if all(state == 'paid' for state in line_payment_states if state):
-                    voucher.payment_state = 'paid'
-                # If all lines are 'not_paid', set the voucher as 'not_paid'  
-                elif all(state == 'not_paid' for state in line_payment_states if state):
-                    voucher.payment_state = 'not_paid'
-                # If there's a mix of states or some lines are partially paid, set as 'partial'
-                elif 'partial' in line_payment_states or any(state not in ['paid', 'not_paid'] for state in line_payment_states):
-                    voucher.payment_state = 'partial'
-                # Check if any line is in 'in_payment' state
-                elif 'in_payment' in line_payment_states:
-                    voucher.payment_state = 'partial'
-                else:
-                    # Default to paid if all lines are paid
-                    voucher.payment_state = 'paid'
-
-    @api.depends('company_id.payment_voucher_checker1_id',
-                 'company_id.payment_voucher_checker2_id',
-                 'company_id.payment_voucher_approver_id',
-                 'company_id.payment_voucher_approver2_id',
-                 'company_id.payment_voucher_enable_approval2')
-    def _compute_user_visibility(self):
-        current_user = self.env.user
-        for voucher in self:
-            # Checker 1
-            if voucher.company_id.payment_voucher_checker1_id:
-                voucher.is_current_user_checker1 = (current_user == voucher.company_id.payment_voucher_checker1_id)
-            else:
-                voucher.is_current_user_checker1 = True
-                
-            # Checker 2
-            if voucher.company_id.payment_voucher_checker2_id:
-                voucher.is_current_user_checker2 = (current_user == voucher.company_id.payment_voucher_checker2_id)
-            else:
-                voucher.is_current_user_checker2 = True
-                
-            # Approver 1
-            if voucher.company_id.payment_voucher_approver_id:
-                voucher.is_current_user_approver = (current_user == voucher.company_id.payment_voucher_approver_id)
-            else:
-                voucher.is_current_user_approver = True
+            # Get the payment states of all lines in the voucher
+            line_payment_states = voucher.line_ids.mapped('payment_state')
             
-            # Approver 2
-            if voucher.company_id.payment_voucher_enable_approval2:
-                if voucher.company_id.payment_voucher_approver2_id:
-                    voucher.is_current_user_approver2 = (current_user == voucher.company_id.payment_voucher_approver2_id)
-                else:
-                    voucher.is_current_user_approver2 = True
+            # If all lines are 'paid', set the voucher as 'paid'
+            if all(state == 'paid' for state in line_payment_states if state):
+                voucher.payment_state = 'paid'
+            # If all lines are 'not_paid', set the voucher as 'not_paid'  
+            elif all(state == 'not_paid' for state in line_payment_states if state):
+                voucher.payment_state = 'not_paid'
+            # If there's a mix of states or some lines are partially paid, set as 'partial'
+            elif 'partial' in line_payment_states or any(state not in ['paid', 'not_paid'] for state in line_payment_states):
+                voucher.payment_state = 'partial'
+            # Check if any line is in 'in_payment' state
+            elif 'in_payment' in line_payment_states:
+                voucher.payment_state = 'partial'
             else:
-                voucher.is_current_user_approver2 = False
+                # Default to not paid
+                voucher.payment_state = 'not_paid'
+
     def _compute_amount_paid(self):
         for voucher in self:
             total_paid = 0
@@ -229,148 +165,15 @@ class AccountPaymentVoucher(models.Model):
         return action
 
     def action_confirm(self):
-        """Submit the voucher for approval (Draft -> Prepared)"""
+        """Confirm and post the voucher (Draft -> Posted)"""
         for voucher in self:
             if voucher.state != 'draft':
                 continue
             voucher.write({
-                'state': 'prepared',
-                'prepared_by': self.env.user.id,
-                'prepared_date': fields.Date.context_today(self)
+                'state': 'posted',
             })
-            voucher.message_post(body=_("Voucher submitted for approval (Prepared)."))
-            
-            # Create activity for Checker 1 if configured
-            if voucher.company_id.payment_voucher_checker1_id:
-                voucher.activity_schedule(
-                    'mail.mail_activity_data_todo',
-                    user_id=voucher.company_id.payment_voucher_checker1_id.id,
-                    summary=_("Payment Voucher Check (1) Required"),
-                    note=_("Please check payment voucher %s") % voucher.name
-                )
+            voucher.message_post(body=_("Voucher confirmed and posted."))
         return True
-
-    def action_check1(self):
-        """Approve step 1 (Prepared -> Checked 1)"""
-        for voucher in self:
-            if voucher.state != 'prepared':
-                continue
-            voucher.write({
-                'state': 'checked1',
-                'checked1_by': self.env.user.id,
-                'checked1_date': fields.Date.context_today(self)
-            })
-            voucher.message_post(body=_("Voucher checked (step 1)."))
-            
-            # Mark Checker 1 activity as done
-            voucher._mark_activity_done(voucher.company_id.payment_voucher_checker1_id)
-            
-            # Create activity for Checker 2 if configured
-            if voucher.company_id.payment_voucher_checker2_id:
-                voucher.activity_schedule(
-                    'mail.mail_activity_data_todo',
-                    user_id=voucher.company_id.payment_voucher_checker2_id.id,
-                    summary=_("Payment Voucher Check (2) Required"),
-                    note=_("Please check payment voucher %s") % voucher.name
-                )
-        return True
-
-    def action_check2(self):
-        """Approve step 2 (Checked 1 -> Checked 2)"""
-        for voucher in self:
-            if voucher.state != 'checked1':
-                continue
-            voucher.write({
-                'state': 'checked2',
-                'checked2_by': self.env.user.id,
-                'checked2_date': fields.Date.context_today(self)
-            })
-            voucher.message_post(body=_("Voucher checked (step 2)."))
-            
-            # Mark Checker 2 activity as done
-            voucher._mark_activity_done(voucher.company_id.payment_voucher_checker2_id)
-            
-            # Create activity for Final Approver if configured
-            if voucher.company_id.payment_voucher_approver_id:
-                voucher.activity_schedule(
-                    'mail.mail_activity_data_todo',
-                    user_id=voucher.company_id.payment_voucher_approver_id.id,
-                    summary=_("Payment Voucher Approval Required"),
-                    note=_("Please approve payment voucher %s") % voucher.name
-                )
-        return True
-
-    def action_approve(self):
-        """First Approval (Checked 2 -> Approved (1))"""
-        for voucher in self:
-            if voucher.state != 'checked2':
-                continue
-            
-            vals = {
-                'state': 'approved',
-                'approved_by': self.env.user.id,
-                'approved_date': fields.Date.context_today(self)
-            }
-            
-            voucher.write(vals)
-            
-            # Mark Final Approver activity as done (Approver 1)
-            voucher._mark_activity_done(voucher.company_id.payment_voucher_approver_id, feedback=_("Approved (1)"))
-
-            # Determine next step
-            if voucher.company_id.payment_voucher_enable_approval2:
-                # Schedule activity for Approver 2
-                approver2 = voucher.company_id.payment_voucher_approver2_id
-                if approver2:
-                    voucher.activity_schedule(
-                        'mail.mail_activity_data_todo',
-                        user_id=approver2.id,
-                        summary=_('Please approve payment voucher (Step 2)'),
-                        note=_('Voucher %s requires your approval.') % voucher.name,
-                    )
-                voucher.message_post(body=_("Voucher passed first approval. Waiting for second approval."))
-            else:
-                voucher.message_post(body=_("Voucher approved. Ready for payment."))
-            
-        return True
-
-    def action_approve2(self):
-        """Second Approval (Approved (1) -> Approved (2))"""
-        for voucher in self:
-            if voucher.state != 'approved':
-                continue
-            
-            if not voucher.company_id.payment_voucher_enable_approval2:
-                # Should not happen if button visibility is correct, but safety check
-                continue
-
-            voucher.write({
-                'state': 'approved2',
-                'approved2_by': self.env.user.id,
-                'approved2_date': fields.Date.context_today(self)
-            })
-            voucher.message_post(body=_("Voucher passed second approval. Ready for payment."))
-            
-            # Mark Approver 2 activity as done
-            voucher._mark_activity_done(voucher.company_id.payment_voucher_approver2_id, feedback=_("Approved (2)"))
-            
-        return True
-        
-    def _mark_activity_done(self, user, feedback=None):
-        """Helper to mark activity as done for a specific user"""
-        if not user:
-            return
-            
-        activity_domain = [
-            ('res_id', '=', self.id),
-            ('res_model', '=', self._name),
-            ('activity_type_id', '=', self.env.ref('mail.mail_activity_data_todo').id),
-            ('user_id', '=', user.id)
-        ]
-        
-        activities = self.env['mail.activity'].search(activity_domain)
-        if activities:
-            activities.action_feedback(feedback=feedback)
     
     @api.onchange('cheque_book_id')
     def _onchange_cheque_book_id(self):
@@ -386,17 +189,9 @@ class AccountPaymentVoucher(models.Model):
         """Open payment register wizard with WHT handling (Thai Localization support)"""
         self.ensure_one()
         
-        # Check permission based on approval flow
-        allowed_states = ['posted']
-        if self.company_id.payment_voucher_enable_approval2:
-            allowed_states.append('approved2')
-            if self.state == 'approved':
-                raise UserError(_("Voucher requires second approval before registering payment."))
-        else:
-            allowed_states.append('approved')
-            
-        if self.state not in allowed_states:
-             raise UserError(_("Voucher must be fully approved before registering payment."))
+        # Check if voucher is posted
+        if self.state != 'posted':
+             raise UserError(_("Voucher must be posted before registering payment."))
              
         # Increment Cheque Book Next Number if used
         if self.payment_type == 'check' and hasattr(self, 'cheque_book_id') and self.cheque_book_id and self.check_number == self.cheque_book_id.next_number:

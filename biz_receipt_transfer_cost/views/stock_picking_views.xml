@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Inherit Stock Picking Form View - Add cost fields to move operations -->
+    <record id="view_picking_form_inherit_cost" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.cost</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <!-- Add cost price field to operations tab (stock.move) -->
+            <xpath expr="//page[@name='operations']//field[@name='move_ids_without_package']/tree//field[@name='quantity']" position="after">
+                <field name="use_custom_cost" column_invisible="True"/>
+                <field name="is_from_purchase" column_invisible="True"/>
+                <field name="custom_cost_price" 
+                       string="Cost Price"
+                       readonly="parent.state == 'done' or is_from_purchase"
+                       optional="show"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Inherit Stock Move Form View -->
+    <record id="view_move_form_inherit_cost" model="ir.ui.view">
+        <field name="name">stock.move.form.inherit.cost</field>
+        <field name="model">stock.move</field>
+        <field name="inherit_id" ref="stock.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='product_uom_qty']" position="after">
+                <field name="use_custom_cost" 
+                       invisible="1"/>
+                <field name="is_from_purchase" 
+                       invisible="1"/>
+                <field name="custom_cost_price" 
+                       string="Custom Cost Price"
+                       readonly="state == 'done' or is_from_purchase"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- Inherit Stock Move Tree View -->
+    <record id="view_move_tree_inherit_cost" model="ir.ui.view">
+        <field name="name">stock.move.tree.inherit.cost</field>
+        <field name="model">stock.move</field>
+        <field name="inherit_id" ref="stock.view_move_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='quantity']" position="after">
+                <field name="custom_cost_price" 
+                       string="Cost Price" 
+                       optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

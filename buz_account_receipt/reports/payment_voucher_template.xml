@@ -23,10 +23,12 @@
                                 border: 1px solid black;
                                 width: 100%;
                                 border-collapse: collapse;
+                                color: #000;
                             }
                             .table-bordered th, .table-bordered td {
                                 border: 1px solid black;
                                 padding: 4px;
+                                color: #000;
                             }
                             .table-header th {
                                 text-align: center;
@@ -41,7 +43,7 @@
                         <div class="row mb-2">
                             <!-- Left: Logo -->
                             <div class="col-4">
-                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                <img src="/buz_account_receipt/static/img/LOGO MOGEN.png"
                                      style="max-height: 80px; max-width: 200px;" alt="Company Logo"/>
                             </div>
                             
@@ -131,12 +133,11 @@
                             <thead>
                                 <tr class="table-header">
                                     <th style="width: 10%;">ชำระ</th>
-                                    <th style="width: 20%;">ชื่อ</th>
-                                    <th style="width: 15%;">เลขที่</th>
+                                    <th style="width: 25%;">ชื่อ</th>
+                                    <th style="width: 15%;">เลขที่เช็ค</th>
                                     <th style="width: 15%;">วันที่</th>
                                     <th style="width: 20%;">สั่งจ่ายเช็คใน</th>
-                                    <th style="width: 10%;">ตัดบัญชีธนาคาร</th>
-                                    <th style="width: 10%;">จำนวนเงิน</th>
+                                    <th style="width: 15%;">จำนวนเงิน</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -160,7 +161,6 @@
                                     <td>
                                         <span t-field="o.check_pay_to"/>
                                     </td>
-                                    <td></td> <!-- Placeholder for 'cut bank account' -->
                                     <td class="text-end">
                                         <span t-field="o.amount_total_net" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
@@ -181,7 +181,6 @@
                                     <td>
                                         <!-- Pay to/Vendor? -->
                                     </td>
-                                    <td></td>
                                     <td class="text-end">
                                         <span t-field="o.amount_total_wht" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
@@ -189,7 +188,7 @@
 
                                 <!-- Total Row -->
                                 <tr>
-                                    <td colspan="6" class="text-end" style="font-weight: bold; padding-right: 10px;">
+                                    <td colspan="5" class="text-end" style="font-weight: bold; padding-right: 10px;">
                                         จำนวนเงิน
                                     </td>
                                     <td class="text-end" style="font-weight: bold;">
@@ -271,38 +270,36 @@
                              <tbody>
                                  <tr>
                                     <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
-                                         <div t-if="o.prepared_by" style="margin-bottom: 5px;"><span t-field="o.prepared_by.name"/></div>
-                                         <div t-else="" style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="margin-bottom: 5px;">
+                                             <span t-if="o.create_uid" t-field="o.create_uid.name"/>
+                                             <span t-else="">_________________</span>
+                                         </div>
                                          <div style="font-size: 12px;">
-                                            Date <span t-if="o.prepared_date" t-field="o.prepared_date"/> <span t-else="">.../.../...</span>
+                                            Date <span t-if="o.create_date" t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/><span t-else="">.../.../...</span>
                                          </div>
                                      </td>
                                      <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
-                                         <div t-if="o.checked1_by" style="margin-bottom: 5px;"><span t-field="o.checked1_by.name"/></div>
-                                         <div t-else="" style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
                                          <div style="font-size: 12px;">
-                                            Date <span t-if="o.checked1_date" t-field="o.checked1_date"/> <span t-else="">.../.../...</span>
+                                            Date .../.../...
                                          </div>
                                      </td>
                                      <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
-                                         <div t-if="o.checked2_by" style="margin-bottom: 5px;"><span t-field="o.checked2_by.name"/></div>
-                                         <div t-else="" style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
                                          <div style="font-size: 12px;">
-                                            Date <span t-if="o.checked2_date" t-field="o.checked2_date"/> <span t-else="">.../.../...</span>
+                                            Date .../.../...
                                          </div>
                                      </td>
                                      <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
-                                         <div t-if="o.approved_by" style="margin-bottom: 5px;"><span t-field="o.approved_by.name"/></div>
-                                         <div t-else="" style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
                                          <div style="font-size: 12px;">
-                                            Date <span t-if="o.approved_date" t-field="o.approved_date"/> <span t-else="">.../.../...</span>
+                                            Date .../.../...
                                          </div>
                                      </td>
                                      <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
-                                         <div t-if="o.approved2_by" style="margin-bottom: 5px;"><span t-field="o.approved2_by.name"/></div>
-                                         <div t-else="" style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
                                          <div style="font-size: 12px;">
-                                            Date <span t-if="o.approved2_date" t-field="o.approved2_date"/> <span t-else="">.../.../...</span>
+                                            Date .../.../...
                                          </div>
                                      </td>
                                  </tr>
@@ -310,24 +307,29 @@
                          </table>
 
                          <!-- Receipt & Paid Box (Manual Entry) -->
-                         <div style="width: 100%; margin-top: 10px;">
-                             <table style="float: right; width: 21%; text-align: center; border: 1px solid #000; border-collapse: collapse;">
-                                 <thead>
-                                     <tr>
-                                         <th style="border: 1px solid #000; padding: 5px;">Received &amp; Paid</th>
-                                     </tr>
-                                </thead>
-                                 <tbody>
-                                     <tr>
-                                        <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom; height: 80px;">
-                                             <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
-                                             <div style="font-size: 12px;">Date .../.../...</div>
-                                         </td>
-                                     </tr>
-                                 </tbody>
-                             </table>
-                             <div style="clear: both;"></div>
-                         </div>
+                         <table style="width: 100%; border-collapse: collapse; margin-top: 5px; border: 1px solid black;">
+                             <tbody>
+                                 <tr>
+                                     <td style="width: 60%; border: 1px solid black;" rowspan="2"></td>
+                                     <td style="width: 20%; border: 1px solid black; text-align: center; padding: 5px; font-weight: bold;">
+                                         RECEIVED
+                                     </td>
+                                     <td style="width: 20%; border: 1px solid black; text-align: center; padding: 5px; font-weight: bold;">
+                                         PAID
+                                     </td>
+                                 </tr>
+                                 <tr>
+                                    <td style="border: 1px solid black; padding: 10px; vertical-align: bottom; height: 80px; text-align: center;">
+                                         <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="font-size: 12px;">Date .../.../...</div>
+                                     </td>
+                                    <td style="border: 1px solid black; padding: 10px; vertical-align: bottom; height: 80px; text-align: center;">
+                                         <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
+                                         <div style="font-size: 12px;">Date .../.../...</div>
+                                     </td>
+                                 </tr>
+                             </tbody>
+                         </table>
                     </div>
                 </t>
             </t>
