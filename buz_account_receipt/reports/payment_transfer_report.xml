@@ -60,8 +60,11 @@
                     .info-cell {
                         border-bottom: 1px solid #ddd;
                     }
+                    .page, .page table, .page th, .page td, .page div, .page span, .page strong {
+                        color: black !important;
+                    }
                 </style>
-                <div class="page" style="font-family: Sarabun, sans-serif; font-size: 14px;">
+                <div class="page" style="font-family: Sarabun, sans-serif; font-size: 18px; color: black;">
                     <!-- Pre-calculate Account Numbers for Lines -->
                      <t t-set="col1_acc_number" t-value="o.journal_id.bank_account_id and o.journal_id.bank_account_id.acc_number or False"/>
                      <t t-set="col2_acc_number" t-value="o.destination_journal_id and o.destination_journal_id.bank_account_id and o.destination_journal_id.bank_account_id.acc_number"/>
@@ -96,8 +99,8 @@
                     
                     <div class="row mb-2">
                         <div class="col-12 text-center">
-                            <!-- Placeholder field or number from image '160001' -->
-                            <span>160001</span>
+                            <!-- Placeholder field or number from image '112000' -->
+                            <span>112000</span>
                         </div>
                     </div>
 
@@ -208,7 +211,7 @@
                     </table>
                     
                     <div class="row mt-2">
-                        <div class="col-12" style="font-size: 13px;">
+                        <div class="col-12" style="font-size: 18px;">
                             <strong>หมายเหตุ</strong> <span style="margin-left: 10px;" t-if="o.ref" t-field="o.ref"/>
                         </div>
                     </div>
@@ -256,7 +259,7 @@
                     
                 </div>
                  <div class="footer">
-                     <div class="row" style="border: 1px solid black; background-color: white;">
+                     <div class="row" style="border: 1px solid black; background-color: white; color: black;">
                         <div class="col-4 p-2" style="border-right: 1px solid black;">
                             <span>Issued By:</span>
                             <div style="margin-top: 20px;">
