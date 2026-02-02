@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- AP Payment Voucher Views -->
+    
+    <!-- Action for Payment Voucher -->
+    <record id="action_account_payment_voucher_tree" model="ir.actions.act_window">
+        <field name="name">Payment Vouchers</field>
+        <field name="res_model">account.payment.voucher</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new payment voucher
+            </p>
+        </field>
+    </record>
+
+    <!-- Tree View for Payment Voucher -->
+    <record id="view_account_payment_voucher_tree" model="ir.ui.view">
+        <field name="name">account.payment.voucher.tree</field>
+        <field name="model">account.payment.voucher</field>
+        <field name="arch" type="xml">
+            <tree string="Payment Vouchers">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="partner_id"/>
+                <field name="amount_total_net"/>
+                <field name="payment_state" widget="badge" decoration-info="payment_state=='not_paid'" decoration-warning="payment_state=='partial'" decoration-success="payment_state=='paid'" decoration-danger="payment_state=='overpaid'"/>
+                <field name="state"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View for Payment Voucher -->
+    <record id="view_account_payment_voucher_form" model="ir.ui.view">
+        <field name="name">account.payment.voucher.form</field>
+        <field name="model">account.payment.voucher</field>
+        <field name="arch" type="xml">
+            <form string="Payment Voucher">
+                <header>
+                    <!-- Draft -> Posted -->
+                    <button name="action_confirm" type="object" string="Confirm" 
+                            class="oe_highlight" 
+                            invisible="state != 'draft'"/>
+
+                    <!-- Posted -> Register Payment -->
+                    <button name="action_register_batch_payment" type="object" string="Register Payment" 
+                            class="oe_highlight" 
+                            invisible="state != 'posted' or payment_state in ['paid', 'overpaid']"/>
+
+                    <button name="action_reset_to_draft" type="object" string="Reset to Draft" 
+                            invisible="state == 'draft'"
+                            confirm="Are you sure you want to reset this voucher to draft?"/>
+                            
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_related_payments" type="object" class="oe_stat_button" icon="fa-money">
+                            <field name="payment_count" string="Payments" widget="statinfo"/>
+                        </button>
+                        <button name="action_view_payments" type="object" class="oe_stat_button" icon="fa-pencil-square-o">
+                            <field name="amount_total_net" string="Net Amount" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" string="Payment Voucher Number" class="oe_edit_only"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <field name="company_id" invisible="1"/>
+                    <group>
+                        <group name="header_left">
+                            <field name="partner_id"/>
+                            <field name="date"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group name="header_right">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="payment_type"/>
+                            <field name="destination_journal_id" required="1"/>
+                            <field name="payment_method_line_id" required="payment_type != 'cash'" invisible="payment_type == 'cash'"/>
+                            <field name="check_pay_to" string="Pay To"/>
+                        </group>
+                    </group>
+                    <group string="Payment Details" invisible="payment_type != 'check'">
+                        <group>
+                            <field name="check_number"/>
+                            <field name="check_date"/>
+                        </group>
+                    </group>
+                    <!-- Payment Status and Amount Information -->
+                    <group col="4" colspan="4" name="payment_status_info" string="Payment Information" invisible="state == 'draft'">
+                        <group name="payment_status_group" string="Payment Status" colspan="2">
+                            <field name="payment_state" readonly="1" string="Payment Status" widget="badge" decoration-info="payment_state=='not_paid'" decoration-warning="payment_state=='partial'" decoration-success="payment_state=='paid'" decoration-danger="payment_state=='overpaid'"/>
+                        </group>
+                        <group name="payment_amounts" string="Amounts" colspan="2" col="2">
+                            <field name="amount_paid" readonly="1" string="Paid Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+                            <field name="amount_residual" readonly="1" string="Residual Amount" widget="monetary" options="{'field_digits': True, 'currency_field': 'currency_id'}"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Payment Lines">
+                                    <field name="line_ids">
+                                        <tree editable="bottom">
+                                            <field name="currency_id" column_invisible="1"/>
+                                            <field name="partner_id" column_invisible="1"/>
+                                            <field name="voucher_id" column_invisible="1"/>
+                                            <field name="company_id" column_invisible="1"/>
+                                            <field name="move_id" 
+                                                   domain="[('partner_id', '=', partner_id), ('move_type', 'in', ['in_invoice', 'in_refund']), ('state', '=', 'posted')]"/>
+                                            <field name="amount_to_pay_gross" sum="Total Gross"/>
+                                            <field name="wht_base_amount" sum="Total Base"/>
+                                            <field name="wht_tax_id"/>
+                                            <field name="wht_rate" column_invisible="1" force_save="1"/>
+                                            <field name="wht_amount" readonly="1" force_save="1" sum="Total WHT"/>
+                                            <field name="amount_to_pay_net" readonly="1" force_save="1" sum="Total Net"/>
+                                            <field name="payment_state"/>
+                                            <button name="action_register_payment_line" type="object" string="Register Payment" icon="fa-credit-card" invisible="1"/>
+                                        </tree>
+                                    </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Payment Voucher Menu -->
+    <menuitem id="menu_buz_accounting_addon_02"
+              name="Payment Vouchers" 
+              parent="account.menu_finance_payables" 
+              action="action_account_payment_voucher_tree"
+              sequence="10"/>
+
+</odoo>

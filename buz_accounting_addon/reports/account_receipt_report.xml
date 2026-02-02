@@ -1,0 +1,287 @@
+
+<odoo>
+
+  <template id="report_buz_accounting_addon">
+    <t t-call="web.html_container">
+      <t t-foreach="docs" t-as="o">
+        <div class="page">
+          <h2 style="margin:0 0 8px 0;">ใบเสร็จรับเงิน (Receipt)</h2>
+          <div>
+            <b>เลขที่:</b> <t t-esc="o.name or '-'"/> &#160;&#160;
+            <b>วันที่:</b> <t t-esc="o.date"/> <br/>
+            <b>ลูกค้า:</b> <t t-esc="o.partner_id.display_name"/> <br/>
+            <b>บริษัท:</b> <t t-esc="o.company_id.name"/>
+          </div>
+          <br/>
+          <table class="table table-sm" style="width:100%; border-collapse:collapse;" border="1">
+            <thead>
+              <tr>
+                <th style="text-align:left;">Invoice</th>
+                <th style="text-align:center;">Date</th>
+                <th style="text-align:right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <t t-foreach="o.line_ids" t-as="l">
+                <tr>
+                  <td><t t-esc="l.move_name"/></td>
+                  <td style="text-align:center;"><t t-esc="l.invoice_date"/></td>
+                  <td style="text-align:right;"><t t-esc="format_amount(l.amount_total, o.currency_id)"/></td>
+                </tr>
+              </t>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2" style="text-align:right;"><b>Total Payment</b></td>
+                <td style="text-align:right;"><b><t t-esc="format_amount(o.amount_invoice_total, o.currency_id)"/></b></td>
+              </tr>
+              <tr t-if="o.amount_invoice_total_words">
+                <td colspan="3" style="text-align:left; font-style: italic; padding-left: 10px;">
+                  (<t t-esc="o.amount_invoice_total_words"/>)
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+          <p style="margin-top:12px;">
+            หมายเหตุ: ใบเสร็จนี้สรุปยอดชำระตามสถานะใบแจ้งหนี้ในระบบ ณ วันที่ออกใบเสร็จ
+          </p>
+        </div>
+      </t>
+    </t>
+  </template>
+
+  <!-- Paper Format for Account Receipt Preprint -->
+  <record id="paperformat_account_receipt_preprint" model="report.paperformat">
+    <field name="name">Account Receipt Preprint Letter</field>
+    <field name="default" eval="False"/>
+    <field name="format">Letter</field>
+    <field name="page_height">0</field>
+    <field name="page_width">0</field>
+    <field name="orientation">Portrait</field>
+    <field name="margin_top">0</field>
+    <field name="margin_bottom">0</field>
+    <field name="margin_left">0</field>
+    <field name="margin_right">0</field>
+    <field name="header_line" eval="False"/>
+    <field name="header_spacing">0</field>
+    <field name="dpi">96</field>
+    <field name="disable_shrinking" eval="True"/>
+  </record>
+
+  <!-- Preprint Receipt Template -->
+  <template id="account_receipt_report_preprint">
+    <t t-call="web.basic_layout">
+      <t t-foreach="docs" t-as="o">
+        <t t-set="config" t-value="request.env['account.receipt.config'].sudo().get_default_config()"/>
+        <!-- Convert px to mm: 96 DPI = 1px = 0.2646mm -->
+        <t t-set="px_to_mm" t-value="0.2646"/>
+        
+        <div class="page" t-attf-style="width: 215.9mm; height: 279.4mm; position: relative; font-family: {{config.font_family or 'Sarabun, sans-serif'}}; font-size: {{config.font_size or 14}}px; page-break-after: always; margin: 0; padding: 0; overflow: visible; box-sizing: border-box;">
+          
+          <style>
+            @font-face {
+              font-family: 'Sarabun';
+              font-weight: normal;
+              font-style: normal;
+            }
+            
+            @font-face {
+              font-family: 'Sarabun';
+              font-weight: bold;
+              font-style: normal;
+            }
+            
+            @page {
+              size: Letter portrait;
+              margin: 0mm 0mm 0mm 0mm !important;
+              padding: 0mm !important;
+            }
+            
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 215.9mm !important;
+              height: 279.4mm !important;
+              box-sizing: border-box;
+              overflow: visible;
+            }
+            
+            * {
+              box-sizing: border-box;
+            }
+            
+            .page {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 215.9mm !important;
+              height: 279.4mm !important;
+            }
+            
+            body, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
+              font-family: '<t t-esc="config.font_family or 'Sarabun'"/>', sans-serif !important;
+              font-size: <t t-esc="config.font_size or 14"/>px;
+              line-height: <t t-esc="config.line_spacing or 1.2"/>;
+            }
+            
+            .thai-text {
+              font-family: 'Sarabun', 'TH Sarabun New', sans-serif !important;
+            }
+            
+            .article {
+              page-break-after: always;
+            }
+            
+            /* Full page coverage styles */
+            .page {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            
+            @media print {
+              body {
+                margin: 0;
+                padding: 0;
+              }
+              .page {
+                margin: 0;
+                padding: 0;
+                width: 215.9mm;
+                height: 279.4mm;
+              }
+            }
+          </style>
+          
+          <!-- Background Image (if configured) -->
+          <t t-if="config.show_background and config.background_image">
+            <div t-attf-style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: {{config.background_opacity or 0.3}}; z-index: -1;">
+              <img t-attf-src="data:image/png;base64,{{config.background_image}}" 
+                   style="width: 100%; height: 100%; object-fit: contain;"/>
+            </div>
+          </t>
+          
+          <!-- Receipt Number - เลขที่ใบเสร็จ -->
+          <div t-if="config.show_header" 
+               t-attf-style="position: absolute; top: {{config.receipt_number_top * px_to_mm}}mm; left: {{config.receipt_number_left * px_to_mm}}mm; white-space: nowrap; word-break: keep-all;" 
+               class="thai-text">
+            <span t-field="o.name"/>
+          </div>
+          
+          <!-- Receipt Date - วันที่ -->
+          <div t-if="config.show_header" 
+               t-attf-style="position: absolute; top: {{config.receipt_date_top * px_to_mm}}mm; left: {{config.receipt_date_left * px_to_mm}}mm;" 
+               class="thai-text">
+            <span t-field="o.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+          </div>
+          
+          <!-- Customer Code - รหัสลูกค้า -->
+          <div t-if="o.partner_id.partner_code" 
+               t-attf-style="position: absolute; top: {{config.customer_code_top * px_to_mm}}mm; left: {{config.customer_code_left * px_to_mm}}mm;" 
+               class="thai-text">
+            <span t-field="o.partner_id.partner_code"/>
+          </div>
+          
+          <!-- Customer Name - ชื่อลูกค้า -->
+          <div t-attf-style="position: absolute; top: {{config.customer_name_top * px_to_mm}}mm; left: {{config.customer_name_left * px_to_mm}}mm;" 
+               class="thai-text">
+            <span t-field="o.partner_id.name"/>
+          </div>
+          
+          <!-- Customer Address Line 1 - ที่อยู่บรรทัด 1 -->
+          <div t-attf-style="position: absolute; top: {{config.customer_address_top * px_to_mm}}mm; left: {{config.customer_address_left * px_to_mm}}mm; max-width: {{config.customer_address_width * px_to_mm}}mm;" 
+               class="thai-text">
+            <t t-if="o.partner_id.street">
+              <span t-field="o.partner_id.street"/>
+              <t t-if="o.partner_id.street2">
+                <span> </span><span t-field="o.partner_id.street2"/>
+              </t>
+            </t>
+          </div>
+          
+          <!-- Customer Address Line 2 - ที่อยู่บรรทัด 2 (อำเภอ จังหวัด รหัสไปรษณีย์) -->
+          <div t-attf-style="position: absolute; top: {{config.customer_address_line2_top * px_to_mm}}mm; left: {{config.customer_address_line2_left * px_to_mm}}mm; max-width: {{config.customer_address_width * px_to_mm}}mm;" 
+               class="thai-text">
+            <t t-set="address_parts" t-value="[]"/>
+            <t t-if="o.partner_id.city" t-set="address_parts" t-value="address_parts + [o.partner_id.city]"/>
+            <t t-if="o.partner_id.state_id" t-set="address_parts" t-value="address_parts + [o.partner_id.state_id.name]"/>
+            <t t-if="o.partner_id.zip" t-set="address_parts" t-value="address_parts + [o.partner_id.zip]"/>
+            <span t-esc="' '.join(address_parts)"/>
+          </div>
+          
+          <!-- Customer Phone - เบอร์โทรศัพท์ -->
+          <div t-attf-style="position: absolute; top: {{config.customer_phone_top * px_to_mm}}mm; left: {{config.customer_phone_left * px_to_mm}}mm;" 
+               class="thai-text">
+            <span t-field="o.partner_id.phone"/>
+          </div>
+          
+          <!-- Customer Tax ID - เลขประจำตัวผู้เสียภาษี -->
+          <div t-if="o.partner_id.vat" 
+               t-attf-style="position: absolute; top: {{config.customer_taxid_top * px_to_mm}}mm; left: {{config.customer_taxid_left * px_to_mm}}mm;" 
+               class="thai-text">
+            <span t-field="o.partner_id.vat"/>
+          </div>
+          
+          <!-- Invoice Lines Table - ตารางรายการใบแจ้งหนี้ -->
+          <div t-attf-style="position: absolute; top: {{config.table_top * px_to_mm}}mm; left: {{config.table_left * px_to_mm}}mm;" 
+               class="thai-text">
+            <t t-set="line_index" t-value="0"/>
+            <t t-foreach="o.line_ids" t-as="line">
+              <t t-set="current_top" t-value="line_index * config.line_height * px_to_mm"/>
+              
+              <!-- Line Number - ลำดับ -->
+              <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_no_left * px_to_mm}}mm; text-align: center; width: {{config.col_no_width * px_to_mm}}mm;">
+                <span t-esc="line_index + 1"/>
+              </div>
+              
+              <!-- Invoice Number - เลขที่ใบแจ้งหนี้ -->
+              <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_invoice_left * px_to_mm}}mm; width: {{config.col_invoice_width * px_to_mm}}mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <span t-field="line.move_name"/>
+              </div>
+              
+              <!-- Invoice Date - วันที่ -->
+              <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_date_left * px_to_mm}}mm; width: {{config.col_date_width * px_to_mm}}mm; text-align: center;">
+                <span t-field="line.invoice_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+              </div>
+              
+              <!-- Total Amount - ยอดรวม -->
+              <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_total_left * px_to_mm}}mm; width: {{config.col_total_width * px_to_mm}}mm; text-align: right;">
+                <span t-esc="'{:,.2f}'.format(line.amount_total)"/>
+              </div>
+              
+              <t t-set="line_index" t-value="line_index + 1"/>
+            </t>
+          </div>
+          
+          <!-- Summary/Footer Section -->
+          <t t-if="config.show_footer">
+            <!-- Total Payment - ยอดชำระรวม -->
+            <div t-attf-style="position: absolute; top: {{config.total_payment_top * px_to_mm}}mm; left: {{config.total_payment_left * px_to_mm}}mm; width: {{config.col_total_width * px_to_mm}}mm; text-align: right;" 
+                 class="thai-text">
+              <span t-esc="'{:,.2f}'.format(o.amount_invoice_total)"/>
+            </div>
+            
+            <!-- Amount in Words - จำนวนเงินเป็นตัวอักษร -->
+            <div t-if="o.amount_invoice_total_words"
+                 t-attf-style="position: absolute; top: {{config.amount_in_words_top * px_to_mm}}mm; left: {{config.amount_in_words_left * px_to_mm}}mm; width: {{config.amount_in_words_width * px_to_mm}}mm; text-align: left; font-style: italic;" 
+                 class="thai-text">
+              (<span t-esc="o.amount_invoice_total_words"/>)
+            </div>
+          </t>
+        </div>
+      </t>
+    </t>
+  </template>
+
+  <!-- Report Action for Preprint -->
+  <record id="action_report_account_receipt_preprint" model="ir.actions.report">
+    <field name="name">Receipt Preprint</field>
+    <field name="model">account.receipt</field>
+    <field name="report_type">qweb-pdf</field>
+    <field name="report_name">buz_accounting_addon.account_receipt_report_preprint</field>
+    <field name="report_file">buz_accounting_addon.account_receipt_report_preprint</field>
+    <field name="print_report_name">'Receipt Preprint - %s' % object.name</field>
+    <field name="binding_model_id" ref="buz_accounting_addon.model_account_receipt"/>
+    <field name="binding_type">report</field>
+    <field name="paperformat_id" ref="paperformat_account_receipt_preprint"/>
+  </record>
+
+</odoo>

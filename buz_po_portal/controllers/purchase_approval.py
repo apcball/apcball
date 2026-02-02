@@ -12,7 +12,7 @@ class PurchaseApprovalController(http.Controller):
         auth='public',
         website=True
     )
-    def landing_page(self, token, action=None):
+    def landing_page(self, token, action=None, **kwargs):
         """
         Landing page for LINE browser detection.
         Detects LINE browser and shows 'Open in Browser' page.
@@ -43,25 +43,24 @@ class PurchaseApprovalController(http.Controller):
             return request.render('http_routing.403')
         
         # If not LINE browser, redirect to approval page
-        if not is_line_browser:
-            base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url')
-            approval_url = f"{base_url}/purchase/approve/token/{token}"
-            if action:
-                approval_url += f"?action={action}"
-            return request.redirect(approval_url)
-        
-        # Show landing page for LINE browser
+        # Modified to ALWAYS redirect, allowing LINE browser to open directly
+        # if not is_line_browser: 
         base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url')
         approval_url = f"{base_url}/purchase/approve/token/{token}"
-        if action:
-            approval_url += f"?action={action}"
         
-        return request.render('buz_po_portal.po_landing_page', {
-            'po': po,
-            'token': token,
-            'approval_url': approval_url,
-            'action': action,
-        })
+        params = []
+        if action:
+            params.append(f"action={action}")
+            
+        # Propagate DB parameter to ensure correct DB selection
+        db = kwargs.get('db')
+        if db:
+            params.append(f"db={db}")
+        
+        if params:
+            approval_url += "?" + "&".join(params)
+            
+        return request.redirect(approval_url)
 
     @http.route(
         '/purchase/approve/token/<string:token>',
@@ -213,6 +212,27 @@ class PurchaseApprovalController(http.Controller):
             # Remove data:image/png;base64, prefix if present
             if signature.startswith('data:image'):
                 signature = signature.split(',')[1]
+        elif request.session.uid:
+             # Auto-sign for logged in user
+             user = request.env['res.users'].sudo().browse(request.session.uid)
+             employee = user.employee_id
+             if not employee:
+                 return request.make_json_response({
+                    'success': False,
+                    'message': 'Logged in user is not linked to an employee. Cannot usage auto-signature.'
+                })
+             if not employee.signature_image:
+                  return request.make_json_response({
+                    'success': False,
+                    'message': 'No signature found in your Employee profile. Please upload one first.'
+                })
+             signature = employee.signature_image
+        
+        if not signature:
+             return request.make_json_response({
+                'success': False,
+                'message': 'Signature is required.'
+            })
 
         # Update PO
         po.write({

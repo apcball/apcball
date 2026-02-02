@@ -9,7 +9,12 @@
                 <div class="col-lg-3 d-none d-lg-block">
                     <div class="o_portal_sidebar_content">
                         <div class="d-grid gap-2 col-12 mx-auto mb-3">
-                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalaccept" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time">
+                            <!-- Logged In: Auto Approve -->
+                            <button type="button" class="btn btn-success" id="btn-auto-approve" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time and request.session.uid">
+                                <i class="fa fa-check"/> Approve
+                            </button>
+                            <!-- Guest: Manual Sign -->
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalaccept" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time and not request.session.uid">
                                 <i class="fa fa-check"/> Approve &amp; Sign
                             </button>
                             <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalreject" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time">
@@ -61,7 +66,12 @@
                     <div class="d-lg-none card mb-3">
                         <div class="card-body">
                             <div class="d-grid gap-2">
-                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalaccept" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time">
+                                <!-- Logged In: Auto Approve -->
+                                <button type="button" class="btn btn-success" id="btn-auto-approve-mobile" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time and request.session.uid">
+                                    <i class="fa fa-check"/> Approve
+                                </button>
+                                <!-- Guest: Manual Sign -->
+                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalaccept" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time and not request.session.uid">
                                     <i class="fa fa-check"/> Approve &amp; Sign
                                 </button>
                                 <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalreject" t-if="not po.approval_token_expired and not po.approval_signature and not token_expired_by_time">

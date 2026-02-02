@@ -118,7 +118,8 @@ class PurchaseOrder(models.Model):
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
         if not self.approval_token:
              self._generate_approval_token()
-        return f"{base_url}/l/purchase/approve/{self.approval_token}"
+        db_name = self.env.cr.dbname
+        return f"{base_url}/l/purchase/approve/{self.approval_token}?db={db_name}"
 
 
     def action_submit_for_review(self):
@@ -129,50 +130,128 @@ class PurchaseOrder(models.Model):
             if not line.display_type and not line.analytic_distribution:
                 raise UserError(_("Please specify Analytic Account (Analytic Distribution) for all lines before submitting for review.\nProduct: %s") % line.name)
 
-        return {
-            'name': _('Sign & Submit for Review'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'purchase.order.approval.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_order_id': self.id,
-                'default_approval_stage': 'prepare'
-            },
-        }
+        # Auto-sign if employee has signature
+        employee = self.env.user.employee_id
+        if not employee:
+            raise UserError(_("Current user is not linked to an Employee record."))
+            
+        if not employee.signature_image:
+            raise UserError(_("You have not uploaded a signature in your Employee profile.\nPlease go to Employees app > select your profile > upload signature."))
+
+        company = self.company_id
+        if not company.po_reviewer_id:
+            raise UserError(_("No default reviewer configured. Please set up the Purchase Order Reviewer in Settings."))
+
+        # Update PO
+        self.write({
+            'prepared_signature': employee.signature_image,
+            'prepared_date': fields.Datetime.now(),
+            'approval_state': 'to_review',
+            'reviewer_id': company.po_reviewer_id.id
+        })
+
+        # Schedule Review Activity
+        self.activity_schedule(
+            'mail.mail_activity_data_todo',
+            user_id=company.po_reviewer_id.id,
+            summary='Please Review Purchase Order',
+            note=f'Purchase Order {self.name} needs your review.'
+        )
+        
+        # Trigger LINE Notification
+        self.action_send_line_approval_request(raise_exception=False)
+
+        return True
 
     def action_review_signature(self):
         self.ensure_one()
         if self.approval_state != 'to_review':
              raise UserError(_("This order is not waiting for review."))
-        return {
-            'name': _('Review & Sign'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'purchase.order.approval.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_order_id': self.id,
-                'default_approval_stage': 'review'
-            },
-        }
+        # Auto-sign if employee has signature
+        employee = self.env.user.employee_id
+        if not employee:
+             raise UserError(_("Current user is not linked to an Employee record."))
+             
+        if not employee.signature_image:
+             raise UserError(_("You have not uploaded a signature in your Employee profile.\nPlease go to Employees app > select your profile > upload signature."))
+             
+        company = self.company_id
+        
+        # Determine Approver
+        limit = company.po_approver_limit
+        amount = self.amount_total
+        next_approver = company.po_approver_id
+        
+        if amount > limit and company.po_approver_above_limit_id:
+             next_approver = company.po_approver_above_limit_id
+
+        if not next_approver:
+             raise UserError(_("No approver configured. Please set up the Purchase Order Approver in Settings."))
+             
+        # Update PO
+        self.write({
+            'reviewed_signature': employee.signature_image,
+            'reviewed_date': fields.Datetime.now(),
+            'approval_state': 'to_approve',
+            'reviewer_id': self.env.user.id,
+            'approver_id': next_approver.id
+        })
+        
+        # Complete Review Activity
+        activity_domain = [('res_id', '=', self.id), ('res_model', '=', 'purchase.order'), ('user_id', '=', self.env.user.id)]
+        self.env['mail.activity'].search(activity_domain).action_feedback()
+        
+        # Schedule Approve Activity & Send Email
+        self.activity_schedule(
+            'mail.mail_activity_data_todo',
+            user_id=next_approver.id,
+            summary='Please Approve Purchase Order',
+            note=f'Purchase Order {self.name} needs your approval.'
+        )
+        
+        # Generate Token if not exists
+        if not self.approval_token:
+            self._generate_approval_token()
+
+        # Send Email
+        template_id = self.env.ref('buz_po_portal.email_template_purchase_approval_request')
+        if template_id:
+            template_id.send_mail(self.id, force_send=True)
+            
+        # Trigger LINE Notification
+        self.action_send_line_approval_request(raise_exception=False)
+        
+        return True
 
     def action_approve_signature(self):
         self.ensure_one()
         if self.approval_state != 'to_approve':
              raise UserError(_("This order is not waiting for approval."))
         
-        return {
-            'name': _('Approve & Sign'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'purchase.order.approval.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_order_id': self.id,
-                'default_approval_stage': 'approve'
-            },
-        }
+        # Auto-sign if employee has signature
+        employee = self.env.user.employee_id
+        if not employee:
+             raise UserError(_("Current user is not linked to an Employee record."))
+             
+        if not employee.signature_image:
+             raise UserError(_("You have not uploaded a signature in your Employee profile.\nPlease go to Employees app > select your profile > upload signature."))
+             
+        # Update PO
+        self.write({
+            'approval_signature': employee.signature_image,
+            'approval_date': fields.Datetime.now(),
+            'approval_state': 'approved',
+            'approver_id': self.env.user.id
+        })
+        
+        # Complete Approve Activity
+        activity_domain = [('res_id', '=', self.id), ('res_model', '=', 'purchase.order'), ('user_id', '=', self.env.user.id)]
+        self.env['mail.activity'].search(activity_domain).action_feedback()
+        
+        # Confirm Order
+        self.button_confirm()
+        
+        return True
 
     def action_reset_approval_draft(self):
         self.write({
@@ -254,7 +333,8 @@ class PurchaseOrder(models.Model):
 
         # Construct URL using the new token (landing page for LINE browser detection)
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-        portal_url = f"{base_url}/l/purchase/approve/{token_record.token}"
+        db_name = self.env.cr.dbname
+        portal_url = f"{base_url}/l/purchase/approve/{token_record.token}?db={db_name}"
 
         
         # 5. Build Messages
@@ -323,7 +403,8 @@ class PurchaseOrder(models.Model):
 
         # 2. Construct URL
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-        portal_url = f"{base_url}/l/purchase/approve/{token_record.token}"
+        db_name = self.env.cr.dbname
+        portal_url = f"{base_url}/l/purchase/approve/{token_record.token}?db={db_name}"
         
         # 3. Build Messages
         text_message = self._get_line_approval_message(portal_url)

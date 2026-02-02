@@ -7,11 +7,12 @@
         - VAT detection functionality from order line taxes
         - Signature capture (draw or upload) for approval process
     """,
-    'depends': ['base', 'purchase', 'mail', 'hr','website', 'portal', 'line_portal_notification', 'purchase_requisition'], # 'website', 'portal'
+    'depends': ['base', 'purchase', 'mail', 'hr','website', 'portal', 'line_portal_notification'], # 'website', 'portal'
     'data': [
         'security/ir.model.access.csv',
         'data/mail_template.xml',
         'views/purchase_view.xml',
+        'views/hr_employee_views.xml',
         'views/po_landing_page.xml',
         'views/po_signature_page.xml',
         'views/res_config_settings_views.xml',
