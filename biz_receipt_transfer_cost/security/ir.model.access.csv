@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_stock_move_cost_transfer,stock.move cost transfer,stock.model_stock_move,group_cost_transfer_user,1,1,0,0
+access_stock_move_line_cost_transfer,stock.move.line cost transfer,stock.model_stock_move_line,group_cost_transfer_user,1,1,0,0

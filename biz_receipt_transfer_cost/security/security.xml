@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Create custom category first -->
+        <record id="module_category_cost_transfer" model="ir.module.category">
+            <field name="name">Cost Transfer</field>
+            <field name="description">Manage Cost Transfer operations</field>
+            <field name="sequence">50</field>
+        </record>
+
+        <!-- Cost Transfer User Group -->
+        <record id="group_cost_transfer_user" model="res.groups">
+            <field name="name">Cost Transfer User</field>
+            <field name="category_id" ref="module_category_cost_transfer"/>
+            <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+            <field name="comment">Users with access to Cost Transfer features on Receipt operations</field>
+        </record>
+    </data>
+</odoo>

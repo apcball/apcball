@@ -1,0 +1,45 @@
+<odoo>
+    <record id="view_gl_report_wizard_form" model="ir.ui.view">
+        <field name="name">gl.report.wizard.form</field>
+        <field name="model">gl.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="General Ledger">
+                <group>
+                    <group>
+                        <field name="target_move" widget="radio"/>
+                        <field name="sortby" widget="radio"/>
+                        <field name="display_account" widget="radio"/>
+                    </group>
+                    <group>
+                        <field name="initial_balance"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                </group>
+                <group>
+                    <field name="journal_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    <field name="account_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                </group>
+                <footer>
+                    <button name="check_report" string="Print" type="object" default_focus="1" class="oe_highlight"/>
+                    <button name="check_report_xlsx" string="Export Excel" type="object" class="oe_highlight" style="margin-left: 5px;"/>
+                    <button string="Cancel" class="btn btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gl_report_wizard" model="ir.actions.act_window">
+        <field name="name">General Ledger</field>
+        <field name="res_model">gl.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_gl_report_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_gl_report_wizard"
+              name="General Ledger (Excel)"
+              action="action_gl_report_wizard"
+              parent="account.menu_finance_reports"
+              sequence="5"/>
+</odoo>

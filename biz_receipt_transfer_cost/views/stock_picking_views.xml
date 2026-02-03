@@ -7,14 +7,15 @@
         <field name="model">stock.picking</field>
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
-            <!-- Add cost price field to operations tab (stock.move) -->
+            <!-- Add cost price field to operations tab (stock.move) - Only for Cost Transfer Users -->
             <xpath expr="//page[@name='operations']//field[@name='move_ids_without_package']/tree//field[@name='quantity']" position="after">
-                <field name="use_custom_cost" column_invisible="True"/>
-                <field name="is_from_purchase" column_invisible="True"/>
+                <field name="use_custom_cost" column_invisible="True" groups="biz_receipt_transfer_cost.group_cost_transfer_user"/>
+                <field name="is_from_purchase" column_invisible="True" groups="biz_receipt_transfer_cost.group_cost_transfer_user"/>
                 <field name="custom_cost_price" 
                        string="Cost Price"
                        readonly="parent.state == 'done' or is_from_purchase"
-                       optional="show"/>
+                       optional="show"
+                       groups="biz_receipt_transfer_cost.group_cost_transfer_user"/>
             </xpath>
         </field>
     </record>
@@ -27,12 +28,15 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='product_uom_qty']" position="after">
                 <field name="use_custom_cost" 
-                       invisible="1"/>
+                       invisible="1"
+                       groups="biz_receipt_transfer_cost.group_cost_transfer_user"/>
                 <field name="is_from_purchase" 
-                       invisible="1"/>
+                       invisible="1"
+                       groups="biz_receipt_transfer_cost.group_cost_transfer_user"/>
                 <field name="custom_cost_price" 
                        string="Custom Cost Price"
-                       readonly="state == 'done' or is_from_purchase"/>
+                       readonly="state == 'done' or is_from_purchase"
+                       groups="biz_receipt_transfer_cost.group_cost_transfer_user"/>
             </xpath>
         </field>
     </record>
@@ -46,7 +50,8 @@
             <xpath expr="//field[@name='quantity']" position="after">
                 <field name="custom_cost_price" 
                        string="Cost Price" 
-                       optional="hide"/>
+                       optional="hide"
+                       groups="biz_receipt_transfer_cost.group_cost_transfer_user"/>
             </xpath>
         </field>
     </record>

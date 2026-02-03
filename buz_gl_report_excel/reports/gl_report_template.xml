@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<template id="report_general_ledger">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="o"> <!-- Although we iterate docs, we use 'accounts' passed from values -->
+        <t t-call="web.external_layout">
+            <div class="page">
+                <div class="row">
+                    <div class="col-12">
+                        <h3>
+                            <span t-esc="res_company.name"/>: General ledger
+                        </h3>
+                    </div>
+                </div>
+
+                <div class="row mt-4 mb-4">
+                    <div class="col-4">
+                        <strong>Journals:</strong> <br/>
+                        <span t-esc="', '.join([j.code for j in env['account.journal'].browse(data['journal_ids'])])"/>
+                    </div>
+                    <div class="col-4">
+                        <strong>Display Account:</strong> <br/>
+                        <span t-if="data['display_account'] == 'all'">All</span>
+                        <span t-if="data['display_account'] == 'movement'">With movements</span>
+                        <span t-if="data['display_account'] == 'not_zero'">With balance is not equal to 0</span>
+                    </div>
+                    <div class="col-4">
+                        <strong>Target Moves:</strong> <br/>
+                        <span t-if="data['target_move'] == 'posted'">All Posted Entries</span>
+                        <span t-if="data['target_move'] == 'all'">All Entries</span>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-4">
+                        <strong>Sorted By:</strong> <br/>
+                        <span t-if="data['sortby'] == 'sort_date'">Date</span>
+                        <span t-if="data['sortby'] == 'sort_journal_partner'">Journal &amp; Partner</span>
+                    </div>
+                    <div class="col-4">
+                        <strong>Date from:</strong> <span t-esc="date_from"/><br/>
+                        <strong>Date to:</strong> <span t-esc="date_to"/>
+                    </div>
+                </div>
+
+                <t t-foreach="accounts" t-as="account">
+                    <div class="page_break"/>
+                    <table class="table table-sm table-condensed">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>JRNL</th>
+                                <th>Partner</th>
+                                <th>Ref</th>
+                                <th>Move</th>
+                                <th>Analytic Account</th>
+                                <th>Entry Label</th>
+                                <th class="text-right">Debit</th>
+                                <th class="text-right">Credit</th>
+                                <th class="text-right">Balance</th>
+                                <th class="text-right">Currency</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Account Header Line -->
+                            <tr class="table-light">
+                                <td colspan="7">
+                                    <strong><span t-esc="account['code']"/> <span t-esc="account['name']"/></strong>
+                                </td>
+                                <div t-if="account['init_balance']">
+                                    <td class="text-right">
+                                        <span t-esc="account['init_balance']['debit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-esc="account['init_balance']['credit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-esc="account['init_balance']['balance']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                    </td>
+                                    <td/>
+                                </div>
+                                <div t-else="">
+                                   <td colspan="4" class="text-right">
+                                        <span t-esc="account['end_balance']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                   </td>
+                                </div>
+                            </tr>
+
+                            <!-- Lines -->
+                            <t t-set="cum_balance" t-value="account['init_balance']['balance'] if account['init_balance'] else 0.0"/>
+                            <tr t-foreach="account['lines']" t-as="line">
+                                <td><span t-esc="line['date']"/></td>
+                                <td><span t-esc="line['journal_code']"/></td>
+                                <td><span t-esc="line['partner_name']"/></td>
+                                <td><span t-esc="line['ref']"/></td>
+                                <td><span t-esc="line['move_name']"/></td>
+                                <td><span t-esc="line['analytic_account']"/></td>
+                                <td><span t-esc="line['entry_label']"/></td>
+                                <td class="text-right">
+                                    <span t-esc="line['debit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-esc="line['credit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                </td>
+                                
+                                <t t-set="cum_balance" t-value="cum_balance + line['balance']"/>
+                                <td class="text-right">
+                                    <span t-esc="cum_balance" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-if="line['amount_currency']" t-esc="line['amount_currency']" />
+                                    <span t-if="line['currency_symbol']" t-esc="line['currency_symbol']"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </t>
+            </div>
+        </t>
+        </t>
+    </t>
+</template>
+</odoo>

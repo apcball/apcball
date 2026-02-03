@@ -38,6 +38,9 @@ Thai Description:
         'purchase_stock',
     ],
     'data': [
+        # Security
+        'security/security.xml',
+        'security/ir.model.access.csv',
         # Views
         'views/stock_picking_views.xml',
     ],
