@@ -31,6 +31,18 @@ class AdvanceBoxRefill(models.Model):
         currency_field='currency_id',
         tracking=True
     )
+    bank_charge_amount = fields.Monetary(
+        string='Bank Charges (THB)',
+        currency_field='bank_charge_currency_id',
+        default=0.0,
+        tracking=True
+    )
+    bank_charge_currency_id = fields.Many2one(
+        'res.currency',
+        string='Bank Charge Currency',
+        default=lambda self: self.env.ref('base.THB'),
+        required=True
+    )
     payment_id = fields.Many2one(
         'account.payment',
         string='Payment Transfer',

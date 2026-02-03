@@ -137,11 +137,30 @@ class WizardRefillAdvanceBox(models.TransientModel):
                 if wizard.box_id.journal_id.id == wizard.journal_bank_id.id:
                     raise ValidationError(_('Source and destination journals must be different.'))
 
+    @api.onchange('box_id')
+    def _onchange_box_id(self):
+        """Set destination journal when box is selected"""
+        if self.box_id and self.box_id.journal_id:
+            self.destination_journal_id = self.box_id.journal_id
+
+    bank_charge_amount = fields.Monetary(
+        string='Bank Charges (THB)',
+        currency_field='bank_charge_currency_id',
+        default=0.0
+    )
+    bank_charge_currency_id = fields.Many2one(
+        'res.currency',
+        string='Bank Charge Currency',
+        default=lambda self: self.env.ref('base.THB'),
+        required=True
+    )
+
     def action_confirm_refill(self):
         """
         Confirm the refill using simple journal entry:
         Debit: 113001 เงินทดรองจ่าย
-        Credit: Bank account
+        Debit: Bank Charges (if any)
+        Credit: Bank account (Total)
         """
         self.ensure_one()
         
@@ -154,6 +173,10 @@ class WizardRefillAdvanceBox(models.TransientModel):
         
         if not self.amount or self.amount <= 0:
             raise UserError(_('Amount must be greater than zero.'))
+
+        # Validate bank charges
+        if self.bank_charge_amount > 0 and not self.journal_id.default_bank_charge_account_id:
+            raise UserError(_('Please configure Bank Charge Account on the selected journal "%s".') % self.journal_id.name)
 
         try:
             # Get employee partner
@@ -176,11 +199,55 @@ class WizardRefillAdvanceBox(models.TransientModel):
                 else:
                     raise UserError(_('Cannot determine bank account. Please set default account for journal "%s".') % self.journal_id.name)
             
+            # Calculate validation amounts
+            bank_charge_converted = 0.0
+            if self.bank_charge_amount > 0:
+                if self.bank_charge_currency_id != self.company_id.currency_id:
+                    bank_charge_converted = self.bank_charge_currency_id._convert(
+                        self.bank_charge_amount,
+                        self.company_id.currency_id,
+                        self.company_id,
+                        self.date
+                    )
+                else:
+                    bank_charge_converted = self.bank_charge_amount
+
+            total_credit = self.amount + bank_charge_converted
+
             # Create journal entry
-            _logger.info('📝 Creating journal entry: Debit %s (%s), Credit %s (%s), Amount: %.2f',
-                        self.debit_account_id.code, self.debit_account_id.name,
-                        self.credit_account_id.code, self.credit_account_id.name, self.amount)
+            _logger.info('📝 Creating journal entry: Debit %s (Amount: %.2f), Debit Charges (%.2f), Credit %s (Total: %.2f)',
+                        self.debit_account_id.code, self.amount, bank_charge_converted,
+                        self.credit_account_id.code, total_credit)
             
+            line_ids = [
+                (0, 0, {
+                    'account_id': self.debit_account_id.id,
+                    'partner_id': partner_id,
+                    'debit': self.amount,
+                    'credit': 0.0,
+                    'name': _('Transfer from %s') % self.journal_id.name
+                })
+            ]
+
+            # Add bank charge line if exists
+            if self.bank_charge_amount > 0:
+                line_ids.append((0, 0, {
+                    'account_id': self.journal_id.default_bank_charge_account_id.id,
+                    'partner_id': partner_id,
+                    'debit': bank_charge_converted,
+                    'credit': 0.0,
+                    'name': _('Bank Charges')
+                }))
+
+            # Credit line (Total)
+            line_ids.append((0, 0, {
+                'account_id': self.credit_account_id.id,
+                'partner_id': partner_id,
+                'debit': 0.0,
+                'credit': total_credit,
+                'name': _('Transfer from %s') % self.journal_id.name
+            }))
+
             move_vals = {
                 'journal_id': self.journal_id.id,
                 'partner_id': partner_id,  # Add partner to journal entry header
@@ -188,22 +255,7 @@ class WizardRefillAdvanceBox(models.TransientModel):
                 'move_type': 'entry',
                 'date': self.date,
                 'ref': _('Refill Advance Box: %s') % self.box_id.name,
-                'line_ids': [
-                    (0, 0, {
-                        'account_id': self.debit_account_id.id,
-                        'partner_id': partner_id,
-                        'debit': self.amount,
-                        'credit': 0.0,
-                        'name': _('Transfer from %s') % self.journal_id.name
-                    }),
-                    (0, 0, {
-                        'account_id': self.credit_account_id.id,
-                        'partner_id': partner_id,
-                        'debit': 0.0,
-                        'credit': self.amount,
-                        'name': _('Transfer from %s') % self.journal_id.name
-                    }),
-                ]
+                'line_ids': line_ids
             }
             
             move = self.env['account.move'].create(move_vals)
@@ -223,6 +275,8 @@ class WizardRefillAdvanceBox(models.TransientModel):
                 'currency_id': self.currency_id.id,
                 'company_id': self.company_id.id,
                 'journal_bank_id': self.journal_id.id,
+                'bank_charge_amount': self.bank_charge_amount,
+                'bank_charge_currency_id': self.bank_charge_currency_id.id,
                 'notes': self.notes or _('Refill via journal entry %s') % move.name,
             }
             
@@ -233,10 +287,14 @@ class WizardRefillAdvanceBox(models.TransientModel):
             self.box_id._trigger_balance_recompute()
             
             # Post message to chatter
+            msg_body = _('Advance box refilled with amount %s<br/>Journal Entry: %s<br/>Debit: %s<br/>Credit: %s') % (
+                self.amount, move.name, self.debit_account_id.display_name, self.credit_account_id.display_name
+            )
+            if self.bank_charge_amount > 0:
+                msg_body += _('<br/>Bank Charges: %s %s') % (self.bank_charge_amount, self.bank_charge_currency_id.name)
+
             self.box_id.message_post(
-                body=_('Advance box refilled with amount %s<br/>Journal Entry: %s<br/>Debit: %s<br/>Credit: %s') % (
-                    self.amount, move.name, self.debit_account_id.display_name, self.credit_account_id.display_name
-                ),
+                body=msg_body,
                 subject=_('Refill Completed')
             )
             
@@ -258,9 +316,3 @@ class WizardRefillAdvanceBox(models.TransientModel):
         except Exception as e:
             _logger.error('❌ Error creating refill: %s', str(e))
             raise UserError(_('Error creating refill: %s') % str(e))
-
-    @api.onchange('box_id')
-    def _onchange_box_id(self):
-        """Set destination journal when box is selected"""
-        if self.box_id and self.box_id.journal_id:
-            self.destination_journal_id = self.box_id.journal_id

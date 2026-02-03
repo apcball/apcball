@@ -31,6 +31,8 @@
                             <field name="base_amount" widget="monetary" readonly="1" invisible="not base_amount"/>
                             <field name="date"/>
                             <field name="amount" widget="monetary" placeholder="0.00" required="1"/>
+                            <field name="bank_charge_amount" widget="monetary" placeholder="0.00"/>
+                            <field name="bank_charge_currency_id" invisible="1"/>
                         </group>
                         <group>
                             <field name="credit_account_id" 
