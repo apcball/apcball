@@ -84,6 +84,22 @@
                                    </td>
                                 </div>
                             </tr>
+                            
+                            <!-- Brought Forward Line -->
+                            <tr t-if="account['init_balance']">
+                                <td colspan="6"/>
+                                <td>Brought Forward</td>
+                                <td class="text-right">
+                                    <span t-esc="account['init_balance']['debit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-esc="account['init_balance']['credit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-esc="account['init_balance']['balance']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/>
+                                </td>
+                                <td/>
+                            </tr>
 
                             <!-- Lines -->
                             <t t-set="cum_balance" t-value="account['init_balance']['balance'] if account['init_balance'] else 0.0"/>
@@ -110,6 +126,18 @@
                                     <span t-if="line['amount_currency']" t-esc="line['amount_currency']" />
                                     <span t-if="line['currency_symbol']" t-esc="line['currency_symbol']"/>
                                 </td>
+                            </tr>
+                            
+                            <!-- Carried Forward -->
+                            <tr>
+                                <td colspan="6"/>
+                                <td><strong>Carried Forward</strong></td>
+                                <td/>
+                                <td/>
+                                <td class="text-right">
+                                    <strong><span t-esc="cum_balance" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/></strong>
+                                </td>
+                                <td/>
                             </tr>
                         </tbody>
                     </table>

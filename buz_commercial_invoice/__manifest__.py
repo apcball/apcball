@@ -13,6 +13,7 @@
         'account',
         'stock',
         'sale',
+        'mrp',
         'buz_product_dimension',
         'buzcustom_product_name_eng',
     ],

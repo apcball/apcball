@@ -163,29 +163,60 @@
                             <tbody>
                                 <t t-set="current_line_number" t-value="((page_number - 1) * 10) + 1"/>
                                 <t t-foreach="group" t-as="line">
-                                    <tr>
-                                        <td class="text-center"><span t-esc="current_line_number"/></td>
-                                        <td>
-                                            <span t-field="line.product_id.name_eng" t-if="line.product_id.name_eng"/>
-                                            <span t-field="line.product_id.name" t-else=""/>
-                                        </td>
-                                        <td class="text-right">
-                                            <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
-                                        </td>
-                                        <td class="text-right">
-                                            <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
-                                        </td>
-                                        <td class="text-right">
-                                            <span t-field="line.product_id.box_weight" t-options='{"widget": "float", "precision": 2}'/>
-                                        </td>
-                                        <td class="text-right">
-                                            <span t-field="line.product_id.weight" t-options='{"widget": "float", "precision": 2}'/>
-                                        </td>
-                                         <td class="text-right">
-                                            <span t-field="line.product_id.box_width"/> x <span t-field="line.product_id.box_depth"/> x <span t-field="line.product_id.box_height"/>
-                                        </td>
+                                    <t t-set="bom_components" t-value="o.get_bom_components(line.product_id, line.product_uom_qty, '')"/>
+                                    <t t-if="bom_components">
+                                        <!-- Display BOM components -->
+                                        <t t-foreach="bom_components" t-as="component">
+                                            <tr>
+                                                <td class="text-center"><span t-esc="current_line_number"/></td>
+                                                <td>
+                                                    <span t-esc="component['product'].name_eng if component['product'].name_eng else component['product'].name"/>
+                                                </td>
+                                                <td class="text-right">
+                                                    <span t-esc="component['quantity']" t-options='{"widget": "float", "precision": 2}'/>
+                                                </td>
+                                                <td class="text-right">
+                                                    <span t-esc="component['quantity']" t-options='{"widget": "float", "precision": 2}'/>
+                                                </td>
+                                                <td class="text-right">
+                                                    <span t-esc="component['product'].box_weight" t-options='{"widget": "float", "precision": 2}'/>
+                                                </td>
+                                                <td class="text-right">
+                                                    <span t-esc="component['product'].weight" t-options='{"widget": "float", "precision": 2}'/>
+                                                </td>
+                                                <td class="text-right">
+                                                    <span t-esc="component['product'].box_width"/> x <span t-esc="component['product'].box_depth"/> x <span t-esc="component['product'].box_height"/>
+                                                </td>
+                                            </tr>
+                                            <t t-set="current_line_number" t-value="current_line_number + 1"/>
+                                        </t>
+                                    </t>
+                                    <t t-else="">
+                                        <!-- Display normal product line -->
+                                        <tr>
+                                            <td class="text-center"><span t-esc="current_line_number"/></td>
+                                            <td>
+                                                <span t-field="line.product_id.name_eng" t-if="line.product_id.name_eng"/>
+                                                <span t-field="line.product_id.name" t-else=""/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.product_id.box_weight" t-options='{"widget": "float", "precision": 2}'/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.product_id.weight" t-options='{"widget": "float", "precision": 2}'/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.product_id.box_width"/> x <span t-field="line.product_id.box_depth"/> x <span t-field="line.product_id.box_height"/>
+                                            </td>
+                                        </tr>
                                         <t t-set="current_line_number" t-value="current_line_number + 1"/>
-                                    </tr>
+                                    </t>
                                 </t>
                             </tbody>
                             <t t-if="page_number == total_pages">
@@ -195,13 +226,13 @@
                                     <td style="border: none;"></td>
                                     <td class="text-right" style="border: 1px solid #000;"><strong>Total :</strong></td>
                                     <td class="text-right" style="border: 1px solid #000;">
-                                        <span t-esc="sum(l.product_qty for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/>
+                                        <span t-esc="o.get_total_bom_quantity()" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                     <td class="text-right" style="border: 1px solid #000;">
-                                        <span t-esc="sum(l.product_uom_qty * l.product_id.box_weight for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/>
+                                        <span t-esc="o.get_total_bom_gross_weight()" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                     <td class="text-right" style="border: 1px solid #000;">
-                                        <span t-esc="sum(l.product_uom_qty * l.product_id.weight for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/>
+                                        <span t-esc="o.get_total_bom_net_weight()" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                     <td style="border: none;"></td>
                                 </tr>
@@ -220,9 +251,9 @@
                         <!-- Total -->
                         <div class="row mt-2" style="margin-left: 20px;">
                             <div class="col-7">
-                                <div><strong>Total Quantity :</strong> <span t-esc="sum(l.product_qty for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/><span> Carton</span></div>
-                                <div><strong>Total Net Weight (KG) :</strong> <span t-esc="sum(l.product_uom_qty * l.product_id.weight for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/><span> Kgs</span></div>
-                                <div><strong>Gross Weight (KG) :</strong> <span t-esc="sum(l.product_uom_qty * l.product_id.box_weight for l in o.order_line)" t-options='{"widget": "float", "precision": 2}'/><span> Kgs</span></div>
+                                <div><strong>Total Quantity :</strong> <span t-esc="o.get_total_bom_quantity()" t-options='{"widget": "float", "precision": 2}'/><span> Carton</span></div>
+                                <div><strong>Total Net Weight (KG) :</strong> <span t-esc="o.get_total_bom_net_weight()" t-options='{"widget": "float", "precision": 2}'/><span> Kgs</span></div>
+                                <div><strong>Gross Weight (KG) :</strong> <span t-esc="o.get_total_bom_gross_weight()" t-options='{"widget": "float", "precision": 2}'/><span> Kgs</span></div>
 
                             </div>
                         </div>

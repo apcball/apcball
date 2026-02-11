@@ -43,6 +43,12 @@ class GeneralLedgerXlsx(models.AbstractModel):
             
             init_balance = account.get('init_balance')
             if init_balance:
+                sheet.write(row, 0, 'Brought Forward', date_fmt) # Or leave date empty? Usually date is empty for brought forward
+                # Let's put 'Brought Forward' in the Entry Label column as per plan, or maybe in the first column if date is efficiently skipped
+                # The plan said: "Entry Label" column (column 6).
+                # But typically "Brought Forward" spans or is in the description.
+                # Let's stick to the plan: Entry Label column.
+                sheet.write(row, 6, 'Brought Forward')
                 sheet.write(row, 7, init_balance['debit'], amount_fmt)
                 sheet.write(row, 8, init_balance['credit'], amount_fmt)
                 sheet.write(row, 9, init_balance['balance'], amount_fmt)
@@ -72,5 +78,9 @@ class GeneralLedgerXlsx(models.AbstractModel):
                     sheet.write(row, 10, curr_str)
                 
                 row += 1
+            
+            # Carried Forward
+            sheet.write(row, 6, 'Carried Forward', bold)
+            sheet.write(row, 9, cum_balance, amount_fmt)
             
             row += 1 # Empty row between accounts
