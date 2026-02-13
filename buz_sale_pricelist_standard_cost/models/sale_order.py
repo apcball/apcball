@@ -15,7 +15,11 @@ class SaleOrder(models.Model):
     @api.depends('order_line.purchase_price', 'order_line.product_uom_qty', 'order_line.price_subtotal')
     def _compute_margin(self):
         for order in self:
-            order.margin = sum(order.order_line.mapped('margin'))
+            # Exclude service products from margin calculation
+            non_service_lines = order.order_line.filtered(
+                lambda l: l.product_id and l.product_id.type != 'service'
+            )
+            order.margin = sum(non_service_lines.mapped('margin'))
 
     def action_confirm(self):
         # Validation checks
@@ -37,7 +41,8 @@ class SaleOrder(models.Model):
             # Check Negative Margin (Line by line)
             if block_negative:
                 for line in order.order_line:
-                    if not line.is_downpayment and line.display_type == False and line.margin < 0:
+                    # Skip service products from negative margin check
+                    if not line.is_downpayment and line.display_type == False and line.product_id.type != 'service' and line.margin < 0:
                          raise ValidationError(_("Line for %s has negative margin, which is blocked.") % line.product_id.name)
                          
         return super(SaleOrder, self).action_confirm()

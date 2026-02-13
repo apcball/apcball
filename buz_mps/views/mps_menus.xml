@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Root Menu -->
+    <menuitem id="mps_menu_root"
+              name="MPS"
+              web_icon="buz_mps,static/description/icon.png"
+              sequence="44"/>
+
+    <!-- MPS Plans -->
+    <menuitem id="mps_menu_plans"
+              name="MPS Plans"
+              parent="mps_menu_root"
+              action="mps_plan_action"
+              sequence="10"/>
+
+    <!-- MPS Plan Lines -->
+    <menuitem id="mps_menu_lines"
+              name="Plan Lines"
+              parent="mps_menu_root"
+              action="mps_plan_line_action"
+              sequence="20"/>
+</odoo>

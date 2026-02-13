@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="mps_plan_line_view_tree" model="ir.ui.view">
+        <field name="name">mps.plan.line.tree</field>
+        <field name="model">mps.plan.line</field>
+        <field name="arch" type="xml">
+            <tree string="MPS Plan Lines" editable="bottom">
+                <field name="plan_id" column_invisible="1"/>
+                <field name="product_id"/>
+                <field name="route_type"/>
+                <field name="safety_stock"/>
+                <field name="lead_time_days"/>
+                <field name="forecast_qty"/>
+                <field name="suggested_qty"/>
+                <field name="confirmed_qty"/>
+                <field name="mo_count" string="# MOs"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="mps_plan_line_view_form" model="ir.ui.view">
+        <field name="name">mps.plan.line.form</field>
+        <field name="model">mps.plan.line</field>
+        <field name="arch" type="xml">
+            <form string="MPS Plan Line">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_mos" type="object"
+                                class="oe_stat_button" icon="fa-industry"
+                                invisible="mo_count == 0">
+                            <field name="mo_count" widget="statinfo" string="MOs"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="plan_id"/>
+                            <field name="product_id"/>
+                            <field name="route_type"/>
+                        </group>
+                        <group>
+                            <field name="safety_stock"/>
+                            <field name="lead_time_days"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Quantities" name="quantities">
+                            <group>
+                                <group string="Planning">
+                                    <field name="forecast_qty"/>
+                                    <field name="suggested_qty"/>
+                                    <field name="confirmed_qty"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Generated Records" name="generated">
+                            <group>
+                                <field name="generated_mo_ids" readonly="1">
+                                    <tree>
+                                        <field name="name"/>
+                                        <field name="product_id"/>
+                                        <field name="product_qty"/>
+                                        <field name="date_start"/>
+                                        <field name="state"/>
+                                    </tree>
+                                </field>
+                            </group>
+                            <group>
+                                <field name="generated_po_ids" readonly="1">
+                                    <tree>
+                                        <field name="name"/>
+                                        <field name="date_order"/>
+                                        <field name="state"/>
+                                    </tree>
+                                </field>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="mps_plan_line_action" model="ir.actions.act_window">
+        <field name="name">MPS Plan Lines</field>
+        <field name="res_model">mps.plan.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No plan lines yet.
+            </p>
+        </field>
+    </record>
+</odoo>

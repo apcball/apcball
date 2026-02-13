@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mps_plan_user,mps.plan.user,model_mps_plan,buz_mps.group_mps_user,1,1,1,0
+access_mps_plan_manager,mps.plan.manager,model_mps_plan,buz_mps.group_mps_manager,1,1,1,1
+access_mps_plan_line_user,mps.plan.line.user,model_mps_plan_line,buz_mps.group_mps_user,1,1,1,0
+access_mps_plan_line_manager,mps.plan.line.manager,model_mps_plan_line,buz_mps.group_mps_manager,1,1,1,1

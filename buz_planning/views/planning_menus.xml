@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Root Menu -->
+    <menuitem id="planning_menu_root"
+              name="Planning"
+              web_icon="buz_planning,static/description/icon.png"
+              sequence="45"/>
+
+    <!-- Planning Gantt -->
+    <menuitem id="planning_menu_gantt"
+              name="Planning Gantt"
+              parent="planning_menu_root"
+              action="planning_slot_gantt_action"
+              sequence="10"/>
+
+    <!-- Slots List -->
+    <menuitem id="planning_menu_slots"
+              name="Slots"
+              parent="planning_menu_root"
+              action="planning_slot_action"
+              sequence="20"/>
+
+    <!-- Calendar -->
+    <menuitem id="planning_menu_calendar"
+              name="Calendar"
+              parent="planning_menu_root"
+              action="planning_slot_calendar_action"
+              sequence="30"/>
+</odoo>

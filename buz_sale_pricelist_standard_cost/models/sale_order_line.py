@@ -30,6 +30,12 @@ class SaleOrderLine(models.Model):
                 line.purchase_price = 0.0
                 continue
 
+            # Skip service products — they should not affect margin
+            if line.product_id.type == 'service':
+                line.standard_cost_price = 0.0
+                line.purchase_price = 0.0
+                continue
+
             cid = line.company_id.id or line.order_id.company_id.id
             if cid not in pricelists:
                 pricelists[cid] = self.env['product.pricelist'].search([

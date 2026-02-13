@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="planning_slot_comp_rule" model="ir.rule">
+        <field name="name">Planning Slot: multi-company</field>
+        <field name="model_id" ref="model_planning_slot"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="planning_slot_user_rule" model="ir.rule">
+        <field name="name">Planning Slot: user read/write own company</field>
+        <field name="model_id" ref="model_planning_slot"/>
+        <field name="groups" eval="[(4, ref('buz_planning.group_planning_user'))]"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="planning_slot_manager_rule" model="ir.rule">
+        <field name="name">Planning Slot: manager full access</field>
+        <field name="model_id" ref="model_planning_slot"/>
+        <field name="groups" eval="[(4, ref('buz_planning.group_planning_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+</odoo>

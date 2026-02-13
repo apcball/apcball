@@ -1,0 +1,274 @@
+// MOG Gantt View Styles
+
+.mog-gantt-container {
+    background: #f8f9fa;
+    min-height: 500px;
+}
+
+.mog-gantt-toolbar {
+    z-index: 10;
+    position: sticky;
+    top: 0;
+    flex-shrink: 0;
+}
+
+// Grid layout
+.mog-gantt-renderer {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+}
+
+.mog-gantt-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    min-width: 100%;
+}
+
+// Sidebar
+.mog-gantt-sidebar {
+    background: #fff;
+    border-right: 2px solid #dee2e6;
+    border-bottom: 1px solid #e9ecef;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+}
+
+.mog-gantt-sidebar-header {
+    background: #f1f3f5;
+    font-size: 0.85em;
+    min-height: 40px;
+    z-index: 6;
+    position: sticky;
+    top: 0;
+    left: 0;
+}
+
+.mog-gantt-row-label {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: #495057;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+// Timeline header
+.mog-gantt-timeline-header {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    background: #f1f3f5;
+    border-bottom: 2px solid #dee2e6;
+    height: 40px;
+    min-width: 1200px;
+    display: block;
+    overflow: visible;
+}
+
+.mog-gantt-header-cell {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8em;
+    font-weight: 500;
+    color: #6c757d;
+    border-right: 1px solid #dee2e6;
+    user-select: none;
+}
+
+// Timeline rows
+.mog-gantt-timeline-row {
+    position: relative;
+    min-height: 48px;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    min-width: 1200px;
+
+    &:hover {
+        background: rgba(0, 123, 255, 0.03);
+    }
+}
+
+// Grid lines
+.mog-gantt-grid-line {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-right: 1px solid #f0f0f0;
+    pointer-events: none;
+}
+
+// Now line
+.mog-gantt-now-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dc3545;
+    z-index: 3;
+    pointer-events: none;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -4px;
+        width: 10px;
+        height: 10px;
+        background: #dc3545;
+        border-radius: 50%;
+    }
+}
+
+// Slot bars
+.mog-gantt-slot {
+    position: absolute;
+    top: 6px;
+    height: 36px;
+    display: flex;
+    align-items: stretch;
+    z-index: 2;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+
+    &:hover {
+        z-index: 3;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+}
+
+.mog-gantt-slot-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 0.8em;
+    font-weight: 500;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    cursor: grab;
+    user-select: none;
+    min-width: 0;
+
+    &:active {
+        cursor: grabbing;
+    }
+}
+
+.mog-gantt-slot-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// Resize handles
+.mog-gantt-resize-handle {
+    width: 6px;
+    cursor: col-resize;
+    z-index: 4;
+    flex-shrink: 0;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+}
+
+.mog-gantt-resize-left {
+    border-radius: 4px 0 0 4px;
+}
+
+.mog-gantt-resize-right {
+    border-radius: 0 4px 4px 0;
+}
+
+// State colors
+.mog-gantt-slot--draft .mog-gantt-slot-body {
+    opacity: 0.8;
+}
+
+.mog-gantt-slot--confirmed .mog-gantt-slot-body {
+    opacity: 1;
+}
+
+.mog-gantt-slot--done .mog-gantt-slot-body {
+    opacity: 0.6;
+}
+
+// Conflict highlight
+.mog-gantt-slot--conflict {
+    .mog-gantt-slot-body {
+        box-shadow: 0 0 0 2px #dc3545, 0 0 8px rgba(220, 53, 69, 0.4);
+    }
+
+    &::after {
+        content: '\f071';
+        font-family: FontAwesome;
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        background: #dc3545;
+        color: #fff;
+        font-size: 9px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+    }
+}
+
+// Dragging state
+.mog-gantt-slot--dragging {
+    opacity: 0.7;
+    z-index: 10;
+}
+
+// Row hover highlight for drop target
+.mog-gantt-row.mog-gantt-drop-target {
+    background: rgba(0, 123, 255, 0.08);
+}
+
+// Slot type indicators
+.slot--task .mog-gantt-slot-body {
+    border-left: 4px solid #0d6efd;
+}
+
+.slot--workorder .mog-gantt-slot-body {
+    border-left: 4px solid #fd7e14;
+}
+
+.slot--manual .mog-gantt-slot-body {
+    border-left: 4px solid #6c757d;
+}
+
+// Slot badge (project name / MO name)
+.mog-gantt-slot-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 5px;
+    font-size: 0.7em;
+    font-weight: 600;
+    line-height: 1.6;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+    flex-shrink: 0;
+}

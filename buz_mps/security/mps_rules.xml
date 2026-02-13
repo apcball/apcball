@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mps_plan_comp_rule" model="ir.rule">
+        <field name="name">MPS Plan: multi-company</field>
+        <field name="model_id" ref="model_mps_plan"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="mps_plan_line_comp_rule" model="ir.rule">
+        <field name="name">MPS Plan Line: multi-company</field>
+        <field name="model_id" ref="model_mps_plan_line"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

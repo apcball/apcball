@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="planning_slot_view_calendar" model="ir.ui.view">
+        <field name="name">planning.slot.calendar</field>
+        <field name="model">planning.slot</field>
+        <field name="arch" type="xml">
+            <calendar string="Planning Calendar" date_start="start_datetime" date_stop="end_datetime" color="employee_id" mode="week" quick_create="0">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="workcenter_id"/>
+                <field name="state"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="planning_slot_calendar_action" model="ir.actions.act_window">
+        <field name="name">Planning Calendar</field>
+        <field name="res_model">planning.slot</field>
+        <field name="view_mode">calendar,tree,form</field>
+        <field name="search_view_id" ref="planning_slot_view_search"/>
+    </record>
+</odoo>

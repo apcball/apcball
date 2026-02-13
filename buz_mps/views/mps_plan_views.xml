@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="mps_plan_view_tree" model="ir.ui.view">
+        <field name="name">mps.plan.tree</field>
+        <field name="model">mps.plan</field>
+        <field name="arch" type="xml">
+            <tree string="MPS Plans" decoration-info="state == 'draft'" decoration-success="state == 'confirmed'">
+                <field name="name"/>
+                <field name="warehouse_id"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="bucket_type"/>
+                <field name="line_count"/>
+                <field name="mo_count"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'confirmed'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="mps_plan_view_form" model="ir.ui.view">
+        <field name="name">mps.plan.form</field>
+        <field name="model">mps.plan</field>
+        <field name="arch" type="xml">
+            <form string="MPS Plan">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_compute_suggested" type="object" string="Compute Suggested"
+                            class="btn-secondary" invisible="state != 'confirmed'"/>
+                    <button name="action_generate_mo" type="object" string="Generate MO"
+                            class="btn-primary" invisible="state != 'confirmed'"
+                            confirm="This will create Manufacturing Orders for all manufacture lines. Continue?"/>
+                    <button name="action_draft" type="object" string="Reset to Draft"
+                            invisible="state != 'confirmed'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_mos" type="object"
+                                class="oe_stat_button" icon="fa-industry"
+                                invisible="mo_count == 0">
+                            <field name="mo_count" widget="statinfo" string="MOs"/>
+                        </button>
+                        <button name="action_view_pos" type="object"
+                                class="oe_stat_button" icon="fa-shopping-cart"
+                                invisible="po_count == 0">
+                            <field name="po_count" widget="statinfo" string="POs"/>
+                        </button>
+                        <button name="action_open_planning_gantt" type="object"
+                                class="oe_stat_button" icon="fa-calendar"
+                                invisible="mo_count == 0">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Planning Gantt</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Plan Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="warehouse_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="bucket_type"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Plan Lines" name="lines">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="route_type"/>
+                                    <field name="safety_stock"/>
+                                    <field name="lead_time_days"/>
+                                    <field name="forecast_qty"/>
+                                    <field name="suggested_qty"/>
+                                    <field name="confirmed_qty"/>
+                                    <field name="mo_count" string="# MOs"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="mps_plan_view_search" model="ir.ui.view">
+        <field name="name">mps.plan.search</field>
+        <field name="model">mps.plan</field>
+        <field name="arch" type="xml">
+            <search string="MPS Plans">
+                <field name="name"/>
+                <field name="warehouse_id"/>
+                <separator/>
+                <filter name="filter_draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_confirmed" string="Confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter name="group_warehouse" string="Warehouse" context="{'group_by': 'warehouse_id'}"/>
+                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="mps_plan_action" model="ir.actions.act_window">
+        <field name="name">MPS Plans</field>
+        <field name="res_model">mps.plan</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="mps_plan_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Master Production Schedule
+            </p>
+            <p>
+                Plan production forecasts, compute replenishment, and generate Manufacturing Orders.
+            </p>
+        </field>
+    </record>
+</odoo>

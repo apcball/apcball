@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Controller Template -->
+    <t t-name="buz_planning.MogGanttController">
+        <div t-att-class="props.className" t-ref="root">
+            <Layout className="''" display="props.display">
+                <div class="mog-gantt-container d-flex flex-column h-100">
+                    <!-- Toolbar -->
+                    <div class="mog-gantt-toolbar d-flex align-items-center gap-2 p-2 border-bottom bg-white">
+                        <!-- Navigation -->
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary" t-on-click="onPrev">
+                                <i class="fa fa-chevron-left"/>
+                            </button>
+                            <button class="btn btn-outline-secondary" t-on-click="onToday">Today</button>
+                            <button class="btn btn-outline-secondary" t-on-click="onNext">
+                                <i class="fa fa-chevron-right"/>
+                            </button>
+                        </div>
+
+                        <!-- Scale -->
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn" t-attf-class="{{state.scale === 'day' ? 'btn-primary' : 'btn-outline-secondary'}}"
+                                    t-on-click="() => this.onScaleChange('day')">Day</button>
+                            <button class="btn" t-attf-class="{{state.scale === 'week' ? 'btn-primary' : 'btn-outline-secondary'}}"
+                                    t-on-click="() => this.onScaleChange('week')">Week</button>
+                            <button class="btn" t-attf-class="{{state.scale === 'month' ? 'btn-primary' : 'btn-outline-secondary'}}"
+                                    t-on-click="() => this.onScaleChange('month')">Month</button>
+                        </div>
+
+                        <!-- Group Mode -->
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn" t-attf-class="{{state.groupMode === 'employee' ? 'btn-primary' : 'btn-outline-secondary'}}"
+                                    t-on-click="() => this.onGroupModeChange('employee')">
+                                <i class="fa fa-user me-1"/>Employee
+                            </button>
+                            <button class="btn" t-attf-class="{{state.groupMode === 'workcenter' ? 'btn-primary' : 'btn-outline-secondary'}}"
+                                    t-on-click="() => this.onGroupModeChange('workcenter')">
+                                <i class="fa fa-industry me-1"/>Workcenter
+                            </button>
+                        </div>
+
+                        <span class="border-start mx-1" style="height:24px;"/>
+
+                        <!-- Slot Type Filter -->
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn" t-attf-class="{{state.slotTypeFilter === 'all' ? 'btn-info' : 'btn-outline-secondary'}}"
+                                    t-on-click="() => this.onSlotTypeFilterChange('all')">All</button>
+                            <button class="btn" t-attf-class="{{state.slotTypeFilter === 'task' ? 'btn-info' : 'btn-outline-secondary'}}"
+                                    t-on-click="() => this.onSlotTypeFilterChange('task')">
+                                <i class="fa fa-tasks me-1"/>Tasks
+                            </button>
+                            <button class="btn" t-attf-class="{{state.slotTypeFilter === 'workorder' ? 'btn-info' : 'btn-outline-secondary'}}"
+                                    t-on-click="() => this.onSlotTypeFilterChange('workorder')">
+                                <i class="fa fa-cogs me-1"/>Workorders
+                            </button>
+                            <button class="btn" t-attf-class="{{state.slotTypeFilter === 'manual' ? 'btn-info' : 'btn-outline-secondary'}}"
+                                    t-on-click="() => this.onSlotTypeFilterChange('manual')">Manual</button>
+                        </div>
+
+                        <div class="flex-grow-1"/>
+                    </div>
+
+                    <!-- Gantt Body -->
+                    <div class="mog-gantt-body flex-grow-1 overflow-auto position-relative">
+                        <t t-component="props.Renderer" t-props="rendererProps"/>
+                    </div>
+                </div>
+            </Layout>
+        </div>
+    </t>
+
+    <!-- Renderer Template -->
+    <t t-name="buz_planning.MogGanttRenderer">
+        <div class="mog-gantt-renderer" t-ref="ganttContainer">
+            <div class="mog-gantt-grid">
+                <!-- Header row -->
+                <div class="mog-gantt-sidebar-header mog-gantt-sidebar">
+                    <span class="fw-bold text-muted" t-esc="rangeLabel"/>
+                </div>
+                <div class="mog-gantt-timeline-header" t-ref="timelineArea">
+                    <t t-foreach="headerCells" t-as="cell" t-key="cell_index">
+                        <div class="mog-gantt-header-cell"
+                             t-attf-style="left:{{cell.left}}px;width:{{cell.width}}px;">
+                            <span t-esc="cell.label"/>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Rows -->
+                <t t-foreach="rows" t-as="row" t-key="row.id or 'unassigned'">
+                    <!-- Sidebar -->
+                    <div class="mog-gantt-sidebar mog-gantt-row-label">
+                        <span t-esc="row.name"/>
+                    </div>
+                    <!-- Timeline row -->
+                    <div class="mog-gantt-row mog-gantt-timeline-row"
+                         t-on-click="(ev) => this.onTimelineClick(ev, row.id)">
+                        <!-- Grid lines -->
+                        <t t-foreach="headerCells" t-as="cell" t-key="cell_index">
+                            <div class="mog-gantt-grid-line"
+                                 t-attf-style="left:{{cell.left}}px;width:{{cell.width}}px;"/>
+                        </t>
+                        <!-- Now line -->
+                        <t t-if="nowLineStyle">
+                            <div class="mog-gantt-now-line" t-att-style="nowLineStyle"/>
+                        </t>
+                        <!-- Slots -->
+                        <t t-foreach="getRowSlots(row.id)" t-as="slot" t-key="slot.id">
+                            <div t-att-class="getSlotClass(slot)"
+                                 t-att-style="getSlotStyle(slot)"
+                                 t-on-click="(ev) => this.onSlotClick(ev, slot)">
+                                <!-- Resize handle left -->
+                                <div class="mog-gantt-resize-handle mog-gantt-resize-left"
+                                     t-on-mousedown.stop.prevent="(ev) => this.onSlotMouseDown(ev, slot, 'resize-left')"/>
+                                <!-- Slot body (draggable) -->
+                                <div class="mog-gantt-slot-body"
+                                     t-attf-style="background-color:{{getSlotColor(slot)}};"
+                                     t-on-mousedown.stop.prevent="(ev) => this.onSlotMouseDown(ev, slot, 'move')">
+                                    <span class="mog-gantt-slot-label" t-esc="slot.name"/>
+                                    <t t-if="getSlotBadge(slot)">
+                                        <span class="mog-gantt-slot-badge" t-esc="getSlotBadge(slot)"/>
+                                    </t>
+                                </div>
+                                <!-- Resize handle right -->
+                                <div class="mog-gantt-resize-handle mog-gantt-resize-right"
+                                     t-on-mousedown.stop.prevent="(ev) => this.onSlotMouseDown(ev, slot, 'resize-right')"/>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+
+</templates>

@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="planning_slot_view_tree" model="ir.ui.view">
+        <field name="name">planning.slot.tree</field>
+        <field name="model">planning.slot</field>
+        <field name="arch" type="xml">
+            <tree string="Planning Slots" decoration-muted="state == 'cancelled'" decoration-success="state == 'done'">
+                <field name="name"/>
+                <field name="start_datetime"/>
+                <field name="end_datetime"/>
+                <field name="duration_hours" widget="float_time"/>
+                <field name="employee_id" optional="show"/>
+                <field name="workcenter_id" optional="show"/>
+                <field name="slot_type"/>
+                <field name="project_id" optional="show"/>
+                <field name="project_task_id" optional="hide"/>
+                <field name="production_id" optional="show"/>
+                <field name="mrp_workorder_id" optional="hide"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state == 'confirmed'" decoration-success="state == 'done'" decoration-danger="state == 'cancelled'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="planning_slot_view_form" model="ir.ui.view">
+        <field name="name">planning.slot.form</field>
+        <field name="model">planning.slot</field>
+        <field name="arch" type="xml">
+            <form string="Planning Slot">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_done" type="object" string="Done" class="btn-primary" invisible="state != 'confirmed'"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state in ('done', 'cancelled')"/>
+                    <button name="action_draft" type="object" string="Reset to Draft" invisible="state != 'cancelled'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Slot Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="start_datetime"/>
+                            <field name="end_datetime"/>
+                            <field name="duration_hours" widget="float_time"/>
+                        </group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="workcenter_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Links">
+                        <group>
+                            <field name="slot_type"/>
+                            <field name="project_task_id" invisible="slot_type == 'workorder'"/>
+                            <field name="project_id" invisible="slot_type != 'task'"/>
+                            <field name="task_stage_id" invisible="slot_type != 'task'"/>
+                        </group>
+                        <group>
+                            <field name="mrp_workorder_id" invisible="slot_type == 'task'"/>
+                            <field name="production_id" invisible="slot_type != 'workorder'"/>
+                            <field name="workorder_state" invisible="slot_type != 'workorder'"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="color"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="planning_slot_view_search" model="ir.ui.view">
+        <field name="name">planning.slot.search</field>
+        <field name="model">planning.slot</field>
+        <field name="arch" type="xml">
+            <search string="Planning Slots">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="workcenter_id"/>
+                <field name="project_id"/>
+                <field name="project_task_id"/>
+                <field name="production_id"/>
+                <field name="mrp_workorder_id"/>
+                <separator/>
+                <filter name="filter_task" string="Tasks" domain="[('slot_type', '=', 'task')]"/>
+                <filter name="filter_workorder" string="Work Orders" domain="[('slot_type', '=', 'workorder')]"/>
+                <filter name="filter_manual" string="Manual" domain="[('slot_type', '=', 'manual')]"/>
+                <separator/>
+                <filter name="filter_draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_confirmed" string="Confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <filter name="filter_done" string="Done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter name="filter_my_slots" string="My Slots" domain="[('employee_id.user_id', '=', uid)]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter name="group_employee" string="Employee" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_workcenter" string="Work Center" context="{'group_by': 'workcenter_id'}"/>
+                    <filter name="group_type" string="Type" context="{'group_by': 'slot_type'}"/>
+                    <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_production" string="Manufacturing Order" context="{'group_by': 'production_id'}"/>
+                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action: Slots List -->
+    <record id="planning_slot_action" model="ir.actions.act_window">
+        <field name="name">Planning Slots</field>
+        <field name="res_model">planning.slot</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="planning_slot_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first planning slot
+            </p>
+        </field>
+    </record>
+
+    <!-- Action: Gantt View -->
+    <record id="planning_slot_gantt_action" model="ir.actions.act_window">
+        <field name="name">Planning Gantt</field>
+        <field name="res_model">planning.slot</field>
+        <field name="view_mode">mog_gantt,tree,form</field>
+        <field name="search_view_id" ref="planning_slot_view_search"/>
+    </record>
+
+    <!-- Gantt View definition -->
+    <record id="planning_slot_view_mog_gantt" model="ir.ui.view">
+        <field name="name">planning.slot.mog_gantt</field>
+        <field name="model">planning.slot</field>
+        <field name="arch" type="xml">
+            <mog_gantt date_start="start_datetime" date_stop="end_datetime" default_group_by="employee_id" color="color">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="workcenter_id"/>
+                <field name="slot_type"/>
+                <field name="state"/>
+            </mog_gantt>
+        </field>
+    </record>
+</odoo>
