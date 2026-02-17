@@ -18,6 +18,7 @@
         'views/pricelist_view.xml',
         'views/pricelist_item_view.xml',
         'views/sale_order_view.xml',
+        'views/product_template_view.xml',
         'views/res_config_settings_view.xml',
     ],
     'installable': True,

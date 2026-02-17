@@ -3,6 +3,12 @@ from odoo import api, fields, models, _
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
+    exclude_from_margin = fields.Boolean(
+        related='product_id.exclude_from_margin',
+        store=True,
+        string="ไม่คำนวณ Margin",
+    )
+
     standard_cost_price = fields.Float(
         string="Standard Cost (Sales)",
         compute='_compute_standard_cost_purchase_price',
@@ -19,7 +25,7 @@ class SaleOrderLine(models.Model):
         digits='Product Price'
     )
 
-    @api.depends('product_id', 'company_id', 'currency_id', 'product_uom', 'order_id.date_order', 'order_id.company_id', 'order_id.pricelist_id')
+    @api.depends('product_id', 'exclude_from_margin', 'company_id', 'currency_id', 'product_uom', 'order_id.date_order', 'order_id.company_id', 'order_id.pricelist_id')
     def _compute_standard_cost_purchase_price(self):
         # Cache pricelists by company
         pricelists = {}
@@ -30,8 +36,8 @@ class SaleOrderLine(models.Model):
                 line.purchase_price = 0.0
                 continue
 
-            # Skip service products — they should not affect margin
-            if line.product_id.type == 'service':
+            # Skip products marked to exclude from margin
+            if line.product_id.exclude_from_margin:
                 line.standard_cost_price = 0.0
                 line.purchase_price = 0.0
                 continue
