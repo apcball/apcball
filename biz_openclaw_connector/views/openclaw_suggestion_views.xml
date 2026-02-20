@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_openclaw_suggestion" model="ir.actions.act_window">
+        <field name="name">OpenClaw Suggestions</field>
+        <field name="res_model">openclaw.suggestion</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help">View and manage AI suggestions from OpenClaw</field>
+    </record>
+
+    <menuitem id="menu_openclaw_suggestions" name="Suggestions" parent="menu_openclaw_config" action="action_openclaw_suggestion" sequence="3"/>
+
+    <record id="view_openclaw_suggestion_tree" model="ir.ui.view">
+        <field name="name">openclaw.suggestion.tree</field>
+        <field name="model">openclaw.suggestion</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="model_name"/>
+                <field name="record_id"/>
+                <field name="suggestion_type"/>
+                <field name="risk_score"/>
+                <field name="confidence"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'accepted'" decoration-warning="state == 'rejected'"/>
+                <field name="job_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_openclaw_suggestion_form" model="ir.ui.view">
+        <field name="name">openclaw.suggestion.form</field>
+        <field name="model">openclaw.suggestion</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_accept" string="Accept" type="object" invisible="state != 'draft'" class="oe_highlight"/>
+                    <button name="action_reject" string="Reject" type="object" invisible="state != 'draft'" class="btn-danger"/>
+                    <button name="open_record" string="Open Record" type="object"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,accepted,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="model_name" readonly="1"/>
+                            <field name="record_id" readonly="1"/>
+                            <field name="suggestion_type" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="job_id" readonly="1"/>
+                            <field name="risk_score" readonly="1"/>
+                            <field name="confidence" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="user_id" readonly="1"/>
+                            <field name="approval_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Summary">
+                            <field name="summary" readonly="1"/>
+                        </page>
+                        <page string="Details">
+                            <field name="details_json" widget="text" readonly="1"/>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

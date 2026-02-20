@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_openclaw_config" model="ir.actions.act_window">
+        <field name="name">OpenClaw Configuration</field>
+        <field name="res_model">openclaw.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help">Configure OpenClaw API connection settings</field>
+    </record>
+
+    <menuitem id="menu_openclaw_config" name="OpenClaw" parent="account.menu_finance_configuration" sequence="10"/>
+    <menuitem id="menu_openclaw_config_settings" name="Configuration" parent="menu_openclaw_config" action="action_openclaw_config" sequence="1"/>
+
+    <record id="view_openclaw_config_tree" model="ir.ui.view">
+        <field name="name">openclaw.config.tree</field>
+        <field name="model">openclaw.config</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="base_url"/>
+                <field name="timeout"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_openclaw_config_form" model="ir.ui.view">
+        <field name="name">openclaw.config.form</field>
+        <field name="model">openclaw.config</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="test_connection" string="Test Connection" type="object" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="active"/>
+                            <field name="company_id" readonly="1"/>
+                            <field name="timeout"/>
+                        </group>
+                        <group>
+                            <field name="base_url" placeholder="https://api.openclaw.com"/>
+                            <field name="api_token" password="True"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

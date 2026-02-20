@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_move_form_openclaw" model="ir.ui.view">
+        <field name="name">account.move.form.openclaw</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_ai_audit" string="AI Audit" type="object" class="oe_highlight" invisible="move_type not in ['out_invoice', 'in_invoice'] or state != 'draft'"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_openclaw_suggestions" type="object" class="oe_stat_button" icon="fa-lightbulb-o">
+                    <field name="openclaw_suggestion_count" widget="statinfo" string="AI Suggestions"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_account_move_tree_openclaw" model="ir.ui.view">
+        <field name="name">account.move.tree.openclaw</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <field name="openclaw_suggestion_count" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

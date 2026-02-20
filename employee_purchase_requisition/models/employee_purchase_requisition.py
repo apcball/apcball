@@ -286,8 +286,10 @@ class PurchaseRequisition(models.Model):
             except Exception:
                 # Fallback to default location if access is denied
                 self.destination_location_id = self.env.ref('stock.stock_location_stock').id
-        self.delivery_type_id = (
-            self.source_location_id.warehouse_id.in_type_id.id)
+        # Only set delivery_type_id if not already set by user
+        if not self.delivery_type_id:
+            self.delivery_type_id = (
+                self.source_location_id.warehouse_id.in_type_id.id)
         self.internal_picking_id = (
             self.source_location_id.warehouse_id.int_type_id.id)
         self.write({'state': 'waiting_head_approval'})
@@ -353,8 +355,11 @@ class PurchaseRequisition(models.Model):
                 raise ValidationError('Please select vendor for all purchase items')
 
             vendor_id = rec.partner_id.id
-            if vendor_id not in purchase_orders:
-                purchase_orders[vendor_id] = []
+            # Use line-level picking_type_id if set, otherwise fall back to header-level delivery_type_id
+            picking_type_id = rec.picking_type_id.id if rec.picking_type_id else (self.delivery_type_id.id if self.delivery_type_id else False)
+            group_key = (vendor_id, picking_type_id)
+            if group_key not in purchase_orders:
+                purchase_orders[group_key] = []
 
             line_vals = {
                 'name': rec.description or rec.product_id.name,
@@ -364,19 +369,24 @@ class PurchaseRequisition(models.Model):
                 'date_planned': fields.Date.today(),
                 'price_unit': rec.unit_price or rec.product_id.standard_price,
             }
-            
+
             # Only add analytic distribution if it exists
             if rec.analytic_distribution:
                 line_vals['analytic_distribution'] = rec.analytic_distribution
-            
-            purchase_orders[vendor_id].append(line_vals)
+
+            purchase_orders[group_key].append(line_vals)
 
         # สร้าง Purchase Orders
-        for vendor_id, lines in purchase_orders.items():
+        for (vendor_id, picking_type_id), lines in purchase_orders.items():
             order_lines = [(0, 0, line) for line in lines]
-            picking_type_id = False
-            if self.destination_location_id and self.destination_location_id.warehouse_id:
-                picking_type_id = self.destination_location_id.warehouse_id.in_type_id.id
+            
+            # Calculate destination_location_id from picking_type_id
+            dest_location_id = False
+            if picking_type_id:
+                picking_type = self.env['stock.picking.type'].browse(picking_type_id)
+                if picking_type.default_location_dest_id:
+                    dest_location_id = picking_type.default_location_dest_id.id
+            
             self.env['purchase.order'].create({
                 'partner_id': vendor_id,
                 'requisition_order': self.name,
@@ -385,7 +395,7 @@ class PurchaseRequisition(models.Model):
                 'pr_number': self.name,
                 'date_order': fields.Date.today(),
                 'order_line': order_lines,
-                'destination_location_id': self.destination_location_id.id,
+                'destination_location_id': dest_location_id,
                 'picking_type_id': picking_type_id,
                 'notes': self.requisition_description or '',
             })

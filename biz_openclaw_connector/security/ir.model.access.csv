@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_openclaw_config_all,OpenClaw Config All,model_openclaw_config,base.group_user,1,0,0,0
+access_openclaw_config_manager,OpenClaw Config Manager,model_openclaw_config,account.group_account_manager,1,1,1,1
+access_openclaw_job_all,OpenClaw Job All,model_openclaw_job,base.group_user,1,0,0,0
+access_openclaw_job_manager,OpenClaw Job Manager,model_openclaw_job,account.group_account_manager,1,1,1,1
+access_openclaw_suggestion_all,OpenClaw Suggestion All,model_openclaw_suggestion,base.group_user,1,1,1,0
+access_openclaw_suggestion_manager,OpenClaw Suggestion Manager,model_openclaw_suggestion,account.group_account_manager,1,1,1,1

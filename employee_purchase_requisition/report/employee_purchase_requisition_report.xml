@@ -28,7 +28,7 @@
                             <style>
                                 @font-face {
                                     font-family: 'Sarabun';
-                                    src: url('/buz_po_portal/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                    src: url('/buz_custom_po/static/fonts/Sarabun-Bold.ttf') format('truetype');
                                     font-weight: bold;
                                     font-style: normal;
                                 }

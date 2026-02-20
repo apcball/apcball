@@ -24,6 +24,12 @@ class RequisitionOrder(models.Model):
         'res.partner',
         string='Vendor'
     )
+    picking_type_id = fields.Many2one(
+        'stock.picking.type',
+        string='Picking Type',
+        domain="[('code', '=', 'incoming')]",
+        help='Select the picking type for receiving goods'
+    )
     analytic_distribution = fields.Json(
         string="Analytic Distribution",
         copy=True,

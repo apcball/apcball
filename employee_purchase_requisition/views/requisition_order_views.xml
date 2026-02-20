@@ -17,6 +17,8 @@
                 <field name="uom"/>
                 <field name="partner_id"
                        groups="employee_purchase_requisition.employee_requisition_head,employee_purchase_requisition.employee_requisition_manager"/>
+                <field name="picking_type_id"
+                       groups="employee_purchase_requisition.employee_requisition_head,employee_purchase_requisition.employee_requisition_manager"/>
             </tree>
         </field>
     </record>
