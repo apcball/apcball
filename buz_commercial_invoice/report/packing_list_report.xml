@@ -13,7 +13,7 @@
                         }
                         .page {
                             font-family: 'Sarabun', Arial, sans-serif;
-                            font-size: 18px;
+                            font-size: 13px;
                             color: #000;
                         }
                         .table-sm th, .table-sm td {
@@ -32,6 +32,8 @@
                         <t t-set="groups_of_10" t-value="[line_list[i:i+10] for i in range(0, len(line_list), 10)]"/>
                         <t t-set="page_number" t-value="1"/>
                         <t t-set="total_pages" t-value="groups_of_10 and len(groups_of_10) or 0"/>
+                        <!-- Initialize totals for manual accumulation -->
+                        <t t-set="totals" t-value="{'gw': 0, 'nw': 0, 'qty': 0}"/>
                         <t t-foreach="groups_of_10" t-as="group">
                             <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
 <t t-if="page_number == 1">
@@ -44,7 +46,7 @@
                                         <img src="/buz_commercial_invoice/static/img/LOGO MOGEN.png" style="max-height: 80px; max-width: 100%;" alt="Logo"/>
                                     </div>
                                     <div class="col-9 text-left small">
-                                        <strong style="font-size: 12px;">MOGEN CO.,LTD.</strong>
+                                        <strong style="font-size: 10px;">MOGEN CO.,LTD.</strong>
                                         <div>9 Moo 12 Beungkhumproy, lumlukka, Pathumthani 12150 THAILAND</div>
                                         <div><strong>MOGEN Customer Service Tel.</strong> +66 2150 9709-13</div>
                                         <div><strong>Bangkok Service Center Tel.</strong> +66 2789 9980 Ext #801,802</div>
@@ -179,15 +181,17 @@
                                                     <span t-esc="component['quantity']" t-options='{"widget": "float", "precision": 2}'/>
                                                 </td>
                                                 <td class="text-right">
-                                                    <span t-esc="component['product'].box_weight" t-options='{"widget": "float", "precision": 2}'/>
+                                                    <span t-esc="component['product'].box_weight * component['quantity']" t-options='{"widget": "float", "precision": 2}'/>
                                                 </td>
                                                 <td class="text-right">
-                                                    <span t-esc="component['product'].weight" t-options='{"widget": "float", "precision": 2}'/>
+                                                    <span t-esc="component['product'].product_tmpl_id.cubic_meter * component['quantity']" t-options='{"widget": "float", "precision": 2}'/>
                                                 </td>
                                                 <td class="text-right">
                                                     <span t-esc="component['product'].box_width"/> x <span t-esc="component['product'].box_depth"/> x <span t-esc="component['product'].box_height"/>
                                                 </td>
                                             </tr>
+                                            <!-- Accumulate totals -->
+                                            <t t-set="void" t-value="totals.update({'gw': totals.get('gw', 0) + (component['product'].box_weight * component['quantity']), 'nw': totals.get('nw', 0) + (component['product'].product_tmpl_id.cubic_meter * component['quantity']), 'qty': totals.get('qty', 0) + component['quantity']})"/>
                                             <t t-set="current_line_number" t-value="current_line_number + 1"/>
                                         </t>
                                     </t>
@@ -200,21 +204,23 @@
                                                 <span t-field="line.product_id.name" t-else=""/>
                                             </td>
                                             <td class="text-right">
-                                                <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
+                                                <span t-field="line.product_uom_qty" t-options='{"widget": "float", "precision": 2}'/>
                                             </td>
                                             <td class="text-right">
-                                                <span t-field="line.product_qty" t-options='{"widget": "float", "precision": 2}'/>
+                                                <span t-field="line.product_uom_qty" t-options='{"widget": "float", "precision": 2}'/>
                                             </td>
                                             <td class="text-right">
-                                                <span t-field="line.product_id.box_weight" t-options='{"widget": "float", "precision": 2}'/>
+                                                <span t-esc="line.product_id.box_weight * line.product_uom_qty" t-options='{"widget": "float", "precision": 2}'/>
                                             </td>
                                             <td class="text-right">
-                                                <span t-field="line.product_id.weight" t-options='{"widget": "float", "precision": 2}'/>
+                                                <span t-esc="line.product_id.product_tmpl_id.cubic_meter * line.product_uom_qty" t-options='{"widget": "float", "precision": 2}'/>
                                             </td>
                                             <td class="text-right">
                                                 <span t-field="line.product_id.box_width"/> x <span t-field="line.product_id.box_depth"/> x <span t-field="line.product_id.box_height"/>
                                             </td>
                                         </tr>
+                                        <!-- Accumulate totals -->
+                                        <t t-set="void" t-value="totals.update({'gw': totals.get('gw', 0) + (line.product_id.box_weight * line.product_uom_qty), 'nw': totals.get('nw', 0) + (line.product_id.product_tmpl_id.cubic_meter * line.product_uom_qty), 'qty': totals.get('qty', 0) + line.product_uom_qty})"/>
                                         <t t-set="current_line_number" t-value="current_line_number + 1"/>
                                     </t>
                                 </t>
@@ -226,13 +232,13 @@
                                     <td style="border: none;"></td>
                                     <td class="text-right" style="border: 1px solid #000;"><strong>Total :</strong></td>
                                     <td class="text-right" style="border: 1px solid #000;">
-                                        <span t-esc="o.get_total_bom_quantity()" t-options='{"widget": "float", "precision": 2}'/>
+                                        <span t-esc="totals['qty']" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                     <td class="text-right" style="border: 1px solid #000;">
-                                        <span t-esc="o.get_total_bom_gross_weight()" t-options='{"widget": "float", "precision": 2}'/>
+                                        <span t-esc="totals['gw']" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                     <td class="text-right" style="border: 1px solid #000;">
-                                        <span t-esc="o.get_total_bom_net_weight()" t-options='{"widget": "float", "precision": 2}'/>
+                                        <span t-esc="totals['nw']" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                     <td style="border: none;"></td>
                                 </tr>
@@ -251,9 +257,9 @@
                         <!-- Total -->
                         <div class="row mt-2" style="margin-left: 20px;">
                             <div class="col-7">
-                                <div><strong>Total Quantity :</strong> <span t-esc="o.get_total_bom_quantity()" t-options='{"widget": "float", "precision": 2}'/><span> Carton</span></div>
-                                <div><strong>Total Net Weight (KG) :</strong> <span t-esc="o.get_total_bom_net_weight()" t-options='{"widget": "float", "precision": 2}'/><span> Kgs</span></div>
-                                <div><strong>Gross Weight (KG) :</strong> <span t-esc="o.get_total_bom_gross_weight()" t-options='{"widget": "float", "precision": 2}'/><span> Kgs</span></div>
+                                <div><strong>Total Quantity :</strong> <span t-esc="totals['qty']" t-options='{"widget": "float", "precision": 2}'/><span> Carton</span></div>
+                                <div><strong>Total Net Weight (KG) :</strong> <span t-esc="totals['nw']" t-options='{"widget": "float", "precision": 2}'/><span> Kgs</span></div>
+                                <div><strong>Gross Weight (KG) :</strong> <span t-esc="totals['gw']" t-options='{"widget": "float", "precision": 2}'/><span> Kgs</span></div>
 
                             </div>
                         </div>

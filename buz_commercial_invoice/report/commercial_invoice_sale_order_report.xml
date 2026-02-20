@@ -13,7 +13,7 @@
                         }
                         .page {
                             font-family: 'Sarabun', Arial, sans-serif;
-                            font-size: 18px;
+                            font-size: 13px;
                             color: #000;
                         }
                         .table-sm th, .table-sm td {
@@ -35,10 +35,10 @@
                     </style>
                     <div class="page">
                         <t t-set="line_list" t-value="o.order_line"/>
-                        <t t-set="groups_of_7" t-value="[line_list[i:i+10] for i in range(0, len(line_list), 10)]"/>
+                        <t t-set="groups_of_10" t-value="[line_list[i:i+10] for i in range(0, len(line_list), 10)]"/>
                         <t t-set="page_number" t-value="1"/>
                         <t t-set="total_pages" t-value="groups_of_10 and len(groups_of_10) or 0"/>
-                        <t t-foreach="groups_of_7" t-as="group">
+                        <t t-foreach="groups_of_10" t-as="group">
                             <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
 <t t-if="page_number == 1">
                         <!-- Custom Header Area -->
@@ -50,7 +50,7 @@
                                         <img src="/buz_commercial_invoice/static/img/LOGO MOGEN.png" style="max-height: 80px; max-width: 100%;" alt="Logo"/>
                                     </div>
                                     <div class="col-9 text-left small">
-                                        <strong style="font-size: 12px;">MOGEN CO.,LTD.</strong>
+                                        <strong style="font-size: 10px;">MOGEN CO.,LTD.</strong>
                                         <div>9 Moo 12 Beungkhumproy, lumlukka, Pathumthani 12150 THAILAND</div>
                                         <div><strong>MOGEN Customer Service Tel.</strong> +66 2150 9709-13</div>
                                         <div><strong>Bangkok Service Center Tel.</strong> +66 2789 9980 Ext #801,802</div>
@@ -134,7 +134,7 @@
                                 <div class="row mb-1">
                                     <div class="col-4 text-right pr-2"><strong>Ship To :</strong></div>
                                     <div class="col-8">
-                                        <span t-field="o.partner_shipping_id.city"/>, <span t-field="o.partner_shipping_id.country_id.name"/>
+                                        <span t-field="o.ship_to"/>
                                     </div>
                                 </div>
                                 <div class="row mb-1">

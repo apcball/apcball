@@ -23,6 +23,7 @@
                             <field name="shipping_mark"/>
                             <field name="shipping_by"/>
                             <field name="bank_info"/>
+                            <field name="ship_to"/>
                         </group>
                     </group>
                     <separator string="Generated Amount"/>

@@ -56,6 +56,10 @@ class SaleOrder(models.Model):
         string='Bank Information',
         tracking=True,
     )
+    ship_to = fields.Text(
+        string='Ship To',
+        tracking=True,
+    )
 
     amount_text = fields.Char(
         string='Amount in Words',
@@ -126,12 +130,12 @@ class SaleOrder(models.Model):
 
     def get_bom_components(self, product, quantity, line_hscode=''):
         """
-        Get BOM components for a product.
+        Get BOM components for a kit product (phantom BOM type).
         Returns a list of dictionaries with component details.
-        If no BOM exists, returns an empty list.
+        If no kit BOM exists, returns an empty list.
         """
         self.ensure_one()
-        # Search for BOM manually to avoid API compatibility issues
+        # Search for phantom (kit) BOM only - do not show manufacturing (normal) type
         bom = self.env['mrp.bom'].search([
             '|',
             ('product_id', '=', product.id),
@@ -139,7 +143,7 @@ class SaleOrder(models.Model):
             ('product_id', '=', False),
             ('product_tmpl_id', '=', product.product_tmpl_id.id),
             ('company_id', 'in', [self.company_id.id, False]),
-            ('type', '=', 'normal')
+            ('type', '=', 'phantom')
         ], limit=1)
         
         if not bom:
