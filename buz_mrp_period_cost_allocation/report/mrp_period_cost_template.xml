@@ -19,6 +19,10 @@
                             <div class="col-3"><strong>Base:</strong> <span t-field="o.allocation_base"/></div>
                             <div class="col-3"><strong>Status:</strong> <span t-field="o.state"/></div>
                         </div>
+                        <div class="row mb-3" t-if="not o.inventory_only">
+                            <div class="col-6"><strong>Journal:</strong> <span t-field="o.journal_id"/></div>
+                            <div class="col-6"><strong>Variance Account:</strong> <span t-field="o.valuation_adjustment_account_id"/></div>
+                        </div>
 
                         <div class="row">
                             <!-- Section 1: Cost Summary -->

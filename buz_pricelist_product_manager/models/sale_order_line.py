@@ -17,6 +17,9 @@ class SaleOrderLine(models.Model):
 
     @api.depends('product_id', 'order_id.pricelist_id', 'product_uom_qty', 'order_id.date_order')
     def _compute_installation_price(self):
+        # Cache standard cost pricelists by company
+        std_cost_pls = {}
+
         for line in self:
             if not line.product_id or not line.order_id.pricelist_id:
                 line.installation_price = 0.0
@@ -26,8 +29,32 @@ class SaleOrderLine(models.Model):
             product = line.product_id
             qty = line.product_uom_qty or 1.0
             date = line.order_id.date_order
-            
-            # _get_product_price_rule returns (price, rule_id)
+
+            # If pricelist has "Use Installation Price" checked,
+            # pull installation_price from the Standard Cost Pricelist
+            if pricelist.use_installation_price:
+                cid = line.company_id.id or line.order_id.company_id.id
+                if cid not in std_cost_pls:
+                    std_cost_pls[cid] = self.env['product.pricelist'].search([
+                        ('is_standard_cost_pricelist', '=', True),
+                        ('company_id', '=', cid),
+                    ], limit=1)
+
+                std_pl = std_cost_pls[cid]
+                if std_pl:
+                    rule_result = std_pl._get_product_price_rule(
+                        product, quantity=1.0, date=date
+                    )
+                    if rule_result[1]:
+                        src_item = self.env['product.pricelist.item'].browse(rule_result[1])
+                        line.installation_price = src_item.installation_price or 0.0
+                    else:
+                        line.installation_price = 0.0
+                else:
+                    line.installation_price = 0.0
+                continue
+
+            # Default: pull installation_price from current pricelist rule
             rule = pricelist._get_product_price_rule(
                 product, quantity=qty, date=date
             )

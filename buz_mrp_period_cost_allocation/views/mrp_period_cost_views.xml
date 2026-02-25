@@ -26,6 +26,8 @@
                     <button name="action_load_mos" string="Load MOs" type="object" class="btn-primary" invisible="state != 'draft'"/>
                     <button name="action_preview_allocation" string="Preview Allocation" type="object" class="btn-secondary" invisible="state != 'draft'"/>
                     <button name="action_post" string="Post Adjustment" type="object" class="btn-success" invisible="state != 'draft'" confirm="Are you sure you want to post this cost adjustment? This will update inventory valuation layers."/>
+                    <button name="action_cancel" string="Cancel" type="object" invisible="state != 'draft'"/>
+                    <button name="action_draft" string="Set to Draft" type="object" invisible="state != 'cancel'"/>
                     <button name="%(action_report_mrp_period_cost_pdf)d" string="Print PDF" type="action" class="btn-secondary"/>
                     <button name="%(action_report_mrp_period_cost_xlsx)d" string="Print Excel" type="action" class="btn-secondary"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,posted"/>
@@ -46,6 +48,14 @@
                             <field name="allocation_base" readonly="state == 'posted'"/>
                             <field name="inventory_only" readonly="state == 'posted'"/>
                             <field name="allow_accounting_entry" invisible="1"/>
+                            <field name="journal_id" 
+                                   invisible="not allow_accounting_entry" 
+                                   required="allow_accounting_entry"
+                                   readonly="state == 'posted'"/>
+                            <field name="valuation_adjustment_account_id" 
+                                   invisible="not allow_accounting_entry" 
+                                   required="allow_accounting_entry"
+                                   readonly="state == 'posted'"/>
                         </group>
                     </group>
 

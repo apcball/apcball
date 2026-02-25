@@ -22,10 +22,11 @@
         Author: APCBALL
     """,
     'author': 'APCBALL',
-    'depends': ['sale', 'product'],
+    'depends': ['sale', 'product', 'buz_sale_pricelist_standard_cost'],
     'data': [
         'security/groups.xml',
         'security/ir.model.access.csv',
+        'views/pricelist_item_view.xml',
         'views/pricelist_product_matrix_view.xml',
         'views/sale_order_line_view.xml',
         'views/export_wizard_view.xml',

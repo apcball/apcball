@@ -1,6 +1,9 @@
+import logging
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_is_zero, float_round
+
+_logger = logging.getLogger(__name__)
 
 class MrpPeriodCost(models.Model):
     _name = 'mrp.period.cost'
@@ -43,6 +46,16 @@ class MrpPeriodCost(models.Model):
         compute='_compute_allow_accounting_entry', 
         store=True,
         string='Allow Accounting Entry'
+    )
+
+    journal_id = fields.Many2one(
+        'account.journal', string='Journal',
+        domain=[('type', '=', 'general')],
+        help="Journal used for accounting entries."
+    )
+    valuation_adjustment_account_id = fields.Many2one(
+        'account.account', string='Variance Account',
+        help="Counterpart account for inventory valuation adjustments (e.g., Cost Variance or Production Price Difference)."
     )
     
     # Costs
@@ -168,12 +181,9 @@ class MrpPeriodCost(models.Model):
         elif self.allocation_base == 'standard_cost':
             total_base = sum(self.line_ids.mapped('standard_total_cost'))
         elif self.allocation_base == 'sale_price':
-            # Need sale price from product. Usually lst_price or computed price.
-            # Prompt says "mo.sale_value". Assuming product unit price * qty produced.
             total_base = sum(l.product_id.list_price * l.quantity_produced for l in self.line_ids)
             
         if float_is_zero(total_base, precision_digits=2):
-             # Avoid division by zero if base is 0
              for line in self.line_ids:
                  line.write({
                      'allocation_weight': 0,
@@ -204,17 +214,23 @@ class MrpPeriodCost(models.Model):
             allocated_idl = self.diff_idl * weight
             allocated_oh = self.diff_oh * weight
             
-            # Inventory Logic
-            # Find on-hand quantity for this specific MO (via Lot)
-            # If no lot, we assume 0 on hand (conservative)
+            # Inventory Logic: Determine how much of the produced quantity is still in stock
             qty_on_hand = 0.0
             if line.mo_id.lot_producing_id:
+                # If tracked by lot, check current quantity of that specific lot in internal locations
                 quants = self.env['stock.quant'].search([
                     ('lot_id', '=', line.mo_id.lot_producing_id.id),
                     ('location_id.usage', '=', 'internal'),
                     ('company_id', '=', self.company_id.id)
                 ])
                 qty_on_hand = sum(quants.mapped('quantity'))
+            else:
+                # If NOT tracked by lot, check remaining quantity in the Stock Valuation Layers of the MO finished moves
+                moves = line.mo_id.move_finished_ids.filtered(
+                    lambda m: m.state == 'done' and m.product_id == line.product_id
+                )
+                # In Odoo 17, SVLs track 'remaining_qty' which is the quantity not yet consumed/sold
+                qty_on_hand = sum(moves.mapped('stock_valuation_layer_ids.remaining_qty'))
             
             # Ensure we don't exceed produced qty (in case of weird stock moves)
             qty_on_hand = min(qty_on_hand, line.quantity_produced)
@@ -248,118 +264,86 @@ class MrpPeriodCost(models.Model):
         # Validation checks
         if not self.line_ids:
              raise UserError(_("No lines to post."))
+
+        if not self.inventory_only:
+            if not self.journal_id:
+                raise UserError(_("Please select a Journal for accounting entries."))
+            if not self.valuation_adjustment_account_id:
+                raise UserError(_("Please select a Variance Account for accounting entries."))
              
         # Create SVLs
-        # If inventory_only, we might not create account moves, but we need SVLs to adjust cost.
-        # Logic adapted from stock.landed.cost
-        
         for line in self.line_ids:
             adjustment_value = line.allocated_dl + line.allocated_idl + line.allocated_oh
             if float_is_zero(adjustment_value, precision_digits=2):
                 continue
                 
-            # Find the stock move for the finished good
-            # MO has move_finished_ids. We need the one that produced the product.
-            # Usually state='done' and product_id match.
             moves = line.mo_id.move_finished_ids.filtered(
                 lambda m: m.state == 'done' and m.product_id == line.product_id and m.product_uom_qty > 0
             )
-            # There might be multiple (partial productions), we should probably carry cost to them proportionally or just pick them?
-            # Prompt implies "Recalculate manufacturing cost for all completed MOs".
-            # If multiple moves, we should probably split the adjustment?
-            # Creating one SVL for the MO might be simpler if we link it to one move, but strictly we should adjust the specific moves.
-            # For simplicity, if multiple moves, we distribute by qty?
             
             total_qty_moved = sum(moves.mapped('product_uom_qty'))
             if total_qty_moved == 0:
                 continue
 
             for move in moves:
-                # Proportional adjustment for this move
                 move_ratio = move.product_uom_qty / total_qty_moved
                 move_adjustment = adjustment_value * move_ratio
                 
-                # Check if product uses automated valuation
                 is_automated = move.product_id.valuation == 'real_time'
                 
-                # Prepare SVL values
                 svl_vals = {
                     'company_id': self.company_id.id,
                     'product_id': line.product_id.id,
                     'stock_move_id': move.id,
-                    'quantity': 0, # Value adjustment, not qty change
+                    'quantity': 0,
                     'value': move_adjustment,
                     'description': _('Period Cost Allocation: %s - %s') % (self.name, line.mo_id.name),
                 }
                 
-                # Create SVL
                 svl = self.env['stock.valuation.layer'].create(svl_vals)
                 
-                # Handling Accounting Entries
-                # conditions:
-                # 1. Product is automated
-                # 2. We are NOT in inventory_only mode OR we ARE in inventory_only but somehow forced?
-                # Prompt: "Accounting entries are OPTIONAL and DISABLED unless real-time valuation is enabled... If enabled: Use same accounts as landed cost"
-                # If inventory_only is True, we SKIP account moves even if real-time?
-                # "Default behavior: Adjust inventory valuation ONLY... No journal entries created"
-                # So if inventory_only=True, we do not create AM.
-                
                 if is_automated and not self.inventory_only:
-                    # Create Journal Entry
                      self._create_accounting_entry(move, move_adjustment, svl)
                 
         self.state = 'posted'
         return True
 
+    def action_cancel(self):
+        self.write({'state': 'cancel'})
+
+    def action_draft(self):
+        self.write({'state': 'draft'})
+
     def _create_accounting_entry(self, move, value, svl):
-        # Simplified accounting entry creation
-        # Debit: Inventory Account (from product/category)
-        # Credit: WIP / Manufacturing Variation (Cost Variance)
-        # Prompt says: "Use same accounts as landed cost: Inventory / WIP ... Cost Variance (DL/IDL/OH)"
-        # We need to find the Cost Variance account.
-        
-        # This is complex because standard Odoo doesn't specialized DL/IDL/OH variance accounts in standard setup easily reachable without param parameters.
-        # We will use the product's Stock Valuation Account (Debit) and Stock Input/Output or a specific Variance account.
-        
-        # For this implementation, I'll use standard stock accounting method from stock_account or attempt to look up accounts.
+        """Create a journal entry for the valuation adjustment."""
         product = move.product_id
         accounts = product.product_tmpl_id.get_product_accounts()
         debit_account_id = accounts.get('stock_valuation')
         
-        # Credit account? 
-        # Ideally, we should have a configuration for "Allocation Counterpart Account".
-        # Landed costs use the "Account" specified on the landed cost line product.
-        # Here we don't have a "service product" representing the cost.
-        # We might need to add a field for "Expense Account" or "Variance Account" on `mrp.period.cost` or just use the company's default expense/production account.
-        # Since I cannot easily guess, and the prompt implies "Cost Variance", I will assume we credit the "Stock Input Account" or "WIP Account" if available.
-        # However, `accounts['stock_input']` is usually for vendors. `accounts['stock_output']` for customers.
-        # Manufacturing usually uses Wip accounts.
-        
-        credit_account_id = accounts.get('stock_output') # Fallback
-        
-        # If we want to be precise, we might default to an expense account or let user configure it.
-        # Given limitations, I'll use stock_output (often used for WIP clearance in simple setups) or try to find a better one.
+        # Use configured variance account from the period cost record
+        credit_account_id = self.valuation_adjustment_account_id
+        journal_id = self.journal_id or accounts.get('stock_journal')
         
         if not debit_account_id or not credit_account_id:
-             # If accounts are missing, maybe skip or raise?
+             _logger.warning("Missing accounts for product %s. Valuation Adjustment skipped.", product.name)
              return
 
-        # Create Move
         move_vals = {
-            'journal_id': accounts['stock_journal'].id,
+            'journal_id': journal_id.id,
             'date': fields.Date.today(),
             'ref': self.name,
             'move_type': 'entry',
+            'stock_valuation_layer_ids': [(4, svl.id)], # Link SVL to AM
             'line_ids': [
                 (0, 0, {
-                    'name': _('Valuation Adjustment'),
+                    'name': _('Valuation Adjustment: %s') % product.name,
                     'account_id': debit_account_id.id,
                     'debit': value if value > 0 else 0,
                     'credit': -value if value < 0 else 0,
                     'product_id': product.id,
                 }),
                 (0, 0, {
-                    'name': _('Cost Variance'),
+                    'name': _('Cost Variance: %s') % product.name,
                     'account_id': credit_account_id.id,
                     'debit': -value if value < 0 else 0,
                     'credit': value if value > 0 else 0,
@@ -370,8 +354,6 @@ class MrpPeriodCost(models.Model):
         
         am = self.env['account.move'].create(move_vals)
         am.action_post()
-        
-        # Link SVL to AM
         svl.write({'account_move_id': am.id})
 
 

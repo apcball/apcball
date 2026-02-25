@@ -44,10 +44,17 @@ class ImportPricelistExcel(models.TransientModel):
             
         headers = rows[0]
         # Added installation_price
-        required_headers = ['pricelist', 'product_code', 'product_name', 'variant', 'category', 'base_price', 'rule_type', 'price', 'installation_price', 'min_qty', 'date_start', 'date_end']
+        required_headers = ['pricelist', 'product_name', 'variant', 'category', 'base_price', 'rule_type', 'price', 'installation_price', 'min_qty', 'date_start', 'date_end']
         
         header_map = {h: i for i, h in enumerate(headers) if h}
+        
         missing = [h for h in required_headers if h not in header_map]
+        
+        # Check for product identifier
+        product_code_header = 'Internal Reference' if 'Internal Reference' in header_map else 'product_code'
+        if product_code_header not in header_map:
+             missing.append('Internal Reference (or product_code)')
+
         if missing:
              raise UserError(_("Missing columns: %s") % ', '.join(missing))
             
@@ -55,7 +62,7 @@ class ImportPricelistExcel(models.TransientModel):
         
         # Batch Optimization: Collect codes
         data_rows = rows[1:]
-        all_codes = {row[header_map['product_code']] for row in data_rows if row[header_map['product_code']]}
+        all_codes = {row[header_map[product_code_header]] for row in data_rows if row[header_map[product_code_header]]}
         
         # Batch Optimization: Fetch Products
         products = self.env['product.product'].search([('default_code', 'in', list(all_codes))])
@@ -83,6 +90,7 @@ class ImportPricelistExcel(models.TransientModel):
             row_dict = {}
             for h in required_headers:
                 row_dict[h] = row[header_map[h]]
+            row_dict[product_code_header] = row[header_map[product_code_header]]
             
             # 1. Validate Pricelist
             row_pricelist = row_dict.get('pricelist')
@@ -96,7 +104,7 @@ class ImportPricelistExcel(models.TransientModel):
                 continue
                 
             # 2. Find Product
-            product_code = row_dict.get('product_code')
+            product_code = row_dict.get(product_code_header)
             product = product_map.get(product_code)
             
             if not product:

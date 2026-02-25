@@ -26,9 +26,15 @@ class MrpPeriodCostXlsx(models.AbstractModel):
             sheet.write(3, 1, o.allocation_base)
             sheet.write(3, 2, 'Status', bold)
             sheet.write(3, 3, o.state)
+            
+            if not o.inventory_only:
+                sheet.write(4, 0, 'Journal', bold)
+                sheet.write(4, 1, o.journal_id.name if o.journal_id else '')
+                sheet.write(4, 2, 'Variance Acc', bold)
+                sheet.write(4, 3, o.valuation_adjustment_account_id.display_name if o.valuation_adjustment_account_id else '')
 
             # Section 1: Cost Summary
-            row = 5
+            row = 6
             sheet.write(row, 0, '1. Cost Summary', bold)
             row += 1
             sheet.write(row, 0, 'Cost Type', header_format)

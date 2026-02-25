@@ -46,7 +46,7 @@ class ExportPricelistExcel(models.TransientModel):
         highlight_format = workbook.add_format({'bg_color': '#FFFFCC'}) # Expired or No rule?
         
         headers = [
-            'pricelist', 'product_code', 'product_name', 'variant', 'category',
+            'pricelist', 'Internal Reference', 'product_name', 'variant', 'category',
             'base_price', 'rule_type', 'price', 'installation_price', 'min_qty', 'date_start', 'date_end', 'product_id_db'
         ]
         
