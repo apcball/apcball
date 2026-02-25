@@ -33,16 +33,16 @@ class StockLandedCost(models.Model):
     #             if invalid_pickings:
     #                 raise ValidationError(_("Consistency Error: When a Batch Transfer is selected, all Transfers must belong to that Batch."))
 
-    @api.constrains('batch_id', 'state')
-    def _check_batch_reuse(self):
-        for cost in self:
-            if cost.batch_id:
-                # 4.2 Prevent Batch Reuse
-                # If a Batch Transfer was already used in a Posted Landed Cost
-                duplicate_costs = self.search([
-                    ('batch_id', '=', cost.batch_id.id),
-                    ('id', '!=', cost.id),
-                    ('state', '=', 'done')
-                ])
-                if duplicate_costs:
-                    raise ValidationError(_("This Batch Transfer has already been used in another posted Landed Cost."))
+    # @api.constrains('batch_id', 'state')
+    # def _check_batch_reuse(self):
+    #     for cost in self:
+    #         if cost.batch_id:
+    #             # 4.2 Prevent Batch Reuse
+    #             # If a Batch Transfer was already used in a Posted Landed Cost
+    #             duplicate_costs = self.search([
+    #                 ('batch_id', '=', cost.batch_id.id),
+    #                 ('id', '!=', cost.id),
+    #                 ('state', '=', 'done')
+    #             ])
+    #             if duplicate_costs:
+    #                 raise ValidationError(_("This Batch Transfer has already been used in another posted Landed Cost."))
