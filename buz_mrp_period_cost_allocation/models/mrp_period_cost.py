@@ -33,7 +33,8 @@ class MrpPeriodCost(models.Model):
     allocation_base = fields.Selection([
         ('time', 'Actual Time (Duration)'),
         ('standard_cost', 'Standard Manufacturing Cost'),
-        ('sale_price', 'Sale Price')
+        ('sale_price', 'Sale Price'),
+        ('manual', 'Manual Cost')
     ], string='Allocation Base', required=True, default='time')
     
     inventory_only = fields.Boolean(
@@ -182,6 +183,8 @@ class MrpPeriodCost(models.Model):
             total_base = sum(self.line_ids.mapped('standard_total_cost'))
         elif self.allocation_base == 'sale_price':
             total_base = sum(l.product_id.list_price * l.quantity_produced for l in self.line_ids)
+        elif self.allocation_base == 'manual':
+            total_base = sum(self.line_ids.mapped('manual_cost'))
             
         if float_is_zero(total_base, precision_digits=2):
              for line in self.line_ids:
@@ -207,6 +210,8 @@ class MrpPeriodCost(models.Model):
                 line_base = line.standard_total_cost
             elif self.allocation_base == 'sale_price':
                 line_base = line.product_id.list_price * line.quantity_produced
+            elif self.allocation_base == 'manual':
+                line_base = line.manual_cost
                 
             weight = line_base / total_base
             
@@ -375,6 +380,8 @@ class MrpPeriodCostLine(models.Model):
     standard_total_cost = fields.Float(string='Std Total', readonly=True, digits='Product Price')
     
     allocation_weight = fields.Float(string='Weight (%)', readonly=True, digits=(12, 4))
+    
+    manual_cost = fields.Float(string='Manual Cost', digits='Product Price')
     
     allocated_dl = fields.Float(string='Alloc DL', readonly=True, digits='Product Price')
     allocated_idl = fields.Float(string='Alloc IDL', readonly=True, digits='Product Price')

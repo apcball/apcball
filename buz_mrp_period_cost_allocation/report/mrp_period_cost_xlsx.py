@@ -96,7 +96,7 @@ class MrpPeriodCostXlsx(models.AbstractModel):
             sheet.write(row, 0, '3. Allocation Details by MO', bold)
             row += 1
             cols = [
-                'MO', 'Product', 'Qty Prod', 'On Hand', 'Ratio %', 
+                'MO', 'Product', 'Qty Prod', 'On Hand', 'Ratio %', 'Manual Cost',
                 'Alloc DL', 'Alloc IDL', 'Alloc OH', 'Inv Adj', 'Final Inv Cost'
             ]
             for i, col in enumerate(cols):
@@ -109,11 +109,12 @@ class MrpPeriodCostXlsx(models.AbstractModel):
                 sheet.write(row, 2, line.quantity_produced)
                 sheet.write(row, 3, line.qty_on_hand)
                 sheet.write(row, 4, line.inventory_ratio / 100.0, percent)
-                sheet.write(row, 5, line.allocated_dl, money)
-                sheet.write(row, 6, line.allocated_idl, money)
-                sheet.write(row, 7, line.allocated_oh, money)
-                sheet.write(row, 8, line.allocated_inventory_total, money)
-                sheet.write(row, 9, line.standard_total_cost + line.allocated_inventory_total, money)
+                sheet.write(row, 5, line.manual_cost, money)
+                sheet.write(row, 6, line.allocated_dl, money)
+                sheet.write(row, 7, line.allocated_idl, money)
+                sheet.write(row, 8, line.allocated_oh, money)
+                sheet.write(row, 9, line.allocated_inventory_total, money)
+                sheet.write(row, 10, line.standard_total_cost + line.allocated_inventory_total, money)
                 row += 1
 
             # Section 4: Period Variance Breakdown

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Paper Format for Cheque (Typical Thai size: 7 x 3.5 inches = 177.8 x 88.9 mm) -->
+    <record id="paperformat_cheque_print" model="report.paperformat">
+        <field name="name">Thai Cheque Standard</field>
+        <field name="default" eval="False"/>
+        <field name="format">custom</field>
+        <field name="page_height">89</field>
+        <field name="page_width">178</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">0</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
+        <field name="disable_shrinking" eval="True"/>
+    </record>
+
+    <!-- Report Action -->
+    <record id="action_report_print_cheque" model="ir.actions.report">
+        <field name="name">Print Cheque</field>
+        <field name="model">account.payment.voucher</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_accounting_addon.report_print_cheque_template</field>
+        <field name="report_file">buz_accounting_addon.report_print_cheque_template</field>
+        <field name="print_report_name">'Cheque - %s' % (object.check_number or object.name)</field>
+        <field name="binding_model_id" ref="model_account_payment_voucher"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_cheque_print"/>
+    </record>
+
+    <!-- Cheque Template -->
+    <template id="report_print_cheque_template">
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="config" t-value="request.env['account.cheque.config'].sudo().get_default_config()"/>
+                <t t-set="px_to_mm" t-value="0.2646"/> <!-- 96 DPI conversion -->
+                
+                <div class="page" t-attf-style="width: {{config.page_width_mm}}mm; height: {{config.page_height_mm}}mm; position: relative; font-family: {{config.font_family}}; font-size: {{config.font_size}}px; overflow: hidden; margin: 0; padding: 0;">
+                    
+                    <style>
+                        @font-face {
+                            font-family: 'Sarabun';
+                            src: url('/buz_accounting_addon/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                            font-weight: normal;
+                            font-style: normal;
+                        }
+                        @font-face {
+                            font-family: 'Sarabun';
+                            src: url('/buz_accounting_addon/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                            font-weight: bold;
+                            font-style: normal;
+                        }
+                        @page {
+                            size: <t t-esc="config.page_width_mm"/>mm <t t-esc="config.page_height_mm"/>mm;
+                            margin: 0;
+                        }
+                        html, body {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+                        .page {
+                            font-family: 'Sarabun', 'Garuda', 'Norasi', 'Sawasdee', 'Loma', 'Waree', sans-serif !important;
+                        }
+                        .thai-text {
+                            font-family: 'Sarabun', 'Garuda', 'Norasi', 'Sawasdee', 'Loma', 'Waree', sans-serif !important;
+                        }
+                    </style>
+
+                    <!-- Background Image (for setup) -->
+                    <t t-if="config.show_background and config.background_image">
+                        <div t-attf-style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: {{config.background_opacity}}; z-index: -1;">
+                            <img t-attf-src="data:image/png;base64,{{config.background_image}}" style="width: 100%; height: 100%; object-fit: fill;"/>
+                        </div>
+                    </t>
+
+                    <!-- Crossing -->
+                    <div t-if="config.show_crossing"
+                         t-attf-style="position: absolute; top: {{config.crossing_top * px_to_mm}}mm; left: {{config.crossing_left * px_to_mm}}mm; border-top: 1px solid black; border-bottom: 1px solid black; padding: 2px 5px; transform: rotate(-10deg); font-weight: bold; font-size: 0.8em;">
+                        <t t-esc="config.crossing_text"/>
+                    </div>
+
+                    <!-- Date - Split into digits for Thai Cheque boxes -->
+                    <t t-if="o.check_date">
+                        <t t-set="date_str" t-value="o.check_date.strftime('%d%m%Y')"/>
+                        <!-- Convert Year to Buddhist Era if needed (Odoo standard is usually AD) -->
+                        <t t-set="day" t-value="o.check_date.strftime('%d')"/>
+                        <t t-set="month" t-value="o.check_date.strftime('%m')"/>
+                        <t t-set="year" t-value="str(int(o.check_date.strftime('%Y')) + 543)"/>
+                        <t t-set="full_date_digits" t-value="day + month + year"/>
+                        
+                        <div t-attf-style="position: absolute; top: {{config.date_top * px_to_mm}}mm; left: {{config.date_left * px_to_mm}}mm; display: flex;">
+                            <t t-foreach="full_date_digits" t-as="digit">
+                                <div t-attf-style="width: {{config.date_spacing * px_to_mm}}mm; text-align: center;">
+                                    <t t-esc="digit"/>
+                                </div>
+                            </t>
+                        </div>
+                    </t>
+
+                    <!-- Payee -->
+                    <div t-attf-style="position: absolute; top: {{config.payee_top * px_to_mm}}mm; left: {{config.payee_left * px_to_mm}}mm;" class="thai-text">
+                        <t t-esc="o.check_pay_to or o.partner_id.name"/>
+                    </div>
+
+                    <!-- Amount in Words -->
+                    <div t-attf-style="position: absolute; top: {{config.amount_words_top * px_to_mm}}mm; left: {{config.amount_words_left * px_to_mm}}mm; width: {{config.amount_words_width * px_to_mm}}mm; line-height: 1.2;" class="thai-text">
+                        <t t-set="amount_words" t-value="o.currency_id.with_context(lang='th_TH').amount_to_text(o.amount_total_net)"/>
+                        (<t t-esc="amount_words"/>)
+                    </div>
+
+                    <!-- Amount in Digits -->
+                    <div t-attf-style="position: absolute; top: {{config.amount_digits_top * px_to_mm}}mm; left: {{config.amount_digits_left * px_to_mm}}mm; font-weight: bold;">
+                        *<t t-esc="'{:,.2f}'.format(o.amount_total_net)"/>*
+                    </div>
+
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>

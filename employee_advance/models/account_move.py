@@ -13,8 +13,9 @@ class AccountMove(models.Model):
     advance_box_id = fields.Many2one('employee.advance.box', string='Advance Box', copy=False)
     is_expense_advance_bill = fields.Boolean(string='Is Expense Advance Bill', default=False, copy=False)
     
-    # WHT Certificate support
-    wht_tax_id = fields.Many2one('account.tax', string='WHT Tax', copy=False)
+    # WHT Certificate support - Unified with l10n_th_account_tax naming but on account.move
+    # Changed from account.tax to account.withholding.tax to match localization modules
+    wht_tax_id = fields.Many2one('account.withholding.tax', string='WHT Tax (Advance)', copy=False)
     wht_base_amount = fields.Monetary(string='WHT Base Amount', currency_field='currency_id', copy=False)
     wht_amount = fields.Monetary(string='WHT Amount', currency_field='currency_id', copy=False)
     is_advance_clearing = fields.Boolean(string='Is Advance Clearing Entry', default=False, copy=False)
@@ -128,7 +129,9 @@ class AccountMove(models.Model):
             WhtCert = self.env['withholding.tax.cert']
             
             # Find WHT move lines for reference
-            wht_lines = self.line_ids.filtered(lambda l: l.tax_line_id == self.wht_tax_id)
+            # WHT Tax on advance clearing entry uses account.withholding.tax
+            wht_tax_account = self.wht_tax_id.account_id
+            wht_lines = self.line_ids.filtered(lambda l: l.account_id == wht_tax_account)
             
             # Get WHT partner (vendor) from WHT line, fallback to move partner
             wht_partner = self.partner_id
@@ -149,29 +152,15 @@ class AccountMove(models.Model):
                 # Calculate tax rate percentage
                 tax_rate = abs(self.wht_tax_id.amount) if self.wht_tax_id else 0.0
                 
-                # Find corresponding account.withholding.tax record
-                wht_tax_domain = [
-                    ('name', 'ilike', self.wht_tax_id.name),
-                    ('amount', '=', self.wht_tax_id.amount),
-                ]
-                
-                # Try to find the withholding tax record
-                withholding_tax = None
-                if 'account.withholding.tax' in self.env.registry:
-                    withholding_tax = self.env['account.withholding.tax'].search(wht_tax_domain, limit=1)
-                
                 # Prepare WHT line data for the certificate
                 wht_line_vals = {
                     'base': self.wht_base_amount or 0.0,
                     'amount': self.wht_amount or 0.0,
                     'wht_percent': tax_rate,
-                    'wht_cert_income_type': '2',  # Default to type 2 (fees, commission)
+                    'wht_tax_id': self.wht_tax_id.id,
+                    'wht_cert_income_type': self.wht_tax_id.wht_cert_income_type or '2',
                     'wht_cert_income_desc': _('Advance clearing payment'),
                 }
-                
-                # Add withholding tax if found
-                if withholding_tax:
-                    wht_line_vals['wht_tax_id'] = withholding_tax.id
                 
                 context.update({
                     # Pre-fill the WHT line
@@ -479,7 +468,6 @@ class AccountMove(models.Model):
         wht_amount_total = 0.0
         if has_wht:
             # Calculate total WHT amount for this bill based on base amounts excluding VAT
-            wht_taxes = self.invoice_line_ids.filtered('wht_tax_id').mapped('wht_tax_id')
             wht_lines = self.invoice_line_ids.filtered(lambda l: l.wht_tax_id)
             
             for line in wht_lines:
@@ -489,13 +477,8 @@ class AccountMove(models.Model):
                 wht_amount_total += wht_amount
                 
                 # Get WHT payable account
-                wht_payable_account = None
-                wht_tax_repartition = line.wht_tax_id.invoice_repartition_line_ids.filtered(
-                    lambda r: r.repartition_type == 'tax' and r.account_id
-                )
-                if wht_tax_repartition:
-                    wht_payable_account = wht_tax_repartition[0].account_id
-                else:
+                wht_payable_account = line.wht_tax_id.account_id
+                if not wht_payable_account:
                     # Fallback: look for common WHT payable account names
                     wht_payable_account = self.env['account.account'].search([
                         ('name', 'ilike', 'withholding'),
@@ -523,7 +506,8 @@ class AccountMove(models.Model):
                             'debit': 0.0,
                             'credit': wht_amount,
                             'name': f'WHT Payable - {line.wht_tax_id.name}',
-                            'tax_line_id': line.wht_tax_id.id,
+                            # Link to WHT tax
+                            'tax_line_id': False, # This is for account.tax
                             'tax_base_amount': base_amount,
                         })
                     )
@@ -592,7 +576,7 @@ class AccountMove(models.Model):
                     })
                 
                 # Try to create WHT certificates
-                if hasattr(main_je, '_preapare_wht_certs'):
+                if hasattr(main_je, 'create_wht_cert'):
                     try:
                         main_je.create_wht_cert()
                     except:
@@ -656,15 +640,12 @@ class AccountMove(models.Model):
             return False
         
         # Look for WHT lines in this journal entry
-        wht_lines = self.line_ids.filtered(lambda l: l.tax_line_id and l.tax_line_id.amount < 0)
-        
-        if not wht_lines:
-            # If no WHT tax lines, try to find lines that have WHT-related accounts
-            wht_accounts = self.env['account.account'].search([
-                ('name', 'ilike', '%withholding%'),
-                ('company_id', '=', self.company_id.id)
-            ])
-            wht_lines = self.line_ids.filtered(lambda l: l.account_id in wht_accounts)
+        # wht_lines are those with accounts linked to withholding taxes
+        wht_accounts = self.env['account.account'].search([
+            ('name', 'ilike', '%withholding%'),
+            ('company_id', '=', self.company_id.id)
+        ])
+        wht_lines = self.line_ids.filtered(lambda l: l.account_id in wht_accounts)
         
         if not wht_lines:
             return False

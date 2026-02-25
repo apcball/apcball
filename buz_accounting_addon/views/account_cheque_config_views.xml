@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Form view for Account Cheque Configuration -->
+    <record id="view_account_cheque_config_form" model="ir.ui.view">
+        <field name="name">account.cheque.config.form</field>
+        <field name="model">account.cheque.config</field>
+        <field name="arch" type="xml">
+            <form string="Account Cheque Print Configuration">
+                <header>
+                    <button name="action_preview_cheque" 
+                            string="Preview Cheque" 
+                            type="object" 
+                            class="btn-primary"
+                            icon="fa-eye"
+                            help="Preview cheque with current configuration"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object"
+                                class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button"
+                                options='{"terminology": "archive"}'/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="is_default"/>
+                        </group>
+                        <group string="Font &amp; Layout">
+                            <field name="font_size"/>
+                            <field name="font_family" placeholder="e.g., Sarabun, sans-serif"/>
+                            <field name="page_width_mm"/>
+                            <field name="page_height_mm"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <!-- Cheque Content Tab -->
+                        <page string="Cheque Content Positions" name="cheque_positions">
+                            <group>
+                                <group string="Date Information">
+                                    <label for="date_top" string="Date Position"/>
+                                    <div class="o_row">
+                                        <field name="date_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="date_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                    <field name="date_spacing"/>
+                                </group>
+                                
+                                <group string="Payee Information">
+                                    <label for="payee_top" string="Payee Name Position"/>
+                                    <div class="o_row">
+                                        <field name="payee_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="payee_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                </group>
+                                
+                                <group string="Amount (Words)">
+                                    <label for="amount_words_top" string="Amount Words Position"/>
+                                    <div class="o_row">
+                                        <field name="amount_words_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="amount_words_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                        <field name="amount_words_width" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Width)</span>
+                                    </div>
+                                </group>
+                                
+                                <group string="Amount (Digits)">
+                                    <label for="amount_digits_top" string="Amount Digits Position"/>
+                                    <div class="o_row">
+                                        <field name="amount_digits_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="amount_digits_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                </group>
+                                
+                                <group string="Crossing Settings">
+                                    <field name="show_crossing"/>
+                                    <field name="crossing_text" invisible="not show_crossing"/>
+                                    <label for="crossing_top" string="Crossing Position" invisible="not show_crossing"/>
+                                    <div class="o_row" invisible="not show_crossing">
+                                        <field name="crossing_top" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Top)</span>
+                                        <field name="crossing_left" class="oe_inline" style="width: 80px;"/>
+                                        <span>px (Left)</span>
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- Background Tab -->
+                        <page string="Background (Setup Helper)" name="background">
+                            <group>
+                                <group string="Template Image">
+                                    <field name="background_image" widget="image" class="oe_avatar"/>
+                                    <field name="show_background"/>
+                                    <field name="background_opacity"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info" role="alert">
+                                <strong>ℹ️ Tip:</strong> Upload a scanned image of your cheque to help align the positions.
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Tree view for Account Cheque Configuration -->
+    <record id="view_account_cheque_config_tree" model="ir.ui.view">
+        <field name="name">account.cheque.config.tree</field>
+        <field name="model">account.cheque.config</field>
+        <field name="arch" type="xml">
+            <tree string="Cheque Configurations">
+                <field name="name"/>
+                <field name="is_default"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Action for Account Cheque Configuration -->
+    <record id="action_account_cheque_config" model="ir.actions.act_window">
+        <field name="name">Cheque Print Configuration</field>
+        <field name="res_model">account.cheque.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create Cheque Print Configuration
+            </p>
+        </field>
+    </record>
+    
+    <!-- Menu item -->
+    <menuitem id="menu_account_cheque_config"
+              name="Cheque Print Config"
+              parent="account.menu_finance_configuration"
+              action="action_account_cheque_config"
+              sequence="101"/>
+</odoo>

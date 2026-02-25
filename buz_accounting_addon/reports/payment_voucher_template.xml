@@ -13,7 +13,7 @@
                             }
                             .page {
                                 font-family: 'Sarabun', sans-serif;
-                                font-size: 16px; /* Slightly smaller to fit everything */
+                                font-size: 24px; /* Slightly smaller to fit everything */
                                 padding: 0;
                                 width: 100%;
                                 margin: 0;
@@ -49,8 +49,8 @@
                             
                             <!-- Center: Title -->
                             <div class="col-4 text-center">
-                                <div style="font-size: 22px; font-weight: bold;">ใบสำคัญจ่ายเงิน</div>
-                                <div style="font-size: 20px; font-weight: bold;">PAYMENT VOUCHER</div>
+                                <div style="font-size: 30px; font-weight: bold;">ใบสำคัญจ่ายเงิน</div>
+                                <div style="font-size: 27px; font-weight: bold;">PAYMENT VOUCHER</div>
                             </div>
 
                             <!-- Right: Boxed Number Info -->
@@ -65,6 +65,7 @@
                                     <div style="padding: 5px;">
                                         <div><strong>No.</strong> <span t-field="o.name"/></div>
                                         <div><strong>Date.</strong> <span t-field="o.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/></div>
+                                        <div t-if="o.payment_type == 'check'"><strong>Cheque No.</strong> <span t-field="o.check_number"/></div>
                                     </div>
                                 </div>
                             </div>
@@ -136,7 +137,7 @@
                                     <th style="width: 25%;">ชื่อ</th>
                                     <th style="width: 15%;">เลขที่เช็ค</th>
                                     <th style="width: 15%;">วันที่</th>
-                                    <th style="width: 20%;">สั่งจ่ายเช็คในนาม</th>
+                                    <th style="width: 20%;">สั่งจ่ายในนาม</th>
                                     <th style="width: 15%;">จำนวนเงิน</th>
                                 </tr>
                             </thead>
@@ -203,15 +204,15 @@
                             Amount
                         </div>
                         <t t-set="preview_lines" t-value="o.get_preview_moves()"/>
-                        <table class="table-bordered" style="margin-top: 0px;">
+                        <table class="table-bordered" style="margin-top: 0px; padding-top: 5px; table-layout: fixed;">
                             <thead>
                                 <tr class="table-header">
-                                    <th style="width: 15%;">เลขที่บัญชี</th>
-                                    <th style="width: 35%;">ชื่อบัญชี</th>
+                                    <th style="width: 12%;">เลขที่บัญชี</th>
+                                    <th style="width: 33%;">ชื่อบัญชี</th>
                                     <th style="width: 20%;">เลขที่เอกสาร</th>
                                     <th style="width: 15%;">วันที่</th>
-                                    <th style="width: 7.5%;">Dr.</th>
-                                    <th style="width: 7.5%;">Cr.</th>
+                                    <th style="width: 10%;">Dr.</th>
+                                    <th style="width: 10%;">Cr.</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -274,32 +275,32 @@
                                              <span t-if="o.create_uid" t-field="o.create_uid.name"/>
                                              <span t-else="">_________________</span>
                                          </div>
-                                         <div style="font-size: 12px;">
+                                         <div style="font-size: 18px;">
                                             Date <span t-if="o.create_date" t-field="o.create_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/><span t-else="">.../.../...</span>
                                          </div>
                                      </td>
                                      <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
                                          <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
-                                         <div style="font-size: 12px;">
-                                            Date .../.../...
+                                         <div style="font-size: 20px;">
+                                            Date ........./........./.........
                                          </div>
                                      </td>
                                      <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
                                          <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
-                                         <div style="font-size: 12px;">
-                                            Date .../.../...
+                                         <div style="font-size: 20px;">
+                                            Date ........./........./.........
                                          </div>
                                      </td>
                                      <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
                                          <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
-                                         <div style="font-size: 12px;">
-                                            Date .../.../...
+                                         <div style="font-size: 20px;">
+                                            Date ........./........./.........
                                          </div>
                                      </td>
                                      <td style="border: 1px solid #000; padding: 10px; vertical-align: bottom;">
                                          <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
-                                         <div style="font-size: 12px;">
-                                            Date .../.../...
+                                         <div style="font-size: 20px;">
+                                            Date ........./........./.........
                                          </div>
                                      </td>
                                  </tr>
@@ -321,11 +322,11 @@
                                  <tr>
                                     <td style="border: 1px solid black; padding: 10px; vertical-align: bottom; height: 80px; text-align: center;">
                                          <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
-                                         <div style="font-size: 12px;">Date .../.../...</div>
+                                         <div style="font-size: 20px;">Date ........./........./.........</div>
                                      </td>
                                     <td style="border: 1px solid black; padding: 10px; vertical-align: bottom; height: 80px; text-align: center;">
                                          <div style="border-bottom: 1px dotted #000; width: 80%; margin: 0 auto 5px auto;"></div>
-                                         <div style="font-size: 12px;">Date .../.../...</div>
+                                         <div style="font-size: 20px;">Date ........./........./.........</div>
                                      </td>
                                  </tr>
                              </tbody>

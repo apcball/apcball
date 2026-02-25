@@ -6,6 +6,19 @@ from odoo import models, api
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
+    def _auto_init(self):
+        # Drop the conflicting constraint from employee_advance if it exists
+        # This fixes the Validation Error: account_move_wht_tax_id_fkey
+        # The constraint blocks deletions because it points to account_tax
+        # and was created by a previous version of employee_advance using the same field name as l10n_th_account_tax.
+        try:
+            self.env.cr.execute("""
+                ALTER TABLE account_move DROP CONSTRAINT IF EXISTS account_move_wht_tax_id_fkey;
+            """)
+        except Exception:
+            pass
+        return super()._auto_init()
+
     @api.depends('line_ids.amount_residual')
     def _compute_amount(self):
         """

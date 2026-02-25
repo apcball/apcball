@@ -121,6 +121,7 @@
                                     <th class="text-right">Qty Prod.</th>
                                     <th class="text-right">On Hand</th>
                                     <th class="text-right">Ratio %</th>
+                                    <th class="text-right" t-if="o.allocation_base == 'manual'">Manual Cost</th>
                                     <th class="text-right">Alloc DL</th>
                                     <th class="text-right">Alloc IDL</th>
                                     <th class="text-right">Alloc OH</th>
@@ -136,6 +137,7 @@
                                         <td class="text-right"><span t-field="line.quantity_produced"/></td>
                                         <td class="text-right"><span t-field="line.qty_on_hand"/></td>
                                         <td class="text-right"><span t-field="line.inventory_ratio"/>%</td>
+                                        <td class="text-right" t-if="o.allocation_base == 'manual'"><span t-field="line.manual_cost" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
                                         <td class="text-right"><span t-field="line.allocated_dl" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
                                         <td class="text-right"><span t-field="line.allocated_idl" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>
                                         <td class="text-right"><span t-field="line.allocated_oh" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/></td>

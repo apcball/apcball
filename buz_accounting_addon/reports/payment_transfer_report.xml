@@ -64,7 +64,7 @@
                         color: black !important;
                     }
                 </style>
-                <div class="page" style="font-family: Sarabun, sans-serif; font-size: 18px; color: black;">
+                <div class="page" style="font-family: Sarabun, sans-serif; font-size: 24px; color: black;">
                     <!-- Pre-calculate Account Numbers for Lines -->
                      <t t-set="col1_acc_number" t-value="o.journal_id.bank_account_id and o.journal_id.bank_account_id.acc_number or False"/>
                      <t t-set="col2_acc_number" t-value="o.destination_journal_id and o.destination_journal_id.bank_account_id and o.destination_journal_id.bank_account_id.acc_number"/>
@@ -77,8 +77,8 @@
                             <img src="/buz_accounting_addon/static/img/LOGO MOGEN.png" style="max-height: 80px; max-width: 80%;" alt="Logo"/>
                         </div>
                         <div class="col-4 text-center">
-                            <h4 style="margin-bottom: 0;"><strong>ใบโอนเงินระหว่างธนาคาร</strong></h4>
-                            <h5 style="margin-top: 0;"><strong>Bank Transfer</strong></h5>
+                            <h4 style="margin-bottom: 0; font-size: 30px;"><strong>ใบโอนเงินระหว่างธนาคาร</strong></h4>
+                            <h5 style="margin-top: 0; font-size: 27px;"><strong>Bank Transfer</strong></h5>
                         </div>
                         <div class="col-4 text-end">
                             <div class="box-border" style="width: 100%; float: right; text-align: left;">
@@ -94,13 +94,6 @@
                                     <div class="col-9"><span t-field="o.date"/></div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-2">
-                        <div class="col-12 text-center">
-                            <!-- Placeholder field or number from image '112000' -->
-                            <span>112000</span>
                         </div>
                     </div>
 
@@ -218,63 +211,63 @@
 
                     <!-- Signatures -->
                     <div class="row mt-4" style="border: 1px solid black; margin-left: 0; margin-right: 0;">
-                        <div class="col-2 p-2" style="border-right: 1px solid black; height: 120px; position: relative;">
+                        <div class="col-2 p-2" style="border-right: 1px solid black; height: 120px; position: relative; font-size: 18px;">
                             <span>Prepare By:</span>
                             <br/>
                             <span t-field="o.create_uid.name"/>
-                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%;">
+                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%; font-size: 18px;">
                                 <div style="border-bottom: 1px dotted black; margin-bottom: 5px;"></div>
-                                <span>Date <span style="margin-left: 5px;">...../...../.....</span></span>
+                                <span>Date <span style="margin-left: 5px;">.........../.........../...........</span></span>
                             </div>
                         </div>
-                        <div class="col-3 p-2" style="border-right: 1px solid black; height: 120px; position: relative;">
+                        <div class="col-3 p-2" style="border-right: 1px solid black; height: 120px; position: relative; font-size: 18px;">
                             <span>Checked (1) By:</span>
-                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%;">
+                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%; font-size: 18px;">
                                 <div style="border-bottom: 1px dotted black; margin-bottom: 5px;"></div>
-                                <span>Date <span style="margin-left: 5px;">...../...../.....</span></span>
+                                <span>Date <span style="margin-left: 5px;">.........../.........../...........</span></span>
                             </div>
                         </div>
-                        <div class="col-3 p-2" style="border-right: 1px solid black; height: 120px; position: relative;">
+                        <div class="col-3 p-2" style="border-right: 1px solid black; height: 120px; position: relative; font-size: 18px;">
                             <span>Checked (2) By:</span>
-                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%;">
+                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%; font-size: 18px;">
                                 <div style="border-bottom: 1px dotted black; margin-bottom: 5px;"></div>
-                                <span>Date <span style="margin-left: 5px;">...../...../.....</span></span>
+                                <span>Date <span style="margin-left: 5px;">.........../.........../...........</span></span>
                             </div>
                         </div>
-                        <div class="col-2 p-2" style="border-right: 1px solid black; height: 120px; position: relative;">
+                        <div class="col-2 p-2" style="border-right: 1px solid black; height: 120px; position: relative; font-size: 18px;">
                             <span>Approved By:</span>
-                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%;">
+                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%; font-size: 18px;">
                                 <div style="border-bottom: 1px dotted black; margin-bottom: 5px;"></div>
-                                <span>Date <span style="margin-left: 5px;">...../...../.....</span></span>
+                                <span>Date <span style="margin-left: 5px;">.........../.........../...........</span></span>
                             </div>
                         </div>
-                         <div class="col-2 p-2" style="height: 120px; position: relative;">
+                         <div class="col-2 p-2" style="height: 120px; position: relative; font-size: 18px;">
                             <span>Received By:</span>
-                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%;">
+                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%; font-size: 18px;">
                                 <div style="border-bottom: 1px dotted black; margin-bottom: 5px;"></div>
-                                <span>Date <span style="margin-left: 5px;">...../...../.....</span></span>
+                                <span>Date <span style="margin-left: 5px;">.........../.........../...........</span></span>
                             </div>
                         </div>
                     </div>
                     
                 </div>
                  <div class="footer">
-                     <div class="row" style="border: 1px solid black; background-color: white; color: black;">
-                        <div class="col-4 p-2" style="border-right: 1px solid black;">
+                     <div class="row" style="border: 1px solid black; background-color: white; color: black; font-size: 18px;">
+                        <div class="col-4 p-2" style="border-right: 1px solid black; font-size: 18px;">
                             <span>Issued By:</span>
-                            <div style="margin-top: 20px;">
+                            <div style="margin-top: 20px; font-size: 18px;">
                                 <span>Date</span>
                             </div>
                         </div>
-                         <div class="col-4 p-2" style="border-right: 1px solid black;">
+                         <div class="col-4 p-2" style="border-right: 1px solid black; font-size: 18px;">
                             <span>Check By:</span>
-                             <div style="margin-top: 20px;">
+                             <div style="margin-top: 20px; font-size: 18px;">
                                 <span>Date</span>
                             </div>
                         </div>
-                         <div class="col-4 p-2">
+                         <div class="col-4 p-2" style="font-size: 18px;">
                             <span>Approve By:</span>
-                             <div style="margin-top: 20px;">
+                             <div style="margin-top: 20px; font-size: 18px;">
                                 <span>Date</span>
                             </div>
                         </div>

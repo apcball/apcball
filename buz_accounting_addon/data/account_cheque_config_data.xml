@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="default_cheque_config" model="account.cheque.config">
+            <field name="name">Default Thai Cheque Layout</field>
+            <field name="is_default" eval="True"/>
+            <field name="page_width_mm">177.8</field>
+            <field name="page_height_mm">88.9</field>
+            <field name="date_top">45</field>
+            <field name="date_left">550</field>
+            <field name="date_spacing">24</field>
+            <field name="payee_top">115</field>
+            <field name="payee_left">120</field>
+            <field name="amount_words_top">155</field>
+            <field name="amount_words_left">100</field>
+            <field name="amount_words_width">450</field>
+            <field name="amount_digits_top">155</field>
+            <field name="amount_digits_left">580</field>
+            <field name="show_crossing" eval="True"/>
+            <field name="crossing_text">A/C PAYEE ONLY</field>
+            <field name="font_size">16</field>
+            <field name="font_family">Sarabun, sans-serif</field>
+        </record>
+    </data>
+</odoo>

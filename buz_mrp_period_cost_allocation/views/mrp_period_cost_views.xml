@@ -80,18 +80,19 @@
 
                     <notebook>
                         <page string="Manufacturing Orders">
-                            <field name="line_ids" readonly="1">
-                                <tree string="Cost Lines">
-                                    <field name="mo_id"/>
-                                    <field name="product_id"/>
-                                    <field name="quantity_produced"/>
-                                    <field name="total_duration" sum="Total Duration"/>
-                                    <field name="standard_total_cost" sum="Total Std Cost"/>
-                                    <field name="allocation_weight"/>
-                                    <field name="allocated_dl" optional="hide"/>
-                                    <field name="allocated_idl" optional="hide"/>
-                                    <field name="allocated_oh" optional="hide"/>
-                                    <field name="final_total_cost" sum="Total Final Cost" optional="show"/>
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <tree string="Cost Lines" editable="bottom" create="0" delete="0">
+                                    <field name="mo_id" readonly="1"/>
+                                    <field name="product_id" readonly="1"/>
+                                    <field name="quantity_produced" readonly="1"/>
+                                    <field name="total_duration" sum="Total Duration" readonly="1"/>
+                                    <field name="standard_total_cost" sum="Total Std Cost" readonly="1"/>
+                                    <field name="manual_cost" invisible="parent.allocation_base != 'manual'" readonly="0"/>
+                                    <field name="allocation_weight" readonly="1"/>
+                                    <field name="allocated_dl" optional="hide" readonly="1"/>
+                                    <field name="allocated_idl" optional="hide" readonly="1"/>
+                                    <field name="allocated_oh" optional="hide" readonly="1"/>
+                                    <field name="final_total_cost" sum="Total Final Cost" optional="show" readonly="1"/>
                                 </tree>
                             </field>
                         </page>

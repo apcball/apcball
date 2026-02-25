@@ -1,5 +1,6 @@
 from . import account_receipt
 from . import account_receipt_config
+from . import account_cheque_config
 from . import account_receipt_voucher
 from . import account_payment_voucher
 from . import account_move
