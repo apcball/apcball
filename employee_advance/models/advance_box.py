@@ -109,11 +109,13 @@ class EmployeeAdvanceBox(models.Model):
                 continue
             
             # Use account_id (113001 เงินทดรองจ่าย) with partner filtering
+            # IMPORTANT: Exclude reconciled entries to match GL report behavior
             if record.account_id and record.employee_id:
                 domain = [
                     ('account_id', '=', record.account_id.id),
                     ('move_id.state', '=', 'posted'),
                     ('partner_id', '=', partner_id),
+                    ('full_reconcile_id', '=', False),  # ไม่นับรายการที่ reconcile แล้ว
                 ]
                 
                 _logger.info("📋 BALANCE DEBUG: Searching account %s (%s) with partner %s", 
@@ -133,8 +135,6 @@ class EmployeeAdvanceBox(models.Model):
                 for line in lines:
                     _logger.info("  📝 Line: %s | %s | Dr: %s | Cr: %s | Move: %s", 
                                line.date, line.name, line.debit, line.credit, line.move_id.name)
-                
-                record.balance = balance
                 
                 record.balance = balance
             else:

@@ -8,6 +8,18 @@ def pre_init_hook(env):
     """Clean up wizard tables before module upgrade to prevent constraint errors"""
     cr = env.cr
     try:
+        # Drop the old RESTRICT FK constraint on wht_tax_id so Odoo can
+        # recreate it with SET NULL (as defined in the field definition)
+        cr.execute("""
+            ALTER TABLE account_move
+            DROP CONSTRAINT IF EXISTS account_move_wht_tax_id_fkey;
+        """)
+        _logger.info("🔧 Dropped old account_move_wht_tax_id_fkey constraint")
+    except Exception as e:
+        _logger.warning("⚠️ Could not drop wht_tax_id FK constraint: %s", str(e))
+        cr.rollback()
+
+    try:
         # Clean up advance_refill_base_wizard table if it exists
         cr.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'advance_refill_base_wizard')")
         if cr.fetchone()[0]:
@@ -108,3 +120,14 @@ def post_init_hook(env):
         """)
     
     cr.commit()  # Commit the changes to the database
+
+    # Refresh all advance box balances to fix any stale/incorrect values
+    try:
+        advance_boxes = env['employee.advance.box'].search([])
+        if advance_boxes:
+            _logger.info("💰 Refreshing balance for %d advance boxes...", len(advance_boxes))
+            for box in advance_boxes:
+                box._refresh_balance_simple()
+            _logger.info("✅ All advance box balances refreshed successfully")
+    except Exception as e:
+        _logger.warning("⚠️ Advance box balance refresh failed: %s", str(e))
