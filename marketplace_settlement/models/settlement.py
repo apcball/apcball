@@ -33,6 +33,11 @@ class MarketplaceSettlement(models.Model):
         ('nocnoc', 'Noc Noc'), 
         ('tiktok', 'Tiktok'), 
         ('spx', 'SPX'),
+        ('online_line_fb', 'ONLINE/Line + Facebook'),
+        ('offline_mogen_outlet', 'OFFLINE/Mogen Outlet'),
+        ('after_sale_service', 'After sale service'),
+        ('installation_service', 'Installation service'),
+        ('own_channel_cdc', 'Own channel ( CDC )'),
         ('other', 'Other')
     ], string='Trade Channel', default='shopee')
     invoice_count = fields.Integer('Invoice Count', compute='_compute_invoice_count')
@@ -144,7 +149,11 @@ class MarketplaceSettlement(models.Model):
     @api.depends('vendor_bill_ids')
     def _compute_vendor_bill_count(self):
         for record in self:
-            record.vendor_bill_count = len(record.vendor_bill_ids)
+            # Count only posted vendor bills with residual amounts
+            posted_bills = record.vendor_bill_ids.filtered(
+                lambda b: b.state == 'posted' and b.amount_residual > 0
+            )
+            record.vendor_bill_count = len(posted_bills)
 
     @api.depends('vendor_bill_ids')
     def _compute_old_vendor_bill_ids(self):
@@ -329,14 +338,21 @@ class MarketplaceSettlement(models.Model):
                 else:
                     total_invoice += abs(inv.amount_total)
             
-            # Calculate total vendor bills - use amount_total to show original amounts
-            # even after netting/reconciliation
+            # Calculate total vendor bills
+            # Use amount_residual for current outstanding amounts (important for netting)
+            # Use amount_total only when showing original pre-netting amounts
             total_vendor_bills = 0.0
             for bill in record.vendor_bill_ids:
                 if bill.state == 'posted':
-                    # Use amount_total instead of amount_residual
-                    # This shows the original bill amount even after netting
-                    total_vendor_bills += abs(bill.amount_total)
+                    # For netting calculations, use amount_residual (what's still outstanding)
+                    # This ensures we don't count already-netted amounts twice
+                    bill_amount = bill.amount_residual if not record.is_netted else bill.amount_total
+                    
+                    # Handle both regular bills (positive) and credit notes (negative)
+                    if bill.move_type == 'in_refund':
+                        total_vendor_bills -= abs(bill_amount)
+                    else:
+                        total_vendor_bills += abs(bill_amount)
             
             record.total_invoice_amount = total_invoice
             record.total_vendor_bills = total_vendor_bills
@@ -352,47 +368,75 @@ class MarketplaceSettlement(models.Model):
                 # Before netting, show the calculated net amount
                 record.net_payout_amount = record.net_settlement_amount - total_vendor_bills
 
-    @api.depends('vendor_bill_ids', 'is_netted', 'netting_move_id')
+    @api.depends('vendor_bill_ids', 'vendor_bill_ids.amount_residual', 'is_netted', 'netting_move_id')
     def _compute_netted_amount(self):
         """Calculate the amount that has been netted"""
         for record in self:
-            if record.is_netted and record.vendor_bill_ids:
-                # Calculate netted amount from vendor bills
+            if record.is_netted and record.netting_move_id and record.vendor_bill_ids:
+                # Calculate netted amount from the difference between original and residual
+                # This shows how much has actually been netted/reconciled
                 netted = 0.0
                 for bill in record.vendor_bill_ids:
                     if bill.state == 'posted':
-                        netted += abs(bill.amount_total)
+                        # Amount netted = original amount - residual amount
+                        bill_netted = abs(bill.amount_total) - abs(bill.amount_residual)
+                        
+                        # Handle both regular bills (positive) and credit notes (negative)
+                        if bill.move_type == 'in_refund':
+                            netted -= bill_netted
+                        else:
+                            netted += bill_netted
                 record.netted_amount = netted
             else:
                 record.netted_amount = 0.0
 
-    @api.depends('move_id', 'netting_move_id', 'vendor_bill_ids', 'state')
+    @api.depends('move_id', 'move_id.state', 'netting_move_id', 'netting_move_id.state', 
+                 'vendor_bill_ids', 'vendor_bill_ids.state', 'vendor_bill_ids.amount_residual', 'state')
     def _compute_netting_state(self):
         for record in self:
-            # Can perform netting if settlement is posted and has vendor bills
+            # Can perform netting if:
+            # 1. Settlement is posted
+            # 2. Has posted vendor bills with outstanding amounts
+            # 3. No netting move exists yet (or existing one is cancelled)
+            # 4. Settlement move has outstanding receivables
+            posted_bills_with_residual = record.vendor_bill_ids.filtered(
+                lambda b: b.state == 'posted' and b.amount_residual > 0
+            )
+            
+            has_valid_netting = record.netting_move_id and record.netting_move_id.state == 'posted'
+            
             record.can_perform_netting = (
                 record.state == 'posted' and 
-                len(record.vendor_bill_ids.filtered(lambda b: b.state == 'posted' and b.amount_residual > 0)) > 0 and 
-                not record.netting_move_id
+                record.move_id and
+                record.move_id.state == 'posted' and
+                len(posted_bills_with_residual) > 0 and 
+                not has_valid_netting
             )
+            
             # Is netted if netting move exists and is posted
-            record.is_netted = bool(record.netting_move_id and record.netting_move_id.state == 'posted')
+            record.is_netted = bool(has_valid_netting)
 
     def _compute_company_currency(self):
         for rec in self:
             rec.company_currency_id = rec.env.company.currency_id
 
-    @api.depends('move_id')
+    @api.depends('move_id', 'move_id.state', 'move_id.reversal_move_id')
     def _compute_state(self):
         for record in self:
             if not record.move_id:
                 record.state = 'draft'
             elif record.move_id.state == 'posted':
-                # Check if there's a reverse move
+                # Check if there's a reverse move using both directions
                 reverse_moves = self.env['account.move'].search([
                     ('reversed_entry_id', '=', record.move_id.id),
                     ('state', '=', 'posted')
-                ])
+                ], limit=1)
+                
+                # Also check the reversal_move_id field if available
+                if not reverse_moves and hasattr(record.move_id, 'reversal_move_id'):
+                    if record.move_id.reversal_move_id and record.move_id.reversal_move_id.state == 'posted':
+                        reverse_moves = record.move_id.reversal_move_id
+                
                 if reverse_moves:
                     record.state = 'reversed'
                 else:
@@ -742,7 +786,7 @@ class MarketplaceSettlement(models.Model):
             inv_rec_lines = inv.line_ids.filtered(
                 lambda l: l.account_id.account_type == 'asset_receivable' 
                 and not l.reconciled 
-                and l.amount_residual != 0
+                and abs(l.amount_residual) > 0.01  # Use small threshold for float precision
             )
             
             if not inv_rec_lines:
@@ -754,6 +798,7 @@ class MarketplaceSettlement(models.Model):
                 lambda l: l.partner_id == inv.partner_id 
                 and l.account_id.account_type == 'asset_receivable'
                 and not l.reconciled
+                and abs(l.amount_residual) > 0.01
             )
             
             if settle_lines and inv_rec_lines:
@@ -761,7 +806,9 @@ class MarketplaceSettlement(models.Model):
                     # reconcile only unreconciled lines
                     lines_to_reconcile = inv_rec_lines + settle_lines
                     if len(lines_to_reconcile) >= 2:  # Need at least 2 lines to reconcile
-                        lines_to_reconcile.reconcile()
+                        # Use sudo to bypass any access restrictions during reconciliation
+                        lines_to_reconcile.sudo().reconcile()
+                        _logger.info(f'Successfully reconciled invoice {inv.name} with settlement {self.name}')
                 except Exception as e:
                     # Log the error but don't fail the settlement creation
                     import logging
@@ -1528,33 +1575,33 @@ class MarketplaceSettlement(models.Model):
         payable_debug_info = []
         
         for bill in self.vendor_bill_ids:
+            if bill.state != 'posted':
+                continue
+                
+            # Get payable account from bill
             bill_payable_lines = bill.line_ids.filtered(
                 lambda l: l.partner_id == marketplace_partner and 
-                _get_account_type(l.account_id) in ['liability_payable', 'payable'] and
-                not l.reconciled
+                _get_account_type(l.account_id) in ['liability_payable', 'payable']
             )
             
-            # Debug bill lines
-            for line in bill.line_ids:
-                line_info = (f"Bill {bill.name} - Line ID: {line.id}, "
-                           f"Partner: {line.partner_id.name if line.partner_id else 'None'}, "
-                           f"Account: {line.account_id.code} {line.account_id.name}, "
-                           f"Account Type: {_get_account_type(line.account_id)}, "
-                           f"Debit: {line.debit}, Credit: {line.credit}, "
-                           f"Reconciled: {line.reconciled}")
-                payable_debug_info.append(line_info)
+            if bill_payable_lines:
+                payable_account = bill_payable_lines[0].account_id
             
-            for line in bill_payable_lines:
-                if line.credit > 0:  # We owe marketplace
-                    total_payable_amount += line.credit
-                    payable_account = line.account_id  # Store the payable account
-                    netting_lines.append((0, 0, {
-                        'name': f'Net-off AP: {line.name}',
-                        'account_id': line.account_id.id,
-                        'partner_id': marketplace_partner.id,
-                        'debit': line.credit,  # Reverse the credit
-                        'credit': 0.0,
-                    }))
+            # Calculate payable amount based on bill type and residual
+            # For regular bills (in_invoice): amount_residual is positive (we owe)
+            # For credit notes (in_refund): amount_residual is negative (reduces what we owe)
+            bill_payable_amount = 0.0
+            
+            if bill.move_type == 'in_invoice':
+                # Regular vendor bill - we owe this amount
+                bill_payable_amount = abs(bill.amount_residual)
+                payable_debug_info.append(f"Bill {bill.name} (IN_INVOICE): +{bill_payable_amount}")
+            elif bill.move_type == 'in_refund':
+                # Credit note - reduces what we owe (subtract from total)
+                bill_payable_amount = -abs(bill.amount_residual)
+                payable_debug_info.append(f"Bill {bill.name} (IN_REFUND/Credit Note): {bill_payable_amount}")
+            
+            total_payable_amount += bill_payable_amount
 
         # Debug payable processing
         _logger.create({
@@ -1563,8 +1610,8 @@ class MarketplaceSettlement(models.Model):
             'level': 'INFO',
             'message': f'Vendor Bills Processing:\n' + '\n'.join(payable_debug_info) + 
                       f'\n\nTotal Receivable Amount: {total_receivable_amount}\n'
-                      f'Total Payable Amount: {total_payable_amount}\n'
-                      f'Netting Lines Count: {len(netting_lines)}',
+                      f'Total Payable Amount (after credit notes): {total_payable_amount}\n'
+                      f'Expected Netting Amount: {min(total_receivable_amount, abs(total_payable_amount))}',
             'path': 'marketplace.settlement',
             'func': '_create_netting_move',
             'line': '1',
@@ -1572,6 +1619,13 @@ class MarketplaceSettlement(models.Model):
 
         # Calculate net amount
         net_amount = total_receivable_amount - total_payable_amount
+        
+        # Validate payable account exists
+        if not payable_account:
+            raise UserError(_(
+                'Cannot find payable account from vendor bills. '
+                'Please ensure vendor bills have payable lines with the marketplace partner.'
+            ))
         
         # If no vendor bills to net against, this should not create a netting entry
         if float_is_zero(total_payable_amount, precision_digits=2):
@@ -1581,25 +1635,25 @@ class MarketplaceSettlement(models.Model):
             ))
         
         # Pure AR/AP Netting - only net the overlapping amounts
+        # Use absolute value of total_payable_amount in case of credit notes causing negative
         # Do NOT create net balance entries here - they should be handled via bank reconciliation
-        netting_amount = min(total_receivable_amount, total_payable_amount)
+        netting_amount = min(total_receivable_amount, abs(total_payable_amount))
         
         if float_is_zero(netting_amount, precision_digits=2):
             raise UserError(_('No amount to net between AR and AP.'))
         
         # Create pure netting entries - same amount on both sides
-        # Remove the AR entry that we added earlier and replace with correct netting logic
         netting_lines = []
         
         # Dr AP to reduce payable (reduce what we owe marketplace)
-        if payable_account:
-            netting_lines.append((0, 0, {
-                'name': f'Net-off AP: {self.name}',
-                'account_id': payable_account.id,
-                'partner_id': marketplace_partner.id,
-                'debit': netting_amount,  # Reduce AP
-                'credit': 0.0,
-            }))
+        # Use absolute value to ensure positive debit amount
+        netting_lines.append((0, 0, {
+            'name': f'Net-off AP: {self.name}',
+            'account_id': payable_account.id,
+            'partner_id': marketplace_partner.id,
+            'debit': netting_amount,  # Reduce AP (debit to decrease liability)
+            'credit': 0.0,
+        }))
         
         # Cr AR to reduce receivable (reduce what marketplace owes us)
         netting_lines.append((0, 0, {
@@ -1607,7 +1661,7 @@ class MarketplaceSettlement(models.Model):
             'account_id': marketplace_receivable_account.id,
             'partner_id': marketplace_partner.id,
             'debit': 0.0,
-            'credit': netting_amount,  # Reduce AR
+            'credit': netting_amount,  # Reduce AR (credit to decrease asset)
         }))
         
         # Note: Net balance (difference) remains in AR and will be cleared via bank reconciliation
@@ -1697,54 +1751,68 @@ class MarketplaceSettlement(models.Model):
         """Safe reconciliation that handles errors gracefully"""
         self.ensure_one()
         
+        if not netting_move or netting_move.state != 'posted':
+            _logger.warning(f"Cannot reconcile: netting move is not posted")
+            return 0
+        
         marketplace_partner = self.marketplace_partner_id
         reconciled_count = 0
         
         try:
             # Reconcile receivables (settlement move lines with netting move lines)
-            if self.move_id:
+            if self.move_id and self.move_id.state == 'posted':
                 settlement_receivable_lines = self.move_id.line_ids.filtered(
                     lambda l: l.partner_id == marketplace_partner and 
                              l.account_id == marketplace_partner.property_account_receivable_id and
-                             l.debit > 0
+                             not l.reconciled and
+                             l.debit > 0 and
+                             abs(l.amount_residual) > 0.01
                 )
                 
                 netting_receivable_lines = netting_move.line_ids.filtered(
                     lambda l: l.partner_id == marketplace_partner and 
                              l.account_id == marketplace_partner.property_account_receivable_id and
-                             l.credit > 0
+                             not l.reconciled and
+                             l.credit > 0 and
+                             abs(l.amount_residual) > 0.01
                 )
                 
                 if settlement_receivable_lines and netting_receivable_lines:
                     to_reconcile = settlement_receivable_lines + netting_receivable_lines
                     to_reconcile.sudo().reconcile()
                     reconciled_count += 1
+                    _logger.info(f"Reconciled receivables for settlement {self.name}")
         except Exception as e:
-            _logger.warning(f"Could not reconcile receivables: {e}")
+            _logger.warning(f"Could not reconcile receivables for {self.name}: {e}")
         
         try:
             # Reconcile payables (vendor bill lines with netting move lines)
             vendor_payable_lines = self.env['account.move.line']
-            for bill in self.vendor_bill_ids:
+            for bill in self.vendor_bill_ids.filtered(lambda b: b.state == 'posted'):
                 bill_payable_lines = bill.line_ids.filtered(
                     lambda l: l.partner_id == marketplace_partner and 
                              l.account_id == marketplace_partner.property_account_payable_id and
-                             l.credit > 0
+                             not l.reconciled and
+                             l.credit > 0 and
+                             abs(l.amount_residual) > 0.01
                 )
-                vendor_payable_lines += bill_payable_lines
+                vendor_payable_lines |= bill_payable_lines
             
             netting_payable_lines = netting_move.line_ids.filtered(
                 lambda l: l.partner_id == marketplace_partner and 
                          l.account_id == marketplace_partner.property_account_payable_id and
-                         l.debit > 0
+                         not l.reconciled and
+                         l.debit > 0 and
+                         abs(l.amount_residual) > 0.01
             )
             
             if vendor_payable_lines and netting_payable_lines:
                 to_reconcile = vendor_payable_lines + netting_payable_lines
                 to_reconcile.sudo().reconcile()
                 reconciled_count += 1
+                _logger.info(f"Reconciled payables for settlement {self.name}")
         except Exception as e:
-            _logger.warning(f"Could not reconcile payables: {e}")
+            _logger.warning(f"Could not reconcile payables for {self.name}: {e}")
         
         _logger.info(f"Reconciled {reconciled_count} account types for netting move {netting_move.name}")
         return reconciled_count
@@ -2126,10 +2194,5 @@ class MarketplaceSettlement(models.Model):
         }
 
 
-class AccountMoveExtension(models.Model):
-    """Extend account.move to support marketplace settlement linking"""
-    _inherit = 'account.move'
-    
-    x_settlement_id = fields.Many2one('marketplace.settlement', string='Linked Settlement',
-                                     help='Marketplace settlement linked to this vendor bill for AR/AP netting',
-                                     index=True)
+# Note: x_settlement_id field is now defined in sale_account_extension.py
+# to avoid duplicate field definitions and ensure proper inheritance chain

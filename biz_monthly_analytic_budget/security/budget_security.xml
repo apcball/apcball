@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Groups -->
+        <record id="group_monthly_budget_user" model="res.groups">
+            <field name="name">Monthly Budget User</field>
+            <field name="comment">Can view monthly budget plans and lines.</field>
+        </record>
+
+        <record id="group_monthly_budget_manager" model="res.groups">
+            <field name="name">Monthly Budget Manager</field>
+            <field name="implied_ids" eval="[(4, ref('group_monthly_budget_user'))]"/>
+            <field name="comment">Can create, edit, and approve monthly budget plans.</field>
+        </record>
+
+        <!-- Record Rules -->
+        <record id="rule_monthly_budget_plan_company" model="ir.rule">
+            <field name="name">Monthly Budget Plan: Multi-Company</field>
+            <field name="model_id" ref="model_monthly_budget_plan"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_monthly_budget_line_company" model="ir.rule">
+            <field name="name">Monthly Budget Line: Multi-Company</field>
+            <field name="model_id" ref="model_monthly_budget_line"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+    </data>
+</odoo>

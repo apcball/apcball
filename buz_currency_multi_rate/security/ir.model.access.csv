@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_res_currency_rate_user,res.currency.rate user,base.model_res_currency_rate,base.group_user,1,0,0,0
+access_res_currency_rate_account_user,res.currency.rate account user,base.model_res_currency_rate,account.group_account_user,1,1,1,1
+access_res_currency_rate_account_manager,res.currency.rate account manager,base.model_res_currency_rate,account.group_account_manager,1,1,1,1

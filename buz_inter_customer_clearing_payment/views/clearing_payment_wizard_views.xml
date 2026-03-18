@@ -27,8 +27,26 @@
                         <group>
                             <field name="payment_date" required="1"/>
                             <field name="currency_id" required="1"/>
-                            <field name="amount" required="1"/>
+                            <field name="amount" required="1"
+                                   string="Gross Payment Amount"
+                                   help="Total amount the customer paid (before any bank fee deduction). Bank Charge will be posted separately as an expense."/>
                             <field name="reference"/>
+                        </group>
+                    </group>
+                    <group string="Adjustments (Optional)">
+                        <group>
+                            <field name="bank_charge"/>
+                            <field name="bank_fee_account_id"
+                                   invisible="not bank_charge"
+                                   required="bank_charge"
+                                   options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="difference_amount"/>
+                            <field name="difference_account_id"
+                                   invisible="not difference_amount"
+                                   required="difference_amount"
+                                   options="{'no_create': True}"/>
                         </group>
                     </group>
                 </sheet>
@@ -66,9 +84,11 @@
                             <field name="currency_id" readonly="1"/>
                         </group>
                         <group>
-                            <field name="amount" readonly="1" string="Payment Amount"/>
+                            <field name="amount" readonly="1" string="Gross Payment Amount"/>
+                            <field name="bank_charge" readonly="1" invisible="not bank_charge"/>
+                            <field name="difference_amount" readonly="1" invisible="not difference_amount"/>
                             <field name="total_credit_note" readonly="1"/>
-                            <field name="total_available" readonly="1"/>
+                            <field name="total_available" readonly="1" string="Available for Allocation"/>
                             <field name="total_allocated" readonly="1"/>
                             <field name="remaining_amount" readonly="1"/>
                         </group>
@@ -133,6 +153,8 @@
                         <group>
                             <field name="payment_date" readonly="1"/>
                             <field name="amount" readonly="1"/>
+                            <field name="bank_charge" readonly="1" invisible="not bank_charge"/>
+                            <field name="difference_amount" readonly="1" invisible="not difference_amount"/>
                             <field name="currency_id" readonly="1"/>
                             <field name="reference" readonly="1"/>
                         </group>

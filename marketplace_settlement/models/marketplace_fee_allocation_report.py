@@ -17,6 +17,11 @@ class MarketplaceFeeAllocationReport(models.Model):
         ('nocnoc', 'Noc Noc'), 
         ('tiktok', 'Tiktok'), 
         ('spx', 'SPX'),
+        ('online_line_fb', 'ONLINE/Line + Facebook'),
+        ('offline_mogen_outlet', 'OFFLINE/Mogen Outlet'),
+        ('after_sale_service', 'After sale service'),
+        ('installation_service', 'Installation service'),
+        ('own_channel_cdc', 'Own channel ( CDC )'),
         ('other', 'Other')
     ], string='Trade Channel', readonly=True)
     marketplace_partner_id = fields.Many2one('res.partner', string='Marketplace Partner', readonly=True)

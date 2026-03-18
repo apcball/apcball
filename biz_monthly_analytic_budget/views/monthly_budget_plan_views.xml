@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====================== monthly.budget.line INLINE LIST (sub-view) ===== -->
+    <!-- Defined first so it exists when the plan form view is validated          -->
+    <record id="view_monthly_budget_line_form_sublist" model="ir.ui.view">
+        <field name="name">monthly.budget.line.form.sublist</field>
+        <field name="model">monthly.budget.line</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="analytic_account_id" required="1"/>
+                <field name="percentage" string="%"/>
+                <field name="budget_amount" widget="monetary"/>
+                <field name="reserved_amount" widget="monetary" readonly="1"/>
+                <field name="used_amount" widget="monetary" readonly="1"/>
+                <field name="available_amount" widget="monetary" readonly="1"/>
+                <field name="utilization_rate" widget="percentage" readonly="1"
+                       optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ====================== monthly.budget.plan FORM ====================== -->
+    <record id="view_monthly_budget_plan_form" model="ir.ui.view">
+        <field name="name">monthly.budget.plan.form</field>
+        <field name="model">monthly.budget.plan</field>
+        <field name="arch" type="xml">
+            <form string="Monthly Budget Plan">
+                <header>
+                    <button name="action_confirm"
+                            string="Confirm"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_recompute_budget"
+                            string="Recompute Budget"
+                            type="object"
+                            invisible="state == 'draft'"/>
+                    <button name="action_close"
+                            string="Close"
+                            type="object"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_reset_draft"
+                            string="Reset to Draft"
+                            type="object"
+                            invisible="state != 'confirmed'"/>
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,confirmed,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Period">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group string="Budget">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="total_budget" widget="monetary"/>
+                            <field name="allocated_amount" widget="monetary"/>
+                            <field name="allocated_percentage" widget="percentage"/>
+                        </group>
+                    </group>
+
+                    <!-- Summary bar -->
+                    <group string="Budget Summary">
+                        <group>
+                            <field name="reserved_amount" widget="monetary"/>
+                            <field name="used_amount" widget="monetary"/>
+                        </group>
+                        <group>
+                            <field name="available_amount" widget="monetary"/>
+                        </group>
+                    </group>
+
+                    <!-- Budget lines — uses view_monthly_budget_line_form_sublist -->
+                    <notebook>
+                        <page string="Budget Allocation" name="allocation">
+                            <field name="budget_line_ids"
+                                   readonly="state != 'draft'"
+                                   context="{'default_plan_id': id}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ====================== monthly.budget.plan LIST ====================== -->
+    <record id="view_monthly_budget_plan_list" model="ir.ui.view">
+        <field name="name">monthly.budget.plan.list</field>
+        <field name="model">monthly.budget.plan</field>
+        <field name="arch" type="xml">
+            <tree string="Monthly Budget Plans" decoration-muted="state == 'closed'">
+                <field name="name"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="total_budget" widget="monetary"/>
+                <field name="allocated_amount" widget="monetary"/>
+                <field name="reserved_amount" widget="monetary" optional="show"/>
+                <field name="used_amount" widget="monetary" optional="show"/>
+                <field name="available_amount" widget="monetary" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state"
+                       widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'confirmed'"
+                       decoration-muted="state == 'closed'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ====================== Search ====================== -->
+    <record id="view_monthly_budget_plan_search" model="ir.ui.view">
+        <field name="name">monthly.budget.plan.search</field>
+        <field name="model">monthly.budget.plan</field>
+        <field name="arch" type="xml">
+            <search string="Monthly Budget Plans">
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <filter string="Draft" name="draft" domain="[('state','=','draft')]"/>
+                <filter string="Confirmed" name="confirmed" domain="[('state','=','confirmed')]"/>
+                <filter string="Closed" name="closed" domain="[('state','=','closed')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ====================== Action ====================== -->
+    <record id="action_monthly_budget_plan" model="ir.actions.act_window">
+        <field name="name">Monthly Budget Plans</field>
+        <field name="res_model">monthly.budget.plan</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_monthly_budget_plan_search"/>
+        <field name="context">{'search_default_confirmed': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first monthly budget plan!
+            </p>
+            <p>
+                Define a monthly budget with analytic account allocations to
+                control purchase spending.
+            </p>
+        </field>
+    </record>
+</odoo>

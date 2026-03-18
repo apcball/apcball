@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ===== Add Monthly Budget Check tab to PR form ===== -->
+    <record id="view_employee_purchase_requisition_form_monthly_budget" model="ir.ui.view">
+        <field name="name">employee.purchase.requisition.form.monthly.budget</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="inherit_id" ref="employee_purchase_requisition.employee_purchase_requisition_view_form"/>
+        <field name="priority">110</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='requisition_deadline']" position="after">
+                <field name="payment_date"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Monthly Budget Check" name="monthly_budget_check">
+                    <group>
+                        <button name="action_check_monthly_budget"
+                                string="Check Monthly Budget"
+                                type="object"
+                                class="btn-primary mb-3"
+                                icon="fa-calculator"/>
+                    </group>
+                    <field name="monthly_budget_check_result" nolabel="1"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

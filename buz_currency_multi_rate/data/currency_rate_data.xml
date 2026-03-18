@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- ตัวอย่างเรทเงิน USD วันที่ 04/03/2026 -->
+        <!-- *** ปิดคอมเมนต์ไว้เพราะสร้างในหน้า UI ไปแล้ว จะได้ไม่ Error Unique Constraint ***
+        <record id="currency_rate_usd_20260304" model="res.currency.rate">
+            <field name="currency_id" ref="base.USD"/>
+            <field name="name">2026-03-04</field>
+            <field name="rate">1.000000</field>
+            <field name="buy_rate">0.330000</field>
+            <field name="sell_rate">0.320000</field>
+        </record>
+        -->
+    </data>
+</odoo>

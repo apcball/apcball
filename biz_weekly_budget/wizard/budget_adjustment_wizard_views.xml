@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Budget Adjustment Wizard Form -->
+    <record id="view_budget_adjustment_wizard_form" model="ir.ui.view">
+        <field name="name">budget.adjustment.wizard.form</field>
+        <field name="model">budget.adjustment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Adjust Budget">
+                <group>
+                    <field name="line_id" readonly="1"/>
+                    <field name="current_amount" readonly="1"/>
+                    <field name="new_amount"/>
+                    <field name="reason" placeholder="Please provide a reason for this adjustment..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm"
+                            string="Confirm"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

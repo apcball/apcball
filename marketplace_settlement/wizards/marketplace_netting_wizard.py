@@ -37,30 +37,36 @@ class MarketplaceNettingWizard(models.TransientModel):
         """Compute available vendor bills for netting"""
         for wizard in self:
             if not wizard.settlement_id or not wizard.marketplace_partner_id:
-                wizard.available_vendor_bill_ids = False
+                wizard.available_vendor_bill_ids = [(5, 0, 0)]  # Clear the field
                 continue
                 
             # Find posted vendor bills from the same marketplace partner with outstanding amounts
-            # Include bills directly linked to this settlement
+            # Include bills directly linked to this settlement OR not linked to any settlement
             domain = [
                 ('move_type', 'in', ['in_invoice', 'in_refund']),
                 ('partner_id', '=', wizard.marketplace_partner_id.id),
                 ('state', '=', 'posted'),
-                ('amount_residual', '>', 0),
+                ('amount_residual', '>', 0.01),  # Use small threshold to avoid float precision issues
                 '|',
                 ('x_settlement_id', '=', wizard.settlement_id.id),  # Direct link to this settlement
                 ('x_settlement_id', '=', False)  # Not linked to any settlement
             ]
             
-            available_bills = self.env['account.move'].search(domain)
-            wizard.available_vendor_bill_ids = available_bills
+            available_bills = self.env['account.move'].search(domain, order='invoice_date, name')
+            wizard.available_vendor_bill_ids = [(6, 0, available_bills.ids)]
 
-    @api.depends('selected_vendor_bill_ids')
+    @api.depends('selected_vendor_bill_ids', 'selected_vendor_bill_ids.amount_residual', 'total_receivables')
     def _compute_totals(self):
         """Compute totals for selected vendor bills"""
         for wizard in self:
-            total_bills = sum(bill.amount_residual for bill in wizard.selected_vendor_bill_ids)
+            # Calculate total of selected bills
+            total_bills = sum(
+                bill.amount_residual for bill in wizard.selected_vendor_bill_ids 
+                if bill.state == 'posted' and bill.amount_residual > 0
+            )
             wizard.total_selected_bills = total_bills
+            
+            # Calculate net amount (positive = receive, negative = pay)
             wizard.net_amount = wizard.total_receivables - total_bills
 
     def action_confirm_netting(self):
@@ -70,10 +76,19 @@ class MarketplaceNettingWizard(models.TransientModel):
         if not self.selected_vendor_bill_ids:
             raise UserError(_('Please select at least one vendor bill for netting.'))
         
+        # Validate selected bills are still valid
+        invalid_bills = self.selected_vendor_bill_ids.filtered(
+            lambda b: b.state != 'posted' or b.amount_residual <= 0
+        )
+        if invalid_bills:
+            raise UserError(_(
+                'The following bills are no longer valid for netting (not posted or fully reconciled):\n%s'
+            ) % ', '.join(invalid_bills.mapped('name')))
+        
         # Link selected bills to settlement if not already linked
         for bill in self.selected_vendor_bill_ids:
             if not bill.x_settlement_id:
-                bill.x_settlement_id = self.settlement_id.id
+                bill.write({'x_settlement_id': self.settlement_id.id})
         
         # Perform the netting
         return self.settlement_id.action_netoff_ar_ap()

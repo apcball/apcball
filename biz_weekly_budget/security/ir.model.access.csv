@@ -1,0 +1,14 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_weekly_budget_plan_user,weekly.budget.plan.user,model_weekly_budget_plan,group_budget_user,1,0,0,0
+access_weekly_budget_plan_manager,weekly.budget.plan.manager,model_weekly_budget_plan,group_budget_manager,1,1,1,1
+access_weekly_budget_line_user,weekly.budget.line.user,model_weekly_budget_line,group_budget_user,1,0,0,0
+access_weekly_budget_line_manager,weekly.budget.line.manager,model_weekly_budget_line,group_budget_manager,1,1,1,1
+access_weekly_budget_line_history_user,weekly.budget.line.history.user,model_weekly_budget_line_history,group_budget_user,1,0,0,0
+access_weekly_budget_line_history_manager,weekly.budget.line.history.manager,model_weekly_budget_line_history,group_budget_manager,1,1,1,1
+access_budget_adjustment_wizard_manager,budget.adjustment.wizard.manager,model_budget_adjustment_wizard,group_budget_manager,1,1,1,1
+access_weekly_budget_plan_purchase_user,weekly.budget.plan.purchase.user,model_weekly_budget_plan,purchase.group_purchase_user,1,0,0,0
+access_weekly_budget_line_purchase_user,weekly.budget.line.purchase.user,model_weekly_budget_line,purchase.group_purchase_user,1,0,0,0
+access_weekly_budget_line_history_purchase_user,weekly.budget.line.history.purchase.user,model_weekly_budget_line_history,purchase.group_purchase_user,1,0,0,0
+access_weekly_budget_report_user,weekly.budget.report.user,model_weekly_budget_report,group_budget_user,1,0,0,0
+access_weekly_budget_report_manager,weekly.budget.report.manager,model_weekly_budget_report,group_budget_manager,1,0,0,0
+access_weekly_budget_report_purchase_user,weekly.budget.report.purchase.user,model_weekly_budget_report,purchase.group_purchase_user,1,0,0,0

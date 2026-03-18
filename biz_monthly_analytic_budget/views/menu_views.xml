@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====================== Top-level menu ====================== -->
+    <menuitem id="menu_monthly_budget_root"
+              name="Monthly Budget"
+              parent="purchase.menu_purchase_root"
+              sequence="30"
+              groups="biz_monthly_analytic_budget.group_monthly_budget_user"/>
+
+    <!-- ====================== Sub-menus ====================== -->
+    <menuitem id="menu_monthly_budget_plans"
+              name="Monthly Budget Plans"
+              parent="menu_monthly_budget_root"
+              action="action_monthly_budget_plan"
+              sequence="10"
+              groups="biz_monthly_analytic_budget.group_monthly_budget_user"/>
+
+    <menuitem id="menu_monthly_budget_lines"
+              name="Budget Lines"
+              parent="menu_monthly_budget_root"
+              action="action_monthly_budget_line"
+              sequence="20"
+              groups="biz_monthly_analytic_budget.group_monthly_budget_user"/>
+
+    <menuitem id="menu_monthly_budget_report"
+              name="Budget Analysis"
+              parent="menu_monthly_budget_root"
+              action="action_monthly_budget_report"
+              sequence="30"
+              groups="biz_monthly_analytic_budget.group_monthly_budget_user"/>
+</odoo>

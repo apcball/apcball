@@ -35,7 +35,21 @@ class BuzClearingPaymentWizard(models.TransientModel):
     reference = fields.Char(
         string='Reference'
     )
-    
+
+    # Adjustments (Optional)
+    bank_charge = fields.Monetary(
+        string='Bank Charge', currency_field='currency_id',
+        help='Bank transfer fee (deducted from the payment amount before allocating to invoices).')
+    bank_fee_account_id = fields.Many2one(
+        'account.account', string='Bank Fee Account',
+        help='Expense account for the bank fee.')
+    difference_amount = fields.Monetary(
+        string='Difference Amount', currency_field='currency_id',
+        help='Settlement difference amount (positive = extra debit written off, negative = extra credit).')
+    difference_account_id = fields.Many2one(
+        'account.account', string='Difference Account',
+        help='Account to post the settlement difference against.')
+
     # Step 2: Allocation
     allocation_line_ids = fields.One2many(
         'buz.clearing.payment.line', 'wizard_id', string='Allocations'
@@ -77,16 +91,21 @@ class BuzClearingPaymentWizard(models.TransientModel):
         for wizard in self:
             wizard.paying_partner_tax_id = wizard.paying_partner_id.vat or ''
     
-    @api.depends('amount', 'credit_line_ids.use_amount', 'allocation_line_ids.allocate_amount')
+    @api.depends('amount', 'bank_charge', 'difference_amount',
+                 'credit_line_ids.use_amount', 'allocation_line_ids.allocate_amount')
     def _compute_totals(self):
         for wizard in self:
             wizard.total_credit_note = sum(
                 line.use_amount for line in wizard.credit_line_ids if line.selected
             )
+            # total_available = gross payment + credit notes.
+            # Bank charge and difference only reduce the NET bank deposit —
+            # they do NOT reduce the invoices that can be cleared (the customer
+            # still owes the full gross amount; the bank fee is our expense).
             wizard.total_available = wizard.amount + wizard.total_credit_note
             wizard.total_allocated = sum(wizard.allocation_line_ids.mapped('allocate_amount'))
             wizard.remaining_amount = wizard.total_available - wizard.total_allocated
-    
+
     @api.onchange('journal_id')
     def onchange_journal_id(self):
         """Set currency based on journal"""
@@ -241,21 +260,48 @@ class BuzClearingPaymentWizard(models.TransientModel):
     
     def action_confirm_and_post(self):
         """Create payment and clearing entries"""
-        # Validate total allocation
-        if self.total_allocated > self.total_available:
-            raise ValidationError(_('Total allocated amount cannot exceed total available amount (Payment + Credit Notes).'))
-        
+        # Validate allocation range (same logic as batch wizard)
+        # remaining = total_available - total_allocated
+        # OK if 0 ≤ remaining ≤ bank_charge + difference_amount
+        adj = self.bank_charge + self.difference_amount
+        if self.remaining_amount < 0:
+            raise ValidationError(
+                _('Over-allocated by %(over)s. Please reduce allocation amounts.',
+                  over=-self.remaining_amount))
+        if self.remaining_amount > self.total_available:
+            raise ValidationError(
+                _('Please select at least one invoice to allocate payment.'))
+        if self.remaining_amount > adj and self.total_allocated == 0:
+            raise ValidationError(
+                _('Please select at least one invoice to allocate payment.'))
+        # (remaining > 0 but ≤ adj is OK — covered by bank charge / difference)
+
         # Validate that we have allocations
-        selected_lines = self.allocation_line_ids.filtered(lambda l: l.selected and l.allocate_amount > 0)
+        selected_lines = self.allocation_line_ids.filtered(
+            lambda l: l.selected and l.allocate_amount > 0)
         if not selected_lines:
             raise ValidationError(_('Please select at least one invoice to allocate payment.'))
-        
-        # Create payment
+
+        # Validate adjustments
+        if self.bank_charge and not self.bank_fee_account_id:
+            raise ValidationError(
+                _('Please provide a Bank Fee Account when Bank Charge is specified.'))
+        if self.difference_amount and not self.difference_account_id:
+            raise ValidationError(
+                _('Please provide a Difference Account when Difference Amount is specified.'))
+
+        # Net payment amount = gross − bank_charge − difference
+        net_amount = self.amount - self.bank_charge - self.difference_amount
+        if net_amount <= 0:
+            raise ValidationError(
+                _('Net payment (Amount − Bank Charge − Difference) must be greater than zero.'))
+
+        # Create and post payment
         payment_vals = {
             'partner_id': self.paying_partner_id.id,
             'journal_id': self.journal_id.id,
             'date': self.payment_date,
-            'amount': self.amount,
+            'amount': net_amount,
             'currency_id': self.currency_id.id,
             'payment_type': 'inbound',
             'partner_type': 'customer',
@@ -263,67 +309,125 @@ class BuzClearingPaymentWizard(models.TransientModel):
             'is_clearing_payment': True,
             'clearing_advance_amount': self.remaining_amount,
         }
-        
         payment = self.env['account.payment'].create(payment_vals)
         payment.action_post()
-        
-        import logging
-        _logger = logging.getLogger(__name__)
-        _logger.info('='*80)
-        _logger.info('Payment created: %s', payment.name)
-        _logger.info('Selected lines count: %s', len(selected_lines))
-        
-        # Process Credit Notes first (if any)
-        selected_credit_lines = self.credit_line_ids.filtered(lambda l: l.selected and l.use_amount > 0)
-        _logger.info('Selected credit note lines count: %s', len(selected_credit_lines))
-        
+
+        # Add bank charge / difference lines and inflate AR if needed
+        if self.bank_charge or self.difference_amount:
+            self._handle_expense_difference_lines(payment)
+
+        # Process Credit Notes
+        selected_credit_lines = self.credit_line_ids.filtered(
+            lambda l: l.selected and l.use_amount > 0)
         for credit_line in selected_credit_lines:
-            _logger.info('---')
-            _logger.info('Processing Credit Note: %s', credit_line.credit_note_id.name)
-            _logger.info('Credit Note Partner: %s (ID: %s)', credit_line.credit_note_partner_id.name, credit_line.credit_note_partner_id.id)
-            _logger.info('Use amount: %s', credit_line.use_amount)
-            
-            # Check if credit note partner is same as paying partner
             if credit_line.credit_note_partner_id == self.paying_partner_id:
-                _logger.info('-> Same partner - Direct reconciliation for credit note')
-                # Direct reconciliation - just reconcile credit note with payment
                 self._reconcile_credit_note_same_customer(payment, credit_line)
             else:
-                _logger.info('-> Different partner - Create clearing entry for credit note')
-                # Create clearing entry for different customer
                 self._create_credit_note_clearing_entry(payment, credit_line)
-        
-        # Process allocations
+
+        # Process invoice allocations
         for line in selected_lines:
-            _logger.info('---')
-            _logger.info('Processing line - Invoice: %s', line.invoice_id.name)
-            _logger.info('Invoice Partner: %s (ID: %s)', line.invoice_partner_id.name, line.invoice_partner_id.id)
-            _logger.info('Paying Partner: %s (ID: %s)', self.paying_partner_id.name, self.paying_partner_id.id)
-            _logger.info('Same partner? %s', line.invoice_partner_id == self.paying_partner_id)
-            _logger.info('Allocate amount: %s', line.allocate_amount)
-            
-            # Skip if paying customer is the same as invoice customer
             if line.invoice_partner_id == self.paying_partner_id:
-                _logger.info('-> Calling _reconcile_same_customer')
-                # Direct reconciliation for same customer
                 self._reconcile_same_customer(payment, line)
             else:
-                _logger.info('-> Calling _create_clearing_entry')
-                # Create clearing entry for different customer
                 self._create_clearing_entry(payment, line)
-        
+
+        # Redirect to the created payment so user can see Clearing Links + Reverse button
         return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Success'),
-                'message': _('Payment and allocations have been processed successfully.'),
-                'type': 'success',
-                'sticky': False,
-            }
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.payment',
+            'res_id': payment.id,
+            'view_mode': 'form',
+            'target': 'current',
         }
-    
+
+
+    def _handle_expense_difference_lines(self, payment):
+        """
+        Adjusts the posted payment move to add bank charge / difference lines.
+        Same logic as BuzBatchPaymentWizard._handle_expense_difference_lines.
+
+        Entry BEFORE adjustment:
+            Dr  Bank/Cash                [net_amount]
+            Cr  AR (Paying Customer)     [net_amount]
+
+        Entry AFTER adjustment:
+            Dr  Bank/Cash                [net_amount]
+            Dr  Bank Fee Expense         [bank_charge]        (if set)
+            Dr/Cr  Difference Account    [±difference_amount] (if set)
+            Cr  AR (Paying Customer)     [net + charge + diff = gross amount]
+        """
+        import logging
+        _logger = logging.getLogger(__name__)
+
+        move = payment.move_id
+        move.button_draft()
+
+        ar_line = move.line_ids.filtered(
+            lambda l: (
+                l.account_id.account_type == 'asset_receivable'
+                and l.partner_id == self.paying_partner_id
+            )
+        )
+        if not ar_line:
+            move.action_post()
+            return
+
+        company_currency = self.env.company.currency_id
+        is_foreign = self.currency_id != company_currency
+
+        def _convert(amount):
+            if is_foreign:
+                return self.currency_id._convert(
+                    amount, company_currency,
+                    self.env.company, self.payment_date)
+            return amount
+
+        new_line_cmds = []
+
+        # Bank charge debit line
+        if self.bank_charge:
+            amt = _convert(self.bank_charge)
+            vals = {
+                'account_id': self.bank_fee_account_id.id,
+                'name': _('Bank Charge'),
+                'debit': amt,
+                'credit': 0.0,
+                'partner_id': self.paying_partner_id.id,
+            }
+            if is_foreign:
+                vals.update({'amount_currency': self.bank_charge, 'currency_id': self.currency_id.id})
+            new_line_cmds.append((0, 0, vals))
+
+        # Difference line
+        if self.difference_amount:
+            amt = _convert(abs(self.difference_amount))
+            if self.difference_amount > 0:
+                vals = {'account_id': self.difference_account_id.id, 'name': _('Settlement Difference'),
+                        'debit': amt, 'credit': 0.0, 'partner_id': self.paying_partner_id.id}
+            else:
+                vals = {'account_id': self.difference_account_id.id, 'name': _('Settlement Difference'),
+                        'debit': 0.0, 'credit': amt, 'partner_id': self.paying_partner_id.id}
+            if is_foreign:
+                vals.update({'amount_currency': self.difference_amount, 'currency_id': self.currency_id.id})
+            new_line_cmds.append((0, 0, vals))
+
+        # Increase AR credit by extra total so entry stays balanced
+        extra_total = self.bank_charge + self.difference_amount
+        extra_company = _convert(extra_total)
+        ar_line_vals = {'credit': ar_line.credit + extra_company}
+        if is_foreign:
+            ar_line_vals['amount_currency'] = ar_line.amount_currency - extra_total
+        ar_line.with_context(check_move_validity=False).write(ar_line_vals)
+
+        if new_line_cmds:
+            move.with_context(check_move_validity=False).write({'line_ids': new_line_cmds})
+
+        move.action_post()
+        _logger.info('Expense/difference lines added to payment %s', payment.name)
+
     def _load_available_invoices(self):
+
         """Load all available invoices filtered by same Tax ID as paying customer"""
         if not self.paying_partner_id or not self.paying_partner_id.vat:
             raise ValidationError(
@@ -509,10 +613,14 @@ class BuzClearingPaymentWizard(models.TransientModel):
             }
         
         # Create clearing journal entry
+        # Dr AR (paying_partner)  → absorbs the payment AR credit
+        # Cr AR (invoice_partner) → closes the invoice AR debit
         move_vals = {
             'journal_id': self.journal_id.id,
             'date': self.payment_date,
-            'ref': _('Clearing: %s - %s') % (self.paying_partner_id.name, invoice_partner.name),
+            'ref': _('Clearing: %s → %s [%s]') % (
+                self.paying_partner_id.name, invoice_partner.name, invoice.name),
+            'partner_id': self.paying_partner_id.id,
             'is_clearing_entry': True,
             'clearing_payment_id': payment.id,
             'line_ids': [
@@ -520,11 +628,6 @@ class BuzClearingPaymentWizard(models.TransientModel):
                 (0, 0, credit_line_vals),
             ],
         }
-        
-        _logger.info('Move Vals: %s', move_vals)
-        _logger.info('Debit Line: %s', debit_line_vals)
-        _logger.info('Credit Line: %s', credit_line_vals)
-        
         clearing_move = self.env['account.move'].create(move_vals)
         clearing_move.action_post()
         

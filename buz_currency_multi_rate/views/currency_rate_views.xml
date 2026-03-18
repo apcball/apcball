@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extend the Currency Rate Form view -->
+    <record id="view_currency_rate_form_multi_rate" model="ir.ui.view">
+        <field name="name">res.currency.rate.form.multi_rate</field>
+        <field name="model">res.currency.rate</field>
+        <field name="inherit_id" ref="base.view_currency_rate_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='rate']" position="after">
+                <field name="inverse_buy_rate" string="Buy Rate (Baht per Unit)"/>
+                <field name="inverse_sell_rate" string="Sell Rate (Baht per Unit)"/>
+                <div class="text-muted">
+                    <i class="fa fa-info-circle"/>
+                    <b>Buy Rate:</b> Rate used when purchasing foreign currency (Vendor Bills / Purchase Orders)<br/>
+                    <i class="fa fa-info-circle"/>
+                    <b>Sell Rate:</b> Rate used when selling foreign currency (Customer Invoices / Sales Orders)
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend the Currency Rate Tree view -->
+    <record id="view_currency_rate_tree_multi_rate" model="ir.ui.view">
+        <field name="name">res.currency.rate.tree.multi_rate</field>
+        <field name="model">res.currency.rate</field>
+        <field name="inherit_id" ref="base.view_currency_rate_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='rate']" position="after">
+                <field name="inverse_buy_rate" optional="show" string="Buy Rate (Baht per Unit)"/>
+                <field name="inverse_sell_rate" optional="show" string="Sell Rate (Baht per Unit)"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend the main Currency Form view (inline rates table) -->
+    <record id="view_currency_form_multi_rate" model="ir.ui.view">
+        <field name="name">res.currency.form.multi_rate</field>
+        <field name="model">res.currency</field>
+        <field name="inherit_id" ref="base.view_currency_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='rate_ids']/tree/field[@name='rate']" position="after">
+                <field name="inverse_buy_rate" optional="show" string="Buy Rate (Baht per Unit)"/>
+                <field name="inverse_sell_rate" optional="show" string="Sell Rate (Baht per Unit)"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="portal_display_qr_template" name="Consumable Request QR Code">
+        <t t-call="web.layout">
+            <t t-set="head">
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+                <style>
+                    body {
+                        background-color: #f8f9fa;
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                    }
+                    .container-mobile {
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 15px;
+                    }
+                    .req-card {
+                        background: white;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        padding: 20px;
+                        margin-bottom: 15px;
+                        text-align: center;
+                    }
+                    .req-title {
+                        font-size: 1.5rem;
+                        font-weight: bold;
+                        border-bottom: 2px solid #00A09D;
+                        padding-bottom: 8px;
+                        margin-bottom: 15px;
+                        color: #00A09D;
+                    }
+                    .qr-container {
+                        margin-top: 20px;
+                        padding: 10px;
+                        background: #fff;
+                        border: 1px solid #ddd;
+                        border-radius: 10px;
+                        display: inline-block;
+                    }
+                    .qr-image {
+                        width: 100%;
+                        max-width: 300px;
+                        height: auto;
+                    }
+                    .instruction-text {
+                        margin-top: 20px;
+                        color: #555;
+                        font-size: 1.1rem;
+                    }
+                </style>
+            </t>
+            
+            <div class="container-mobile">
+                <div class="req-card">
+                    <div class="req-title">
+                        Stock Request <t t-esc="req.name"/>
+                    </div>
+                    <div class="mb-3 text-muted" style="font-size: 1rem;">
+                        <div><strong>Employee:</strong> <t t-esc="req.employee_id.name"/></div>
+                        <div><strong>Date:</strong> <t t-esc="req.request_date"/></div>
+                    </div>
+                    
+                    <div class="instruction-text">
+                        <strong>Please show this QR code to the Stock Staff</strong><br/>
+                        to receive your items.
+                    </div>
+                    
+                    <div class="qr-container">
+                        <img t-att-src="'data:image/png;base64,%s' % req.qr_code.decode('utf-8')" class="qr-image" alt="QR Code"/>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_scan_template" name="Consumable Request Scan">
+        <t t-call="web.layout">
+            <t t-set="head">
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+                <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.5/dist/signature_pad.umd.min.js"></script>
+                <style>
+                    body {
+                        background-color: #f8f9fa;
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                    }
+                    .container-mobile {
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 15px;
+                    }
+                    .req-card {
+                        background: white;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        padding: 15px;
+                        margin-bottom: 15px;
+                    }
+                    .req-title {
+                        font-size: 1.25rem;
+                        font-weight: bold;
+                        border-bottom: 2px solid #00A09D;
+                        padding-bottom: 8px;
+                        margin-bottom: 15px;
+                        color: #00A09D;
+                    }
+                    .line-item {
+                        display: flex;
+                        align-items: center;
+                        padding: 10px 0;
+                        border-bottom: 1px solid #eee;
+                    }
+                    .line-item:last-child {
+                        border-bottom: none;
+                    }
+                    .checkbox-col {
+                        padding-right: 15px;
+                    }
+                    .checkbox-col input {
+                        width: 20px;
+                        height: 20px;
+                        accent-color: #00A09D;
+                    }
+                    .desc-col {
+                        flex-grow: 1;
+                        font-weight: 500;
+                    }
+                    .qty-col {
+                        width: 100px;
+                    }
+                    .form-control-qty {
+                        width: 100%;
+                        text-align: center;
+                        border: 1px solid #ced4da;
+                        border-radius: 4px;
+                        padding: 6px;
+                    }
+                    .signature-wrapper {
+                        border: 1px solid #ced4da;
+                        border-radius: 8px;
+                        background: #fff;
+                        touch-action: none;
+                        overflow: hidden;
+                    }
+                    canvas#signature-pad-stock,
+                    canvas#signature-pad-receiver {
+                        width: 100%;
+                        height: 200px;
+                    }
+                    .btn-clear {
+                        font-size: 0.8rem;
+                        color: #6c757d;
+                        background: none;
+                        border: none;
+                        padding: 0;
+                        text-decoration: underline;
+                    }
+                    .btn-confirm {
+                        background-color: #00A09D;
+                        color: white;
+                        width: 100%;
+                        padding: 12px;
+                        font-size: 1.1rem;
+                        font-weight: bold;
+                        border: none;
+                        border-radius: 8px;
+                        margin-top: 20px;
+                    }
+                    .overlay {
+                        position: fixed;
+                        top: 0; left: 0; right: 0; bottom: 0;
+                        background: rgba(255,255,255,0.8);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                        font-size: 1.2rem;
+                        z-index: 1000;
+                    }
+                </style>
+            </t>
+            
+            <div class="container-mobile">
+                <!-- Overlay for loading -->
+                <div id="loading-overlay" class="overlay d-none" style="display: none !important;">
+                    Processing...
+                </div>
+                
+                <div class="req-card">
+                    <div class="req-title">
+                        Stock Request <t t-esc="req.name"/>
+                    </div>
+                    <div class="mb-3 text-muted" style="font-size: 0.9rem;">
+                        <div><strong>Employee:</strong> <t t-esc="req.employee_id.name"/></div>
+                        <div><strong>Date:</strong> <t t-esc="req.request_date"/></div>
+                    </div>
+                    
+                    <form id="receive-form">
+                        <input type="hidden" id="req-token" t-att-value="token"/>
+                        
+                        <div class="lines-container mt-4">
+                            <t t-foreach="req.line_ids" t-as="line">
+                                <div class="line-item" t-att-data-line-id="line.id">
+                                    <div class="checkbox-col">
+                                        <input type="checkbox" class="line-checkbox" checked="checked"/>
+                                    </div>
+                                    <div class="desc-col">
+                                        <div t-esc="line.product_id.display_name"/>
+                                        <small class="text-muted">Available: <t t-esc="line.available_qty"/></small>
+                                    </div>
+                                    <div class="qty-col">
+                                        <input type="number" 
+                                               class="form-control-qty line-qty" 
+                                               t-att-value="line.qty_requested" 
+                                               t-att-max="line.qty_requested" 
+                                               min="0" step="any"/>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>Stock Staff Signature (ลายเซ็นพนักงานจ่ายคลัง)</strong>
+                                <button type="button" class="btn-clear" id="btn-clear-stock">Clear</button>
+                            </div>
+                            <div class="signature-wrapper">
+                                <canvas id="signature-pad-stock"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>Receiver Signature (ลายเซ็นผู้รับสินค้า)</strong>
+                                <button type="button" class="btn-clear" id="btn-clear-receiver">Clear</button>
+                            </div>
+                            <div class="signature-wrapper">
+                                <canvas id="signature-pad-receiver"></canvas>
+                            </div>
+                        </div>
+                        
+                        <button type="button" class="btn-confirm" id="btn-submit">
+                            Confirm Receive
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Initialize Signature Pads
+                    var canvasStock = document.getElementById('signature-pad-stock');
+                    var canvasReceiver = document.getElementById('signature-pad-receiver');
+                    
+                    // Respond to window resize
+                    function resizeCanvas() {
+                        var ratio =  Math.max(window.devicePixelRatio || 1, 1);
+                        
+                        // Handle Stock Pad
+                        var oldStock = null;
+                        if (window.sigPadStock &amp;&amp; !window.sigPadStock.isEmpty()) {
+                            oldStock = window.sigPadStock.toDataURL();
+                        }
+                        canvasStock.width = canvasStock.offsetWidth * ratio;
+                        canvasStock.height = canvasStock.offsetHeight * ratio;
+                        canvasStock.getContext("2d").scale(ratio, ratio);
+                        if (window.sigPadStock) {
+                            window.sigPadStock.clear();
+                            if (oldStock) window.sigPadStock.fromDataURL(oldStock);
+                        }
+
+                        // Handle Receiver Pad
+                        var oldReceiver = null;
+                        if (window.sigPadReceiver &amp;&amp; !window.sigPadReceiver.isEmpty()) {
+                            oldReceiver = window.sigPadReceiver.toDataURL();
+                        }
+                        canvasReceiver.width = canvasReceiver.offsetWidth * ratio;
+                        canvasReceiver.height = canvasReceiver.offsetHeight * ratio;
+                        canvasReceiver.getContext("2d").scale(ratio, ratio);
+                        if (window.sigPadReceiver) {
+                            window.sigPadReceiver.clear();
+                            if (oldReceiver) window.sigPadReceiver.fromDataURL(oldReceiver);
+                        }
+                    }
+                    
+                    window.addEventListener("resize", resizeCanvas);
+                    resizeCanvas();
+                    
+                    window.sigPadStock = new SignaturePad(canvasStock, {
+                        backgroundColor: 'rgb(255, 255, 255)',
+                        penColor: 'rgb(0, 0, 0)'
+                    });
+
+                    window.sigPadReceiver = new SignaturePad(canvasReceiver, {
+                        backgroundColor: 'rgb(255, 255, 255)',
+                        penColor: 'rgb(0, 0, 0)'
+                    });
+                    
+                    document.getElementById('btn-clear-stock').addEventListener('click', function() {
+                        window.sigPadStock.clear();
+                    });
+                    
+                    document.getElementById('btn-clear-receiver').addEventListener('click', function() {
+                        window.sigPadReceiver.clear();
+                    });
+                    
+                    // Handle checkbox toggle
+                    document.querySelectorAll('.line-checkbox').forEach(function(cb) {
+                        cb.addEventListener('change', function() {
+                            var qtyInput = this.closest('.line-item').querySelector('.line-qty');
+                            if (!this.checked) {
+                                qtyInput.dataset.oldVal = qtyInput.value;
+                                qtyInput.value = 0;
+                                qtyInput.disabled = true;
+                            } else {
+                                qtyInput.disabled = false;
+                                qtyInput.value = qtyInput.dataset.oldVal || qtyInput.max;
+                            }
+                        });
+                    });
+                    
+                    // Handle form submission
+                    document.getElementById('btn-submit').addEventListener('click', function() {
+                        if (window.sigPadStock.isEmpty()) {
+                            alert('Please provide the Stock Staff Signature first.');
+                            return;
+                        }
+
+                        if (window.sigPadReceiver.isEmpty()) {
+                            alert('Please provide the Receiver Signature first.');
+                            return;
+                        }
+                        
+                        if (!confirm('Are you sure you want to confirm receiving these items?')) {
+                            return;
+                        }
+                        
+                        document.getElementById('loading-overlay').style.setProperty('display', 'flex', 'important');
+                        
+                        var token = document.getElementById('req-token').value;
+                        var stockSignature = window.sigPadStock.toDataURL('image/png');
+                        var receiverSignature = window.sigPadReceiver.toDataURL('image/png');
+                        var lines = [];
+                        
+                        document.querySelectorAll('.line-item').forEach(function(item) {
+                            var lineId = item.dataset.lineId;
+                            var selected = item.querySelector('.line-checkbox').checked;
+                            var pickedQty = item.querySelector('.line-qty').value;
+                            
+                            lines.push({
+                                'id': lineId,
+                                'selected': selected,
+                                'picked_qty': pickedQty
+                            });
+                        });
+                        
+                        var payload = {
+                            params: {
+                                token: token,
+                                signature: receiverSignature,
+                                stock_signature: stockSignature,
+                                lines: lines
+                            }
+                        };
+                        
+                        fetch('/consume/confirm', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(payload)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.result &amp;&amp; data.result.success) {
+                                window.location.href = data.result.redirect_url;
+                            } else {
+                                alert('Error: ' + (data.error || (data.result &amp;&amp; data.result.error) || 'Unknown error'));
+                                document.getElementById('loading-overlay').style.setProperty('display', 'none', 'important');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('An error occurred. Please try again.');
+                            document.getElementById('loading-overlay').style.setProperty('display', 'none', 'important');
+                        });
+                    });
+                });
+            </script>
+        </t>
+    </template>
+    
+    <template id="portal_receive_success" name="Receive Success">
+        <t t-call="web.layout">
+            <t t-set="head">
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+                <style>
+                    body {
+                        background-color: #f8f9fa;
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                    }
+                    .container-mobile {
+                        max-width: 600px;
+                        margin: 40px auto;
+                        padding: 15px;
+                        text-align: center;
+                    }
+                    .icon-success {
+                        font-size: 80px;
+                        color: #28a745;
+                        margin-bottom: 20px;
+                    }
+                </style>
+            </t>
+            <div class="container-mobile">
+                <div class="icon-success">
+                    <svg viewBox="0 0 24 24" width="80" height="80" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+                <h2>Success!</h2>
+                <p class="text-muted mt-3">
+                    <t t-if="message">
+                        <t t-esc="message"/>
+                    </t>
+                    <t t-else="">
+                        Your consumable request has been successfully confirmed.<br/>
+                        The warehouse team will prepare your items.
+                    </t>
+                </p>
+                <div class="mt-4">
+                    <a href="#" onclick="window.close();" class="btn btn-secondary text-muted" style="text-decoration: underline;">Close Page</a>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

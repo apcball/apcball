@@ -80,7 +80,10 @@ class MarketplaceFeeAllocation(models.Model):
             else:
                 record.display_name = "New Fee Allocation"
 
-    @api.depends('settlement_id', 'settlement_id.vendor_bill_ids')
+    @api.depends('settlement_id', 'settlement_id.vendor_bill_ids', 
+                 'settlement_id.vendor_bill_ids.state',
+                 'settlement_id.vendor_bill_ids.amount_untaxed',
+                 'settlement_id.vendor_bill_ids.line_ids')
     def _compute_settlement_totals(self):
         """Compute settlement totals from linked vendor bills instead of settlement deductions"""
         import logging
@@ -90,6 +93,12 @@ class MarketplaceFeeAllocation(models.Model):
             total_fee = 0.0
             total_vat = 0.0 
             total_wht = 0.0
+            
+            if not record.settlement_id:
+                record.settlement_fee_total = total_fee
+                record.settlement_vat_total = total_vat
+                record.settlement_wht_total = total_wht
+                continue
             
             _logger.info(f"=== Computing settlement totals for {record.settlement_id.name} ===")
             _logger.info(f"Number of vendor bills: {len(record.settlement_id.vendor_bill_ids)}")
@@ -152,8 +161,12 @@ class MarketplaceFeeAllocation(models.Model):
     @api.depends('allocation_base_amount', 'settlement_id.total_invoice_amount')
     def _compute_allocation_percentage(self):
         for record in self:
-            if record.settlement_id.total_invoice_amount and not float_is_zero(record.settlement_id.total_invoice_amount, precision_digits=2):
-                record.allocation_percentage = (record.allocation_base_amount / record.settlement_id.total_invoice_amount) * 100
+            total_invoice = record.settlement_id.total_invoice_amount
+            base_amount = record.allocation_base_amount or 0.0
+            
+            # Use higher precision for percentage calculation to avoid rounding issues
+            if total_invoice and not float_is_zero(total_invoice, precision_digits=2):
+                record.allocation_percentage = (base_amount / total_invoice) * 100.0
             else:
                 record.allocation_percentage = 0.0
 
@@ -175,6 +188,9 @@ class MarketplaceFeeAllocation(models.Model):
     def _check_invoice_in_settlement(self):
         """Ensure invoice is part of the settlement"""
         for record in self:
+            if not record.settlement_id or not record.invoice_id:
+                continue  # Skip validation if required fields are not yet set
+                
             if record.invoice_id not in record.settlement_id.invoice_ids:
                 raise ValidationError(_("Invoice %s is not part of settlement %s") % 
                                     (record.invoice_id.name, record.settlement_id.name))

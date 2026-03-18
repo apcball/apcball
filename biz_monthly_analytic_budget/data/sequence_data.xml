@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <data>
+        <record id="seq_monthly_budget_plan" model="ir.sequence">
+            <field name="name">Monthly Budget Plan</field>
+            <field name="code">monthly.budget.plan</field>
+            <field name="prefix">MBP/%(year)s/</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

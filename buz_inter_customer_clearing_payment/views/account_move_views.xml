@@ -35,20 +35,33 @@
             <xpath expr="//field[@name='payment_type']" position="after">
                 <field name="is_clearing_payment" invisible="1"/>
             </xpath>
-            
+
             <xpath expr="//group[@name='group2']" position="inside">
                 <field name="clearing_advance_amount" invisible="not is_clearing_payment"/>
             </xpath>
-            
+
+            <!-- Reverse button shown only for posted clearing payments -->
+            <xpath expr="//button[@name='action_draft']" position="before">
+                <button name="action_reverse_clearing_payment"
+                        string="Reverse Clearing"
+                        type="object"
+                        class="btn-warning"
+                        invisible="not is_clearing_payment or state != 'posted'"
+                        confirm="This will reverse the payment and all associated clearing journal entries. Are you sure?"
+                        groups="account.group_account_manager"/>
+            </xpath>
+
             <xpath expr="//notebook" position="inside">
                 <page string="Clearing Links" invisible="not clearing_payment_ids">
                     <field name="clearing_payment_ids">
                         <tree>
-                            <field name="invoice_id"/>
-                            <field name="clearing_move_id"/>
+                            <field name="invoice_id" string="Invoice"/>
+                            <field name="clearing_move_id" string="Clearing Entry"/>
                             <field name="amount"/>
                             <field name="date"/>
-                            <field name="invoice_partner_id"/>
+                            <field name="invoice_partner_id" string="Invoice Customer"/>
+                            <field name="trade_channel" string="Channel" optional="show"/>
+                            <field name="settlement_batch" string="Batch" optional="show"/>
                         </tree>
                     </field>
                 </page>

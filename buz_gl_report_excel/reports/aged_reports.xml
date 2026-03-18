@@ -1,0 +1,21 @@
+<odoo>
+    <record id="action_report_aged_receivable_xlsx" model="ir.actions.report">
+        <field name="name">Aged Receivable Report Excel</field>
+        <field name="model">aged.receivable.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_gl_report_excel.report_aged_receivable_xlsx</field>
+        <field name="report_file">buz_gl_report_excel.report_aged_receivable_xlsx</field>
+        <field name="binding_model_id" ref="model_aged_receivable_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_aged_payable_xlsx" model="ir.actions.report">
+        <field name="name">Aged Payable Report Excel</field>
+        <field name="model">aged.payable.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_gl_report_excel.report_aged_payable_xlsx</field>
+        <field name="report_file">buz_gl_report_excel.report_aged_payable_xlsx</field>
+        <field name="binding_model_id" ref="model_aged_payable_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

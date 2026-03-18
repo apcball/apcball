@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_bom_selector" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.bom.selector</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Header level BOM Version -->
+            <xpath expr="//field[@name='pricelist_id']" position="after">
+                <field name="bom_version_id" 
+                       options="{'no_create': True, 'no_open': True}"
+                       readonly="state in ['sale', 'done', 'cancel']"/>
+            </xpath>
+
+            <!-- Line level BOM Override logic -->
+            <xpath expr="//field[@name='order_line']/tree/field[@name='product_id']" position="after">
+                <field name="bom_override" column_invisible="True"/>
+                <field name="bom_id" 
+                       options="{'no_create': True, 'no_open': True}"
+                       readonly="state in ['sale', 'done', 'cancel']"
+                       optional="show"
+                       domain="[('product_tmpl_id', '=', product_template_id), ('company_id', 'in', [False, company_id]), ('active', '=', True)]"
+                       decoration-warning="bom_override"/>
+            </xpath>
+
+            <!-- Form pop-up logic -->
+            <xpath expr="//field[@name='order_line']/form//field[@name='product_id']" position="after">
+                <field name="product_template_id" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+                <field name="bom_override" invisible="1"/>
+                <field name="bom_id" 
+                       options="{'no_create': True, 'no_open': True}"
+                       readonly="state in ['sale', 'done', 'cancel']"
+                       invisible="not product_id"
+                       domain="[('product_tmpl_id', '=', product_template_id), ('company_id', 'in', [False, company_id]), ('active', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,261 +1,364 @@
-# PROMPT: Odoo 17 Inter-Customer Clearing Payment with Credit Note (Unified Source)
+# Odoo 17 Module Enhancement Prompt
 
-You are a senior Odoo 17 Accounting & ERP developer.
-Create a full custom module for Odoo 17 (Community / Enterprise compatible).
+## Target Module
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MODULE NAME
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Enhance the existing module:
+
 buz_inter_customer_clearing_payment
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MODULE PURPOSE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Create an accounting-grade module that allows users to:
-- Use customer payments AND credit notes as unified settlement sources
-- Allocate those sources to invoices of the same or different customers
-- Apply inter-customer clearing logic automatically when partners differ
-- Remain fully compliant with accounting principles and audit requirements
+Do NOT create a new standalone module.
 
-The module MUST support:
-- Partial allocation
-- Multi-currency (FX)
-- Cancel (undo)
-- Reverse (period closed)
-- Payment + Credit Note combined allocation
+Extend the existing module by adding **Batch Payment Allocation functionality** designed for retail payment settlement scenarios.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-BUSINESS CONSTRAINTS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Each branch is a separate customer (res.partner)
-- Master data cannot be changed
-- AR Aging must remain correct
-- No direct reconciliation across different partners
-- No manual journal manipulation by users
+---
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-USER EXPERIENCE (UX FLOW)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Objective
 
-Menu:
-Accounting → Customers → Receive Clearing Payment
+Enhance the existing **Inter-Customer Clearing Payment module** to support **Batch Payment Allocation** where a single bank payment must be distributed across many invoices.
 
-Wizard Steps:
-1. Select Settlement Sources
-2. Allocate to Target Invoices
-3. Review & Confirm
+This scenario typically occurs when:
 
-Users must NOT manually reconcile journal items.
+* Customers pay invoices individually using QR payments
+* At the end of the day the bank transfers a **single lump sum**
+* Accounting must allocate that payment across many invoices
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 1: SELECT SETTLEMENT SOURCES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Allow user to select multiple credit sources:
+The new feature must reuse the **existing clearing logic** already implemented in the module.
 
-Source Types:
-- Customer Payments (account.move, move_type = 'outbound payment')
-- Customer Credit Notes (account.move, move_type = 'out_refund')
+---
 
-Fields shown per source:
-- Select (Boolean)
-- Type (Payment / Credit Note)
-- Reference
-- Customer
-- Date
-- Currency
-- Available Amount (amount_residual > 0)
+# Important Design Rule
 
-Source Domain:
-- state = 'posted'
-- amount_residual > 0
+The module already contains the core logic for:
 
-Total Available Credit = sum(selected sources)
+* Creating payments
+* Creating clearing journal entries
+* Performing reconciliations
+* Maintaining audit links
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 2: ALLOCATE TO TARGET INVOICES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Allow user to allocate available credit to invoices.
+This enhancement must **reuse the existing clearing logic** instead of duplicating it.
 
-Invoice Fields:
-- Select (Boolean)
-- Invoice Number
-- Customer
-- Branch (analytic account or branch_id)
-- Invoice Date
-- Currency
-- Residual Amount
-- Allocate Amount (editable)
+If needed, refactor the clearing logic into a reusable service layer.
 
-Invoice Domain:
-- move_type = 'out_invoice'
-- state = 'posted'
-- payment_state in ('not_paid', 'partial')
+---
 
-Summary Bar:
-- Total Available Credit
-- Total Allocated
-- Remaining Credit
+# New Feature: Batch Payment Allocation Wizard
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-VALIDATION RULES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Allocation amount >= 0
-- Allocation amount <= invoice residual
-- Total allocated <= total available credit
-- At least one allocation line required
-- Currency conversion handled by Odoo (do not calculate manually)
+Add a new wizard.
 
-Raise UserError with clear messages when validation fails.
+Model name:
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ACCOUNTING LOGIC (CRITICAL)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+buz.batch.payment.wizard
 
-Concept:
-- Payment and Credit Note are both CREDIT sources in AR
-- Invoices are DEBIT targets in AR
-- Clearing journal entries are required when partners differ
+This wizard allows accounting users to:
 
-──────────────
-FOR EACH ALLOCATION LINE:
-──────────────
+1. Receive a lump-sum bank payment
+2. Filter invoices
+3. Automatically allocate payment across invoices
+4. Apply bank fees
+5. Record settlement differences
+6. Automatically reconcile everything
 
-Case 1: Source Partner == Invoice Partner
-- Direct partial reconciliation between source AR line and invoice AR line
+---
 
-Case 2: Source Partner != Invoice Partner
-1. Create a CLEARING journal entry:
-   - Debit AR (invoice partner)
-   - Credit AR (source partner)
-   - Amount = allocated amount
-   - Currency = invoice currency
-   - Let Odoo generate balance / FX difference
+# Menu
 
-2. Reconcile:
-   - Invoice AR line ↔ Clearing AR (invoice partner)
-   - Source AR line ↔ Clearing AR (source partner)
+Add new menu:
 
-──────────────
-DO NOT:
-──────────────
-- Reconcile AR lines of different partners directly
-- Modify journal entries manually
-- Compute FX manually
-- Use SQL
+Accounting
+→ Customers
+→ **Batch Payment Allocation**
 
-Use account.partial.reconcile for all reconciliations.
+---
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MULTI-CURRENCY (FX) SUPPORT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Use original currency on source and invoice
-- Clearing entries use invoice currency
-- Odoo must automatically:
-  - Compute balance
-  - Create exchange difference entries
-- FX difference must reverse correctly on reverse operation
+# Wizard Step 1 — Settlement Information
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CANCEL & REVERSE BEHAVIOR
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fields:
 
-Cancel (period open):
-- Unreconcile all related reconciliations
-- Cancel clearing journal entries
-- Do NOT delete credit notes or payments
-- Restore residual amounts correctly
+payment_date
+journal_id
+currency_id
+received_amount
+reference
 
-Reverse (period closed):
-- Reverse clearing journal entries
-- Reverse payment if required
-- Credit notes are NOT reversed automatically
-- All FX differences must reverse correctly
+vat
+trade_channel
+date_from
+date_to
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DATA MODELS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+bank_charge
+bank_fee_account_id
 
-Wizard:
-- model: buz.clearing.settlement.wizard
-- fields:
-  - source_line_ids (One2many)
-  - allocation_line_ids (One2many)
+difference_amount
+difference_account_id
 
-Source Line (Transient):
-- model: buz.clearing.source.line
-- fields:
-  - wizard_id
-  - move_id (payment or credit note)
-  - partner_id
-  - currency_id
-  - available_amount
+Descriptions:
 
-Allocation Line (Transient):
-- model: buz.clearing.allocation.line
-- fields:
-  - wizard_id
-  - invoice_id
-  - invoice_partner_id
-  - branch_id
-  - residual_amount
-  - allocate_amount
-  - currency_id
+received_amount
+Actual amount received from the bank.
 
-Persistent Link Model (REQUIRED):
-- model: buz.clearing.link
-- fields:
-  - source_move_id
-  - invoice_id
-  - clearing_move_id
-  - amount
-  - reconcile_ids
+bank_charge
+Optional bank fee deducted by bank.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MODULE STRUCTURE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+difference_amount
+Manual settlement difference.
 
-buz_inter_customer_clearing_payment/
-├── __manifest__.py
-├── models/
-│   ├── __init__.py
-│   ├── clearing_engine.py
-│   ├── clearing_link.py
-│   └── account_move_extension.py
-├── wizard/
-│   ├── __init__.py
-│   ├── clearing_wizard.py
-│   ├── source_line.py
-│   └── allocation_line.py
-├── views/
-│   ├── clearing_menu.xml
-│   ├── clearing_wizard_views.xml
-│   └── account_move_views.xml
-├── security/
-│   └── ir.model.access.csv
-└── README.md
+---
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TECHNICAL CONSTRAINTS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Odoo version: 17.0
-- Python 3.10+
-- Follow Odoo ORM and accounting best practices
-- No core modification
-- Clean, commented, production-ready code
-- Fully reversible and auditable
+# Invoice Filtering
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DELIVERABLE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Generate:
-- All Python models
-- Wizard logic
-- XML views (wizard + menu)
-- Manifest file
-- Security access
-- README.md explaining:
-  - Business scenario
-  - Accounting logic
-  - Cancel / Reverse behavior
+Invoices must be filtered using:
 
-Code must be installable and runnable in Odoo 17.
+move_type = 'out_invoice'
+state = 'posted'
+payment_state in ('not_paid','partial')
+
+Additional filters:
+
+commercial_partner_id.vat = wizard.vat
+
+trade_channel = wizard.trade_channel
+
+invoice_date >= date_from
+invoice_date <= date_to
+
+---
+
+# Step 2 — Invoice Allocation
+
+Show invoice table.
+
+Columns:
+
+Invoice Number
+Invoice Date
+Customer
+VAT
+Trade Channel
+Residual Amount
+Allocated Amount
+Selected
+
+Users can manually edit allocation.
+
+---
+
+# Auto Allocation
+
+Add button:
+
+Auto Allocate
+
+Allocation logic:
+
+FIFO based on invoice_date.
+
+Pseudo logic:
+
+remaining = received_amount
+
+for invoice in invoices.sorted(invoice_date):
+
+```
+if remaining <= 0:
+    break
+
+allocate = min(invoice.residual, remaining)
+
+line.allocate_amount = allocate
+
+remaining -= allocate
+```
+
+---
+
+# Step 3 — Review
+
+Display settlement summary:
+
+Total Invoice Amount
+Total Allocated
+Bank Charge
+Difference Amount
+Remaining Balance
+
+Validation rule:
+
+allocated_total must equal
+
+received_amount + bank_charge + difference_amount
+
+---
+
+# Payment Creation
+
+Reuse the existing payment creation logic from the module.
+
+Journal entry example:
+
+Dr Bank
+Dr Bank Fee Expense (optional)
+Dr Difference Account (optional)
+Cr AR (Clearing Customer)
+
+The payment partner should be the selected clearing partner.
+
+---
+
+# Clearing Entries
+
+Reuse the module's existing clearing entry logic.
+
+For each allocated invoice where partner differs:
+
+Dr AR (Invoice Customer)
+Cr AR (Clearing Customer)
+
+---
+
+# Reconciliation
+
+Reuse existing reconciliation methods.
+
+Perform reconciliations using:
+
+account.partial.reconcile
+
+Reconcile pairs:
+
+Invoice AR ↔ Clearing AR
+
+Payment AR ↔ Clearing AR
+
+Never reconcile directly across different partners.
+
+---
+
+# Data Model Extension
+
+Extend existing model:
+
+buz.clearing.link
+
+Add optional fields:
+
+trade_channel
+invoice_date
+settlement_batch
+
+These fields improve reporting and traceability.
+
+---
+
+# Wizard Line Model
+
+Create new transient model:
+
+buz.batch.payment.line
+
+Fields:
+
+wizard_id
+invoice_id
+partner_id
+invoice_date
+residual
+allocate_amount
+selected
+currency_id
+
+---
+
+# Cancel Support
+
+Reuse the module's cancel logic.
+
+If accounting period is open:
+
+1. Unreconcile all related lines
+2. Cancel clearing entries
+3. Cancel payment
+
+---
+
+# Reverse Support
+
+If period is closed:
+
+Use standard Odoo reversal:
+
+account.move.reversal
+
+Reverse both:
+
+* payment move
+* clearing moves
+
+---
+
+# Performance Requirements
+
+The wizard must support large invoice sets.
+
+Use efficient searching instead of loading all invoices automatically.
+
+Invoices should load only after user applies filters.
+
+---
+
+# Security
+
+Allow access to:
+
+account.group_account_user
+account.group_account_manager
+
+---
+
+# Module Structure Update
+
+Update the existing module structure:
+
+buz_inter_customer_clearing_payment
+
+Add:
+
+wizard/batch_payment_wizard.py
+wizard/batch_payment_line.py
+
+Add new views:
+
+views/batch_payment_wizard_view.xml
+
+Add new menu:
+
+views/batch_payment_menu.xml
+
+---
+
+# UX Requirements
+
+Wizard should be simple for accountants.
+
+Display clear totals:
+
+Total Invoices
+Allocated Amount
+Remaining Balance
+
+Highlight mismatches visually.
+
+---
+
+# Expected Result
+
+Accounting users can:
+
+1. Receive one lump-sum bank payment
+2. Filter invoices by VAT and Trade Channel
+3. Automatically allocate payment across many invoices
+4. Apply bank charges
+5. Record settlement differences
+6. Automatically reconcile all invoices
+7. Maintain full accounting audit trail
+
+depend module sr_extra_bank_charges, marketplace_settlement

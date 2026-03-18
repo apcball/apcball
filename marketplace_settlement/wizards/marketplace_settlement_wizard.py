@@ -17,6 +17,11 @@ class MarketplaceSettlementWizard(models.TransientModel):
         ('nocnoc', 'Noc Noc'),
         ('tiktok', 'Tiktok'),
         ('spx', 'SPX'),
+        ('online_line_fb', 'ONLINE/Line + Facebook'),
+        ('offline_mogen_outlet', 'OFFLINE/Mogen Outlet'),
+        ('after_sale_service', 'After sale service'),
+        ('installation_service', 'Installation service'),
+        ('own_channel_cdc', 'Own channel ( CDC )'),
         ('other', 'Other')
     ], string='Trade Channel', required=True)
     invoice_ids = fields.Many2many('account.move', string='Invoices')

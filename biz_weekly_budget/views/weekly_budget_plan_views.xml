@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Weekly Budget Plan: Form View -->
+    <record id="view_weekly_budget_plan_form" model="ir.ui.view">
+        <field name="name">weekly.budget.plan.form</field>
+        <field name="model">weekly.budget.plan</field>
+        <field name="arch" type="xml">
+            <form string="Weekly Budget Plan">
+                <header>
+                    <button name="action_generate_weeks"
+                            string="Generate Weeks"
+                            type="object"
+                            class="btn-primary"
+                            icon="fa-refresh"
+                            invisible="state != 'draft'"/>
+                    <button name="action_confirm"
+                            string="Confirm"
+                            type="object"
+                            class="btn-primary"
+                            icon="fa-check"
+                            invisible="state != 'draft'"/>
+                    <button name="action_recompute_used"
+                            string="Recompute Used"
+                            type="object"
+                            class="btn-secondary"
+                            icon="fa-calculator"
+                            invisible="state not in ('confirmed',)"/>
+                    <button name="action_done"
+                            string="Done"
+                            type="object"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_cancel"
+                            string="Cancel"
+                            type="object"
+                            invisible="state in ('done', 'cancelled')"/>
+                    <button name="action_reset_draft"
+                            string="Reset to Draft"
+                            type="object"
+                            invisible="state not in ('cancelled',)"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="year"/>
+                            <field name="date_from" readonly="state != 'draft'"/>
+                            <field name="date_to" readonly="state != 'draft'"/>
+                            <field name="currency_id" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="all_companies" readonly="state != 'draft'"/>
+                            <field name="company_id"
+                                   readonly="state != 'draft'"
+                                   invisible="all_companies"/>
+                            <field name="default_weekly_amount" readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+                    <group string="Notify Users">
+                        <field name="notify_user_ids" widget="many2many_tags" nolabel="1"
+                               readonly="state in ('done', 'cancelled')"/>
+                    </group>
+
+                    <!-- Summary -->
+                    <group string="Summary" invisible="not line_ids">
+                        <group>
+                            <field name="total_budget" widget="monetary"/>
+                            <field name="total_used" widget="monetary"/>
+                        </group>
+                        <group>
+                            <field name="total_remaining" widget="monetary"/>
+                            <field name="usage_percentage" widget="progressbar"/>
+                        </group>
+                    </group>
+
+                    <!-- Weekly Lines -->
+                    <notebook>
+                        <page string="Weekly Budget Lines" name="lines">
+                            <field name="line_ids" readonly="state in ('done', 'cancelled')">
+                                <tree editable="bottom"
+                                      decoration-danger="status == 'exceeded'"
+                                      decoration-warning="amount_available &lt; 0 and status != 'exceeded'"
+                                      decoration-success="status == 'normal' and amount_used &gt; 0">
+                                    <field name="name"/>
+                                    <field name="week_number"/>
+                                    <field name="date_from"/>
+                                    <field name="date_to"/>
+                                    <field name="amount_limit" string="Budget Limit"/>
+                                    <field name="amount_reserved" string="Reserved"
+                                           optional="show"/>
+                                    <field name="amount_used" string="Used"/>
+                                    <field name="amount_available" string="Available"
+                                           optional="show"/>
+                                    <field name="amount_remaining" string="Remaining (vs Used)"
+                                           optional="hide"/>
+                                    <field name="usage_percentage" widget="progressbar"/>
+                                    <field name="status"
+                                           decoration-danger="status == 'exceeded'"
+                                           decoration-success="status == 'normal'"
+                                           widget="badge"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <button name="action_adjust_budget"
+                                            string="Adjust"
+                                            type="object"
+                                            icon="fa-pencil"
+                                            class="btn-link"
+                                            invisible="parent.state != 'confirmed'"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Weekly Budget Plan: Tree View -->
+    <record id="view_weekly_budget_plan_tree" model="ir.ui.view">
+        <field name="name">weekly.budget.plan.tree</field>
+        <field name="model">weekly.budget.plan</field>
+        <field name="arch" type="xml">
+            <tree string="Weekly Budget Plans"
+                  decoration-info="state == 'draft'"
+                  decoration-success="state == 'confirmed'"
+                  decoration-muted="state in ('done', 'cancelled')">
+                <field name="name"/>
+                <field name="year"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="company_id" optional="show"/>
+                <field name="all_companies"/>
+                <field name="default_weekly_amount"/>
+                <field name="total_budget"/>
+                <field name="total_used"/>
+                <field name="total_remaining"/>
+                <field name="usage_percentage" widget="progressbar"/>
+                <field name="state"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'confirmed'"
+                       decoration-muted="state in ('done', 'cancelled')"
+                       widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Weekly Budget Plan: Search View -->
+    <record id="view_weekly_budget_plan_search" model="ir.ui.view">
+        <field name="name">weekly.budget.plan.search</field>
+        <field name="model">weekly.budget.plan</field>
+        <field name="arch" type="xml">
+            <search string="Search Budget Plans">
+                <field name="name"/>
+                <field name="year"/>
+                <field name="company_id"/>
+                <filter name="filter_draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_confirmed" string="Confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <filter name="filter_done" string="Done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter name="filter_all_companies" string="All Companies" domain="[('all_companies', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_year" string="Year" context="{'group_by': 'year'}"/>
+                    <filter name="group_company" string="Company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_weekly_budget_plan" model="ir.actions.act_window">
+        <field name="name">Weekly Budget Plans</field>
+        <field name="res_model">weekly.budget.plan</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_weekly_budget_plan_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Weekly Budget Plan
+            </p>
+            <p>
+                Define weekly budget limits to control purchase order spending.
+            </p>
+        </field>
+    </record>
+
+</odoo>

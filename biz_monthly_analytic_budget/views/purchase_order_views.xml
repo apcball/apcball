@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_order_form_inherit_monthly_budget" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit.monthly.budget</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='date_order']" position="after">
+                <field name="payment_date"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Monthly Budget Check" name="monthly_budget_check">
+                    <group>
+                        <button name="action_check_monthly_budget"
+                                string="Check Monthly Budget"
+                                type="object"
+                                class="btn-primary mb-3"
+                                icon="fa-calculator"/>
+                    </group>
+                    <field name="monthly_budget_check_result" nolabel="1"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

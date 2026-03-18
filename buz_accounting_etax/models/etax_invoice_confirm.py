@@ -63,16 +63,30 @@ class AccountMoveInherit(models.Model):
     def _custom_action_after_confirm(self):
         """
         ทำงานหลังจาก Confirm Invoice สำเร็จ
+        ทำงานเฉพาะ invoice/credit note เท่านั้น
+        ไม่ทำงานสำหรับ Journal Entry ทั่วไป (เช่น clearing entry)
         """
         for move in self:
-            # ตัวอย่าง: Update field
+            # Update field
             move.is_custom_confirmed = True
-            
-            # ตัวอย่าง: สร้าง Log หรือ Activity
+
+            # สร้าง Log หรือ Activity
             move.message_post(
                 body=_('Invoice ถูก Confirm โดย: %s') % self.env.user.name,
                 subject=_('Invoice Confirmed')
             )
+
+            # สร้างรายการใน E-tax เฉพาะ Invoice / Credit Note เท่านั้น
+            # -- ข้าม General Journal Entry (move_type='entry') เช่น clearing, adjustment, etc.
+            if move.move_type not in ('out_invoice', 'in_invoice', 'out_refund', 'in_refund'):
+                continue
+
+            # ข้ามกรณีไม่มี partner (ป้องกัน not-null constraint)
+            if not move.partner_id:
+                _logger.warning(
+                    'buz_accounting_etax: skipping etax creation for move %s '
+                    '(no partner_id set).', move.name)
+                continue
 
             # สร้างรายการใน E-tax
             self._create_related_record(move)

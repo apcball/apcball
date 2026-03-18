@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Client Action for Dashboard -->
+    <record id="action_weekly_budget_smart_dashboard" model="ir.actions.client">
+        <field name="name">Budget Smart Dashboard</field>
+        <field name="tag">weekly_budget_dashboard</field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_weekly_budget_smart_dashboard"
+              name="Smart Dashboard"
+              parent="menu_budget_control_root"
+              action="action_weekly_budget_smart_dashboard"
+              sequence="5"/>
+</odoo>

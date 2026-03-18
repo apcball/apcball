@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====================== monthly.budget.line LIST ====================== -->
+    <record id="view_monthly_budget_line_list" model="ir.ui.view">
+        <field name="name">monthly.budget.line.list</field>
+        <field name="model">monthly.budget.line</field>
+        <field name="arch" type="xml">
+            <tree string="Monthly Budget Lines"
+                  decoration-danger="available_amount &lt; 0"
+                  decoration-warning="utilization_rate &gt; 80">
+                <field name="plan_id" optional="show"/>
+                <field name="analytic_account_id"/>
+                <field name="percentage" string="%" widget="percentage" optional="show"/>
+                <field name="budget_amount" widget="monetary"/>
+                <field name="reserved_amount" widget="monetary"/>
+                <field name="used_amount" widget="monetary"/>
+                <field name="available_amount" widget="monetary"/>
+                <field name="utilization_rate" widget="percentage" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ====================== monthly.budget.line FORM ====================== -->
+    <record id="view_monthly_budget_line_form" model="ir.ui.view">
+        <field name="name">monthly.budget.line.form</field>
+        <field name="model">monthly.budget.line</field>
+        <field name="arch" type="xml">
+            <form string="Monthly Budget Line">
+                <sheet>
+                    <group>
+                        <group string="Allocation">
+                            <field name="plan_id"/>
+                            <field name="analytic_account_id"/>
+                            <field name="percentage"/>
+                            <field name="budget_amount" widget="monetary"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Tracking">
+                            <field name="reserved_amount" widget="monetary" readonly="1"/>
+                            <field name="used_amount" widget="monetary" readonly="1"/>
+                            <field name="available_amount" widget="monetary" readonly="1"/>
+                            <field name="utilization_rate" widget="percentage" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ====================== Search ====================== -->
+    <record id="view_monthly_budget_line_search" model="ir.ui.view">
+        <field name="name">monthly.budget.line.search</field>
+        <field name="model">monthly.budget.line</field>
+        <field name="arch" type="xml">
+            <search string="Monthly Budget Lines">
+                <field name="plan_id"/>
+                <field name="analytic_account_id"/>
+                <filter string="Over Budget" name="over_budget"
+                        domain="[('available_amount', '&lt;', 0)]"/>
+                <filter string="High Utilization (&gt;80%)" name="high_util"
+                        domain="[('utilization_rate', '&gt;', 80)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Plan" name="group_plan" context="{'group_by': 'plan_id'}"/>
+                    <filter string="Analytic Account" name="group_analytic" context="{'group_by': 'analytic_account_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ====================== Action ====================== -->
+    <record id="action_monthly_budget_line" model="ir.actions.act_window">
+        <field name="name">Monthly Budget Lines</field>
+        <field name="res_model">monthly.budget.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_monthly_budget_line_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No budget lines found.
+            </p>
+        </field>
+    </record>
+</odoo>

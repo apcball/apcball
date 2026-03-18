@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Extend Employee Purchase Requisition Form: Add Budget Check Section -->
+    <record id="view_employee_purchase_requisition_form_budget" model="ir.ui.view">
+        <field name="name">employee.purchase.requisition.form.budget</field>
+        <field name="model">employee.purchase.requisition</field>
+        <field name="inherit_id" ref="employee_purchase_requisition.employee_purchase_requisition_view_form"/>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Budget Check" name="budget_check">
+                    <group>
+                        <button name="action_check_budget"
+                                string="Check Budget"
+                                type="object"
+                                class="btn-primary mb-3"
+                                icon="fa-search"/>
+                    </group>
+                    <field name="budget_check_result" nolabel="1"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

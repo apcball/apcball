@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Weekly Budget Line: Tree View -->
+    <record id="view_weekly_budget_line_tree" model="ir.ui.view">
+        <field name="name">weekly.budget.line.tree</field>
+        <field name="model">weekly.budget.line</field>
+        <field name="arch" type="xml">
+            <tree string="Budget Lines"
+                  decoration-danger="status == 'exceeded'"
+                  decoration-warning="amount_available &lt; 0 and status != 'exceeded'"
+                  decoration-success="status == 'normal' and amount_used &gt; 0">
+                <field name="plan_id"/>
+                <field name="name"/>
+                <field name="week_number"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="amount_limit" string="Budget Limit"/>
+                <field name="amount_reserved" string="Reserved"
+                       decoration-warning="amount_reserved &gt; 0"
+                       optional="show"/>
+                <field name="amount_used" string="Used"/>
+                <field name="amount_available" string="Available"
+                       decoration-danger="amount_available &lt; 0"
+                       decoration-warning="amount_available &gt;= 0 and amount_available &lt; (amount_limit * 0.1)"
+                       optional="show"/>
+                <field name="amount_remaining" string="Remaining (vs Used)" optional="hide"/>
+                <field name="usage_percentage" widget="progressbar"/>
+                <field name="status"
+                       decoration-danger="status == 'exceeded'"
+                       decoration-success="status == 'normal'"
+                       widget="badge"/>
+                <field name="company_id" optional="show"/>
+                <field name="all_companies" optional="hide"/>
+                <field name="plan_state"
+                       decoration-info="plan_state == 'draft'"
+                       decoration-success="plan_state == 'confirmed'"
+                       widget="badge"
+                       optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Weekly Budget Line: Form View -->
+    <record id="view_weekly_budget_line_form" model="ir.ui.view">
+        <field name="name">weekly.budget.line.form</field>
+        <field name="model">weekly.budget.line</field>
+        <field name="arch" type="xml">
+            <form string="Budget Line">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="plan_id" readonly="1"/>
+                            <field name="name"/>
+                            <field name="week_number"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group>
+                            <field name="amount_limit"/>
+                            <field name="amount_reserved"
+                                   decoration-warning="amount_reserved &gt; 0"/>
+                            <field name="amount_used"/>
+                            <field name="amount_available"
+                                   decoration-danger="amount_available &lt; 0"/>
+                            <field name="amount_remaining" string="Remaining (vs Used)"/>
+                            <field name="usage_percentage" widget="progressbar"/>
+                            <field name="status" widget="badge"
+                                   decoration-danger="status == 'exceeded'"
+                                   decoration-success="status == 'normal'"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Adjustment History" name="history">
+                            <field name="history_ids" readonly="1">
+                                <tree>
+                                    <field name="date"/>
+                                    <field name="user_id"/>
+                                    <field name="old_amount"/>
+                                    <field name="new_amount"/>
+                                    <field name="reason"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Weekly Budget Line: Search View -->
+    <record id="view_weekly_budget_line_search" model="ir.ui.view">
+        <field name="name">weekly.budget.line.search</field>
+        <field name="model">weekly.budget.line</field>
+        <field name="arch" type="xml">
+            <search string="Search Budget Lines">
+                <field name="name"/>
+                <field name="plan_id"/>
+                <field name="company_id"/>
+                <filter name="filter_confirmed" string="Active Plans"
+                        domain="[('plan_state', '=', 'confirmed')]"/>
+                <filter name="filter_exceeded" string="Exceeded"
+                        domain="[('status', '=', 'exceeded')]"/>
+                <filter name="filter_this_week" string="This Week"
+                        domain="[('date_from', '&lt;=', context_today().strftime('%Y-%m-%d')),
+                                 ('date_to', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_plan" string="Budget Plan" context="{'group_by': 'plan_id'}"/>
+                    <filter name="group_status" string="Status" context="{'group_by': 'status'}"/>
+                    <filter name="group_company" string="Company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_weekly_budget_line" model="ir.actions.act_window">
+        <field name="name">Budget Lines</field>
+        <field name="res_model">weekly.budget.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_weekly_budget_line_search"/>
+        <field name="context">{'search_default_filter_confirmed': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No budget lines found.
+            </p>
+            <p>
+                Budget lines are generated automatically from Weekly Budget Plans.
+            </p>
+        </field>
+    </record>
+
+</odoo>

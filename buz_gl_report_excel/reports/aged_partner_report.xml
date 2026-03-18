@@ -1,0 +1,11 @@
+<odoo>
+    <record id="action_report_aged_partner_xlsx" model="ir.actions.report">
+        <field name="name">Aged Partner Report Excel</field>
+        <field name="model">aged.partner.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">buz_gl_report_excel.report_aged_partner_xlsx</field>
+        <field name="report_file">buz_gl_report_excel.report_aged_partner_xlsx</field>
+        <field name="binding_model_id" ref="model_aged_partner_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

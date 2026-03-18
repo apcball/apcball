@@ -4,7 +4,7 @@ from odoo import models, fields, api, _
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    trade_channel = fields.Selection([('shopee', 'Shopee'), ('lazada', 'Lazada'), ('nocnoc', 'Noc Noc'), ('tiktok', 'Tiktok'), ('spx', 'SPX'), ('other', 'Other')], string='Trade Channel')
+    trade_channel = fields.Selection([('shopee', 'Shopee'), ('lazada', 'Lazada'), ('nocnoc', 'Noc Noc'), ('tiktok', 'Tiktok'), ('spx', 'SPX'), ('online_line_fb', 'ONLINE/Line + Facebook'), ('offline_mogen_outlet', 'OFFLINE/Mogen Outlet'), ('after_sale_service', 'After sale service'), ('installation_service', 'Installation service'), ('own_channel_cdc', 'Own channel ( CDC )'), ('other', 'Other')], string='Trade Channel')
 
     def _prepare_invoice(self):
         """Extend invoice preparation to copy trade_channel from the sale order.
@@ -21,7 +21,7 @@ class SaleOrder(models.Model):
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
-    trade_channel = fields.Selection([('shopee', 'Shopee'), ('lazada', 'Lazada'), ('nocnoc', 'Noc Noc'), ('tiktok', 'Tiktok'), ('spx', 'SPX'), ('other', 'Other')], string='Trade Channel')
+    trade_channel = fields.Selection([('shopee', 'Shopee'), ('lazada', 'Lazada'), ('nocnoc', 'Noc Noc'), ('tiktok', 'Tiktok'), ('spx', 'SPX'), ('online_line_fb', 'ONLINE/Line + Facebook'), ('offline_mogen_outlet', 'OFFLINE/Mogen Outlet'), ('after_sale_service', 'After sale service'), ('installation_service', 'Installation service'), ('own_channel_cdc', 'Own channel ( CDC )'), ('other', 'Other')], string='Trade Channel')
     is_refund = fields.Boolean('Is Credit Note', compute='_compute_is_refund')
     is_settled = fields.Boolean('Settled in Marketplace', compute='_compute_settlement_status', 
                                help='Indicates if this invoice is included in a posted marketplace settlement')

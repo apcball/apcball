@@ -39,12 +39,16 @@ Accounting → Customers → Receive Clearing Payment
     'depends': [
         'account',
         'account_payment',
+        'sr_extra_bank_charges',
+        'marketplace_settlement',
     ],
     'data': [
         'security/ir.model.access.csv',
         'views/clearing_payment_wizard_views.xml',
         'views/account_move_views.xml',
         'views/clearing_payment_menu.xml',
+        'views/batch_payment_wizard_view.xml',
+        'views/batch_payment_menu.xml',
     ],
     'demo': [],
     'installable': True,

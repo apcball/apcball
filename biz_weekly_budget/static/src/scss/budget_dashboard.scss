@@ -1,0 +1,30 @@
+.o_weekly_budget_dashboard {
+    .card {
+        transition: transform 0.2s;
+        &:hover {
+            transform: translateY(-2px);
+        }
+    }
+    .badge {
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+    .table thead th {
+        border-top: none;
+    }
+    .o_pie_chart_wrapper {
+        canvas {
+            max-height: 260px;
+        }
+    }
+    .o_pie_center_label {
+        small {
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+    }
+    // Filters row gap for flex
+    .d-flex[style*="gap"] {
+        gap: 12px;
+    }
+}

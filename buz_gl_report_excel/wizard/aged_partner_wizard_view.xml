@@ -1,0 +1,48 @@
+<odoo>
+    <record id="view_aged_partner_wizard_form" model="ir.ui.view">
+        <field name="name">aged.partner.wizard.form</field>
+        <field name="model">aged.partner.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Aged Partner Report">
+                <group>
+                    <group>
+                        <field name="result_selection" widget="radio"/>
+                        <field name="direction_selection" widget="radio"/>
+                        <field name="target_move" widget="radio"/>
+                    </group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="period_length"/>
+                    </group>
+                </group>
+                <group string="Filters">
+                    <field name="partner_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    <field name="account_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    <field name="journal_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                </group>
+                <group>
+                    <field name="show_uncleared_items"/>
+                </group>
+                <footer>
+                    <button name="check_report_xlsx" string="Export Excel" type="object" class="oe_highlight"/>
+                    <button string="Cancel" class="btn btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_aged_partner_wizard" model="ir.actions.act_window">
+        <field name="name">Aged Partner Report</field>
+        <field name="res_model">aged.partner.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_aged_partner_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_aged_partner_wizard"
+              name="Aged Partner (Excel)"
+              action="action_aged_partner_wizard"
+              parent="account.menu_finance_reports"
+              sequence="6"/>
+</odoo>

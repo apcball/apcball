@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Menu: Purchase > Budget Control -->
+    <menuitem id="menu_budget_control_root"
+              name="Budget Control"
+              parent="purchase.menu_purchase_root"
+              sequence="90"/>
+
+    <menuitem id="menu_weekly_budget_plan"
+              name="Weekly Budget Plans"
+              parent="menu_budget_control_root"
+              action="action_weekly_budget_plan"
+              sequence="10"/>
+
+    <menuitem id="menu_weekly_budget_line"
+              name="Budget Lines"
+              parent="menu_budget_control_root"
+              action="action_weekly_budget_line"
+              sequence="20"/>
+
+    <menuitem id="menu_weekly_budget_report"
+              name="Budget Analysis"
+              parent="menu_budget_control_root"
+              action="action_weekly_budget_report"
+              sequence="30"/>
+
+</odoo>

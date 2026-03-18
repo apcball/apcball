@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_buz_batch_payment_allocation"
+              name="Batch Payment Allocation"
+              parent="account.menu_finance_receivables"
+              action="buz_inter_customer_clearing_payment.action_buz_batch_payment_wizard"
+              sequence="16"/>
+</odoo>

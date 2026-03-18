@@ -75,24 +75,42 @@ class srAccountPayment(models.Model):
                 else:
                     bank_charge_company_currency = self.bank_charge_amount
                 
-                # Adjust existing payment lines
-                for line in line_vals_list:
-                    if line.get('debit') == 0.0:  # This is usually the payment line (credit side)
-                        amount_currency = line.get('amount_currency') + (-bank_charge_in_payment_currency)
-                        credit = line.get('credit') + bank_charge_company_currency
-                        line.update({'credit': credit, 'amount_currency': amount_currency})
-                
-                # Add bank charge line - use same currency as payment to comply with Odoo rules
-                bank_charge_line = {
-                    'name': f"Bank Charges Payments ({self.bank_charge_amount:.2f} THB)",
-                    'date_maturity': self.date,
-                    'debit': bank_charge_company_currency,
-                    'credit': 0.0,
-                    'partner_id': self.partner_id.id,
-                    'account_id': self.journal_id.default_bank_charge_account_id.id,
-                    'currency_id': self.currency_id.id,  # Use same currency as payment
-                    'amount_currency': bank_charge_in_payment_currency,  # Bank charge in payment currency
-                }
+                # Adjust existing payment lines based on payment type
+                if self.payment_type == 'inbound':
+                    for line in line_vals_list:
+                        if line.get('credit', 0.0) == 0.0:  # This is usually the bank line (debit side)
+                            amount_currency = line.get('amount_currency', 0.0) - bank_charge_in_payment_currency
+                            debit = line.get('debit', 0.0) - bank_charge_company_currency
+                            line.update({'debit': debit, 'amount_currency': amount_currency})
+                    
+                    bank_charge_line = {
+                        'name': f"Bank Charges Payments ({self.bank_charge_amount:.2f} THB)",
+                        'date_maturity': self.date,
+                        'debit': bank_charge_company_currency,
+                        'credit': 0.0,
+                        'partner_id': self.partner_id.id,
+                        'account_id': self.journal_id.default_bank_charge_account_id.id,
+                        'currency_id': self.currency_id.id,
+                        'amount_currency': bank_charge_in_payment_currency,
+                    }
+                else:
+                    for line in line_vals_list:
+                        if line.get('debit', 0.0) == 0.0:  # This is usually the payment line (credit side)
+                            amount_currency = line.get('amount_currency', 0.0) - bank_charge_in_payment_currency
+                            credit = line.get('credit', 0.0) + bank_charge_company_currency
+                            line.update({'credit': credit, 'amount_currency': amount_currency})
+                    
+                    # Add bank charge line - use same currency as payment to comply with Odoo rules
+                    bank_charge_line = {
+                        'name': f"Bank Charges Payments ({self.bank_charge_amount:.2f} THB)",
+                        'date_maturity': self.date,
+                        'debit': bank_charge_company_currency,
+                        'credit': 0.0,
+                        'partner_id': self.partner_id.id,
+                        'account_id': self.journal_id.default_bank_charge_account_id.id,
+                        'currency_id': self.currency_id.id,  # Use same currency as payment
+                        'amount_currency': bank_charge_in_payment_currency,  # Bank charge in payment currency
+                    }
                 
                 line_vals_list.append(bank_charge_line)
         return line_vals_list
