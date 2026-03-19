@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ar_settlement_user,ar.settlement.user,model_ar_settlement,account.group_account_user,1,1,1,0
+access_ar_settlement_manager,ar.settlement.manager,model_ar_settlement,account.group_account_manager,1,1,1,1
+access_ar_settlement_line_user,ar.settlement.line.user,model_ar_settlement_line,account.group_account_user,1,1,1,0
+access_ar_settlement_line_manager,ar.settlement.line.manager,model_ar_settlement_line,account.group_account_manager,1,1,1,1
+access_ar_settlement_credit_line_user,ar.settlement.credit.line.user,model_ar_settlement_credit_line,account.group_account_user,1,1,1,0
+access_ar_settlement_credit_line_manager,ar.settlement.credit.line.manager,model_ar_settlement_credit_line,account.group_account_manager,1,1,1,1

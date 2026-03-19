@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  TREE VIEW                                                    -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_ar_settlement_tree" model="ir.ui.view">
+        <field name="name">ar.settlement.tree</field>
+        <field name="model">ar.settlement</field>
+        <field name="arch" type="xml">
+            <tree string="AR Settlements"
+                  decoration-info="state == 'draft'"
+                  decoration-success="state == 'confirmed'"
+                  decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="vat_group"/>
+                <field name="trade_channel" optional="show"/>
+                <field name="payment_date"/>
+                <field name="amount_received" sum="Total Received"/>
+                <field name="allocated_amount" sum="Total Allocated"/>
+                <field name="difference_amount" sum="Total Difference"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'confirmed'"
+                       decoration-danger="state == 'cancelled'"/>
+                <field name="currency_id" column_invisible="True"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  FORM VIEW                                                    -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_ar_settlement_form" model="ir.ui.view">
+        <field name="name">ar.settlement.form</field>
+        <field name="model">ar.settlement</field>
+        <field name="arch" type="xml">
+            <form string="AR Settlement">
+                <header>
+                    <button name="action_confirm" type="object"
+                            string="Confirm Settlement"
+                            class="btn-primary"
+                            invisible="state != 'draft'"
+                            confirm="This will create a payment, post it and reconcile invoices. Continue?"/>
+                    <button name="action_cancel" type="object"
+                            string="Cancel"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_draft" type="object"
+                            string="Reset to Draft"
+                            invisible="state != 'cancelled'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed"/>
+                </header>
+
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <!-- Payment button: opens the specific payment form -->
+                        <button name="action_open_payment"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-money"
+                                invisible="not payment_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">
+                                    <field name="payment_id" widget="many2one_avatar" nolabel="1" no_open="True"/>
+                                </span>
+                                <span class="o_stat_text">Payment</span>
+                            </div>
+                        </button>
+                        <!-- Invoices button: opens all allocated invoices -->
+                        <button name="action_view_invoices"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-file-text-o"
+                                invisible="not payment_id">
+                            <field name="invoice_count" widget="statinfo" string="Invoices"/>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <!-- ─── SECTION 1: Payment Information ─────────── -->
+                    <group string="Payment Information">
+                        <group>
+                            <field name="partner_id"
+                                   readonly="state != 'draft'"/>
+                            <field name="vat_group"/>
+                            <field name="trade_channel"
+                                   readonly="state != 'draft'"/>
+                            <label for="filter_date_from" string="Invoice Date Range"/>
+                            <div class="o_row">
+                                <field name="filter_date_from" widget="daterange" nolabel="1" class="oe_inline" readonly="state != 'draft'" options="{'related_end_date': 'filter_date_to'}"/>
+                                <i class="fa fa-long-arrow-right mx-2" aria-label="Arrow icon" title="Arrow"/>
+                                <field name="filter_date_to" widget="daterange" nolabel="1" class="oe_inline" readonly="state != 'draft'" options="{'related_start_date': 'filter_date_from'}"/>
+                            </div>
+                        </group>
+                        <group>
+                            <field name="payment_date"
+                                   readonly="state != 'draft'"/>
+                            <field name="journal_id"
+                                   readonly="state != 'draft'"/>
+                            <field name="currency_id"
+                                   readonly="state != 'draft'"
+                                   groups="base.group_multi_currency"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="amount_received"
+                                   readonly="state != 'draft'"/>
+                            <field name="bank_fee"
+                                   readonly="state != 'draft'"/>
+                            <field name="bank_fee_account_id"
+                                   readonly="state != 'draft'"
+                                   invisible="not bank_fee"/>
+                        </group>
+                        <group>
+                            <div class="text-center" invisible="state != 'draft'">
+                                <button name="action_load_invoices" type="object"
+                                        string="Load Invoices"
+                                        class="btn-primary me-2"
+                                        icon="fa-download"/>
+                                <button name="action_auto_allocate" type="object"
+                                        string="Auto Allocate"
+                                        class="btn-secondary"
+                                        icon="fa-magic"/>
+                            </div>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- ─── SECTION 2: Invoice Allocation Grid ─── -->
+                        <page string="Invoice Allocations" name="invoices">
+                            <field name="line_ids" nolabel="1"
+                                   readonly="state != 'draft'">
+                                <tree string="Invoice Allocations" editable="bottom"
+                                      decoration-danger="is_overdue == True">
+                                    <field name="selected" widget="boolean_toggle"/>
+                                    <field name="invoice_id"
+                                           domain="[('state','=','posted'),('move_type','=','out_invoice'),('payment_state','in',['not_paid','partial'])]"
+                                           options="{'no_create': True, 'no_quick_create': True, 'no_create_edit': True}"/>
+                                    <field name="partner_id" string="Branch" readonly="1"/>
+                                    <field name="trade_channel" readonly="1"/>
+                                    <field name="invoice_date" readonly="1"/>
+                                    <field name="date_due" readonly="1"/>
+                                    <field name="residual" string="Residual" readonly="1"/>
+                                    <field name="pay_amount"/>
+                                    <field name="is_overdue" column_invisible="True"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <!-- ─── SECTION 3: Credit Notes ────────────── -->
+                        <page string="Credit Notes" name="credit_notes">
+                            <field name="credit_line_ids" nolabel="1"
+                                   readonly="state != 'draft'">
+                                <tree string="Credit Notes" editable="bottom">
+                                    <field name="selected" widget="boolean_toggle"/>
+                                    <field name="credit_move_id" string="Credit Note"
+                                           domain="[('state','=','posted'),('move_type','=','out_refund'),('payment_state','in',['not_paid','partial']),('commercial_partner_id.vat','=',parent.vat_group)]"
+                                           options="{'no_create': True, 'no_quick_create': True, 'no_create_edit': True}"
+                                           context="{'default_move_type': 'out_refund'}"/>
+                                    <field name="partner_id" string="Branch" readonly="1"/>
+                                    <field name="credit_residual" string="Residual" readonly="1"/>
+                                    <field name="use_amount"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <!-- ─── SECTION 4: Summary ─────────────────── -->
+                        <page string="Summary" name="summary">
+                            <group>
+                                <group string="Amounts">
+                                    <field name="amount_received" readonly="1"
+                                           string="Payment Amount"/>
+                                    <field name="credit_used"/>
+                                    <separator/>
+                                    <field name="total_available"
+                                           class="fw-bold"/>
+                                    <separator/>
+                                    <field name="allocated_amount"/>
+                                    <field name="remaining_amount"
+                                           class="fw-bold"/>
+                                </group>
+                                <group string="Payment Difference">
+                                    <field name="difference_amount"
+                                           class="fw-bold"
+                                           decoration-danger="difference_amount &lt; 0"
+                                           decoration-success="difference_amount &gt; 0"/>
+                                    <field name="difference_handling"
+                                           readonly="state != 'draft'"
+                                           invisible="difference_amount == 0"/>
+                                    <field name="difference_account_id"
+                                           readonly="state != 'draft'"
+                                           invisible="difference_amount == 0 or difference_handling == 'partial'"/>
+                                </group>
+                            </group>
+
+                            <!-- Posting Preview -->
+                            <group string="Posting Preview"
+                                   invisible="not amount_received">
+                                <field name="posting_preview" nolabel="1"
+                                       colspan="2"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  SEARCH VIEW                                                  -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_ar_settlement_search" model="ir.ui.view">
+        <field name="name">ar.settlement.search</field>
+        <field name="model">ar.settlement</field>
+        <field name="arch" type="xml">
+            <search string="AR Settlements">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="vat_group"/>
+                <filter name="filter_draft" string="Draft"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_confirmed" string="Confirmed"
+                        domain="[('state', '=', 'confirmed')]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter name="group_partner" string="Customer"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_vat" string="VAT Group"
+                            context="{'group_by': 'vat_group'}"/>
+                    <filter name="group_trade_channel" string="Trade Channel"
+                            context="{'group_by': 'trade_channel'}"/>
+                    <filter name="group_state" string="Status"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_date" string="Payment Date"
+                            context="{'group_by': 'payment_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!--  ACTION                                                       -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <record id="action_ar_settlement" model="ir.actions.act_window">
+        <field name="name">AR Settlement</field>
+        <field name="res_model">ar.settlement</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_ar_settlement_search"/>
+        <field name="context">{'search_default_filter_draft': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first AR Settlement
+            </p>
+            <p>
+                Settle accounts receivable invoices with customer payments,
+                credit notes, and automatic payment-difference handling.
+            </p>
+        </field>
+    </record>
+
+</odoo>

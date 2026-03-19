@@ -1,255 +1,557 @@
-#  Mode — Full Integration Flow
-## MPS → MO → Workorder → Planning Slot → Gantt (Odoo 17 Community)
+# Odoo 17 AR Settlement Engine
 
-You are  an Odoo 17 architect.
+## Production Prompt with Payment Difference Handling
 
-You already have:
-- Module A: `buz_planning`
-  - model: `planning.slot`
-  - OWL native gantt view (`mog_gantt`)
-  - supports group mode: employee / workcenter
-  - supports linking to mrp.workorder and project.task
+You are a senior Odoo 17 developer and ERP architect.
 
-Now you must build:
-- Module B: `buz_mps`
-  - Master Production Schedule (MPS)
-  - generates Manufacturing Orders (MO) and Purchase Orders (PO)
+Generate a production-ready Odoo module implementing an **AR Settlement Engine** for Odoo 17.
 
-And implement the FULL flow:
+The system must support:
 
-> MPS → MO → Workorder → Planning Slot → Gantt
+Customer payments
+Credit note allocation
+VAT grouping
+Trade channel grouping
+Payment differences (overpayment / underpayment)
+
+The module must integrate fully with the Odoo accounting system.
 
 ---
 
-# 🎯 Final User Experience (Must Achieve)
+# Module Information
 
-1) User opens **MPS**
-2) User sets forecast for products per period
-3) System computes suggested replenishment
-4) User clicks **Generate MO**
-5) System creates `mrp.production`
-6) Odoo creates `mrp.workorder` records (based on BOM routing)
-7) System automatically creates `planning.slot` records for those workorders
-8) User opens **Planning Gantt**
-9) Workorders appear as slots grouped by workcenter
-10) User can drag/resize slots to reschedule workorders
-11) Slot changes sync back to workorder planned dates
+Module Name
 
----
+account_ar_settlement
 
-# 🧩 Architecture Rules
+Dependencies
 
-## Modules
-- `buz_planning` MUST remain generic and not depend on `buz_mps`
-- `buz_mps` MAY depend on `buz_planning`
-- Do NOT modify Odoo core
-- Keep logic in clean services
+account
+mail
+sale
 
-## Integration layer
-Implement integration code in `buz_mps`:
-- create slots when MO/workorders created
-- sync workorder dates when slot updated
+Odoo Version
+
+17.0
 
 ---
 
-# 🧱 Data Model (buz_mps)
+# Core Business Objective
 
-### `mps.plan`
-- name
-- company_id
-- warehouse_id
-- date_start
-- date_end
-- bucket_type (day/week/month)
-- state (draft/confirmed)
+Build an advanced **Accounts Receivable Settlement Engine** that allows accountants to settle invoices using:
 
-### `mps.plan.line`
-- plan_id
-- product_id
-- route_type (manufacture/buy)
-- safety_stock
-- lead_time_days
-- period_forecast_json (Json)
-- period_suggested_json (Json computed)
-- period_confirmed_json (Json)
-- generated_mo_ids (One2many to mrp.production via link table)
-- generated_po_ids (One2many to purchase.order via link table)
+Customer payments
+Credit notes
+VAT grouping
+Trade channel grouping
+
+The system must also support handling **payment differences**.
 
 ---
 
-# 🧠 Planning Engine (MPS)
+# PHASE 1
 
-Compute suggested replenishment per period:
-Inputs:
-- forecast
-- stock on hand
-- incoming supply (open PO + open MO)
-- outgoing demand (confirmed deliveries)
-- safety stock
-- lead time
+## Customer Payment Allocation
 
-Outputs:
-- suggested_qty per period
-Rules:
-- never negative
-- apply safety stock
-- lead time shifts suggested earlier
+Create model
 
----
+ar.settlement
 
-# 🏭 MO Generation
+Fields
 
-When user clicks "Generate MO":
-- For each line + period:
-  - qty = confirmed_qty if set else suggested_qty
-  - if qty <= 0: skip
-  - create `mrp.production`:
-    - product_id
-    - product_qty
-    - date_start / date_finished (planned)
-    - origin = "MPS: <plan.name>"
-    - company_id
-    - picking_type_id from warehouse
-  - confirm MO (action_confirm) so workorders are created
+name
+partner_id
+vat_group
+trade_channel
 
-IMPORTANT:
-- Only create MO for products that have a BOM
-- If no BOM: show user-friendly error
+payment_date
+journal_id
+
+currency_id
+company_id
+
+amount_received
+bank_fee
+
+allocated_amount
+remaining_amount
+
+state
+
+line_ids
+credit_line_ids
+
+payment_id
 
 ---
 
-# 🔩 Workorder Extraction
+# PHASE 2
 
-After confirming MO:
-- read `mrp.production.workorder_ids`
-- for each workorder:
-  - compute planned start/end
-  - ensure workcenter_id exists
-  - create a planning slot linked to that workorder
+## VAT Group Settlement
 
----
+Allow invoice settlement across multiple branches with the same VAT ID.
 
-# 🟩 Planning Slot Creation (Integration)
+Add field
 
-Use model from `buz_planning`:
-- `planning.slot`
+vat_group
 
-Create one slot per workorder:
-- name = workorder.name
-- mrp_workorder_id = workorder.id
-- workcenter_id = workorder.workcenter_id.id
-- start_datetime = computed start
-- end_datetime = start + duration
-- slot_type must be computed to `workorder`
-- state = confirmed
+Logic
 
-Duration source:
-- workorder.duration_expected (minutes) if available
-- fallback: 60 minutes
+vat_group = partner_id.vat
+
+Invoice domain
+
+partner_id.vat = vat_group
 
 ---
 
-# 🧠 Workorder ↔ Slot Sync
+# PHASE 3
 
-## Rule
-When user drags/resizes a slot linked to a workorder:
-- update workorder planned dates accordingly
+## Trade Channel Settlement
 
-Implementation:
-- In `buz_planning` update RPC:
-  - detect slot has mrp_workorder_id
-  - call a hook method if installed
+Add field
 
-But since `buz_planning` must not depend on `buz_mps`,
-use an extension pattern:
+trade_channel
 
-### Option A (recommended)
-In `buz_planning`, define a method on slot:
-- `_after_slot_write_hook(vals)`
-Then `buz_mps` inherits and extends it:
-- if mrp_workorder_id: write to workorder
+Invoices loaded must match selected trade_channel.
 
-### Option B
-Override controller update route in `buz_mps` (less clean)
+Domain
 
-You MUST implement Option A.
+trade_channel = selected trade_channel
 
 ---
 
-# 🧩 Planning Gantt Requirements
+# PHASE 4
 
-In `buz_planning` gantt:
-- Workorders must appear in Workcenter mode
-- Slot bar click opens mrp.workorder form
-- Slot shows badge:
-  - MO name (production.name)
-  - Workcenter name
+## Credit Note Allocation
 
----
+Model
 
-# 🔐 Security
-- `buz_mps` groups:
-  - MPS User
-  - MPS Manager
-- `planning.slot` rights remain in `buz_planning`
-- Ensure users with MPS rights can create slots
+ar.settlement.credit.line
 
----
+Fields
 
-# 📦 Deliverables
+settlement_id
+credit_move_id
 
-You MUST output:
-1) Module tree for `buz_mps`
-2) All file contents
-3) A list of minimal required changes in `buz_planning`
-4) Installation steps
-5) Manual test checklist
+credit_total
+credit_residual
+
+use_amount
+
+Domain
+
+move_type = out_refund
+state = posted
+payment_state != paid
 
 ---
 
-# 🧭 Phases
+# PHASE 5
 
-## Phase 0 — buz_mps skeleton
-- manifest
-- models
-- security
-- menus
+## Bank Fee Support
 
-## Phase 1 — MPS engine MVP
-- compute suggested
-- basic views
+Add field
 
-## Phase 2 — Generate MO
-- button + method
-- confirm MO
-- link to plan/line
+bank_fee
 
-## Phase 3 — Create workorder slots
-- after MO confirm, create slots for workorders
-- ensure no duplicates
+Accounting when confirming settlement
 
-## Phase 4 — Sync slot changes back to workorder
-- implement hook pattern (Option A)
-- update workorder dates when slot updated
+Dr Bank
+Dr Bank Fee Expense
+Cr Accounts Receivable
 
-## Phase 5 — Polish
-- show links on UI
-- show counts of generated MO/slots
-- add "Open Planning Gantt" smart button
+Bank fee account must be configurable.
 
 ---
 
-# 🛑 Strict Rules
-- No Enterprise code
-- No external gantt libraries
-- No global refactor
-- Must run on Odoo 17 Community
-- Every phase must be runnable
+# PHASE 6
+
+## User Friendly UI
+
+The settlement screen must contain:
+
+SECTION 1
+
+Payment Information
+
+Customer
+VAT Group
+Trade Channel
+
+Payment Date
+Journal
+
+Amount Received
+Bank Fee
+
+Buttons
+
+Load Invoices
+Auto Allocate
 
 ---
 
-# 🚀 Start Now
-Start Phase 0 immediately:
-1) Print module tree
-2) Implement skeleton + access rights + menus
-3) Provide full code for each file
+SECTION 2
+
+Invoice Allocation Grid
+
+Columns
+
+Invoice
+Branch
+Trade Channel
+Invoice Date
+Due Date
+Residual
+Pay Amount
+
+Overdue invoices must be visually highlighted.
+
+---
+
+SECTION 3
+
+Credit Notes
+
+Columns
+
+Credit Note
+Branch
+Residual
+Use Amount
+
+---
+
+SECTION 4
+
+Summary
+
+Payment Amount
+Credit Used
+
+Total Available
+
+Allocated Amount
+Remaining Balance
+
+Values must update dynamically.
+
+---
+
+# PHASE 7
+
+## Payment Difference Handling
+
+The system must detect payment differences automatically.
+
+Calculation
+
+difference_amount =
+
+(amount_received - bank_fee + credit_used)
+
+* allocated_amount
+
+---
+
+If difference_amount = 0
+
+Settlement is balanced.
+
+---
+
+If difference_amount > 0
+
+Customer has **overpaid**.
+
+System must allow three options:
+
+1 Keep as Customer Credit
+
+Create outstanding credit in Accounts Receivable.
+
+2 Create Advance Payment
+
+Keep amount as unapplied payment.
+
+3 Refund to Customer
+
+Optional future feature.
+
+---
+
+If difference_amount < 0
+
+Customer has **underpaid**.
+
+System must allow options:
+
+1 Leave invoice partially paid
+
+Standard Odoo behavior.
+
+2 Write Off Difference
+
+Create write-off entry.
+
+Write-off account must be configurable.
+
+3 Record as Short Payment Reason
+
+Example
+
+discount
+bank charge
+rounding difference
+
+---
+
+# Write-off Accounting Example
+
+If difference = -500
+
+Entry
+
+Dr Write-off Expense 500
+Cr Accounts Receivable 500
+
+---
+# PHASE 8
+
+## Company Payment Difference Rule
+
+The company uses a **clearing account for payment differences**.
+
+Account Code:
+
+214100
+
+Account Name:
+
+Accrued Expenses (ค่าใช้จ่ายค้างจ่าย)
+
+This account must be used whenever payment difference occurs.
+
+---
+
+# Difference Calculation
+
+difference_amount =
+
+(amount_received - bank_fee + credit_used)
+
+* allocated_amount
+
+---
+
+# Case 1
+
+## Customer Overpayment
+
+difference_amount > 0
+
+Accounting Entry
+
+Dr Bank
+Cr Accounts Receivable
+Cr Accrued Expenses (214100)
+
+Example
+
+Payment received = 105,000
+Allocated invoices = 100,000
+
+Entry
+
+Dr Bank 105,000
+Cr AR 100,000
+Cr Accrued Expenses 5,000
+
+---
+
+# Case 2
+
+## Customer Underpayment
+
+difference_amount < 0
+
+Accounting Entry
+
+Dr Bank
+Dr Accrued Expenses (214100)
+Cr Accounts Receivable
+
+Example
+
+Payment received = 95,000
+Allocated invoices = 100,000
+
+Entry
+
+Dr Bank 95,000
+Dr Accrued Expenses 5,000
+Cr AR 100,000
+
+---
+
+# System Configuration
+
+Add setting field
+
+payment_difference_account_id
+
+Default value:
+
+214100 Accrued Expenses
+
+This account must be configurable in Accounting Settings.
+
+---
+
+# UI Requirement
+
+Settlement screen must show
+
+Difference Amount
+
+And preview accounting impact.
+
+Example
+
+Difference Amount : 5,000
+
+Posting Preview
+
+Dr Bank 105,000
+Cr Accounts Receivable 100,000
+Cr Accrued Expenses 5,000
+
+# UI Difference Panel
+
+Add section
+
+Payment Difference
+
+Fields
+
+Difference Amount
+
+Handling Option
+
+Selection
+
+Customer Credit
+Write-off
+Partial Payment
+
+---
+
+# Accounting Integration
+
+On Confirm Settlement
+
+System must
+
+Create account.payment
+Post payment
+Reconcile invoices
+Apply credit notes
+
+Handle difference according to selected option.
+
+Never create manual journal entries for invoice settlement.
+
+Use Odoo reconciliation framework.
+
+---
+
+# Menu
+
+Accounting
+
+Customers
+
+AR Settlement
+
+---
+
+# Security
+
+Accounting User
+
+Create settlements
+
+Accounting Manager
+
+Full access
+
+---
+
+# Sequence
+
+Sequence Code
+
+ar.settlement
+
+Example
+
+ARS/2026/0001
+
+---
+
+# Module Structure
+
+account_ar_settlement
+
+**manifest**.py
+**init**.py
+
+models
+
+ar_settlement.py
+ar_settlement_invoice_line.py
+ar_settlement_credit_line.py
+
+views
+
+ar_settlement_views.xml
+ar_settlement_menu.xml
+
+security
+
+ir.model.access.csv
+
+data
+
+sequence.xml
+
+---
+
+# Coding Rules
+
+Use Odoo ORM.
+
+Use computed fields.
+
+Use onchange methods.
+
+Avoid raw SQL.
+
+Ensure module installs cleanly.
+
+---
+
+# Expected Result
+
+After installation users can:
+
+Create AR settlement
+Group invoices by VAT
+Filter invoices by Trade Channel
+Apply credit notes
+Allocate payments
+Handle payment differences
+Confirm settlement
+
+Invoices and payments must be reconciled automatically.

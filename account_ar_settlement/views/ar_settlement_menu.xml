@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menu: Accounting → Customers → AR Settlement -->
+    <menuitem id="menu_ar_settlement"
+              name="AR Settlement"
+              parent="account.menu_finance_receivables"
+              action="action_ar_settlement"
+              sequence="30"/>
+</odoo>

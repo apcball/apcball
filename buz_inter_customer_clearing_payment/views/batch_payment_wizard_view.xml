@@ -30,11 +30,6 @@
                                invisible="not bank_charge"
                                required="bank_charge"
                                options="{'no_create': True}"/>
-                        <field name="difference_amount"/>
-                        <field name="difference_account_id"
-                               invisible="not difference_amount"
-                               required="difference_amount"
-                               options="{'no_create': True}"/>
                     </group>
                 </group>
 

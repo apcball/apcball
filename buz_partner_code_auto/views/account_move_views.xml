@@ -11,4 +11,16 @@
             </field>
         </field>
     </record>
+
+    <!-- Invoice and Bill Tree View -->
+    <record id="view_move_tree_inherit_partner_code" model="ir.ui.view">
+        <field name="name">account.move.tree.inherit.partner.code</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="partner_code" optional="show"/>
+            </field>
+        </field>
+    </record>
 </odoo>
