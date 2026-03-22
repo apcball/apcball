@@ -326,8 +326,8 @@ class ArSettlement(models.Model):
         for inv in invoices:
             lines.append((0, 0, {
                 'invoice_id': inv.id,
-                'pay_amount': 0.0,
-                'selected': False,
+                'pay_amount': inv.amount_residual,
+                'selected': True,
             }))
         self.line_ids = lines
 
@@ -634,13 +634,16 @@ class ArSettlement(models.Model):
     def _reconcile_invoice(self, payment, line):
         """Reconcile payment with invoice.
 
-        - Same partner  → direct reconciliation
+        - Full pay_amount (>= invoice residual) → standard .reconcile()
+        - Partial pay_amount (< invoice residual) → create partial reconcile
+          with only the specified pay_amount
         - Diff partner  → create clearing journal entry first
           (Dr AR paying-customer / Cr AR invoice-customer)
           then reconcile invoice ↔ clearing Cr, and payment ↔ clearing Dr.
         """
         invoice = line.invoice_id
         invoice_partner = invoice.partner_id
+        pay_amount = line.pay_amount
 
         if invoice_partner == self.partner_id:
             # ── Same customer: direct reconcile ──────────────────────
@@ -652,8 +655,32 @@ class ArSettlement(models.Model):
                 lambda l: l.account_id.account_type == 'asset_receivable'
                 and not l.reconciled and l.amount_residual != 0
             )
-            if payment_ar and invoice_ar:
+            if not payment_ar or not invoice_ar:
+                return
+
+            invoice_residual = abs(invoice_ar[0].amount_residual)
+
+            if pay_amount >= invoice_residual:
+                # Full reconcile: pay_amount covers the entire invoice
                 (payment_ar | invoice_ar).reconcile()
+            else:
+                # Partial reconcile: pay only the specified amount
+                company_currency = self.env.company.currency_id
+                is_foreign = self.currency_id != company_currency
+                amount_company = (
+                    self.currency_id._convert(
+                        pay_amount, company_currency,
+                        self.env.company, self.payment_date)
+                    if is_foreign else pay_amount
+                )
+                self.env['account.partial.reconcile'].create({
+                    'debit_move_id': invoice_ar[0].id,
+                    'credit_move_id': payment_ar[0].id,
+                    'amount': amount_company,
+                    'debit_amount_currency': pay_amount if is_foreign else amount_company,
+                    'credit_amount_currency': pay_amount if is_foreign else amount_company,
+                    'company_id': self.env.company.id,
+                })
         else:
             # ── Different customer: create clearing entry ────────────
             self._create_clearing_entry(payment, line)
