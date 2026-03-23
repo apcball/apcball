@@ -53,64 +53,90 @@ class srAccountPayment(models.Model):
         )
 
     def _prepare_move_line_default_vals(self, write_off_line_vals=None, force_balance=None):
-        line_vals_list = super(srAccountPayment, self)._prepare_move_line_default_vals(write_off_line_vals=write_off_line_vals, force_balance=force_balance)
-        if line_vals_list:
-            if self.bank_charge_amount > 0.0:
-                if not self.journal_id.default_bank_charge_account_id:
-                    raise UserError('Please first configure Bank Charge Account from Invoicing Configuration -> Journals -> Bank(Extra Bank Charge Account)')
-                
-                # Convert bank charge to payment currency for payment line adjustment
-                bank_charge_in_payment_currency = self._get_bank_charge_in_payment_currency()
-                
-                # Convert bank charge to company currency for accounting entries
-                thb_currency = self.bank_charge_currency_id
-                bank_charge_company_currency = 0.0
-                if thb_currency != self.company_id.currency_id:
-                    bank_charge_company_currency = thb_currency._convert(
-                        self.bank_charge_amount,
-                        self.company_id.currency_id,
-                        self.company_id,
-                        self.date
-                    )
+        line_vals_list = super(srAccountPayment, self)._prepare_move_line_default_vals(
+            write_off_line_vals=write_off_line_vals, force_balance=force_balance
+        )
+        if not line_vals_list or not (self.bank_charge_amount > 0.0):
+            return line_vals_list
+
+        if not self.journal_id.default_bank_charge_account_id:
+            raise UserError(
+                'Please first configure Bank Charge Account from Invoicing Configuration '
+                '-> Journals -> Bank(Extra Bank Charge Account)'
+            )
+
+        # ── Currency helpers ────────────────────────────────────────────
+        thb_currency = self.bank_charge_currency_id
+        company_currency = self.company_id.currency_id
+
+        # bank_charge in company currency (for debit/credit amounts)
+        if thb_currency != company_currency:
+            bank_charge_company = thb_currency._convert(
+                self.bank_charge_amount, company_currency,
+                self.company_id, self.date
+            )
+        else:
+            bank_charge_company = self.bank_charge_amount
+
+        # bank_charge in payment currency (for amount_currency on payment lines)
+        bank_charge_payment_cur = self._get_bank_charge_in_payment_currency()
+
+        # Odoo 17: amount_currency must strictly equal (debit - credit) for same currency
+        is_same_currency = (self.currency_id == company_currency)
+
+        # ── Identify the bank/liquidity line ────────────────────────────
+        # Use default_account_id from the journal; also collect all account IDs
+        # whose account_type is 'asset_cash' to handle outstanding payment accounts.
+        # This avoids touching write-off or AR lines.
+        liquidity_account_ids = set()
+        if self.journal_id.default_account_id:
+            liquidity_account_ids.add(self.journal_id.default_account_id.id)
+        # Also add any other cash/bank-type accounts referenced in existing lines
+        all_account_ids = [line.get('account_id') for line in line_vals_list if line.get('account_id')]
+        if all_account_ids:
+            cash_accounts = self.env['account.account'].sudo().search([
+                ('id', 'in', all_account_ids),
+                ('account_type', '=', 'asset_cash'),
+            ])
+            liquidity_account_ids.update(cash_accounts.ids)
+
+
+        # ── Adjust the bank (liquidity) line only ───────────────────────
+        for line in line_vals_list:
+            if line.get('account_id') not in liquidity_account_ids:
+                continue  # skip write-off, AR, and other lines
+
+            if self.payment_type == 'inbound':
+                # Inbound: bank is a debit line — reduce debit by bank charge
+                new_debit = line.get('debit', 0.0) - bank_charge_company
+                line['debit'] = new_debit
+                if is_same_currency:
+                    line['amount_currency'] = new_debit - line.get('credit', 0.0)
                 else:
-                    bank_charge_company_currency = self.bank_charge_amount
-                
-                # Adjust existing payment lines based on payment type
-                if self.payment_type == 'inbound':
-                    for line in line_vals_list:
-                        if line.get('credit', 0.0) == 0.0:  # This is usually the bank line (debit side)
-                            amount_currency = line.get('amount_currency', 0.0) - bank_charge_in_payment_currency
-                            debit = line.get('debit', 0.0) - bank_charge_company_currency
-                            line.update({'debit': debit, 'amount_currency': amount_currency})
-                    
-                    bank_charge_line = {
-                        'name': f"Bank Charges Payments ({self.bank_charge_amount:.2f} THB)",
-                        'date_maturity': self.date,
-                        'debit': bank_charge_company_currency,
-                        'credit': 0.0,
-                        'partner_id': self.partner_id.id,
-                        'account_id': self.journal_id.default_bank_charge_account_id.id,
-                        'currency_id': self.currency_id.id,
-                        'amount_currency': bank_charge_in_payment_currency,
-                    }
+                    line['amount_currency'] = line.get('amount_currency', 0.0) - bank_charge_payment_cur
+            else:
+                # Outbound: bank is a credit line — increase credit by bank charge
+                new_credit = line.get('credit', 0.0) + bank_charge_company
+                line['credit'] = new_credit
+                if is_same_currency:
+                    line['amount_currency'] = line.get('debit', 0.0) - new_credit
                 else:
-                    for line in line_vals_list:
-                        if line.get('debit', 0.0) == 0.0:  # This is usually the payment line (credit side)
-                            amount_currency = line.get('amount_currency', 0.0) - bank_charge_in_payment_currency
-                            credit = line.get('credit', 0.0) + bank_charge_company_currency
-                            line.update({'credit': credit, 'amount_currency': amount_currency})
-                    
-                    # Add bank charge line - use same currency as payment to comply with Odoo rules
-                    bank_charge_line = {
-                        'name': f"Bank Charges Payments ({self.bank_charge_amount:.2f} THB)",
-                        'date_maturity': self.date,
-                        'debit': bank_charge_company_currency,
-                        'credit': 0.0,
-                        'partner_id': self.partner_id.id,
-                        'account_id': self.journal_id.default_bank_charge_account_id.id,
-                        'currency_id': self.currency_id.id,  # Use same currency as payment
-                        'amount_currency': bank_charge_in_payment_currency,  # Bank charge in payment currency
-                    }
-                
-                line_vals_list.append(bank_charge_line)
+                    line['amount_currency'] = line.get('amount_currency', 0.0) - bank_charge_payment_cur
+
+        # ── Add bank charge expense line (always a debit) ───────────────
+        bank_charge_line = {
+            'name': f"Bank Charges Payments ({self.bank_charge_amount:.2f} THB)",
+            'date_maturity': self.date,
+            'debit': bank_charge_company,
+            'credit': 0.0,
+            'partner_id': self.partner_id.id,
+            'account_id': self.journal_id.default_bank_charge_account_id.id,
+            'currency_id': self.currency_id.id,
+            # Debit line: amount_currency > 0 always
+            #   same currency → must equal debit exactly
+            #   foreign       → use payment-currency equivalent
+            'amount_currency': bank_charge_company if is_same_currency else bank_charge_payment_cur,
+        }
+        line_vals_list.append(bank_charge_line)
         return line_vals_list
+

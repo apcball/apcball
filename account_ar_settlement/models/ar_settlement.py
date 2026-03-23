@@ -575,6 +575,9 @@ class ArSettlement(models.Model):
                     'amount_currency': self.bank_fee,
                     'currency_id': self.currency_id.id,
                 })
+            else:
+                # Same currency: amount_currency must equal debit - credit
+                vals['amount_currency'] = amt
             new_lines.append((0, 0, vals))
 
         # Difference line (only when not 'partial' and shortfall != 0)
@@ -594,6 +597,9 @@ class ArSettlement(models.Model):
                         'amount_currency': shortfall,
                         'currency_id': self.currency_id.id,
                     })
+                else:
+                    # Same currency: amount_currency = debit - credit = amt
+                    vals['amount_currency'] = amt
             else:
                 # Overpayment: customer paid extra → Cr difference account
                 vals = {
@@ -608,6 +614,9 @@ class ArSettlement(models.Model):
                         'amount_currency': shortfall,  # negative
                         'currency_id': self.currency_id.id,
                     })
+                else:
+                    # Same currency: amount_currency = debit - credit = -amt
+                    vals['amount_currency'] = -amt
             new_lines.append((0, 0, vals))
 
         # Increase AR credit so entry balances:
@@ -620,9 +629,13 @@ class ArSettlement(models.Model):
             extra += shortfall  # shortfall > 0 → raises AR; shortfall < 0 → lowers AR
         extra_company = _convert(extra)
 
-        ar_vals = {'credit': ar_line.credit + extra_company}
+        new_credit = ar_line.credit + extra_company
+        ar_vals = {'credit': new_credit}
         if is_foreign:
             ar_vals['amount_currency'] = ar_line.amount_currency - extra
+        else:
+            # Odoo 17 requires amount_currency == -(credit - debit) even for same currency
+            ar_vals['amount_currency'] = -(new_credit - ar_line.debit)
         ar_line.with_context(check_move_validity=False).write(ar_vals)
 
         if new_lines:
