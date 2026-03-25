@@ -34,22 +34,25 @@ class MarketplaceNettingWizard(models.TransientModel):
 
     @api.depends('settlement_id', 'marketplace_partner_id')
     def _compute_available_vendor_bills(self):
-        """Compute available vendor bills for netting"""
+        """Compute available vendor bills for netting.
+        
+        Only shows vendor bills that have been explicitly linked to THIS settlement
+        via x_settlement_id. Bills must be linked first using the 'Link Bills' wizard
+        before they can be selected for netting.
+        """
         for wizard in self:
             if not wizard.settlement_id or not wizard.marketplace_partner_id:
                 wizard.available_vendor_bill_ids = [(5, 0, 0)]  # Clear the field
                 continue
                 
-            # Find posted vendor bills from the same marketplace partner with outstanding amounts
-            # Include bills directly linked to this settlement OR not linked to any settlement
+            # Only include posted vendor bills that are ALREADY explicitly linked to this settlement.
+            # Do NOT include unlinked bills here - use bill_link_wizard to link them first.
             domain = [
                 ('move_type', 'in', ['in_invoice', 'in_refund']),
                 ('partner_id', '=', wizard.marketplace_partner_id.id),
                 ('state', '=', 'posted'),
-                ('amount_residual', '>', 0.01),  # Use small threshold to avoid float precision issues
-                '|',
-                ('x_settlement_id', '=', wizard.settlement_id.id),  # Direct link to this settlement
-                ('x_settlement_id', '=', False)  # Not linked to any settlement
+                ('amount_residual', '>', 0.01),
+                ('x_settlement_id', '=', wizard.settlement_id.id),  # ONLY bills linked to THIS settlement
             ]
             
             available_bills = self.env['account.move'].search(domain, order='invoice_date, name')
@@ -85,10 +88,16 @@ class MarketplaceNettingWizard(models.TransientModel):
                 'The following bills are no longer valid for netting (not posted or fully reconciled):\n%s'
             ) % ', '.join(invalid_bills.mapped('name')))
         
-        # Link selected bills to settlement if not already linked
-        for bill in self.selected_vendor_bill_ids:
-            if not bill.x_settlement_id:
-                bill.write({'x_settlement_id': self.settlement_id.id})
+        # Validate all selected bills are explicitly linked to this settlement.
+        # Bills must be linked via 'Link Vendor Bills' wizard BEFORE performing netting.
+        unlinked_bills = self.selected_vendor_bill_ids.filtered(
+            lambda b: b.x_settlement_id.id != self.settlement_id.id
+        )
+        if unlinked_bills:
+            raise UserError(_(
+                'The following bills are not linked to this settlement.\n'
+                'Please link them first using the "Link Vendor Bills" button before netting:\n%s'
+            ) % ', '.join(unlinked_bills.mapped('name')))
         
         # Perform the netting
         return self.settlement_id.action_netoff_ar_ap()

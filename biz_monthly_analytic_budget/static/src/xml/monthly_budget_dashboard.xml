@@ -21,6 +21,16 @@
                                 </t>
                             </select>
                         </div>
+                        <!-- Filter by Month -->
+                        <div style="min-width: 140px;">
+                            <label class="small text-muted mb-1">Filter by Month</label>
+                            <select class="form-control custom-select" t-on-change="onMonthChange">
+                                <option value="all">All Months</option>
+                                <t t-foreach="state.months" t-as="m" t-key="m.value">
+                                    <option t-att-value="m.value" t-esc="m.label"/>
+                                </t>
+                            </select>
+                        </div>
                         <!-- Filter by Budget Plan -->
                         <div style="min-width: 220px;">
                             <label class="small text-muted mb-1">Filter by Budget Plan</label>

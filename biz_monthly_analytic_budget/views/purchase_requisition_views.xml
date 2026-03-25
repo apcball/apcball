@@ -12,6 +12,7 @@
                 <field name="payment_date"/>
             </xpath>
             <xpath expr="//sheet/*[1]" position="before">
+                <widget name="web_ribbon" title="Cancelled" bg_color="bg-danger" invisible="state not in ('cancel', 'cancelled')"/>
                 <widget name="web_ribbon" title="Budget Approved" bg_color="bg-success" invisible="buz_budget_approval_state != 'approved'"/>
                 <widget name="web_ribbon" title="Budget Rejected" bg_color="bg-danger" invisible="buz_budget_approval_state != 'rejected'"/>
                 <widget name="web_ribbon" title="Pending Budget" bg_color="bg-warning" invisible="buz_budget_approval_state != 'pending'"/>

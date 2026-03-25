@@ -14,8 +14,23 @@ export class MonthlyBudgetDashboard extends Component {
             plans: [],
             pieData: { labels: [], values: [] },
             years: [],
+            months: [
+                {value: "1", label: "January"},
+                {value: "2", label: "February"},
+                {value: "3", label: "March"},
+                {value: "4", label: "April"},
+                {value: "5", label: "May"},
+                {value: "6", label: "June"},
+                {value: "7", label: "July"},
+                {value: "8", label: "August"},
+                {value: "9", label: "September"},
+                {value: "10", label: "October"},
+                {value: "11", label: "November"},
+                {value: "12", label: "December"}
+            ],
             selectedPlanId: "all",
             selectedYear: "all",
+            selectedMonth: "all",
             loaded: false,
         });
         this.chartRef = useRef("chart");
@@ -86,12 +101,13 @@ export class MonthlyBudgetDashboard extends Component {
             }
 
             const year = this.state.selectedYear !== "all" ? this.state.selectedYear : null;
+            const month = this.state.selectedMonth !== "all" ? this.state.selectedMonth : null;
 
             const data = await this.rpc("/web/dataset/call_kw/monthly.budget.report/get_dashboard_data", {
                 model: "monthly.budget.report",
                 method: "get_dashboard_data",
                 args: [domain],
-                kwargs: { year: year },
+                kwargs: { year: year, month: month },
             });
             this.state.summary = data.summary || {};
             this.state.analytics = data.analytics || [];
@@ -110,6 +126,13 @@ export class MonthlyBudgetDashboard extends Component {
 
     async onYearChange(ev) {
         this.state.selectedYear = ev.target.value;
+        await this.loadData();
+        this.renderChart();
+        this.renderPieChart();
+    }
+
+    async onMonthChange(ev) {
+        this.state.selectedMonth = ev.target.value;
         await this.loadData();
         this.renderChart();
         this.renderPieChart();

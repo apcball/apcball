@@ -1316,7 +1316,7 @@ class MarketplaceSettlement(models.Model):
         
         netting_move_vals = {
             'journal_id': netting_journal.id,
-            'date': fields.Date.context_today(self),
+            'date': self.date,
             'ref': f'Quick Netting: {self.name}',
             'move_type': 'entry',
             'partner_id': marketplace_partner.id,
@@ -1442,7 +1442,7 @@ class MarketplaceSettlement(models.Model):
         # Create netting move with proper context
         netting_move_vals = {
             'journal_id': netting_journal.id,
-            'date': fields.Date.context_today(self),
+            'date': self.date,
             'ref': f'Netting: {self.name}',
             'move_type': 'entry',
             'partner_id': marketplace_partner.id,
@@ -1685,7 +1685,7 @@ class MarketplaceSettlement(models.Model):
         netting_move_vals = {
             'ref': f'AR/AP Netting - {self.name}',
             'journal_id': self.journal_id.id,
-            'date': fields.Date.context_today(self),
+            'date': self.date,
             'line_ids': netting_lines,
         }
         
@@ -1930,7 +1930,7 @@ class MarketplaceSettlement(models.Model):
         # Create reverse move
         reverse_move = self.netting_move_id._reverse_moves([{
             'ref': f'Reverse AR/AP Netting - {self.name}',
-            'date': fields.Date.context_today(self),
+            'date': self.date,
         }])
         
         if reverse_move:

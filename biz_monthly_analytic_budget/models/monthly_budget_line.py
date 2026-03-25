@@ -145,7 +145,7 @@ class MonthlyBudgetLine(models.Model):
 
         # Batch fetch PRs
         all_prs = self.env['employee.purchase.requisition'].sudo().search([
-            ('state', '!=', 'draft'),
+            ('state', 'not in', ('draft', 'cancel', 'cancelled', 'rejected')),
             ('payment_date', '>=', global_date_from),
             ('payment_date', '<=', global_date_to),
             ('company_id', 'in', company_ids),
@@ -239,13 +239,12 @@ class MonthlyBudgetLine(models.Model):
                 if _po_linked(po):
                     continue
                 
-                # Unbilled logic for specific analytic lines
-                # We approximate by taking the fraction of analytic amount to total po amount
-                analytic_po_total = _get_analytic_amt(po.order_line)
-                if po.amount_total and analytic_po_total:
-                    fraction = analytic_po_total / po.amount_total
-                    unbilled = getattr(po, 'remaining_to_bill', po.amount_total)
-                    po_unbilled_amount += unbilled * fraction
+                # Unbilled logic for specific analytic lines using exact native unbilled qty
+                for pol in po.order_line:
+                    dist = pol.analytic_distribution or {}
+                    if analytic_str in dist:
+                        pct = dist[analytic_str] or 0.0
+                        po_unbilled_amount += (pol.qty_to_invoice * pol.price_unit) * (pct / 100.0)
 
             line.reserved_amount = pr_amount + rfq_amount + po_unbilled_amount
 

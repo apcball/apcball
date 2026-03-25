@@ -482,6 +482,44 @@ class PurchaseOrder(models.Model):
                 order._release_monthly_analytic_budget_on_cancel()
         return super().button_cancel()
 
+    def action_force_cancel_po_with_pr(self):
+        """Force cancel a PO and its linked PR, restoring budget. Requires received items to be returned."""
+        for order in self:
+            # Check if goods need to be returned
+            if any(line.qty_received > 0 for line in order.order_line):
+                raise UserError(_(
+                    'ไม่สามารถยกเลิกใบสั่งซื้อ %s ได้\n'
+                    'เนื่องจากมีการรับสินค้าเข้าคลังไปแล้วบางส่วนหรือทั้งหมด\n'
+                    'กรุณาทำรายการส่งคืนสินค้า (Return) กลับไปยังผู้จัดจำหน่าย เพื่อให้ยอดรับสินค้า (Received) กลับมาเป็น 0 ก่อน จึงจะสามารถยกเลิกได้'
+                ) % order.name)
+
+            # Cancel unfinished pickings
+            for pick in order.picking_ids.filtered(lambda p: p.state not in ['done', 'cancel']):
+                try:
+                    pick.action_cancel()
+                except Exception:
+                    pass
+
+            # Forcefully set PO to cancel and release budget
+            order.write({'state': 'cancel'})
+            try:
+                order._release_monthly_analytic_budget_on_cancel()
+            except Exception:
+                pass
+
+            # Find and Cancel Linked PR
+            if hasattr(order, 'requisition_order') and order.requisition_order:
+                pr = self.env['employee.purchase.requisition'].sudo().search([
+                    ('name', '=', order.requisition_order)
+                ], limit=1)
+                if pr and pr.state not in ['cancelled', 'cancel']:
+                    pr.write({'state': 'cancelled'})
+                    if hasattr(pr, '_release_monthly_analytic_budget'):
+                        try:
+                            pr._release_monthly_analytic_budget()
+                        except Exception:
+                            pass
+
     def _release_monthly_analytic_budget_on_cancel(self):
         """Re-open budget amounts when a confirmed PO is cancelled."""
         self.ensure_one()

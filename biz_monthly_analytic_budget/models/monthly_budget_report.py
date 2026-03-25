@@ -13,6 +13,7 @@ class MonthlyBudgetReport(models.Model):
     analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Account', readonly=True)
     entry_type = fields.Selection([
         ('budget', 'Budget Limit'),
+        ('reserved', 'Reserved'),
         ('actual', 'Actual Spending'),
     ], string='Entry Type', readonly=True)
     name = fields.Char(string='Reference', readonly=True)
@@ -79,6 +80,110 @@ class MonthlyBudgetReport(models.Model):
                       AND aml.analytic_distribution IS NOT NULL
                       AND jsonb_typeof(aml.analytic_distribution) = 'object'
                       AND aml.analytic_distribution ? wbl.analytic_account_id::text
+
+                    UNION ALL
+
+                    -- Reserved: Active PRs
+                    SELECT 
+                        'reserved' as entry_type,
+                        pr.name as name,
+                        ((prl.quantity * prl.unit_price) * CAST(dist.value AS numeric) / 100.0) as amount,
+                        0.0 as budget_amt,
+                        0.0 as actual_amt,
+                        -((prl.quantity * prl.unit_price) * CAST(dist.value AS numeric) / 100.0) as remaining_amt,
+                        0.0 as utilization,
+                        pr.payment_date as date,
+                        pr.company_id as company_id,
+                        wbl.id as budget_line_id,
+                        wbl.plan_id as plan_id,
+                        wbl.analytic_account_id as analytic_account_id
+                    FROM requisition_order prl
+                    JOIN employee_purchase_requisition pr ON prl.requisition_product_id = pr.id
+                    CROSS JOIN jsonb_each_text(prl.analytic_distribution) AS dist(key, value)
+                    JOIN monthly_budget_plan wbp ON 
+                        pr.payment_date >= wbp.date_from AND 
+                        pr.payment_date <= wbp.date_to AND 
+                        wbp.company_id = pr.company_id AND
+                        wbp.state = 'confirmed'
+                    JOIN monthly_budget_line wbl ON 
+                         wbl.plan_id = wbp.id AND
+                         wbl.analytic_account_id::text = dist.key
+                    WHERE pr.state NOT IN ('draft', 'cancel', 'cancelled', 'rejected')
+                      AND prl.analytic_distribution IS NOT NULL
+                      AND jsonb_typeof(prl.analytic_distribution) = 'object'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM purchase_order po 
+                          WHERE (po.requisition_order = pr.name OR po.pr_number = pr.name OR po.origin = pr.name)
+                            AND po.state IN ('purchase', 'done')
+                      )
+
+                    UNION ALL
+
+                    -- Reserved: RFQs (Draft POs)
+                    SELECT 
+                        'reserved' as entry_type,
+                        po.name as name,
+                        (pol.price_subtotal * CAST(dist.value AS numeric) / 100.0) as amount,
+                        0.0 as budget_amt,
+                        0.0 as actual_amt,
+                        -(pol.price_subtotal * CAST(dist.value AS numeric) / 100.0) as remaining_amt,
+                        0.0 as utilization,
+                        po.payment_date as date,
+                        po.company_id as company_id,
+                        wbl.id as budget_line_id,
+                        wbl.plan_id as plan_id,
+                        wbl.analytic_account_id as analytic_account_id
+                    FROM purchase_order_line pol
+                    JOIN purchase_order po ON pol.order_id = po.id
+                    CROSS JOIN jsonb_each_text(pol.analytic_distribution) AS dist(key, value)
+                    JOIN monthly_budget_plan wbp ON 
+                        po.payment_date >= wbp.date_from AND 
+                        po.payment_date <= wbp.date_to AND 
+                        wbp.company_id = po.company_id AND
+                        wbp.state = 'confirmed'
+                    JOIN monthly_budget_line wbl ON 
+                         wbl.plan_id = wbp.id AND
+                         wbl.analytic_account_id::text = dist.key
+                    WHERE po.state = 'draft'
+                      AND pol.analytic_distribution IS NOT NULL
+                      AND jsonb_typeof(pol.analytic_distribution) = 'object'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM employee_purchase_requisition pr 
+                          WHERE (po.requisition_order = pr.name OR po.pr_number = pr.name OR po.origin = pr.name)
+                            AND pr.state NOT IN ('draft', 'cancel', 'cancelled', 'rejected')
+                      )
+
+                    UNION ALL
+
+                    -- Reserved: Unbilled Confirmed POs
+                    SELECT 
+                        'reserved' as entry_type,
+                        po.name as name,
+                        ((pol.qty_to_invoice * pol.price_unit) * CAST(dist.value AS numeric) / 100.0) as amount,
+                        0.0 as budget_amt,
+                        0.0 as actual_amt,
+                        -((pol.qty_to_invoice * pol.price_unit) * CAST(dist.value AS numeric) / 100.0) as remaining_amt,
+                        0.0 as utilization,
+                        COALESCE(po.payment_date, po.date_order::date) as date,
+                        po.company_id as company_id,
+                        wbl.id as budget_line_id,
+                        wbl.plan_id as plan_id,
+                        wbl.analytic_account_id as analytic_account_id
+                    FROM purchase_order_line pol
+                    JOIN purchase_order po ON pol.order_id = po.id
+                    CROSS JOIN jsonb_each_text(pol.analytic_distribution) AS dist(key, value)
+                    JOIN monthly_budget_plan wbp ON 
+                        COALESCE(po.payment_date, po.date_order::date) >= wbp.date_from AND 
+                        COALESCE(po.payment_date, po.date_order::date) <= wbp.date_to AND 
+                        wbp.company_id = po.company_id AND
+                        wbp.state = 'confirmed'
+                    JOIN monthly_budget_line wbl ON 
+                         wbl.plan_id = wbp.id AND
+                         wbl.analytic_account_id::text = dist.key
+                    WHERE po.state IN ('purchase', 'done')
+                      AND pol.qty_to_invoice > 0
+                      AND pol.analytic_distribution IS NOT NULL
+                      AND jsonb_typeof(pol.analytic_distribution) = 'object'
                 )
                 SELECT
                     row_number() OVER () as id,
@@ -106,15 +211,18 @@ class MonthlyBudgetReport(models.Model):
         return years
 
     @api.model
-    def get_dashboard_data(self, domain=[], year=None):
+    def get_dashboard_data(self, domain=[], year=None, month=None):
         """Fetch summarized data for the OWL dashboard component."""
         data = self.search_read(domain)
 
-        # Apply year filter at Python level
-        if year:
-            plan_ids = self.env['monthly.budget.plan'].search([
-                ('state', '=', 'confirmed'),
-            ]).filtered(lambda p: p.date_from and p.date_from.year == int(year)).ids
+        # Apply year/month filter at Python level
+        if year or month:
+            plans = self.env['monthly.budget.plan'].search([('state', '=', 'confirmed')])
+            if year:
+                plans = plans.filtered(lambda p: p.date_from and p.date_from.year == int(year))
+            if month:
+                plans = plans.filtered(lambda p: p.date_from and p.date_from.month == int(month))
+            plan_ids = plans.ids
             data = [d for d in data if d.get('plan_id') and d['plan_id'][0] in plan_ids]
 
         # Summary calculations
