@@ -2,8 +2,28 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError, AccessError
 import secrets
 import logging
+import base64
+import io
 
 _logger = logging.getLogger(__name__)
+
+def _resize_signature(image_b64, max_width=200, max_height=100):
+    """Resize a base64-encoded image to fit within max_width x max_height.
+    Returns resized base64 string, or original if resize fails."""
+    if not image_b64:
+        return image_b64
+    try:
+        from PIL import Image
+        image_data = base64.b64decode(image_b64)
+        img = Image.open(io.BytesIO(image_data))
+        img.thumbnail((max_width, max_height), Image.LANCZOS)
+        output = io.BytesIO()
+        img_format = img.format or 'PNG'
+        img.save(output, format=img_format)
+        return base64.b64encode(output.getvalue()).decode('utf-8')
+    except Exception as e:
+        _logger.warning("Could not resize signature image: %s", e)
+        return image_b64
 
 
 class PurchaseOrder(models.Model):
@@ -76,6 +96,12 @@ class PurchaseOrder(models.Model):
     approval_token = fields.Char(string='Approval Token', copy=False)
     approval_token_created = fields.Datetime(string='Token Created On', copy=False)
     approval_token_expired = fields.Boolean(string='Token Expired', default=False, copy=False)
+    approval_token_id = fields.Many2one(
+        'approval.token',
+        string='Approval Token Record',
+        copy=False,
+        ondelete='set null',
+    )
     reject_reason = fields.Text(string='Rejection Reason', copy=False)
 
 
@@ -144,7 +170,7 @@ class PurchaseOrder(models.Model):
 
         # Update PO
         self.write({
-            'prepared_signature': employee.signature_image,
+            'prepared_signature': _resize_signature(employee.signature_image),
             'prepared_date': fields.Datetime.now(),
             'approval_state': 'to_review',
             'reviewer_id': company.po_reviewer_id.id
@@ -190,7 +216,7 @@ class PurchaseOrder(models.Model):
              
         # Update PO
         self.write({
-            'reviewed_signature': employee.signature_image,
+            'reviewed_signature': _resize_signature(employee.signature_image),
             'reviewed_date': fields.Datetime.now(),
             'approval_state': 'to_approve',
             'reviewer_id': self.env.user.id,
@@ -238,7 +264,7 @@ class PurchaseOrder(models.Model):
              
         # Update PO
         self.write({
-            'approval_signature': employee.signature_image,
+            'approval_signature': _resize_signature(employee.signature_image),
             'approval_date': fields.Datetime.now(),
             'approval_state': 'approved',
             'approver_id': self.env.user.id
@@ -527,8 +553,16 @@ class PurchaseOrder(models.Model):
         result = []
         for rec in self:
             name = rec.description or "รายการ"
-        result.append((rec.id, name))
+            result.append((rec.id, name))
         return result
+
+    def _invalidate_approval_token(self, reason):
+        """Mark the linked approval token as used or cancelled."""
+        self.ensure_one()
+        if self.approval_token_id and self.approval_token_id.state == 'active':
+            state = 'used' if reason in ('approved', 'rejected') else 'cancelled'
+            self.approval_token_id.sudo().write({'state': state})
+        self.write({'approval_token_expired': True})
 
     # LINE Approval Mixin Methods
     def _get_line_approval_approver(self):

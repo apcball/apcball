@@ -18,58 +18,125 @@
         </tr>
         <tr>
             <td style="padding: 20px;">
-                <p>Dear <strong>{{ ctx.get('notify_name', 'Manager') }}</strong>,</p>
+                <p>Dear <strong><t t-out="ctx.get('notify_name', 'Manager')"/></strong>,</p>
                 <p>A Purchase Order has been <strong>blocked</strong> because it exceeds the weekly budget limit.</p>
-
                 <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
                     <tr style="background: #f8f9fa;">
                         <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Purchase Order</strong></td>
-                        <td style="padding: 8px; border: 1px solid #dee2e6;">{{ object.name }}</td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><t t-out="object.name"/></td>
                     </tr>
                     <tr>
                         <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Vendor</strong></td>
-                        <td style="padding: 8px; border: 1px solid #dee2e6;">{{ object.partner_id.name }}</td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><t t-out="object.partner_id.name"/></td>
                     </tr>
                     <tr style="background: #f8f9fa;">
                         <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Attempted by</strong></td>
-                        <td style="padding: 8px; border: 1px solid #dee2e6;">{{ ctx.get('po_user', '') }}</td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><t t-out="ctx.get('po_user', '')"/></td>
                     </tr>
                     <tr>
                         <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>PO Total</strong></td>
-                        <td style="padding: 8px; border: 1px solid #dee2e6;">{{ "%.2f"|format(object.amount_total) }} {{ object.currency_id.name }}</td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><t t-out="&quot;%.2f&quot;|format(object.amount_total)"/> <t t-out="object.currency_id.name"/></td>
                     </tr>
                 </table>
-
                 <h3 style="color: #dc3545;">Budget Violation Details:</h3>
-                % for detail in ctx.get('violation_details', []):
+                <t t-foreach="ctx.get('violation_details', [])" t-as="detail">
                 <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
                     <tr style="background: #fff3cd;">
                         <td colspan="2" style="padding: 8px; border: 1px solid #dee2e6;">
-                            <strong>{{ detail.get('week_name', '') }} ({{ detail.get('plan_name', '') }})</strong>
+                            <strong><t t-out="detail.get('week_name', '')"/> (<t t-out="detail.get('plan_name', '')"/>)</strong>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding: 8px; border: 1px solid #dee2e6;">Budget Limit</td>
-                        <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">{{ detail.get('limit', '0') }}</td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right;"><t t-out="detail.get('limit', '0')"/></td>
                     </tr>
                     <tr style="background: #f8f9fa;">
                         <td style="padding: 8px; border: 1px solid #dee2e6;">Already Used</td>
-                        <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">{{ detail.get('used', '0') }}</td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right;"><t t-out="detail.get('used', '0')"/></td>
                     </tr>
                     <tr>
                         <td style="padding: 8px; border: 1px solid #dee2e6;">This PO Amount</td>
-                        <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">{{ detail.get('po_amount', '0') }}</td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right;"><t t-out="detail.get('po_amount', '0')"/></td>
                     </tr>
                     <tr style="background: #f8d7da;">
                         <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Over by</strong></td>
                         <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; color: #dc3545;">
-                            <strong>{{ detail.get('overage', '0') }}</strong>
+                            <strong><t t-out="detail.get('overage', '0')"/></strong>
                         </td>
                     </tr>
                 </table>
-                % endfor
-
+                </t>
                 <p style="margin-top: 20px;">Please review and adjust the budget if necessary.</p>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 15px; background: #f8f9fa; text-align: center; border-radius: 0 0 8px 8px; font-size: 12px; color: #6c757d;">
+                This is an automated notification from the Weekly Budget Control system.
+            </td>
+        </tr>
+    </table>
+</div>
+]]></field>
+        </record>
+
+        <record id="mail_template_budget_approval_request" model="mail.template">
+            <field name="name">Weekly Budget: Approval Request Notification</field>
+            <field name="model_id" ref="model_buz_budget_approval_request"/>
+            <field name="subject">&#9888; Budget Approval Required - {{ object.document_ref }} [{{ object.name }}]</field>
+            <field name="email_from">{{ (user.company_id.email or user.email) }}</field>
+            <field name="email_to">{{ ctx.get('manager_email', '') }}</field>
+            <field name="body_html"><![CDATA[
+<div style="margin: 0px; padding: 0px;">
+    <table style="width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <tr>
+            <td style="padding: 20px; background: #fd7e14; color: white; border-radius: 8px 8px 0 0;">
+                <h2 style="margin: 0;">&#9888; Budget Approval Request</h2>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 20px;">
+                <p>Dear <strong>Budget Manager</strong>,</p>
+                <p>A budget approval request has been submitted and requires your attention.</p>
+                <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                    <tr style="background: #f8f9fa;">
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Request Ref</strong></td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><t t-out="object.name"/></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Document</strong></td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><t t-out="object.document_type.upper()"/>: <t t-out="object.document_ref"/></td>
+                    </tr>
+                    <tr style="background: #f8f9fa;">
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Requested By</strong></td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><t t-out="object.requester_id.name"/></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Budget Week</strong></td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><t t-out="object.budget_line_name"/></td>
+                    </tr>
+                    <tr style="background: #fff3cd;">
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Budget Limit</strong></td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right;"><t t-out="&quot;%.2f&quot;|format(object.amount_limit)"/></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Already Used</strong></td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right;"><t t-out="&quot;%.2f&quot;|format(object.amount_used)"/></td>
+                    </tr>
+                    <tr style="background: #f8f9fa;">
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Document Amount</strong></td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right;"><t t-out="&quot;%.2f&quot;|format(object.amount_requested)"/></td>
+                    </tr>
+                    <tr style="background: #f8d7da;">
+                        <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>Over by</strong></td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; color: #dc3545;">
+                            <strong><t t-out="&quot;%.2f&quot;|format(object.amount_overage)"/></strong>
+                        </td>
+                    </tr>
+                </table>
+                <t t-if="object.reason">
+                <p><strong>Requester's Reason:</strong><br/><t t-out="object.reason"/></p>
+                </t>
+                <p style="margin-top: 20px;">Please log in to Odoo to <strong>Approve</strong> or <strong>Reject</strong> this request.</p>
             </td>
         </tr>
         <tr>

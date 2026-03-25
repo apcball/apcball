@@ -12,3 +12,8 @@ access_weekly_budget_line_history_purchase_user,weekly.budget.line.history.purch
 access_weekly_budget_report_user,weekly.budget.report.user,model_weekly_budget_report,group_budget_user,1,0,0,0
 access_weekly_budget_report_manager,weekly.budget.report.manager,model_weekly_budget_report,group_budget_manager,1,0,0,0
 access_weekly_budget_report_purchase_user,weekly.budget.report.purchase.user,model_weekly_budget_report,purchase.group_purchase_user,1,0,0,0
+access_budget_approval_request_user,buz.budget.approval.request.user,model_buz_budget_approval_request,group_budget_user,1,1,1,0
+access_budget_approval_request_manager,buz.budget.approval.request.manager,model_buz_budget_approval_request,group_budget_manager,1,1,1,1
+access_budget_approval_request_purchase_user,buz.budget.approval.request.purchase.user,model_buz_budget_approval_request,purchase.group_purchase_user,1,1,1,0
+access_budget_request_reason_wizard,budget.request.reason.wizard,model_budget_request_reason_wizard,base.group_user,1,1,1,0
+access_budget_approval_reason_wizard,budget.approval.reason.wizard,model_budget_approval_reason_wizard,base.group_user,1,1,1,0

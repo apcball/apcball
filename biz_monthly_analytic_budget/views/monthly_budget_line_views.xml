@@ -56,10 +56,6 @@
             <search string="Monthly Budget Lines">
                 <field name="plan_id"/>
                 <field name="analytic_account_id"/>
-                <filter string="Over Budget" name="over_budget"
-                        domain="[('available_amount', '&lt;', 0)]"/>
-                <filter string="High Utilization (&gt;80%)" name="high_util"
-                        domain="[('utilization_rate', '&gt;', 80)]"/>
                 <group expand="0" string="Group By">
                     <filter string="Plan" name="group_plan" context="{'group_by': 'plan_id'}"/>
                     <filter string="Analytic Account" name="group_analytic" context="{'group_by': 'analytic_account_id'}"/>

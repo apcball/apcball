@@ -474,8 +474,8 @@
                                     <div class="col" style="width: 33%; box-sizing: border-box; padding-right: 10px; display: flex; flex-direction: column; justify-content: flex-start;">
                                         <div style="text-align: center; font-size: 18px;">
                                             <div style="height:24px;"></div>
-                                            <t t-if="o.prepared_signature">
-                                                <img t-att-src="image_data_uri(o.prepared_signature)" style="height: 60px; max-width: 100%; display: block; margin: 0 auto;"/>
+                                            <t t-if="o.prepared_signature and o.state in ['purchase', 'done']">
+                                                <img t-att-src="image_data_uri(o.prepared_signature)" style="height: 40px; max-width: 120px; display: block; margin: 0 auto;"/>
                                                 <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
                                                     (<span t-field="o.create_uid.name" style="display:inline; margin:0; padding:0;"/>)
@@ -487,7 +487,7 @@
                                             </t>
                                             <t t-else="">
                                                 <!-- Empty space for image alignment -->
-                                                <div style="height: 60px;"></div>
+                                                <div style="height: 40px;"></div>
                                                 <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
                                                     (<span t-esc="o.create_uid.name or ''"/>)
@@ -506,8 +506,8 @@
                                     <div class="col" style="width: 33%; box-sizing: border-box; padding-right: 10px; display: flex; flex-direction: column; justify-content: flex-start;">
                                         <div style="text-align: center; font-size: 18px;">
                                             <div style="height:24px;"></div>
-                                            <t t-if="o.reviewed_signature">
-                                                <img t-att-src="image_data_uri(o.reviewed_signature)" style="height: 60px; max-width: 100%; display: block; margin: 0 auto;"/>
+                                            <t t-if="o.reviewed_signature and o.state in ['purchase', 'done']">
+                                                <img t-att-src="image_data_uri(o.reviewed_signature)" style="height: 40px; max-width: 120px; display: block; margin: 0 auto;"/>
                                                 <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
                                                     (<span t-field="o.reviewer_id.name" style="display:inline; margin:0; padding:0;"/>)
@@ -519,7 +519,7 @@
                                             </t>
                                             <t t-else="">
                                                 <!-- Empty space for image alignment -->
-                                                <div style="height: 60px;"></div>
+                                                <div style="height: 40px;"></div>
                                                 <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
                                                     (....................................)
@@ -538,8 +538,8 @@
                                     <div class="col" style="width: 33%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-start;">
                                         <div style="text-align: center; font-size: 18px;">
                                             <div style="height:24px;"></div>
-                                            <t t-if="o.approval_signature">
-                                                <img t-att-src="image_data_uri(o.approval_signature)" style="height: 60px; max-width: 100%; display: block; margin: 0 auto;"/>
+                                            <t t-if="o.approval_signature and o.state in ['purchase', 'done']">
+                                                <img t-att-src="image_data_uri(o.approval_signature)" style="height: 40px; max-width: 120px; display: block; margin: 0 auto;"/>
                                                 <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
                                                     (<span t-field="o.approver_id.name" style="display:inline; margin:0; padding:0;"/>)
@@ -551,7 +551,7 @@
                                             </t>
                                             <t t-else="">
                                                 <!-- Empty space for image alignment -->
-                                                <div style="height: 60px;"></div>
+                                                <div style="height: 40px;"></div>
                                                 <div style="border-bottom: 1px solid black; width: 80%; margin: 0 auto;"></div>
                                                 <div>
                                                         (<span style="display:inline; margin:0; padding:0;">

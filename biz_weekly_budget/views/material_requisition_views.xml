@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- Extend Employee Purchase Requisition Form: Add Budget Approval Button -->
-    <record id="view_employee_purchase_requisition_form_budget" model="ir.ui.view">
-        <field name="name">employee.purchase.requisition.form.budget</field>
-        <field name="model">employee.purchase.requisition</field>
-        <field name="inherit_id" ref="employee_purchase_requisition.employee_purchase_requisition_view_form"/>
+    <!-- Extend Material Requisition Form: Add Budget Approval Button -->
+    <record id="view_material_requisition_form_budget" model="ir.ui.view">
+        <field name="name">material.requisition.form.budget</field>
+        <field name="model">material.requisition</field>
+        <field name="inherit_id" ref="job_costing_management.view_material_requisition_form"/>
         <field name="priority">100</field>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
@@ -29,7 +29,7 @@
                 <widget name="web_ribbon" title="Budget Rejected" bg_color="bg-danger" invisible="buz_budget_approval_state != 'rejected'"/>
                 <widget name="web_ribbon" title="Budget Approved" bg_color="bg-success" invisible="buz_budget_approval_state != 'approved'"/>
             </xpath>
-            <xpath expr="//field[@name='requisition_deadline']" position="after">
+            <xpath expr="//field[@name='required_date']" position="after">
                 <field name="payment_date" string="Expected Payment"/>
             </xpath>
             <xpath expr="//notebook" position="inside">
@@ -43,23 +43,6 @@
                     </group>
                     <field name="budget_check_result" nolabel="1"/>
                 </page>
-            </xpath>
-        </field>
-    </record>
-
-    <!-- Extend Purchase Requisition Tree -->
-    <record id="view_employee_purchase_requisition_tree_budget" model="ir.ui.view">
-        <field name="name">employee.purchase.requisition.tree.budget</field>
-        <field name="model">employee.purchase.requisition</field>
-        <field name="inherit_id" ref="employee_purchase_requisition.employee_purchase_requisition_view_tree"/>
-        <field name="priority">100</field>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='state']" position="before">
-                <field name="buz_budget_approval_state" string="Budget Status" widget="badge"
-                       decoration-success="buz_budget_approval_state == 'approved'"
-                       decoration-danger="buz_budget_approval_state == 'rejected'"
-                       decoration-warning="buz_budget_approval_state == 'pending'"
-                       optional="show"/>
             </xpath>
         </field>
     </record>

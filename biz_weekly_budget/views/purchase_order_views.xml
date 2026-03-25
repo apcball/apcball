@@ -1,13 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- Extend Purchase Order Form: Add Budget Check Section -->
+    <!-- Extend Purchase Order Form: Add Budget Check + Approval Button -->
     <record id="view_purchase_order_form_budget" model="ir.ui.view">
         <field name="name">purchase.order.form.budget</field>
         <field name="model">purchase.order</field>
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="priority">100</field>
         <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="buz_budget_approval_id" invisible="1"/>
+                <field name="buz_budget_approval_state" invisible="1"/>
+                <button name="action_request_budget_approval"
+                        string="ขอเพิ่มงบประมาณ"
+                        type="object"
+                        class="btn-warning"
+                        invisible="buz_budget_approval_state in ('pending', 'approved') or state not in ('draft', 'sent', 'to approve') or not budget_warning"
+                        icon="fa-exclamation-triangle"/>
+                <button name="action_request_budget_approval"
+                        string="รอการอนุมัติงบ..."
+                        type="object"
+                        class="btn-secondary"
+                        invisible="buz_budget_approval_state != 'pending'"
+                        icon="fa-clock-o"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="after">
+                <widget name="web_ribbon" title="Budget Rejected" bg_color="bg-danger" invisible="buz_budget_approval_state != 'rejected'"/>
+                <widget name="web_ribbon" title="Budget Approved" bg_color="bg-success" invisible="buz_budget_approval_state != 'approved'"/>
+            </xpath>
+            <xpath expr="//div[@name='date_planned_div']" position="after">
+                <field name="payment_date" string="Expected Payment"/>
+            </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Budget Check" name="budget_check">
                     <group>

@@ -92,9 +92,9 @@
                                     <field name="date_from"/>
                                     <field name="date_to"/>
                                     <field name="amount_limit" string="Budget Limit"/>
-                                    <field name="amount_reserved" string="Reserved"
+                                    <field name="amount_reserved" string="Reserved (Unbilled/PR/MR)"
                                            optional="show"/>
-                                    <field name="amount_used" string="Used"/>
+                                    <field name="amount_used" string="Used (Billed)"/>
                                     <field name="amount_available" string="Available"
                                            optional="show"/>
                                     <field name="amount_remaining" string="Remaining (vs Used)"

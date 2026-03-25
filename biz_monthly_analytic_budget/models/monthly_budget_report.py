@@ -54,30 +54,31 @@ class MonthlyBudgetReport(models.Model):
                     -- Actual entries
                     SELECT 
                         'actual' as entry_type,
-                        po.name as name,
-                        pol.price_subtotal * CAST(pol.analytic_distribution->>wbl.analytic_account_id::text AS numeric) / 100.0 as amount,
+                        am.name as name,
+                        (CASE WHEN am.move_type = 'in_refund' THEN -aml.price_subtotal ELSE aml.price_subtotal END) * CAST(aml.analytic_distribution->>wbl.analytic_account_id::text AS numeric) / 100.0 as amount,
                         0.0 as budget_amt,
-                        pol.price_subtotal * CAST(pol.analytic_distribution->>wbl.analytic_account_id::text AS numeric) / 100.0 as actual_amt,
-                        -(pol.price_subtotal * CAST(pol.analytic_distribution->>wbl.analytic_account_id::text AS numeric) / 100.0) as remaining_amt,
+                        (CASE WHEN am.move_type = 'in_refund' THEN -aml.price_subtotal ELSE aml.price_subtotal END) * CAST(aml.analytic_distribution->>wbl.analytic_account_id::text AS numeric) / 100.0 as actual_amt,
+                        -((CASE WHEN am.move_type = 'in_refund' THEN -aml.price_subtotal ELSE aml.price_subtotal END) * CAST(aml.analytic_distribution->>wbl.analytic_account_id::text AS numeric) / 100.0) as remaining_amt,
                         100.0 as utilization,
-                        COALESCE(po.payment_date, pol.date_planned::date) as date,
-                        po.company_id as company_id,
+                        aml.date as date,
+                        am.company_id as company_id,
                         wbl.id as budget_line_id,
                         wbl.plan_id as plan_id,
                         wbl.analytic_account_id as analytic_account_id
-                    FROM purchase_order_line pol
-                    JOIN purchase_order po ON pol.order_id = po.id
+                    FROM account_move_line aml
+                    JOIN account_move am ON aml.move_id = am.id
                     JOIN monthly_budget_plan wbp ON 
-                        COALESCE(po.payment_date, pol.date_planned::date) >= wbp.date_from AND 
-                        COALESCE(po.payment_date, pol.date_planned::date) <= wbp.date_to AND 
-                        wbp.company_id = po.company_id AND
+                        aml.date >= wbp.date_from AND 
+                        aml.date <= wbp.date_to AND 
+                        wbp.company_id = am.company_id AND
                         wbp.state = 'confirmed'
                     JOIN monthly_budget_line wbl ON 
                          wbl.plan_id = wbp.id
-                    WHERE po.state IN ('purchase', 'done')
-                      AND pol.analytic_distribution IS NOT NULL
-                      AND jsonb_typeof(pol.analytic_distribution) = 'object'
-                      AND pol.analytic_distribution ? wbl.analytic_account_id::text
+                    WHERE am.state = 'posted'
+                      AND am.move_type IN ('in_invoice', 'in_refund')
+                      AND aml.analytic_distribution IS NOT NULL
+                      AND jsonb_typeof(aml.analytic_distribution) = 'object'
+                      AND aml.analytic_distribution ? wbl.analytic_account_id::text
                 )
                 SELECT
                     row_number() OVER () as id,

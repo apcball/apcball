@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Form View ──────────────────────────────────────────────────────── -->
+    <record id="view_budget_approval_request_form" model="ir.ui.view">
+        <field name="name">buz.budget.approval.request.form</field>
+        <field name="model">buz.budget.approval.request</field>
+        <field name="arch" type="xml">
+            <form string="Budget Approval Request">
+                <header>
+                    <button name="action_approve"
+                            string="✅ Approve"
+                            type="object"
+                            class="btn-success"
+                            groups="biz_weekly_budget.group_budget_manager"
+                            invisible="state != 'pending'"/>
+                    <button name="action_reject"
+                            string="❌ Reject"
+                            type="object"
+                            class="btn-danger"
+                            groups="biz_weekly_budget.group_budget_manager"
+                            invisible="state != 'pending'"/>
+                    <button name="action_cancel"
+                            string="Cancel"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state != 'pending'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="pending,approved,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Document Info">
+                            <field name="document_type" readonly="1"/>
+                            <field name="document_ref" readonly="1" string="Document"/>
+                            <field name="ref_pr_id" readonly="1"
+                                   invisible="document_type != 'pr'"/>
+                            <field name="ref_mr_id" readonly="1"
+                                   invisible="document_type != 'mr'"/>
+                            <field name="ref_po_id" readonly="1"
+                                   invisible="document_type != 'po'"/>
+                        </group>
+                        <group string="Requester">
+                            <field name="requester_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Budget Details">
+                        <group>
+                            <field name="budget_line_id" readonly="1"/>
+                            <field name="budget_line_name" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="amount_limit" readonly="1"/>
+                            <field name="amount_used" readonly="1"/>
+                            <field name="amount_reserved" readonly="1"/>
+                            <field name="amount_requested" readonly="1"/>
+                            <field name="amount_overage" readonly="1"
+                                   class="text-danger fw-bold"/>
+                        </group>
+                    </group>
+                    <group string="Reason">
+                        <field name="reason" nolabel="1"
+                               placeholder="ระบุเหตุผลในการขอเพิ่มงบประมาณชั่วคราว..."
+                               readonly="state != 'pending'"/>
+                    </group>
+                    <group string="Approver Note">
+                        <field name="note" nolabel="1"
+                               placeholder="ระบุเหตุผลในการอนุมัติ หรือปฏิเสธ..."
+                               readonly="state != 'pending'"/>
+                        <field name="approver_id" readonly="1" invisible="state == 'pending'"/>
+                        <field name="approved_date" readonly="1" invisible="state == 'pending'"/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── List View ─────────────────────────────────────────────────────── -->
+    <record id="view_budget_approval_request_list" model="ir.ui.view">
+        <field name="name">buz.budget.approval.request.list</field>
+        <field name="model">buz.budget.approval.request</field>
+        <field name="arch" type="xml">
+            <tree string="Budget Approval Requests" decoration-warning="state == 'pending'"
+                  decoration-success="state == 'approved'"
+                  decoration-danger="state == 'rejected'">
+                <field name="name"/>
+                <field name="document_type"/>
+                <field name="document_ref" string="Document"/>
+                <field name="budget_line_name" string="Budget Week"/>
+                <field name="amount_limit" string="Limit"/>
+                <field name="amount_overage" string="Over by"/>
+                <field name="requester_id"/>
+                <field name="create_date" string="Requested On"/>
+                <field name="approver_id"/>
+                <field name="approved_date" string="Processed On"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'pending'"
+                       decoration-success="state == 'approved'"
+                       decoration-danger="state == 'rejected'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ── Search View ───────────────────────────────────────────────────── -->
+    <record id="view_budget_approval_request_search" model="ir.ui.view">
+        <field name="name">buz.budget.approval.request.search</field>
+        <field name="model">buz.budget.approval.request</field>
+        <field name="arch" type="xml">
+            <search string="Budget Approval Requests">
+                <field name="name"/>
+                <field name="requester_id"/>
+                <filter string="Pending" name="pending" domain="[('state','=','pending')]"/>
+                <filter string="Approved" name="approved" domain="[('state','=','approved')]"/>
+                <filter string="Rejected" name="rejected" domain="[('state','=','rejected')]"/>
+                <filter string="PR" name="type_pr" domain="[('document_type','=','pr')]"/>
+                <filter string="MR" name="type_mr" domain="[('document_type','=','mr')]"/>
+                <filter string="PO" name="type_po" domain="[('document_type','=','po')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Document Type" name="group_type" context="{'group_by': 'document_type'}"/>
+                    <filter string="Requester" name="group_requester" context="{'group_by': 'requester_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ── Window Action ─────────────────────────────────────────────────── -->
+    <record id="action_budget_approval_request" model="ir.actions.act_window">
+        <field name="name">Budget Approval Requests</field>
+        <field name="res_model">buz.budget.approval.request</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_pending': 1}</field>
+    </record>
+
+</odoo>

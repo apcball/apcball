@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_procurement_pool_form_budget" model="ir.ui.view">
+            <field name="name">procurement.pool.form.budget</field>
+            <field name="model">procurement.pool</field>
+            <field name="inherit_id" ref="job_costing_management.view_procurement_pool_form"/>
+            <field name="arch" type="xml">
+                <!-- Add Payment Date field -->
+                <xpath expr="//field[@name='user_id']" position="after">
+                    <field name="payment_date" required="1"/>
+                </xpath>
+
+                <!-- Add Budget Check Section -->
+                <xpath expr="//notebook" position="inside">
+                    <page string="Budget Check" name="budget_check">
+                        <group>
+                            <button name="action_check_budget"
+                                    string="Check Budget"
+                                    type="object"
+                                    class="btn-primary mb-3"
+                                    icon="fa-search"
+                                    invisible="state in ('done', 'cancelled')"/>
+                        </group>
+                        <field name="budget_warning" invisible="1"/>
+                        <field name="budget_check_result" widget="html" readonly="1" nolabel="1"/>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_procurement_pool_tree_budget" model="ir.ui.view">
+            <field name="name">procurement.pool.tree.budget</field>
+            <field name="model">procurement.pool</field>
+            <field name="inherit_id" ref="job_costing_management.view_procurement_pool_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='user_id']" position="after">
+                    <field name="payment_date" optional="show"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

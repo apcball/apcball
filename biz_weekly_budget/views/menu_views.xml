@@ -25,4 +25,10 @@
               action="action_weekly_budget_report"
               sequence="30"/>
 
+    <menuitem id="menu_budget_approval_request"
+              name="Budget Approval Requests"
+              parent="menu_budget_control_root"
+              action="action_budget_approval_request"
+              sequence="40"/>
+
 </odoo>

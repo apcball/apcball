@@ -7,17 +7,26 @@
                 <div class="row mb-4 align-items-center">
                     <div class="col-md-5">
                         <h2 class="text-primary font-weight-bold mb-0">
-                            <i class="fa fa-dashboard mr-2"/> Weekly Budget Smart Dashboard
+                            <i class="fa fa-dashboard mr-2"/> Cashflow Forecast Dashboard
                         </h2>
                     </div>
                     <div class="col-md-7 d-flex justify-content-end" style="gap: 12px;">
                         <!-- Filter by Year -->
-                        <div style="min-width: 160px;">
+                        <div style="min-width: 140px;">
                             <label class="small text-muted mb-1">Filter by Year</label>
                             <select class="form-control custom-select" t-on-change="onYearChange">
                                 <option value="all">All Years</option>
                                 <t t-foreach="state.years" t-as="yr" t-key="yr">
                                     <option t-att-value="yr" t-esc="yr"/>
+                                </t>
+                            </select>
+                        </div>
+                        <!-- Filter by Month -->
+                        <div style="min-width: 140px;">
+                            <label class="small text-muted mb-1">Filter by Month</label>
+                            <select class="form-control custom-select" t-on-change="onMonthChange">
+                                <t t-foreach="state.months" t-as="m" t-key="m.id">
+                                    <option t-att-value="m.id" t-esc="m.name"/>
                                 </t>
                             </select>
                         </div>
@@ -49,14 +58,14 @@
                             <div class="card-body text-center p-3">
                                 <h6 class="text-uppercase small font-weight-bold" style="color:#c2410c;">Reserved</h6>
                                 <h3 class="mb-0" style="color:#ea580c;" t-esc="formatCurrency(state.summary.total_reserved || 0)"/>
-                                <small class="text-muted">PR + RFQ pending</small>
+                                <small class="text-muted">PR + MR + Unbilled PO</small>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="card shadow-sm border-0 bg-white rounded-lg">
                             <div class="card-body text-center p-3">
-                                <h6 class="text-muted text-uppercase small font-weight-bold">Actual Spending</h6>
+                                <h6 class="text-muted text-uppercase small font-weight-bold">Actual Used (Billed)</h6>
                                 <h3 class="text-danger mb-0" t-esc="formatCurrency(state.summary.total_actual || 0)"/>
                             </div>
                         </div>

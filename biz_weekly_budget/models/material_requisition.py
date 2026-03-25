@@ -23,15 +23,15 @@ def _find_budget_lines_for_date(env, target_date, company_id):
     return env['weekly.budget.line'].sudo().search(domain)
 
 
-class EmployeePurchaseRequisition(models.Model):
-    _inherit = 'employee.purchase.requisition'
+class MaterialRequisition(models.Model):
+    _inherit = 'material.requisition'
 
     payment_date = fields.Date(
         string='Expected Payment',
         compute='_compute_payment_date',
         store=True,
         readonly=False,
-        help="Expected date of cash outflow. Default is Requisition Deadline + 30 days."
+        help="Expected date of cash outflow. Default is Required Date + 30 days."
     )
 
     budget_check_result = fields.Html(
@@ -58,17 +58,17 @@ class EmployeePurchaseRequisition(models.Model):
         ApprovalReq = self.env['buz.budget.approval.request'].sudo()
         for rec in self:
             req = ApprovalReq.search([
-                ('document_type', '=', 'pr'),
-                ('ref_pr_id', '=', rec.id),
+                ('document_type', '=', 'mr'),
+                ('ref_mr_id', '=', rec.id),
             ], limit=1, order='id desc')
             rec.buz_budget_approval_id = req
 
-    @api.depends('requisition_deadline', 'request_date')
+    @api.depends('required_date')
     def _compute_payment_date(self):
         for req in self:
             if req.payment_date:
                 continue
-            base_date = req.requisition_deadline or req.request_date or fields.Date.today()
+            base_date = req.required_date or fields.Date.today()
             req.payment_date = base_date + timedelta(days=30)
 
     def _find_budget_line_for_date(self, target_date):
@@ -108,11 +108,11 @@ class EmployeePurchaseRequisition(models.Model):
                         budget_lines._compute_amount_reserved()
         return result
 
-    @api.depends('requisition_order_ids.price_subtotal', 'payment_date')
+    @api.depends('line_ids.total_cost', 'payment_date')
     def _compute_budget_check_result(self):
         for req in self:
             target_date = req.payment_date
-            if not target_date or not req.requisition_order_ids:
+            if not target_date or not req.line_ids:
                 req.budget_check_result = ''
                 req.budget_warning = False
                 continue
@@ -127,11 +127,11 @@ class EmployeePurchaseRequisition(models.Model):
                 req.budget_warning = False
                 continue
 
-            pr_amount = sum(req.requisition_order_ids.mapped('price_subtotal'))
+            mr_amount = req.total_cost or sum(req.line_ids.mapped('total_cost'))
             used = budget_line.amount_used
             reserved = budget_line.amount_reserved
             limit_amt = budget_line.amount_limit
-            total_after = used + reserved + pr_amount
+            total_after = used + reserved + mr_amount
             remaining = limit_amt - total_after
             is_over = remaining < 0
 
@@ -149,7 +149,7 @@ class EmployeePurchaseRequisition(models.Model):
             req.budget_check_result = (
                 '<div class="card mb-2 border-%s">'
                 '<div class="card-body p-2">'
-                '<h6 class="card-title">%s %s (PR - Estimate)</h6>'
+                '<h6 class="card-title">%s %s (MR - Estimate)</h6>'
                 '<table class="table table-sm table-borderless mb-0">'
                 '<tr><td>%s</td><td class="text-end">%s</td></tr>'
                 '<tr><td>%s</td><td class="text-end">%s</td></tr>'
@@ -170,8 +170,8 @@ class EmployeePurchaseRequisition(models.Model):
                     '{:,.2f}'.format(used),
                     _('Already Reserved (Other PR/MR/RFQ)'),
                     '{:,.2f}'.format(reserved),
-                    _('This PR Amount (Estimate)'),
-                    '{:,.2f}'.format(pr_amount),
+                    _('This MR Amount (Estimate)'),
+                    '{:,.2f}'.format(mr_amount),
                     _('Total (Estimate)'),
                     '{:,.2f}'.format(total_after),
                     _('Remaining (Estimate)'),
@@ -192,12 +192,12 @@ class EmployeePurchaseRequisition(models.Model):
         self.ensure_one()
         target_date = self.payment_date
         budget_line = self._find_budget_line_for_date(target_date) if target_date else False
-        pr_amount = sum(self.requisition_order_ids.mapped('price_subtotal'))
+        mr_amount = self.total_cost or sum(self.line_ids.mapped('total_cost'))
 
         used = budget_line.amount_used if budget_line else 0.0
         reserved = budget_line.amount_reserved if budget_line else 0.0
         limit_amt = budget_line.amount_limit if budget_line else 0.0
-        overage = max(0.0, used + reserved + pr_amount - limit_amt)
+        overage = max(0.0, used + reserved + mr_amount - limit_amt)
 
         return {
             'name': _('Request Budget Approval'),
@@ -206,10 +206,10 @@ class EmployeePurchaseRequisition(models.Model):
             'view_mode': 'form',
             'target': 'new',
             'context': {
-                'default_document_type': 'pr',
+                'default_document_type': 'mr',
                 'default_ref_id': self.id,
                 'default_budget_line_id': budget_line.id if budget_line else False,
-                'default_amount_requested': pr_amount,
+                'default_amount_requested': mr_amount,
                 'default_amount_used': used,
                 'default_amount_reserved': reserved,
                 'default_amount_limit': limit_amt,
@@ -217,54 +217,47 @@ class EmployeePurchaseRequisition(models.Model):
             }
         }
 
-    def action_confirm_requisition(self):
-        """Override to check weekly budget before submitting PR."""
+    def action_submit(self):
+        """Override to check weekly budget before submitting."""
         for req in self:
             req._check_weekly_budget()
-        return super().action_confirm_requisition()
-
-    def action_head_approval(self):
-        """Override to check weekly budget before head approval."""
-        for req in self:
-            req._check_weekly_budget()
-        return super().action_head_approval()
+        return super().action_submit()
 
     def _check_weekly_budget(self):
-        """Check if this PR would exceed any weekly budget."""
+        """Check if this MR would exceed any weekly budget."""
         self.ensure_one()
         target_date = self.payment_date
-        if not target_date or not self.requisition_order_ids:
+        if not target_date or not self.line_ids:
             return
 
         # Check if an approved budget request exists
         approved = self.env['buz.budget.approval.request'].sudo().search([
-            ('document_type', '=', 'pr'),
-            ('ref_pr_id', '=', self.id),
+            ('document_type', '=', 'mr'),
+            ('ref_mr_id', '=', self.id),
             ('state', '=', 'approved'),
         ], limit=1)
         if approved:
-            return  # Bypass budget check – approved
+            return  # Bypass – approved
 
         budget_line = self._find_budget_line_for_date(target_date)
         if not budget_line:
-            return  # No budget plan active, allow approval
+            return  # No budget plan active
 
-        pr_amount = sum(self.requisition_order_ids.mapped('price_subtotal'))
+        mr_amount = self.total_cost or sum(self.line_ids.mapped('total_cost'))
         used = budget_line.amount_used
         reserved = budget_line.amount_reserved
         limit_amt = budget_line.amount_limit
-        total_after = used + reserved + pr_amount
+        total_after = used + reserved + mr_amount
         overage = total_after - limit_amt
 
         if overage > 0:
-            # Post to budget plan chatter
             budget_line.plan_id.message_post(
                 body=_(
-                    '<strong>Budget Exceeded Alert (PR)</strong><br/>'
-                    'PR: <strong>%s</strong><br/>'
+                    '<strong>Budget Exceeded Alert (MR)</strong><br/>'
+                    'MR: <strong>%s</strong><br/>'
                     'User: %s<br/>'
                     'Week: %s<br/>'
-                    'Budget: %s | Used: %s | Reserved: %s | PR Amount: %s | Over by: %s'
+                    'Budget: %s | Used: %s | Reserved: %s | MR Amount: %s | Over by: %s'
                 ) % (
                     self.name,
                     self.env.user.name,
@@ -272,7 +265,7 @@ class EmployeePurchaseRequisition(models.Model):
                     '{:,.2f}'.format(limit_amt),
                     '{:,.2f}'.format(used),
                     '{:,.2f}'.format(reserved),
-                    '{:,.2f}'.format(pr_amount),
+                    '{:,.2f}'.format(mr_amount),
                     '{:,.2f}'.format(overage),
                 ),
                 message_type='notification',
@@ -280,12 +273,12 @@ class EmployeePurchaseRequisition(models.Model):
             )
 
             raise UserError(_(
-                'Weekly Budget Exceeded! Cannot approve Purchase Requisition.\n\n'
+                'Weekly Budget Exceeded! Cannot submit Material Requisition.\n\n'
                 'Week: %s\n'
                 '  - Budget Limit: %s\n'
                 '  - Already Used: %s\n'
                 '  - Already Reserved: %s\n'
-                '  - This PR: %s\n'
+                '  - This MR: %s\n'
                 '  - Over by: %s\n\n'
                 'Please click "ขอเพิ่มงบประมาณ" to submit a Budget Approval Request.'
             ) % (
@@ -293,6 +286,6 @@ class EmployeePurchaseRequisition(models.Model):
                 '{:,.2f}'.format(limit_amt),
                 '{:,.2f}'.format(used),
                 '{:,.2f}'.format(reserved),
-                '{:,.2f}'.format(pr_amount),
+                '{:,.2f}'.format(mr_amount),
                 '{:,.2f}'.format(overage),
             ))

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Weekly Budget Control (Mogen)',
+    'name': 'Weekly Budget Control',
     'version': '17.0.1.0.0',
     'category': 'Purchase',
     'summary': 'Weekly budget control for purchase orders',
@@ -16,14 +16,14 @@
         - Company-wide or all-companies budget scope
         - Modern OWL Smart Dashboard with Chart.js
     """,
-    'author': 'APCBALL',
+    'author': 'KYLD',
     'depends': [
         'web',
         'purchase',
         'mail',
         'employee_purchase_requisition',
+        'job_costing_management',
         'buz_po_portal',
-        'budget_engine_core',
     ],
     'data': [
         'security/budget_security.xml',
@@ -31,13 +31,17 @@
         'data/sequence_data.xml',
         'data/mail_template_data.xml',
         'wizard/budget_adjustment_wizard_views.xml',
+        'wizard/budget_reason_wizards_views.xml',
         'views/weekly_budget_plan_views.xml',
         'views/weekly_budget_line_views.xml',
         'views/weekly_budget_report_views.xml',
-        'views/menu_views.xml',
         'views/dashboard_views.xml',
+        'views/budget_approval_request_views.xml',
         'views/purchase_order_views.xml',
         'views/purchase_requisition_views.xml',
+        'views/material_requisition_views.xml',
+        'views/procurement_pool_views.xml',
+        'views/menu_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

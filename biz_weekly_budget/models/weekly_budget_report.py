@@ -49,27 +49,26 @@ class WeeklyBudgetReport(models.Model):
 
                     UNION ALL
 
-                    -- Actual entries
+                    -- Actual entries (Based on Vendor Bill Due Date)
                     SELECT 
                         'actual' as entry_type,
-                        po.name as name,
-                        pol.price_subtotal as amount,
+                        am.name as name,
+                        am.amount_total as amount,
                         0.0 as budget_amt,
-                        pol.price_subtotal as actual_amt,
-                        -pol.price_subtotal as remaining_amt,
+                        am.amount_total as actual_amt,
+                        -am.amount_total as remaining_amt,
                         100.0 as utilization,
-                        pol.date_planned::date as date,
-                        po.company_id as company_id,
+                        am.invoice_date_due as date,
+                        am.company_id as company_id,
                         wbl.id as budget_line_id,
                         wbl.plan_id as plan_id
-                    FROM purchase_order_line pol
-                    JOIN purchase_order po ON pol.order_id = po.id
+                    FROM account_move am
                     JOIN weekly_budget_line wbl ON 
-                        pol.date_planned::date >= wbl.date_from AND 
-                        pol.date_planned::date <= wbl.date_to
+                        am.invoice_date_due >= wbl.date_from AND 
+                        am.invoice_date_due <= wbl.date_to
                     JOIN weekly_budget_plan wbp ON wbl.plan_id = wbp.id
-                    WHERE po.state IN ('purchase', 'done')
-                      AND (wbp.all_companies = TRUE OR wbp.company_id = po.company_id)
+                    WHERE am.move_type = 'in_invoice' AND am.state = 'posted'
+                      AND (wbp.all_companies = TRUE OR wbp.company_id = am.company_id)
                       AND wbp.state = 'confirmed'
                 )
                 SELECT
@@ -97,7 +96,7 @@ class WeeklyBudgetReport(models.Model):
         return years
 
     @api.model
-    def get_dashboard_data(self, domain=[], year=None):
+    def get_dashboard_data(self, domain=[], year=None, month=None):
         """Fetch summarized data for the OWL dashboard component."""
         data = self.search_read(domain)
 
@@ -108,6 +107,20 @@ class WeeklyBudgetReport(models.Model):
                 ('year', '=', str(year)),
             ]).ids
             data = [d for d in data if d.get('plan_id') and d['plan_id'][0] in plan_ids]
+
+        if month:
+            # Filter by the exact date falling within the target month.
+            try:
+                month_int = int(month)
+                filtered_data = []
+                for d in data:
+                    if d.get('date'):
+                        date_val = fields.Date.to_date(d['date'])
+                        if date_val and date_val.month == month_int:
+                            filtered_data.append(d)
+                data = filtered_data
+            except (ValueError, TypeError):
+                pass
 
         # Summary calculations
         total_budget = sum(d['budget_amt'] for d in data)
@@ -168,4 +181,3 @@ class WeeklyBudgetReport(models.Model):
             'weeks': sorted(weeks.values(), key=lambda x: x['name']),
             'pie_data': pie_data,
         }
-

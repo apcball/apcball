@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Request Reason Wizard -->
+    <record id="view_budget_request_reason_wizard_form" model="ir.ui.view">
+        <field name="name">budget.request.reason.wizard.form</field>
+        <field name="model">budget.request.reason.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Request Budget Approval">
+                <group>
+                    <div class="alert alert-warning" role="alert" colspan="2">
+                        <strong>Budget limit exceeded!</strong><br/>
+                        Please provide a reason to request additional temporary budget.
+                    </div>
+                </group>
+                <group invisible="1">
+                    <field name="document_type"/>
+                    <field name="ref_id"/>
+                    <field name="budget_line_id"/>
+                    <field name="amount_requested"/>
+                    <field name="amount_used"/>
+                    <field name="amount_reserved"/>
+                    <field name="amount_limit"/>
+                    <field name="amount_overage"/>
+                </group>
+                <field name="reason" placeholder="ระบุเหตุผลในการขอเพิ่มงบประมาณชั่วคราว..." style="width: 100%; min-height: 120px;"/>
+                <footer>
+                    <button string="Submit Request" type="object" name="action_submit_request" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Approval/Rejection Reason Wizard -->
+    <record id="view_budget_approval_reason_wizard_form" model="ir.ui.view">
+        <field name="name">budget.approval.reason.wizard.form</field>
+        <field name="model">budget.approval.reason.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Approver Note">
+                <group invisible="1">
+                    <field name="request_id"/>
+                    <field name="action_type"/>
+                </group>
+                <field name="note" placeholder="ระบุเหตุผลในการอนุมัติ หรือปฏิเสธ..." style="width: 100%; min-height: 120px;"/>
+                <footer>
+                    <button string="Confirm" type="object" name="action_confirm" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

@@ -84,7 +84,7 @@
                     <notebook>
                         <page string="Budget Allocation" name="allocation">
                             <field name="budget_line_ids"
-                                   readonly="state != 'draft'"
+                                   readonly="state == 'closed'"
                                    context="{'default_plan_id': id}"/>
                         </page>
                     </notebook>

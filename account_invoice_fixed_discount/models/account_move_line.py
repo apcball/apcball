@@ -76,6 +76,15 @@ class AccountMoveLine(models.Model):
         self.env.context = self.with_context(ignore_discount_onchange=True).env.context
         self.discount_fixed = 0.0
 
+    def _convert_to_tax_base_line_dict(self, **kwargs):
+        """Pass the accurate float value of the discount percentage to the tax computation method."""
+        res = super()._convert_to_tax_base_line_dict(**kwargs)
+        if self.discount_fixed:
+            res.update({
+                "discount": self._get_discount_from_fixed_discount()
+            })
+        return res
+
     def _get_discount_from_fixed_discount(self):
         """Calculate the discount percentage from the fixed discount amount."""
         self.ensure_one()

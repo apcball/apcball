@@ -5,21 +5,60 @@
         <field name="model">purchase.order</field>
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='date_order']" position="after">
+            <xpath expr="//div[@name='date_planned_div']" position="after">
                 <field name="payment_date"/>
+            </xpath>
+            <xpath expr="//sheet/*[1]" position="before">
+                <widget name="web_ribbon" title="Budget Approved" bg_color="bg-success" invisible="buz_budget_approval_state != 'approved'"/>
+                <widget name="web_ribbon" title="Budget Rejected" bg_color="bg-danger" invisible="buz_budget_approval_state != 'rejected'"/>
+                <widget name="web_ribbon" title="Pending Budget" bg_color="bg-warning" invisible="buz_budget_approval_state != 'pending'"/>
+                <field name="buz_budget_approval_state" invisible="1"/>
+                <field name="budget_warning" invisible="1"/>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Monthly Budget Check" name="monthly_budget_check">
                     <group>
-                        <button name="action_check_monthly_budget"
-                                string="Check Monthly Budget"
-                                type="object"
-                                class="btn-primary mb-3"
-                                icon="fa-calculator"/>
+                        <group>
+                            <button name="action_check_monthly_budget"
+                                    string="Check Monthly Budget"
+                                    type="object"
+                                    class="btn-primary mb-3"
+                                    icon="fa-calculator"/>
+                        </group>
+                        <group>
+                            <button name="action_request_monthly_budget_approval"
+                                    string="Request Budget Approval"
+                                    type="object"
+                                    class="btn-warning mb-3"
+                                    icon="fa-exclamation-triangle"
+                                    invisible="not budget_warning or buz_budget_approval_state == 'approved'"/>
+                            <div invisible="not buz_budget_approval_id">
+                                <label for="buz_budget_approval_id" string="Approval Request: "/>
+                                <field name="buz_budget_approval_id" readonly="1" options="{'no_open': False}"/>
+                            </div>
+                        </group>
                     </group>
                     <field name="monthly_budget_check_result" nolabel="1"/>
                 </page>
             </xpath>
         </field>
     </record>
+
+    <!-- Extend Purchase Order Tree -->
+    <record id="view_purchase_order_tree_monthly_budget" model="ir.ui.view">
+        <field name="name">purchase.order.tree.monthly.budget</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_kpis_tree"/>
+        <field name="priority">110</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="before">
+                <field name="buz_budget_approval_state" string="Budget Status" widget="badge"
+                       decoration-success="buz_budget_approval_state == 'approved'"
+                       decoration-danger="buz_budget_approval_state == 'rejected'"
+                       decoration-warning="buz_budget_approval_state == 'pending'"
+                       optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

@@ -28,6 +28,8 @@
         'data/sequence_data.xml',
         'views/monthly_budget_plan_views.xml',
         'views/monthly_budget_line_views.xml',
+        'views/monthly_budget_approval_request_views.xml',
+        'wizard/monthly_budget_reason_wizards_views.xml',
         'views/purchase_order_views.xml',
         'views/purchase_requisition_views.xml',
         'views/monthly_budget_report_views.xml',

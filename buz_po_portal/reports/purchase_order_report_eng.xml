@@ -339,11 +339,11 @@
     <div class="col-4">
         <div class="signature-box">
             <div class="signature-content">
-                <t t-if="o.l1_approved_by">
+                <t t-if="o.l1_approved_by and o.state in ['purchase', 'done']">
                     <img src="/buz_po_portal/static/img/signature1.jpg" class="signature-image"/>
                     <p class="signature-name">(Pornpetch Wasantakijkamjon)</p>
                 </t>
-                <t t-if="not o.l1_approved_by">
+                <t t-else="">
                     <div style="height: 60px;"></div> <!-- Empty space for signature -->
                     <p class="signature-name">&amp;nbsp;</p>
                 </t>
@@ -364,11 +364,11 @@
     <div class="col-4">
         <div class="signature-box">
             <div class="signature-content">
-                <t t-if="o.approval_signature">
-                    <img t-att-src="image_data_uri(o.approval_signature)" class="signature-image"/>
+                <t t-if="o.approval_signature and o.state in ['purchase', 'done']">
+                    <img t-attf-src="/web/image/purchase.order/{{ o.id }}/approval_signature" class="signature-image"/>
                     <p class="signature-name">(<span t-field="o.approver_id.name"/>)</p>
                 </t>
-                <t t-elif="o.l2_approved_by">
+                <t t-elif="o.l2_approved_by and o.state in ['purchase', 'done']">
                     <img src="/buz_po_portal/static/img/signature2.jpg" class="signature-image"/>
                     <p class="signature-name">(Naphaksorn Wachirapanwichan)</p>
                 </t>

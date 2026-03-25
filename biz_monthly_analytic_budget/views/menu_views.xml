@@ -22,6 +22,13 @@
               sequence="20"
               groups="biz_monthly_analytic_budget.group_monthly_budget_user"/>
 
+    <menuitem id="menu_monthly_budget_approval_requests"
+              name="Approval Requests"
+              parent="menu_monthly_budget_root"
+              action="action_monthly_budget_approval_request"
+              sequence="25"
+              groups="biz_monthly_analytic_budget.group_monthly_budget_user"/>
+
     <menuitem id="menu_monthly_budget_report"
               name="Budget Analysis"
               parent="menu_monthly_budget_root"
