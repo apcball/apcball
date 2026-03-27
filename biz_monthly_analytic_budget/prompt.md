@@ -1,347 +1,326 @@
-# prompt.md — Hardening Monthly Analytic Budget Engine (v2)
+# prompt.md — Budget Dashboard v2 (Analytic Focus + UI Polish)
 
 ## 🎯 Objective
 
-Enhance `biz_monthly_analytic_budget` to be **production-safe, concurrency-safe, and data-consistent** by implementing:
+Upgrade the existing dashboard to:
 
-1. Concurrency / Race Condition Protection
-2. Robust Analytic Distribution Parsing
-3. Reserved vs Used Consistency Mechanism
-4. SQL View Performance Optimization
-
-All implementations must be:
-
-* Atomic
-* Idempotent (where applicable)
-* Multi-company safe
-* Compatible with Odoo ORM + PostgreSQL
+* Be **analytic-driven (multi-dimension breakdown)**
+* Provide **decision-ready insights**
+* Improve **UI/UX to enterprise standard**
+* Replace low-value charts with **actionable visualizations**
 
 ---
 
-# 1️⃣ Concurrency / Race Condition Protection
+# 🧠 Core Design Principle
 
-## Problem
+> ❌ Old: Aggregate view (BU1 only)
+> ✅ New: **Analytic-first + Drill-down + Visual clarity**
 
-Multiple PR/PO confirmations can update the same `monthly.budget.line` simultaneously, causing **overspending**.
+---
 
-## Solution Strategy
+# 1️⃣ Backend API Upgrade
 
-Use **row-level locking (PostgreSQL `FOR UPDATE`)** to ensure atomic updates.
-
-## Implementation
-
-### A. Add Locking Method
+## A. Extend Main Service
 
 ```python
-def _lock_budget_lines(self, analytic_account_ids, plan_id):
+def get_dashboard_data(self, filters):
+    return {
+        'kpi': self._get_kpi(filters),
+        'waterfall': self._get_waterfall(filters),
+        'analytic_breakdown': self._get_analytic_breakdown(filters),  # ⭐ NEW
+        'stacked_bar': self._get_stacked_bar(filters),                # ⭐ NEW
+        'trend': self._get_trend(filters),
+        'alerts': self._get_alerts(filters),
+    }
+```
+
+---
+
+## B. Analytic Breakdown (CORE FEATURE)
+
+```python
+def _get_analytic_breakdown(self, filters):
     query = """
-        SELECT id FROM monthly_budget_line
-        WHERE analytic_account_id IN %s
-        AND plan_id = %s
-        FOR UPDATE
+        SELECT
+            analytic_account_id,
+            department_id,
+            project_id,
+            category,
+            SUM(budget_amount) AS budget,
+            SUM(fixed_cost) AS fixed,
+            SUM(reserved_amount) AS reserved,
+            SUM(used_amount) AS used
+        FROM monthly_budget_report
+        WHERE plan_id = %s
+        GROUP BY analytic_account_id, department_id, project_id, category
     """
-    self.env.cr.execute(query, (tuple(analytic_account_ids), plan_id))
-```
 
----
+    self.env.cr.execute(query, [filters['plan_id']])
+    rows = self.env.cr.dictfetchall()
 
-### B. Apply Lock in Critical Sections
+    result = []
+    for r in rows:
+        available = r['budget'] - r['fixed'] - r['reserved'] - r['used']
+        utilization = (r['used'] / r['budget']) if r['budget'] else 0
 
-#### PR → Reservation
-
-```python
-def _reserve_monthly_analytic_budget(self):
-    plan = self._get_budget_plan()
-
-    analytic_ids = self._extract_analytic_ids()
-
-    self._lock_budget_lines(analytic_ids, plan.id)
-
-    # re-read AFTER lock
-    budget_lines = self._get_budget_lines(plan, analytic_ids)
-
-    self._check_monthly_analytic_budget(budget_lines)
-
-    self._apply_reservation(budget_lines)
-```
-
----
-
-#### PO → Consumption
-
-```python
-def _consume_monthly_analytic_budget(self):
-    plan = self._get_budget_plan()
-
-    analytic_ids = self._extract_analytic_ids()
-
-    self._lock_budget_lines(analytic_ids, plan.id)
-
-    budget_lines = self._get_budget_lines(plan, analytic_ids)
-
-    self._apply_consumption(budget_lines)
-```
-
----
-
-## Requirements
-
-* MUST re-read data after acquiring lock
-* MUST wrap in single transaction
-* NEVER compute before locking
-
----
-
-# 2️⃣ Analytic Distribution Parsing
-
-## Problem
-
-`analytic_distribution` JSON:
-
-* May not sum to 100
-* Float precision issues
-* Missing/invalid keys
-
----
-
-## Solution Strategy
-
-* Normalize distribution
-* Use `Decimal`
-* Validate strictly
-
----
-
-## Implementation
-
-### A. Utility Method
-
-```python
-from decimal import Decimal, ROUND_HALF_UP
-
-def _normalize_distribution(self, distribution):
-    total = sum(Decimal(str(v)) for v in distribution.values())
-
-    if total == 0:
-        raise UserError("Analytic distribution total cannot be zero")
-
-    normalized = {}
-    for acc_id, value in distribution.items():
-        pct = (Decimal(str(value)) / total) * Decimal('100')
-        normalized[acc_id] = pct.quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)
-
-    return normalized
-```
-
----
-
-### B. Convert to Amount
-
-```python
-def _compute_distribution_amount(self, total_amount, distribution):
-    normalized = self._normalize_distribution(distribution)
-
-    result = {}
-    for acc_id, pct in normalized.items():
-        amount = (Decimal(str(total_amount)) * pct / Decimal('100'))
-        result[acc_id] = amount.quantize(Decimal('0.0001'))
+        result.append({
+            'analytic': r['analytic_account_id'],
+            'department': r['department_id'],
+            'project': r['project_id'],
+            'category': r['category'],
+            'budget': r['budget'],
+            'fixed': r['fixed'],
+            'reserved': r['reserved'],
+            'used': r['used'],
+            'available': available,
+            'utilization': utilization,
+        })
 
     return result
 ```
 
 ---
 
-## Requirements
-
-* Precision: 4 decimal places
-* Reject invalid distributions
-* Always normalize before use
-
----
-
-# 3️⃣ Reserved vs Used Consistency
-
-## Problem
-
-Possible inconsistencies:
-
-* PR cancelled but reservation not released
-* PO cancelled but used not reverted
-* Partial flows
-
----
-
-## Solution Strategy
-
-Introduce **single source of truth recomputation**
-
----
-
-## Implementation
-
-### A. Central Recompute Method
+## C. Stacked Bar Data
 
 ```python
-def _recompute_line_balance(self):
-    for line in self:
-        reserved = self._compute_reserved_from_source(line)
-        used = self._compute_used_from_source(line)
+def _get_stacked_bar(self, filters):
+    data = self._get_analytic_breakdown(filters)
 
-        line.write({
-            'reserved_amount': reserved,
-            'used_amount': used,
-        })
+    return [
+        {
+            'label': d['analytic'],
+            'budget': d['budget'],
+            'fixed': d['fixed'],
+            'reserved': d['reserved'],
+            'used': d['used'],
+        }
+        for d in data
+    ]
 ```
 
 ---
 
-### B. Source Computation
+# 2️⃣ OWL Frontend Upgrade
+
+## A. New Component Structure
+
+```javascript
+components/
+ ├── kpi_cards.js
+ ├── analytic_table.js      ⭐ MAIN
+ ├── progress_bar.js
+ ├── stacked_bar.js
+ ├── waterfall_chart.js
+ ├── trend_chart.js
+ └── alert_panel.js
+```
+
+---
+
+# 3️⃣ Analytic Table (Main UI)
+
+## A. Table Layout
+
+```xml
+<table class="o_budget_table">
+  <thead>
+    <tr>
+      <th>Analytic</th>
+      <th>Department</th>
+      <th>Budget</th>
+      <th>Fixed</th>
+      <th>Reserved</th>
+      <th>Used</th>
+      <th>Available</th>
+      <th>%</th>
+    </tr>
+  </thead>
+  <tbody>
+    <t t-foreach="props.data" t-as="row">
+      <tr>
+        <td><t t-esc="row.analytic"/></td>
+        <td><t t-esc="row.department"/></td>
+        <td><t t-esc="row.budget"/></td>
+        <td><t t-esc="row.fixed"/></td>
+        <td><t t-esc="row.reserved"/></td>
+        <td><t t-esc="row.used"/></td>
+        <td><t t-esc="row.available"/></td>
+        <td>
+          <ProgressBar value="row.utilization"/>
+        </td>
+      </tr>
+    </t>
+  </tbody>
+</table>
+```
+
+---
+
+## B. Progress Bar Component
+
+```javascript
+export class ProgressBar extends Component {
+    static props = ['value'];
+
+    get color() {
+        if (this.props.value < 0.5) return 'green';
+        if (this.props.value < 0.8) return 'yellow';
+        return 'red';
+    }
+}
+```
+
+---
+
+# 4️⃣ Stacked Bar Chart
+
+## Replace Heatmap
+
+```javascript
+const data = {
+    labels: items.map(i => i.label),
+    datasets: [
+        { label: 'Fixed', data: items.map(i => i.fixed) },
+        { label: 'Reserved', data: items.map(i => i.reserved) },
+        { label: 'Used', data: items.map(i => i.used) },
+    ]
+};
+```
+
+---
+
+# 5️⃣ Waterfall Chart (UI Polish)
+
+## Color Mapping
+
+```javascript
+const colors = {
+    total: '#3B82F6',
+    fixed: '#8B5CF6',
+    reserved: '#F59E0B',
+    used: '#EF4444',
+    remaining: '#10B981',
+};
+```
+
+---
+
+# 6️⃣ KPI Enhancement
+
+## Add Burn Rate
 
 ```python
-def _compute_reserved_from_source(self, line):
-    commitments = self.env['budget.commitment'].search([
-        ('analytic_account_id', '=', line.analytic_account_id.id),
-        ('state', '=', 'reserved'),
-        ('plan_id', '=', line.plan_id.id),
-    ])
-    return sum(commitments.mapped('amount'))
+burn_rate = used / total if total else 0
 ```
+
+---
+
+# 7️⃣ Alert Panel
 
 ```python
-def _compute_used_from_source(self, line):
-    commitments = self.env['budget.commitment'].search([
-        ('analytic_account_id', '=', line.analytic_account_id.id),
-        ('state', '=', 'used'),
-        ('plan_id', '=', line.plan_id.id),
-    ])
-    return sum(commitments.mapped('amount'))
+def _get_alerts(self, filters):
+    alerts = []
+
+    for line in self._get_analytic_breakdown(filters):
+        if line['utilization'] > 0.8:
+            alerts.append({
+                'type': 'warning',
+                'message': f"{line['analytic']} > 80%"
+            })
+
+        if line['available'] < 0:
+            alerts.append({
+                'type': 'error',
+                'message': f"{line['analytic']} over budget"
+            })
+
+    return alerts
 ```
 
 ---
 
-### C. Add Action + Cron
+# 8️⃣ Filters Upgrade
 
-#### Manual Action
+## Add:
 
-```python
-def action_recompute_budget(self):
-    self.budget_line_ids._recompute_line_balance()
-```
-
-#### Scheduled Job
-
-* Run daily or hourly
-* Ensure system self-heals
-
----
-
-## Requirements
-
-* Budget line values MUST be derived, not trusted
-* Must support manual + automatic recompute
-
----
-
-# 4️⃣ SQL View Performance Optimization
-
-## Problem
-
-`monthly_budget_report` joins:
-
-* budget lines
-* purchase order lines
-
-→ slow on large datasets
-
----
-
-## Solution Strategy
-
-### Option A (Recommended): Materialized View
-
----
-
-### A. Create Materialized View
-
-```sql
-CREATE MATERIALIZED VIEW monthly_budget_report_mv AS
-SELECT ...
+```text
+Year
+Month
+Company
+Department
+Project
+Category
 ```
 
 ---
 
-### B. Add Indexes
+# 9️⃣ UI Styling (IMPORTANT)
 
-```sql
-CREATE INDEX idx_mbr_analytic ON monthly_budget_report_mv (analytic_account_id);
-CREATE INDEX idx_mbr_date ON monthly_budget_report_mv (date);
-CREATE INDEX idx_mbr_plan ON monthly_budget_report_mv (plan_id);
+## Color Palette
+
+```css
+:root {
+  --budget: #3B82F6;
+  --fixed: #8B5CF6;
+  --reserved: #F59E0B;
+  --used: #EF4444;
+  --available: #10B981;
+}
 ```
 
 ---
 
-### C. Refresh Method
+## Table Styling
 
-```python
-def refresh_materialized_view(self):
-    self.env.cr.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY monthly_budget_report_mv")
+```css
+.o_budget_table {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.o_budget_table tr:hover {
+  background: #f9fafb;
+}
 ```
 
 ---
 
-### D. Hook into Odoo
+# 🔟 Performance Rules
 
-* Call refresh on:
+* Use SQL aggregation only (NO Python loops)
+* Add indexes:
 
-  * PO confirm
-  * PR confirm
-  * Budget update
-
----
-
-## Option B: ORM Optimization (if not using MV)
-
-* Add indexes on:
-
-  * purchase_order_line(analytic_distribution)
-  * monthly_budget_line(analytic_account_id)
-
-* Reduce JOIN depth
-
-* Use aggregated pre-compute fields
-
----
-
-## Requirements
-
-* Dashboard response < 300ms (target)
-* Must scale to 100k+ PO lines
-* Prefer MV if dataset is large
+  * analytic_account_id
+  * department_id
+  * plan_id
+* Response time < 300ms
 
 ---
 
 # ✅ Acceptance Criteria
 
-* No double-spend under concurrent PR/PO
-* Analytic distribution always normalized
-* Budget always consistent after recompute
-* Dashboard performance stable under load
+* Dashboard shows per-analytic breakdown
+* Users can identify high usage instantly
+* UI is clean, readable, and modern
+* Charts reflect dimension-based data
+* No single aggregated BU-only view
 
 ---
 
-# 🚀 Bonus (Optional but Recommended)
+# 🚀 Outcome
 
-* Add retry mechanism on lock contention
-* Add audit log for every budget mutation
-* Add monitoring (log slow queries)
+After upgrade:
+
+❌ Dashboard = static report
+✅ Dashboard = **Financial Control Panel**
 
 ---
 
-# 📌 Notes for AI / Dev
+# 📌 Notes
 
-* Do NOT trust computed fields without lock
-* Always recompute after acquiring lock
-* Treat budget as financial data → must be exact
-* Prefer correctness over performance (then optimize)
+* Analytic breakdown is the PRIMARY view
+* Every chart must support decision-making
+* Avoid redundant visuals (no useless pie charts)
 
 ---

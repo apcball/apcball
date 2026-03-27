@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from . import monthly_budget_plan
+from . import monthly_budget_fixed_cost
 from . import monthly_budget_line
 from . import purchase_order
 from . import purchase_requisition

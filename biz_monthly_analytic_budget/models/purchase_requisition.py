@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 from datetime import timedelta
+from decimal import Decimal
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -20,11 +21,12 @@ def _find_active_monthly_plan(env, target_date, company_id):
     return env['monthly.budget.plan'].sudo().search(domain, limit=1)
 
 
-def _extract_analytic_amounts(line):
+def _extract_analytic_amounts(line, budget_line_model=None):
     """
     Extract analytic account allocations from a requisition.order line.
 
     Uses the standard Odoo 17 ``analytic_distribution`` JSON field.
+    Normalizes distribution using Decimal for financial precision.
     Format: {"<analytic_account_id>": <percentage>, ...}
 
     Returns a list of (analytic_account_id (int), allocated_amount (float)).
@@ -33,17 +35,38 @@ def _extract_analytic_amounts(line):
     distribution = line.analytic_distribution
     if not distribution:
         return []
-        
+
     if isinstance(distribution, str):
         try:
             distribution = json.loads(distribution)
         except json.JSONDecodeError:
             return []
 
-    if not isinstance(distribution, dict):
+    if not isinstance(distribution, dict) or not distribution:
         return []
 
     subtotal = line.price_subtotal or 0.0
+    if not subtotal:
+        return []
+
+    # Normalize using Decimal for precision (via budget line helper if available)
+    if budget_line_model:
+        try:
+            dist_amounts = budget_line_model._compute_distribution_amount(subtotal, distribution)
+            result = []
+            for acc_id_str, amount in dist_amounts.items():
+                try:
+                    account_id = int(acc_id_str)
+                except (ValueError, TypeError):
+                    continue
+                amt = float(amount)
+                if amt:
+                    result.append((account_id, amt))
+            return result
+        except Exception:
+            pass  # fall through to legacy method
+
+    # Fallback: legacy float computation
     result = []
     for account_id_str, pct in distribution.items():
         try:
@@ -140,6 +163,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                     'No active monthly analytic budget plan found for the expected payment date.'
                     '</div>'
                 )
+                req.budget_warning = False
                 continue
 
             # Aggregate amounts by analytic account across all lines
@@ -160,13 +184,13 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             html_parts = []
             has_warning = False
             AnalyticAccount = self.env['account.analytic.account']
+            BudgetLine = self.env['monthly.budget.line']
             for account_id, pr_amt in analytic_totals.items():
                 analytic = AnalyticAccount.browse(account_id)
                 if not analytic.exists():
                     continue
-                budget_line = plan.budget_line_ids.filtered(
-                    lambda l, a=analytic: l.analytic_account_id == a
-                )
+                dims = {'analytic_account_id': account_id}
+                budget_line = BudgetLine._find_budget_line(plan, dims, log_fallback=False)
                 if not budget_line:
                     html_parts.append(
                         '<div class="alert alert-warning">No monthly budget line for: %s</div>'
@@ -231,17 +255,16 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         used = 0.0
         reserved = 0.0
         AnalyticAccount = self.env['account.analytic.account']
+        BudgetLine = self.env['monthly.budget.line']
         budget_line_names = []
         
         for account_id, amt in analytic_totals.items():
             analytic = AnalyticAccount.browse(account_id)
             if not analytic.exists():
                 continue
-            budget_line = plan.budget_line_ids.filtered(
-                lambda l, a=analytic: l.analytic_account_id == a
-            )
-            if budget_line:
-                bl = budget_line[0]
+            dims = {'analytic_account_id': account_id}
+            bl = BudgetLine._find_budget_line(plan, dims, log_fallback=False)
+            if bl:
                 limit_amt += bl.budget_amount
                 used += bl.used_amount
                 reserved += bl.reserved_amount
@@ -318,37 +341,39 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             return  # No analytic distribution — allow
 
         AnalyticAccount = self.env['account.analytic.account']
+        BudgetLine = self.env['monthly.budget.line']
         violations = []
         for account_id, pr_amt in analytic_totals.items():
             analytic = AnalyticAccount.browse(account_id)
             if not analytic.exists():
                 continue
-            budget_line = plan.budget_line_ids.filtered(
-                lambda l, a=analytic: l.analytic_account_id == a
-            )
+            dims = {'analytic_account_id': account_id}
+            budget_line = BudgetLine._find_budget_line(plan, dims)
             if not budget_line:
                 raise UserError(_(
                     'No monthly budget line found for analytic account "%s".\n'
                     'Please add it to the monthly budget plan "%s" first.'
                 ) % (analytic.name, plan.name))
 
-            budget_line = budget_line[0]
+            budget_line = budget_line[0] if hasattr(budget_line, '__len__') else budget_line
             
             # Since this PR might have already reserved budget (if called twice),
             # we should check commitment records. 
             # But normally we call this on action_confirm_requisition.
             total_committed = budget_line.reserved_amount + budget_line.used_amount
             
-            # If not yet reserved by THIS document, add pr_amt
-            # Check if budget.commitment exists for this document
-            commitment = self.env['budget.commitment'].sudo().search([
+            # If not yet actively reserved by THIS document, add pr_amt
+            # IMPORTANT: filter by active states only — released/cancelled commitments
+            # from prior attempts must NOT suppress the overage check.
+            active_commitment = self.env['budget.commitment'].sudo().search([
                 ('document_model', '=', self._name),
                 ('document_id', '=', self.id),
                 ('analytic_account_id', '=', account_id),
-                ('budget_source', '=', 'monthly')
+                ('budget_source', '=', 'monthly'),
+                ('state', 'in', ('reserved', 'used')),
             ], limit=1)
-            
-            if not commitment:
+
+            if not active_commitment:
                 total_committed += pr_amt
 
             overage = total_committed - budget_line.budget_amount
@@ -380,7 +405,16 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             raise UserError('\n'.join(msg_lines))
 
     def _reserve_monthly_analytic_budget(self):
-        """Create budget.commitment records and update monthly budget line reserved amounts."""
+        """
+        Reserve monthly analytic budget for this PR.
+
+        Flow (concurrency-safe):
+        1. Determine analytic IDs from PR lines.
+        2. Acquire FOR UPDATE row-level lock on matching budget lines.
+        3. Re-read fresh budget data AFTER lock.
+        4. Check for existing reservation (idempotency).
+        5. Create commitment audit record.
+        """
         self.ensure_one()
         target_date = self.payment_date
         if not target_date or not self.requisition_order_ids:
@@ -390,38 +424,50 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         if not plan:
             return
 
+        BudgetLine = self.env['monthly.budget.line']
         engine = self.env['budget.engine']
         AnalyticAccount = self.env['account.analytic.account']
 
-        # Aggregate by analytic account
+        # Aggregate amounts by analytic account (using Decimal precision)
         analytic_totals = {}
         for line in self.requisition_order_ids:
-            for account_id, amount in _extract_analytic_amounts(line):
+            for account_id, amount in _extract_analytic_amounts(line, BudgetLine):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+
+        if not analytic_totals:
+            return
+
+        # --- Concurrency: acquire row-level lock BEFORE reading budget values ---
+        BudgetLine._lock_budget_lines(list(analytic_totals.keys()), plan.id)
+
+        # Re-read plan budget lines AFTER acquiring the lock
+        plan.invalidate_recordset(['budget_line_ids'])
 
         for account_id, total_amt in analytic_totals.items():
             analytic = AnalyticAccount.browse(account_id)
             if not analytic.exists() or not total_amt:
                 continue
-            budget_line = plan.budget_line_ids.filtered(
-                lambda l, a=analytic: l.analytic_account_id == a
-            )
+
+            dims = {'analytic_account_id': account_id}
+            budget_line = BudgetLine._find_budget_line(plan, dims)
             if not budget_line:
                 continue
             budget_line = budget_line[0]
 
-            # Check if already reserved to avoid double reservation
+            # Idempotency: skip if already reserved by this document
             commitment = self.env['budget.commitment'].sudo().search([
                 ('document_model', '=', self._name),
                 ('document_id', '=', self.id),
                 ('analytic_account_id', '=', account_id),
-                ('budget_source', '=', 'monthly')
+                ('budget_source', '=', 'monthly'),
+                ('state', '=', 'reserved'),
             ], limit=1)
             if commitment:
+                _logger.debug(
+                    'PR %s already has reservation for analytic %s — skipping',
+                    self.name, analytic.name,
+                )
                 continue
-
-            # Update line reserved amount
-            budget_line._add_reservation(total_amt)
 
             # Create commitment audit record
             engine.reserve_budget({
@@ -434,6 +480,10 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 'analytic_account_id': account_id,
                 'note': _('Reserved from PR %s - %s') % (self.name, analytic.name),
             })
+            _logger.info(
+                'Monthly budget reserved: PR=%s analytic=%s amount=%.4f plan=%s',
+                self.name, analytic.name, total_amt, plan.name,
+            )
 
     def action_head_cancel(self):
         """Release monthly budget reservations when head cancels PR."""
@@ -466,6 +516,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
 
         engine = self.env['budget.engine']
         AnalyticAccount = self.env['account.analytic.account']
+        BudgetLine = self.env['monthly.budget.line']
 
         analytic_totals = {}
         for line in self.requisition_order_ids:
@@ -476,12 +527,11 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             analytic = AnalyticAccount.browse(account_id)
             if not analytic.exists():
                 continue
-            budget_line = plan.budget_line_ids.filtered(
-                lambda l, a=analytic: l.analytic_account_id == a
-            )
+            dims = {'analytic_account_id': account_id}
+            budget_line = BudgetLine._find_budget_line(plan, dims)
             if not budget_line:
                 continue
-            budget_line[0]._release_reservation(total_amt)
+            budget_line[0]._release_reservation(total_amt) if hasattr(budget_line[0], '_release_reservation') else None
 
         # Release all commitment records for this document
         engine.release_budget({

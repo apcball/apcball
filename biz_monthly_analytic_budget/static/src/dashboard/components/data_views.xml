@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="biz_monthly_analytic_budget.AnalyticTable" owl="1">
+        <div class="card chart-card mb-4">
+            <div class="card-header border-0 pb-0">
+                <h5 class="card-title mb-0">Analytic Breakdown</h5>
+            </div>
+            <div class="card-body p-0 table-responsive mt-3">
+                <table class="table mb-0 o_budget_table">
+                    <thead>
+                        <tr>
+                            <th>Analytic</th>
+                            <th>Department</th>
+                            <th>Project</th>
+                            <th>Category</th>
+                            <th class="text-end">Budget</th>
+                            <th class="text-end">Fixed</th>
+                            <th class="text-end">Reserved</th>
+                            <th class="text-end">Used</th>
+                            <th class="text-end">Available</th>
+                            <th class="text-center" style="width: 120px;">Util %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="props.data || []" t-as="row" t-key="row.analytic + row.department + row.project">
+                            <td><t t-esc="row.analytic"/></td>
+                            <td><t t-esc="row.department"/></td>
+                            <td><t t-esc="row.project"/></td>
+                            <td><t t-esc="row.category"/></td>
+                            <td class="text-end"><t t-esc="formatCurrency(row.budget)"/></td>
+                            <td class="text-end"><t t-esc="formatCurrency(row.fixed)"/></td>
+                            <td class="text-end"><t t-esc="formatCurrency(row.reserved)"/></td>
+                            <td class="text-end text-danger fw-semibold"><t t-esc="formatCurrency(row.used)"/></td>
+                            <td class="text-end text-success fw-bold"><t t-esc="formatCurrency(row.available)"/></td>
+                            <td class="text-center align-middle">
+                                <ProgressBar value="row.utilization" />
+                            </td>
+                        </tr>
+                        <tr t-if="!props.data or props.data.length === 0">
+                            <td colspan="10" class="text-center py-4 text-muted">No analytic data available.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="biz_monthly_analytic_budget.ProgressBar" owl="1">
+        <div class="progress" style="height: 8px;" t-att-title="percentage + '%'">
+            <div t-attf-class="progress-bar bg-{{ color }}"
+                 role="progressbar"
+                 t-attf-style="width: {{ barWidth }}%;"
+                 t-att-aria-valuenow="percentage"
+                 aria-valuemin="0"
+                 aria-valuemax="100">
+            </div>
+        </div>
+    </t>
+</templates>

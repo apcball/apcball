@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Monthly Analytic Budget (Mogen)',
-    'version': '17.0.1.0.0',
+    'version': '17.0.2.0.0',
     'category': 'Purchase',
-    'summary': 'Monthly budget allocation and control based on analytic accounts',
+    'summary': 'Multi-dimensional monthly budget control based on analytic accounts, department, project, and category',
     'description': """
         Monthly Analytic Budget Control
         ================================
@@ -21,11 +21,14 @@
         'account',
         'mail',
         'employee_purchase_requisition',
+        'hr',
+        'project',
     ],
     'data': [
         'security/budget_security.xml',
         'security/ir.model.access.csv',
         'data/sequence_data.xml',
+        'data/cron_data.xml',
         'views/monthly_budget_plan_views.xml',
         'views/monthly_budget_line_views.xml',
         'views/monthly_budget_approval_request_views.xml',
@@ -39,8 +42,10 @@
     'assets': {
         'web.assets_backend': [
             'biz_monthly_analytic_budget/static/src/scss/monthly_budget_dashboard.scss',
-            'biz_monthly_analytic_budget/static/src/js/monthly_budget_dashboard.js',
-            'biz_monthly_analytic_budget/static/src/xml/monthly_budget_dashboard.xml',
+            'biz_monthly_analytic_budget/static/src/dashboard/components/*.js',
+            'biz_monthly_analytic_budget/static/src/dashboard/components/*.xml',
+            'biz_monthly_analytic_budget/static/src/dashboard/dashboard.js',
+            'biz_monthly_analytic_budget/static/src/dashboard/dashboard.xml',
         ],
     },
     'installable': True,

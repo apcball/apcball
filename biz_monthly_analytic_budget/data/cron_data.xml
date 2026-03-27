@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Daily cron: refresh Monthly Budget MV and recompute line balances -->
+        <record id="ir_cron_monthly_budget_refresh" model="ir.cron">
+            <field name="name">Monthly Budget: Refresh Materialized View</field>
+            <field name="model_id" ref="model_monthly_budget_report"/>
+            <field name="state">code</field>
+            <field name="code">model.refresh_materialized_view()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="active" eval="True"/>
+            <field name="user_id" ref="base.user_root"/>
+        </record>
+
+        <!-- Hourly cron: recompute budget line balances for all confirmed plans -->
+        <record id="ir_cron_monthly_budget_recompute_lines" model="ir.cron">
+            <field name="name">Monthly Budget: Recompute Line Balances</field>
+            <field name="model_id" ref="model_monthly_budget_line"/>
+            <field name="state">code</field>
+            <field name="code">
+confirmed_plans = env['monthly.budget.plan'].search([('state', '=', 'confirmed')])
+for plan in confirmed_plans:
+    plan.budget_line_ids._recompute_line_balance()
+            </field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="numbercall">-1</field>
+            <field name="active" eval="True"/>
+            <field name="user_id" ref="base.user_root"/>
+        </record>
+    </data>
+</odoo>

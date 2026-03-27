@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="biz_monthly_analytic_budget.KpiCards" owl="1">
+        <div class="row g-4 mb-5" t-if="props.data">
+            <div class="col-md col-sm-6">
+                <div class="card kpi-card h-100" style="--card-color: #3B82F6;">
+                    <div class="card-body p-4">
+                        <div class="kpi-title mb-2">Total Budget</div>
+                        <h4 class="kpi-value mb-0"><t t-esc="formatCurrency(props.data.total_budget)"/></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md col-sm-6">
+                <div class="card kpi-card h-100" style="--card-color: #8B5CF6;">
+                    <div class="card-body p-4">
+                        <div class="kpi-title mb-2" style="color: #7c3aed;">Fixed Cost</div>
+                        <h4 class="kpi-value mb-0"><t t-esc="formatCurrency(props.data.fixed_cost)"/></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md col-sm-6">
+                <div class="card kpi-card h-100" style="--card-color: #F59E0B;">
+                    <div class="card-body p-4">
+                        <div class="kpi-title mb-2" style="color: #d97706;">Reserved</div>
+                        <h4 class="kpi-value mb-0"><t t-esc="formatCurrency(props.data.reserved)"/></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md col-sm-6">
+                <div class="card kpi-card h-100" style="--card-color: #EF4444;">
+                    <div class="card-body p-4">
+                        <div class="kpi-title mb-2" style="color: #dc2626;">Used</div>
+                        <h4 class="kpi-value mb-0"><t t-esc="formatCurrency(props.data.used)"/></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md col-sm-6">
+                <div class="card kpi-card h-100" style="--card-color: #10B981;">
+                    <div class="card-body p-4">
+                        <div class="kpi-title mb-2" style="color: #059669;">Available</div>
+                        <h4 class="kpi-value mb-0"><t t-esc="formatCurrency(props.data.available)"/></h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md col-sm-6">
+                <div class="card kpi-card h-100" style="--card-color: #0f172a; background: linear-gradient(135deg, #1e293b, #0f172a);">
+                    <div class="card-body p-4">
+                        <div class="kpi-title mb-2" style="color: #cbd5e1;">Utilization</div>
+                        <h4 class="kpi-value mb-0 text-white"><t t-esc="props.data.utilization ? props.data.utilization.toFixed(1) : '0.0'"/>%</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md col-sm-6">
+                <div class="card kpi-card h-100" style="--card-color: #0ea5e9;">
+                    <div class="card-body p-4">
+                        <div class="kpi-title mb-2" style="color: #0284c7;">Burn Rate</div>
+                        <h4 class="kpi-value mb-0"><t t-esc="props.data.burn_rate ? (props.data.burn_rate * 100).toFixed(1) : '0.0'"/>%</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="biz_monthly_analytic_budget.BudgetDashboard" owl="1">
+        <div class="o_action o_view_controller o_monthly_budget_dashboard">
+            <div class="o_content o_scrollable" style="overflow-y: auto;">
+                <div class="container-fluid py-4 bg-light min-vh-100">
+                <!-- Header & Filters -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="mb-0 text-dark fw-bold">Budget Smart Dashboard</h2>
+                    <div class="d-flex gap-2 flex-wrap justify-content-end">
+                        <select class="form-select form-select-sm border-secondary shadow-sm w-auto" name="company_id" t-model="state.filters.company_id" t-on-change="onFilterChange">
+                            <option value="">All Companies</option>
+                            <t t-foreach="state.filterOptions.companies" t-as="comp" t-key="comp.id">
+                                <option t-att-value="comp.id"><t t-esc="comp.name"/></option>
+                            </t>
+                        </select>
+                        <select class="form-select form-select-sm border-secondary shadow-sm w-auto" name="department_id" t-model="state.filters.department_id" t-on-change="onFilterChange">
+                            <option value="">All Depts</option>
+                            <t t-foreach="state.filterOptions.departments" t-as="dept" t-key="dept.id">
+                                <option t-att-value="dept.id"><t t-esc="dept.name"/></option>
+                            </t>
+                        </select>
+                        <select class="form-select form-select-sm border-secondary shadow-sm w-auto" name="project_id" t-model="state.filters.project_id" t-on-change="onFilterChange">
+                            <option value="">All Projects</option>
+                            <t t-foreach="state.filterOptions.projects" t-as="proj" t-key="proj.id">
+                                <option t-att-value="proj.id"><t t-esc="proj.name"/></option>
+                            </t>
+                        </select>
+                        <select class="form-select form-select-sm border-secondary shadow-sm w-auto" name="category" t-model="state.filters.category" t-on-change="onFilterChange">
+                            <option value="">All Categories</option>
+                            <option value="capex">CapEx</option>
+                            <option value="opex">OpEx</option>
+                        </select>
+                        <select class="form-select form-select-sm border-secondary shadow-sm w-auto" name="year" t-model="state.filters.year" t-on-change="onFilterChange">
+                            <option value="">All Years</option>
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                            <option value="2026">2026</option>
+                            <option value="2027">2027</option>
+                        </select>
+                        <select class="form-select form-select-sm border-secondary shadow-sm w-auto" name="month" t-model="state.filters.month" t-on-change="onFilterChange">
+                            <option value="">All Months</option>
+                            <option value="01">Jan</option>
+                            <option value="02">Feb</option>
+                            <option value="03">Mar</option>
+                            <option value="04">Apr</option>
+                            <option value="05">May</option>
+                            <option value="06">Jun</option>
+                            <option value="07">Jul</option>
+                            <option value="08">Aug</option>
+                            <option value="09">Sep</option>
+                            <option value="10">Oct</option>
+                            <option value="11">Nov</option>
+                            <option value="12">Dec</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm shadow-sm" t-on-click="loadData">
+                            <i class="fa fa-refresh me-1"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div t-if="state.loading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+
+                <!-- Dashboard Content -->
+                <div t-else="">
+                    <AlertPanel data="state.data.alerts" />
+                    <KpiCards data="state.data.kpi" />
+                    
+                    <div class="row g-4 mb-4">
+                        <div class="col-lg-6">
+                            <WaterfallChart data="state.data.waterfall" />
+                        </div>
+                        <div class="col-lg-6">
+                            <TrendChart data="state.data.trend" />
+                        </div>
+                    </div>
+
+                    <StackedBarChart data="state.data.stacked_bar" />
+                    
+                    <AnalyticTable data="state.data.analytic_breakdown" />
+                </div>
+            </div>
+            </div>
+        </div>
+    </t>
+</templates>

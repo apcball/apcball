@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="biz_monthly_analytic_budget.AlertPanel" owl="1">
+        <div class="mb-4" t-if="props.data and props.data.length > 0">
+            <t t-foreach="props.data" t-as="alert" t-key="alert_index">
+                <div t-att-class="'alert alert-' + (alert.type === 'error' ? 'danger' : 'warning') + ' alert-dismissible fade show shadow-sm'" role="alert">
+                    <i t-att-class="'fa fa-fw ' + (alert.type === 'error' ? 'fa-exclamation-triangle' : 'fa-bell') + ' me-2'"></i>
+                    <strong><t t-esc="alert.type === 'error' ? 'Critical Action Needed:' : 'Warning:'"/></strong> 
+                    <t t-esc="alert.message"/>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

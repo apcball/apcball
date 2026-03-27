@@ -1,30 +1,156 @@
 .o_monthly_budget_dashboard {
-    .card {
-        transition: transform 0.2s;
-        &:hover {
-            transform: translateY(-2px);
-        }
+  --budget: #3B82F6;
+  --fixed: #8B5CF6;
+  --reserved: #F59E0B;
+  --used: #EF4444;
+  --available: #10B981;
+
+  .bg-light {
+    background-color: #f8fafc !important;
+  }
+
+  .kpi-card {
+    border-radius: 16px;
+    border: none;
+    background: white;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 4px;
+      background: var(--card-color, #e2e8f0);
+      z-index: 2;
     }
-    .badge {
-        font-weight: 500;
-        letter-spacing: 0.5px;
+
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
     }
-    .table thead th {
-        border-top: none;
+    
+    .kpi-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
     }
-    .o_pie_chart_wrapper {
-        canvas {
-            max-height: 260px;
-        }
+    
+    .kpi-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
     }
-    .o_pie_center_label {
-        small {
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-        }
+  }
+
+  .chart-card {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+    background: #ffffff;
+    transition: transform 0.2s ease;
+    
+    .card-header {
+      background: transparent;
+      border-bottom: 1px solid #f1f5f9;
+      padding: 1.25rem 1.5rem;
+      
+      .card-title {
+        font-weight: 700;
+        color: #334155;
+        font-size: 1.1rem;
+      }
     }
-    // Filters row gap for flex
-    .d-flex[style*="gap"] {
-        gap: 12px;
+  }
+
+  .table-card {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+    background: #ffffff;
+  }
+
+  .o_budget_table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    
+    th {
+      background-color: #f8fafc;
+      border-bottom: 2px solid #e2e8f0;
+      color: #475569;
+      font-weight: 600;
+      padding: 1rem 1.25rem;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+      
+      &:first-child { border-top-left-radius: 16px; }
+      &:last-child { border-top-right-radius: 16px; }
     }
+    
+    td {
+      padding: 1rem 1.25rem;
+      vertical-align: middle;
+      color: #334155;
+      border-bottom: 1px solid #f1f5f9;
+      font-weight: 500;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: #f8fafc;
+    }
+  }
+
+  select.form-select {
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #334155;
+    background-color: white;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s;
+    
+    &:focus {
+      border-color: #3B82F6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+  }
+
+  .btn-primary {
+    background-color: #3B82F6;
+    border-color: #3B82F6;
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+    
+    &:hover {
+      background-color: #2563EB;
+      border-color: #2563EB;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 8px -1px rgba(59, 130, 246, 0.4);
+    }
+  }
+
+  .progress {
+    background-color: #e2e8f0;
+    border-radius: 999px;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+  }
+
+  .progress-bar {
+    border-radius: 999px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }

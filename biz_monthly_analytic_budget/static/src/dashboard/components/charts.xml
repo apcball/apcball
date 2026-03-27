@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="biz_monthly_analytic_budget.WaterfallChart" owl="1">
+        <div class="card chart-card mb-4 h-100">
+            <div class="card-header border-0 pb-0">
+                <h5 class="card-title mb-0">Budget Flow</h5>
+            </div>
+            <div class="card-body mt-2" style="height: 320px;">
+                <canvas t-ref="canvas"></canvas>
+            </div>
+        </div>
+    </t>
+    
+    <t t-name="biz_monthly_analytic_budget.StackedBarChart" owl="1">
+        <div class="card chart-card mb-4">
+            <div class="card-header border-0 pb-0">
+                <h5 class="card-title mb-0">Budget Composition by Dimension</h5>
+            </div>
+            <div class="card-body mt-2" style="height: 350px;">
+                <canvas t-ref="canvas"></canvas>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="biz_monthly_analytic_budget.TrendChart" owl="1">
+        <div class="card chart-card mb-4 h-100">
+            <div class="card-header border-0 pb-0">
+                <h5 class="card-title mb-0">Monthly Trend</h5>
+            </div>
+            <div class="card-body mt-2" style="height: 320px;">
+                <canvas t-ref="canvas"></canvas>
+            </div>
+        </div>
+    </t>
+</templates>

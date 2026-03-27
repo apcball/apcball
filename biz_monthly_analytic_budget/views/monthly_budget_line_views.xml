@@ -10,6 +10,9 @@
                   decoration-warning="utilization_rate &gt; 80">
                 <field name="plan_id" optional="show"/>
                 <field name="analytic_account_id"/>
+                <field name="department_id" optional="show"/>
+                <field name="project_id" optional="show"/>
+                <field name="category" optional="show"/>
                 <field name="percentage" string="%" widget="percentage" optional="show"/>
                 <field name="budget_amount" widget="monetary"/>
                 <field name="reserved_amount" widget="monetary"/>
@@ -36,9 +39,18 @@
                             <field name="budget_amount" widget="monetary"/>
                             <field name="currency_id" invisible="1"/>
                         </group>
-                        <group string="Tracking">
+                        <group string="Dimensions">
+                            <field name="department_id"/>
+                            <field name="project_id"/>
+                            <field name="category"/>
+                        </group>
+                    </group>
+                    <group string="Tracking">
+                        <group>
                             <field name="reserved_amount" widget="monetary" readonly="1"/>
                             <field name="used_amount" widget="monetary" readonly="1"/>
+                        </group>
+                        <group>
                             <field name="available_amount" widget="monetary" readonly="1"/>
                             <field name="utilization_rate" widget="percentage" readonly="1"/>
                         </group>
@@ -56,9 +68,17 @@
             <search string="Monthly Budget Lines">
                 <field name="plan_id"/>
                 <field name="analytic_account_id"/>
+                <field name="department_id"/>
+                <field name="project_id"/>
+                <separator/>
+                <filter string="CapEx" name="capex" domain="[('category','=','capex')]"/>
+                <filter string="OpEx" name="opex" domain="[('category','=','opex')]"/>
                 <group expand="0" string="Group By">
                     <filter string="Plan" name="group_plan" context="{'group_by': 'plan_id'}"/>
                     <filter string="Analytic Account" name="group_analytic" context="{'group_by': 'analytic_account_id'}"/>
+                    <filter string="Department" name="group_department" context="{'group_by': 'department_id'}"/>
+                    <filter string="Project" name="group_project" context="{'group_by': 'project_id'}"/>
+                    <filter string="Category" name="group_category" context="{'group_by': 'category'}"/>
                 </group>
             </search>
         </field>
