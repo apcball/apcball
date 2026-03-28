@@ -1,66 +1,86 @@
-# Module: sale_invoice_policy_bypass
+# Module: stock_unreserve_manager (Odoo 17)
 
 ## Objective
-Create an Odoo 17 module that bypasses the invoicing policy restriction on Sale Orders.
-
-The goal is to allow users to create invoices regardless of:
-- Product invoicing policy (Ordered quantities vs Delivered quantities)
-- Delivery status
-- Quantity delivered
-
-This is intended for temporary use (e.g., accounting backlog processing), and the module will be uninstalled afterward.
+Allow users to cancel stock reservations at picking, product, and global levels without breaking stock integrity.
 
 ---
 
-## Functional Requirements
+## Features
 
-### 1. Override Invoice Creation Logic
-
-Override the method:
-- `sale.order._create_invoices()`
-
-And bypass:
-- `_get_invoiceable_lines()`
-- `_get_invoice_qty()`
-
-### Expected Behavior:
-- All sale order lines (excluding display types like section/note) should be invoiceable
-- Ignore:
-  - delivered_qty
-  - invoicing_policy
-  - qty_to_invoice
+### 1. Picking Unreserve
+- Add button `action_unreserve_picking` on stock.picking
+- Only works for state:
+  - assigned
+  - partially_available
+- Use:
+  move_ids._do_unreserve()
 
 ---
 
-### 2. Logic Rules
-
-For each `sale.order.line`:
-
-- Include line if:
-  - `display_type` is False
-
-- Force:
-  - `qty_to_invoice = product_uom_qty`
-
-- Even if:
-  - product type = service
-  - invoicing_policy = delivery
-  - nothing delivered yet
+### 2. Force Unreserve
+- Button: action_force_unreserve
+- Reset move state to 'confirmed'
+- Ignore downstream reservation conflicts
 
 ---
 
-### 3. Implementation Approach
+### 3. Bulk Unreserve Wizard
+Model: stock.unreserve.wizard
 
-#### Option A (Recommended - Clean Override)
+Fields:
+- unreserve_type: selection (picking, product, all)
+- picking_ids: many2many
+- product_ids: many2many
+- location_id: many2one
+- force: boolean
 
-Override `_get_invoiceable_lines()`:
+Methods:
+- execute_unreserve()
 
-```python
-from odoo import models
+---
 
-class SaleOrder(models.Model):
-    _inherit = 'sale.order'
+### 4. Logging
+Model: stock.unreserve.log
 
-    def _get_invoiceable_lines(self, final=False):
-        lines = self.order_line.filtered(lambda l: not l.display_type)
-        return lines
+Fields:
+- user_id
+- datetime
+- picking_id
+- product_id
+- qty
+- reason
+- type
+
+---
+
+### 5. Security
+Group:
+- stock_unreserve_manager.group_unreserve_manager
+
+Rules:
+- Only manager can force unreserve
+- Only manager can bulk unreserve
+
+---
+
+### 6. UI
+- Add buttons in stock.picking form
+- Add server action for list view
+- Add menu:
+  Inventory > Operations > Unreserve Manager
+
+---
+
+## Constraints
+
+- DO NOT delete stock.move
+- DO NOT alter done quantities
+- MUST preserve stock.move.line integrity
+
+---
+
+## Optional Enhancements
+
+- Auto reassign after unreserve
+- Reservation priority engine
+- Aging dashboard

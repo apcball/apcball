@@ -16,16 +16,30 @@
 
         <!-- Hourly cron: recompute budget line balances for all confirmed plans -->
         <record id="ir_cron_monthly_budget_recompute_lines" model="ir.cron">
-            <field name="name">Monthly Budget: Recompute Line Balances</field>
-            <field name="model_id" ref="model_monthly_budget_line"/>
+            <field name="name">Monthly Budget: Refresh Report &amp; Recompute Lines</field>
+            <field name="model_id" ref="model_monthly_budget_report"/>
             <field name="state">code</field>
             <field name="code">
+model.refresh_materialized_view()
 confirmed_plans = env['monthly.budget.plan'].search([('state', '=', 'confirmed')])
 for plan in confirmed_plans:
     plan.budget_line_ids._recompute_line_balance()
             </field>
-            <field name="interval_number">1</field>
+            <field name="interval_number">4</field>
             <field name="interval_type">hours</field>
+            <field name="numbercall">-1</field>
+            <field name="active" eval="True"/>
+            <field name="user_id" ref="base.user_root"/>
+        </record>
+
+        <!-- Daily cron: auto-close expired budget plans -->
+        <record id="ir_cron_monthly_budget_auto_close" model="ir.cron">
+            <field name="name">Monthly Budget: Auto-close Expired Plans</field>
+            <field name="model_id" ref="model_monthly_budget_plan"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_auto_close_expired_plans()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
             <field name="numbercall">-1</field>
             <field name="active" eval="True"/>
             <field name="user_id" ref="base.user_root"/>

@@ -15,6 +15,13 @@
               sequence="10"
               groups="biz_monthly_analytic_budget.group_monthly_budget_user"/>
 
+    <menuitem id="menu_monthly_budget_amendments"
+              name="Amendment History"
+              parent="menu_monthly_budget_root"
+              action="action_monthly_budget_amendment"
+              sequence="15"
+              groups="biz_monthly_analytic_budget.group_monthly_budget_user"/>
+
     <menuitem id="menu_monthly_budget_lines"
               name="Budget Lines"
               parent="menu_monthly_budget_root"
@@ -30,9 +37,16 @@
               groups="biz_monthly_analytic_budget.group_monthly_budget_user"/>
 
     <menuitem id="menu_monthly_budget_report"
-              name="Budget Analysis"
+              name="Budget Analysis (Dashboard)"
               parent="menu_monthly_budget_root"
               action="action_monthly_budget_report"
               sequence="30"
+              groups="biz_monthly_analytic_budget.group_monthly_budget_user"/>
+
+    <menuitem id="menu_monthly_budget_variance"
+              name="Budget Variance Details"
+              parent="menu_monthly_budget_root"
+              action="action_monthly_budget_variance"
+              sequence="35"
               groups="biz_monthly_analytic_budget.group_monthly_budget_user"/>
 </odoo>

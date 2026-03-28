@@ -340,16 +340,29 @@ class MonthlyBudgetReport(models.Model):
     def refresh_materialized_view(self):
         """
         Refresh the materialized view concurrently so reads are never blocked.
+        Uses psycopg2.sql for safe SQL composition.
         """
+        from psycopg2 import sql
         try:
             self.env.cr.execute(
-                'REFRESH MATERIALIZED VIEW %s' % self._MV_NAME
+                sql.SQL('REFRESH MATERIALIZED VIEW CONCURRENTLY {}').format(
+                    sql.Identifier(self._MV_NAME)
+                )
             )
-            _logger.info('monthly.budget.report: materialized view %s refreshed', self._MV_NAME)
+            _logger.info('monthly.budget.report: materialized view %s refreshed (CONCURRENTLY)', self._MV_NAME)
         except Exception as e:
-            _logger.error(
-                'monthly.budget.report: failed to refresh %s: %s', self._MV_NAME, e
+            _logger.warning(
+                'monthly.budget.report: CONCURRENTLY refresh failed, falling back to full refresh: %s', e
             )
+            try:
+                self.env.cr.execute(
+                    sql.SQL('REFRESH MATERIALIZED VIEW {}').format(
+                        sql.Identifier(self._MV_NAME)
+                    )
+                )
+                _logger.info('monthly.budget.report: materialized view %s refreshed (full)', self._MV_NAME)
+            except Exception as e2:
+                _logger.error('monthly.budget.report: failed to refresh %s: %s', self._MV_NAME, e2)
 
     @api.model
     def get_available_years(self):

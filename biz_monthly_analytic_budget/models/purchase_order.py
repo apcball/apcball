@@ -5,69 +5,12 @@ from decimal import Decimal
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .budget_utils import find_active_monthly_plan, extract_analytic_amounts
+
 _logger = logging.getLogger(__name__)
 
-
-def _find_active_monthly_plan(env, target_date, company_id):
-    """Find the confirmed monthly budget plan covering target_date."""
-    if not target_date:
-        return env['monthly.budget.plan']
-    domain = [
-        ('state', '=', 'confirmed'),
-        ('date_from', '<=', target_date),
-        ('date_to', '>=', target_date),
-        ('company_id', '=', company_id),
-    ]
-    return env['monthly.budget.plan'].sudo().search(domain, limit=1)
-
-
-def _extract_po_line_analytic_amounts(po_line, budget_line_model=None):
-    """
-    Extract analytic account allocations from a purchase.order.line.
-
-    Uses the standard Odoo 17 ``analytic_distribution`` JSON field.
-    Normalizes distribution using Decimal for financial precision when
-    budget_line_model is provided.
-    Format: {"<analytic_account_id>": <percentage>, ...}
-
-    Returns a list of (analytic_account_id (int), allocated_amount (float)).
-    """
-    distribution = po_line.analytic_distribution
-    if not distribution or not isinstance(distribution, dict):
-        return []
-
-    subtotal = po_line.price_subtotal or 0.0
-    if not subtotal:
-        return []
-
-    # Normalize using Decimal for precision (via budget line helper if available)
-    if budget_line_model:
-        try:
-            dist_amounts = budget_line_model._compute_distribution_amount(subtotal, distribution)
-            result = []
-            for acc_id_str, amount in dist_amounts.items():
-                try:
-                    account_id = int(acc_id_str)
-                except (ValueError, TypeError):
-                    continue
-                amt = float(amount)
-                if amt:
-                    result.append((account_id, amt))
-            return result
-        except Exception:
-            pass  # fall through to legacy method
-
-    # Fallback: legacy float computation
-    result = []
-    for account_id_str, pct in distribution.items():
-        try:
-            account_id = int(account_id_str)
-        except (ValueError, TypeError):
-            continue
-        allocated = subtotal * (pct or 0.0) / 100.0
-        if allocated:
-            result.append((account_id, allocated))
-    return result
+# Keep backward compatibility alias
+_extract_po_line_analytic_amounts = extract_analytic_amounts
 
 
 class PurchaseOrder(models.Model):
@@ -177,7 +120,7 @@ class PurchaseOrder(models.Model):
                 order.budget_warning = False
                 continue
 
-            plan = _find_active_monthly_plan(self.env, target_date, order.company_id.id)
+            plan = find_active_monthly_plan(self.env, target_date, order.company_id.id)
             if not plan:
                 order.monthly_budget_check_result = _(
                     '<div class="alert alert-info">'
@@ -189,7 +132,7 @@ class PurchaseOrder(models.Model):
 
             analytic_totals = {}
             for line in order.order_line:
-                for account_id, amount in _extract_po_line_analytic_amounts(line):
+                for account_id, amount in extract_analytic_amounts(line):
                     analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
             if not analytic_totals:
@@ -222,7 +165,7 @@ class PurchaseOrder(models.Model):
                 budget_line = budget_line[0]
                 
                 # Check if this PO is already reserved
-                total_committed = budget_line.reserved_amount + budget_line.used_amount
+                total_committed = budget_line.reserved_amount + budget_line.used_amount + budget_line.fixed_cost_amount
                 if not has_pr:
                     # If direct PO, it's not yet in reserved_amount, so add it for preview
                     total_committed += po_amt
@@ -247,7 +190,7 @@ class PurchaseOrder(models.Model):
                     '</table></div></div>' % (
                         status_class, status_icon, analytic.name,
                         _('Monthly Budget'), '{:,.2f}'.format(budget_line.budget_amount),
-                        _('Reserved + Used'), '{:,.2f}'.format(budget_line.reserved_amount + budget_line.used_amount),
+                        _('Fixed + Reserved + Used'), '{:,.2f}'.format(budget_line.fixed_cost_amount + budget_line.reserved_amount + budget_line.used_amount),
                         _('This PO'), '{:,.2f}'.format(po_amt),
                         _('Remaining After'), status_class,
                         '{:,.2f}'.format(remaining),
@@ -267,13 +210,13 @@ class PurchaseOrder(models.Model):
         """Submit a monthly budget approval request when budget is exceeded."""
         self.ensure_one()
         target_date = self.payment_date
-        plan = _find_active_monthly_plan(self.env, target_date, self.company_id.id)
+        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
         if not plan:
             return
 
         analytic_totals = {}
         for line in self.order_line:
-            for account_id, amount in _extract_po_line_analytic_amounts(line):
+            for account_id, amount in extract_analytic_amounts(line):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
         po_amount = sum(analytic_totals.values())
@@ -377,13 +320,13 @@ class PurchaseOrder(models.Model):
         if not target_date:
             return
 
-        plan = _find_active_monthly_plan(self.env, target_date, self.company_id.id)
+        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
         if not plan:
             return
 
         analytic_totals = {}
         for line in self.order_line:
-            for account_id, amount in _extract_po_line_analytic_amounts(line):
+            for account_id, amount in extract_analytic_amounts(line):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
         AnalyticAccount = self.env['account.analytic.account']
@@ -401,10 +344,10 @@ class PurchaseOrder(models.Model):
                     'Please add it to the monthly budget plan "%s" first.'
                 ) % (analytic.name, plan.name))
 
-            budget_line = budget_line[0] if hasattr(budget_line, '__len__') else budget_line
+            budget_line = budget_line[:1] or budget_line
             
-            # total_committed = already used + already reserved
-            total_committed = budget_line.reserved_amount + budget_line.used_amount
+            # total_committed = already used + already reserved + fixed costs
+            total_committed = budget_line.reserved_amount + budget_line.used_amount + budget_line.fixed_cost_amount
             
             # If it's a direct PO (no PR), it hasn't reserved anything yet, so we must add po_amt.
             # If it came from a PR, the PR already reserved it, so it's already in total_committed.
@@ -460,14 +403,14 @@ class PurchaseOrder(models.Model):
         if not target_date:
             return
 
-        plan = _find_active_monthly_plan(self.env, target_date, self.company_id.id)
+        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
         if not plan:
             return
 
         # Aggregate amounts by analytic across all PO lines (Decimal precision)
         analytic_totals = {}
         for line in self.order_line:
-            for account_id, amount in _extract_po_line_analytic_amounts(line, BudgetLine):
+            for account_id, amount in extract_analytic_amounts(line, BudgetLine):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
         if not analytic_totals:
@@ -569,38 +512,22 @@ class PurchaseOrder(models.Model):
                             pass
 
     def _release_monthly_analytic_budget_on_cancel(self):
-        """Re-open budget amounts when a confirmed PO is cancelled."""
+        """Re-open budget amounts when a confirmed PO is cancelled.
+
+        Note: used_amount is a live computed field reading from posted invoices,
+        so we don't need to manually adjust it. We only release the audit trail
+        (budget.commitment records) via the budget engine.
+        """
         self.ensure_one()
-        BudgetLine = self.env['monthly.budget.line']
-        AnalyticAccount = self.env['account.analytic.account']
+        engine = self.env['budget.engine']
 
         target_date = self.payment_date
         if not target_date:
             return
 
-        plan = _find_active_monthly_plan(self.env, target_date, self.company_id.id)
+        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
         if not plan:
             return
-
-        for line in self.order_line:
-            analytic_amounts = _extract_po_line_analytic_amounts(line)
-            if not analytic_amounts:
-                continue
-
-            for account_id, amount in analytic_amounts:
-                analytic = AnalyticAccount.browse(account_id)
-                if not analytic.exists():
-                    continue
-                dims = {'analytic_account_id': account_id}
-                budget_line = BudgetLine._find_budget_line(plan, dims)
-                if not budget_line:
-                    continue
-                budget_line = budget_line[0] if hasattr(budget_line, '__len__') else budget_line
-
-                # Reverse used amount
-                budget_line.sudo().write({
-                    'used_amount': max(0.0, budget_line.used_amount - amount)
-                })
 
         # Mark related commitment records as released
         engine.release_budget({

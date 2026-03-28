@@ -31,6 +31,8 @@
         'data/cron_data.xml',
         'views/monthly_budget_plan_views.xml',
         'views/monthly_budget_line_views.xml',
+        'views/monthly_budget_amendment_views.xml',
+        'views/monthly_budget_variance_views.xml',
         'views/monthly_budget_approval_request_views.xml',
         'wizard/monthly_budget_reason_wizards_views.xml',
         'views/purchase_order_views.xml',

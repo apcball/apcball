@@ -22,7 +22,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr t-foreach="props.data || []" t-as="row" t-key="row.analytic + row.department + row.project">
+                        <tr t-foreach="props.data || []" t-as="row" t-key="row_index">
                             <td><t t-esc="row.analytic"/></td>
                             <td><t t-esc="row.department"/></td>
                             <td><t t-esc="row.project"/></td>

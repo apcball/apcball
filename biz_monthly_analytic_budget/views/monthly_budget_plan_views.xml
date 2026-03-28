@@ -14,6 +14,7 @@
                 <field name="category" optional="show"/>
                 <field name="percentage" string="%"/>
                 <field name="budget_amount" widget="monetary"/>
+                <field name="carried_amount" widget="monetary" readonly="1" optional="show"/>
                 <field name="fixed_cost_amount" widget="monetary" readonly="1" optional="show"/>
                 <field name="reserved_amount" widget="monetary" readonly="1"/>
                 <field name="used_amount" widget="monetary" readonly="1"/>
@@ -41,6 +42,15 @@
                             string="Recompute Budget"
                             type="object"
                             invisible="state == 'draft'"/>
+                    <button name="action_amend_budget"
+                            string="Amend Budget"
+                            type="object"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_carry_forward"
+                            string="Carry Forward to Next Month"
+                            type="object"
+                            class="btn-info"
+                            invisible="state not in ('confirmed', 'closed') or not carry_forward"/>
                     <button name="action_close"
                             string="Close"
                             type="object"
@@ -70,8 +80,17 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="currency_id" invisible="1"/>
                             <field name="total_budget" widget="monetary"/>
+                            <field name="carried_amount" widget="monetary" readonly="1"/>
                             <field name="allocated_amount" widget="monetary"/>
                             <field name="allocated_percentage" widget="percentage"/>
+                        </group>
+                        <group string="Rollover &amp; Approval Settings">
+                            <field name="carry_forward"/>
+                            <field name="carry_forward_cap" invisible="not carry_forward"/>
+                            <field name="source_plan_id" invisible="not source_plan_id"/>
+                            <hr colspan="2"/>
+                            <field name="auto_approve_threshold" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="auto_approve_pct"/>
                         </group>
                     </group>
 
@@ -108,6 +127,20 @@
                                     <field name="state" readonly="1" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'confirmed'" decoration-muted="state == 'cancelled'"/>
                                     <button name="action_confirm" string="Confirm" type="object" icon="fa-check" invisible="state != 'draft'"/>
                                     <button name="action_cancel" string="Cancel" type="object" icon="fa-times" invisible="state != 'confirmed'"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Amendment History" name="amendments">
+                            <field name="amendment_ids" readonly="1">
+                                <tree>
+                                    <field name="date"/>
+                                    <field name="user_id"/>
+                                    <field name="amendment_type"/>
+                                    <field name="budget_line_id" optional="show"/>
+                                    <field name="amount_change" widget="monetary"/>
+                                    <field name="amount_after" widget="monetary"/>
+                                    <field name="reason"/>
+                                    <field name="currency_id" column_invisible="1"/>
                                 </tree>
                             </field>
                         </page>

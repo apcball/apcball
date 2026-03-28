@@ -5,78 +5,9 @@ from decimal import Decimal
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
+from .budget_utils import find_active_monthly_plan, extract_analytic_amounts
+
 _logger = logging.getLogger(__name__)
-
-
-def _find_active_monthly_plan(env, target_date, company_id):
-    """Find the confirmed monthly budget plan that covers target_date for the company."""
-    if not target_date:
-        return env['monthly.budget.plan']
-    domain = [
-        ('state', '=', 'confirmed'),
-        ('date_from', '<=', target_date),
-        ('date_to', '>=', target_date),
-        ('company_id', '=', company_id),
-    ]
-    return env['monthly.budget.plan'].sudo().search(domain, limit=1)
-
-
-def _extract_analytic_amounts(line, budget_line_model=None):
-    """
-    Extract analytic account allocations from a requisition.order line.
-
-    Uses the standard Odoo 17 ``analytic_distribution`` JSON field.
-    Normalizes distribution using Decimal for financial precision.
-    Format: {"<analytic_account_id>": <percentage>, ...}
-
-    Returns a list of (analytic_account_id (int), allocated_amount (float)).
-    """
-    import json
-    distribution = line.analytic_distribution
-    if not distribution:
-        return []
-
-    if isinstance(distribution, str):
-        try:
-            distribution = json.loads(distribution)
-        except json.JSONDecodeError:
-            return []
-
-    if not isinstance(distribution, dict) or not distribution:
-        return []
-
-    subtotal = line.price_subtotal or 0.0
-    if not subtotal:
-        return []
-
-    # Normalize using Decimal for precision (via budget line helper if available)
-    if budget_line_model:
-        try:
-            dist_amounts = budget_line_model._compute_distribution_amount(subtotal, distribution)
-            result = []
-            for acc_id_str, amount in dist_amounts.items():
-                try:
-                    account_id = int(acc_id_str)
-                except (ValueError, TypeError):
-                    continue
-                amt = float(amount)
-                if amt:
-                    result.append((account_id, amt))
-            return result
-        except Exception:
-            pass  # fall through to legacy method
-
-    # Fallback: legacy float computation
-    result = []
-    for account_id_str, pct in distribution.items():
-        try:
-            account_id = int(account_id_str)
-        except (ValueError, TypeError):
-            continue
-        allocated = subtotal * (pct or 0.0) / 100.0
-        if allocated:
-            result.append((account_id, allocated))
-    return result
 
 
 class EmployeePurchaseRequisitionMonthly(models.Model):
@@ -156,7 +87,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 req.budget_warning = False
                 continue
 
-            plan = _find_active_monthly_plan(self.env, target_date, req.company_id.id)
+            plan = find_active_monthly_plan(self.env, target_date, req.company_id.id)
             if not plan:
                 req.monthly_budget_check_result = _(
                     '<div class="alert alert-info">'
@@ -166,10 +97,9 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 req.budget_warning = False
                 continue
 
-            # Aggregate amounts by analytic account across all lines
             analytic_totals = {}  # {account_id: total_amount}
             for line in req.requisition_order_ids:
-                for account_id, amount in _extract_analytic_amounts(line):
+                for account_id, amount in extract_analytic_amounts(line):
                     analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
             if not analytic_totals:
@@ -198,7 +128,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                     )
                     continue
                 budget_line = budget_line[0]
-                total_after = budget_line.reserved_amount + budget_line.used_amount + pr_amt
+                total_after = budget_line.reserved_amount + budget_line.used_amount + budget_line.fixed_cost_amount + pr_amt
                 remaining = budget_line.budget_amount - total_after
                 is_over = remaining < 0
                 if is_over:
@@ -218,7 +148,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                     '</table></div></div>' % (
                         status_class, status_icon, analytic.name,
                         _('Monthly Budget'), '{:,.2f}'.format(budget_line.budget_amount),
-                        _('Reserved + Used'), '{:,.2f}'.format(budget_line.reserved_amount + budget_line.used_amount),
+                        _('Fixed + Reserved + Used'), '{:,.2f}'.format(budget_line.fixed_cost_amount + budget_line.reserved_amount + budget_line.used_amount),
                         _('This PR'), '{:,.2f}'.format(pr_amt),
                         _('Remaining After'), status_class,
                         '{:,.2f}'.format(remaining),
@@ -238,13 +168,13 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         """Submit a monthly budget approval request when budget is exceeded."""
         self.ensure_one()
         target_date = self.payment_date
-        plan = _find_active_monthly_plan(self.env, target_date, self.company_id.id)
+        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
         if not plan:
             return
 
         analytic_totals = {}
         for line in self.requisition_order_ids:
-            for account_id, amount in _extract_analytic_amounts(line):
+            for account_id, amount in extract_analytic_amounts(line):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
         pr_amount = sum(analytic_totals.values())
@@ -309,7 +239,19 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         """Override: check budget on head approval."""
         for req in self:
             req._check_monthly_analytic_budget()
-        return super().action_head_approval()
+        result = super().action_head_approval()
+        for req in self:
+            req._reserve_monthly_analytic_budget()
+        return result
+
+    def action_purchase_approval(self):
+        """Override: check budget on purchase approval."""
+        for req in self:
+            req._check_monthly_analytic_budget()
+        result = super().action_purchase_approval()
+        for req in self:
+            req._reserve_monthly_analytic_budget()
+        return result
 
     def _check_monthly_analytic_budget(self):
         """Verify each PR line's analytic distribution has sufficient monthly budget."""
@@ -327,14 +269,14 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         if approved:
             return  # Bypass budget check – approved
 
-        plan = _find_active_monthly_plan(self.env, target_date, self.company_id.id)
+        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
         if not plan:
             return  # No monthly plan active — allow
 
         # Aggregate by analytic account
         analytic_totals = {}
         for line in self.requisition_order_ids:
-            for account_id, amount in _extract_analytic_amounts(line):
+            for account_id, amount in extract_analytic_amounts(line):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
         if not analytic_totals:
@@ -355,12 +297,9 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                     'Please add it to the monthly budget plan "%s" first.'
                 ) % (analytic.name, plan.name))
 
-            budget_line = budget_line[0] if hasattr(budget_line, '__len__') else budget_line
+            budget_line = budget_line[:1] if len(budget_line) > 1 else budget_line
             
-            # Since this PR might have already reserved budget (if called twice),
-            # we should check commitment records. 
-            # But normally we call this on action_confirm_requisition.
-            total_committed = budget_line.reserved_amount + budget_line.used_amount
+            total_committed = budget_line.reserved_amount + budget_line.used_amount + budget_line.fixed_cost_amount
             
             # If not yet actively reserved by THIS document, add pr_amt
             # IMPORTANT: filter by active states only — released/cancelled commitments
@@ -420,7 +359,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         if not target_date or not self.requisition_order_ids:
             return
 
-        plan = _find_active_monthly_plan(self.env, target_date, self.company_id.id)
+        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
         if not plan:
             return
 
@@ -428,10 +367,9 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         engine = self.env['budget.engine']
         AnalyticAccount = self.env['account.analytic.account']
 
-        # Aggregate amounts by analytic account (using Decimal precision)
         analytic_totals = {}
         for line in self.requisition_order_ids:
-            for account_id, amount in _extract_analytic_amounts(line, BudgetLine):
+            for account_id, amount in extract_analytic_amounts(line, BudgetLine):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
         if not analytic_totals:
@@ -510,7 +448,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         if not target_date:
             return
 
-        plan = _find_active_monthly_plan(self.env, target_date, self.company_id.id)
+        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
         if not plan:
             return
 
@@ -520,7 +458,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
 
         analytic_totals = {}
         for line in self.requisition_order_ids:
-            for account_id, amount in _extract_analytic_amounts(line):
+            for account_id, amount in extract_analytic_amounts(line):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
         for account_id, total_amt in analytic_totals.items():
@@ -531,7 +469,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             budget_line = BudgetLine._find_budget_line(plan, dims)
             if not budget_line:
                 continue
-            budget_line[0]._release_reservation(total_amt) if hasattr(budget_line[0], '_release_reservation') else None
+            # Note: no-op methods have been removed; engine.release_budget handles it
 
         # Release all commitment records for this document
         engine.release_budget({

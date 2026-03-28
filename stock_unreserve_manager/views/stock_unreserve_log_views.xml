@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         Unreserve Log – List View
+    ============================================================ -->
+    <record id="view_stock_unreserve_log_list" model="ir.ui.view">
+        <field name="name">stock.unreserve.log.list</field>
+        <field name="model">stock.unreserve.log</field>
+        <field name="arch" type="xml">
+            <tree string="Unreserve Logs" create="false" edit="false" delete="false">
+                <field name="datetime" string="Date / Time"/>
+                <field name="user_id" string="User"/>
+                <field name="picking_id" string="Transfer"/>
+                <field name="product_id" string="Product"/>
+                <field name="qty" string="Qty Unreserved" digits="[16,3]"/>
+                <field name="type" string="Type"/>
+                <field name="reason" string="Reason"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Unreserve Log – Form View
+    ============================================================ -->
+    <record id="view_stock_unreserve_log_form" model="ir.ui.view">
+        <field name="name">stock.unreserve.log.form</field>
+        <field name="model">stock.unreserve.log</field>
+        <field name="arch" type="xml">
+            <form string="Unreserve Log" create="false" edit="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="datetime"/>
+                            <field name="user_id"/>
+                            <field name="type"/>
+                        </group>
+                        <group>
+                            <field name="picking_id"/>
+                            <field name="product_id"/>
+                            <field name="qty"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="reason" placeholder="No reason given"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Unreserve Log – Search View
+    ============================================================ -->
+    <record id="view_stock_unreserve_log_search" model="ir.ui.view">
+        <field name="name">stock.unreserve.log.search</field>
+        <field name="model">stock.unreserve.log</field>
+        <field name="arch" type="xml">
+            <search string="Search Unreserve Logs">
+                <field name="picking_id"/>
+                <field name="product_id"/>
+                <field name="user_id"/>
+                <filter name="filter_force" string="Force Actions" domain="[('type','=','force')]"/>
+                <filter name="filter_bulk" string="Bulk Actions" domain="[('type','like','bulk')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_user" string="User" context="{'group_by':'user_id'}"/>
+                    <filter name="group_type" string="Type" context="{'group_by':'type'}"/>
+                    <filter name="group_picking" string="Transfer" context="{'group_by':'picking_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Unreserve Log – Window Action
+    ============================================================ -->
+    <record id="action_stock_unreserve_log" model="ir.actions.act_window">
+        <field name="name">Unreserve Logs</field>
+        <field name="res_model">stock.unreserve.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_stock_unreserve_log_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No unreserve actions have been recorded yet.
+            </p>
+            <p>
+                Audit logs are created automatically whenever a stock reservation is
+                cancelled via the Unreserve Manager.
+            </p>
+        </field>
+    </record>
+
+</odoo>

@@ -113,7 +113,41 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'buz.monthly.budget.approval.request'
                 ) or _('New')
-        return super().create(vals_list)
+        
+        records = super().create(vals_list)
+        
+        # ── Feature 5: Auto-Approve Threshold ────────────────────────
+        for rec in records:
+            if rec.state == 'pending' and rec.budget_line_id:
+                plan = rec.budget_line_id.plan_id
+                auto_approve = False
+                
+                # Check absolute amount threshold
+                if plan.auto_approve_threshold > 0 and rec.amount_overage <= plan.auto_approve_threshold:
+                    auto_approve = True
+                
+                # Check percentage threshold
+                if not auto_approve and plan.auto_approve_pct > 0 and rec.amount_limit > 0:
+                    overage_pct = (rec.amount_overage / rec.amount_limit) * 100.0
+                    if overage_pct <= plan.auto_approve_pct:
+                        auto_approve = True
+                        
+                if auto_approve:
+                    # using SUPERUSER_ID for auto-approval
+                    rec.write({
+                        'state': 'approved',
+                        'approver_id': self.env.ref('base.user_root').id,
+                        'approved_date': fields.Datetime.now(),
+                        'note': _('Auto-approved (within threshold)'),
+                    })
+                    rec.message_post(
+                        body=_('<strong>✅ Auto-Approved</strong><br/>'
+                               'Overage is within plan threshold.<br/>'
+                               'Note: %s') % rec.note,
+                    )
+                    rec._notify_requester('approved')
+        
+        return records
 
     def action_approve(self):
         self.ensure_one()

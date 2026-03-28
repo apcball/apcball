@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         Top-level menu: Inventory > Operations > Unreserve Manager
+    ============================================================ -->
+    <menuitem
+        id="menu_stock_unreserve_root"
+        name="Unreserve Manager"
+        parent="stock.menu_stock_warehouse_mgmt"
+        sequence="90"
+        groups="stock_unreserve_manager.group_unreserve_manager"
+    />
+
+    <menuitem
+        id="menu_stock_unreserve_wizard"
+        name="Bulk Unreserve"
+        parent="menu_stock_unreserve_root"
+        action="action_stock_unreserve_wizard"
+        sequence="10"
+        groups="stock_unreserve_manager.group_unreserve_manager"
+    />
+
+    <menuitem
+        id="menu_stock_unreserve_log"
+        name="Unreserve Logs"
+        parent="menu_stock_unreserve_root"
+        action="action_stock_unreserve_log"
+        sequence="20"
+        groups="stock_unreserve_manager.group_unreserve_manager"
+    />
+
+</odoo>

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         Bulk Unreserve Wizard – Window Action
+    ============================================================ -->
+    <record id="action_stock_unreserve_wizard" model="ir.actions.act_window">
+        <field name="name">Unreserve Manager</field>
+        <field name="res_model">stock.unreserve.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ============================================================
+         Bulk Unreserve Wizard – Form View
+    ============================================================ -->
+    <record id="view_stock_unreserve_wizard_form" model="ir.ui.view">
+        <field name="name">stock.unreserve.wizard.form</field>
+        <field name="model">stock.unreserve.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Bulk Unreserve Wizard">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Bulk Unreserve Transfers</h1>
+                    </div>
+                    <group>
+                        <group string="Scope">
+                            <field name="unreserve_type" widget="radio" options="{'horizontal': false}"/>
+                        </group>
+                        <group string="Options">
+                            <field name="location_id" placeholder="All locations"/>
+                            <field
+                                name="force"
+                                widget="boolean_toggle"
+                                groups="stock_unreserve_manager.group_unreserve_manager"
+                            />
+                            <field name="reason" placeholder="Optional – for audit log"/>
+                        </group>
+                    </group>
+                    <group string="Transfers" invisible="unreserve_type != 'picking'">
+                        <field name="picking_ids" nolabel="1"
+                               required="unreserve_type == 'picking'">
+                            <tree>
+                                <field name="name"/>
+                                <field name="partner_id"/>
+                                <field name="scheduled_date"/>
+                                <field name="state"/>
+                            </tree>
+                        </field>
+                    </group>
+                    <group string="Products" invisible="unreserve_type != 'product'">
+                        <field name="product_ids" nolabel="1"
+                               required="unreserve_type == 'product'">
+                            <tree>
+                                <field name="display_name"/>
+                                <field name="default_code" string="Internal Ref"/>
+                            </tree>
+                        </field>
+                    </group>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="unreserve_type != 'all'">
+                        <i class="fa fa-exclamation-triangle me-2"/>
+                        <strong>Warning:</strong>
+                        This will unreserve <strong>all</strong> currently reserved transfers
+                        (optionally filtered by location). This action cannot be undone.
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="not force"
+                         groups="stock_unreserve_manager.group_unreserve_manager">
+                        <i class="fa fa-bolt me-2"/>
+                        <strong>Force mode active:</strong>
+                        Move states will be reset to <em>Confirmed</em> after unreserving.
+                        Downstream waiting transfers may be affected.
+                    </div>
+                </sheet>
+                <footer>
+                    <button
+                        name="execute_unreserve"
+                        string="Execute Unreserve"
+                        type="object"
+                        class="btn-primary"
+                        icon="fa-undo"
+                        data-hotkey="v"
+                    />
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

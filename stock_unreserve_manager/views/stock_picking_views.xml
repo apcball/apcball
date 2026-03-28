@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         stock.picking – Inject buttons into the form view header
+    ============================================================ -->
+    <record id="view_stock_picking_form_unreserve" model="ir.ui.view">
+        <field name="name">stock.picking.form.unreserve</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Standard Unreserve button (visible when assigned / partially_available) -->
+            <xpath expr="//button[@name='action_assign']" position="after">
+                <button
+                    name="action_unreserve_picking"
+                    string="Unreserve"
+                    type="object"
+                    class="btn-secondary"
+                    icon="fa-undo"
+                    invisible="state not in ('assigned', 'partially_available')"
+                    groups="stock.group_stock_user"
+                />
+                <button
+                    name="action_force_unreserve"
+                    string="Force Unreserve"
+                    type="object"
+                    class="btn-warning"
+                    icon="fa-bolt"
+                    invisible="state not in ('assigned', 'partially_available', 'waiting')"
+                    groups="stock_unreserve_manager.group_unreserve_manager"
+                    confirm="This will force-unreserve the transfer and reset move states to 'Confirmed'. Continue?"
+                />
+            </xpath>
+
+            <!-- Smart button – Unreserve Logs -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button
+                    name="action_view_unreserve_logs"
+                    type="object"
+                    class="oe_stat_button"
+                    icon="fa-history"
+                    invisible="unreserve_log_count == 0"
+                >
+                    <field name="unreserve_log_count" widget="statinfo" string="Unreserve Logs"/>
+                </button>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ============================================================
+         stock.picking – Server Action for list view bulk unreserve
+    ============================================================ -->
+    <record id="action_bulk_unreserve_from_list" model="ir.actions.server">
+        <field name="name">Bulk Unreserve (Wizard)</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    wizard = env['stock.unreserve.wizard'].create({
+        'unreserve_type': 'picking',
+        'picking_ids': [(6, 0, records.ids)],
+    })
+    action = {
+        'type': 'ir.actions.act_window',
+        'name': 'Bulk Unreserve',
+        'res_model': 'stock.unreserve.wizard',
+        'res_id': wizard.id,
+        'view_mode': 'form',
+        'target': 'new',
+    }
+        </field>
+    </record>
+
+</odoo>

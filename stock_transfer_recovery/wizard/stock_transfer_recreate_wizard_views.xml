@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="stock_transfer_recreate_wizard_form" model="ir.ui.view">
+        <field name="name">stock.transfer.recreate.wizard.form</field>
+        <field name="model">stock.transfer.recreate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Recreate Stock Transfer">
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="not warning_message">
+                        <field name="warning_message" readonly="1" nolabel="1"/>
+                    </div>
+                    <group>
+                        <field name="line_count" readonly="1"/>
+                        <field name="total_qty" readonly="1"/>
+                        <field name="order_model" invisible="1"/>
+                        <field name="order_id" invisible="1"/>
+                    </group>
+                    <p class="text-muted">
+                        This action will evaluate the remaining quantities and generate a new picking.
+                        Do you wish to continue?
+                    </p>
+                </sheet>
+                <footer>
+                    <button string="Confirm" type="object" name="action_confirm" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====================== Amendment Wizard ====================== -->
+    <record id="view_monthly_budget_amendment_wizard_form" model="ir.ui.view">
+        <field name="name">monthly.budget.amendment.wizard.form</field>
+        <field name="model">monthly.budget.amendment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Amend Total Budget">
+                <group>
+                    <field name="plan_id" readonly="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="current_budget" widget="monetary"/>
+                    <field name="new_total_budget" widget="monetary"/>
+                    <field name="change_amount" widget="monetary"/>
+                    <field name="amendment_type" readonly="1"/>
+                    <field name="reason"/>
+                </group>
+                <footer>
+                    <button string="Apply Changes" name="action_apply" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ====================== Amendment History List ====================== -->
+    <record id="view_monthly_budget_amendment_list" model="ir.ui.view">
+        <field name="name">monthly.budget.amendment.list</field>
+        <field name="model">monthly.budget.amendment</field>
+        <field name="arch" type="xml">
+            <tree string="Budget Amendments" create="false" edit="false" delete="false">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="plan_id"/>
+                <field name="budget_line_id" optional="show"/>
+                <field name="amendment_type"/>
+                <field name="amount_before" widget="monetary"/>
+                <field name="amount_change" widget="monetary"/>
+                <field name="amount_after" widget="monetary"/>
+                <field name="user_id"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ====================== Amendment History Form ====================== -->
+    <record id="view_monthly_budget_amendment_form" model="ir.ui.view">
+        <field name="name">monthly.budget.amendment.form</field>
+        <field name="model">monthly.budget.amendment</field>
+        <field name="arch" type="xml">
+            <form string="Budget Amendment" create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Details">
+                            <field name="plan_id"/>
+                            <field name="budget_line_id" invisible="not budget_line_id"/>
+                            <field name="amendment_type"/>
+                            <field name="date"/>
+                            <field name="user_id"/>
+                        </group>
+                        <group string="Amounts">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="amount_before" widget="monetary"/>
+                            <field name="amount_change" widget="monetary"/>
+                            <field name="amount_after" widget="monetary"/>
+                        </group>
+                    </group>
+                    <group string="Reason">
+                        <field name="reason" nolabel="1"/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ====================== Action ====================== -->
+    <record id="action_monthly_budget_amendment" model="ir.actions.act_window">
+        <field name="name">Amendment History</field>
+        <field name="res_model">monthly.budget.amendment</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_empty_folder">
+                No budget amendments found.
+            </p>
+        </field>
+    </record>
+</odoo>

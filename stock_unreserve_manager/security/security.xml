@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Security Category -->
+        <record id="module_category_stock_unreserve" model="ir.module.category">
+            <field name="name">Inventory / Unreserve Manager</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- Manager Group -->
+        <record id="group_unreserve_manager" model="res.groups">
+            <field name="name">Unreserve Manager</field>
+            <field name="category_id" ref="module_category_stock_unreserve"/>
+            <field name="comment">
+                Users in this group can force-unreserve pickings and use the bulk unreserve wizard.
+                Regular inventory users can only perform standard unreserves on individual transfers.
+            </field>
+        </record>
+
+    </data>
+</odoo>

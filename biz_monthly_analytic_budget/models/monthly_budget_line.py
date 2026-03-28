@@ -98,6 +98,12 @@ class MonthlyBudgetLine(models.Model):
         compute='_compute_reserved_amount',
         store=False,
     )
+    carried_amount = fields.Monetary(
+        string='Carried Forward',
+        currency_field='currency_id',
+        default=0.0,
+        help='Budget amount carried forward from previous month',
+    )
     fixed_cost_amount = fields.Monetary(
         string='Fixed Cost',
         currency_field='currency_id',
@@ -144,13 +150,14 @@ class MonthlyBudgetLine(models.Model):
         for line in self:
             line.budget_amount = line.plan_id.total_budget * line.percentage / 100.0
 
-    @api.depends('budget_amount', 'reserved_amount', 'used_amount', 'fixed_cost_amount')
+    @api.depends('budget_amount', 'carried_amount', 'reserved_amount', 'used_amount', 'fixed_cost_amount')
     def _compute_available_amount(self):
         for line in self:
-            line.available_amount = line.budget_amount - line.reserved_amount - line.used_amount - line.fixed_cost_amount
-            if line.budget_amount:
+            total_budget = line.budget_amount + line.carried_amount
+            line.available_amount = total_budget - line.reserved_amount - line.used_amount - line.fixed_cost_amount
+            if total_budget:
                 line.utilization_rate = (
-                    (line.reserved_amount + line.used_amount + line.fixed_cost_amount) / line.budget_amount
+                    (line.reserved_amount + line.used_amount + line.fixed_cost_amount) / total_budget * 100.0
                 )
             else:
                 line.utilization_rate = 0.0
@@ -174,33 +181,54 @@ class MonthlyBudgetLine(models.Model):
 
     @api.depends('plan_id.state', 'plan_id.date_from', 'plan_id.date_to', 'plan_id.company_id')
     def _compute_used_amount(self):
-        """Compute used amount: posted Vendor Bills minus Vendor Credit Notes for this analytic."""
-        for line in self:
-            if not line.plan_id.date_from or not line.plan_id.date_to or not line.analytic_account_id:
-                line.used_amount = 0.0
-                continue
+        """Compute used amount via SQL: posted Vendor Bills minus Vendor Credit Notes for this analytic."""
+        valid_lines = self.filtered(
+            lambda l: l.plan_id.date_from and l.plan_id.date_to and l.analytic_account_id
+        )
+        for line in self - valid_lines:
+            line.used_amount = 0.0
 
-            domain = [
-                ('move_id.move_type', 'in', ('in_invoice', 'in_refund')),
-                ('move_id.state', '=', 'posted'),
-                ('company_id', '=', line.company_id.id),
-                ('date', '>=', line.plan_id.date_from),
-                ('date', '<=', line.plan_id.date_to),
-                ('analytic_distribution', '!=', False)
-            ]
-            
-            bill_lines = self.env['account.move.line'].sudo().search(domain)
-            
-            total_used = 0.0
-            analytic_str = str(line.analytic_account_id.id)
-            for bline in bill_lines:
-                dist = bline.analytic_distribution or {}
-                if analytic_str in dist:
-                    pct = dist[analytic_str] or 0.0
-                    amt = bline.price_subtotal if bline.move_id.move_type == 'in_invoice' else -bline.price_subtotal
-                    total_used += amt * (pct / 100.0)
+        if not valid_lines:
+            return
 
-            line.used_amount = total_used
+        # Build a single SQL query for all valid lines at once
+        query = """
+            SELECT
+                wbl_id,
+                SUM(
+                    CASE WHEN am.move_type = 'in_refund'
+                         THEN -aml.price_subtotal
+                         ELSE  aml.price_subtotal
+                    END
+                    * CAST(aml.analytic_distribution->>wbl_analytic::text AS numeric)
+                    / 100.0
+                ) AS total_used
+            FROM (
+                SELECT id AS wbl_id,
+                       analytic_account_id AS wbl_analytic,
+                       company_id AS wbl_company,
+                       (SELECT date_from FROM monthly_budget_plan WHERE id = plan_id) AS dt_from,
+                       (SELECT date_to   FROM monthly_budget_plan WHERE id = plan_id) AS dt_to
+                FROM monthly_budget_line
+                WHERE id = ANY(%s)
+            ) bl
+            JOIN account_move_line aml ON
+                aml.date >= bl.dt_from AND
+                aml.date <= bl.dt_to AND
+                aml.company_id = bl.wbl_company AND
+                aml.analytic_distribution IS NOT NULL AND
+                aml.analytic_distribution ? bl.wbl_analytic::text
+            JOIN account_move am ON
+                am.id = aml.move_id AND
+                am.state = 'posted' AND
+                am.move_type IN ('in_invoice', 'in_refund')
+            GROUP BY wbl_id
+        """
+        self.env.cr.execute(query, [list(valid_lines.ids)])
+        result_map = {r['wbl_id']: r['total_used'] or 0.0 for r in self.env.cr.dictfetchall()}
+
+        for line in valid_lines:
+            line.used_amount = result_map.get(line.id, 0.0)
 
     @api.depends('plan_id.state', 'plan_id.date_from', 'plan_id.date_to', 'plan_id.company_id')
     def _compute_reserved_amount(self):
@@ -254,9 +282,9 @@ class MonthlyBudgetLine(models.Model):
             ('company_id', 'in', company_ids),
         ])
 
-        # Maps PR name -> POs
+        # Maps PR name -> confirmed POs (scoped to date range for performance)
         po_linked_pr_names = set()
-        for po in self.env['purchase.order'].sudo().search([('state', 'in', ['purchase', 'done'])]):
+        for po in all_confirmed_pos:
             req_order = (getattr(po, 'requisition_order', '') or '').strip()
             pr_number = (getattr(po, 'pr_number', '') or '').strip()
             origin = (po.origin or '').strip()
@@ -495,29 +523,20 @@ class MonthlyBudgetLine(models.Model):
 
     def _recompute_line_balance(self):
         """
-        Recompute reserved_amount and used_amount directly from their
-        source-of-truth computed fields (which read live from PRs/POs/Invoices).
-        Call this to self-heal any inconsistency.
+        Force re-evaluation of all live computed fields (reserved, used,
+        fixed_cost, available) by invalidating the recordset cache.
+        This is useful after bulk data changes to ensure fresh values.
         """
+        if not self:
+            return
+        self.invalidate_recordset([
+            'reserved_amount', 'used_amount', 'fixed_cost_amount',
+            'available_amount', 'utilization_rate',
+        ])
         for line in self:
-            # Force re-evaluation of compute methods
-            line._compute_reserved_amount()
-            line._compute_used_amount()
+            # Access the fields to trigger recomputation and log
             _logger.info(
-                'monthly.budget.line [%s]: recomputed reserved=%.4f used=%.4f',
-                line.id, line.reserved_amount, line.used_amount,
+                'monthly.budget.line [%s]: refreshed reserved=%.4f used=%.4f available=%.4f',
+                line.id, line.reserved_amount, line.used_amount, line.available_amount,
             )
 
-    # ── Budget update helpers (kept for backward compatibility) ──
-
-    def _add_reservation(self, amount):
-        """No-op: reserved_amount is a live computed field."""
-        pass
-
-    def _release_reservation(self, amount):
-        """No-op: reserved_amount is a live computed field."""
-        pass
-
-    def _consume_reservation(self, amount):
-        """No-op: used_amount is a live computed field."""
-        pass
