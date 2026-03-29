@@ -403,6 +403,39 @@ class PurchaseRequisition(models.Model):
         if purchase_orders:
             self.write({'state': 'purchase_order_created'})
 
+    def action_cancel_po_created(self):
+        """Cancel PR from purchase_order_created state when user decides to abandon it completely."""
+        for rec in self:
+            active_pos = self.env['purchase.order'].search([
+                ('requisition_order', '=', rec.name),
+                ('state', 'not in', ['cancel'])
+            ])
+            if active_pos:
+                raise ValidationError('ไม่สามารถยกเลิก PR ได้ เนื่องจากยังมีใบสั่งซื้อ (PO) ที่เกี่ยวข้องและยังทำงานอยู่ กรุณายกเลิกใบสั่งซื้อทั้งหมดที่เกี่ยวข้องก่อน')
+                
+            rec.write({'state': 'cancelled'})
+            rec.rejected_user_id = self.env.uid
+            rec.reject_date = fields.Date.today()
+            if hasattr(rec, '_release_monthly_analytic_budget'):
+                rec._release_monthly_analytic_budget()
+
+    def action_reset_to_approved(self):
+        """Reset PR back to approved so PO can be recreated."""
+        for rec in self:
+            active_pos = self.env['purchase.order'].search([
+                ('requisition_order', '=', rec.name),
+                ('state', 'not in', ['cancel'])
+            ])
+            if active_pos:
+                raise ValidationError('ไม่สามารถตั้งค่าสถานะให้สร้างใหม่ได้ เนื่องจากยังมีใบสั่งซื้อ (PO) ที่เกี่ยวข้องและยังทำงานอยู่ กรุณายกเลิกใบสั่งซื้อทั้งหมดที่เกี่ยวข้องก่อนย้อนกลับ')
+                
+            rec.write({'state': 'approved'})
+            if hasattr(rec, '_reserve_monthly_analytic_budget'):
+                try:
+                    rec._reserve_monthly_analytic_budget()
+                except Exception:
+                    pass
+
     def _compute_internal_transfer_count(self):
         """Function to compute the transfer count"""
         for rec in self:

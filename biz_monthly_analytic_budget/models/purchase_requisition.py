@@ -53,17 +53,62 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             ], limit=1, order='id desc')
             rec.buz_budget_approval_id = req
 
-    @api.depends('requisition_deadline', 'request_date', 'vendor_id', 'vendor_id.property_supplier_payment_term_id')
+    @api.depends('requisition_deadline', 'request_date', 'vendor_id', 'vendor_id.property_supplier_payment_term_id', 'requisition_order_ids.partner_id')
     def _compute_payment_date(self):
         for req in self:
             # Priority logic:
-            # 2. Vendor payment term
+            # 1. Vendor payment term from header (if used)
             payment_term = req.vendor_id.property_supplier_payment_term_id
+            
+            # 2. Vendor payment term from the first line that has one
+            if not payment_term and req.requisition_order_ids:
+                for line in req.requisition_order_ids:
+                    if line.partner_id and line.partner_id.property_supplier_payment_term_id:
+                        payment_term = line.partner_id.property_supplier_payment_term_id
+                        break
+                        
             if payment_term:
                 p_date = req.request_date or fields.Date.today()
-                res = payment_term.compute(value=1, date_ref=p_date)
-                if res and res[0] and res[0][0]:
-                    req.payment_date = res[0][0]
+                
+                # Check method availability directly to avoid exception overhead
+                if hasattr(payment_term, 'compute'):
+                    res = payment_term.compute(value=1, date_ref=p_date)
+                    if res and res[0] and res[0][0]:
+                        req.payment_date = res[0][0]
+                        continue
+                elif hasattr(payment_term, '_compute_terms'):
+                    try:
+                        res = payment_term._compute_terms(
+                            date_ref=p_date,
+                            currency=req.company_id.currency_id,
+                            company=req.company_id,
+                            taxes_and_subtotals=[{'name': '', 'tax_amount': 0.0, 'base_amount': 1.0}],
+                            untaxed_amount=1.0,
+                            empty_taxes=True,
+                            sign=1
+                        )
+                        if res and getattr(res, 'get', None) and res.get('line_ids'):
+                            # Odoo 17 returns a dict containing line_ids list
+                            lines = res.get('line_ids')
+                            req.payment_date = lines[-1].get('date') if lines else p_date
+                            continue
+                        elif res and isinstance(res, list):
+                            # Other versions might return list of dicts directly
+                            req.payment_date = res[-1].get('date') if res else p_date
+                            continue
+                    except Exception as e:
+                        _logger.warning("biz_monthly_analytic_budget _compute_terms failed: %s", e)
+                        
+                # Ultimate fallback: manual parsing of days
+                max_days = 0
+                for line in payment_term.line_ids:
+                    days = getattr(line, 'days', getattr(line, 'nb_days', 0))
+                    months = getattr(line, 'months', 0)
+                    total_days = (months * 30) + days
+                    if total_days > max_days:
+                        max_days = total_days
+                if max_days > 0:
+                    req.payment_date = p_date + timedelta(days=max_days)
                     continue
             
             # 3. Requisition deadline + 30 days

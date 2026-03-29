@@ -213,16 +213,16 @@ class MonthlyBudgetLine(models.Model):
                 WHERE id = ANY(%s)
             ) bl
             JOIN account_move_line aml ON
-                aml.date >= bl.dt_from AND
-                aml.date <= bl.dt_to AND
                 aml.company_id = bl.wbl_company AND
                 aml.analytic_distribution IS NOT NULL AND
                 aml.analytic_distribution ? bl.wbl_analytic::text
             JOIN account_move am ON
                 am.id = aml.move_id AND
                 am.state = 'posted' AND
-                am.move_type IN ('in_invoice', 'in_refund')
-            GROUP BY wbl_id
+                am.move_type IN ('in_invoice', 'in_refund') AND
+                COALESCE(am.invoice_date_due, am.invoice_date, aml.date) >= bl.dt_from AND
+                COALESCE(am.invoice_date_due, am.invoice_date, aml.date) <= bl.dt_to
+            GROUP BY bl.wbl_id
         """
         self.env.cr.execute(query, [list(valid_lines.ids)])
         result_map = {r['wbl_id']: r['total_used'] or 0.0 for r in self.env.cr.dictfetchall()}
@@ -279,6 +279,13 @@ class MonthlyBudgetLine(models.Model):
             ('state', '=', 'draft'),
             ('payment_date', '>=', global_date_from),
             ('payment_date', '<=', global_date_to),
+            ('company_id', 'in', company_ids),
+        ])
+
+        # Batch fetch Draft Vendor Bills
+        all_draft_bills = self.env['account.move'].sudo().search([
+            ('state', '=', 'draft'),
+            ('move_type', 'in', ('in_invoice', 'in_refund')),
             ('company_id', 'in', company_ids),
         ])
 
@@ -348,14 +355,27 @@ class MonthlyBudgetLine(models.Model):
                 if _po_linked(po):
                     continue
                 
-                # Unbilled logic for specific analytic lines using exact native unbilled qty
+                # Unbilled logic for specific analytic lines using unbilled qty (ordered minus billed)
                 for pol in po.order_line:
                     dist = pol.analytic_distribution or {}
                     if analytic_str in dist:
                         pct = dist[analytic_str] or 0.0
-                        po_unbilled_amount += (pol.qty_to_invoice * pol.price_unit) * (pct / 100.0)
+                        unbilled_qty = max(0.0, pol.product_qty - pol.qty_invoiced)
+                        po_unbilled_amount += (unbilled_qty * pol.price_unit) * (pct / 100.0)
 
-            line.reserved_amount = pr_amount + rfq_amount + po_unbilled_amount
+            # 4. Draft Vendor Bills
+            draft_bill_amount = 0.0
+            for bill in all_draft_bills.filtered(lambda b: b.company_id.id == comp_id):
+                b_date = bill.invoice_date_due or bill.invoice_date or bill.date or False
+                if b_date and (date_from <= b_date <= date_to):
+                    sign = -1 if bill.move_type == 'in_refund' else 1
+                    for aml in bill.invoice_line_ids:
+                        dist = aml.analytic_distribution or {}
+                        if analytic_str in dist:
+                            pct = dist[analytic_str] or 0.0
+                            draft_bill_amount += (aml.price_subtotal * sign) * (pct / 100.0)
+
+            line.reserved_amount = pr_amount + rfq_amount + po_unbilled_amount + draft_bill_amount
 
     # ── Constraints ──────────────────────────────────────────────
 

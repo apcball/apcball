@@ -98,6 +98,23 @@
             invisible="state != 'purchase_order_created'"
             help="Mark as Received by Department Head"
             groups="employee_purchase_requisition.employee_requisition_manager"/>
+            
+    <!-- Recreate PO Button -->
+    <button name="action_reset_to_approved"
+            string="Recreate PO"
+            type="object"
+            class="oe_highlight"
+            invisible="state != 'purchase_order_created'"
+            help="Reset to Approved to re-create PO if existing POs are cancelled"
+            groups="employee_purchase_requisition.employee_requisition_head,employee_purchase_requisition.employee_requisition_manager"/>
+            
+    <!-- Cancel from PO Created Button -->
+    <button name="action_cancel_po_created"
+            string="Cancel Request"
+            type="object"
+            invisible="state != 'purchase_order_created'"
+            help="Cancel PR completely if POs are cancelled"
+            groups="employee_purchase_requisition.employee_requisition_head,employee_purchase_requisition.employee_requisition_manager"/>
 
 </header>
                 <sheet>

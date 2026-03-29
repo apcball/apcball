@@ -80,22 +80,59 @@ class PurchaseOrder(models.Model):
             payment_term = order.partner_id.property_supplier_payment_term_id
             if payment_term:
                 p_date = order.date_order or fields.Date.today()
-                # Compute based on term
-                res = payment_term.compute(value=1, date_ref=p_date)
-                if res and res[0] and res[0][0]:
-                    order.payment_date = res[0][0]
+                # Check method availability directly to avoid exception overhead
+                if hasattr(payment_term, 'compute'):
+                    res = payment_term.compute(value=1, date_ref=p_date)
+                    if res and res[0] and res[0][0]:
+                        order.payment_date = res[0][0]
+                        continue
+                elif hasattr(payment_term, '_compute_terms'):
+                    try:
+                        res = payment_term._compute_terms(
+                            date_ref=p_date,
+                            currency=order.company_id.currency_id,
+                            company=order.company_id,
+                            taxes_and_subtotals=[{'name': '', 'tax_amount': 0.0, 'base_amount': 1.0}],
+                            untaxed_amount=1.0,
+                            empty_taxes=True,
+                            sign=1
+                        )
+                        if res and getattr(res, 'get', None) and res.get('line_ids'):
+                            # Odoo 17 returns a dict containing line_ids list
+                            lines = res.get('line_ids')
+                            order.payment_date = lines[-1].get('date') if lines else p_date
+                            continue
+                        elif res and isinstance(res, list):
+                            # Other versions might return list of dicts directly
+                            order.payment_date = res[-1].get('date') if res else p_date
+                            continue
+                    except Exception as e:
+                        _logger.warning("biz_monthly_analytic_budget _compute_terms failed: %s", e)
+                        
+                # Ultimate fallback: manual parsing of days
+                max_days = 0
+                for line in payment_term.line_ids:
+                    days = getattr(line, 'days', getattr(line, 'nb_days', 0))
+                    months = getattr(line, 'months', 0)
+                    total_days = (months * 30) + days
+                    if total_days > max_days:
+                        max_days = total_days
+                if max_days > 0:
+                    order.payment_date = p_date + timedelta(days=max_days)
                     continue
             
-            # 3. Requisition deadline + 30 days
+            # 3. Source Requisition payment_date or deadline + 30 days
             # Try to find source requisition
             req_id = False
             if hasattr(order, 'requisition_order'): # field from employee_purchase_requisition
                 req = self.env['employee.purchase.requisition'].sudo().search([('name', '=', order.requisition_order)], limit=1)
-                if req and req.requisition_deadline:
-                    order.payment_date = req.requisition_deadline + timedelta(days=30)
-                    continue
-
-            # 4. Fallback: date_planned (if multiple lines, take earliest or latest? prompt says date_planned)
+                if req:
+                    if hasattr(req, 'payment_date') and req.payment_date:
+                        order.payment_date = req.payment_date
+                        continue
+                    elif req.requisition_deadline:
+                        order.payment_date = req.requisition_deadline + timedelta(days=30)
+                        continue
             # Usually PO lines have date_planned.
             if order.order_line:
                 dates = order.order_line.mapped('date_planned')

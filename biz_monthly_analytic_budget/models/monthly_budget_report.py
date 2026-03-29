@@ -107,7 +107,7 @@ class MonthlyBudgetReport(models.Model):
                       * CAST(aml.analytic_distribution->>wbl.analytic_account_id::text AS numeric)
                       / 100.0) as remaining_amt,
                     100.0 as utilization,
-                    aml.date as date,
+                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) as date,
                     am.company_id as company_id,
                     wbl.id as budget_line_id,
                     wbl.plan_id as plan_id,
@@ -118,8 +118,8 @@ class MonthlyBudgetReport(models.Model):
                 FROM account_move_line aml
                 JOIN account_move am ON aml.move_id = am.id
                 JOIN monthly_budget_plan wbp ON
-                    aml.date >= wbp.date_from AND
-                    aml.date <= wbp.date_to AND
+                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) >= wbp.date_from AND
+                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) <= wbp.date_to AND
                     wbp.company_id = am.company_id AND
                     wbp.state = 'confirmed'
                 JOIN monthly_budget_line wbl ON wbl.plan_id = wbp.id
@@ -131,16 +131,55 @@ class MonthlyBudgetReport(models.Model):
 
                 UNION ALL
 
+                -- Reserved: Draft Vendor Bills
+                SELECT
+                    'reserved' as entry_type,
+                    am.name as name,
+                    (CASE WHEN am.move_type = 'in_refund'
+                          THEN -aml.price_subtotal
+                          ELSE  aml.price_subtotal END)
+                    * CAST(aml.analytic_distribution->>wbl.analytic_account_id::text AS numeric)
+                    / 100.0 as amount,
+                    0.0 as budget_amt,
+                    0.0 as actual_amt,
+                    -((CASE WHEN am.move_type = 'in_refund'
+                            THEN -aml.price_subtotal
+                            ELSE  aml.price_subtotal END)
+                      * CAST(aml.analytic_distribution->>wbl.analytic_account_id::text AS numeric)
+                      / 100.0) as remaining_amt,
+                    0.0 as utilization,
+                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) as date,
+                    am.company_id as company_id,
+                    wbl.id as budget_line_id,
+                    wbl.plan_id as plan_id,
+                    wbl.analytic_account_id as analytic_account_id,
+                    wbl.department_id as department_id,
+                    wbl.project_id as project_id,
+                    wbl.category as category
+                FROM account_move_line aml
+                JOIN account_move am ON aml.move_id = am.id
+                JOIN monthly_budget_plan wbp ON
+                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) >= wbp.date_from AND
+                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) <= wbp.date_to AND
+                    wbp.company_id = am.company_id AND
+                    wbp.state = 'confirmed'
+                JOIN monthly_budget_line wbl ON wbl.plan_id = wbp.id
+                WHERE am.state = 'draft'
+                  AND am.move_type IN ('in_invoice', 'in_refund')
+                  AND aml.analytic_distribution IS NOT NULL
+                  AND jsonb_typeof(aml.analytic_distribution) = 'object'
+                  AND aml.analytic_distribution ? wbl.analytic_account_id::text
+
+                UNION ALL
+
                 -- Reserved: Active PRs (not yet converted to a confirmed PO)
                 SELECT
                     'reserved' as entry_type,
                     pr.name as name,
-                    ((prl.quantity * prl.unit_price)
-                     * CAST(dist.value AS numeric) / 100.0) as amount,
+                    (prl.price_subtotal * CAST(dist.value AS numeric) / 100.0) as amount,
                     0.0 as budget_amt,
                     0.0 as actual_amt,
-                    -((prl.quantity * prl.unit_price)
-                      * CAST(dist.value AS numeric) / 100.0) as remaining_amt,
+                    -(prl.price_subtotal * CAST(dist.value AS numeric) / 100.0) as remaining_amt,
                     0.0 as utilization,
                     pr.payment_date as date,
                     pr.company_id as company_id,
@@ -219,11 +258,11 @@ class MonthlyBudgetReport(models.Model):
                 SELECT
                     'reserved' as entry_type,
                     po.name as name,
-                    ((pol.qty_to_invoice * pol.price_unit)
+                    ((GREATEST(0, pol.product_qty - pol.qty_invoiced) * pol.price_unit)
                      * CAST(dist.value AS numeric) / 100.0) as amount,
                     0.0 as budget_amt,
                     0.0 as actual_amt,
-                    -((pol.qty_to_invoice * pol.price_unit)
+                    -((GREATEST(0, pol.product_qty - pol.qty_invoiced) * pol.price_unit)
                       * CAST(dist.value AS numeric) / 100.0) as remaining_amt,
                     0.0 as utilization,
                     COALESCE(po.payment_date, po.date_order::date) as date,
@@ -246,7 +285,7 @@ class MonthlyBudgetReport(models.Model):
                      wbl.plan_id = wbp.id AND
                      wbl.analytic_account_id::text = dist.key
                 WHERE po.state IN ('purchase', 'done')
-                  AND pol.qty_to_invoice > 0
+                  AND (pol.product_qty - pol.qty_invoiced) > 0
                   AND pol.analytic_distribution IS NOT NULL
                   AND jsonb_typeof(pol.analytic_distribution) = 'object'
 
@@ -376,6 +415,9 @@ class MonthlyBudgetReport(models.Model):
     @api.model
     def get_dashboard_data(self, filters=None):
         """Fetch summarized data for the OWL dashboard components using SQL aggregation."""
+        # Ensure realtime data by refreshing the materialized view before query
+        self.refresh_materialized_view()
+        
         if filters is None:
             filters = {}
 
