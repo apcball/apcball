@@ -149,6 +149,13 @@ class EtaxTransaction(models.Model):
         self.selected_invoice_id = False
         self.selected_delivery_id = False
         
+        # ดึง Tax Branch จาก partner
+        if self.partner_id:
+            self.partner_tax_id = self.partner_id.vat or ''
+            self.partner_branch_id = self.partner_id.branch or '00000'
+        else:
+            self.partner_branch_id = '00000'
+
         # สร้าง domain
         if self.partner_id:
             return {
@@ -262,6 +269,7 @@ class EtaxTransaction(models.Model):
             'etax_config_id': etax_config.id,
             'partner_id': invoice.partner_id.id,
             'partner_tax_id': invoice.partner_id.vat or 'N/A',
+            'partner_branch_id': invoice.partner_id.branch or '00000',
             'invoice_id': invoice.id or '',
             'document_date': invoice.invoice_date or fields.Date.today(),
             'payment_term': payment_term_days,   
@@ -407,16 +415,17 @@ class EtaxTransaction(models.Model):
                     else cdn_label if self.document_type == '81'
                     else ''
                 ), # เหตุผลในการเพิ่ม/ลดหนี้
-                "H07-ADDITIONAL_REF_ASSIGN_ID": self.selected_invoice_id.name or "", # อ้างอิงใบกำกับภาษีเดิม [CN, DN]
-                "H08-ADDITIONAL_REF_ISSUE_DTM": self.document_date.strftime("%Y-%m-%dT00:00:00") if self.selected_invoice_id else "", # วันที่ใบกำกับภาษีเดิม [CN, DN]
-                "H09-ADDITIONAL_REF_TYPE_CODE": self.document_type if self.selected_invoice_id.name else "",
+
+                "H07-ADDITIONAL_REF_ASSIGN_ID": self.selected_invoice_id.name if self.selected_invoice_id.name else self.invoice_id.name, # อ้างอิงใบกำกับภาษีเดิม [CN, DN]
+                "H08-ADDITIONAL_REF_ISSUE_DTM": self.selected_invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00") if self.selected_invoice_id.name else self.invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00"), # วันที่ใบกำกับภาษีเดิม [CN, DN]
+                "H09-ADDITIONAL_REF_TYPE_CODE": self.document_type, # self.document_type if self.selected_invoice_id.name else "",
                 "H10-ADDITIONAL_REF_DOCUMENT_NAME": "",
                 "H11-DELIVERY_TYPE_CODE": "",
-                "H12-BUYER_ORDER_ASSIGN_ID": invoice.custom_reference or "", # self.sale_order_ref.name or "", # ใบสั่งซื้อเลขที่ [T03]
+                "H12-BUYER_ORDER_ASSIGN_ID": f"{self.sale_order_ref.client_order_ref or ''}", #invoice.custom_reference or "", # self.sale_order_ref.name or "", # ใบสั่งซื้อเลขที่ [T03]
                 # "H13-BUYER_ORDER_ISSUE_DTM": self.selected_delivery_id.name or "", # วันที่ใบสั่งซื้อ [T03]
                 "H13-BUYER_ORDER_ISSUE_DTM": "",
                 "H14-BUYER_ORDER_REF_TYPE_CODE": "",
-                "H15-DOCUMENT_REMARK": self.notes, # หมายเหตุ [T03, CN, DN]
+                "H15-DOCUMENT_REMARK": self.selected_delivery_id.name or "", #self.notes, # หมายเหตุ [T03, CN, DN]
                 "H16-VOUCHER_NO": "",
                 "H17-SELLER_CONTACT_PERSON_NAME": "",
                 "H18-SELLER_CONTACT_DEPARTMENT_NAME": "",
@@ -444,7 +453,7 @@ class EtaxTransaction(models.Model):
                 "B02-BUYER_NAME": self.partner_id.name[:100], # ผู้ซื้อ
                 "B03-BUYER_TAX_ID_TYPE": "OTHR" if not self.partner_id.vat or self.partner_id.vat == 'N/A' else "TXID",
                 "B04-BUYER_TAX_ID": self.partner_id.vat or "N/A", # เลขประจำตัวผู้เสียภาษีอากร
-                "B05-BUYER_BRANCH_ID": self.partner_branch_id, # รหัสสาขาผู้ซื้อ
+                "B05-BUYER_BRANCH_ID": self.partner_id.branch or '00000', #self.partner_branch_id, # รหัสสาขาผู้ซื้อ
                 "B06-BUYER_CONTACT_PERSON_NAME": "",
                 "B07-BUYER_CONTACT_DEPARTMENT_NAME": "",
                 "B08-BUYER_URIID": "",
