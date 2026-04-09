@@ -24,7 +24,6 @@ class MonthlyBudgetReport(models.Model):
     entry_type = fields.Selection([
         ('budget', 'Budget Limit'),
         ('reserved', 'Reserved'),
-        ('fixed', 'Fixed Cost'),
         ('actual', 'Actual Spending'),
     ], string='Entry Type', readonly=True)
     name = fields.Char(string='Reference', readonly=True)
@@ -123,48 +122,7 @@ class MonthlyBudgetReport(models.Model):
                     wbp.company_id = am.company_id AND
                     wbp.state = 'confirmed'
                 JOIN monthly_budget_line wbl ON wbl.plan_id = wbp.id
-                WHERE am.state = 'posted'
-                  AND am.move_type IN ('in_invoice', 'in_refund')
-                  AND aml.analytic_distribution IS NOT NULL
-                  AND jsonb_typeof(aml.analytic_distribution) = 'object'
-                  AND aml.analytic_distribution ? wbl.analytic_account_id::text
-
-                UNION ALL
-
-                -- Reserved: Draft Vendor Bills
-                SELECT
-                    'reserved' as entry_type,
-                    am.name as name,
-                    (CASE WHEN am.move_type = 'in_refund'
-                          THEN -aml.price_subtotal
-                          ELSE  aml.price_subtotal END)
-                    * CAST(aml.analytic_distribution->>wbl.analytic_account_id::text AS numeric)
-                    / 100.0 as amount,
-                    0.0 as budget_amt,
-                    0.0 as actual_amt,
-                    -((CASE WHEN am.move_type = 'in_refund'
-                            THEN -aml.price_subtotal
-                            ELSE  aml.price_subtotal END)
-                      * CAST(aml.analytic_distribution->>wbl.analytic_account_id::text AS numeric)
-                      / 100.0) as remaining_amt,
-                    0.0 as utilization,
-                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) as date,
-                    am.company_id as company_id,
-                    wbl.id as budget_line_id,
-                    wbl.plan_id as plan_id,
-                    wbl.analytic_account_id as analytic_account_id,
-                    wbl.department_id as department_id,
-                    wbl.project_id as project_id,
-                    wbl.category as category
-                FROM account_move_line aml
-                JOIN account_move am ON aml.move_id = am.id
-                JOIN monthly_budget_plan wbp ON
-                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) >= wbp.date_from AND
-                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) <= wbp.date_to AND
-                    wbp.company_id = am.company_id AND
-                    wbp.state = 'confirmed'
-                JOIN monthly_budget_line wbl ON wbl.plan_id = wbp.id
-                WHERE am.state = 'draft'
+                WHERE am.state IN ('draft', 'posted')
                   AND am.move_type IN ('in_invoice', 'in_refund')
                   AND aml.analytic_distribution IS NOT NULL
                   AND jsonb_typeof(aml.analytic_distribution) = 'object'
@@ -289,34 +247,6 @@ class MonthlyBudgetReport(models.Model):
                   AND pol.analytic_distribution IS NOT NULL
                   AND jsonb_typeof(pol.analytic_distribution) = 'object'
 
-                UNION ALL
-
-                -- Fixed: Confirmed Fixed Costs
-                SELECT
-                    'fixed' as entry_type,
-                    fc.name as name,
-                    fc.amount as amount,
-                    0.0 as budget_amt,
-                    0.0 as actual_amt,
-                    -fc.amount as remaining_amt,
-                    0.0 as utilization,
-                    wbp.date_from as date,
-                    fc.company_id as company_id,
-                    wbl.id as budget_line_id,
-                    fc.plan_id as plan_id,
-                    fc.analytic_account_id as analytic_account_id,
-                    fc.department_id as department_id,
-                    fc.project_id as project_id,
-                    fc.category as category
-                FROM monthly_budget_fixed_cost fc
-                JOIN monthly_budget_plan wbp ON fc.plan_id = wbp.id
-                LEFT JOIN monthly_budget_line wbl ON
-                     wbl.plan_id = wbp.id AND
-                     wbl.analytic_account_id = fc.analytic_account_id AND
-                     wbl.department_id IS NOT DISTINCT FROM fc.department_id AND
-                     wbl.project_id IS NOT DISTINCT FROM fc.project_id AND
-                     wbl.category IS NOT DISTINCT FROM fc.category
-                WHERE fc.state = 'confirmed' AND wbp.state = 'confirmed'
             )
             SELECT
                 row_number() OVER () AS id,
@@ -413,6 +343,26 @@ class MonthlyBudgetReport(models.Model):
     # ── Dashboard Data API (SQL Aggregation) ─────────────────────
 
     @api.model
+    def get_available_plans(self, company_id=None):
+        """Return list of confirmed budget plans for the dropdown selector."""
+        domain = [('state', '=', 'confirmed')]
+        if company_id:
+            domain.append(('company_id', '=', int(company_id)))
+        plans = self.env['monthly.budget.plan'].search(domain, order='year desc, month desc')
+        return [
+            {
+                'id': p.id,
+                'name': p.name,
+                'month': p.month,
+                'year': p.year,
+                'date_from': p.date_from.isoformat() if p.date_from else '',
+                'date_to': p.date_to.isoformat() if p.date_to else '',
+                'label': '%s/%s — %s' % (p.month.zfill(2), p.year, p.name),
+            }
+            for p in plans
+        ]
+
+    @api.model
     def get_dashboard_data(self, filters=None):
         """Fetch summarized data for the OWL dashboard components using SQL aggregation."""
         # Ensure realtime data by refreshing the materialized view before query
@@ -421,19 +371,23 @@ class MonthlyBudgetReport(models.Model):
         if filters is None:
             filters = {}
 
-        # 1. Resolve Plans based on year/month/company
+        # 1. Resolve Plans based on plan_id (direct) or year/month/company
         domain = [('state', '=', 'confirmed')]
         if filters.get('company_id'):
             domain.append(('company_id', '=', int(filters['company_id'])))
         
-        plans = self.env['monthly.budget.plan'].search(domain)
-        
-        year = filters.get('year')
-        month = filters.get('month')
-        if year:
-            plans = plans.filtered(lambda p: p.date_from and p.date_from.year == int(year))
-        if month:
-            plans = plans.filtered(lambda p: p.date_from and p.date_from.month == int(month))
+        # Direct plan_id filter takes priority over year/month
+        if filters.get('plan_id'):
+            domain.append(('id', '=', int(filters['plan_id'])))
+            plans = self.env['monthly.budget.plan'].search(domain)
+        else:
+            plans = self.env['monthly.budget.plan'].search(domain)
+            year = filters.get('year')
+            month = filters.get('month')
+            if year:
+                plans = plans.filtered(lambda p: p.date_from and p.date_from.year == int(year))
+            if month:
+                plans = plans.filtered(lambda p: p.date_from and p.date_from.month == int(month))
 
         plan_ids = plans.ids
         if not plan_ids:
@@ -457,6 +411,7 @@ class MonthlyBudgetReport(models.Model):
             'trend': self._get_trend(plan_ids, filters),
             'alerts': self._get_alerts(breakdown_data),
         }
+
 
     def _get_analytic_breakdown(self, plan_ids, filters):
         """Execute raw SQL to get multi-dimension aggregation."""
@@ -482,7 +437,6 @@ class MonthlyBudgetReport(models.Model):
                 mbr.project_id,
                 mbr.category,
                 SUM(CASE WHEN mbr.entry_type = 'budget' THEN mbr.budget_amt ELSE 0 END) AS budget,
-                SUM(CASE WHEN mbr.entry_type = 'fixed' THEN mbr.amount ELSE 0 END) AS fixed,
                 SUM(CASE WHEN mbr.entry_type = 'reserved' THEN mbr.amount ELSE 0 END) AS reserved,
                 SUM(CASE WHEN mbr.entry_type = 'actual' THEN mbr.actual_amt ELSE 0 END) AS used
             FROM monthly_budget_report mbr
@@ -505,13 +459,11 @@ class MonthlyBudgetReport(models.Model):
         result = []
         for r in rows:
             budget = r['budget'] or 0.0
-            fixed = r['fixed'] or 0.0
             reserved = r['reserved'] or 0.0
             used = r['used'] or 0.0
             
-            # The prompt explicitly asks for: available = budget - fixed - reserved - used
-            available = budget - fixed - reserved - used
-            utilization = (fixed + reserved + used) / budget if budget else 0.0
+            available = budget - reserved - used
+            utilization = (reserved + used) / budget if budget else 0.0
 
             result.append({
                 'analytic': analytics.get(r['analytic_account_id'], 'General'),
@@ -519,7 +471,6 @@ class MonthlyBudgetReport(models.Model):
                 'project': projs.get(r['project_id'], '-'),
                 'category': r['category'] or '-',
                 'budget': budget,
-                'fixed': fixed,
                 'reserved': reserved,
                 'used': used,
                 'available': available,
@@ -532,30 +483,25 @@ class MonthlyBudgetReport(models.Model):
         """Format data for stacked bar chart."""
         return [
             {
-                # Create a composite label if there's no project/department to keep it readable, 
-                # but analytic is the primary dimension as per prompt.
                 'label': f"{d['analytic']} {d['department'] if d['department'] != '-' else ''}".strip(),
                 'budget': d['budget'],
-                'fixed': d['fixed'],
                 'reserved': d['reserved'],
                 'used': d['used'],
             }
             for d in breakdown_data
-            if d['budget'] > 0 or d['fixed'] > 0 or d['reserved'] > 0 or d['used'] > 0
+            if d['budget'] > 0 or d['reserved'] > 0 or d['used'] > 0
         ]
 
     def _get_kpi(self, breakdown_data):
         total_budget = sum(d['budget'] for d in breakdown_data)
-        total_fixed = sum(d['fixed'] for d in breakdown_data)
         total_reserved = sum(d['reserved'] for d in breakdown_data)
         total_used = sum(d['used'] for d in breakdown_data)
-        total_available = total_budget - total_fixed - total_reserved - total_used
-        utilization = (total_fixed + total_reserved + total_used) / total_budget * 100 if total_budget else 0.0
+        total_available = total_budget - total_reserved - total_used
+        utilization = (total_reserved + total_used) / total_budget * 100 if total_budget else 0.0
         burn_rate = total_used / total_budget if total_budget else 0.0
 
         return {
             'total_budget': total_budget,
-            'fixed_cost': total_fixed,
             'reserved': total_reserved,
             'used': total_used,
             'available': max(0.0, total_available),
@@ -567,7 +513,6 @@ class MonthlyBudgetReport(models.Model):
         kpi = self._get_kpi(breakdown_data)
         return [
             {'label': 'Total Budget', 'value': kpi['total_budget']},
-            {'label': 'Fixed Cost', 'value': -kpi['fixed_cost']},
             {'label': 'Reserved', 'value': -kpi['reserved']},
             {'label': 'Used', 'value': -kpi['used']},
             {'label': 'Remaining', 'value': kpi['available']},

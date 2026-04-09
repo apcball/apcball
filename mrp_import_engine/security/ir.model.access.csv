@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mrp_import_session,mrp_import_session,model_mrp_import_session,group_mrp_import_user,1,1,1,1
+access_mrp_import_log,mrp_import_log,model_mrp_import_log,group_mrp_import_user,1,1,1,1
+access_mrp_bom_staging,mrp_bom_staging,model_mrp_bom_staging,group_mrp_import_user,1,1,1,1
+access_mrp_bom_line_staging,mrp_bom_line_staging,model_mrp_bom_line_staging,group_mrp_import_user,1,1,1,1
+access_mrp_mo_staging,mrp_mo_staging,model_mrp_mo_staging,group_mrp_import_user,1,1,1,1
+access_mrp_mo_line_staging,mrp_mo_line_staging,model_mrp_mo_line_staging,group_mrp_import_user,1,1,1,1

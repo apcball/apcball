@@ -9,16 +9,15 @@ class AgedReceivableXlsx(models.AbstractModel):
         report_data = pdf_report._get_report_values(wizards.ids, data=data)
         
         partners = report_data.get('partners', [])
-        date_from = report_data.get('date_from')
-        date_to = report_data.get('date_to')
+        date_as_of = report_data.get('date_as_of')
         period_length = report_data.get('period_length', 30)
         direction_selection = report_data.get('direction_selection', 'past')
+        result_selection = report_data.get('result_selection', 'Receivable/Payable')
         company = self.env.user.company_id
 
         sheet = workbook.add_worksheet('Aged Receivable')
         
         title_fmt = workbook.add_format({'bold': True, 'font_size': 14, 'align': 'center'})
-        bold = workbook.add_format({'bold': True})
         header_fmt = workbook.add_format({
             'bold': True, 
             'align': 'center', 
@@ -27,6 +26,18 @@ class AgedReceivableXlsx(models.AbstractModel):
             'font_color': 'white',
             'text_wrap': True
         })
+        subtotal_fmt = workbook.add_format({
+            'bold': True,
+            'num_format': '#,##0.00',
+            'border': 1,
+            'bg_color': '#D9D9D9'
+        })
+        subtotal_name_fmt = workbook.add_format({
+            'bold': True,
+            'border': 1,
+            'bg_color': '#D9D9D9'
+        })
+        row_fmt = workbook.add_format({'border': 0})
         amount_fmt = workbook.add_format({
             'num_format': '#,##0.00', 
             'align': 'right'
@@ -39,76 +50,99 @@ class AgedReceivableXlsx(models.AbstractModel):
             'border': 1
         })
         
-        sheet.set_column('A:A', 40)
-        sheet.set_column('B:G', 18)
+        sheet.set_column('A:A', 35)
+        sheet.set_column('B:C', 12)
+        sheet.set_column('D:D', 8)
+        sheet.set_column('E:L', 15)
 
-        sheet.merge_range('A1:G1', f"{company.name}: Aged Receivable Report", title_fmt)
-        sheet.write('A2', f"Date From: {date_from}")
-        sheet.write('A3', f"Date To: {date_to}")
-
-        headers = ['Partner', 'Total']
+        sheet.merge_range('A1:L1', f"{company.name}: Aged Receivable", title_fmt)
+        sheet.write('A2', f"As of Date: {date_as_of}")
+        if 'aged_receivable_xlsx.py' == 'aged_partner_xlsx.py':
+            sheet.write('A3', f"Type: {result_selection.title()}")
         
-        if direction_selection == 'past':
-            for i in range(5):
-                period_label = f"{i * period_length + 1}-{(i + 1) * period_length} Days"
-                headers.append(period_label)
-        else:
-            for i in range(5):
-                period_label = f"{i * period_length + 1}-{(i + 1) * period_length} Days"
-                headers.append(period_label)
-
+        headers = [
+            'Partner / Entry', 'Date', 'Due Date', 'Ccy', 'Amount Ccy',
+            'Not Due', '1-30 Days', '31-60 Days', '61-90 Days', '91-120 Days', '120+ Days', 'Total'
+        ]
+        
         for col_idx, header in enumerate(headers):
             sheet.write(4, col_idx, header, header_fmt)
         
-        row_fmt = workbook.add_format({'border': 1, 'text_wrap': True, 'valign': 'vcenter'})
-        
         row = 5
-        grand_total = 0.0
-        period_totals = {}
+        grand_totals = {
+            'Not Due': 0.0,
+            '1-30': 0.0,
+            '31-60': 0.0,
+            '61-90': 0.0,
+            '91-120': 0.0,
+            '120+': 0.0,
+            'Total': 0.0
+        }
+
+        bucket_to_col = {
+            'Not Due': 5,
+            '1-30': 6,
+            '31-60': 7,
+            '61-90': 8,
+            '91-120': 9,
+            '120+': 10
+        }
 
         for partner in partners:
-            sheet.write(row, 0, partner['partner_name'], row_fmt)
-            sheet.write(row, 1, partner['total'], amount_fmt)
-            grand_total += partner['total']
-
-            col = 2
-            if direction_selection == 'past':
-                for i in range(5):
-                    period_key = f"{i * period_length + 1}-{(i + 1) * period_length}"
-                    amount = partner['periods'].get(period_key, 0.0)
-                    sheet.write(row, col, amount, amount_fmt)
-                    
-                    if period_key not in period_totals:
-                        period_totals[period_key] = 0.0
-                    period_totals[period_key] += amount
-                    col += 1
-            else:
-                for i in range(5):
-                    period_key = f"{i * period_length + 1}-{(i + 1) * period_length}"
-                    amount = partner['periods'].get(period_key, 0.0)
-                    sheet.write(row, col, amount, amount_fmt)
-                    
-                    if period_key not in period_totals:
-                        period_totals[period_key] = 0.0
-                    period_totals[period_key] += amount
-                    col += 1
-
+            # Partner row (Subtotal)
+            sheet.write(row, 0, partner['partner_name'], subtotal_name_fmt)
+            for i in range(1, 4):
+                sheet.write(row, i, '', subtotal_name_fmt)
+            sheet.write(row, 4, '', subtotal_fmt)
+            
+            sheet.write(row, 5, partner['periods']['Not Due'], subtotal_fmt)
+            sheet.write(row, 6, partner['periods']['1-30'], subtotal_fmt)
+            sheet.write(row, 7, partner['periods']['31-60'], subtotal_fmt)
+            sheet.write(row, 8, partner['periods']['61-90'], subtotal_fmt)
+            sheet.write(row, 9, partner['periods']['91-120'], subtotal_fmt)
+            sheet.write(row, 10, partner['periods']['120+'], subtotal_fmt)
+            sheet.write(row, 11, partner['total'], subtotal_fmt)
+            
+            grand_totals['Not Due'] += partner['periods']['Not Due']
+            grand_totals['1-30'] += partner['periods']['1-30']
+            grand_totals['31-60'] += partner['periods']['31-60']
+            grand_totals['61-90'] += partner['periods']['61-90']
+            grand_totals['91-120'] += partner['periods']['91-120']
+            grand_totals['120+'] += partner['periods']['120+']
+            grand_totals['Total'] += partner['total']
+            
             row += 1
+            
+            # Detail lines
+            for line in partner['lines']:
+                sheet.write(row, 0, f"      {line['move_name']}", row_fmt)
+                sheet.write(row, 1, str(line['date']) if line['date'] else '', row_fmt)
+                sheet.write(row, 2, str(line['date_maturity']) if line['date_maturity'] else '', row_fmt)
+                sheet.write(row, 3, line['currency_name'] or '', row_fmt)
+                sheet.write(row, 4, line['residual_amount_currency'] if line['currency_name'] else '', amount_fmt)
+                
+                # Write amount in correct bucket
+                col_idx = bucket_to_col[line['bucket']]
+                sheet.write(row, col_idx, line['residual_amount'], amount_fmt)
+                
+                # Total for line
+                sheet.write(row, 11, line['residual_amount'], amount_fmt)
+                
+                row += 1
 
+        # Grand Total row
         row += 1
         sheet.write(row, 0, 'Grand Total', total_fmt)
-        sheet.write(row, 1, grand_total, total_fmt)
-
-        col = 2
-        if direction_selection == 'past':
-            for i in range(5):
-                period_key = f"{i * period_length + 1}-{(i + 1) * period_length}"
-                sheet.write(row, col, period_totals.get(period_key, 0.0), total_fmt)
-                col += 1
-        else:
-            for i in range(5):
-                period_key = f"{i * period_length + 1}-{(i + 1) * period_length}"
-                sheet.write(row, col, period_totals.get(period_key, 0.0), total_fmt)
-                col += 1
+        for i in range(1, 4):
+            sheet.write(row, i, '', total_fmt)
+        sheet.write(row, 4, '', total_fmt)
+        
+        sheet.write(row, 5, grand_totals['Not Due'], total_fmt)
+        sheet.write(row, 6, grand_totals['1-30'], total_fmt)
+        sheet.write(row, 7, grand_totals['31-60'], total_fmt)
+        sheet.write(row, 8, grand_totals['61-90'], total_fmt)
+        sheet.write(row, 9, grand_totals['91-120'], total_fmt)
+        sheet.write(row, 10, grand_totals['120+'], total_fmt)
+        sheet.write(row, 11, grand_totals['Total'], total_fmt)
         
         sheet.freeze_panes(5, 0)

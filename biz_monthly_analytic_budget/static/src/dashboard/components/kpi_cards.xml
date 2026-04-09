@@ -11,14 +11,6 @@
                 </div>
             </div>
             <div class="col-md col-sm-6">
-                <div class="card kpi-card h-100" style="--card-color: #8B5CF6;">
-                    <div class="card-body p-4">
-                        <div class="kpi-title mb-2" style="color: #7c3aed;">Fixed Cost</div>
-                        <h4 class="kpi-value mb-0"><t t-esc="formatCurrency(props.data.fixed_cost)"/></h4>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md col-sm-6">
                 <div class="card kpi-card h-100" style="--card-color: #F59E0B;">
                     <div class="card-body p-4">
                         <div class="kpi-title mb-2" style="color: #d97706;">Reserved</div>

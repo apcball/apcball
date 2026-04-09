@@ -3,15 +3,15 @@
         <field name="name">aged.receivable.wizard.form</field>
         <field name="model">aged.receivable.wizard</field>
         <field name="arch" type="xml">
-            <form string="Aged Receivable Report">
+            <form string="Aged Receivable">
                 <group>
                     <group>
                         <field name="direction_selection" widget="radio"/>
                         <field name="target_move" widget="radio"/>
                     </group>
                     <group>
-                        <field name="date_from"/>
-                        <field name="date_to"/>
+                        <field name="date_as_of"/>
+                        <field name="company_id" invisible="1"/>
                         <field name="period_length"/>
                     </group>
                 </group>
@@ -19,9 +19,6 @@
                     <field name="partner_ids" widget="many2many_tags" options="{'no_create': True}"/>
                     <field name="account_ids" widget="many2many_tags" options="{'no_create': True}"/>
                     <field name="journal_ids" widget="many2many_tags" options="{'no_create': True}"/>
-                </group>
-                <group>
-                    <field name="show_uncleared_items"/>
                 </group>
                 <footer>
                     <button name="check_report_xlsx" string="Export Excel" type="object" class="oe_highlight"/>
@@ -40,8 +37,8 @@
     </record>
 
     <menuitem id="menu_aged_receivable_wizard"
-              name="Aged Receivable (Excel)"
+              name="Aged Receivable Report (Excel)"
               action="action_aged_receivable_wizard"
               parent="account.menu_finance_reports"
-              sequence="7"/>
+              sequence="21"/>
 </odoo>

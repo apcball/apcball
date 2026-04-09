@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="mrp_import_engine.Dashboard" owl="1">
+        <div class="o_action_manager">
+            <div class="container-fluid py-4">
+                <h1 class="mb-4">Import BOM / MO</h1>
+                <div class="row">
+                    <!-- Uploader section placeholder -->
+                    <div class="col-12 mb-4">
+                        <ImportUploader onUpload="loadSessions" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Import Sessions</h3>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Reference</th>
+                                            <th>Type</th>
+                                            <th>State</th>
+                                            <th>Total</th>
+                                            <th>Success</th>
+                                            <th>Failed</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.sessions" t-as="session" t-key="session.id" t-on-click="() => this.openSession(session.id)" style="cursor: pointer;">
+                                            <td t-esc="session.name" />
+                                            <td t-esc="session.import_type" />
+                                            <td>
+                                                <span t-attf-class="badge text-bg-{{ session.state === 'done' ? 'success' : session.state === 'failed' ? 'danger' : session.state === 'processing' ? 'primary' : 'secondary' }}">
+                                                    <t t-esc="session.state"/>
+                                                </span>
+                                            </td>
+                                            <td t-esc="session.total_records" />
+                                            <td t-esc="session.success_records" />
+                                            <td t-esc="session.failed_records" />
+                                            <td t-esc="session.create_date" />
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="mrp_import_engine.Uploader" owl="1">
+        <div class="card">
+            <div class="card-body text-center p-5" t-on-dragover.prevent="onDragOver" t-on-dragleave="onDragLeave" t-on-drop.prevent="onDrop" t-att-class="state.isDragging ? 'bg-light border-primary' : ''" style="border: 2px dashed #ccc;">
+                <i class="fa fa-cloud-upload fa-3x text-muted mb-3"></i>
+                <h4>Drag &amp; Drop File Here</h4>
+                <p class="text-muted">or click to browse</p>
+                
+                <div class="mt-3 form-group mx-auto" style="max-width: 300px;">
+                    <label>Import Type:</label>
+                    <select class="form-select" t-model="state.importType">
+                        <option value="bom">Bill of Materials</option>
+                        <option value="mo">Manufacturing Order</option>
+                    </select>
+                </div>
+
+                <div class="mt-2">
+                    <button class="btn btn-outline-secondary btn-sm" t-on-click="downloadTemplate">
+                        <i class="fa fa-download me-1"/> Download Template
+                    </button>
+                </div>
+
+                <input type="file" t-ref="fileInput" class="d-none" t-on-change="onFileChange" accept=".xlsx,.csv,.json"/>
+                <button class="btn btn-primary mt-3" t-on-click="openFileDialog">Browse File</button>
+            </div>
+            <div t-if="state.file" class="card-footer d-flex justify-content-between align-items-center">
+                <span>Selected: <b t-esc="state.file.name"/></span>
+                <button class="btn btn-success" t-on-click="uploadFile" t-att-disabled="state.uploading">Upload &amp; Process</button>
+            </div>
+        </div>
+    </t>
+</templates>

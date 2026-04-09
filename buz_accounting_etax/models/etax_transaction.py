@@ -416,9 +416,9 @@ class EtaxTransaction(models.Model):
                     else ''
                 ), # เหตุผลในการเพิ่ม/ลดหนี้
 
-                "H07-ADDITIONAL_REF_ASSIGN_ID": self.selected_invoice_id.name if self.selected_invoice_id.name else self.invoice_id.name, # อ้างอิงใบกำกับภาษีเดิม [CN, DN]
-                "H08-ADDITIONAL_REF_ISSUE_DTM": self.selected_invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00") if self.selected_invoice_id.name else self.invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00"), # วันที่ใบกำกับภาษีเดิม [CN, DN]
-                "H09-ADDITIONAL_REF_TYPE_CODE": self.document_type, # self.document_type if self.selected_invoice_id.name else "",
+                "H07-ADDITIONAL_REF_ASSIGN_ID": (self.selected_invoice_id.name if self.selected_invoice_id.name else self.invoice_id.name) if self.document_type in ('80', '81') else "", # อ้างอิงใบกำกับภาษีเดิม [CN, DN]
+                "H08-ADDITIONAL_REF_ISSUE_DTM": (self.selected_invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00") if self.selected_invoice_id.name else self.invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")) if self.document_type in ('80', '81') else "", # วันที่ใบกำกับภาษีเดิม [CN, DN]
+                "H09-ADDITIONAL_REF_TYPE_CODE": self.document_type if self.document_type in ('80', '81') else "", # T03 = ว่าง
                 "H10-ADDITIONAL_REF_DOCUMENT_NAME": "",
                 "H11-DELIVERY_TYPE_CODE": "",
                 "H12-BUYER_ORDER_ASSIGN_ID": f"{self.sale_order_ref.client_order_ref or ''}", #invoice.custom_reference or "", # self.sale_order_ref.name or "", # ใบสั่งซื้อเลขที่ [T03]

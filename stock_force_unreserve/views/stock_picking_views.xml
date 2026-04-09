@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_force_unreserve" model="ir.ui.view">
+        <field name="name">stock.picking.form.force_unreserve</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_assign']" position="after">
+                <button name="action_open_force_unreserve_dialog"
+                        type="object"
+                        string="Force Unreserve"
+                        class="btn-danger"
+                        invisible="state in ('done', 'cancel')"
+                        groups="stock_force_unreserve.group_force_unreserve" />
+            </xpath>
+        </field>
+    </record>
+</odoo>

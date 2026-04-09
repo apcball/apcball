@@ -15,7 +15,6 @@
                 <field name="percentage" string="%"/>
                 <field name="budget_amount" widget="monetary"/>
                 <field name="carried_amount" widget="monetary" readonly="1" optional="show"/>
-                <field name="fixed_cost_amount" widget="monetary" readonly="1" optional="show"/>
                 <field name="reserved_amount" widget="monetary" readonly="1"/>
                 <field name="used_amount" widget="monetary" readonly="1"/>
                 <field name="available_amount" widget="monetary" readonly="1"/>
@@ -101,7 +100,6 @@
                             <field name="used_amount" widget="monetary"/>
                         </group>
                         <group>
-                            <field name="fixed_cost_amount" widget="monetary"/>
                             <field name="available_amount" widget="monetary"/>
                         </group>
                     </group>
@@ -112,23 +110,6 @@
                             <field name="budget_line_ids"
                                    readonly="state == 'closed'"
                                    context="{'default_plan_id': id}"/>
-                        </page>
-                        <page string="Fixed Cost" name="fixed_cost">
-                            <field name="fixed_cost_ids"
-                                   readonly="state == 'closed'"
-                                   context="{'default_plan_id': id}">
-                                <tree editable="bottom" decoration-muted="state == 'cancelled'" decoration-info="state == 'draft'" decoration-success="state == 'confirmed'">
-                                    <field name="name"/>
-                                    <field name="analytic_account_id" required="1"/>
-                                    <field name="department_id" optional="show"/>
-                                    <field name="project_id" optional="show"/>
-                                    <field name="category" optional="show"/>
-                                    <field name="amount" sum="Total"/>
-                                    <field name="state" readonly="1" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'confirmed'" decoration-muted="state == 'cancelled'"/>
-                                    <button name="action_confirm" string="Confirm" type="object" icon="fa-check" invisible="state != 'draft'"/>
-                                    <button name="action_cancel" string="Cancel" type="object" icon="fa-times" invisible="state != 'confirmed'"/>
-                                </tree>
-                            </field>
                         </page>
                         <page string="Amendment History" name="amendments">
                             <field name="amendment_ids" readonly="1">
@@ -165,7 +146,6 @@
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="total_budget" widget="monetary"/>
                 <field name="allocated_amount" widget="monetary"/>
-                <field name="fixed_cost_amount" widget="monetary" optional="show"/>
                 <field name="reserved_amount" widget="monetary" optional="show"/>
                 <field name="used_amount" widget="monetary" optional="show"/>
                 <field name="available_amount" widget="monetary" optional="show"/>

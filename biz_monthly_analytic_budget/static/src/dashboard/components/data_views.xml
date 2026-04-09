@@ -14,7 +14,6 @@
                             <th>Project</th>
                             <th>Category</th>
                             <th class="text-end">Budget</th>
-                            <th class="text-end">Fixed</th>
                             <th class="text-end">Reserved</th>
                             <th class="text-end">Used</th>
                             <th class="text-end">Available</th>
@@ -28,7 +27,6 @@
                             <td><t t-esc="row.project"/></td>
                             <td><t t-esc="row.category"/></td>
                             <td class="text-end"><t t-esc="formatCurrency(row.budget)"/></td>
-                            <td class="text-end"><t t-esc="formatCurrency(row.fixed)"/></td>
                             <td class="text-end"><t t-esc="formatCurrency(row.reserved)"/></td>
                             <td class="text-end text-danger fw-semibold"><t t-esc="formatCurrency(row.used)"/></td>
                             <td class="text-end text-success fw-bold"><t t-esc="formatCurrency(row.available)"/></td>
@@ -37,7 +35,7 @@
                             </td>
                         </tr>
                         <tr t-if="!props.data or props.data.length === 0">
-                            <td colspan="10" class="text-center py-4 text-muted">No analytic data available.</td>
+                            <td colspan="9" class="text-center py-4 text-muted">No analytic data available.</td>
                         </tr>
                     </tbody>
                 </table>

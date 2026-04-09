@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="fifo_reset_engine.FifoResetResult" owl="1">
+        <div class="o_fifo_reset_result" t-if="parsedResult">
+            <div class="alert mt-3" t-att-class="parsedResult.status === 'success' ? 'alert-success' : 'alert-danger'">
+                <h4>Status: <strong class="text-uppercase"><t t-esc="parsedResult.status"/></strong></h4>
+                
+                <t t-if="parsedResult.status === 'error'">
+                    <p><strong>Error Message:</strong> <t t-esc="parsedResult.summary.error_message"/></p>
+                </t>
+                
+                <h5 class="mt-3">Summary</h5>
+                <ul class="list-group list-group-flush text-dark">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Products Processed
+                        <span class="badge text-bg-primary rounded-pill"><t t-esc="parsedResult.summary.total_products"/></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Quants Updated
+                        <span class="badge text-bg-primary rounded-pill"><t t-esc="parsedResult.summary.total_quants"/></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Valuation Before
+                        <span><t t-esc="parsedResult.summary.before_value"/></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Valuation After
+                        <span><t t-esc="parsedResult.summary.after_value"/></span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </t>
+</templates>

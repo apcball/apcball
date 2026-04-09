@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="fifo_reset_engine.FifoResetDashboard" owl="1">
+        <div class="o_fifo_reset_dashboard d-flex flex-wrap w-100">
+            <div class="card text-white m-2 flex-grow-1" t-att-class="kpiData.open_pickings > 0 ? 'bg-danger' : 'bg-success'">
+                <div class="card-body">
+                    <h5 class="card-title">Open Pickings</h5>
+                    <h2 class="card-text"><t t-esc="kpiData.open_pickings"/></h2>
+                </div>
+            </div>
+            <div class="card bg-warning text-dark m-2 flex-grow-1">
+                <div class="card-body">
+                    <h5 class="card-title">Reserved Moves</h5>
+                    <h2 class="card-text"><t t-esc="kpiData.reserved_qty"/></h2>
+                </div>
+            </div>
+            <div class="card bg-info text-white m-2 flex-grow-1">
+                <div class="card-body">
+                    <h5 class="card-title">Products with Stock</h5>
+                    <h2 class="card-text"><t t-esc="kpiData.total_products"/></h2>
+                </div>
+            </div>
+            <div class="card bg-secondary text-white m-2 flex-grow-1">
+                <div class="card-body">
+                    <h5 class="card-title">Total Valuation</h5>
+                    <h2 class="card-text"><t t-esc="kpiData.currency_symbol"/> <t t-esc="kpiData.total_stock_value"/></h2>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_picking_export_wizard_form" model="ir.ui.view">
+        <field name="name">stock.picking.export.wizard.form</field>
+        <field name="model">stock.picking.export.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Stock Pickings">
+                <field name="state" invisible="1"/>
+                
+                <group invisible="state != 'choose'">
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="picking_type_id"/>
+                    </group>
+                    <div invisible="not context.get('default_picking_ids')">
+                        <strong>Selected Pickings will be exported. Clear criteria to use them all.</strong>
+                        <field name="picking_ids" widget="many2many_tags" force_save="1" readonly="1" />
+                    </div>
+                </group>
+                
+                <group invisible="state != 'download'">
+                    <p>Your file is ready for download:</p>
+                    <field name="filename" invisible="1"/>
+                    <field name="file_data" filename="filename" readonly="1"/>
+                </group>
+                
+                <footer>
+                    <button string="Export" name="action_export" type="object" class="btn-primary" invisible="state != 'choose'"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <record id="action_stock_picking_export_wizard" model="ir.actions.act_window">
+        <field name="name">Export Excel</field>
+        <field name="res_model">stock.picking.export.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Sequence for mrp.import.session -->
+        <record id="seq_mrp_import_session" model="ir.sequence">
+            <field name="name">MRP Import Session</field>
+            <field name="code">mrp.import.session</field>
+            <field name="prefix">IMP/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

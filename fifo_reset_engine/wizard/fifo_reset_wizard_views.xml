@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_fifo_reset_wizard_form" model="ir.ui.view">
+        <field name="name">fifo.reset.wizard.form</field>
+        <field name="model">fifo.reset.wizard</field>
+        <field name="arch" type="xml">
+            <form string="FIFO Reset Engine">
+                <!-- Top Warning Banner -->
+                <div class="alert alert-danger" role="alert" style="margin-bottom: 20px;">
+                    <h4 class="alert-heading"><i class="fa fa-warning"/> WARNING: FIFO RESET</h4>
+                    <p>This action will:</p>
+                    <ul>
+                        <li>Remove ALL stock quantities</li>
+                        <li>Reset ALL FIFO valuation layers</li>
+                        <li>Impact accounting entries</li>
+                    </ul>
+                    <hr/>
+                    <p class="mb-0"><b>This operation is NOT reversible</b></p>
+                </div>
+                
+                <!-- Main Layout -->
+                <div invisible="result_data != False">
+                    <group>
+                        <field name="company_id"/>
+                        <field name="reset_date"/>
+                        <field name="warehouse_ids" widget="many2many_tags"
+                               domain="[('company_id', '=', company_id)]"
+                               placeholder="ไม่เลือก = ทุก warehouse (ประมวลผลทีละ warehouse)"/>
+                        <!-- Pass KPI JSON to widget -->
+                        <field name="kpi_data" widget="fifo_reset_dashboard"/>
+                    </group>
+                    
+                    <group>
+                        <field name="dry_run"/>
+                        <field name="confirm_checkbox"/>
+                        <field name="confirm_text" invisible="not confirm_checkbox" required="confirm_checkbox"/>
+                    </group>
+                </div>
+                
+                <!-- Result Layout -->
+                <div invisible="result_data == False">
+                    <field name="result_data" widget="fifo_reset_result"/>
+                </div>
+
+                <footer>
+                    <button string="Run Simulation" type="object" name="run_simulation" class="btn btn-primary" icon="fa-search" invisible="result_data != False"/>
+                    <button string="Execute Reset" type="object" name="execute_reset" class="btn btn-danger" icon="fa-fire" 
+                            invisible="not confirm_checkbox or confirm_text != 'RESET' or result_data != False" />
+                    <button string="Done / Close" class="btn btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_fifo_reset_wizard" model="ir.actions.act_window">
+        <field name="name">FIFO Reset Engine</field>
+        <field name="res_model">fifo.reset.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

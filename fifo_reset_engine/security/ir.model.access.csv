@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_fifo_reset_log_manager,fifo.reset.log manager,model_fifo_reset_log,stock.group_stock_manager,1,1,1,1
+access_fifo_reset_log_system,fifo.reset.log system,model_fifo_reset_log,base.group_system,1,1,1,1
+access_fifo_reset_wizard_manager,fifo.reset.wizard manager,model_fifo_reset_wizard,stock.group_stock_manager,1,1,1,1
+access_fifo_reset_wizard_system,fifo.reset.wizard system,model_fifo_reset_wizard,base.group_system,1,1,1,1

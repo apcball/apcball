@@ -32,13 +32,6 @@ export class StackedBarChart extends Component {
                 labels: items.map(i => i.label),
                 datasets: [
                     {
-                        label: 'Fixed',
-                        data: items.map(i => i.fixed),
-                        backgroundColor: '#8B5CF6',
-                        maxBarThickness: 50,
-                        borderRadius: 4
-                    },
-                    {
                         label: 'Reserved',
                         data: items.map(i => i.reserved),
                         backgroundColor: '#F59E0B',

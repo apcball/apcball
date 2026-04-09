@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_import_session_tree" model="ir.ui.view">
+        <field name="name">mrp.import.session.tree</field>
+        <field name="model">mrp.import.session</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="import_type"/>
+                <field name="state"/>
+                <field name="create_date"/>
+            </tree>
+        </field>
+    </record>
+    
+    <record id="action_mrp_import_session" model="ir.actions.act_window">
+        <field name="name">Import Sessions</field>
+        <field name="res_model">mrp.import.session</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    
+    <menuitem id="menu_mrp_import_engine_root" name="Imports" parent="mrp.menu_mrp_root" sequence="60"/>
+    <menuitem id="menu_mrp_import_session" name="Import Sessions" parent="menu_mrp_import_engine_root" action="action_mrp_import_session" sequence="10"/>
+</odoo>

@@ -98,12 +98,6 @@ class MonthlyBudgetPlan(models.Model):
         string='Budget Lines',
         copy=True,
     )
-    fixed_cost_ids = fields.One2many(
-        'monthly.budget.fixed.cost',
-        'plan_id',
-        string='Fixed Costs',
-        copy=True,
-    )
 
     # ── Feature 1: Budget Rollover ───────────────────────────────
     carry_forward = fields.Boolean(
@@ -161,12 +155,6 @@ class MonthlyBudgetPlan(models.Model):
         store=True,
         currency_field='currency_id',
     )
-    fixed_cost_amount = fields.Monetary(
-        string='Total Fixed Cost',
-        compute='_compute_totals',
-        store=True,
-        currency_field='currency_id',
-    )
     available_amount = fields.Monetary(
         string='Total Available',
         compute='_compute_totals',
@@ -207,8 +195,6 @@ class MonthlyBudgetPlan(models.Model):
         'budget_line_ids.carried_amount',
         'budget_line_ids.reserved_amount',
         'budget_line_ids.used_amount',
-        'fixed_cost_ids.amount',
-        'fixed_cost_ids.state',
         'total_budget',
     )
     def _compute_totals(self):
@@ -218,12 +204,9 @@ class MonthlyBudgetPlan(models.Model):
             plan.carried_amount = sum(lines.mapped('carried_amount'))
             plan.reserved_amount = sum(lines.mapped('reserved_amount'))
             plan.used_amount = sum(lines.mapped('used_amount'))
-            
-            confirmed_fixed_costs = plan.fixed_cost_ids.filtered(lambda fc: fc.state == 'confirmed')
-            plan.fixed_cost_amount = sum(confirmed_fixed_costs.mapped('amount'))
 
             plan.available_amount = (
-                plan.total_budget + plan.carried_amount - plan.reserved_amount - plan.used_amount - plan.fixed_cost_amount
+                plan.total_budget + plan.carried_amount - plan.reserved_amount - plan.used_amount
             )
             plan.allocated_percentage = (
                 (plan.allocated_amount / plan.total_budget)
@@ -296,7 +279,7 @@ class MonthlyBudgetPlan(models.Model):
         Recompute budget by refreshing all live computed fields.
 
         How it works:
-        - reserved_amount, used_amount, fixed_cost_amount are all live
+        - reserved_amount, used_amount are all live
           computed fields that read directly from PRs, POs, and Invoices.
         - We simply invalidate the cache so next access recomputes them.
         - The materialized view is refreshed for dashboard accuracy.
@@ -313,7 +296,7 @@ class MonthlyBudgetPlan(models.Model):
         # Recompute plan-level totals
         self.invalidate_recordset([
             'allocated_amount', 'reserved_amount', 'used_amount',
-            'fixed_cost_amount', 'available_amount', 'allocated_percentage',
+            'available_amount', 'allocated_percentage',
         ])
 
         # Refresh the materialized view for dashboard

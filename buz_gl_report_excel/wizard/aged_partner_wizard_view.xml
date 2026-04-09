@@ -11,8 +11,8 @@
                         <field name="target_move" widget="radio"/>
                     </group>
                     <group>
-                        <field name="date_from"/>
-                        <field name="date_to"/>
+                        <field name="date_as_of"/>
+                        <field name="company_id" invisible="1"/>
                         <field name="period_length"/>
                     </group>
                 </group>
@@ -20,9 +20,6 @@
                     <field name="partner_ids" widget="many2many_tags" options="{'no_create': True}"/>
                     <field name="account_ids" widget="many2many_tags" options="{'no_create': True}"/>
                     <field name="journal_ids" widget="many2many_tags" options="{'no_create': True}"/>
-                </group>
-                <group>
-                    <field name="show_uncleared_items"/>
                 </group>
                 <footer>
                     <button name="check_report_xlsx" string="Export Excel" type="object" class="oe_highlight"/>
@@ -41,8 +38,8 @@
     </record>
 
     <menuitem id="menu_aged_partner_wizard"
-              name="Aged Partner (Excel)"
+              name="Aged Partner Report (Excel)"
               action="action_aged_partner_wizard"
               parent="account.menu_finance_reports"
-              sequence="6"/>
+              sequence="23"/>
 </odoo>

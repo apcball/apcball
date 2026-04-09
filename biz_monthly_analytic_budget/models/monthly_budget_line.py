@@ -104,12 +104,6 @@ class MonthlyBudgetLine(models.Model):
         default=0.0,
         help='Budget amount carried forward from previous month',
     )
-    fixed_cost_amount = fields.Monetary(
-        string='Fixed Cost',
-        currency_field='currency_id',
-        compute='_compute_fixed_cost_amount',
-        store=False,
-    )
     used_amount = fields.Monetary(
         string='Used',
         currency_field='currency_id',
@@ -150,38 +144,25 @@ class MonthlyBudgetLine(models.Model):
         for line in self:
             line.budget_amount = line.plan_id.total_budget * line.percentage / 100.0
 
-    @api.depends('budget_amount', 'carried_amount', 'reserved_amount', 'used_amount', 'fixed_cost_amount')
+    @api.depends('budget_amount', 'carried_amount', 'reserved_amount', 'used_amount')
     def _compute_available_amount(self):
         for line in self:
             total_budget = line.budget_amount + line.carried_amount
-            line.available_amount = total_budget - line.reserved_amount - line.used_amount - line.fixed_cost_amount
+            line.available_amount = total_budget - line.reserved_amount - line.used_amount
             if total_budget:
                 line.utilization_rate = (
-                    (line.reserved_amount + line.used_amount + line.fixed_cost_amount) / total_budget * 100.0
+                    (line.reserved_amount + line.used_amount) / total_budget * 100.0
                 )
             else:
                 line.utilization_rate = 0.0
 
-    @api.depends('plan_id', 'plan_id.fixed_cost_ids', 'plan_id.fixed_cost_ids.state', 'analytic_account_id', 'department_id', 'project_id', 'category')
-    def _compute_fixed_cost_amount(self):
-        for line in self:
-            total_fc = 0.0
-            if line.plan_id and line.analytic_account_id:
-                for fc in line.plan_id.fixed_cost_ids.filtered(lambda c: c.state == 'confirmed'):
-                    fc_dims = {
-                        'analytic_account_id': fc.analytic_account_id.id,
-                        'department_id': fc.department_id.id if fc.department_id else False,
-                        'project_id': fc.project_id.id if fc.project_id else False,
-                        'category': fc.category,
-                    }
-                    match = self._find_budget_line(line.plan_id, fc_dims, log_fallback=False)
-                    if match and match.id == line.id:
-                        total_fc += fc.amount
-            line.fixed_cost_amount = total_fc
-
     @api.depends('plan_id.state', 'plan_id.date_from', 'plan_id.date_to', 'plan_id.company_id')
     def _compute_used_amount(self):
-        """Compute used amount via SQL: posted Vendor Bills minus Vendor Credit Notes for this analytic."""
+        """
+        Compute used amount via SQL: Vendor Bills/Credit Notes in state 'draft' or 'posted'
+        (i.e. any non-cancelled bill) whose Due Date falls within this budget period.
+        Due Date (invoice_date_due) is the primary date; falls back to invoice_date then line date.
+        """
         valid_lines = self.filtered(
             lambda l: l.plan_id.date_from and l.plan_id.date_to and l.analytic_account_id
         )
@@ -218,7 +199,7 @@ class MonthlyBudgetLine(models.Model):
                 aml.analytic_distribution ? bl.wbl_analytic::text
             JOIN account_move am ON
                 am.id = aml.move_id AND
-                am.state = 'posted' AND
+                am.state IN ('draft', 'posted') AND
                 am.move_type IN ('in_invoice', 'in_refund') AND
                 COALESCE(am.invoice_date_due, am.invoice_date, aml.date) >= bl.dt_from AND
                 COALESCE(am.invoice_date_due, am.invoice_date, aml.date) <= bl.dt_to
@@ -237,6 +218,7 @@ class MonthlyBudgetLine(models.Model):
           1. Non-draft PRs whose payment_date falls in the month.
           2. Draft POs (RFQs) NOT linked to any active PR.
           3. Confirmed POs (unbilled amount) NOT linked to any active PR.
+        Note: Draft Vendor Bills are NOT included here — they are already counted in used_amount.
         Only sums analytic_distribution allocated to this line's analytic_account_id.
         """
         valid_lines = self.filtered(lambda l: l.plan_id.date_from and l.plan_id.date_to and l.analytic_account_id)
@@ -279,13 +261,6 @@ class MonthlyBudgetLine(models.Model):
             ('state', '=', 'draft'),
             ('payment_date', '>=', global_date_from),
             ('payment_date', '<=', global_date_to),
-            ('company_id', 'in', company_ids),
-        ])
-
-        # Batch fetch Draft Vendor Bills
-        all_draft_bills = self.env['account.move'].sudo().search([
-            ('state', '=', 'draft'),
-            ('move_type', 'in', ('in_invoice', 'in_refund')),
             ('company_id', 'in', company_ids),
         ])
 
@@ -363,19 +338,7 @@ class MonthlyBudgetLine(models.Model):
                         unbilled_qty = max(0.0, pol.product_qty - pol.qty_invoiced)
                         po_unbilled_amount += (unbilled_qty * pol.price_unit) * (pct / 100.0)
 
-            # 4. Draft Vendor Bills
-            draft_bill_amount = 0.0
-            for bill in all_draft_bills.filtered(lambda b: b.company_id.id == comp_id):
-                b_date = bill.invoice_date_due or bill.invoice_date or bill.date or False
-                if b_date and (date_from <= b_date <= date_to):
-                    sign = -1 if bill.move_type == 'in_refund' else 1
-                    for aml in bill.invoice_line_ids:
-                        dist = aml.analytic_distribution or {}
-                        if analytic_str in dist:
-                            pct = dist[analytic_str] or 0.0
-                            draft_bill_amount += (aml.price_subtotal * sign) * (pct / 100.0)
-
-            line.reserved_amount = pr_amount + rfq_amount + po_unbilled_amount + draft_bill_amount
+            line.reserved_amount = pr_amount + rfq_amount + po_unbilled_amount
 
     # ── Constraints ──────────────────────────────────────────────
 
@@ -550,7 +513,7 @@ class MonthlyBudgetLine(models.Model):
         if not self:
             return
         self.invalidate_recordset([
-            'reserved_amount', 'used_amount', 'fixed_cost_amount',
+            'reserved_amount', 'used_amount',
             'available_amount', 'utilization_rate',
         ])
         for line in self:

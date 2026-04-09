@@ -202,7 +202,7 @@ class PurchaseOrder(models.Model):
                 budget_line = budget_line[0]
                 
                 # Check if this PO is already reserved
-                total_committed = budget_line.reserved_amount + budget_line.used_amount + budget_line.fixed_cost_amount
+                total_committed = budget_line.reserved_amount + budget_line.used_amount
                 if not has_pr:
                     # If direct PO, it's not yet in reserved_amount, so add it for preview
                     total_committed += po_amt
@@ -227,7 +227,7 @@ class PurchaseOrder(models.Model):
                     '</table></div></div>' % (
                         status_class, status_icon, analytic.name,
                         _('Monthly Budget'), '{:,.2f}'.format(budget_line.budget_amount),
-                        _('Fixed + Reserved + Used'), '{:,.2f}'.format(budget_line.fixed_cost_amount + budget_line.reserved_amount + budget_line.used_amount),
+                        _('Reserved + Used'), '{:,.2f}'.format(budget_line.reserved_amount + budget_line.used_amount),
                         _('This PO'), '{:,.2f}'.format(po_amt),
                         _('Remaining After'), status_class,
                         '{:,.2f}'.format(remaining),
@@ -383,8 +383,8 @@ class PurchaseOrder(models.Model):
 
             budget_line = budget_line[:1] or budget_line
             
-            # total_committed = already used + already reserved + fixed costs
-            total_committed = budget_line.reserved_amount + budget_line.used_amount + budget_line.fixed_cost_amount
+            # total_committed = already used + already reserved
+            total_committed = budget_line.reserved_amount + budget_line.used_amount
             
             # If it's a direct PO (no PR), it hasn't reserved anything yet, so we must add po_amt.
             # If it came from a PR, the PR already reserved it, so it's already in total_committed.

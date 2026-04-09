@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_stock_picking_export_wizard,stock.picking.export.wizard,model_stock_picking_export_wizard,stock_picking_export_excel.group_stock_picking_export_excel,1,1,1,1
+access_stock_picking_import_wizard,stock.picking.import.wizard,model_stock_picking_import_wizard,stock_picking_export_excel.group_stock_picking_export_excel,1,1,1,1

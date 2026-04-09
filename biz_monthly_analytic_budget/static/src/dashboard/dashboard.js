@@ -36,14 +36,14 @@ export class BudgetDashboard extends Component {
                 alerts: []
             },
             filters: {
-                year: new Date().getFullYear().toString(),
-                month: (new Date().getMonth() + 1).toString().padStart(2, '0'),
+                plan_id: '',
                 company_id: '',
                 department_id: '',
                 project_id: '',
                 category: ''
             },
             filterOptions: {
+                plans: [],
                 companies: [],
                 departments: [],
                 projects: []
@@ -58,17 +58,23 @@ export class BudgetDashboard extends Component {
                 console.warn("Chart.js might already be loaded in the environment.");
             }
             await this.loadFilterOptions();
+            // Auto-select the most recent plan if available
+            if (this.state.filterOptions.plans.length > 0) {
+                this.state.filters.plan_id = String(this.state.filterOptions.plans[0].id);
+            }
             await this.loadData();
         });
     }
 
     async loadFilterOptions() {
         try {
-            const [companies, departments, projects] = await Promise.all([
+            const [plans, companies, departments, projects] = await Promise.all([
+                this.rpc('/budget/dashboard/plans', {}),
                 this.orm.searchRead('res.company', [], ['id', 'name']),
                 this.orm.searchRead('hr.department', [], ['id', 'name']),
                 this.orm.searchRead('project.project', [], ['id', 'name'])
             ]);
+            this.state.filterOptions.plans = plans || [];
             this.state.filterOptions.companies = companies;
             this.state.filterOptions.departments = departments;
             this.state.filterOptions.projects = projects;
@@ -94,7 +100,26 @@ export class BudgetDashboard extends Component {
     async onFilterChange(ev) {
         const field = ev.target.name;
         this.state.filters[field] = ev.target.value;
+        // When company changes, reload plan list
+        if (field === 'company_id') {
+            await this.reloadPlans();
+        }
         await this.loadData();
+    }
+
+    async reloadPlans() {
+        try {
+            const companyId = this.state.filters.company_id || null;
+            const plans = await this.rpc('/budget/dashboard/plans', { company_id: companyId ? parseInt(companyId) : null });
+            this.state.filterOptions.plans = plans || [];
+            // Reset plan selection if current plan not in new list
+            const planIds = (plans || []).map(p => String(p.id));
+            if (!planIds.includes(this.state.filters.plan_id)) {
+                this.state.filters.plan_id = planIds.length > 0 ? planIds[0] : '';
+            }
+        } catch (e) {
+            console.error("Failed to reload plans", e);
+        }
     }
 }
 

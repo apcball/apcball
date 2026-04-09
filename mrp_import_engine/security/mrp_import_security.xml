@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_mrp_import_user" model="res.groups">
+        <field name="name">MRP Import Engine User</field>
+        <field name="category_id" ref="base.module_category_manufacturing_manufacturing"/>
+        <field name="implied_ids" eval="[(4, ref('mrp.group_mrp_user'))]"/>
+    </record>
+</odoo>

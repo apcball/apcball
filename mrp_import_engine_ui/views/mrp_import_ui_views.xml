@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_mrp_import_dashboard" model="ir.actions.client">
+        <field name="name">MRP Import Dashboard</field>
+        <field name="tag">mrp_import_engine.dashboard</field>
+    </record>
+
+    <!-- Override or add menu to load the OWL dashboard -->
+    <menuitem id="menu_mrp_import_dashboard" name="Import Dashboard" parent="mrp_import_engine.menu_mrp_import_engine_root" action="action_mrp_import_dashboard" sequence="1"/>
+</odoo>

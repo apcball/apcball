@@ -89,11 +89,6 @@ class MonthlyBudgetVariance(models.Model):
         readonly=True,
         help='Budget + Carried Forward',
     )
-    fixed_cost_amount = fields.Monetary(
-        string='Fixed Costs',
-        currency_field='currency_id',
-        readonly=True,
-    )
     reserved_amount = fields.Monetary(
         string='Reserved',
         currency_field='currency_id',
@@ -108,7 +103,7 @@ class MonthlyBudgetVariance(models.Model):
         string='Total Committed',
         currency_field='currency_id',
         readonly=True,
-        help='Fixed + Reserved + Used',
+        help='Reserved + Used',
     )
     available_amount = fields.Monetary(
         string='Available',
@@ -164,7 +159,6 @@ class MonthlyBudgetVariance(models.Model):
                     bl.budget_amount,
                     COALESCE(bl.carried_amount, 0) AS carried_amount,
                     bl.budget_amount + COALESCE(bl.carried_amount, 0) AS total_budget,
-                    0.0 AS fixed_cost_amount,
                     0.0 AS reserved_amount,
                     0.0 AS used_amount,
                     0.0 AS total_committed,

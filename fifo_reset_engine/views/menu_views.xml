@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_fifo_reset_engine" 
+              name="FIFO Reset Engine" 
+              parent="stock.menu_stock_config_settings" 
+              sequence="100"/>
+
+    <menuitem id="menu_fifo_reset_wizard" 
+              name="Run FIFO Reset" 
+              parent="menu_fifo_reset_engine" 
+              action="fifo_reset_engine.action_fifo_reset_wizard" 
+              sequence="10"/>
+
+    <menuitem id="menu_fifo_reset_log" 
+              name="Execution Logs" 
+              parent="menu_fifo_reset_engine" 
+              action="fifo_reset_engine.action_fifo_reset_log" 
+              sequence="20"/>
+</odoo>
