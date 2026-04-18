@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="internal_consume_request.BarcodeApp" owl="1">
+        <div class="o_barcode_client_action d-flex flex-column h-100 bg-100">
+            <!-- Header -->
+            <div class="o_barcode_header d-flex justify-content-between align-items-center p-3 bg-white border-bottom">
+                <h4 class="m-0"><i class="fa fa-barcode me-2"/> Internal Consume Issue</h4>
+                <button class="btn btn-secondary" t-on-click="() => this.env.services.action.doAction('cancel')">
+                    Close
+                </button>
+            </div>
+
+            <!-- Main Content -->
+            <div class="o_barcode_content flex-grow-1 p-3 overflow-auto">
+                <t t-if="!state.request">
+                    <!-- Scan Request Screen -->
+                    <div class="d-flex flex-column align-items-center justify-content-center h-100">
+                        <i class="fa fa-qrcode fa-5x text-muted mb-4"/>
+                        <h3 class="text-muted">Scan Request Barcode</h3>
+                        <p class="text-muted text-center">Scan or type the request reference (e.g. REQ00045)</p>
+                        
+                        <div t-if="state.cameraEnabled" id="reader" style="width: 100%; max-width: 500px;" class="mb-3"></div>
+                        <button t-if="!state.cameraEnabled" class="btn btn-outline-primary mb-3" t-on-click="startCameraScanner">
+                            <i class="fa fa-camera"/> Start Camera Scanner
+                        </button>
+                        
+                        <div class="input-group mt-3 w-75 mw-100">
+                            <input type="text" class="form-control form-control-lg text-center" 
+                                   placeholder="Manual Input" 
+                                   t-model="state.manualInput"
+                                   t-on-keyup="onManualInputKeyup"/>
+                            <button class="btn btn-primary btn-lg" t-on-click="searchRequest">
+                                <i class="fa fa-search"/>
+                            </button>
+                        </div>
+                    </div>
+                </t>
+                <t t-else="">
+                    <!-- Issue Screen -->
+                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                        <h4 class="m-0 text-primary">
+                            <t t-esc="state.request.name"/>
+                        </h4>
+                        <span class="badge bg-info p-2"><t t-esc="state.request.state"/></span>
+                    </div>
+                    
+                    <!-- Scan Product Input -->
+                    <div t-if="state.cameraEnabled" id="product_reader" style="width: 100%; max-width: 500px;" class="mb-3 mx-auto"></div>
+                    <div class="input-group mb-4">
+                        <button t-if="!state.cameraEnabled" class="btn btn-outline-primary" type="button" t-on-click="startProductCameraScanner">
+                            <i class="fa fa-camera"/>
+                        </button>
+                        <span t-if="state.cameraEnabled" class="input-group-text"><i class="fa fa-barcode"/></span>
+                        <input type="text" class="form-control form-control-lg" 
+                               placeholder="Scan product barcode to increment issue qty" 
+                               t-model="state.productBarcode"
+                               t-on-keyup="onProductBarcodeKeyup"
+                               t-ref="productScanner"/>
+                    </div>
+                    
+                    <!-- Lines List -->
+                    <div class="list-group shadow-sm">
+                        <t t-foreach="state.lines" t-as="line" t-key="line.id">
+                            <div class="list-group-item d-flex flex-column" 
+                                 t-att-class="{'bg-success-light': line.issued_qty == line.qty_requested}">
+                                
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="mb-0 fw-bold"><t t-esc="line.product_name"/></h5>
+                                    <span class="badge bg-secondary rounded-pill fs-6">Req: <t t-esc="line.qty_requested"/></span>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="text-muted small">
+                                        Avail: <span t-att-class="{'text-danger fw-bold': line.available_qty &lt; line.qty_requested}"><t t-esc="line.available_qty"/></span>
+                                    </div>
+                                    
+                                    <!-- Qty Control -->
+                                    <div class="input-group input-group-sm" style="width: 120px;">
+                                        <button class="btn btn-outline-secondary" type="button" t-on-click="() => this.decrementQty(line)">-</button>
+                                        <input type="number" class="form-control text-center" 
+                                               t-model.number="line.issued_qty" 
+                                               t-on-change="() => this.validateQty(line)"/>
+                                        <button class="btn btn-outline-secondary" type="button" t-on-click="() => this.incrementQty(line)">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+            </div>
+            
+            <!-- Footer Actions -->
+            <t t-if="state.request">
+                <div class="o_barcode_footer p-3 bg-white border-top d-flex gap-2">
+                    <button class="btn btn-secondary flex-grow-1 btn-lg" t-on-click="clearRequest">
+                        Cancel
+                    </button>
+                    <button class="btn btn-primary flex-grow-1 btn-lg" t-on-click="saveQuantities">
+                        Save Changes
+                    </button>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_purchase_order_form_bypass" model="ir.ui.view">
+        <field name="name">purchase.order.form.bypass</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-warning" role="alert" 
+                     invisible="not allow_bill_bypass or state not in ('purchase', 'done')"
+                     groups="po_bill_bypass_control_policy.group_purchase_bill_bypass_manager">
+                     This PO can be billed before receipt. Use with caution.
+                </div>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page name="bill_bypass" string="Billing Bypass Control" groups="po_bill_bypass_control_policy.group_purchase_bill_bypass_manager">
+                    <group>
+                        <field name="allow_bill_bypass"/>
+                        <field name="bill_bypass_reason" invisible="not allow_bill_bypass" required="allow_bill_bypass"/>
+                        <field name="bill_bypass_user_id" readonly="1" invisible="not allow_bill_bypass"/>
+                        <field name="bill_bypass_date" readonly="1" invisible="not allow_bill_bypass"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Report View -->
+    <record id="view_po_line_tree_bill_bypass" model="ir.ui.view">
+        <field name="name">purchase.order.line.tree.bypass</field>
+        <field name="model">purchase.order.line</field>
+        <field name="arch" type="xml">
+            <tree string="Bills Created Before Receipt" decoration-warning="qty_invoiced > qty_received" create="0">
+                <field name="order_id" string="PO"/>
+                <field name="partner_id" string="Vendor"/>
+                <field name="product_qty" string="Ordered Qty"/>
+                <field name="qty_received" string="Received Qty"/>
+                <field name="qty_invoiced" string="Billed Qty"/>
+                <field name="bill_bypass_user_id" string="User"/>
+                <field name="bill_bypass_date" string="Date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Report Menu Action -->
+    <record id="action_bill_bypass_report" model="ir.actions.act_window">
+        <field name="name">Bills Created Before Receipt</field>
+        <field name="res_model">purchase.order.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_po_line_tree_bill_bypass"/>
+        <field name="domain">[('order_id.allow_bill_bypass', '=', True), ('qty_invoiced', '>', 0)]</field>
+    </record>
+
+    <menuitem id="menu_bill_bypass_report"
+              name="Bills Created Before Receipt"
+              parent="purchase.purchase_report_main"
+              action="action_bill_bypass_report"
+              sequence="100"/>
+</odoo>

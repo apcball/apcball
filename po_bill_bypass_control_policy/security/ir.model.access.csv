@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_bill_bypass_confirm_wizard,bill_bypass_confirm_wizard,model_bill_bypass_confirm_wizard,purchase.group_purchase_user,1,1,1,1

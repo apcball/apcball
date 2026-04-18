@@ -19,9 +19,10 @@
                     <field name="manager_id"/>
                     <field name="warehouse_id"/>
                     <field name="state" widget="badge"
-                           decoration-info="state == 'draft'"
+                           decoration-info="state in ('draft', 'partial')"
                            decoration-warning="state == 'to_approve'"
                            decoration-primary="state == 'approved'"
+                           decoration-muted="state == 'issuing'"
                            decoration-success="state == 'done'"
                            decoration-danger="state == 'rejected'"/>
                     <button name="action_duplicate_request"
@@ -61,16 +62,28 @@
                                 type="object"
                                 invisible="state != 'to_approve'"
                                 groups="internal_consume_request.group_internal_consume_manager"/>
+                        <button name="action_start_issue"
+                                string="Start Issue"
+                                type="object"
+                                class="oe_highlight"
+                                invisible="state != 'approved'"
+                                groups="internal_consume_request.group_internal_consume_stock"/>
+                        <button name="action_confirm_issue"
+                                string="Confirm Issue"
+                                type="object"
+                                class="oe_highlight"
+                                invisible="state != 'issuing'"
+                                groups="internal_consume_request.group_internal_consume_stock"/>
                         <button name="action_create_picking"
                                 string="Create Transfer"
                                 type="object"
-                                invisible="state != 'approved' or picking_id"
+                                invisible="1"
                                 groups="internal_consume_request.group_internal_consume_stock"/>
                         <button name="action_done"
                                 string="Done"
                                 type="object"
                                 class="oe_highlight"
-                                invisible="state != 'approved'"
+                                invisible="1"
                                 groups="internal_consume_request.group_internal_consume_stock"/>
                         <button name="action_set_to_draft"
                                 string="Set to Draft"
@@ -78,7 +91,7 @@
                                 invisible="state != 'rejected'"
                                 groups="internal_consume_request.group_internal_consume_manager"/>
                         <field name="state" widget="statusbar"
-                               statusbar_visible="draft,to_approve,approved,done"/>
+                               statusbar_visible="draft,to_approve,approved,issuing,partial,done"/>
                     </header>
                     <!-- Stock Warning Banner -->
                     <div class="alert alert-danger" role="alert" 
@@ -95,13 +108,24 @@
                                     class="oe_stat_button" 
                                     icon="fa-truck"
                                     invisible="picking_count == 0">
-                                <field name="picking_count" widget="statinfo" string="Transfer"/>
+                                <field name="picking_count" widget="statinfo" string="Transfers"/>
                             </button>
+                            <button name="%(internal_consume_request.action_report_consume_slip)d" 
+                                    type="action" 
+                                    class="oe_stat_button" 
+                                    icon="fa-print"
+                                    string="Issue Slip"
+                                    invisible="state not in ('issuing', 'partial', 'done')"/>
                         </div>
-                        <div class="oe_title">
-                            <h1>
-                                <field name="name" readonly="1"/>
-                            </h1>
+                        <div class="oe_title w-100">
+                            <div class="d-flex justify-content-between align-items-center w-100">
+                                <h1 class="mb-0">
+                                    <field name="name" readonly="1"/>
+                                </h1>
+                                <div>
+                                    <field name="barcode_display" nolabel="1" readonly="1" invisible="not barcode_display"/>
+                                </div>
+                            </div>
                         </div>
                         <group>
                             <group name="request_info">
@@ -140,7 +164,9 @@
                                         <field name="available_qty" string="Available" 
                                                decoration-danger="qty_requested &gt; available_qty"
                                                decoration-success="qty_requested &lt;= available_qty"/>
-                                        <field name="qty_done" string="Qty Done" optional="show"/>
+                                        <field name="issued_qty" readonly="state != 'issuing'"/>
+                                        <field name="remaining_qty" optional="show"/>
+                                        <field name="qty_done" string="Qty Done" optional="hide"/>
                                         <button name="action_duplicate_line" 
                                                 type="object" 
                                                 icon="fa-copy" 
@@ -154,6 +180,25 @@
                                 </field>
                                 <group string="Reason For Requisition">
                                     <field name="reason_for_requisition" placeholder="กรุณาระบุเหตุผลในการขอเบิกวัสดุ/อุปกรณ์..."/>
+                                </group>
+                            </page>
+                            <page string="Issue Details" name="issue_details" invisible="state not in ('issuing', 'partial', 'done')">
+                                <group>
+                                    <group>
+                                        <field name="issued_by"/>
+                                        <field name="issued_datetime"/>
+                                    </group>
+                                    <group>
+                                        <field name="received_by"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <group string="Issuer Signature">
+                                        <field name="issuer_signature" widget="signature" readonly="state in ('partial', 'done')"/>
+                                    </group>
+                                    <group string="Receiver Signature">
+                                        <field name="receiver_signature" widget="signature" readonly="state in ('partial', 'done')"/>
+                                    </group>
                                 </group>
                             </page>
                             <page string="Other Info" name="other_info">

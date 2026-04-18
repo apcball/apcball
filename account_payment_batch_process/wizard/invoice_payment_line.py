@@ -80,6 +80,8 @@ class InvoicePaymentLine(models.TransientModel):
             )
         self.payment_description = check_amount_in_words
         self.payment_difference = self.balance - self.amount
+        if self.payment_difference:
+            self.payment_difference_handling = "open"
 
     @api.onchange("invoice_id")
     def _onchange_invoice_id(self):

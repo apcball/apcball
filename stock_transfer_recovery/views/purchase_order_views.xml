@@ -12,8 +12,19 @@
                         type="object"
                         class="btn-secondary"
                         invisible="not can_recreate_transfer"
-                        groups="purchase.group_purchase_manager,stock.group_stock_manager"/>
+                        groups="base.group_user"/>
             </xpath>
+        </field>
+    </record>
+
+    <record id="action_batch_recreate_receipt" model="ir.actions.server">
+        <field name="name">Recreate Receipt (Batch)</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="binding_model_id" ref="purchase.model_purchase_order"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+            action = records.action_recreate_receipt_wizard_batch()
         </field>
     </record>
 </odoo>

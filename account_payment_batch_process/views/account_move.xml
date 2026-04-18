@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_invoice_batch_process" model="ir.actions.act_window">
-        <field name="name">Register Payment</field>
+        <field name="name">Register Payment(Batch)</field>
         <field name="res_model">account.payment.register</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>

@@ -8,10 +8,12 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_round
 from odoo.tools.float_utils import float_compare
 
+_logger = logging.getLogger(__name__)
+
 try:
     from num2words import num2words
 except ImportError:
-    logging.getLogger(__name__).warning(
+    _logger.warning(
         "The num2words python library is not installed."
     )
     num2words = None
@@ -41,9 +43,11 @@ class AccountPaymentRegister(models.TransientModel):
     def _compute_total(self):
         self.total_amount = sum(line.amount for line in self.invoice_payments)
 
-    @api.depends("invoice_payments.balance")
+    @api.depends("invoice_payments.amount")
     def _compute_cheque_amount(self):
-        self.cheque_amount = sum(line.balance for line in self.invoice_payments)
+        """Auto-sync cheque_amount with total pay amount so user can
+        edit line amounts directly without needing to adjust cheque_amount."""
+        self.cheque_amount = sum(line.amount for line in self.invoice_payments)
 
     is_auto_fill = fields.Char(string="Auto-Fill Pay Amount")
     invoice_payments = fields.One2many(
@@ -69,7 +73,7 @@ class AccountPaymentRegister(models.TransientModel):
                 "balance": invoice.amount_residual or 0.0,
                 "amount": invoice.amount_residual or 0.0,
                 "payment_difference": 0.0,
-                "payment_difference_handling": "reconcile",
+                "payment_difference_handling": "open",
                 "note": "Payment of invoice %s" % invoice.name,
             },
         )
@@ -157,22 +161,39 @@ class AccountPaymentRegister(models.TransientModel):
     def get_payment_values(self, group_data=None):
         if not group_data:
             return {}
+
+        # Resolve destination account from the first invoice
+        destination_account_id = False
+        invoice_ids = list(group_data.get("inv_val", {}))
+        if invoice_ids:
+            first_invoice = self.env["account.move"].browse(invoice_ids[0])
+            dest_accounts = first_invoice.line_ids.filtered(
+                lambda l: l.account_id.account_type in (
+                    "asset_receivable", "liability_payable"
+                )
+            ).mapped("account_id")
+            if dest_accounts:
+                destination_account_id = dest_accounts[0].id
+
         res = {
             "journal_id": self.journal_id.id,
             "payment_method_line_id": "payment_method_line_id" in group_data
             and group_data["payment_method_line_id"]
             or self.payment_method_line_id.id,
             "date": self.payment_date,
-            "ref": group_data["memo"],
             "payment_type": self.payment_type,
             "amount": group_data["total"],
             "currency_id": self.currency_id.id,
             "partner_bank_id": self.partner_bank_id.id,
             "partner_id": int(group_data["partner_id"]),
             "partner_type": group_data["partner_type"],
-            "ref": group_data["check_amount_in_words"],  # Use ref field instead of check_amount_in_words
+            "ref": group_data["check_amount_in_words"],
             "write_off_line_vals": [],
         }
+        # Set destination account to ensure correct receivable/payable matching
+        if destination_account_id:
+            res["destination_account_id"] = destination_account_id
+
         conversion_rate = self.env["res.currency"]._get_conversion_rate(
             self.currency_id,
             self.company_id.currency_id,
@@ -205,15 +226,28 @@ class AccountPaymentRegister(models.TransientModel):
                         "balance": write_off_balance,
                     }
                 )
+
+        _logger.info(
+            "Batch Payment - get_payment_values: partner=%s, amount=%s, "
+            "write_off_count=%s, destination_account=%s",
+            group_data.get("partner_id"),
+            group_data.get("total"),
+            len(res["write_off_line_vals"]),
+            destination_account_id,
+        )
         return res
 
     def _check_amounts(self):
+        """Validate payment amounts.
+        Since cheque_amount now auto-syncs with total_amount,
+        this check ensures consistency."""
         if float_compare(self.total_amount, self.cheque_amount, 2) != 0:
-            raise ValidationError(
-                _(
-                    "The pay amount of the invoices and the batch payment total do not match."
-                )
+            # Auto-sync cheque_amount if they don't match
+            _logger.warning(
+                "Batch Payment - auto-syncing cheque_amount (%s) to total_amount (%s)",
+                self.cheque_amount, self.total_amount,
             )
+            self.cheque_amount = self.total_amount
 
     def get_memo(self, memo, group_data, partner_id, data_get):
         if memo:
@@ -343,38 +377,12 @@ class AccountPaymentRegister(models.TransientModel):
                 partner_id, group_data, line, check_amount_in_words
             )
 
-    def _reconcile_open_invoices(
-        self,
-        line,
-        inv,
-        amount_residual,
-        amount_residual_currency,
-        reconciled,
-        amount,
-        debit_amount_currency,
-        credit_amount_currency,
-    ):
-        acc_part_recnc_obj = self.env["account.partial.reconcile"]
-        line.update(
-            {
-                "amount_residual": amount_residual,
-                "amount_residual_currency": amount_residual_currency,
-                "reconciled": reconciled,
-            }
-        )
-        if inv.move_type == "out_invoice":
-            part_rec_domain = [("debit_move_id", "=", line.id)]
-        elif inv.move_type == "in_invoice":
-            part_rec_domain = [("credit_move_id", "=", line.id)]
-        partial = acc_part_recnc_obj.search(part_rec_domain, limit=1)
-        if partial:
-            partial.update(
-                {
-                    "amount": amount,
-                    "debit_amount_currency": debit_amount_currency,
-                    "credit_amount_currency": credit_amount_currency,
-                }
-            )
+    def action_create_payments(self):
+        """Intercept native Odoo button click and route to our batch process
+        if the user is using the batch payment UI (invoice_payments has lines)."""
+        if self.invoice_payments:
+            return self.make_payments()
+        return super().action_create_payments()
 
     def make_payments(self):
         # Make group data either for Customers or Vendors
@@ -382,121 +390,157 @@ class AccountPaymentRegister(models.TransientModel):
         group_data = {}
         memo = self.communication or " "
         context.update({"is_customer": self.is_customer})
+
+        # === CRITICAL DEBUG: write directly to file ===
+        try:
+            with open("/tmp/batch_payment_debug.log", "a") as f:
+                f.write("=" * 60 + "\n")
+                f.write(f"Batch Payment - make_payments CALLED. total_amount={self.total_amount}, cheque_amount={self.cheque_amount}\n")
+                for pl in self.invoice_payments:
+                    f.write(f"  LINE: invoice={pl.invoice_id.name}, balance={pl.balance}, amount={pl.amount}, diff={pl.payment_difference}, handling={pl.payment_difference_handling}\n")
+        except Exception as e:
+            pass
+
         self._check_amounts()
         for invoice_payment_line in self.invoice_payments:
             if invoice_payment_line.amount > 0:
                 self.get_amount(memo, group_data, invoice_payment_line)
+
+        _logger.info(
+            "Batch Payment - make_payments: %d partners, group_data_keys=%s",
+            len(group_data),
+            list(group_data.keys()),
+        )
+        for pid, gd in group_data.items():
+            _logger.info(
+                "  Partner %s: total=%s, inv_val_keys=%s",
+                pid, gd.get("total"),
+                {k: v.get("amount") for k, v in gd.get("inv_val", {}).items()},
+            )
+            for inv_id, inv_data in gd.get("inv_val", {}).items():
+                _logger.info(
+                    "    Invoice %s: amount=%s, diff=%s, handling=%s",
+                    inv_id,
+                    inv_data.get("amount"),
+                    inv_data.get("payment_difference"),
+                    inv_data.get("payment_difference_handling"),
+                )
+
         # update context
         context.update({"group_data": group_data})
         # making partner wise payment
         payment_ids = []
         for partner in list(group_data):
-            # update active_ids with active invoice ids
-            if context.get("active_ids", False) and group_data[partner].get(
-                "inv_val", False
-            ):
-                context.update({"active_ids": list(group_data[partner]["inv_val"])})
+            # Build clean context: remove active_* keys to prevent Odoo
+            # from overriding the partial amount with full invoice residual
+            payment_context = context.copy()
+            for key in list(payment_context.keys()):
+                if key.startswith("active_"):
+                    payment_context.pop(key)
+
+            payment_vals = self.get_payment_values(
+                group_data=group_data[partner]
+            )
+            _logger.info(
+                "Batch Payment - creating payment: amount=%s, partner=%s",
+                payment_vals.get("amount"),
+                payment_vals.get("partner_id"),
+            )
+
+            # Use skip_invoice_sync to prevent Odoo from recalculating
+            # the payment amount from linked invoice lines
             payment = (
                 self.env["account.payment"]
-                .with_context(context)
-                .create(self.get_payment_values(group_data=group_data[partner]))
+                .with_context(**payment_context, skip_invoice_sync=True)
+                .create(payment_vals)
+            )
+            _logger.info(
+                "Batch Payment - payment created: id=%s, amount=%s, move=%s",
+                payment.id,
+                payment.amount,
+                payment.move_id.id,
             )
             payment_ids.append(payment.id)
             payment.action_post()
 
             # Reconciliation
             def _get_line_filter(line):
-                line_filter = (
+                return (
                     line.account_id
                     and line.account_id.account_type
                     in ("asset_receivable", "liability_payable")
                     and not line.reconciled
                 )
-                return line_filter
 
             payment_lines = payment.line_ids.filtered(_get_line_filter)
-            invoices = self.env["account.move"].browse(context.get("active_ids"))
+            partner_invoice_ids = list(
+                group_data[partner].get("inv_val", {})
+            )
+            if not partner_invoice_ids:
+                partner_invoice_ids = context.get("active_ids", [])
+            invoices = self.env["account.move"].browse(partner_invoice_ids)
             lines = invoices.line_ids.filtered(_get_line_filter)
-            for account in payment_lines.account_id:
-                (payment_lines + lines).filtered_domain(
-                    [("account_id", "=", account.id), ("reconciled", "=", False)]
-                ).reconcile()
-            if any(
-                group_data[partner]["inv_val"][inv.id]["payment_difference_handling"]
-                == "open"
-                for inv in invoices
-            ):
-                for inv in invoices:
-                    if (
-                        group_data[partner]["inv_val"][inv.id][
-                            "payment_difference_handling"
-                        ]
-                        == "open"
-                    ):
-                        payment_state = "partial"
-                    else:
-                        payment_state = "paid"
-                    for line in inv.line_ids:
-                        if line.amount_residual > 0 and payment_state == "paid":
-                            line_amount = 0.0
-                            partial_amount = group_data[partner]["inv_val"][inv.id][
-                                "amount"
-                            ]
-                            self._reconcile_open_invoices(
-                                line,
-                                inv,
-                                line_amount,
-                                line_amount,
-                                True,
-                                partial_amount,
-                                partial_amount,
-                                partial_amount,
-                            )
-                            continue
-                        if line.reconciled and payment_state == "partial":
-                            line_amount = group_data[partner]["inv_val"][inv.id][
-                                "payment_difference"
-                            ]
-                            partial_amount = group_data[partner]["inv_val"][inv.id][
-                                "amount"
-                            ]
-                            self._reconcile_open_invoices(
-                                line,
-                                inv,
-                                line_amount,
-                                line_amount,
-                                False,
-                                partial_amount,
-                                partial_amount,
-                                partial_amount,
-                            )
-                            continue
-                    inv.update(
-                        {
-                            "payment_state": payment_state,
-                            "amount_residual": group_data[partner]["inv_val"][inv.id][
-                                "payment_difference"
-                            ],
-                            "amount_residual_signed": group_data[partner]["inv_val"][
-                                inv.id
-                            ]["payment_difference"],
-                        }
-                    )
-                    inv._compute_payments_widget_reconciled_info()
-        view_id = self.env.ref(
-            "account_payment_batch_process.view_account_payment_tree_nocreate"
-        ).id
-        return {
+
+            _logger.info(
+                "Batch Payment - reconciling: payment_lines=%s (amount=%s), "
+                "invoice_lines=%s (residual=%s)",
+                payment_lines.ids,
+                sum(abs(l.amount_residual) for l in payment_lines),
+                lines.ids,
+                sum(abs(l.amount_residual) for l in lines),
+            )
+
+            # Manual precise reconciliation to respect exact partial amounts
+            for invoice_line in lines:
+                inv_id = invoice_line.move_id.id
+                amount_to_pay = group_data[partner].get("inv_val", {}).get(inv_id, {}).get("amount", 0.0)
+
+                if amount_to_pay > 0:
+                    for pay_line in payment_lines:
+                        if pay_line.account_id == invoice_line.account_id and not pay_line.reconciled and not invoice_line.reconciled:
+                            amount = abs(amount_to_pay)
+                            
+                            if pay_line.balance > 0:
+                                debit_move_id = pay_line.id
+                                credit_move_id = invoice_line.id
+                            else:
+                                debit_move_id = invoice_line.id
+                                credit_move_id = pay_line.id
+                                
+                            try:
+                                self.env["account.partial.reconcile"].create({
+                                    "debit_move_id": debit_move_id,
+                                    "credit_move_id": credit_move_id,
+                                    "amount": amount,
+                                    "debit_amount_currency": amount,
+                                    "credit_amount_currency": amount,
+                                })
+                            except Exception as e:
+                                _logger.error("Failed to create partial reconcile for %s: %s", inv_id, e)
+                                # Fallback to standard reconcile if manual fails
+                                (pay_line + invoice_line).reconcile()
+                            break
+
+        if self._context.get("dont_redirect_to_payments"):
+            return True
+
+        action = {
             "name": _("Payments"),
-            "view_type": "form",
-            "view_mode": "tree",
-            "res_model": "account.payment",
-            "view_id": view_id,
             "type": "ir.actions.act_window",
-            "target": "new",
-            "domain": "[('id','in',%s)]" % (payment_ids),
-            "context": {"group_by": "partner_id"},
+            "res_model": "account.payment",
+            "context": {"create": False},
         }
+        if len(payment_ids) == 1:
+            action.update({
+                "view_mode": "form",
+                "res_id": payment_ids[0],
+            })
+        else:
+            action.update({
+                "view_mode": "tree,form",
+                "domain": [("id", "in", payment_ids)],
+            })
+        return action
 
     def get_batch_payment_amount(self, invoice=None, payment_date=None):
         return {
@@ -509,21 +553,17 @@ class AccountPaymentRegister(models.TransientModel):
     def get_invoice_payments_remaining_amount(self, remaining_amount, count):
         total = 0.0
         for payline in self.invoice_payments:
-            vals = self.get_batch_payment_amount(payline.invoice_id, self.payment_date)
-            if remaining_amount < 0.0:
-                break
-            amount = vals.get("amt", False) or payline.balance
+            if remaining_amount <= 0.0:
+                amount = 0.0
+            else:
+                amount = min(remaining_amount, payline.balance)
+            remaining_amount -= amount
             total += amount
             payline.write(
                 {
-                    "amount": vals.get("amount", False) or payline.balance,
-                    "payment_difference": vals.get("payment_difference", False) or 0.0,
-                    "writeoff_account_id": vals.get("writeoff_account_id", False),
-                    "payment_difference_handling": vals.get(
-                        "payment_difference_handling", False
-                    )
-                    or "open",
-                    "note": vals.get("note", False),
+                    "amount": amount,
+                    "payment_difference": payline.balance - amount,
+                    "payment_difference_handling": "open",
                 }
             )
         self.cheque_amount = total

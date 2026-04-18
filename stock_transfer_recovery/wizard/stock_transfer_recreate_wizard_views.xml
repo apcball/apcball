@@ -14,9 +14,15 @@
                         <field name="total_qty" readonly="1"/>
                         <field name="order_model" invisible="1"/>
                         <field name="order_id" invisible="1"/>
+                        <field name="order_ids" invisible="1"/>
+                        <field name="is_batch" invisible="1"/>
                     </group>
-                    <p class="text-muted">
+                    <p class="text-muted" invisible="is_batch">
                         This action will evaluate the remaining quantities and generate a new picking.
+                        Do you wish to continue?
+                    </p>
+                    <p class="text-muted" invisible="not is_batch">
+                        This action will evaluate the remaining quantities for all selected orders and generate new pickings where necessary.
                         Do you wish to continue?
                     </p>
                 </sheet>

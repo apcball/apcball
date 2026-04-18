@@ -36,5 +36,20 @@
                   sequence="99"
                   groups="group_internal_consume_user"/>
 
+        <!-- Client Action for Barcode -->
+        <record id="action_internal_consume_barcode" model="ir.actions.client">
+            <field name="name">Internal Consume Barcode</field>
+            <field name="tag">internal_consume_request.barcode_client_action</field>
+            <field name="target">fullscreen</field>
+        </record>
+
+        <!-- Menu for Barcode App as a Root Icon -->
+        <menuitem id="menu_inventory_barcode_consume"
+                  name="Barcode Issue"
+                  web_icon="internal_consume_request,static/description/icon.png"
+                  action="action_internal_consume_barcode"
+                  sequence="150"
+                  groups="group_internal_consume_stock"/>
+
     </data>
 </odoo>

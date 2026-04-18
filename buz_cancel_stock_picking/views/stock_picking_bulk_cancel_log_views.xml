@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_picking_bulk_cancel_log_tree" model="ir.ui.view">
+        <field name="name">stock.picking.bulk.cancel.log.tree</field>
+        <field name="model">stock.picking.bulk.cancel.log</field>
+        <field name="arch" type="xml">
+            <tree string="Bulk Cancel Logs" create="0" edit="0">
+                <field name="create_date" string="Date"/>
+                <field name="picking_name"/>
+                <field name="picking_id" optional="show"/>
+                <field name="status" widget="badge" decoration-danger="status == 'failed'" decoration-success="status == 'success'"/>
+                <field name="message"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_stock_picking_bulk_cancel_log" model="ir.actions.act_window">
+        <field name="name">Bulk Cancel Logs</field>
+        <field name="res_model">stock.picking.bulk.cancel.log</field>
+        <field name="view_mode">tree</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No failure logs found.
+            </p>
+            <p>
+                Logs will appear here if a bulk cancellation fails for any reason.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_stock_picking_bulk_cancel_log" 
+              name="Bulk Cancel Logs" 
+              parent="stock.menu_stock_config_settings" 
+              action="action_stock_picking_bulk_cancel_log" 
+              groups="stock.group_stock_manager"
+              sequence="100"/>
+</odoo>
