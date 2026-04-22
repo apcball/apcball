@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sequence_view_inherit" model="ir.ui.view">
+        <field name="name">ir.sequence.form.inherit</field>
+        <field name="model">ir.sequence</field>
+        <field name="inherit_id" ref="base.sequence_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='date_range_ids']" position="before">
+                <div class="o_inner_group d-flex col-lg-11 justify-content-end" invisible="not use_date_range">
+                    <div class="d-flex align-items-center col-lg-3">
+                        <group>
+                            <field name="generate_next_number" class="text-center" />
+                        </group>
+                    </div>
+                    <div class="align-self-center ">
+                        <button type="object" class=" btn btn-md btn-primary me-1" name="start_generate" context="{'temporary_value': generate_next_number}">GENERATE</button>
+                        <button type="object" class=" btn btn-md btn-danger" name="unlink_all_date_ranges">REMOVE ALL</button>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

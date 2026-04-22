@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- File: static/src/xml/stock_checker_action.xml -->
+<!-- Purpose: OWL template for the main Stock Enhanced Checker action component -->
+<templates>
+
+    <!-- ═══════════════════════════════════════════════════
+         StockCheckerAction — Root layout
+         ═══════════════════════════════════════════════════ -->
+    <t t-name="stock_enhanced_checker.StockCheckerAction">
+        <div class="o_stock_checker_app">
+
+            <!-- ─── Header (compact single row) ──────────────────────── -->
+            <div class="sc-header">
+                <span class="sc-header-brand">📦 Stock Checker</span>
+
+                <div class="sc-controls">
+                    <!-- Warehouse selector -->
+                    <select
+                        id="sc-warehouse-select"
+                        class="sc-select"
+                        t-on-change="onWarehouseChange"
+                        t-att-disabled="state.loading">
+                        <option value="">— Warehouse —</option>
+                        <t t-foreach="state.warehouses" t-as="wh" t-key="wh.id">
+                            <option
+                                t-att-value="wh.id"
+                                t-att-selected="state.selectedWarehouseId === wh.id">
+                                <t t-esc="wh.name"/>
+                            </option>
+                        </t>
+                    </select>
+
+                    <!-- Location selector -->
+                    <select
+                        id="sc-location-select"
+                        class="sc-select"
+                        t-on-change="onLocationChange"
+                        t-att-disabled="state.loading or !state.selectedWarehouseId">
+                        <option value="">— Location —</option>
+                        <t t-foreach="state.locations" t-as="loc" t-key="loc.id">
+                            <option
+                                t-att-value="loc.id"
+                                t-att-selected="state.selectedLocationId === loc.id">
+                                <t t-esc="loc.complete_name"/>
+                            </option>
+                        </t>
+                    </select>
+
+                    <!-- Search: triggers on Enter key only -->
+                    <div class="sc-search-wrapper">
+                        <i class="fa fa-search sc-search-icon"/>
+                        <input
+                            id="sc-search-input"
+                            type="text"
+                            class="sc-search-input"
+                            placeholder="Search… (Enter)"
+                            t-att-value="state.search"
+                            t-on-input="onSearchType"
+                            t-on-keydown="onSearchKeydown"
+                            t-att-disabled="state.loading"/>
+                    </div>
+
+                    <!-- Refresh -->
+                    <button
+                        id="sc-refresh-btn"
+                        class="sc-btn sc-btn-secondary sc-btn-icon"
+                        t-on-click="loadStockData"
+                        t-att-disabled="state.loading or !state.selectedLocationId"
+                        title="Refresh">
+                        <i class="fa fa-refresh" t-att-class="state.loading ? 'fa-spin' : ''"/>
+                    </button>
+
+                    <!-- Divider -->
+                    <span class="sc-header-divider"/>
+
+                    <!-- Partner Code with autocomplete -->
+                    <div class="sc-partner-input-wrap sc-header-partner">
+                        <i class="fa fa-id-card-o sc-partner-icon"/>
+                        <input
+                            id="sc-partner-code-input"
+                            type="text"
+                            class="sc-partner-input"
+                            placeholder="Partner code…"
+                            t-att-value="state.partnerCode"
+                            t-on-input="onPartnerCodeInput"
+                            t-on-keydown="onPartnerCodeKeydown"
+                            autocomplete="off"/>
+                        <!-- Autocomplete dropdown -->
+                        <div class="sc-partner-dropdown" t-if="state.partnerResults.length">
+                            <t t-foreach="state.partnerResults" t-as="p" t-key="p.id">
+                                <div class="sc-partner-option"
+                                     t-att-id="'sc-partner-opt-' + p.id"
+                                     t-on-click="() => this.onSelectPartner(p)">
+                                    <span t-if="p.ref" class="sc-partner-ref" t-esc="p.ref"/>
+                                    <span class="sc-partner-opt-name" t-esc="p.name"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+
+                    <!-- Customer Name -->
+                    <div class="sc-partner-input-wrap sc-header-partner">
+                        <i class="fa fa-user-o sc-partner-icon"/>
+                        <input
+                            id="sc-partner-name-input"
+                            type="text"
+                            class="sc-partner-input"
+                            t-att-class="!state.selectedPartnerId and state.partnerName ? 'sc-input-new' : ''"
+                            placeholder="Customer name…"
+                            t-att-value="state.partnerName"
+                            t-on-input="onPartnerNameInput"
+                            autocomplete="off"/>
+                        <span t-if="state.selectedPartnerId" class="sc-partner-badge sc-badge-existing">
+                            <i class="fa fa-check"/> Existing
+                        </span>
+                        <span t-elif="state.partnerName" class="sc-partner-badge sc-badge-new">
+                            <i class="fa fa-plus"/> New
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── Combined filter + stats bar ───────────────────────── -->
+            <div class="sc-filters">
+                <!-- Filter pills -->
+                <span class="sc-filter-label">Filter:</span>
+                <t t-foreach="filters" t-as="f" t-key="f.key">
+                    <button
+                        class="sc-filter-btn"
+                        t-att-class="state.filterType === f.key ? 'active' : ''"
+                        t-att-id="'sc-filter-' + f.key"
+                        t-on-click="() => this.onFilterChange(f.key)">
+                        <t t-esc="f.label"/>
+                    </button>
+                </t>
+
+                <span class="sc-filter-spacer"/>
+
+                <!-- Inline stats chips (visible when products loaded) -->
+                <t t-if="!state.loading and state.products.length">
+                    <span class="sc-stat-chip">Total: <strong t-esc="state.total"/></span>
+                    <span class="sc-stat-chip sc-chip-success">In Stock: <strong t-esc="stats.inStock"/></span>
+                    <span class="sc-stat-chip sc-chip-warning">Low: <strong t-esc="stats.lowStock"/></span>
+                    <span class="sc-stat-chip sc-chip-danger">Out: <strong t-esc="stats.outOfStock"/></span>
+                    <span class="sc-stat-chip sc-chip-accent">Incoming: <strong t-esc="stats.withIncoming"/></span>
+                </t>
+            </div>
+
+            <!-- ─── Table ───────────────────────────────── -->
+            <div class="sc-table-container">
+                <t t-if="state.loading and !state.products.length">
+                    <div class="sc-loading">
+                        <div class="sc-spinner"/>
+                        <span class="sc-loading-text">Loading stock data…</span>
+                    </div>
+                </t>
+
+                <t t-elif="!state.selectedLocationId">
+                    <div class="sc-empty">
+                        <div class="sc-empty-icon">🏭</div>
+                        <h3>Select a Warehouse and Location</h3>
+                        <p>Choose a warehouse and location above to view stock quantities.</p>
+                    </div>
+                </t>
+
+                <t t-elif="state.products.length === 0 and !state.loading">
+                    <div class="sc-empty">
+                        <div class="sc-empty-icon">🔍</div>
+                        <h3>No Products Found</h3>
+                        <p>Try adjusting your search or filter criteria.</p>
+                    </div>
+                </t>
+
+                <t t-else="">
+                    <StockCheckerTable
+                        products="state.products"
+                        selectedIds="state.selectedIds"
+                        qtys="state.qtys"
+                        prices="state.prices"
+                        onToggleAll.bind="onToggleAll"
+                        onToggleRow.bind="onToggleRow"
+                        onQtyChange.bind="onQtyChange"
+                        onPriceChange.bind="onPriceChange"
+                        allSelected="allSelected"
+                    />
+
+                    <!-- Load More -->
+                    <t t-if="state.products.length lt state.total">
+                        <div class="sc-load-more-wrapper">
+                            <button
+                                id="sc-load-more-btn"
+                                class="sc-btn sc-btn-outline"
+                                t-on-click="loadMore"
+                                t-att-disabled="state.loading">
+                                <i class="fa fa-chevron-down"/>
+                                Load More
+                                (<t t-esc="state.total - state.products.length"/> remaining)
+                            </button>
+                        </div>
+                    </t>
+                </t>
+            </div>
+
+            <!-- ─── Action Bar ──────────────────────────── -->
+            <div class="sc-action-bar">
+                <div class="sc-selection-info">
+                    <span class="sc-selection-count" t-esc="state.selectedIds.length"/>
+                    <span>product(s) selected</span>
+                </div>
+                <div class="sc-action-right">
+                    <button
+                        id="sc-clear-selection-btn"
+                        class="sc-btn sc-btn-secondary"
+                        t-on-click="clearSelection"
+                        t-att-disabled="!state.selectedIds.length">
+                        <i class="fa fa-times"/>
+                        Clear
+                    </button>
+                    <button
+                        id="sc-create-quotation-btn"
+                        class="sc-btn sc-btn-primary"
+                        t-on-click="createQuotation"
+                        t-att-disabled="!state.selectedIds.length or state.creating">
+                        <i class="fa fa-file-text-o" t-att-class="state.creating ? 'fa-spin' : ''"/>
+                        <t t-if="state.creating">Creating…</t>
+                        <t t-else="">Create Quotation</t>
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- ─── Toast ──────────────────────────────── -->
+            <t t-if="state.toast">
+                <div class="sc-toast"
+                     t-att-class="'sc-toast-' + state.toast.type"
+                     id="sc-toast">
+                    <span class="sc-toast-icon">
+                        <t t-if="state.toast.type === 'success'">✅</t>
+                        <t t-elif="state.toast.type === 'error'">❌</t>
+                        <t t-else="">ℹ️</t>
+                    </span>
+                    <div class="sc-toast-body">
+                        <div class="sc-toast-title" t-esc="state.toast.title"/>
+                        <div class="sc-toast-msg" t-esc="state.toast.msg"/>
+                    </div>
+                    <button class="sc-toast-close" t-on-click="clearToast">✕</button>
+                </div>
+            </t>
+
+        </div>
+    </t>
+
+</templates>

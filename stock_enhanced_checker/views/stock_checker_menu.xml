@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- File: views/stock_checker_menu.xml -->
+<!-- Purpose: Register Stock Enhanced Checker as a standalone top-level app -->
+<odoo>
+    <!-- Client Action -->
+    <record id="action_stock_enhanced_checker" model="ir.actions.client">
+        <field name="name">Stock Checker</field>
+        <field name="tag">stock_enhanced_checker.StockCheckerAction</field>
+        <field name="target">current</field>
+    </record>
+
+    <!-- Top-level app (appears in app switcher / home screen) -->
+    <menuitem
+        id="menu_stock_enhanced_checker_app"
+        name="Stock Checker"
+        web_icon="stock_enhanced_checker,static/description/icon.png"
+        groups="stock.group_stock_user"
+        sequence="75"
+    />
+
+    <!-- Root page under the app -->
+    <menuitem
+        id="menu_stock_enhanced_checker_main"
+        name="Stock Checker"
+        parent="menu_stock_enhanced_checker_app"
+        action="action_stock_enhanced_checker"
+        groups="stock.group_stock_user"
+        sequence="10"
+    />
+</odoo>

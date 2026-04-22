@@ -456,7 +456,7 @@ class EtaxTransaction(models.Model):
                 "B05-BUYER_BRANCH_ID": self.partner_id.branch or '00000', #self.partner_branch_id, # รหัสสาขาผู้ซื้อ
                 "B06-BUYER_CONTACT_PERSON_NAME": "",
                 "B07-BUYER_CONTACT_DEPARTMENT_NAME": "",
-                "B08-BUYER_URIID": "",
+                "B08-BUYER_URIID": self.partner_id.email or "",
                 "B09-BUYER_CONTACT_PHONE_NO": "",
                 "B10-BUYER_POST_CODE": self.partner_id.zip or "", # รหัสไปรษณีย์ผู้ซื้อ [T03, CN, DN]
                 "B11-BUYER_BUILDING_NAME": "",
@@ -577,7 +577,7 @@ class EtaxTransaction(models.Model):
                     else "0.00"
                 ), # ยอดหลังหักส่วนลด [T03]
 
-                "F72-DOCUMENT_REMARK3": "Test@gmail.com",#self.partner_id.email or "", # อีเมลผู้ซื้อ [T03]
+                "F72-DOCUMENT_REMARK3": self.partner_id.email or "",#self.partner_id.email or "", # อีเมลผู้ซื้อ [T03]
                 "F73-DOCUMENT_REMARK4": "",
                 "F74-DOCUMENT_REMARK5": "",
                 "F75-DOCUMENT_REMARK6": "",

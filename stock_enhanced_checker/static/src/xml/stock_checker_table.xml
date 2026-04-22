@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- File: static/src/xml/stock_checker_table.xml -->
+<!-- Purpose: OWL template for the product stock table sub-component -->
+<templates>
+
+    <!-- ═══════════════════════════════════════════════════
+         StockCheckerTable — Product list table
+         ═══════════════════════════════════════════════════ -->
+    <t t-name="stock_enhanced_checker.StockCheckerTable">
+        <table class="sc-table">
+            <thead>
+                <tr>
+                    <!-- Select All -->
+                    <th>
+                        <input
+                            id="sc-select-all-checkbox"
+                            type="checkbox"
+                            class="sc-checkbox"
+                            t-att-checked="props.allSelected"
+                            t-on-change="() => props.onToggleAll()"/>
+                    </th>
+                    <th>Product Name</th>
+                    <th class="sc-col-ref">Internal Ref</th>
+                    <th class="sc-qty-cell">On Hand</th>
+                    <th class="sc-qty-cell">Reserved</th>
+                    <th class="sc-qty-cell">Available ✓</th>
+                    <th class="sc-qty-cell">Incoming</th>
+                    <th>UoM</th>
+                    <th class="sc-col-reorder">Reorder Pt.</th>
+                    <th class="sc-qty-cell">Qty to Quote</th>
+                    <th class="sc-qty-cell">Unit Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                <t t-foreach="props.products" t-as="product" t-key="product.id">
+                    <StockCheckerRow
+                        product="product"
+                        selected="props.selectedIds.includes(product.id)"
+                        qty="props.qtys[product.id] || 0"
+                        price="props.prices[product.id] !== undefined ? props.prices[product.id] : product.list_price"
+                        onToggle.bind="() => props.onToggleRow(product.id)"
+                        onQtyChange.bind="(val) => props.onQtyChange(product.id, val)"
+                        onPriceChange.bind="(val) => props.onPriceChange(product.id, val)"
+                    />
+                </t>
+            </tbody>
+        </table>
+    </t>
+
+    <!-- ═══════════════════════════════════════════════════
+         StockCheckerRow — Individual product row
+         ═══════════════════════════════════════════════════ -->
+    <t t-name="stock_enhanced_checker.StockCheckerRow">
+        <tr t-att-class="props.selected ? 'sc-selected' : ''">
+            <!-- Checkbox -->
+            <td>
+                <input
+                    type="checkbox"
+                    class="sc-checkbox"
+                    t-att-id="'sc-row-check-' + props.product.id"
+                    t-att-checked="props.selected"
+                    t-on-change="() => props.onToggle()"/>
+            </td>
+
+            <!-- Product Name -->
+            <td>
+                <div class="sc-product-name" t-esc="props.product.name"/>
+            </td>
+
+            <!-- Internal Ref -->
+            <td class="sc-col-ref">
+                <span t-if="props.product.default_code" class="sc-product-ref"
+                      t-esc="props.product.default_code"/>
+                <span t-else="" class="sc-product-ref" style="opacity:0.3">—</span>
+            </td>
+
+            <!-- On Hand -->
+            <td class="sc-qty-cell sc-qty-neutral">
+                <t t-esc="formatQty(props.product.qty_on_hand)"/>
+            </td>
+
+            <!-- Reserved -->
+            <td class="sc-qty-cell">
+                <span t-att-class="props.product.qty_reserved > 0 ? 'sc-qty-warning' : 'sc-qty-neutral'">
+                    <t t-esc="formatQty(props.product.qty_reserved)"/>
+                </span>
+            </td>
+
+            <!-- Actual Available -->
+            <td class="sc-qty-cell">
+                <span t-att-class="availableClass(props.product)">
+                    <strong t-esc="formatQty(props.product.actual_available)"/>
+                </span>
+            </td>
+
+            <!-- Incoming -->
+            <td class="sc-qty-cell">
+                <t t-if="props.product.incoming_qty > 0">
+                    <span
+                        class="sc-incoming-cell sc-incoming-tooltip"
+                        t-att-data-tooltip="props.product.po_refs ? 'POs: ' + props.product.po_refs : 'Incoming stock'"
+                        t-att-title="props.product.po_refs ? 'POs: ' + props.product.po_refs : ''">
+                        <i class="fa fa-arrow-up sc-incoming-icon"/>
+                        <span class="sc-qty-cell" style="color: var(--sc-accent);">
+                            <t t-esc="formatQty(props.product.incoming_qty)"/>
+                        </span>
+                    </span>
+                </t>
+                <t t-else="">
+                    <span class="sc-qty-neutral">—</span>
+                </t>
+            </td>
+
+            <!-- UoM -->
+            <td>
+                <span class="sc-uom-badge" t-esc="props.product.uom_name"/>
+            </td>
+
+            <!-- Reorder Point -->
+            <td class="sc-col-reorder">
+                <t t-if="props.product.reorder_point > 0">
+                    <span class="sc-reorder-badge"
+                          t-att-class="props.product.actual_available &lt;= props.product.reorder_point ? 'sc-reorder-alert' : ''">
+                        <i t-if="props.product.actual_available &lt;= props.product.reorder_point" class="fa fa-exclamation-triangle"/>
+                        <t t-esc="formatQty(props.product.reorder_point)"/>
+                    </span>
+                </t>
+                <t t-else="">
+                    <span class="sc-qty-neutral" style="opacity:0.3">—</span>
+                </t>
+            </td>
+
+            <!-- Qty to Quote -->
+            <td>
+                <input
+                    type="number"
+                    class="sc-qty-input"
+                    t-att-id="'sc-qty-input-' + props.product.id"
+                    min="0"
+                    step="1"
+                    t-att-value="props.qty"
+                    t-on-input="onQtyInput"
+                    t-on-focus="onQtyFocus"
+                    placeholder="0"/>
+            </td>
+
+            <!-- Unit Price -->
+            <td>
+                <input
+                    type="number"
+                    class="sc-qty-input sc-price-input"
+                    t-att-id="'sc-price-input-' + props.product.id"
+                    min="0"
+                    step="0.01"
+                    t-att-value="props.price"
+                    t-on-input="onPriceInput"
+                    placeholder="0.00"/>
+            </td>
+        </tr>
+    </t>
+
+</templates>

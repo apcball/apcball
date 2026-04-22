@@ -1,6 +1,8 @@
 # Copyright 2019 Ecosoft Co., Ltd (http://ecosoft.co.th/)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
 
+import re
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -11,11 +13,19 @@ class ResPartner(models.Model):
     branch = fields.Char(
         string="Tax Branch",
         copy=False,
-        help="Branch ID, e.g., 0000, 0001, ...",
+        help="Branch ID, e.g., 00000, 00001, ...",
     )
     name_company = fields.Char(
         index=True,
     )
+
+    @api.constrains("branch")
+    def _check_branch_format(self):
+        for rec in self:
+            if rec.branch and not re.fullmatch(r"\d{5}", rec.branch):
+                raise ValidationError(
+                    _("Tax Branch must be exactly 5 digits (e.g., 00000, 00001).")
+                )
 
     @api.constrains("company_id", "vat", "branch")
     def _check_company_id_vat_branch(self):

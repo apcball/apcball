@@ -1,358 +1,288 @@
-# prompt.md
+```markdown
+# Odoo 17 Stock Check Module — AI Code Generation Prompt
 
-You are a senior Odoo 17 architect and developer.
-
-Your task is to UPGRADE an existing custom module named:
-
-`internal_consume_request`
-
-Do NOT create a new module from scratch.
-
-You must inherit and improve the existing module while preserving backward compatibility.
+## Role
+You are a Senior Odoo 17 Developer. Generate a complete, production-ready Odoo 17 module
+based on the requirements below. Output all Python, XML, and manifest files with full code.
+Do not skip any file. Do not use placeholder comments like `# TODO` or `# add logic here`.
 
 ---
 
-# PROJECT GOAL
-
-Upgrade the current Internal Consumable Request system into an enterprise-grade warehouse issue system with:
-
-1. Smart Mobile Barcode Picking
-2. Actual Issued Quantity Control
-3. Partial Fulfillment Support
-4. Dual Signature Capture
-5. Real Stock Transfer Based on Actual Qty
-6. Better Status Tracking
-7. Audit Trail
-
-The existing workflow already has:
-
-Draft → To Approve → Approved → Done / Rejected
-
-Keep existing features working.
+## Module Identity
+- **Technical Name:** `buz_stock_check_enhanced`
+- **Display Name:** Stock Check Enhanced
+- **Version:** 17.0.1.0.0
+- **Dependencies:** `stock`, `sale_management`, `product`, `web`
+- **License:** LGPL-3
 
 ---
 
-# EXISTING MODULE CONTEXT
+## Core Features Required
 
-Current module contains:
+### 1. Warehouse & Location Selection (Header Filter Bar)
+- Dropdown to select **Warehouse** (res.model: `stock.warehouse`)
+- Dropdown to select **Location** filtered by selected warehouse
+  - Default to internal locations only (`usage = 'internal'`)
+- Both dropdowns must be **dynamic** — changing warehouse reloads location list
+- Persist last selection per user using `ir.config_parameter` or session
 
-## Models
+### 2. Product Stock Table (Main View)
+Display a list/table of products with the following columns:
 
-### internal.consume.request
+| Column | Description |
+|---|---|
+| Checkbox | Multi-select toggle per row |
+| Product Name | `product.product` display name |
+| Internal Reference | `product.default_code` |
+| On Hand Qty | `qty_on_hand` at selected location |
+| **Actual Available Qty** | `qty_on_hand` MINUS `qty_reserved` (outgoing reserved) — NOT Odoo's default `virtual_available` |
+| Incoming Qty | Confirmed incoming moves (`state in ('assigned','confirmed','waiting')`) filtered by selected location as destination |
+| UoM | Unit of measure |
+| Reorder Point | From `stock.warehouse.orderpoint` if exists |
+| Select Qty | Editable numeric field for quotation quantity |
 
-Header document for internal requisition.
+> ⚠️ CRITICAL: "Actual Available Qty" must be calculated as:
+> `qty_on_hand - qty_reserved`
+> where `qty_reserved` = sum of `reserved_availability` from outgoing `stock.move.line`
+> Do NOT use `product.with_context(location=...).virtual_available`
 
-### internal.consume.request.line
+### 3. Multi-Select & Quotation Creation
+- **Select All** checkbox in table header
+- Each row has individual checkbox
+- A **"Create …
+[22/4/2026  09:35] IamManow001101_bot: # prompt.md สำหรับ `stock_enhanced_checker`
 
-Requested item lines.
-
-### stock.picking inheritance
-
-Used to mark request as done when transfer validates.
-
-## Existing Features
-
-- Employee creates request
-- Manager approves
-- Stock validation
-- Auto create picking
-- Analytic distribution required
-- Auto reject if insufficient stock
-
----
-
-# NEW FEATURES TO DEVELOP
-
----
-
-# 1. MOBILE BARCODE ISSUE FLOW
-
-After request is Approved:
-
-Warehouse user can process issue from mobile interface.
-
-Create new menu:
-
-Inventory > Barcode > Internal Consume Requests
-
-Mobile page must support:
-
-## Step 1: Scan Request
-
-Scan QR / Barcode of request number
-
-Example:
-
-REQ00045
-
-Open request issue screen.
+นี่คือไฟล์ `prompt.md` ที่ให้ AI ตัวอื่นไปสร้าง module ต่อได้เลยบอล 👇
 
 ---
 
-## Step 2: Issue Screen
+```markdown
+# Prompt: Generate Odoo 17 Module — `stock_enhanced_checker`
 
-Display all request lines.
-
-For each line show:
-
-- Product
-- Requested Qty
-- Available Qty
-- Issued Qty (editable)
-- Checkbox select to issue
-
-Example:
-
-Mouse Logitech
-Requested: 5
-Issued: [3]
-
-Keyboard Dell
-Requested: 2
-Issued: [2]
-
-HDMI Cable
-Requested: 4
-Issued: [0]
-
-Warehouse can:
-
-- edit issued qty
-- scan product barcode
-- auto increment qty
-- deselect lines
+## Role
+You are a Senior Odoo 17 Developer. Generate a fully working Odoo 17 module
+based on the requirements below. Output all Python and XML files with correct
+structure, no placeholders, no pseudo-code.
 
 ---
 
-# 2. ACTUAL ISSUE QUANTITY
-
-Add fields on request line:
-
-```python
-issued_qty = fields.Float()
-remaining_qty = fields.Float(compute=...)
-is_issued = fields.Boolean()
-Rules:
-
-issued_qty <= requested_qty
-issued_qty >= 0
-
-remaining_qty = requested_qty - issued_qty
-
-3. PARTIAL FULFILLMENT
-
-If some lines issued partially:
-
-Request state becomes:
-
-partial
-
-If all lines fully issued:
-
-Request state becomes:
-
-done
-
-4. SIGNATURE CAPTURE
-
-Before confirm issue, require signatures:
-
-Header fields:
-issuer_signature = fields.Binary()
-receiver_signature = fields.Binary()
-
-issued_by = fields.Many2one(res.users)
-received_by = fields.Many2one(hr.employee)
-
-issued_datetime = fields.Datetime()
-
-Use Odoo signature widget.
-
-Need two signature blocks:
-
-Warehouse issuer
-Employee receiver
-
-Both required before validation.
-
-5. CREATE REAL STOCK PICKING
-
-Do NOT create transfer using requested qty anymore.
-
-Create stock.picking based on actual issued qty only.
-
-Only lines with:
-
-issued_qty > 0
-
-Generate stock.move with:
-
-product_uom_qty = issued_qty
-quantity_done = issued_qty
-
-Use source location from request.
-
-Use destination location = consumption location.
-
-6. STATE MACHINE UPGRADE
-
-Current states:
-
-draft
-to_approve
-approved
-done
-rejected
-
-Upgrade to:
-
-draft
-to_approve
-approved
-issuing
-partial
-done
-rejected
-
-Logic:
-
-Approved → Start Issue → issuing
-
-After confirm:
-
-If all fulfilled = done
-
-If some remaining = partial
-
-7. PDF REPORT
-
-Create report:
-
-Internal Consume Slip
-
-Must show:
-
-Request No
-Employee
-Department
-Date
-Requested Qty
-Issued Qty
-Remaining Qty
-Issuer Signature
-Receiver Signature
-8. CHATTER / AUDIT LOG
-
-Track:
-
-issue started
-qty changed
-signatures completed
-transfer created
-partial completed
-
-Use message_post.
-
-9. SECURITY
-
-Only group:
-
-stock.group_stock_user
-
-Can process issue.
-
-Only manager can approve.
-
-Employee can view own requests.
-
-10. UI REQUIREMENTS
-Request Form
-
-Add smart buttons:
-
-Transfers
-Issue Slip
-
-Add tab:
-
-Issue Details
-
-Show:
-
-issued by
-signatures
-issue datetime
-11. TECHNICAL REQUIREMENTS
-
-Use Odoo 17 standards.
-
-Must use:
-
-models
-views
-security ir.model.access.csv
-barcode JS / OWL if needed
-qweb report
-chatter mixin if suitable
-
-No hacks.
-
-No direct SQL unless necessary.
-
-Use ORM.
-
-12. CODE QUALITY
-
-Write production-grade clean code.
-
-Use methods:
-
-action_start_issue()
-action_confirm_issue()
-_create_actual_picking()
-_compute_remaining_qty()
-_check_signature_required()
-13. DELIVERABLES
-
-Generate complete module patch including:
-
-manifest.py changes
-python model inheritance
-XML views
-security
-report XML
-barcode mobile assets
-JS OWL components if needed
-14. IMPORTANT BUSINESS RULES
-
-If issued_qty = 0 for all lines:
-
-Block confirm.
-
-If no signatures:
-
-Block confirm.
-
-If stock insufficient during issue:
-
-Show warning and allow lower qty issue.
-
-Never create negative stock automatically.
-
-15. OUTPUT FORMAT
-
-Provide complete file-by-file implementation:
-
-models/internal_consume_request.py
-models/internal_consume_request_line.py
-views/request_views.xml
-views/barcode_templates.xml
-static/src/js/barcode_issue.js
-report/consume_slip.xml
-security/ir.model.access.csv
-
-Include full code.
-
-No explanations only.
-
-Build ready to install.
+## Module Identity
+- **Technical Name:** `stock_enhanced_checker`
+- **Display Name:** Stock Enhanced Checker
+- **Version:** 17.0.1.0.0
+- **Dependencies:** `stock`, `sale_management`, `product`
+- **License:** LGPL-3
+
+---
+
+## Core Features
+
+### 1. Stock Check Dashboard (Main UI)
+- A dedicated menu item under **Inventory** named **"Stock Checker"**
+- Built as an OWL component (client action) for a clean, modern UI
+- Page layout:
+  - **Top bar:** Warehouse selector (dropdown) + Location selector
+    (dropdown, filtered by selected warehouse) + Search bar (product name / ref)
+  - **Product list table** (see Section 2)
+  - **Bottom action bar:** "Create Quotation" button (active only when
+    ≥1 product is ticked)
+
+### 2. Product List Table Columns
+| Column | Description |
+|---|---|
+| ☑ Checkbox | Multi-select per row |
+| Product Name | Linked to product form |
+| Internal Ref | `product.default_code` |
+| On Hand | `qty_available` at selected location |
+| Reserved | `outgoing_qty` (reserved for existing orders) |
+| **Available (Actual)** | `qty_available - outgoing_qty` — NOT the Odoo default "virtual available" |
+| **Incoming** | Sum of confirmed PO lines not yet received (`purchase.order.line` where `state='purchase'` and `qty_received < product_qty`) |
+| Qty to Quote | Editable number input per row (auto-filled when ticked) |
+| Unit Price | Editable, pulled from product sales price |
+
+### 3. Warehouse & Location Selector Behavior
+- Warehouse dropdown loads all active warehouses (`stock.warehouse`)
+- Location dropdown shows only **internal locations** under the selected
+  warehouse's `lot_stock_id` (recursive children)
+- Default: user's default warehouse + main stock location
+- Changing warehouse resets location to that warehouse's default stock location
+- All stock quantities must recalculate immediately on location change (no
+  page reload — use RPC call)
+
+### 4. Available Quantity Calculation (Critical)
+```
+actual_available = qty_on_hand_at_location - qty_reserved_at_location
+```
+- Use `stock.quant` to get `qty_on_hand` filtered by `location_id`
+- Use `stock.move.line` with `state in ('partially_available','assigned')`
+  to get reserved qty at that location
+- **Do NOT use** `product.product`'s `virtual_available` field
+- Display negative available qty in **red**
+
+### 5. Incoming Stock Calculation
+```
+incoming_qty = SUM of (product_qty - qty_received)
+               FROM purchase.order.line
+               WHERE order_id.state = 'purchase'
+               AND product_id = current product
+               AND (qty_received < product_qty)
+```
+- Group by product, show total pending incoming quantity
+- Tooltip on hover shows PO references (e.g., "PO/2024/0042, PO/2024/0055")
+
+### 6. Multi-Select & Quotation Creation
+- Checkbox on each row; "Select All" checkbox in header
+- Ticking a row auto-populates `qty_to_quote` with `actual_available`
+  (user can override)
+- **"Create Quotation" button** behavior:
+  1. Collect all ticked rows with `qty_to_quote > 0`
+  2. Create a `sale.order` in **draft** state
+  3. Add one `sale.order.line` per selected product with the entered qty
+     and unit price
+  4. Open the created quotation form in a new breadcrumb (do not navigate away)
+  5. Show a success toast notification
+
+### 7. Search & Filter
+- Real-time search by product name or internal reference (debounce 300ms)
+- Filter buttons: **All | In Stock | Out of Stock | Low Stock**
+  (Low Stock = available < 5, configurable via Settings)
+- "Low Stock Threshold" setting in **Inventory > Configuration > Settings**
+  (integer field, default = 5)
+
+### 8. Per[22/4/2026  09:14] Apichart Pangsalung: ช่วยออกแบบ module odoo17 สำหรับ เช็ค stock บน odoo มี config สามารถเลือก warehouse และ location ที่จะแสดงได้ มี UI ที่สวยงามน่าใช้ สามารถติ๊กเลือกได้หลายรายการและ กด create quotation ได้จากหน้า check stock ได้เลย หน้า สินค้าจะแสดงจำนวนที่ขายได้จริงไม่ติด จอง และ แสดงจำนวนที่จะเข้ามาเร็วๆนี้  เขียนเป็น prompt.md เพิ่อให้ ai generate module
+[22/4/2026  09:18] IamManow001101_bot: # prompt.md สำหรับ AI ตัวอื่น
+
+นี่คือไฟล์ `prompt.md` ที่เขียนเป็นภาษาอังกฤษทั้งหมดตามที่ขอ 👇
+
+---
+
+```markdown
+# Odoo 17 Stock Check Module — AI Code Generation Prompt
+
+## Role
+You are a Senior Odoo 17 Developer. Generate a complete, production-ready Odoo 17 module
+based on the requirements below. Output all Python, XML, and manifest files with full code.
+Do not skip any file. Do not use placeholder comments like `# TODO` or `# add logic here`.
+
+---
+
+## Module Identity
+- **Technical Name:** `stock_check_enhanced`
+- **Display Name:** Stock Check Enhanced
+- **Version:** 17.0.1.0.0
+- **Dependencies:** `stock`, `sale_management`, `product`, `web`
+- **License:** LGPL-3
+
+---
+
+## Core Features Required
+
+### 1. Warehouse & Location Selection (Header Filter Bar)
+- Dropdown to select **Warehouse** (res.model: `stock.warehouse`)
+- Dropdown to select **Location** filtered by selected warehouse
+  - Default to internal locations only (`usage = 'internal'`)
+- Both dropdowns must be **dynamic** — changing warehouse reloads location list
+- Persist last selection per user using `ir.config_parameter` or session
+
+### 2. Product Stock Table (Main View)
+Display a list/table of products with the following columns:
+
+| Column | Description |
+|---|---|
+| Checkbox | Multi-select toggle per row |
+| Product Name | `product.product` display name |
+| Internal Reference | `product.default_code` |
+| On Hand Qty | `qty_on_hand` at selected location |
+| **Actual Available Qty** | `qty_on_hand` MINUS `qty_reserved` (outgoing reserved) — NOT Odoo's default `virtual_available` |
+| Incoming Qty | Confirmed incoming moves (`state in ('assigned','confirmed','waiting')`) filtered by selected location as destination |
+| UoM | Unit of measure |
+| Reorder Point | From `stock.warehouse.orderpoint` if exists |
+| Select Qty | Editable numeric field for quotation quantity |
+
+> ⚠️ CRITICAL: "Actual Available Qty" must be calculated as:
+> `qty_on_hand - qty_reserved`
+> where `qty_reserved` = sum of `reserved_availability` from outgoing `stock.move.line`
+> Do NOT use `product.with_context(location=...).virtual_available`
+
+### 3. Multi-Select & Quotation Creation
+- **Select All** checkbox in table header
+- Each row has individual checkbox
+- A **"Create …
+[22/4/2026  09:35] IamManow001101_bot: formance Requirements
+- Load products lazily — default show 50 rows, "Load More" button at bottom
+- Use a single RPC call (`/web/dataset/call_kw`) to fetch all required data
+  in one batch per location change
+- Cache warehouse/location tree on first load
+
+---
+
+## File Structure Required
+```
+stock_enhanced_checker/
+├── __init__.py
+├── __manifest__.py
+├── models/
+│   ├── __init__.py
+│   ├── stock_checker.py          # Transient or helper model with compute methods
+│   └── res_config_settings.py    # Low stock threshold setting
+├── controllers/
+│   ├── __init__.py
+│   └── stock_checker_controller.py  # JSON RPC endpoints
+├── static/
+│   └── src/
+│       ├── js/
+│       │   ├── stock_checker_action.js   # OWL Component (main)
+│       │   ├── stock_checker_table.js    # OWL Sub-component: table
+│       │   └── stock_checker_filters.js  # OWL Sub-component: filters/search
+│       ├── xml/
+│       │   ├── stock_checker_action.xml  # OWL templates
+│       │   └── stock_checker_table.xml
+│       └── css/
+│           └── stock_checker.css
+├── views/
+│   ├── stock_checker_menu.xml    # Menu + Client Action registration
+│   └── res_config_settings_view.xml
+└── security/
+    └── ir.model.access.csv
+```
+
+---
+
+## UI/UX Design Guidelines
+- Use **Bootstrap 5** classes (already available in Odoo 17)
+- Table header: sticky on scroll
+- Selected rows: highlight with light blue background (`#e8f4fd`)
+- Available qty column: green if > 0, red if ≤ 0, orange if ≤ low_stock_threshold
+- Incoming qty: show with a small arrow-up icon (✅ Odoo icon `fa-arrow-up`)
+- "Create Quotation" button: `btn-primary`, disabled state when nothing selected
+- Responsive: hide "Internal Ref" column on small screens
+
+---
+
+## Security
+- Access: Users with `stock.group_stock_user` can view
+- Only users with `sales_team.group_sale_salesman` can create quotations
+- No new security groups needed — reuse existing Odoo groups
+
+---
+
+## Coding Standards
+- Follow Odoo 17 OWL 2.0 component patterns (use `useState`, `useService`,
+  `onWillStart`, `onWillUpdateProps`)
+- Use `this.orm.call()` for RPC — do NOT use deprecated `this._rpc()`
+- All Python methods must have docstrings
+- No hardcoded strings in JS — use `_t()` for translations
+- Python: follow PEP8, max line length 120
+- XML: all views must have `id` and proper `string` attributes
+
+---
+
+## Output Instructions
+1. Generate **every file** listed in the file structure — no skipping
+2. Each file must be **complete and functional** — no `# TODO` or `...`
+3. Start each file with a comment block: filename + purpose
+4. After all files, provide a **Setup Instructions** section explaining:
+   - How to install the module
+   - Any required Odoo configuration
+   - How to test each feature
+```

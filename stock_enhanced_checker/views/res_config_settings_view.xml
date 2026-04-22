@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- File: views/res_config_settings_view.xml -->
+<!-- Purpose: Add Low Stock Threshold setting under Inventory > Configuration > Settings -->
+<odoo>
+    <record id="res_config_settings_view_stock_checker" model="ir.ui.view">
+        <field name="name">res.config.settings.stock.checker</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="stock.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Insert after the annual inventory date setting -->
+            <xpath expr="//setting[@id='annual_inventory_date']" position="after">
+                <setting id="stock_checker_low_stock_threshold"
+                         string="Low Stock Threshold"
+                         help="Products with available qty below this value are highlighted in orange in the Stock Enhanced Checker dashboard.">
+                    <field name="low_stock_threshold" class="col-lg-2"/>
+                    <label for="low_stock_threshold" string=" units"/>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>
