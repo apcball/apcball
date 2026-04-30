@@ -24,7 +24,7 @@ class InternalConsumeRequest(models.Model):
         required=True,
         default=fields.Date.context_today,
         tracking=True,
-        states={'to_approve': [('readonly', True)], 'approved': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)]}
+        states={'approved': [('readonly', True)], 'partial_pick': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)], 'cancelled': [('readonly', True)]}
     )
     
     employee_id = fields.Many2one(
@@ -33,7 +33,7 @@ class InternalConsumeRequest(models.Model):
         required=True,
         default=lambda self: self.env.user.employee_id,
         tracking=True,
-        states={'to_approve': [('readonly', True)], 'approved': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)]}
+        states={'approved': [('readonly', True)], 'partial_pick': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)], 'cancelled': [('readonly', True)]}
     )
     
     department_id = fields.Many2one(
@@ -58,7 +58,7 @@ class InternalConsumeRequest(models.Model):
         required=True,
         default=lambda self: self._default_warehouse_id(),
         tracking=True,
-        states={'to_approve': [('readonly', True)], 'approved': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)]}
+        states={'approved': [('readonly', True)], 'partial_pick': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)], 'cancelled': [('readonly', True)]}
     )
     
     picking_type_id = fields.Many2one(
@@ -69,7 +69,7 @@ class InternalConsumeRequest(models.Model):
         compute='_compute_picking_type_id',
         store=True,
         readonly=False,
-        states={'to_approve': [('readonly', True)], 'approved': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)]}
+        states={'approved': [('readonly', True)], 'partial_pick': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)], 'cancelled': [('readonly', True)]}
     )
     
     location_id = fields.Many2one(
@@ -80,7 +80,7 @@ class InternalConsumeRequest(models.Model):
         compute='_compute_locations',
         store=True,
         readonly=False,
-        states={'to_approve': [('readonly', True)], 'approved': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)]}
+        states={'approved': [('readonly', True)], 'partial_pick': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)], 'cancelled': [('readonly', True)]}
     )
     
     location_dest_id = fields.Many2one(
@@ -91,7 +91,7 @@ class InternalConsumeRequest(models.Model):
         compute='_compute_locations',
         store=True,
         readonly=False,
-        states={'to_approve': [('readonly', True)], 'approved': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)]}
+        states={'approved': [('readonly', True)], 'partial_pick': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)], 'cancelled': [('readonly', True)]}
     )
     
     partner_id = fields.Many2one(
@@ -108,17 +108,17 @@ class InternalConsumeRequest(models.Model):
         required=True,
         tracking=True,
         help='เจ้าหน้าที่คลังสินค้าที่รับผิดชอบจ่ายของ',
-        states={'done': [('readonly', True)], 'rejected': [('readonly', True)]}
+        states={'done': [('readonly', True)], 'rejected': [('readonly', True)], 'cancelled': [('readonly', True)]}
     )
     
     state = fields.Selection([
         ('draft', 'Draft'),
         ('to_approve', 'To Approve'),
         ('approved', 'Approved'),
-        ('issuing', 'Issuing'),
-        ('partial', 'Partial'),
+        ('partial_pick', 'Partial Pick'),
         ('done', 'Done'),
-        ('rejected', 'Rejected')
+        ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled')
     ], string='Status', default='draft', required=True, tracking=True, copy=False)
     
     issuer_signature = fields.Binary(string='Issuer Signature', copy=False)
@@ -148,7 +148,7 @@ class InternalConsumeRequest(models.Model):
         'internal.consume.request.line',
         'request_id',
         string='Request Lines',
-        states={'to_approve': [('readonly', True)], 'approved': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)]}
+        states={'approved': [('readonly', True)], 'partial_pick': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)], 'cancelled': [('readonly', True)]}
     )
     
     picking_id = fields.Many2one(
@@ -173,7 +173,11 @@ class InternalConsumeRequest(models.Model):
     def _compute_barcode_display(self):
         for record in self:
             if record.name and record.name != 'New':
-                record.barcode_display = f'<img src="/report/barcode/?barcode_type=Code128&amp;value={record.name}&amp;width=600&amp;height=100" style="width: 250px; height: 50px;" alt="Barcode"/>'
+                record.barcode_display = (
+                    '<img src="/report/barcode/?barcode_type=QR'
+                    f'&amp;value={record.name}&amp;width=600&amp;height=600"'
+                    ' style="width: 150px; height: 150px;" alt="QR Code"/>'
+                )
             else:
                 record.barcode_display = False
     
@@ -182,16 +186,34 @@ class InternalConsumeRequest(models.Model):
         tracking=True
     )
     
+    cancelled_by = fields.Many2one(
+        'res.users',
+        string='Cancelled By',
+        copy=False,
+        readonly=True
+    )
+    
+    cancelled_date = fields.Datetime(
+        string='Cancelled Date',
+        copy=False,
+        readonly=True
+    )
+    
+    cancel_reason = fields.Text(
+        string='Cancel Reason',
+        tracking=True
+    )
+    
     notes = fields.Text(
         string='Notes',
-        states={'to_approve': [('readonly', True)], 'approved': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)]}
+        states={'approved': [('readonly', True)], 'partial_pick': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)], 'cancelled': [('readonly', True)]}
     )
     
     reason_for_requisition = fields.Text(
         string='Reason For Requisition',
         tracking=True,
         help='เหตุผลในการขอเบิกวัสดุ/อุปกรณ์',
-        states={'to_approve': [('readonly', True)], 'approved': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)]}
+        states={'approved': [('readonly', True)], 'partial_pick': [('readonly', True)], 'done': [('readonly', True)], 'rejected': [('readonly', True)], 'cancelled': [('readonly', True)]}
     )
     
     # New fields for auto-reject functionality
@@ -390,9 +412,21 @@ class InternalConsumeRequest(models.Model):
             subtype_xmlid='mail.mt_note'
         )
 
-    def action_approve(self):
-        """Approve request and create picking - with stock validation"""
+    def action_approve_leader(self):
+        """Approve request - can only be done by leader/manager"""
         self.ensure_one()
+        
+        # Only leader/manager can approve
+        if not self.env.user.has_group('internal_consume_request.group_internal_consume_manager'):
+            raise UserError(_('Only leader/manager can approve requests.'))
+        
+        # Manager can only approve requests from their own department
+        if self.department_id and self.department_id.manager_id != self.env.user.employee_id:
+            raise UserError(_('You can only approve requests from your department.'))
+        
+        # Requester cannot approve their own requests
+        if self.employee_id.user_id == self.env.user:
+            raise UserError(_('Requester cannot approve their own requests.'))
         
         # Check stock availability before approval
         if self.has_insufficient_stock:
@@ -413,7 +447,7 @@ class InternalConsumeRequest(models.Model):
         self.state = 'approved'
         
         self.message_post(
-            body=_('Request approved by %s') % self.env.user.name,
+            body=_('Request approved by leader %s') % self.env.user.name,
             message_type='notification',
             subtype_xmlid='mail.mt_note'
         )
@@ -426,9 +460,11 @@ class InternalConsumeRequest(models.Model):
                 summary=_('จ่ายของตามเอกสารขอเบิก: %s') % self.name,
                 note=_('เอกสารขอเบิกได้รับการอนุมัติแล้ว กรุณาดำเนินการจ่ายของตามรายการที่ขอเบิก<br/>'
                        'พนักงาน: %s<br/>'
-                       'แผนก: %s') % (
+                       'แผนก: %s<br/>'
+                       'ผู้อนุมัติ: %s') % (
                     self.employee_id.name,
-                    self.department_id.name if self.department_id else '-'
+                    self.department_id.name if self.department_id else '-',
+                    self.env.user.name
                 )
             )
         
@@ -436,14 +472,14 @@ class InternalConsumeRequest(models.Model):
         # self.action_create_picking()
 
     def action_start_issue(self):
-        """Transition from approved to issuing state"""
+        """Transition from approved to partial_pick state"""
         self.ensure_one()
         if self.state != 'approved':
             raise UserError(_('Only approved requests can be issued.'))
             
-        self.state = 'issuing'
+        self.state = 'partial_pick'
         self.message_post(
-            body=_('Issuing process started by %s') % self.env.user.name,
+            body=_('เริ่มกระบวนการจ่ายของโดย %s') % self.env.user.name,
             message_type='notification',
             subtype_xmlid='mail.mt_note'
         )
@@ -451,19 +487,19 @@ class InternalConsumeRequest(models.Model):
     def _check_signature_required(self):
         self.ensure_one()
         if not self.issuer_signature or not self.receiver_signature:
-            raise UserError(_('Both Issuer and Receiver signatures are required before confirming the issue.'))
+            raise UserError(_('ต้องมีลายเซ็นทั้งผู้จ่ายและผู้รับก่อนยืนยันการจ่ายของ.'))
 
     def action_confirm_issue(self):
         """Confirm the issue process, validate signatures and quantities, create picking"""
         self.ensure_one()
-        if self.state != 'issuing':
-            raise UserError(_('Only requests in issuing state can be confirmed.'))
+        if self.state != 'partial_pick':
+            raise UserError(_('Only requests in partial_pick state can be confirmed.'))
             
         self._check_signature_required()
         
         issued_lines = self.line_ids.filtered(lambda l: l.issued_qty > 0)
         if not issued_lines:
-            raise UserError(_('No items have been issued. Please issue at least one item or cancel the request.'))
+            raise UserError(_('ยังไม่มีรายการใดถูกจ่าย. กรุณาจ่ายของอย่างน้อย 1 รายการ หรือยกเลิกคำขอ.'))
             
         # Check if issued quantity is valid against available quantity
         for line in issued_lines:
@@ -485,10 +521,10 @@ class InternalConsumeRequest(models.Model):
         if all_fulfilled:
             self.state = 'done'
         else:
-            self.state = 'partial'
+            self.state = 'partial_pick'
             
         self.message_post(
-            body=_('Issue confirmed. Status: %s. Signatures completed.') % self.state,
+            body=_('ยืนยันการจ่ายของเรียบร้อย. สถานะ: %s. เซ็นชื่อเสร็จสิ้น.') % self.state,
             message_type='notification',
             subtype_xmlid='mail.mt_note'
         )
@@ -702,11 +738,52 @@ class InternalConsumeRequest(models.Model):
             message_type='notification',
             subtype_xmlid='mail.mt_note'
         )
+    
+    def action_cancel(self):
+        """Cancel request - can only be done by requester in draft or to_approve state"""
+        self.ensure_one()
+        
+        # Can only cancel in draft or to_approve state
+        if self.state not in ['draft', 'to_approve']:
+            raise UserError(_('You can only cancel requests in Draft or To Approve state.'))
+        
+        # Only requester can cancel their own requests
+        if self.employee_id.user_id != self.env.user:
+            raise UserError(_('You can only cancel your own requests.'))
+        
+        # Mark any pending activity as done
+        activities = self.env['mail.activity'].search([
+            ('res_id', '=', self.id),
+            ('res_model', '=', self._name),
+        ])
+        for activity in activities:
+            activity.action_feedback(feedback='Cancelled by requester')
+        
+        self.write({
+            'state': 'cancelled',
+            'cancelled_by': self.env.user.id,
+            'cancelled_date': fields.Datetime.now(),
+            'cancel_reason': _('Cancelled by requester')
+        })
+        
+        self.message_post(
+            body=_('Request cancelled by %s') % self.env.user.name,
+            message_type='notification',
+            subtype_xmlid='mail.mt_note'
+        )
 
     def action_set_to_draft(self):
-        """Reset to draft"""
+        """Reset to draft - can only be done from rejected or cancelled"""
         self.ensure_one()
+        if self.state not in ['rejected', 'cancelled']:
+            raise UserError(_('You can only reset to draft from Rejected or Cancelled state.'))
+        
         self.state = 'draft'
+        self.message_post(
+            body=_('Request reset to draft by %s') % self.env.user.name,
+            message_type='notification',
+            subtype_xmlid='mail.mt_note'
+        )
 
     def action_duplicate_request(self):
         """Duplicate the current request with all its lines"""
@@ -720,6 +797,9 @@ class InternalConsumeRequest(models.Model):
             'picking_id': False,  # Clear the picking reference
             'rejection_reason': False,  # Clear rejection reason
             'reason': False,  # Clear auto reject reason
+            'cancelled_by': False,  # Clear cancel info
+            'cancelled_date': False,  # Clear cancel info
+            'cancel_reason': False,  # Clear cancel reason
         }
         
         # Copy the request

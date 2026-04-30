@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="sale_forecast.SaleForecastDashboard">
+        <Layout display="state.display" className="'o_sale_forecast_dashboard_layout'">
+            <div class="o_sale_forecast_dashboard p-3 p-lg-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div>
+                        <h2 class="mb-1">Sales Forecast Dashboard</h2>
+                        <p class="text-muted mb-0">Real-time planning, allocation, and sales accuracy overview.</p>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <input type="month" class="form-control" style="width: 150px;" t-model="state.target_month" t-on-change="onMonthChange"/>
+                        <button class="btn btn-outline-primary" t-on-click="openPlans">
+                            <i class="fa fa-folder-open me-1"/> Forecast Plans
+                        </button>
+                        <button class="btn btn-outline-success" t-on-click="openAllocations">
+                            <i class="fa fa-random me-1"/> Allocations
+                        </button>
+                    </div>
+                </div>
+
+                <t t-if="state.loading">
+                    <div class="o_dashboard_loading text-center py-5">
+                        <i class="fa fa-spinner fa-spin fa-2x text-primary mb-2"/>
+                        <div>Loading dashboard...</div>
+                    </div>
+                </t>
+
+                <t t-else="">
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-md-6 col-xl-3">
+                            <div class="o_kpi_card kpi-primary">
+                                <div class="kpi-icon"><i class="fa fa-calendar"/></div>
+                                <div class="kpi-content">
+                                    <div class="kpi-title">Forecast Qty</div>
+                                    <div class="kpi-value"><t t-esc="formatNumber(state.kpi.forecast_qty)"/></div>
+                                    <div class="kpi-sub">This month: <t t-esc="formatNumber(state.kpi.forecast_qty_month)"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-xl-3">
+                            <div class="o_kpi_card kpi-success">
+                                <div class="kpi-icon"><i class="fa fa-cubes"/></div>
+                                <div class="kpi-content">
+                                    <div class="kpi-title">Allocated Qty</div>
+                                    <div class="kpi-value"><t t-esc="formatNumber(state.kpi.allocated_qty)"/></div>
+                                    <div class="kpi-sub">Pending: <t t-esc="state.kpi.pending_allocations"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-xl-3">
+                            <div class="o_kpi_card kpi-warning">
+                                <div class="kpi-icon"><i class="fa fa-line-chart"/></div>
+                                <div class="kpi-content">
+                                    <div class="kpi-title">Actual Sold</div>
+                                    <div class="kpi-value"><t t-esc="formatNumber(state.kpi.actual_sold)"/></div>
+                                    <div class="kpi-sub">Active plans: <t t-esc="state.kpi.active_plans"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-xl-3">
+                            <div class="o_kpi_card kpi-danger">
+                                <div class="kpi-icon"><i class="fa fa-bullseye"/></div>
+                                <div class="kpi-content">
+                                    <div class="kpi-title">Allocation / Accuracy</div>
+                                    <div class="kpi-value"><t t-esc="formatPercent(state.kpi.allocation_rate)"/> / <t t-esc="formatPercent(state.kpi.accuracy_rate)"/></div>
+                                    <div class="kpi-sub">Allocation % / Accuracy %</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-xl-8">
+                            <div class="o_panel card h-100">
+                                <div class="card-header">Monthly Forecast vs Actual</div>
+                                <div class="card-body chart-body">
+                                    <canvas t-ref="monthlyCanvas"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-xl-4">
+                            <div class="o_panel card h-100">
+                                <div class="card-header">Product Allocation Mix</div>
+                                <div class="card-body chart-body">
+                                    <canvas t-ref="productCanvas"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-xl-6">
+                            <div class="o_panel card h-100">
+                                <div class="card-header">Recent Forecast Plans</div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Plan</th>
+                                                <th>State</th>
+                                                <th class="text-end">Forecast Qty</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="state.recent_plans" t-as="plan" t-key="plan.plan_id">
+                                                <td t-esc="plan.name"/>
+                                                <td><span class="badge bg-light text-dark" t-esc="plan.state"/></td>
+                                                <td class="text-end" t-esc="formatNumber(plan.total_forecast_qty)"/>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-xl-6">
+                            <div class="o_panel card h-100">
+                                <div class="card-header">Recent Allocations</div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Allocation</th>
+                                                <th>Product</th>
+                                                <th class="text-end">Allocated</th>
+                                                <th class="text-end">Actual</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="state.recent_allocations" t-as="alloc" t-key="alloc.allocation_id">
+                                                <td t-esc="alloc.name"/>
+                                                <td t-esc="alloc.product_name"/>
+                                                <td class="text-end" t-esc="formatNumber(alloc.allocated_qty)"/>
+                                                <td class="text-end" t-esc="formatNumber(alloc.actual_sold_qty)"/>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-12">
+                            <div class="o_panel card">
+                                <div class="card-header">Weekly Forecast Distribution</div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Month</th>
+                                                <th class="text-end">W1</th>
+                                                <th class="text-end">W2</th>
+                                                <th class="text-end">W3</th>
+                                                <th class="text-end">W4</th>
+                                                <th class="text-end">W5</th>
+                                                <th class="text-end">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="weeklyRows" t-as="row" t-key="row.month">
+                                                <td t-esc="formatMonth(row.month)"/>
+                                                <td class="text-end" t-esc="formatNumber(row.week1)"/>
+                                                <td class="text-end" t-esc="formatNumber(row.week2)"/>
+                                                <td class="text-end" t-esc="formatNumber(row.week3)"/>
+                                                <td class="text-end" t-esc="formatNumber(row.week4)"/>
+                                                <td class="text-end" t-esc="formatNumber(row.week5)"/>
+                                                <td class="text-end fw-bold" t-esc="formatNumber(row.total)"/>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </div>
+        </Layout>
+    </t>
+</templates>

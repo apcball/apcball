@@ -84,12 +84,12 @@ export class InternalConsumeBarcodeApp extends Component {
         try {
             const requests = await this.orm.searchRead(
                 "internal.consume.request",
-                [["name", "=", reqName], ["state", "in", ["approved", "issuing", "partial"]]],
+                [["name", "=", reqName], ["state", "in", ["approved", "partial_pick"]]],
                 ["id", "name", "state", "line_ids"]
             );
 
             if (requests.length === 0) {
-                this.notification.add(`Request ${reqName} not found or not in valid state.`, { type: "danger" });
+                this.notification.add(`ไม่พบเอกสาร ${reqName} หรือสถานะไม่ถูกต้อง`, { type: "danger" });
                 return;
             }
 
@@ -134,7 +134,7 @@ export class InternalConsumeBarcodeApp extends Component {
 
         } catch (error) {
             console.error(error);
-            this.notification.add("Error fetching request", { type: "danger" });
+            this.notification.add("เกิดข้อผิดพลาดในการดึงข้อมูล", { type: "danger" });
         }
     }
 
@@ -157,7 +157,7 @@ export class InternalConsumeBarcodeApp extends Component {
 
         const productId = this.barcodeMap[barcode];
         if (!productId) {
-            this.notification.add(`Product barcode ${barcode} not found in this request`, { type: "warning" });
+            this.notification.add(`ไม่พบรหัสสินค้า ${barcode} ในเอกสารนี้`, { type: "warning" });
             return;
         }
 
@@ -168,7 +168,7 @@ export class InternalConsumeBarcodeApp extends Component {
                 line.issued_qty += 1;
                 // Optional: Play success sound
             } else {
-                this.notification.add(`Cannot issue more ${line.product_name}`, { type: "warning" });
+                this.notification.add(`ไม่สามารถจ่าย ${line.product_name} เพิ่มได้`, { type: "warning" });
             }
         }
     }
@@ -177,7 +177,7 @@ export class InternalConsumeBarcodeApp extends Component {
         if (line.issued_qty < line.qty_requested && line.issued_qty < line.available_qty) {
             line.issued_qty += 1;
         } else {
-            this.notification.add(`Maximum quantity reached for ${line.product_name}`, { type: "warning" });
+            this.notification.add(`ถึงจำนวนสูงสุดสำหรับ ${line.product_name}`, { type: "warning" });
         }
     }
 
@@ -220,12 +220,12 @@ export class InternalConsumeBarcodeApp extends Component {
                 });
             }
 
-            this.notification.add("Quantities saved successfully", { type: "success" });
+            this.notification.add("บันทึกจำนวนสำเร็จ", { type: "success" });
             
             // Go to the request form view to complete signatures
             this.action.doAction({
                 type: 'ir.actions.act_window',
-                name: 'Issue Details',
+                name: 'รายละเอียดการจ่ายของ',
                 res_model: 'internal.consume.request',
                 res_id: this.state.request.id,
                 views: [[false, 'form']],
@@ -234,7 +234,7 @@ export class InternalConsumeBarcodeApp extends Component {
 
         } catch (error) {
             console.error(error);
-            this.notification.add("Error saving quantities", { type: "danger" });
+            this.notification.add("เกิดข้อผิดพลาดในการบันทึก", { type: "danger" });
         }
     }
 }

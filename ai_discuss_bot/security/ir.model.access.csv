@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+mail_channel_ai_bot_all,discuss.channel.ai.bot.all,mail.model_discuss_channel,base.group_user,1,0,0,0
+mail_channel_ai_bot_manager,discuss.channel.ai.bot.manager,mail.model_discuss_channel,ai_discuss_bot.group_ai_bot_manager,1,1,1,1
+res_partner_ai_bot_all,res.partner.ai.bot.all,base.model_res_partner,base.group_user,1,0,0,0
+res_partner_ai_bot_manager,res.partner.ai.bot.manager,base.model_res_partner,ai_discuss_bot.group_ai_bot_manager,1,1,1,1
+ai_discuss_config_user,ai.discuss.config.user,model_ai_discuss_config,ai_discuss_bot.group_ai_bot_user,1,0,0,0
+ai_discuss_config_manager,ai.discuss.config.manager,model_ai_discuss_config,ai_discuss_bot.group_ai_bot_manager,1,1,1,1

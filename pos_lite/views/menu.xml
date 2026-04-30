@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_pos_lite_root"
+              name="POS Lite"
+              sequence="60"
+              web_icon="pos_lite,static/description/icon.png"
+              groups="pos_lite.group_pos_lite_user"/>
+
+    <menuitem id="menu_pos_lite_orders"
+              name="Orders"
+              parent="menu_pos_lite_root"
+              action="action_pos_lite_orders"
+              sequence="10"
+              groups="pos_lite.group_pos_lite_user"/>
+
+    <menuitem id="menu_pos_lite_config"
+              name="Configuration"
+              parent="menu_pos_lite_root"
+              action="action_pos_lite_config"
+              sequence="20"
+              groups="pos_lite.group_pos_lite_manager"/>
+</odoo>

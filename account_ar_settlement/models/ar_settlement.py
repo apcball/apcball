@@ -428,7 +428,10 @@ class ArSettlement(models.Model):
         total_allocated = sum(inv_selected.mapped('pay_amount'))
         diff = (self.amount_received + credit_used) - total_allocated
 
-        if diff != 0 and self.difference_handling in ('credit', 'write_off'):
+        # Use currency-aware comparison to avoid floating-point false positives
+        # (e.g. 35330.02 - 35330.02 can yield ~2.84e-14 instead of 0.0)
+        has_diff = not self.currency_id.is_zero(diff)
+        if has_diff and self.difference_handling in ('credit', 'write_off'):
             if not self.difference_account_id:
                 raise UserError(
                     _('Please set a Difference Account to handle the payment difference.')
@@ -460,6 +463,9 @@ class ArSettlement(models.Model):
         # shortfall < 0 = overpayment  (customer paid more than invoices)
         # shortfall = 0 = exact match (only fee adjustment needed)
         shortfall = total_allocated - (self.amount_received + credit_used)
+        # Snap floating-point noise to zero using currency precision
+        if self.currency_id.is_zero(shortfall):
+            shortfall = 0.0
         if self.bank_fee or (shortfall != 0 and self.difference_handling != 'partial'):
             self._adjust_payment_move(payment, shortfall)
 

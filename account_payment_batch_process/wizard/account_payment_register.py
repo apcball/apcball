@@ -84,6 +84,66 @@ class AccountPaymentRegister(models.TransientModel):
             res.append(self.get_invoice_payment_line(invoice))
         return res
 
+    def _invoice_payments_are_default(self):
+        """Detect whether the batch lines still mirror invoice residuals."""
+        self.ensure_one()
+        if not self.invoice_payments:
+            return False
+
+        rounding = self.currency_id.rounding or self.company_id.currency_id.rounding
+        return all(
+            float_compare(line.amount, line.balance, precision_rounding=rounding) == 0
+            for line in self.invoice_payments
+        )
+
+    def _fill_invoice_payments_from_batch_amount(self, remaining_amount, persist=False):
+        """Allocate the batch total sequentially across invoice lines."""
+        self.ensure_one()
+        total = 0.0
+        for payline in self.invoice_payments:
+            if remaining_amount <= 0.0:
+                amount = 0.0
+            else:
+                amount = min(remaining_amount, payline.balance)
+            remaining_amount -= amount
+            total += amount
+
+            values = {
+                "amount": amount,
+                "payment_difference": payline.balance - amount,
+                "payment_difference_handling": "open",
+            }
+            if persist:
+                payline.write(values)
+            else:
+                payline.amount = amount
+                payline.payment_difference = values["payment_difference"]
+                payline.payment_difference_handling = values[
+                    "payment_difference_handling"
+                ]
+
+        self.amount = total
+        self.cheque_amount = total
+        return total
+
+    def _get_batch_payment_amount(self):
+        """Pick the amount the user actually intended to pay.
+
+        The standard wizard amount is the primary input the user edits in the
+        UI. We still keep cheque_amount in sync for convenience, but if one of
+        them differs from the invoice total we use that value to allocate the
+        batch.
+        """
+        self.ensure_one()
+        rounding = self.currency_id.rounding or self.company_id.currency_id.rounding
+        if float_compare(self.amount, self.total_amount, precision_rounding=rounding) != 0:
+            return self.amount
+        if float_compare(
+            self.cheque_amount, self.total_amount, precision_rounding=rounding
+        ) != 0:
+            return self.cheque_amount
+        return self.total_amount
+
     @api.model
     def default_get(self, fields_list):
         if self.env.context and not self.env.context.get("batch", False):
@@ -194,6 +254,12 @@ class AccountPaymentRegister(models.TransientModel):
         if destination_account_id:
             res["destination_account_id"] = destination_account_id
 
+        # Integration with sr_extra_bank_charges:
+        # Pass bank charge values to the created payment if the fields exist.
+        if 'bank_charge_amount' in self._fields:
+            res['bank_charge_amount'] = self.bank_charge_amount
+            res['bank_charge_currency_id'] = self.bank_charge_currency_id.id
+
         conversion_rate = self.env["res.currency"]._get_conversion_rate(
             self.currency_id,
             self.company_id.currency_id,
@@ -238,16 +304,45 @@ class AccountPaymentRegister(models.TransientModel):
         return res
 
     def _check_amounts(self):
-        """Validate payment amounts.
-        Since cheque_amount now auto-syncs with total_amount,
-        this check ensures consistency."""
-        if float_compare(self.total_amount, self.cheque_amount, 2) != 0:
-            # Auto-sync cheque_amount if they don't match
-            _logger.warning(
-                "Batch Payment - auto-syncing cheque_amount (%s) to total_amount (%s)",
-                self.cheque_amount, self.total_amount,
+        """Validate payment amounts before creating the payment records."""
+        if not self.invoice_payments:
+            return
+
+        # If the invoice lines are still at their default residual values, the
+        # user probably only edited the batch total. In that case, use the batch
+        # total to distribute partial payments before creating the payment.
+        if self._invoice_payments_are_default():
+            self._fill_invoice_payments_from_batch_amount(
+                self._get_batch_payment_amount(), persist=True
             )
-            self.cheque_amount = self.total_amount
+            return
+
+        if float_compare(
+            self.total_amount,
+            self.cheque_amount,
+            precision_rounding=self.currency_id.rounding,
+        ) != 0:
+            raise ValidationError(
+                _(
+                    "The pay amount of the invoices and the batch payment total do not match."
+                )
+            )
+
+    @api.onchange("cheque_amount")
+    def _onchange_cheque_amount(self):
+        """Keep the invoice lines in sync when the batch total is edited."""
+        if self._invoice_payments_are_default():
+            self._fill_invoice_payments_from_batch_amount(
+                self.cheque_amount, persist=False
+            )
+
+    @api.onchange("amount")
+    def _onchange_amount(self):
+        """Mirror the standard amount field into the batch allocation."""
+        if self._invoice_payments_are_default():
+            self._fill_invoice_payments_from_batch_amount(
+                self.amount, persist=False
+            )
 
     def get_memo(self, memo, group_data, partner_id, data_get):
         if memo:
@@ -551,22 +646,7 @@ class AccountPaymentRegister(models.TransientModel):
         }
 
     def get_invoice_payments_remaining_amount(self, remaining_amount, count):
-        total = 0.0
-        for payline in self.invoice_payments:
-            if remaining_amount <= 0.0:
-                amount = 0.0
-            else:
-                amount = min(remaining_amount, payline.balance)
-            remaining_amount -= amount
-            total += amount
-            payline.write(
-                {
-                    "amount": amount,
-                    "payment_difference": payline.balance - amount,
-                    "payment_difference_handling": "open",
-                }
-            )
-        self.cheque_amount = total
+        self._fill_invoice_payments_from_batch_amount(remaining_amount, persist=True)
 
     def auto_fill_payments(self):
         ctx = self._context.copy()

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- RECORD RULES: forecast.plan -->
+
+        <!-- Forecast Plan: Users can see their own plans -->
+        <record id="forecast_plan_rule_own" model="ir.rule">
+            <field name="name">Forecast Plan: Own Plans</field>
+            <field name="model_id" ref="model_forecast_plan"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('sale_forecast.group_sale_forecast_planner'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Forecast Plan: Managers can see all plans -->
+        <record id="forecast_plan_rule_manager" model="ir.rule">
+            <field name="name">Forecast Plan: All Plans for Managers</field>
+            <field name="model_id" ref="model_forecast_plan"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('sale_forecast.group_sale_forecast_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Forecast Plan: Company multi-tenancy -->
+        <record id="forecast_plan_rule_company" model="ir.rule">
+            <field name="name">Forecast Plan: Multi-company</field>
+            <field name="model_id" ref="model_forecast_plan"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- RECORD RULES: forecast.line -->
+
+        <!-- Forecast Line: Access via parent plan's rules -->
+        <record id="forecast_line_rule_via_plan" model="ir.rule">
+            <field name="name">Forecast Line: Via Plan User</field>
+            <field name="model_id" ref="model_forecast_line"/>
+            <field name="domain_force">[('plan_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('sale_forecast.group_sale_forecast_planner'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Forecast Line: Managers can see all lines -->
+        <record id="forecast_line_rule_manager" model="ir.rule">
+            <field name="name">Forecast Line: All Lines for Managers</field>
+            <field name="model_id" ref="model_forecast_line"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('sale_forecast.group_sale_forecast_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Forecast Line: Company multi-tenancy -->
+        <record id="forecast_line_rule_company" model="ir.rule">
+            <field name="name">Forecast Line: Multi-company</field>
+            <field name="model_id" ref="model_forecast_line"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- RECORD RULES: forecast.allocation -->
+
+        <!-- Forecast Allocation: Users can see allocations for their plans and their sale orders -->
+        <record id="forecast_allocation_rule_own" model="ir.rule">
+            <field name="name">Forecast Allocation: Own Plans and Sale Orders</field>
+            <field name="model_id" ref="model_forecast_allocation"/>
+            <field name="domain_force">['|',
+                ('plan_id.user_id', '=', user.id),
+                ('sale_order_id.user_id', '=', user.id)
+            ]</field>
+            <field name="groups" eval="[(4, ref('sale_forecast.group_sale_forecast_planner')), (4, ref('sale_forecast.group_sale_forecast_sales'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Forecast Allocation: Managers can see all allocations -->
+        <record id="forecast_allocation_rule_manager" model="ir.rule">
+            <field name="name">Forecast Allocation: All Allocations for Managers</field>
+            <field name="model_id" ref="model_forecast_allocation"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('sale_forecast.group_sale_forecast_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Forecast Allocation: Company multi-tenancy -->
+        <record id="forecast_allocation_rule_company" model="ir.rule">
+            <field name="name">Forecast Allocation: Multi-company</field>
+            <field name="model_id" ref="model_forecast_allocation"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

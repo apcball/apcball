@@ -67,7 +67,7 @@
                     </div>
                     
                     <div class="qr-container">
-                        <img t-att-src="'data:image/png;base64,%s' % req.qr_code.decode('utf-8')" class="qr-image" alt="QR Code"/>
+                        <img t-att-src="'/report/barcode/?barcode_type=QR&amp;value=%s&amp;width=600&amp;height=600' % req.name" class="qr-image" alt="QR Code"/>
                     </div>
                 </div>
             </div>

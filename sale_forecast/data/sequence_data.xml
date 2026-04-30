@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="seq_forecast_plan" model="ir.sequence">
+        <field name="name">Forecast Plan</field>
+        <field name="code">forecast.plan</field>
+        <field name="prefix">FCP/%(year)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="seq_forecast_allocation" model="ir.sequence">
+        <field name="name">Forecast Allocation</field>
+        <field name="code">forecast.allocation</field>
+        <field name="prefix">FCA/%(year)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

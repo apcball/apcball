@@ -16,7 +16,7 @@
                 <group invisible="1">
                     <field name="document_type"/>
                     <field name="ref_id"/>
-                    <field name="budget_line_id"/>
+                    <field name="budget_allocation_id"/>
                     <field name="amount_requested"/>
                     <field name="amount_used"/>
                     <field name="amount_reserved"/>

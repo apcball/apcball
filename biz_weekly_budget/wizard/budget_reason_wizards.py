@@ -13,7 +13,7 @@ class BudgetRequestReasonWizard(models.TransientModel):
     ], string='Document Type', required=True)
     
     ref_id = fields.Integer(string='Document ID', required=True)
-    budget_line_id = fields.Many2one('weekly.budget.line', string='Budget Week')
+    budget_allocation_id = fields.Many2one('monthly.budget.allocation', string='Budget Allocation')
     amount_requested = fields.Float(string='Document Amount')
     amount_used = fields.Float(string='Already Used')
     amount_reserved = fields.Float(string='Already Reserved')
@@ -36,7 +36,7 @@ class BudgetRequestReasonWizard(models.TransientModel):
             document_type=self.document_type,
             ref_field=ref_field,
             ref_id=self.ref_id,
-            budget_line=self.budget_line_id,
+            budget_allocation=self.budget_allocation_id,
             amount_requested=self.amount_requested,
             amount_used=self.amount_used,
             amount_reserved=self.amount_reserved,

@@ -10,7 +10,7 @@
                         <field name="date_to"/>
                     </group>
                     <group string="Filters (Optional)">
-                        <field name="location_ids" widget="many2many_tags" placeholder="All internal locations"/>
+                        <field name="location_ids" widget="many2many_tags" placeholder="All internal and transit locations"/>
                         <field name="product_ids" widget="many2many_tags" placeholder="All products"/>
                         <field name="category_ids" widget="many2many_tags" placeholder="All categories"/>
                     </group>

@@ -7,28 +7,33 @@
               parent="purchase.menu_purchase_root"
               sequence="90"/>
 
-    <menuitem id="menu_weekly_budget_plan"
-              name="Weekly Budget Plans"
+    <menuitem id="menu_monthly_budget_plan"
+              name="Monthly Budget Plans"
               parent="menu_budget_control_root"
-              action="action_weekly_budget_plan"
-              sequence="10"/>
-
-    <menuitem id="menu_weekly_budget_line"
-              name="Budget Lines"
-              parent="menu_budget_control_root"
-              action="action_weekly_budget_line"
-              sequence="20"/>
-
-    <menuitem id="menu_weekly_budget_report"
-              name="Budget Analysis"
-              parent="menu_budget_control_root"
-              action="action_weekly_budget_report"
-              sequence="30"/>
+              action="action_monthly_budget_plan"
+              sequence="5"/>
 
     <menuitem id="menu_budget_approval_request"
               name="Budget Approval Requests"
               parent="menu_budget_control_root"
               action="action_budget_approval_request"
               sequence="40"/>
+
+    <menuitem id="menu_budget_analysis_root"
+              name="Reporting"
+              parent="menu_budget_control_root"
+              sequence="90"/>
+
+    <menuitem id="menu_budget_move_report"
+              name="Budget Move Ledger"
+              parent="menu_budget_analysis_root"
+              action="action_budget_move_report"
+              sequence="10"/>
+
+    <menuitem id="menu_weekly_budget_report"
+              name="Weekly Budget Analysis"
+              parent="menu_budget_analysis_root"
+              action="action_weekly_budget_report"
+              sequence="20"/>
 
 </odoo>

@@ -8,7 +8,7 @@
         <field name="arch" type="xml">
             <form string="Adjust Budget">
                 <group>
-                    <field name="line_id" readonly="1"/>
+                    <field name="monthly_allocation_id" readonly="1"/>
                     <field name="current_amount" readonly="1"/>
                     <field name="new_amount"/>
                     <field name="reason" placeholder="Please provide a reason for this adjustment..."/>

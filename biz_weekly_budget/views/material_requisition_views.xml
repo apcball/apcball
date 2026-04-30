@@ -26,6 +26,9 @@
                         icon="fa-clock-o"/>
             </xpath>
             <xpath expr="//div[@name='button_box']" position="after">
+                <field name="is_budget_reserved" invisible="1"/>
+                <widget name="web_ribbon" title="Budget Reserved" bg_color="bg-info" invisible="not is_budget_reserved"/>
+                <widget name="web_ribbon" title="Cancelled" bg_color="bg-danger" invisible="state not in ('cancel', 'cancelled')"/>
                 <widget name="web_ribbon" title="Budget Rejected" bg_color="bg-danger" invisible="buz_budget_approval_state != 'rejected'"/>
                 <widget name="web_ribbon" title="Budget Approved" bg_color="bg-success" invisible="buz_budget_approval_state != 'approved'"/>
             </xpath>

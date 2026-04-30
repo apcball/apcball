@@ -6,15 +6,22 @@
         <field name="arch" type="xml">
             <form string="Create Advance Accrual">
                 <sheet>
-                    <div class="alert alert-info" role="alert" invisible="not vendor_bill_id">
-                        <strong>ℹ️ Data Source:</strong> Amount and exchange rate are pulled from linked vendor bill: <field name="vendor_bill_id" readonly="1" nolabel="1" class="oe_inline"/>
+                    <div class="alert alert-success" role="alert" invisible="bill_count == 0">
+                        <strong>✓ <field name="bill_count" nolabel="1" class="oe_inline"/> Bill(s) Found:</strong> Select a vendor bill below to pull amount and exchange rate.
                     </div>
-                    <div class="alert alert-warning" role="alert" invisible="vendor_bill_id">
+                    <div class="alert alert-warning" role="alert" invisible="bill_count > 0">
                         <strong>⚠️ Warning:</strong> No posted vendor bill found for this PO. Using PO amount and system exchange rate.
                     </div>
+                    <group string="Bill Selection" invisible="bill_count == 0">
+                        <field name="purchase_id" invisible="1"/>
+                        <field name="available_bill_ids" invisible="1"/>
+                        <field name="vendor_bill_id" 
+                               widget="many2one" 
+                               options="{'no_create': True, 'no_open': False}"
+                               placeholder="Select a vendor bill..."/>
+                    </group>
                     <group string="Accrual Information">
                         <group>
-                            <field name="purchase_id" invisible="1"/>
                             <field name="journal_id" required="1"/>
                             <field name="date" required="1"/>
                             <field name="accrual_account_id" required="1"/>

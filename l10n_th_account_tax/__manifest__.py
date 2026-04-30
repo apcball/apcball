@@ -8,7 +8,7 @@
     "license": "AGPL-3",
     "website": "https://github.com/OCA/l10n-thailand",
     "category": "Localization / Accounting",
-    "depends": ["account"],
+    "depends": ["account", "purchase"],
     "data": [
         "data/pit_rate_data.xml",
         "data/withholding_tax_cert_data.xml",
@@ -22,6 +22,7 @@
         "views/account_view.xml",
         "views/account_tax_view.xml",
         "views/account_move_view.xml",
+        "views/purchase_order_view.xml",
         "views/withholding_tax_cert.xml",
         "views/account_withholding_tax.xml",
         "views/withholding_tax_code_income.xml",

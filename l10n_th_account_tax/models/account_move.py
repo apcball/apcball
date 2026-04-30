@@ -200,9 +200,16 @@ class AccountMoveLine(models.Model):
         }
         return taxinv_dict
 
+    def _apply_wht_tax_from_purchase_line(self):
+        for line in self.filtered(
+            lambda aml: aml.purchase_line_id.wht_tax_id and not aml.wht_tax_id
+        ):
+            line.wht_tax_id = line.purchase_line_id.wht_tax_id
+
     @api.model_create_multi
     def create(self, vals_list):
         move_lines = super().create(vals_list)
+        move_lines._apply_wht_tax_from_purchase_line()
         TaxInvoice = self.env["account.move.tax.invoice"]
         sign = self.env.context.get("reverse_tax_invoice") and -1 or 1
         for line in move_lines:

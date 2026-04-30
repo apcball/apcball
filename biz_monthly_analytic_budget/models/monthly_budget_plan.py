@@ -140,36 +140,36 @@ class MonthlyBudgetPlan(models.Model):
     allocated_amount = fields.Monetary(
         string='Total Allocated',
         compute='_compute_totals',
-        store=True,
+        store=False,
         currency_field='currency_id',
     )
     reserved_amount = fields.Monetary(
         string='Total Reserved',
         compute='_compute_totals',
-        store=True,
+        store=False,
         currency_field='currency_id',
     )
     used_amount = fields.Monetary(
         string='Total Used',
         compute='_compute_totals',
-        store=True,
+        store=False,
         currency_field='currency_id',
     )
     available_amount = fields.Monetary(
         string='Total Available',
         compute='_compute_totals',
-        store=True,
+        store=False,
         currency_field='currency_id',
     )
     allocated_percentage = fields.Float(
         string='Allocated (%)',
         compute='_compute_totals',
-        store=True,
+        store=False,
     )
     carried_amount = fields.Monetary(
         string='Total Carried Forward',
         compute='_compute_totals',
-        store=True,
+        store=False,
         currency_field='currency_id',
     )
 
@@ -212,6 +212,25 @@ class MonthlyBudgetPlan(models.Model):
                 (plan.allocated_amount / plan.total_budget)
                 if plan.total_budget else 0.0
             )
+
+    def _refresh_budget_snapshot(self, refresh_report=False):
+        """
+        Refresh line-level live balances and plan-level summary fields.
+
+        This is the single place to use after budget-affecting mutations so the
+        current transaction sees consistent values immediately.
+        """
+        self.ensure_one()
+        self.budget_line_ids._recompute_line_balance()
+        self._compute_totals()
+        if refresh_report:
+            try:
+                self.env['monthly.budget.report'].refresh_materialized_view()
+            except Exception as e:
+                _logger.warning(
+                    'Could not refresh budget report MV after budget snapshot refresh: %s',
+                    e,
+                )
 
     # ── ORM ──────────────────────────────────────────────────────
 
@@ -281,7 +300,8 @@ class MonthlyBudgetPlan(models.Model):
         How it works:
         - reserved_amount, used_amount are all live
           computed fields that read directly from PRs, POs, and Invoices.
-        - We simply invalidate the cache so next access recomputes them.
+        - We invalidate the cache and explicitly invoke the compute methods so
+          plan totals are refreshed in the same transaction.
         - The materialized view is refreshed for dashboard accuracy.
 
         Note: We do NOT re-create commitment audit records here.
@@ -290,24 +310,13 @@ class MonthlyBudgetPlan(models.Model):
         """
         self.ensure_one()
 
-        # Invalidate and recompute all budget line balances
-        self.budget_line_ids._recompute_line_balance()
+        # Refresh the current plan snapshot and dashboard MV in one place.
+        self._refresh_budget_snapshot(refresh_report=True)
 
-        # Recompute plan-level totals
-        self.invalidate_recordset([
-            'allocated_amount', 'reserved_amount', 'used_amount',
-            'available_amount', 'allocated_percentage',
-        ])
-
-        # Refresh the materialized view for dashboard
-        try:
-            self.env['monthly.budget.report'].refresh_materialized_view()
-        except Exception as e:
-            _logger.warning(
-                'Could not refresh budget report MV after plan recompute: %s', e
-            )
-
-        return True
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'reload',
+        }
 
     # ── Feature 2: Amendment History ─────────────────────────────
 
@@ -437,6 +446,8 @@ class MonthlyBudgetPlan(models.Model):
             rollover_total += carry_amt
             lines_updated += 1
 
+        next_plan._refresh_budget_snapshot(refresh_report=True)
+
         self.message_post(body=_("Carried forward {:,.2f} from {} lines to plan {}.").format(
             rollover_total, lines_updated, next_plan.name
         ))
@@ -463,4 +474,3 @@ class MonthlyBudgetPlan(models.Model):
             plan.action_close()
             plan.message_post(body=_("Plan auto-closed by scheduled cron job (period ended)."))
             _logger.info('Auto-closed expired budget plan: %s', plan.name)
-

@@ -44,14 +44,14 @@ class BuzBudgetApprovalRequest(models.Model):
         index=True,
     )
 
-    budget_line_id = fields.Many2one(
-        'weekly.budget.line',
-        string='Budget Week',
+    budget_allocation_id = fields.Many2one(
+        'monthly.budget.allocation',
+        string='Budget Allocation',
         ondelete='set null',
     )
-    budget_line_name = fields.Char(
-        string='Budget Week Name',
-        help='Stored name in case budget line is removed',
+    budget_allocation_name = fields.Char(
+        string='Budget Name',
+        help='Stored name in case budget allocation is removed',
     )
     amount_limit = fields.Float(string='Budget Limit', tracking=True)
     amount_used = fields.Float(string='Already Used', tracking=True)
@@ -108,11 +108,11 @@ class BuzBudgetApprovalRequest(models.Model):
     def _compute_document_ref(self):
         for rec in self:
             if rec.document_type == 'pr' and rec.ref_pr_id:
-                rec.document_ref = rec.ref_pr_id.name
+                rec.document_ref = rec.ref_pr_id.sudo().name
             elif rec.document_type == 'mr' and rec.ref_mr_id:
-                rec.document_ref = rec.ref_mr_id.name
+                rec.document_ref = rec.ref_mr_id.sudo().name
             elif rec.document_type == 'po' and rec.ref_po_id:
-                rec.document_ref = rec.ref_po_id.name
+                rec.document_ref = rec.ref_po_id.sudo().name
             else:
                 rec.document_ref = ''
 
@@ -254,7 +254,7 @@ class BuzBudgetApprovalRequest(models.Model):
 
     @api.model
     def _get_or_create_pending_request(self, document_type, ref_field, ref_id,
-                                        budget_line, amount_requested,
+                                        budget_allocation, amount_requested,
                                         amount_used, amount_reserved,
                                         amount_limit, amount_overage):
         """
@@ -273,8 +273,8 @@ class BuzBudgetApprovalRequest(models.Model):
         vals = {
             'document_type': document_type,
             ref_field: ref_id,
-            'budget_line_id': budget_line.id if budget_line else False,
-            'budget_line_name': budget_line.name if budget_line else '',
+            'budget_allocation_id': budget_allocation.id if budget_allocation else False,
+            'budget_allocation_name': budget_allocation.sudo().plan_id.name if budget_allocation and budget_allocation.sudo().plan_id else '',
             'amount_limit': amount_limit,
             'amount_used': amount_used,
             'amount_reserved': amount_reserved,

@@ -13,6 +13,7 @@ export class WeeklyBudgetDashboard extends Component {
             weeks: [],
             plans: [],
             pieData: { labels: [], values: [] },
+            departments: [],
             years: [],
             months: [
                 {id: 'all', name: 'All Months'},
@@ -35,8 +36,10 @@ export class WeeklyBudgetDashboard extends Component {
             loaded: false,
         });
         this.chartRef = useRef("chart");
+        this.lineChartRef = useRef("lineChart");
         this.pieChartRef = useRef("pieChart");
         this.chart = null;
+        this.lineChart = null;
         this.pieChart = null;
 
         onWillStart(async () => {
@@ -48,9 +51,9 @@ export class WeeklyBudgetDashboard extends Component {
         });
 
         onMounted(() => {
-            if (this.state.weeks.length > 0) {
-                this.renderChart();
-            }
+            // Always attempt all renders — Chart.js handles empty arrays gracefully.
+            this.renderChart();
+            this.renderLineChart();
             this.renderPieChart();
         });
 
@@ -58,6 +61,10 @@ export class WeeklyBudgetDashboard extends Component {
             if (this.chart) {
                 this.chart.destroy();
                 this.chart = null;
+            }
+            if (this.lineChart) {
+                this.lineChart.destroy();
+                this.lineChart = null;
             }
             if (this.pieChart) {
                 this.pieChart.destroy();
@@ -68,8 +75,8 @@ export class WeeklyBudgetDashboard extends Component {
 
     async loadPlans() {
         try {
-            const plans = await this.rpc("/web/dataset/call_kw/weekly.budget.plan/search_read", {
-                model: "weekly.budget.plan",
+            const plans = await this.rpc("/web/dataset/call_kw/monthly.budget.plan/search_read", {
+                model: "monthly.budget.plan",
                 method: "search_read",
                 args: [[['state', '=', 'confirmed']], ['id', 'name']],
                 kwargs: {},
@@ -96,22 +103,14 @@ export class WeeklyBudgetDashboard extends Component {
 
     async loadData() {
         try {
-            let domain = [];
-            if (this.state.selectedPlanId !== "all") {
-                domain = [['plan_id', '=', parseInt(this.state.selectedPlanId)]];
-            }
-
-            const year = this.state.selectedYear !== "all" ? this.state.selectedYear : null;
-            const month = this.state.selectedMonth !== "all" ? parseInt(this.state.selectedMonth) : null;
-
-            const data = await this.rpc("/web/dataset/call_kw/weekly.budget.report/get_dashboard_data", {
-                model: "weekly.budget.report",
-                method: "get_dashboard_data",
-                args: [domain],
-                kwargs: { year: year, month: month },
+            const data = await this.rpc("/budget/api/dashboard_data", {
+                selectedPlanId: this.state.selectedPlanId,
+                selectedYear: this.state.selectedYear,
+                selectedMonth: this.state.selectedMonth
             });
             this.state.summary = data.summary || {};
             this.state.weeks = data.weeks || [];
+            this.state.departments = data.departments || [];
             this.state.pieData = data.pie_data || { labels: [], values: [] };
         } catch (error) {
             console.error("Failed to load dashboard data", error);
@@ -122,6 +121,7 @@ export class WeeklyBudgetDashboard extends Component {
         this.state.selectedPlanId = ev.target.value;
         await this.loadData();
         this.renderChart();
+        this.renderLineChart();
         this.renderPieChart();
     }
 
@@ -129,6 +129,7 @@ export class WeeklyBudgetDashboard extends Component {
         this.state.selectedYear = ev.target.value;
         await this.loadData();
         this.renderChart();
+        this.renderLineChart();
         this.renderPieChart();
     }
 
@@ -136,6 +137,7 @@ export class WeeklyBudgetDashboard extends Component {
         this.state.selectedMonth = ev.target.value;
         await this.loadData();
         this.renderChart();
+        this.renderLineChart();
         this.renderPieChart();
     }
 
@@ -153,12 +155,13 @@ export class WeeklyBudgetDashboard extends Component {
             this.chart = null;
         }
 
-        if (!this.state.weeks.length) return;
+        if (!this.state.departments.length) return;
 
-        const labels = this.state.weeks.map(w => w.name);
-        const budgetData = this.state.weeks.map(w => w.budget);
-        const reservedData = this.state.weeks.map(w => w.reserved || 0);
-        const actualData = this.state.weeks.map(w => w.actual);
+        const labels = this.state.departments.map(d => d.name);
+        const limitData = this.state.departments.map(d => d.limit);
+        const usedData = this.state.departments.map(d => d.used);
+        const reservedData = this.state.departments.map(d => d.reserved);
+        const forecastData = this.state.departments.map(d => d.forecast);
 
         const ctx = this.chartRef.el.getContext('2d');
         this.chart = new ChartJS(ctx, {
@@ -167,28 +170,24 @@ export class WeeklyBudgetDashboard extends Component {
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Budget Limit',
-                        data: budgetData,
+                        label: 'Limit',
+                        data: limitData,
                         backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                        borderColor: 'rgb(54, 162, 235)',
-                        borderWidth: 1,
-                        borderRadius: 4,
+                    },
+                    {
+                        label: 'Used',
+                        data: usedData,
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
                     },
                     {
                         label: 'Reserved',
                         data: reservedData,
                         backgroundColor: 'rgba(255, 159, 64, 0.7)',
-                        borderColor: 'rgb(255, 159, 64)',
-                        borderWidth: 1,
-                        borderRadius: 4,
                     },
                     {
-                        label: 'Actual Used (Billed)',
-                        data: actualData,
-                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                        borderColor: 'rgb(255, 99, 132)',
-                        borderWidth: 1,
-                        borderRadius: 4,
+                        label: 'Forecast',
+                        data: forecastData,
+                        backgroundColor: 'rgba(153, 102, 255, 0.7)',
                     }
                 ]
             },
@@ -231,6 +230,113 @@ export class WeeklyBudgetDashboard extends Component {
                                     label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'THB' }).format(context.parsed.y);
                                 }
                                 return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    renderLineChart() {
+        if (!this.lineChartRef.el) return;
+        const ChartJS = window.Chart;
+        if (!ChartJS) return;
+        if (this.lineChart) {
+            this.lineChart.destroy();
+            this.lineChart = null;
+        }
+        if (!this.state.weeks.length) return;
+
+        const labels      = this.state.weeks.map(w => w.name);
+        const budgetData   = this.state.weeks.map(w => w.budget   || 0);
+        const reservedData = this.state.weeks.map(w => w.reserved || 0);
+        const usedData     = this.state.weeks.map(w => w.actual   || 0);
+
+        const ctx = this.lineChartRef.el.getContext('2d');
+        this.lineChart = new ChartJS(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Budget Limit',
+                        data: budgetData,
+                        borderColor: 'rgba(54, 162, 235, 0.9)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.08)',
+                        borderWidth: 2,
+                        borderDash: [6, 3],
+                        tension: 0.3,
+                        fill: false,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    },
+                    {
+                        label: 'Reserved (ยอดจอง)',
+                        data: reservedData,
+                        borderColor: 'rgba(255, 159, 64, 0.9)',
+                        backgroundColor: 'rgba(255, 159, 64, 0.08)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    },
+                    {
+                        label: 'Actual Used (ยอดใช้จริง)',
+                        data: usedData,
+                        borderColor: 'rgba(255, 99, 132, 0.9)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.08)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => {
+                                if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                                if (value >= 1000)    return (value / 1000).toFixed(0) + 'K';
+                                return value.toLocaleString();
+                            }
+                        },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 18,
+                            font: { size: 12 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                const val = context.parsed.y;
+                                const fmt = new Intl.NumberFormat('th-TH', {
+                                    style: 'currency', currency: 'THB',
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 0,
+                                }).format(val);
+                                return ` ${context.dataset.label}: ${fmt}`;
                             }
                         }
                     }

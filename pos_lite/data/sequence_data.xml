@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="seq_pos_lite_order" model="ir.sequence">
+            <field name="name">POS Lite Order</field>
+            <field name="code">pos.lite.order</field>
+            <field name="prefix">POS</field>
+            <field name="padding">4</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">no_gap</field>
+        </record>
+    </data>
+</odoo>

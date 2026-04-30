@@ -3,12 +3,12 @@
     <data>
         <!-- Report Action -->
         <record id="action_report_consume_slip" model="ir.actions.report">
-            <field name="name">Internal Consume Slip</field>
+            <field name="name">ใบจ่ายของภายใน</field>
             <field name="model">internal.consume.request</field>
             <field name="report_type">qweb-pdf</field>
             <field name="report_name">internal_consume_request.report_consume_slip_document</field>
             <field name="report_file">internal_consume_request.report_consume_slip_document</field>
-            <field name="print_report_name">'Consume Slip - %s' % (object.name)</field>
+            <field name="print_report_name">'ใบจ่ายของ - %s' % (object.name)</field>
             <field name="binding_model_id" ref="model_internal_consume_request"/>
             <field name="binding_type">report</field>
         </record>
@@ -23,32 +23,32 @@
                             
                             <div class="row">
                                 <div class="col-8">
-                                    <h2 class="mb-4">Internal Consume Slip</h2>
+                                    <h2 class="mb-4">ใบจ่ายของภายใน</h2>
                                 </div>
                                 <div class="col-4 text-right">
-                                    <img t-att-src="'/report/barcode/?barcode_type=Code128&amp;value=%s&amp;width=600&amp;height=100' % doc.name" style="width:100%;height:50px;" alt="Barcode"/>
+                                    <img t-att-src="'/report/barcode/?barcode_type=QR&amp;value=%s&amp;width=600&amp;height=600' % doc.name" style="width:100px;height:100px;" alt="QR Code"/>
                                 </div>
                             </div>
                             
                             <div class="row mt-4 mb-4" id="informations">
                                 <div class="col-auto mw-100 mb-2">
-                                    <strong>Request No:</strong>
+                                    <strong>เลขที่คำขอ:</strong>
                                     <p class="m-0" t-field="doc.name"/>
                                 </div>
                                 <div class="col-auto mw-100 mb-2">
-                                    <strong>Date:</strong>
+                                    <strong>วันที่:</strong>
                                     <p class="m-0" t-field="doc.request_date"/>
                                 </div>
                                 <div class="col-auto mw-100 mb-2">
-                                    <strong>Employee:</strong>
+                                    <strong>พนักงาน:</strong>
                                     <p class="m-0" t-field="doc.employee_id"/>
                                 </div>
                                 <div class="col-auto mw-100 mb-2">
-                                    <strong>Department:</strong>
+                                    <strong>แผนก:</strong>
                                     <p class="m-0" t-field="doc.department_id"/>
                                 </div>
                                 <div class="col-auto mw-100 mb-2">
-                                    <strong>Warehouse:</strong>
+                                    <strong>คลังสินค้า:</strong>
                                     <p class="m-0" t-field="doc.warehouse_id"/>
                                 </div>
                             </div>
@@ -56,12 +56,12 @@
                             <table class="table table-sm o_main_table">
                                 <thead>
                                     <tr>
-                                        <th>No.</th>
-                                        <th>Product</th>
-                                        <th class="text-right">Requested</th>
-                                        <th class="text-right">Issued</th>
-                                        <th class="text-right">Remaining</th>
-                                        <th>UoM</th>
+                                        <th>ลำดับ</th>
+                                        <th>สินค้า</th>
+                                        <th class="text-right">ขอเบิก</th>
+                                        <th class="text-right">จ่าย</th>
+                                        <th class="text-right">คงเหลือ</th>
+                                        <th>หน่วยนับ</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -80,7 +80,7 @@
                             
                             <div t-if="doc.reason_for_requisition" class="row mt-4">
                                 <div class="col-12">
-                                    <strong>Reason for Requisition:</strong>
+                                    <strong>เหตุผลในการขอเบิก:</strong>
                                     <p t-field="doc.reason_for_requisition"/>
                                 </div>
                             </div>
@@ -88,7 +88,7 @@
                             <!-- Signatures -->
                             <div class="row mt-5">
                                 <div class="col-6 text-center">
-                                    <strong>Issued By</strong>
+                                    <strong>ผู้จ่าย</strong>
                                     <br/><br/>
                                     <div t-if="doc.issuer_signature">
                                         <img t-att-src="image_data_uri(doc.issuer_signature)" style="max-height: 80px;"/>
@@ -100,7 +100,7 @@
                                     <span t-if="doc.issued_datetime" t-field="doc.issued_datetime" t-options='{"widget": "datetime"}'/>
                                 </div>
                                 <div class="col-6 text-center">
-                                    <strong>Received By</strong>
+                                    <strong>ผู้รับ</strong>
                                     <br/><br/>
                                     <div t-if="doc.receiver_signature">
                                         <img t-att-src="image_data_uri(doc.receiver_signature)" style="max-height: 80px;"/>

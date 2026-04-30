@@ -1,0 +1,77 @@
+.o_sale_forecast_dashboard {
+    background: #f5f7fb;
+    min-height: calc(100vh - 110px);
+
+    .o_panel {
+        border: 0;
+        border-radius: 16px;
+        box-shadow: 0 8px 26px rgba(17, 24, 39, 0.08);
+
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid #edf0f5;
+            font-weight: 600;
+            color: #1f2937;
+            padding: 0.9rem 1rem;
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+    }
+
+    .o_kpi_card {
+        border-radius: 16px;
+        padding: 1rem;
+        display: flex;
+        gap: 0.9rem;
+        align-items: flex-start;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        color: #fff;
+
+        .kpi-icon {
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            font-size: 1.1rem;
+        }
+
+        .kpi-title {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-bottom: 0.3rem;
+        }
+
+        .kpi-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 0.15rem;
+        }
+
+        .kpi-sub {
+            font-size: 0.78rem;
+            opacity: 0.9;
+        }
+    }
+
+    .kpi-primary { background: linear-gradient(135deg, #4f46e5, #6366f1); }
+    .kpi-success { background: linear-gradient(135deg, #0f766e, #10b981); }
+    .kpi-warning { background: linear-gradient(135deg, #b45309, #f59e0b); }
+    .kpi-danger { background: linear-gradient(135deg, #b91c1c, #ef4444); }
+
+    .chart-body {
+        height: 320px;
+        position: relative;
+    }
+
+    .o_dashboard_loading {
+        border-radius: 14px;
+        background: #fff;
+        border: 1px solid #e9eef5;
+    }
+}

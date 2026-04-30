@@ -7,9 +7,9 @@ class BudgetAdjustmentWizard(models.TransientModel):
     _name = 'budget.adjustment.wizard'
     _description = 'Budget Adjustment Wizard'
 
-    line_id = fields.Many2one(
-        'weekly.budget.line',
-        string='Budget Line',
+    monthly_allocation_id = fields.Many2one(
+        'monthly.budget.allocation',
+        string='Budget Allocation',
         required=True,
         readonly=True,
     )
@@ -32,37 +32,30 @@ class BudgetAdjustmentWizard(models.TransientModel):
         if not self.reason:
             raise UserError(_('Please provide a reason for the adjustment.'))
 
-        line = self.line_id
-        old_amount = line.amount_limit
+        alloc = self.monthly_allocation_id
+        old_amount = alloc.amount
 
-        # Create history record
-        self.env['weekly.budget.line.history'].create({
-            'line_id': line.id,
-            'user_id': self.env.uid,
-            'old_amount': old_amount,
-            'new_amount': self.new_amount,
-            'reason': self.reason,
-        })
-
-        # Update the budget line
-        line.amount_limit = self.new_amount
+        # Update the budget allocation amount directly (if needed, disconnect from percentage)
+        alloc.amount = self.new_amount
 
         # Post message on the plan's chatter
-        line.plan_id.message_post(
-            body=_(
-                '<strong>Budget Adjusted</strong><br/>'
-                'Week: %s<br/>'
-                'Previous: %s<br/>'
-                'New: %s<br/>'
-                'By: %s<br/>'
-                'Reason: %s'
-            ) % (
-                line.name,
-                '{:,.2f}'.format(old_amount),
-                '{:,.2f}'.format(self.new_amount),
-                self.env.user.name,
-                self.reason,
-            ),
+        msg_body = _(
+            '<strong>Budget Adjusted</strong><br/>'
+            'Department: %s<br/>'
+            'Previous: %s<br/>'
+            'New: %s<br/>'
+            'By: %s<br/>'
+            'Reason: %s'
+        ) % (
+            alloc.department_id.sudo().name or 'Base',
+            '{:,.2f}'.format(old_amount),
+            '{:,.2f}'.format(self.new_amount),
+            self.env.user.name,
+            self.reason,
+        )
+
+        alloc.plan_id.message_post(
+            body=msg_body,
             message_type='notification',
             subtype_xmlid='mail.mt_note',
         )

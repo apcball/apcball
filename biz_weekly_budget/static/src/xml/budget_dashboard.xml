@@ -32,9 +32,9 @@
                         </div>
                         <!-- Filter by Budget Plan -->
                         <div style="min-width: 220px;">
-                            <label class="small text-muted mb-1">Filter by Budget Plan</label>
+                            <label class="small text-muted mb-1">Filter by Monthly Budget</label>
                             <select class="form-control custom-select" t-on-change="onPlanChange">
-                                <option value="all">All Budget Plans</option>
+                                <option value="all">All Monthly Plans</option>
                                 <t t-foreach="state.plans" t-as="plan" t-key="plan.id">
                                     <option t-att-value="plan.id" t-esc="plan.name"/>
                                 </t>
@@ -47,60 +47,62 @@
                 <div class="row mb-4">
                     <div class="col-md-2">
                         <div class="card shadow-sm border-0 bg-white rounded-lg">
-                            <div class="card-body text-center p-3">
+                            <div class="card-body text-center p-2">
                                 <h6 class="text-muted text-uppercase small font-weight-bold">Total Budget</h6>
-                                <h3 class="text-info mb-0" t-esc="formatCurrency(state.summary.total_budget || 0)"/>
+                                <h4 class="text-info mb-0" t-esc="formatCurrency(state.summary.total_budget || 0)"/>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <div class="card shadow-sm border-0 bg-white rounded-lg">
+                            <div class="card-body text-center p-2">
+                                <h6 class="text-muted text-uppercase small font-weight-bold">Used (Billed)</h6>
+                                <h4 class="text-danger mb-0" t-esc="formatCurrency(state.summary.total_used || 0)"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
                         <div class="card shadow-sm border-0 rounded-lg" style="background-color:#fff7ed;">
-                            <div class="card-body text-center p-3">
+                            <div class="card-body text-center p-2">
                                 <h6 class="text-uppercase small font-weight-bold" style="color:#c2410c;">Reserved</h6>
-                                <h3 class="mb-0" style="color:#ea580c;" t-esc="formatCurrency(state.summary.total_reserved || 0)"/>
-                                <small class="text-muted">PR + MR + Unbilled PO</small>
+                                <h4 class="mb-0" style="color:#ea580c;" t-esc="formatCurrency(state.summary.total_reserved || 0)"/>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="card shadow-sm border-0 bg-white rounded-lg">
-                            <div class="card-body text-center p-3">
-                                <h6 class="text-muted text-uppercase small font-weight-bold">Actual Used (Billed)</h6>
-                                <h3 class="text-danger mb-0" t-esc="formatCurrency(state.summary.total_actual || 0)"/>
+                    <div class="col-md-2">
+                        <div class="card shadow-sm border-0 rounded-lg" style="background-color:#f0f9ff;">
+                            <div class="card-body text-center p-2">
+                                <h6 class="text-uppercase small font-weight-bold" style="color:#0369a1;">Forecast</h6>
+                                <h4 class="mb-0" style="color:#0284c7;" t-esc="formatCurrency(state.summary.forecast || 0)"/>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-2">
                         <div class="card shadow-sm border-0 bg-white rounded-lg">
-                            <div class="card-body text-center p-3">
-                                <h6 class="text-muted text-uppercase small font-weight-bold">Remaining</h6>
-                                <h3 class="text-success mb-0" t-esc="formatCurrency(state.summary.remaining || 0)"/>
+                            <div class="card-body text-center p-2">
+                                <h6 class="text-muted text-uppercase small font-weight-bold">Available</h6>
+                                <h4 class="text-success mb-0" t-esc="formatCurrency(state.summary.remaining || 0)"/>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-2">
                         <div class="card shadow-sm border-0 bg-white rounded-lg">
-                            <div class="card-body text-center p-3">
-                                <h6 class="text-muted text-uppercase small font-weight-bold">Utilization %</h6>
-                                <h3 class="text-warning mb-0" t-esc="(state.summary.utilization || 0).toFixed(1) + '%'"/>
-                                <div class="progress mt-2" style="height: 5px;">
-                                    <div class="progress-bar bg-warning" role="progressbar"
-                                         t-attf-style="width: {{Math.min(state.summary.utilization || 0, 100)}}%"
-                                         t-att-aria-valuenow="state.summary.utilization" aria-valuemin="0" aria-valuemax="100"/>
-                                </div>
+                            <div class="card-body text-center p-2">
+                                <h6 class="text-muted text-uppercase small font-weight-bold">Utilized %</h6>
+                                <h4 class="text-warning mb-0" t-esc="(state.summary.utilization || 0).toFixed(1) + '%'"/>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Charts Row: Bar + Pie side by side -->
+                <!-- Charts Row -->
                 <div class="row mb-4">
-                    <!-- Bar Chart: Weekly Trend -->
-                    <div class="col-md-8">
+                    <!-- Bar Chart: Department Overview -->
+                    <div class="col-md-6">
                         <div class="card shadow-sm border-0 bg-white rounded-lg h-100">
                             <div class="card-header bg-white border-0 py-3">
                                 <h5 class="card-title text-muted mb-0 font-weight-bold">
-                                    <i class="fa fa-bar-chart mr-2"/>Weekly Performance Trend
+                                    <i class="fa fa-building mr-2"/>Department Overview
                                 </h5>
                             </div>
                             <div class="card-body" style="min-height: 340px; position: relative;">
@@ -109,7 +111,23 @@
                         </div>
                     </div>
 
-                    <!-- Pie / Doughnut Chart: Spent vs Remaining -->
+                    <!-- Line Chart: Weekly Trend -->
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-0 bg-white rounded-lg h-100">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h5 class="card-title text-muted mb-0 font-weight-bold">
+                                    <i class="fa fa-line-chart mr-2"/>Weekly Trend
+                                </h5>
+                            </div>
+                            <div class="card-body" style="min-height: 340px; position: relative;">
+                                <canvas t-ref="lineChart"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <!-- Pie Chart -->
                     <div class="col-md-4">
                         <div class="card shadow-sm border-0 bg-white rounded-lg h-100">
                             <div class="card-header bg-white border-0 py-3">
@@ -146,6 +164,7 @@
                                         <tr>
                                             <th class="pl-4">Week Reference</th>
                                             <th class="text-right">Budget Limit</th>
+                                            <th class="text-right" style="color:#0284c7;">Forecast</th>
                                             <th class="text-right" style="color:#ea580c;">Reserved</th>
                                             <th class="text-right">Actual Used</th>
                                             <th class="text-right">Available</th>
@@ -164,14 +183,16 @@
                                             <tr>
                                                 <td class="pl-4 font-weight-bold" t-esc="week.name"/>
                                                 <td class="text-right" t-esc="formatCurrency(week.budget)"/>
+                                                <td class="text-right font-weight-bold" style="color:#0284c7;"
+                                                    t-esc="formatCurrency(week.forecast || 0)"/>
                                                 <td class="text-right font-weight-bold" style="color:#ea580c;"
                                                     t-esc="formatCurrency(week.reserved || 0)"/>
                                                 <td class="text-right" t-esc="formatCurrency(week.actual)"/>
                                                 <td class="text-right font-weight-bold"
-                                                    t-attf-class="{{(week.budget - week.actual - (week.reserved||0)) >= 0 ? 'text-success' : 'text-danger'}}"
-                                                    t-esc="formatCurrency(week.budget - week.actual - (week.reserved||0))"/>
+                                                    t-attf-class="{{(week.budget - week.actual - (week.reserved||0) - (week.forecast||0)) >= 0 ? 'text-success' : 'text-danger'}}"
+                                                    t-esc="formatCurrency(week.budget - week.actual - (week.reserved||0) - (week.forecast||0))"/>
                                                 <td class="text-center pr-4">
-                                                    <span t-if="(week.budget - week.actual - (week.reserved||0)) >= 0" class="badge badge-success px-2 py-1">Under Budget</span>
+                                                    <span t-if="(week.budget - week.actual - (week.reserved||0) - (week.forecast||0)) >= 0" class="badge badge-success px-2 py-1">Under Budget</span>
                                                     <span t-else="" class="badge badge-danger px-2 py-1">Over Budget</span>
                                                 </td>
                                             </tr>

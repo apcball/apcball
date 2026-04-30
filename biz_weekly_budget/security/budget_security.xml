@@ -22,12 +22,11 @@
             <field name="implied_ids" eval="[(4, ref('group_budget_user'))]"/>
         </record>
 
-        <!-- Record Rules -->
-        <!-- Budget User: read all confirmed plans -->
-        <record id="rule_budget_plan_user" model="ir.rule">
-            <field name="name">Budget Plan: User Read</field>
-            <field name="model_id" ref="model_weekly_budget_plan"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
+        <!-- Monthly Budget Plan Rules -->
+        <record id="rule_monthly_budget_plan_user" model="ir.rule">
+            <field name="name">Monthly Budget Plan: User Read</field>
+            <field name="model_id" ref="model_monthly_budget_plan"/>
+            <field name="domain_force">['|', ('all_companies', '=', True), ('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_budget_user'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>
@@ -35,11 +34,10 @@
             <field name="perm_unlink" eval="False"/>
         </record>
 
-        <!-- Budget Manager: full access -->
-        <record id="rule_budget_plan_manager" model="ir.rule">
-            <field name="name">Budget Plan: Manager Full Access</field>
-            <field name="model_id" ref="model_weekly_budget_plan"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
+        <record id="rule_monthly_budget_plan_manager" model="ir.rule">
+            <field name="name">Monthly Budget Plan: Manager Full Access</field>
+            <field name="model_id" ref="model_monthly_budget_plan"/>
+            <field name="domain_force">['|', ('all_companies', '=', True), ('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_budget_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -47,24 +45,24 @@
             <field name="perm_unlink" eval="True"/>
         </record>
 
-        <!-- Budget Line: User Read -->
-        <record id="rule_budget_line_user" model="ir.rule">
-            <field name="name">Budget Line: User Read</field>
-            <field name="model_id" ref="model_weekly_budget_line"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_budget_user'))]"/>
+        <!-- Monthly Budget Allocation Rules -->
+        <record id="rule_monthly_budget_allocation_multi_company" model="ir.rule">
+            <field name="name">Monthly Budget Allocation: Multi-Company</field>
+            <field name="model_id" ref="model_monthly_budget_allocation"/>
+            <field name="domain_force">['|', ('all_companies', '=', True), ('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
             <field name="perm_read" eval="True"/>
-            <field name="perm_write" eval="False"/>
-            <field name="perm_create" eval="False"/>
-            <field name="perm_unlink" eval="False"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
         </record>
 
-        <!-- Budget Line: Manager Full Access -->
-        <record id="rule_budget_line_manager" model="ir.rule">
-            <field name="name">Budget Line: Manager Full Access</field>
-            <field name="model_id" ref="model_weekly_budget_line"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_budget_manager'))]"/>
+        <!-- Budget Move Rules -->
+        <record id="rule_budget_move_multi_company" model="ir.rule">
+            <field name="name">Budget Move: Multi-Company</field>
+            <field name="model_id" ref="model_budget_move"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
             <field name="perm_create" eval="True"/>

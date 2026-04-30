@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_lite_payment_wizard_form" model="ir.ui.view">
+        <field name="name">pos.lite.payment.wizard.form</field>
+        <field name="model">pos.lite.payment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Register Payment">
+                <group>
+                    <field name="order_id" readonly="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="payment_method"/>
+                    <field name="amount"/>
+                    <field name="journal_id"/>
+                    <field name="note"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

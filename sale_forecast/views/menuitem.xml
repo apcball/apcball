@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_sale_forecast_root" name="Sales Forecast" parent="sale.sale_menu_root" sequence="95" groups="sale_forecast.group_sale_forecast_planner,sale_forecast.group_sale_forecast_sales,sale_forecast.group_sale_forecast_manager"/>
+
+    <menuitem id="menu_forecast_plan" name="Forecast Plans" parent="menu_sale_forecast_root" action="action_forecast_plan" sequence="10" groups="sale_forecast.group_sale_forecast_planner,sale_forecast.group_sale_forecast_sales,sale_forecast.group_sale_forecast_manager"/>
+
+    <menuitem id="menu_forecast_allocation" name="Forecast Allocations" parent="menu_sale_forecast_root" action="action_forecast_allocation" sequence="20" groups="sale_forecast.group_sale_forecast_sales,sale_forecast.group_sale_forecast_manager"/>
+
+</odoo>

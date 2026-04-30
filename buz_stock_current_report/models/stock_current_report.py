@@ -164,6 +164,17 @@ class StockCurrentReport(models.Model):
             'target': 'current',
         }
 
+    def action_open_export_wizard(self):
+        """Open the Excel export wizard from the report view"""
+        return {
+            'name': 'Export to Excel',
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.current.export.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {},
+        }
+
     def init(self):
         # view basic real-time stock with cost from product and incoming/outgoing movements
         _logger.info("Initializing stock.current.report view")

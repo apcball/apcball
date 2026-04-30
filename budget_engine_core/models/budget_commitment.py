@@ -68,7 +68,9 @@ class BudgetCommitment(models.Model):
     currency_id = fields.Many2one(
         'res.currency',
         string='Currency',
-        default=lambda self: self.env.company.currency_id,
+        related='company_id.currency_id',
+        store=True,
+        readonly=True,
     )
     state = fields.Selection(
         selection=[
@@ -120,5 +122,5 @@ class BudgetCommitment(models.Model):
         self.filtered(lambda r: r.state == 'reserved').write({'state': 'used'})
 
     def action_release(self):
-        """Release a reservation (undo reservation without consuming)."""
-        self.filtered(lambda r: r.state == 'reserved').write({'state': 'released'})
+        """Release a commitment regardless of whether it is reserved or used."""
+        self.filtered(lambda r: r.state in ('reserved', 'used')).write({'state': 'released'})

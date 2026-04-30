@@ -36,6 +36,8 @@ class TestStockCurrentReport(TransactionCase):
                 self.assertIn('id', warehouse)
                 self.assertIn('name', warehouse)
                 self.assertIn('locations', warehouse)
+                self.assertIn('internal_locations', warehouse)
+                self.assertIn('transit_locations', warehouse)
                 _logger.info("✓ Warehouse data structure is correct")
         except Exception as e:
             _logger.error(f"✗ Warehouses with locations test failed: {e}")
@@ -108,6 +110,17 @@ class TestStockCurrentReport(TransactionCase):
         except Exception as e:
             _logger.error(f"✗ Export wizard test failed: {e}")
             self.fail(f"Export wizard test failed: {e}")
+
+    def test_export_action(self):
+        """Test that the report can open the export wizard"""
+        try:
+            action = self.stock_report_model.action_open_export_wizard()
+            self.assertEqual(action.get('res_model'), 'stock.current.export.wizard')
+            self.assertEqual(action.get('target'), 'new')
+            _logger.info("✓ Export action test passed")
+        except Exception as e:
+            _logger.error(f"✗ Export action test failed: {e}")
+            self.fail(f"Export action test failed: {e}")
 
     def test_access_rights(self):
         """Test that access rights are properly configured"""

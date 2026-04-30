@@ -20,8 +20,13 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
     payment_date = fields.Date(
         string="Expected Payment",
         compute="_compute_payment_date",
+        inverse="_inverse_payment_date",
         store=True,
         readonly=False
+    )
+    payment_date_manual = fields.Date(
+        string="Manual Expected Payment",
+        copy=False,
     )
 
     monthly_budget_check_result = fields.Html(
@@ -56,6 +61,10 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
     @api.depends('requisition_deadline', 'request_date', 'vendor_id', 'vendor_id.property_supplier_payment_term_id', 'requisition_order_ids.partner_id')
     def _compute_payment_date(self):
         for req in self:
+            if req.payment_date_manual:
+                req.payment_date = req.payment_date_manual
+                continue
+
             # Priority logic:
             # 1. Vendor payment term from header (if used)
             payment_term = req.vendor_id.property_supplier_payment_term_id
@@ -116,6 +125,10 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 req.payment_date = req.requisition_deadline + timedelta(days=30)
             else:
                 req.payment_date = (req.request_date or fields.Date.today()) + timedelta(days=30)
+
+    def _inverse_payment_date(self):
+        for req in self:
+            req.payment_date_manual = req.payment_date
 
     # ── Computed preview ─────────────────────────────────────────
 
@@ -468,6 +481,8 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 self.name, analytic.name, total_amt, plan.name,
             )
 
+        plan._refresh_budget_snapshot(refresh_report=True)
+
     def action_head_cancel(self):
         """Release monthly budget reservations when head cancels PR."""
         for req in self:
@@ -489,39 +504,19 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
     def _release_monthly_analytic_budget(self):
         """Release previously reserved monthly budget amounts."""
         self.ensure_one()
-        target_date = self.payment_date
-        if not target_date:
-            return
-
-        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
-        if not plan:
-            return
-
         engine = self.env['budget.engine']
-        AnalyticAccount = self.env['account.analytic.account']
-        BudgetLine = self.env['monthly.budget.line']
-
-        analytic_totals = {}
-        for line in self.requisition_order_ids:
-            for account_id, amount in extract_analytic_amounts(line):
-                analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
-
-        for account_id, total_amt in analytic_totals.items():
-            analytic = AnalyticAccount.browse(account_id)
-            if not analytic.exists():
-                continue
-            dims = {'analytic_account_id': account_id}
-            budget_line = BudgetLine._find_budget_line(plan, dims)
-            if not budget_line:
-                continue
-            # Note: no-op methods have been removed; engine.release_budget handles it
+        document_model = self._name
+        document_id = self.id
+        plan = find_active_monthly_plan(self.env, self.payment_date, self.company_id.id)
 
         # Release all commitment records for this document
         engine.release_budget({
             'budget_source': 'monthly',
-            'document_model': self._name,
-            'document_id': self.id,
+            'document_model': document_model,
+            'document_id': document_id,
             'amount': 0,
             'company_id': self.company_id.id,
         })
 
+        if plan:
+            plan._refresh_budget_snapshot(refresh_report=True)

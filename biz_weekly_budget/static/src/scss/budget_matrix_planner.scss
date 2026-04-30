@@ -1,0 +1,61 @@
+.o_budget_matrix_planner {
+    .matrix-table {
+        th.dimension-col, td.dimension-col {
+            min-width: 250px;
+            max-width: 300px;
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+        }
+        th.week-col {
+            min-width: 180px;
+        }
+        
+        thead th {
+            z-index: 3;
+        }
+        
+        .cell-budget {
+            transition: all 0.2s ease;
+            vertical-align: top;
+            
+            &.bg-success-light {
+                background-color: #f0fdf4 !important;
+            }
+            &.bg-danger-light {
+                background-color: #fef2f2 !important;
+            }
+            
+            .cell-input {
+                background: transparent;
+                border: 1px solid transparent;
+                border-bottom: 1px solid #ddd;
+                border-radius: 0;
+                
+                &:focus {
+                    background: white;
+                    border-color: #017e84;
+                    box-shadow: 0 0 0 0.2rem rgba(1, 126, 132, 0.25);
+                }
+            }
+            
+            .text-orange {
+                color: #ea580c;
+            }
+            
+            .cell-details {
+                opacity: 0.8;
+                font-size: 0.75rem;
+            }
+            
+            &:hover {
+                background-color: #ffffff !important;
+                box-shadow: inset 0 0 0 2px #017e84;
+                .cell-details {
+                    opacity: 1;
+                }
+            }
+        }
+    }
+}

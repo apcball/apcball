@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_forecast_plan_planner,forecast.plan planner,model_forecast_plan,sale_forecast.group_sale_forecast_planner,1,1,1,1
+access_forecast_line_planner,forecast.line planner,model_forecast_line,sale_forecast.group_sale_forecast_planner,1,1,1,1
+access_forecast_allocation_planner,forecast.allocation planner,model_forecast_allocation,sale_forecast.group_sale_forecast_planner,1,1,1,0
+access_forecast_plan_sales,forecast.plan sales,model_forecast_plan,sale_forecast.group_sale_forecast_sales,1,1,1,0
+access_forecast_line_sales,forecast.line sales,model_forecast_line,sale_forecast.group_sale_forecast_sales,1,0,0,0
+access_forecast_allocation_sales,forecast.allocation sales,model_forecast_allocation,sale_forecast.group_sale_forecast_sales,1,1,1,0
+access_forecast_plan_manager,forecast.plan manager,model_forecast_plan,sale_forecast.group_sale_forecast_manager,1,1,1,1
+access_forecast_line_manager,forecast.line manager,model_forecast_line,sale_forecast.group_sale_forecast_manager,1,1,1,1
+access_forecast_allocation_manager,forecast.allocation manager,model_forecast_allocation,sale_forecast.group_sale_forecast_manager,1,1,1,1

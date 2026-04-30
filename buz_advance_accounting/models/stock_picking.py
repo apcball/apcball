@@ -102,6 +102,7 @@ class StockPicking(models.Model):
                 'default_purchase_id': self.purchase_order_id.id,
                 'default_amount': self.purchase_order_id.amount_total,
                 'default_currency_id': self.purchase_order_id.currency_id.id,
+                'from_picking': True,  # Flag to indicate called from receipt
             }
         }
 

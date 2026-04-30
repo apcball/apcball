@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_sale_forecast_dashboard" model="ir.actions.client">
+        <field name="name">Forecast Dashboard</field>
+        <field name="tag">sale_forecast_dashboard_action</field>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem
+        id="menu_forecast_dashboard"
+        name="Forecast Dashboard"
+        parent="menu_sale_forecast_root"
+        action="action_sale_forecast_dashboard"
+        sequence="30"
+        groups="sale_forecast.group_sale_forecast_manager"
+    />
+</odoo>

@@ -36,6 +36,7 @@
         'web.assets_backend': [
             'internal_consume_request/static/src/lib/html5-qrcode.min.js',
             'internal_consume_request/static/src/js/barcode_issue.js',
+            'internal_consume_request/static/src/js/form_qr_scanner.js',
             'internal_consume_request/static/src/xml/barcode_templates.xml',
         ],
     },

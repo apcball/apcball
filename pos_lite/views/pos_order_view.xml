@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_lite_order_tree" model="ir.ui.view">
+        <field name="name">pos.lite.order.tree</field>
+        <field name="model">pos.lite.order</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'paid'" decoration-muted="state == 'cancelled'" decoration-danger="is_return">
+                <field name="name"/>
+                <field name="state"/>
+                <field name="channel"/>
+                <field name="partner_id"/>
+                <field name="warehouse_id"/>
+                    <field name="amount_total" sum="Total"/>
+                    <field name="amount_paid" sum="Total"/>
+                    <field name="amount_change" sum="Total"/>
+                <field name="is_return" invisible="1"/>
+                <field name="return_of_order_id"/>
+                <field name="invoice_id"/>
+                <field name="picking_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_pos_lite_order_search" model="ir.ui.view">
+        <field name="name">pos.lite.order.search</field>
+        <field name="model">pos.lite.order</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id" context="{'pos_lite_partner_search': 1}"/>
+                <field name="warehouse_id"/>
+                <field name="channel"/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Paid" name="paid" domain="[('state', '=', 'paid')]"/>
+                <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                <filter string="Cancelled" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
+                <filter string="Returns" name="returns" domain="[('is_return', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Channel" name="group_channel" context="{'group_by': 'channel'}"/>
+                    <filter string="Warehouse" name="group_warehouse" context="{'group_by': 'warehouse_id'}"/>
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_pos_lite_order_form" model="ir.ui.view">
+        <field name="name">pos.lite.order.form</field>
+        <field name="model">pos.lite.order</field>
+        <field name="arch" type="xml">
+            <form string="POS Lite Order">
+                <header>
+                    <button name="action_register_payment" type="object" string="Register Payment" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_process_order" type="object" string="Process Order" invisible="state != 'draft'"/>
+                    <button name="action_done" type="object" string="Mark Done" invisible="state != 'paid'"/>
+                    <button name="action_create_return" type="object" string="Create Return" class="btn-secondary" invisible="state != 'done' or is_return"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state == 'cancelled'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,paid,done,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_invoice" type="object" class="oe_stat_button" icon="fa-file-text-o" invisible="not invoice_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="invoice_id"/></span>
+                                <span class="o_stat_text">Invoice</span>
+                            </div>
+                        </button>
+                        <button name="action_view_picking" type="object" class="oe_stat_button" icon="fa-truck" invisible="not picking_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="picking_id"/></span>
+                                <span class="o_stat_text">Picking</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Customer">
+                            <field name="customer_name" placeholder="Customer Name"/>
+                            <field name="partner_id" context="{'pos_lite_partner_search': 1}" options="{'no_create_edit': False}"/>
+                            <field name="partner_phone"/>
+                            <field name="partner_address"/>
+                            <field name="partner_tax_id"/>
+                        </group>
+                        <group string="Order">
+                            <field name="channel"/>
+                            <field name="warehouse_id"/>
+                            <field name="pricelist_id"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="is_return" invisible="1"/>
+                        </group>
+                    </group>
+                    <group invisible="not is_return">
+                        <group string="Return Info">
+                            <field name="return_of_order_id" readonly="1"/>
+                            <field name="return_reason" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Order Lines">
+                            <field name="line_ids" mode="tree" nolabel="1">
+                                <tree editable="bottom" options="{'footer': 'true'}">
+                                    <field name="company_id" invisible="1"/>
+                                    <field name="product_id" context="{'pos_lite_search': 1}"/>
+                                    <field name="description" readonly="1"/>
+                                    <field name="qty"/>
+                                    <field name="price_unit"/>
+                                    <field name="discount"/>
+                                        <field name="price_subtotal" readonly="1" sum="Total"/>
+                                        <field name="price_tax" readonly="1" sum="Total"/>
+                                        <field name="price_total" readonly="1" sum="Total"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Payments">
+                            <field name="payment_ids" mode="tree" nolabel="1" readonly="1">
+                                <tree>
+                                    <field name="payment_method"/>
+                                    <field name="amount"/>
+                                    <field name="journal_id"/>
+                                    <field name="note"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Totals">
+                            <group>
+                                <group>
+                                    <field name="amount_untaxed" readonly="1" widget="monetary"/>
+                                    <field name="amount_tax" readonly="1" widget="monetary"/>
+                                    <field name="amount_total" readonly="1" widget="monetary"/>
+                                </group>
+                                <group>
+                                    <field name="amount_paid" readonly="1" widget="monetary"/>
+                                    <field name="amount_residual" readonly="1" widget="monetary"/>
+                                    <field name="amount_change" readonly="1" widget="monetary"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="note" placeholder="Add notes, delivery instructions, or LINE message details..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_pos_lite_orders" model="ir.actions.act_window">
+        <field name="name">POS Lite Orders</field>
+        <field name="res_model">pos.lite.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'default_channel': 'phone'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create the first lightweight order.</p>
+        </field>
+    </record>
+</odoo>

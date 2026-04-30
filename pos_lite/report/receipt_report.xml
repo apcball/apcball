@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_pos_lite_58mm" model="report.paperformat">
+        <field name="name">POS Lite Thermal 58mm</field>
+        <field name="default" eval="False"/>
+        <field name="format">custom</field>
+        <field name="page_width">58</field>
+        <field name="page_height">0</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">2</field>
+        <field name="margin_bottom">2</field>
+        <field name="margin_left">2</field>
+        <field name="margin_right">2</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="paperformat_pos_lite_80mm" model="report.paperformat">
+        <field name="name">POS Lite Thermal 80mm</field>
+        <field name="default" eval="False"/>
+        <field name="format">custom</field>
+        <field name="page_width">80</field>
+        <field name="page_height">0</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">2</field>
+        <field name="margin_bottom">2</field>
+        <field name="margin_left">3</field>
+        <field name="margin_right">3</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="paperformat_pos_lite_a4" model="report.paperformat">
+        <field name="name">POS Lite A4</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">12</field>
+        <field name="margin_bottom">12</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">5</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <template id="report_receipt_document">
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs" t-as="o">
+                <div class="page" style="font-size: 11px; line-height: 1.35;">
+                    <div style="text-align: center; margin-bottom: 8px;">
+                        <strong t-esc="o.company_id.name"/>
+                        <div t-if="o.company_id.partner_id.street" t-esc="o.company_id.partner_id.street"/>
+                        <div t-if="o.company_id.vat">Tax ID: <span t-esc="o.company_id.vat"/></div>
+                        <div t-if="o.is_return" style="margin-top: 4px; font-weight: bold; color: #b00020;">RETURN / REFUND</div>
+                    </div>
+                    <div style="border-top: 1px dashed #333; border-bottom: 1px dashed #333; padding: 6px 0; margin-bottom: 8px;">
+                        <div>Date: <span t-esc="o.create_date.strftime('%Y-%m-%d %H:%M') if o.create_date else ''"/></div>
+                        <div>Order: <span t-esc="o.name"/></div>
+                        <div t-if="o.customer_name">Customer: <span t-esc="o.customer_name"/></div>
+                        <div>Channel: <span t-esc="o.channel"/></div>
+                        <div>Cashier: <span t-esc="o.create_uid.name"/></div>
+                    </div>
+                    <table class="table table-sm" style="width: 100%; margin-bottom: 8px;">
+                        <thead>
+                            <tr>
+                                <th style="width: 44%">Item</th>
+                                <th class="text-end" style="width: 10%">Qty</th>
+                                <th class="text-end" style="width: 16%">Price</th>
+                                <th class="text-end" style="width: 10%">Disc.</th>
+                                <th class="text-end" style="width: 20%">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="o.line_ids" t-as="line">
+                                <tr>
+                                    <td><span t-esc="line.description or line.product_id.display_name"/></td>
+                                    <td class="text-end"><span t-esc="line.qty"/></td>
+                                    <td class="text-end"><span t-esc="formatLang(line.price_unit, currency_obj=o.currency_id)"/></td>
+                                    <td class="text-end"><span t-esc="'%s%%' % (line.discount or 0.0)"/></td>
+                                    <td class="text-end"><span t-esc="formatLang(line.price_total, currency_obj=o.currency_id)"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                    <table style="width: 100%; margin-bottom: 8px;">
+                        <tr><td>Subtotal</td><td class="text-end"><span t-esc="formatLang(o.amount_untaxed, currency_obj=o.currency_id)"/></td></tr>
+                        <tr><td>VAT / Tax</td><td class="text-end"><span t-esc="formatLang(o.amount_tax, currency_obj=o.currency_id)"/></td></tr>
+                        <tr><td><strong t-esc="'Refund Total' if o.is_return else 'Total'"/></td><td class="text-end"><strong t-esc="formatLang(o.amount_total, currency_obj=o.currency_id)"/></td></tr>
+                        <tr><td><span t-esc="'Refund Paid' if o.is_return else 'Paid'"/></td><td class="text-end"><span t-esc="formatLang(o.amount_paid, currency_obj=o.currency_id)"/></td></tr>
+                        <tr><td>Change</td><td class="text-end"><span t-esc="formatLang(o.amount_change, currency_obj=o.currency_id)"/></td></tr>
+                    </table>
+                    <div t-if="o.note" style="margin: 8px 0;">
+                        <strong>Note:</strong> <span t-esc="o.note"/>
+                    </div>
+                    <div style="text-align: center; border-top: 1px dashed #333; padding-top: 8px;">Thank you!</div>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_pos_lite_receipt_58mm" model="ir.actions.report">
+        <field name="name">POS Lite Receipt 58mm</field>
+        <field name="model">pos.lite.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pos_lite.report_receipt_document</field>
+        <field name="report_file">pos_lite.report_receipt_document</field>
+        <field name="paperformat_id" ref="pos_lite.paperformat_pos_lite_58mm"/>
+        <field name="print_report_name">'POS Receipt - %s' % (object.name)</field>
+    </record>
+
+    <record id="action_report_pos_lite_receipt_80mm" model="ir.actions.report">
+        <field name="name">POS Lite Receipt 80mm</field>
+        <field name="model">pos.lite.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pos_lite.report_receipt_document</field>
+        <field name="report_file">pos_lite.report_receipt_document</field>
+        <field name="paperformat_id" ref="pos_lite.paperformat_pos_lite_80mm"/>
+        <field name="print_report_name">'POS Receipt - %s' % (object.name)</field>
+    </record>
+
+    <record id="action_report_pos_lite_receipt_a4" model="ir.actions.report">
+        <field name="name">POS Lite Receipt A4</field>
+        <field name="model">pos.lite.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pos_lite.report_receipt_document</field>
+        <field name="report_file">pos_lite.report_receipt_document</field>
+        <field name="paperformat_id" ref="pos_lite.paperformat_pos_lite_a4"/>
+        <field name="print_report_name">'POS Receipt - %s' % (object.name)</field>
+    </record>
+</odoo>

@@ -10,6 +10,7 @@
                     js_class="stock_current_kanban">
                 <field name="product_id"/>
                 <field name="location_id"/>
+                <field name="location_type_name"/>
                 <field name="warehouse_id"/>
                 <field name="quantity"/>
                 <field name="free_to_use"/>
@@ -30,6 +31,9 @@
                                     </div>
                                     <div class="o_kanban_record_subtitle">
                                         <i class="fa fa-map-marker text-muted"/> <field name="location_id"/>
+                                        <t t-if="record.location_type_name.raw_value">
+                                            | <span class="badge bg-secondary"><field name="location_type_name"/></span>
+                                        </t>
                                         <t t-if="record.warehouse_id.value">
                                             | <i class="fa fa-building text-muted"/> <field name="warehouse_id"/>
                                         </t>
@@ -106,6 +110,7 @@
                   js_class="stock_current_list">
                 <field name="warehouse_id" optional="show"/>
                 <field name="location_id"/>
+                <field name="location_type_name" string="Location Type" optional="show"/>
                 <field name="product_id"/>
                 <field name="quantity" string="On Hand" sum="Total"/>
                 <field name="free_to_use" string="Free to Use" sum="Total" optional="show"/>

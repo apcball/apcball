@@ -13,7 +13,7 @@ class InternalConsumePortal(http.Controller):
     def consume_receive_portal(self, token, **kwargs):
         """Render the portal page showing the QR Code for the employee"""
         request_sudo = request.env['internal.consume.request'].sudo().search([
-            ('qr_token', '=', token)
+            ('name', '=', token),
         ], limit=1)
 
         if not request_sudo or request_sudo.state not in ['approved', 'done']:
@@ -35,7 +35,7 @@ class InternalConsumePortal(http.Controller):
     def consume_scan_portal(self, token, **kwargs):
         """Render the portal page for receiving consumables (Stock Staff View)"""
         request_sudo = request.env['internal.consume.request'].sudo().search([
-            ('qr_token', '=', token)
+            ('name', '=', token),
         ], limit=1)
 
         if not request_sudo or request_sudo.state not in ['approved', 'done']:
@@ -65,7 +65,7 @@ class InternalConsumePortal(http.Controller):
             return {'success': False, 'error': _('Invalid Token')}
             
         request_sudo = request.env['internal.consume.request'].sudo().search([
-            ('qr_token', '=', token),
+            ('name', '=', token),
             ('state', '=', 'approved')
         ], limit=1)
         

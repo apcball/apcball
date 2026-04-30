@@ -12,4 +12,17 @@
               parent="menu_budget_control_root"
               action="action_weekly_budget_smart_dashboard"
               sequence="5"/>
+
+    <!-- Client Action for Matrix Planner -->
+    <record id="action_weekly_budget_matrix_planner" model="ir.actions.client">
+        <field name="name">Matrix Planner</field>
+        <field name="tag">weekly_budget_matrix</field>
+    </record>
+
+    <!-- Menu Item for Matrix Planner -->
+    <menuitem id="menu_weekly_budget_matrix_planner"
+              name="Department Matrix (Monthly)"
+              parent="menu_budget_control_root"
+              action="action_weekly_budget_matrix_planner"
+              sequence="15"/>
 </odoo>

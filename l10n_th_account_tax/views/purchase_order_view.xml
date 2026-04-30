@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_purchase_order_form_inherit_wht_line" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit.wht.line</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form" />
+        <field name="priority">200</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/tree//field[@name='price_unit']" position="after">
+                <field name="wht_tax_id" string="WHT" options="{'no_create': True}" optional="show" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_purchase_order_line_tree_inherit_wht" model="ir.ui.view">
+        <field name="name">purchase.order.line.tree.inherit.wht</field>
+        <field name="model">purchase.order.line</field>
+        <field name="inherit_id" ref="purchase.purchase_order_line_tree" />
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <field name="wht_tax_id" string="WHT" options="{'no_create': True}" optional="show" />
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

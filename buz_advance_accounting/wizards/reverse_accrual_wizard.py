@@ -141,16 +141,41 @@ class ReverseAccrualWizard(models.TransientModel):
                 reversal_vals['line_ids'].append((0, 0, line_vals))
             
             # Add currency difference line if exists
-            if abs(currency_diff) > 0.01 and accrual.diff_account_id:
-                diff_line_vals = {
-                    'name': _('Currency Exchange Difference'),
-                    'account_id': accrual.diff_account_id.id,
-                    'partner_id': move.partner_id.id,
-                    'debit': abs(currency_diff) if currency_diff < 0 else 0.0,
-                    'credit': abs(currency_diff) if currency_diff > 0 else 0.0,
-                    'currency_id': False,
-                    'amount_currency': 0.0,
-                }
+            if abs(currency_diff) > 0.01:
+                company = accrual.purchase_id.company_id
+                if currency_diff > 0:
+                    # Positive diff means the reversal is creating a gain
+                    diff_account = company.expense_currency_exchange_account_id
+                    if not diff_account:
+                        raise UserError(_(
+                            'Currency difference detected (%.2f THB gain) but no "Loss Exchange Rate Account" is configured in Accounting Settings.'
+                        ) % abs(currency_diff))
+                    diff_line_vals = {
+                        'name': _('Currency Gain'),
+                        'account_id': diff_account.id,
+                        'partner_id': move.partner_id.id,
+                        'debit': 0.0,
+                        'credit': abs(currency_diff),
+                        'currency_id': False,
+                        'amount_currency': 0.0,
+                    }
+                else:
+                    # Negative diff means the reversal is creating a loss
+                    diff_account = company.income_currency_exchange_account_id
+                    if not diff_account:
+                        raise UserError(_(
+                            'Currency difference detected (%.2f THB loss) but no "Gain Exchange Rate Account" is configured in Accounting Settings.'
+                        ) % abs(currency_diff))
+                    diff_line_vals = {
+                        'name': _('Currency Loss'),
+                        'account_id': diff_account.id,
+                        'partner_id': move.partner_id.id,
+                        'debit': abs(currency_diff),
+                        'credit': 0.0,
+                        'currency_id': False,
+                        'amount_currency': 0.0,
+                    }
+
                 reversal_vals['line_ids'].append((0, 0, diff_line_vals))
             
             reversal = self.env['account.move'].create(reversal_vals)

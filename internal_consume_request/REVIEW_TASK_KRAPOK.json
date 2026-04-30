@@ -1,0 +1,108 @@
+{
+  "task_id": "task-qr-review-001",
+  "type": "code_review",
+  "priority": "high",
+  "title": "Review internal_consume_request Module - QR Code & Thai Labels",
+  "description": "ตรวจสอบ module internal_consume_request หลังการอัปเดต QR Code, Tab และ Thai labels",
+
+  "context": {
+    "module_name": "internal_consume_request",
+    "repository": "https://github.com/apcball/AI-DEV-Module-Odoo17.git",
+    "branch": "main",
+    "recent_changes": [
+      {
+        "commit": "b203832",
+        "message": "feat: Update internal_consume_request - QR Code, Tab, and Thai labels"
+      },
+      {
+        "commit": "9253b0b",
+        "message": "fix: Add QR Scanner functionality for form tab"
+      },
+      {
+        "commit": "0b465e3",
+        "message": "feat: Update internal_consume_request workflow"
+      }
+    ]
+  },
+
+  "tasks": [
+    {
+      "id": "review-1",
+      "task": "ตรวจสอบ QR Code implementation",
+      "details": [
+        "ตรวจว่า QR Code แสดงถูกต้องทั้งใน form view และ report",
+        "ตรวจว่า barcode_display field ใช้ QR type ถูกต้อง",
+        "ตรวจว่า QR Code สามารถสแกนได้จริง",
+        "ตรวจว่าขนาด QR Code (150x150px) เหมาะสม"
+      ]
+    },
+    {
+      "id": "review-2",
+      "task": "ตรวจสอบ Tab 'จ่ายของ (QR Scan)'",
+      "details": [
+        "ตรวจว่า Tab แสดงเมื่อ state เป็น approved, partial_pick",
+        "ตรวจว่า QR Scanner ทำงานใน form view ได้",
+        "ตรวจว่า start/stop buttons ทำงานถูกต้อง",
+        "ตรวจว่า form_qr_scanner.js ถูก load อย่างถูกต้อง",
+        "ตรวจว่า cleanup handlers ทำงานเมื่อ exit form"
+      ]
+    },
+    {
+      "id": "review-3",
+      "task": "ตรวจสอบ Thai labels และ translations",
+      "details": [
+        "ตรวจว่าข้อความ 'จ่ายของ' ใช้ทุกที่ที่ควร",
+        "ตรวจว่า error messages, notifications ใช้ภาษาไทย",
+        "ตรวจว่า labels ใน report ใช้ภาษาไทย",
+        "ตรวจว่าไม่มีข้อความภาษาอังกฤษที่ควรแปลแต่ยังไม่ได้"
+      ]
+    },
+    {
+      "id": "review-4",
+      "task": "ตรวจสอบ workflow และ states",
+      "details": [
+        "ตรวจว่า state 'partial_pick' ใช้ถูกต้องทั้งหมด",
+        "ตรวจว่าไม่มี state 'partial' หรือ 'issuing' ที่เหลืออยู่",
+        "ตรวจว่า transition states ถูกต้อง (draft → to_approve → approved → partial_pick → done)",
+        "ตรวจว่า cancelled state ทำงานถูกต้อง"
+      ]
+    },
+    {
+      "id": "review-5",
+      "task": "ตรวจสอบ JavaScript bugs",
+      "details": [
+        "ตรวจว่า HTML5-QRCode library ถูก load ผ่าน __manifest__.py",
+        "ตรวจว่า global functions (startInternalQRScanner, stopInternalQRScanner) ใช้งานได้",
+        "ตรวจว่า FormController patch ทำงานถูกต้อง",
+        "ตรวจว่าไม่มี memory leaks จาก QR Scanner"
+      ]
+    },
+    {
+      "id": "review-6",
+      "task": "ตรวจสอบ security และ permissions",
+      "details": [
+        "ตรวจว่า record rules ทำงานถูกต้อง",
+        "ตรวจว่า groups (user, manager, stock) มี permissions ถูกต้อง",
+        "ตรวจว่า requester ไม่สามารถ approve เองได้",
+        "ตรวจว่า only manager/stock สามารถจ่ายของได้"
+      ]
+    }
+  ],
+
+  "expected_output": {
+    "summary": "สรุปผลการ review",
+    "findings": [
+      {
+        "type": "bug|improvement|info",
+        "severity": "critical|high|medium|low",
+        "location": "file:line",
+        "description": "รายละเอียดปัญหา",
+        "recommendation": "ข้อเสนอแนะการแก้ไข"
+      }
+    ],
+    "overall_assessment": "ready_for_testing|needs_fixes|critical_issues"
+  },
+
+  "deadline": "ASAP",
+  "assignee": "Krapok"
+}

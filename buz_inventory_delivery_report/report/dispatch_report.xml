@@ -23,8 +23,13 @@
                 <t t-set="config" t-value="request.env['dispatch.report.config'].sudo().get_default_config()"/>
                 <!-- Convert px to mm: 96 DPI = 1px = 0.2646mm -->
                 <t t-set="px_to_mm" t-value="0.2646"/>
-                
-                <div class="page" t-attf-style="width: 216mm; height: 279mm; position: relative; font-family: {{config.font_family or 'Sarabun, sans-serif'}}; font-size: {{config.font_size or 14}}px; page-break-after: always; margin: 0; padding: 0; overflow: visible; box-sizing: border-box;">
+                <t t-set="lines_per_page" t-value="10"/>
+                <t t-set="move_lines" t-value="o.move_ids"/>
+                <t t-set="groups_of_10" t-value="[move_lines[i:i+lines_per_page] for i in range(0, len(move_lines), lines_per_page)]"/>
+                <t t-set="page_num" t-value="0"/>
+
+                <t t-foreach="groups_of_10" t-as="group">
+                    <div class="page" t-attf-style="width: 216mm; height: 279mm; position: relative; font-family: {{config.font_family or 'Sarabun, sans-serif'}}; font-size: {{config.font_size or 14}}px; {{page_num != 0 and 'page-break-before: always;' or ''}} margin: 0; padding: 0; overflow: visible; box-sizing: border-box;">
                     
                     <style>
                         @font-face {
@@ -170,15 +175,15 @@
                         <span t-field="o.dispatch_location"/>
                     </div>
                     
-                    <!-- Product Lines - รายการสินค้า -->
-                    <div t-attf-style="position: absolute; top: {{config.table_top * px_to_mm}}mm; left: {{config.table_left * px_to_mm}}mm;" class="thai-text">
-                        <t t-set="line_index" t-value="0"/>
-                        <t t-foreach="o.move_ids" t-as="line">
-                            <t t-set="current_top" t-value="line_index * config.line_height * px_to_mm"/>
+                        <!-- Product Lines - รายการสินค้า -->
+                        <div t-attf-style="position: absolute; top: {{config.table_top * px_to_mm}}mm; left: {{config.table_left * px_to_mm}}mm;" class="thai-text">
+                            <t t-set="start_index" t-value="page_num * lines_per_page"/>
+                            <t t-foreach="group" t-as="line" t-index="line_index">
+                                <t t-set="current_top" t-value="line_index * config.line_height * px_to_mm"/>
                             
                             <!-- Line Number - ลำดับ -->
                             <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_no_left * px_to_mm}}mm;">
-                                <span t-esc="line_index + 1"/>
+                                <span t-esc="start_index + line_index + 1"/>
                             </div>
                             
                             <!-- Product Code - รหัสสินค้า -->
@@ -201,11 +206,12 @@
                                 <span t-field="line.product_uom.name"/>
                             </div>
                             
-                            <t t-set="line_index" t-value="line_index + 1"/>
-                        </t>
+                            </t>
+                        </div>
+                        
                     </div>
-                    
-                </div>
+                    <t t-set="page_num" t-value="page_num + 1"/>
+                </t>
             </t>
         </t>
     </template>

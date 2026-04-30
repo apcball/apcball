@@ -20,8 +20,13 @@ class PurchaseOrder(models.Model):
     payment_date = fields.Date(
         string="Expected Payment",
         compute="_compute_payment_date",
+        inverse="_inverse_payment_date",
         store=True,
         readonly=False
+    )
+    payment_date_manual = fields.Date(
+        string="Manual Expected Payment",
+        copy=False,
     )
 
     monthly_budget_check_result = fields.Html(
@@ -62,18 +67,12 @@ class PurchaseOrder(models.Model):
                     
             rec.buz_budget_approval_id = req
 
-    @api.depends('date_order', 'partner_id', 'partner_id.property_supplier_payment_term_id', 'order_line.date_planned')
+    @api.depends('date_order', 'partner_id', 'partner_id.property_supplier_payment_term_id')
     def _compute_payment_date(self):
         for order in self:
-            # If manually overridden, we might want to keep it, 
-            # but Odoo depends will re-trigger this.
-            # In Odoo, to allow manual override on stored compute, 
-            # we check if it's already set or if we are in a compute context.
-            
-            # 1. Manual override is handled by Odoo if we don't overwrite if it exists?
-            # Actually, standard pattern is to compute it if it's not set or dependencies changed.
-            
-            manual_date = order.payment_date
+            if order.payment_date_manual:
+                order.payment_date = order.payment_date_manual
+                continue
             
             # Priority logic:
             # 2. Vendor payment term
@@ -120,29 +119,13 @@ class PurchaseOrder(models.Model):
                 if max_days > 0:
                     order.payment_date = p_date + timedelta(days=max_days)
                     continue
-            
-            # 3. Source Requisition payment_date or deadline + 30 days
-            # Try to find source requisition
-            req_id = False
-            if hasattr(order, 'requisition_order'): # field from employee_purchase_requisition
-                req = self.env['employee.purchase.requisition'].sudo().search([('name', '=', order.requisition_order)], limit=1)
-                if req:
-                    if hasattr(req, 'payment_date') and req.payment_date:
-                        order.payment_date = req.payment_date
-                        continue
-                    elif req.requisition_deadline:
-                        order.payment_date = req.requisition_deadline + timedelta(days=30)
-                        continue
-            # Usually PO lines have date_planned.
-            if order.order_line:
-                dates = order.order_line.mapped('date_planned')
-                valid_dates = [d for d in dates if d]
-                if valid_dates:
-                    order.payment_date = min(valid_dates)
-                    continue
-            
-            # Final fallback
+
+            # Final fallback: no vendor payment term, use date_order + 30 days
             order.payment_date = (order.date_order or fields.Date.today()) + timedelta(days=30)
+
+    def _inverse_payment_date(self):
+        for order in self:
+            order.payment_date_manual = order.payment_date
 
     @api.depends(
         'order_line.price_subtotal',
@@ -468,11 +451,13 @@ class PurchaseOrder(models.Model):
             if not budget_line:
                 continue
 
+            document_model, document_id = self._get_budget_document_identity()
+
             # Update commitment audit records (reserved → used)
             engine.consume_budget({
                 'budget_source': 'monthly',
-                'document_model': self._name,
-                'document_id': self._get_source_requisition_id(),
+                'document_model': document_model,
+                'document_id': document_id,
                 'amount': amount,
                 'date': target_date,
                 'company_id': self.company_id.id,
@@ -483,6 +468,8 @@ class PurchaseOrder(models.Model):
                 'Monthly budget consumed: PO=%s analytic=%s amount=%.4f plan=%s',
                 self.name, analytic.name, amount, plan.name,
             )
+
+        plan._refresh_budget_snapshot(refresh_report=True)
 
     def _get_source_requisition_id(self):
         """
@@ -496,6 +483,14 @@ class PurchaseOrder(models.Model):
             if req:
                 return req.id
         return self.id
+
+    def _get_budget_document_identity(self):
+        """Return the document identity used by the budget engine."""
+        self.ensure_one()
+        source_id = self._get_source_requisition_id()
+        if source_id != self.id:
+            return 'employee.purchase.requisition', source_id
+        return self._name, self.id
 
     def button_cancel(self):
         """On PO cancel: release any consumed monthly analytic budget amounts."""
@@ -557,20 +552,18 @@ class PurchaseOrder(models.Model):
         """
         self.ensure_one()
         engine = self.env['budget.engine']
+        plan = find_active_monthly_plan(self.env, self.payment_date, self.company_id.id)
 
-        target_date = self.payment_date
-        if not target_date:
-            return
-
-        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
-        if not plan:
-            return
+        document_model, document_id = self._get_budget_document_identity()
 
         # Mark related commitment records as released
         engine.release_budget({
             'budget_source': 'monthly',
-            'document_model': self._name,
-            'document_id': self._get_source_requisition_id(),
+            'document_model': document_model,
+            'document_id': document_id,
             'amount': 0,
             'company_id': self.company_id.id,
         })
+
+        if plan:
+            plan._refresh_budget_snapshot(refresh_report=True)

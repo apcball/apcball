@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_budget" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.budget</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="25"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Budget" string="Budget" name="biz_weekly_budget" groups="biz_weekly_budget.group_budget_manager">
+                    <block title="Budget Control" id="budget_control_settings">
+                        <setting id="budget_default_department" string="Default Department" help="Default department to assign if employee has no department">
+                            <field name="budget_default_department_id"/>
+                        </setting>
+                        <setting id="budget_control_type" string="Budget Enforcement" help="Hard blocks POs, Soft only warns.">
+                            <field name="budget_control_type" widget="radio"/>
+                        </setting>
+                        <setting id="budget_enable_forecast" string="Enable Forecast" help="Track forecasted expenses before PR creation.">
+                            <field name="enable_forecast"/>
+                        </setting>
+                        <setting id="budget_aging_limit" string="Aging Reservation Limit (Days)" help="Release PR/MR reservations after this many days.">
+                            <field name="budget_aging_days_limit"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_budget_config_settings" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module' : 'biz_weekly_budget', 'bin_size': False}</field>
+    </record>
+</odoo>

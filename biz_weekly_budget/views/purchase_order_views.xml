@@ -25,6 +25,9 @@
                         icon="fa-clock-o"/>
             </xpath>
             <xpath expr="//div[@name='button_box']" position="after">
+                <field name="is_budget_reserved" invisible="1"/>
+                <widget name="web_ribbon" title="Budget Reserved" bg_color="bg-info" invisible="not is_budget_reserved"/>
+                <widget name="web_ribbon" title="Cancelled" bg_color="bg-danger" invisible="state != 'cancel'"/>
                 <widget name="web_ribbon" title="Budget Rejected" bg_color="bg-danger" invisible="buz_budget_approval_state != 'rejected'"/>
                 <widget name="web_ribbon" title="Budget Approved" bg_color="bg-success" invisible="buz_budget_approval_state != 'approved'"/>
             </xpath>
@@ -43,6 +46,9 @@
                     <field name="budget_warning" invisible="1"/>
                     <field name="budget_check_result" nolabel="1"/>
                 </page>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/tree//field[@name='analytic_distribution']" position="after">
+                <field name="department_id" optional="show"/>
             </xpath>
         </field>
     </record>

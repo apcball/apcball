@@ -111,6 +111,8 @@ class MonthlyBudgetFixedCost(models.Model):
                 'note': _('Fixed Cost Reserved: %s') % rec.name,
             })
 
+            rec.plan_id._refresh_budget_snapshot(refresh_report=True)
+
             rec.state = 'confirmed'
 
     def action_cancel(self):
@@ -132,6 +134,8 @@ class MonthlyBudgetFixedCost(models.Model):
                 'amount': 0, # Engine uses 0 to mean fully release all connected commitments to this doc
                 'company_id': rec.company_id.id,
             })
+
+            rec.plan_id._refresh_budget_snapshot(refresh_report=True)
 
             rec.state = 'cancelled'
 

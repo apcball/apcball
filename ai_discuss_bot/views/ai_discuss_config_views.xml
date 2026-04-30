@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- AI Discuss Config Tree View -->
+        <record id="view_ai_discuss_config_tree" model="ir.ui.view">
+            <field name="name">ai.discuss.config.tree</field>
+            <field name="model">ai.discuss.config</field>
+            <field name="arch" type="xml">
+                <tree string="AI Discuss Configurations">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="active" widget="toggle"/>
+                    <field name="model_name"/>
+                    <field name="last_used"/>
+                    <field name="total_calls"/>
+                    <field name="successful_calls"/>
+                    <field name="failed_calls"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- AI Discuss Config Form View -->
+        <record id="view_ai_discuss_config_form" model="ir.ui.view">
+            <field name="name">ai.discuss.config.form</field>
+            <field name="model">ai.discuss.config</field>
+            <field name="arch" type="xml">
+                <form string="AI Discuss Configuration">
+                    <header>
+                        <button name="test_connection" type="object" string="Test Connection" class="btn-primary" groups="ai_discuss_bot.group_ai_bot_manager"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Configuration Name"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="active"/>
+                                <field name="sequence"/>
+                            </group>
+                            <group>
+                                <field name="total_calls" readonly="1"/>
+                                <field name="successful_calls" readonly="1"/>
+                                <field name="failed_calls" readonly="1"/>
+                                <field name="last_used" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <page string="API Configuration" name="api_config">
+                                <group>
+                                    <field name="base_url"/>
+                                    <field name="api_key" password="True" groups="ai_discuss_bot.group_ai_bot_manager"/>
+                                    <field name="model_name"/>
+                                    <field name="timeout"/>
+                                    <field name="retry_count"/>
+                                </group>
+                            </page>
+
+                            <page string="Generation Parameters" name="generation_params">
+                                <group>
+                                    <field name="max_tokens"/>
+                                    <field name="temperature"/>
+                                </group>
+                            </page>
+
+                            <page string="System Prompt" name="system_prompt">
+                                <group>
+                                    <field name="system_prompt" nolabel="1" widget="text"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Search View -->
+        <record id="view_ai_discuss_config_search" model="ir.ui.view">
+            <field name="name">ai.discuss.config.search</field>
+            <field name="model">ai.discuss.config</field>
+            <field name="arch" type="xml">
+                <search string="Search AI Config">
+                    <field name="name"/>
+                    <field name="model_name"/>
+                    <filter name="active" string="Active" domain="[('active', '=', True)]"/>
+                    <separator/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_active" string="Active Status" domain="[]" context="{'group_by': 'active'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Action -->
+        <record id="action_ai_discuss_config" model="ir.actions.act_window">
+            <field name="name">AI Bot Configurations</field>
+            <field name="res_model">ai.discuss.config</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first AI Bot Configuration
+                </p>
+                <p>
+                    Configure AI API settings for the Discuss Bot.
+                    Only one configuration can be active at a time.
+                </p>
+            </field>
+        </record>
+
+        <!-- Menu Item -->
+        <menuitem id="menu_ai_discuss_config"
+                  name="AI Bot Config"
+                  parent="base.menu_custom"
+                  action="action_ai_discuss_config"
+                  sequence="10"/>
+    </data>
+</odoo>

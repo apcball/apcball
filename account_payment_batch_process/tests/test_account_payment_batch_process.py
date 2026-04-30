@@ -90,3 +90,26 @@ class TestAccountPaymentBatchProcess(TransactionCase):
 
         self.assertEqual(self.cust_invoice_1.state, "posted")
         self.assertEqual(self.cust_invoice_2.state, "posted")
+
+    def test_partial_batch_payment_uses_batch_amount(self):
+        self.cust_invoice_1.action_post()
+        self.cust_invoice_2.action_post()
+
+        context = {
+            "active_model": "account.move",
+            "batch": True,
+            "active_ids": [self.cust_invoice_1.id, self.cust_invoice_2.id],
+        }
+        with Form(
+            self.env["account.payment.register"].with_context(**context)
+        ) as register_wizard_form:
+            register_wizard = register_wizard_form.save()
+
+        register_wizard.write({"amount": 1000.0})
+        action = register_wizard.make_payments()
+
+        payment = self.env["account.payment"].browse(action["res_id"])
+        self.assertEqual(payment.amount, 1000.0)
+        self.assertEqual(register_wizard.cheque_amount, 1000.0)
+        self.assertEqual(self.cust_invoice_1.payment_state, "partial")
+        self.assertEqual(self.cust_invoice_2.payment_state, "not_paid")

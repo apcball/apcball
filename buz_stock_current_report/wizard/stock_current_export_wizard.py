@@ -17,8 +17,8 @@ class StockCurrentExportWizard(models.TransientModel):
         'wizard_id',
         'location_id',
         string='Locations',
-        domain=[('usage', '=', 'internal')],
-        help='Leave empty to include all internal locations'
+        domain=[('usage', 'in', ['internal', 'transit'])],
+        help='Leave empty to include all internal and transit locations'
     )
     
     # Product filter
@@ -86,6 +86,14 @@ class StockCurrentExportWizard(models.TransientModel):
                     COALESCE(sq.quantity, 0) AS free_to_use,
                     COALESCE(incoming.qty, 0) AS incoming,
                     COALESCE(outgoing.qty, 0) AS outgoing,
+                    sl.usage AS location_usage,
+                    CASE
+                        WHEN sl.usage = 'internal' THEN 'Internal'
+                        WHEN sl.usage = 'transit' THEN 'Transit'
+                        WHEN sl.usage = 'production' THEN 'Production'
+                        WHEN sl.usage = 'inventory' THEN 'Inventory'
+                        ELSE sl.usage
+                    END AS location_type_name,
                     COALESCE(pt.list_price, 0) AS unit_cost,
                     COALESCE(sq.quantity, 0) * COALESCE(pt.list_price, 0) AS total_value
                 FROM stock_quant sq
@@ -116,7 +124,7 @@ class StockCurrentExportWizard(models.TransientModel):
                     AND sm.date::date >= %s AND sm.date::date <= %s
                     GROUP BY sml.location_id, sml.product_id
                 ) outgoing ON outgoing.location_id = sq.location_id AND outgoing.product_id = sq.product_id
-                WHERE sl.usage = 'internal'
+                WHERE sl.usage IN ('internal', 'transit')
             """
         else:
             query = """
@@ -130,6 +138,14 @@ class StockCurrentExportWizard(models.TransientModel):
                     COALESCE(sq.quantity, 0) AS free_to_use,
                     COALESCE(incoming.qty, 0) AS incoming,
                     COALESCE(outgoing.qty, 0) AS outgoing,
+                    sl.usage AS location_usage,
+                    CASE
+                        WHEN sl.usage = 'internal' THEN 'Internal'
+                        WHEN sl.usage = 'transit' THEN 'Transit'
+                        WHEN sl.usage = 'production' THEN 'Production'
+                        WHEN sl.usage = 'inventory' THEN 'Inventory'
+                        ELSE sl.usage
+                    END AS location_type_name,
                     0 AS unit_cost,
                     0 AS total_value
                 FROM stock_quant sq
@@ -160,7 +176,7 @@ class StockCurrentExportWizard(models.TransientModel):
                     AND sm.date::date >= %s AND sm.date::date <= %s
                     GROUP BY sml.location_id, sml.product_id
                 ) outgoing ON outgoing.location_id = sq.location_id AND outgoing.product_id = sq.product_id
-                WHERE sl.usage = 'internal'
+                WHERE sl.usage IN ('internal', 'transit')
             """
         
         params = [date_from, date_to, date_from, date_to]

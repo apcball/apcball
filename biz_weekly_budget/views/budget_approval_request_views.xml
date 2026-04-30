@@ -50,8 +50,8 @@
                     </group>
                     <group string="Budget Details">
                         <group>
-                            <field name="budget_line_id" readonly="1"/>
-                            <field name="budget_line_name" readonly="1"/>
+                            <field name="budget_allocation_id" readonly="1"/>
+                            <field name="budget_allocation_name" readonly="1"/>
                         </group>
                         <group>
                             <field name="amount_limit" readonly="1"/>
@@ -63,16 +63,24 @@
                         </group>
                     </group>
                     <group string="Reason">
-                        <field name="reason" nolabel="1"
+                        <field name="reason" nolabel="1" colspan="2"
                                placeholder="ระบุเหตุผลในการขอเพิ่มงบประมาณชั่วคราว..."
-                               readonly="state != 'pending'"/>
+                               readonly="state != 'pending'"
+                               style="width: 100%; min-height: 120px;"/>
                     </group>
                     <group string="Approver Note">
-                        <field name="note" nolabel="1"
+                        <field name="note" nolabel="1" colspan="2"
                                placeholder="ระบุเหตุผลในการอนุมัติ หรือปฏิเสธ..."
-                               readonly="state != 'pending'"/>
-                        <field name="approver_id" readonly="1" invisible="state == 'pending'"/>
-                        <field name="approved_date" readonly="1" invisible="state == 'pending'"/>
+                               readonly="state != 'pending'"
+                               style="width: 100%; min-height: 120px;"/>
+                    </group>
+                    <group invisible="state == 'pending'">
+                        <group>
+                            <field name="approver_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="approved_date" readonly="1"/>
+                        </group>
                     </group>
                 </sheet>
                 <div class="oe_chatter">
@@ -95,7 +103,7 @@
                 <field name="name"/>
                 <field name="document_type"/>
                 <field name="document_ref" string="Document"/>
-                <field name="budget_line_name" string="Budget Week"/>
+                <field name="budget_allocation_name" string="Budget Allocation"/>
                 <field name="amount_limit" string="Limit"/>
                 <field name="amount_overage" string="Over by"/>
                 <field name="requester_id"/>
