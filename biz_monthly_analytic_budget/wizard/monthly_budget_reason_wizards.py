@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
+from odoo.addons.biz_monthly_analytic_budget.models.budget_utils import find_active_monthly_plan
 
 class MonthlyBudgetRequestReasonWizard(models.TransientModel):
     _name = 'monthly.budget.request.reason.wizard'
@@ -17,6 +18,8 @@ class MonthlyBudgetRequestReasonWizard(models.TransientModel):
     amount_reserved = fields.Float(string='Already Reserved')
     amount_limit = fields.Float(string='Budget Limit')
     amount_overage = fields.Float(string='Over by')
+    # Pass the active plan so auto-approve threshold can be evaluated
+    plan_id = fields.Many2one('monthly.budget.plan', string='Budget Plan')
     
     reason = fields.Text(string='Reason', required=True, help="เหตุผลในการขอเพิ่มงบประมาณชั่วคราว")
 
@@ -30,7 +33,8 @@ class MonthlyBudgetRequestReasonWizard(models.TransientModel):
             document_type=self.document_type,
             ref_field=ref_field,
             ref_id=self.ref_id,
-            budget_line=False, # Store False and put names in budget_line_name
+            budget_line=False,  # Multiple analytics — store names in budget_line_name
+            plan_id=self.plan_id.id if self.plan_id else False,
             amount_requested=self.amount_requested,
             amount_used=self.amount_used,
             amount_reserved=self.amount_reserved,

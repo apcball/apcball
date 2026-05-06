@@ -386,8 +386,8 @@ class PurchaseRequisition(models.Model):
                 picking_type = self.env['stock.picking.type'].browse(picking_type_id)
                 if picking_type.default_location_dest_id:
                     dest_location_id = picking_type.default_location_dest_id.id
-            
-            self.env['purchase.order'].create({
+
+            po_vals = {
                 'partner_id': vendor_id,
                 'requisition_order': self.name,
                 'employee_id': self.employee_id.id,
@@ -398,7 +398,18 @@ class PurchaseRequisition(models.Model):
                 'destination_location_id': dest_location_id,
                 'picking_type_id': picking_type_id,
                 'notes': self.requisition_description or '',
-            })
+            }
+
+            # Keep Expected Payment from PR when monthly budget module is installed.
+            # payment_date_manual is the source of truth for the computed payment_date
+            # on purchase.order in biz_monthly_analytic_budget.
+            expected_payment = getattr(self, 'payment_date', False)
+            if expected_payment and 'payment_date_manual' in self.env['purchase.order']._fields:
+                po_vals['payment_date_manual'] = expected_payment
+            if expected_payment and 'payment_date' in self.env['purchase.order']._fields:
+                po_vals['payment_date'] = expected_payment
+
+            self.env['purchase.order'].create(po_vals)
 
         if purchase_orders:
             self.write({'state': 'purchase_order_created'})

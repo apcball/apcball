@@ -37,6 +37,7 @@
         'wizard/monthly_budget_reason_wizards_views.xml',
         'views/purchase_order_views.xml',
         'views/purchase_requisition_views.xml',
+        'views/account_move_views.xml',
         'views/monthly_budget_report_views.xml',
         'views/menu_views.xml',
         'views/dashboard_views.xml',

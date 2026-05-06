@@ -105,6 +105,18 @@ class BudgetCommitment(models.Model):
             else:
                 rec.document_ref = ''
 
+    def action_open_document(self):
+        self.ensure_one()
+        if not self.document_model or not self.document_id:
+            return
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': self.document_model,
+            'res_id': self.document_id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     # ── ORM ──────────────────────────────────────────────────────
 
     @api.model_create_multi
@@ -113,14 +125,62 @@ class BudgetCommitment(models.Model):
             if vals.get('name', _('New')) == _('New'):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'budget.commitment') or _('New')
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        records._refresh_monthly_budget_plans()
+        return records
+
+    def write(self, vals):
+        old_values = {
+            rec.id: {
+                'date': rec.date,
+                'company_id': rec.company_id.id,
+                'budget_source': rec.budget_source,
+            }
+            for rec in self
+        }
+        result = super().write(vals)
+        self._refresh_monthly_budget_plans(old_values)
+        return result
 
     # ── State transitions ────────────────────────────────────────
 
     def action_mark_used(self):
         """Move reserved commitments to used."""
-        self.filtered(lambda r: r.state == 'reserved').write({'state': 'used'})
+        records = self.filtered(lambda r: r.state == 'reserved')
+        records.write({'state': 'used'})
 
     def action_release(self):
         """Release a commitment regardless of whether it is reserved or used."""
-        self.filtered(lambda r: r.state in ('reserved', 'used')).write({'state': 'released'})
+        records = self.filtered(lambda r: r.state in ('reserved', 'used'))
+        records.write({'state': 'released'})
+
+    # ── Snapshot refresh helpers ────────────────────────────────
+
+    def _refresh_monthly_budget_plans(self, old_values=None):
+        """Refresh affected monthly budget plans after commitment changes."""
+        Plan = self.env['monthly.budget.plan'].sudo()
+        plans = Plan.browse()
+
+        def _append_plan(date_val, company_id):
+            if not date_val or not company_id:
+                return
+            plan = Plan.search([
+                ('state', '=', 'confirmed'),
+                ('company_id', '=', company_id),
+                ('date_from', '<=', date_val),
+                ('date_to', '>=', date_val),
+            ], limit=1)
+            if plan:
+                nonlocal plans
+                plans |= plan
+
+        for rec in self:
+            if rec.budget_source != 'monthly':
+                continue
+            _append_plan(rec.date, rec.company_id.id)
+            if old_values and rec.id in old_values:
+                old = old_values[rec.id]
+                _append_plan(old.get('date'), old.get('company_id'))
+
+        for plan in plans:
+            plan._refresh_budget_snapshot(refresh_report=True)

@@ -141,6 +141,18 @@ class MonthlyBudgetVariance(models.Model):
         tools.drop_view_if_exists(self.env.cr, self._table)
         self.env.cr.execute("""
             CREATE OR REPLACE VIEW %s AS (
+                WITH commitment_totals AS (
+                    SELECT
+                        bc.analytic_account_id,
+                        bc.company_id,
+                        bc.date,
+                        SUM(CASE WHEN bc.state = 'reserved' THEN bc.amount ELSE 0.0 END) AS reserved,
+                        SUM(CASE WHEN bc.state = 'used'     THEN bc.amount ELSE 0.0 END) AS used
+                    FROM budget_commitment bc
+                    WHERE bc.budget_source = 'monthly'
+                      AND bc.state IN ('reserved', 'used')
+                    GROUP BY bc.analytic_account_id, bc.company_id, bc.date
+                )
                 SELECT
                     bl.id AS id,
                     bl.plan_id,
@@ -157,21 +169,53 @@ class MonthlyBudgetVariance(models.Model):
                     p.company_id,
                     p.currency_id,
                     bl.budget_amount,
-                    COALESCE(bl.carried_amount, 0) AS carried_amount,
-                    bl.budget_amount + COALESCE(bl.carried_amount, 0) AS total_budget,
-                    0.0 AS reserved_amount,
-                    0.0 AS used_amount,
-                    0.0 AS total_committed,
-                    bl.budget_amount + COALESCE(bl.carried_amount, 0) AS available_amount,
-                    bl.budget_amount AS variance_amount,
+                    COALESCE(bl.carried_amount, 0.0) AS carried_amount,
+                    bl.budget_amount + COALESCE(bl.carried_amount, 0.0) AS total_budget,
+                    COALESCE(SUM(ct.reserved), 0.0) AS reserved_amount,
+                    COALESCE(SUM(ct.used),     0.0) AS used_amount,
+                    COALESCE(SUM(ct.reserved + ct.used), 0.0) AS total_committed,
+                    -- available = total_budget - reserved - used
+                    bl.budget_amount + COALESCE(bl.carried_amount, 0.0)
+                        - COALESCE(SUM(ct.reserved), 0.0)
+                        - COALESCE(SUM(ct.used),     0.0) AS available_amount,
+                    -- variance = budget - used (positive = under budget)
+                    bl.budget_amount - COALESCE(SUM(ct.used), 0.0) AS variance_amount,
+                    -- variance_pct = (budget - used) / budget * 100
                     CASE WHEN bl.budget_amount > 0
-                         THEN 100.0
-                         ELSE 0 END AS variance_pct,
-                    0.0 AS utilization_pct,
-                    'ok'::text AS status
+                         THEN (bl.budget_amount - COALESCE(SUM(ct.used), 0.0))
+                              / bl.budget_amount * 100.0
+                         ELSE 0.0 END AS variance_pct,
+                    -- utilization_pct = (reserved + used) / total_budget * 100
+                    CASE WHEN (bl.budget_amount + COALESCE(bl.carried_amount, 0.0)) > 0
+                         THEN (COALESCE(SUM(ct.reserved), 0.0) + COALESCE(SUM(ct.used), 0.0))
+                              / (bl.budget_amount + COALESCE(bl.carried_amount, 0.0)) * 100.0
+                         ELSE 0.0 END AS utilization_pct,
+                    -- status traffic-light
+                    CASE
+                        WHEN bl.budget_amount > 0 AND
+                             (COALESCE(SUM(ct.reserved), 0.0) + COALESCE(SUM(ct.used), 0.0))
+                             > bl.budget_amount
+                             THEN 'over'
+                        WHEN bl.budget_amount > 0 AND
+                             (COALESCE(SUM(ct.reserved), 0.0) + COALESCE(SUM(ct.used), 0.0))
+                             > bl.budget_amount * 0.80
+                             THEN 'warning'
+                        ELSE 'ok'
+                    END::text AS status
                 FROM monthly_budget_line bl
                 JOIN monthly_budget_plan p ON p.id = bl.plan_id
+                LEFT JOIN commitment_totals ct ON
+                    ct.analytic_account_id = bl.analytic_account_id
+                    AND ct.company_id = p.company_id
+                    AND ct.date >= p.date_from
+                    AND ct.date <= p.date_to
                 WHERE p.state IN ('confirmed', 'closed')
+                GROUP BY
+                    bl.id, bl.plan_id, p.name, p.state, p.month, p.year,
+                    p.date_from, p.date_to, bl.analytic_account_id,
+                    bl.department_id, bl.project_id, bl.category,
+                    p.company_id, p.currency_id, bl.budget_amount,
+                    bl.carried_amount
             )
         """ % self._table)
 

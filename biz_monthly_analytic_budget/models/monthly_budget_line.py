@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+from collections import defaultdict
 from decimal import Decimal, ROUND_HALF_UP
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
@@ -16,7 +17,6 @@ _BUDGET_MATCH_STRATEGIES = [
     ['analytic_account_id', 'category'],
     ['analytic_account_id'],
 ]
-
 
 class MonthlyBudgetLine(models.Model):
     """
@@ -120,7 +120,7 @@ class MonthlyBudgetLine(models.Model):
         string='Utilization (%)',
         compute='_compute_available_amount',
         store=False,
-        help='(Reserved + Used) / Budget Amount * 100',
+        help='(Reserved + Used) / Budget Amount',
     )
 
     # ── Computed ─────────────────────────────────────────────────
@@ -151,62 +151,59 @@ class MonthlyBudgetLine(models.Model):
             line.available_amount = total_budget - line.reserved_amount - line.used_amount
             if total_budget:
                 line.utilization_rate = (
-                    (line.reserved_amount + line.used_amount) / total_budget * 100.0
+                    (line.reserved_amount + line.used_amount) / total_budget
                 )
             else:
                 line.utilization_rate = 0.0
 
     @api.depends('plan_id.state', 'plan_id.date_from', 'plan_id.date_to', 'plan_id.company_id')
     def _compute_used_amount(self):
-        """
-        Compute used amount via SQL: Vendor Bills/Credit Notes in state 'draft' or 'posted'
-        (i.e. any non-cancelled bill) whose Due Date falls within this budget period.
-        Due Date (invoice_date_due) is the primary date; falls back to invoice_date then line date.
-        """
-        valid_lines = self.filtered(
-            lambda l: l.plan_id.date_from and l.plan_id.date_to and l.analytic_account_id
-        )
+        """Compute used amount from monthly budget commitments in used state."""
+        valid_lines = self.filtered(lambda l: l.plan_id.date_from and l.plan_id.date_to and l.analytic_account_id)
         for line in self - valid_lines:
             line.used_amount = 0.0
 
         if not valid_lines:
             return
 
-        # Build a single SQL query for all valid lines at once
-        query = """
-            SELECT
-                wbl_id,
-                SUM(
-                    CASE WHEN am.move_type = 'in_refund'
-                         THEN -aml.price_subtotal
-                         ELSE  aml.price_subtotal
-                    END
-                    * CAST(aml.analytic_distribution->>wbl_analytic::text AS numeric)
-                    / 100.0
-                ) AS total_used
-            FROM (
-                SELECT id AS wbl_id,
-                       analytic_account_id AS wbl_analytic,
-                       company_id AS wbl_company,
-                       (SELECT date_from FROM monthly_budget_plan WHERE id = plan_id) AS dt_from,
-                       (SELECT date_to   FROM monthly_budget_plan WHERE id = plan_id) AS dt_to
-                FROM monthly_budget_line
-                WHERE id = ANY(%s)
-            ) bl
-            JOIN account_move_line aml ON
-                aml.company_id = bl.wbl_company AND
-                aml.analytic_distribution IS NOT NULL AND
-                aml.analytic_distribution ? bl.wbl_analytic::text
-            JOIN account_move am ON
-                am.id = aml.move_id AND
-                am.state IN ('draft', 'posted') AND
-                am.move_type IN ('in_invoice', 'in_refund') AND
-                COALESCE(am.invoice_date_due, am.invoice_date, aml.date) >= bl.dt_from AND
-                COALESCE(am.invoice_date_due, am.invoice_date, aml.date) <= bl.dt_to
-            GROUP BY bl.wbl_id
-        """
-        self.env.cr.execute(query, [list(valid_lines.ids)])
-        result_map = {r['wbl_id']: r['total_used'] or 0.0 for r in self.env.cr.dictfetchall()}
+        company_ids = valid_lines.mapped('company_id.id')
+        all_date_froms = valid_lines.mapped('plan_id.date_from')
+        all_date_tos = valid_lines.mapped('plan_id.date_to')
+        global_date_from = min(all_date_froms)
+        global_date_to = max(all_date_tos)
+
+        commitments = self.env['budget.commitment'].sudo().search([
+            ('budget_source', '=', 'monthly'),
+            ('state', '=', 'used'),
+            ('company_id', 'in', company_ids),
+            ('date', '>=', global_date_from),
+            ('date', '<=', global_date_to),
+        ])
+
+        committed_totals = defaultdict(float)
+        for commitment in commitments:
+            if not commitment.analytic_account_id or not commitment.date:
+                continue
+            committed_totals[(
+                commitment.company_id.id,
+                commitment.analytic_account_id.id,
+                commitment.date,
+            )] += commitment.amount
+
+        result_map = {}
+        for line in valid_lines:
+            date_from = line.plan_id.date_from
+            date_to = line.plan_id.date_to
+            comp_id = line.company_id.id
+            used = 0.0
+            for (commit_company_id, analytic_id, commit_date), amount in committed_totals.items():
+                if commit_company_id != comp_id:
+                    continue
+                if analytic_id != line.analytic_account_id.id:
+                    continue
+                if date_from <= commit_date <= date_to:
+                    used += amount
+            result_map[line.id] = used
 
         for line in valid_lines:
             line.used_amount = result_map.get(line.id, 0.0)
@@ -214,131 +211,61 @@ class MonthlyBudgetLine(models.Model):
     @api.depends('plan_id.state', 'plan_id.date_from', 'plan_id.date_to', 'plan_id.company_id')
     def _compute_reserved_amount(self):
         """
-        Compute total budget reserved from:
-          1. Non-draft PRs whose payment_date falls in the month.
-          2. Draft POs (RFQs) NOT linked to any active PR.
-          3. Confirmed POs (unbilled amount) NOT linked to any active PR.
-        Note: Draft Vendor Bills are NOT included here — they are already counted in used_amount.
-        Only sums analytic_distribution allocated to this line's analytic_account_id.
+        Compute total budget reserved from monthly commitment records.
+
+        Reservation is now driven by the document lifecycle:
+          - PR head approval creates a reserved commitment
+          - direct RFQ / draft PO creates a reserved commitment
+          - draft vendor bill creates a reserved commitment
+
+        This keeps the budget line in sync with the actual reserved audit trail
+        instead of inferring reservations from document state alone.
         """
         valid_lines = self.filtered(lambda l: l.plan_id.date_from and l.plan_id.date_to and l.analytic_account_id)
         for line in self - valid_lines:
             line.reserved_amount = 0.0
-        
+
         if not valid_lines:
             return
 
+        company_ids = valid_lines.mapped('company_id.id')
         all_date_froms = valid_lines.mapped('plan_id.date_from')
         all_date_tos = valid_lines.mapped('plan_id.date_to')
         global_date_from = min(all_date_froms)
         global_date_to = max(all_date_tos)
-        company_ids = valid_lines.mapped('company_id.id')
 
-        # Batch fetch PRs
-        all_prs = self.env['employee.purchase.requisition'].sudo().search([
-            ('state', 'not in', ('draft', 'cancel', 'cancelled', 'rejected')),
-            ('payment_date', '>=', global_date_from),
-            ('payment_date', '<=', global_date_to),
+        commitments = self.env['budget.commitment'].sudo().search([
+            ('budget_source', '=', 'monthly'),
+            ('state', '=', 'reserved'),
             ('company_id', 'in', company_ids),
+            ('date', '>=', global_date_from),
+            ('date', '<=', global_date_to),
         ])
 
-        # Batch fetch Confirmed POs
-        global_dt_from = fields.Datetime.to_datetime(global_date_from)
-        global_dt_to = fields.Datetime.to_datetime(global_date_to).replace(hour=23, minute=59, second=59)
-        all_confirmed_pos = self.env['purchase.order'].sudo().search([
-            ('state', 'in', ['purchase', 'done']),
-            '|',
-            '&', ('payment_date', '>=', global_date_from),
-                 ('payment_date', '<=', global_date_to),
-            '&', ('payment_date', '=', False),
-                 '&', ('date_order', '>=', global_dt_from),
-                      ('date_order', '<=', global_dt_to),
-            ('company_id', 'in', company_ids),
-        ])
-
-        # Batch fetch Draft POs (RFQs)
-        all_rfqs = self.env['purchase.order'].sudo().search([
-            ('state', '=', 'draft'),
-            ('payment_date', '>=', global_date_from),
-            ('payment_date', '<=', global_date_to),
-            ('company_id', 'in', company_ids),
-        ])
-
-        # Maps PR name -> confirmed POs (scoped to date range for performance)
-        po_linked_pr_names = set()
-        for po in all_confirmed_pos:
-            req_order = (getattr(po, 'requisition_order', '') or '').strip()
-            pr_number = (getattr(po, 'pr_number', '') or '').strip()
-            origin = (po.origin or '').strip()
-            for val in (req_order, pr_number, origin):
-                if val:
-                    po_linked_pr_names.add(val)
+        committed_totals = defaultdict(float)
+        for commitment in commitments:
+            if not commitment.analytic_account_id or not commitment.date:
+                continue
+            committed_totals[(
+                commitment.company_id.id,
+                commitment.analytic_account_id.id,
+                commitment.date,
+            )] += commitment.amount
 
         for line in valid_lines:
             date_from = line.plan_id.date_from
             date_to = line.plan_id.date_to
-            analytic_str = str(line.analytic_account_id.id)
             comp_id = line.company_id.id
-
-            def _get_analytic_amt(lines2):
-                amt = 0.0
-                for l in lines2:
-                    dist = l.analytic_distribution or {}
-                    if analytic_str in dist:
-                        pct = dist[analytic_str] or 0.0
-                        amt += l.price_subtotal * (pct / 100.0)
-                return amt
-
-            # 1. PRs
-            line_prs = all_prs.filtered(lambda pr: date_from <= pr.payment_date <= date_to and pr.company_id.id == comp_id)
-            pr_amount = 0.0
-            active_pr_names = set()
-            for pr in line_prs:
-                if pr.name in po_linked_pr_names:
+            reserved = 0.0
+            for (commit_company_id, analytic_id, commit_date), amount in committed_totals.items():
+                if commit_company_id != comp_id:
                     continue
-                pr_amount += _get_analytic_amt(pr.requisition_order_ids)
-                active_pr_names.add(pr.name)
-
-            def _po_linked(po):
-                req_order = (getattr(po, 'requisition_order', '') or '').strip()
-                pr_number = (getattr(po, 'pr_number', '') or '').strip()
-                if req_order in active_pr_names or pr_number in active_pr_names:
-                    return True
-                origin = (po.origin or '').strip()
-                if origin and origin in active_pr_names:
-                    return True
-                return False
-
-            # 2. RFQs
-            rfq_amount = 0.0
-            for po in all_rfqs.filtered(lambda p: date_from <= p.payment_date <= date_to and p.company_id.id == comp_id):
-                if _po_linked(po):
+                if analytic_id != line.analytic_account_id.id:
                     continue
-                rfq_amount += _get_analytic_amt(po.order_line)
+                if date_from <= commit_date <= date_to:
+                    reserved += amount
 
-            # 3. Confirmed POs
-            po_unbilled_amount = 0.0
-            line_dt_from = fields.Datetime.to_datetime(date_from)
-            line_dt_to = fields.Datetime.to_datetime(date_to).replace(hour=23, minute=59, second=59)
-            for po in all_confirmed_pos.filtered(lambda p: p.company_id.id == comp_id):
-                if po.payment_date:
-                    if not (date_from <= po.payment_date <= date_to):
-                        continue
-                else:
-                    if not (po.date_order and line_dt_from <= po.date_order <= line_dt_to):
-                        continue
-                if _po_linked(po):
-                    continue
-                
-                # Unbilled logic for specific analytic lines using unbilled qty (ordered minus billed)
-                for pol in po.order_line:
-                    dist = pol.analytic_distribution or {}
-                    if analytic_str in dist:
-                        pct = dist[analytic_str] or 0.0
-                        unbilled_qty = max(0.0, pol.product_qty - pol.qty_invoiced)
-                        po_unbilled_amount += (unbilled_qty * pol.price_unit) * (pct / 100.0)
-
-            line.reserved_amount = pr_amount + rfq_amount + po_unbilled_amount
+            line.reserved_amount = reserved
 
     # ── Constraints ──────────────────────────────────────────────
 
@@ -507,19 +434,18 @@ class MonthlyBudgetLine(models.Model):
     def _recompute_line_balance(self):
         """
         Force re-evaluation of all live computed fields (reserved, used,
-        fixed_cost, available) by invalidating the recordset cache.
-        This is useful after bulk data changes to ensure fresh values.
+        available, utilization) by calling the compute methods directly.
+
+        The fields are not stored, so we refresh them in memory instead of
+        relying on cache invalidation side effects.
         """
         if not self:
             return
-        self.invalidate_recordset([
-            'reserved_amount', 'used_amount',
-            'available_amount', 'utilization_rate',
-        ])
+        self._compute_reserved_amount()
+        self._compute_used_amount()
+        self._compute_available_amount()
         for line in self:
-            # Access the fields to trigger recomputation and log
             _logger.info(
                 'monthly.budget.line [%s]: refreshed reserved=%.4f used=%.4f available=%.4f',
                 line.id, line.reserved_amount, line.used_amount, line.available_amount,
             )
-

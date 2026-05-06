@@ -2,10 +2,19 @@
 import logging
 from datetime import timedelta
 from decimal import Decimal
+from markupsafe import escape
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
-from .budget_utils import find_active_monthly_plan, extract_analytic_amounts
+from .budget_utils import (
+    RESERVED_PR_STATES,
+    extract_analytic_amounts,
+    filter_analytic_totals_for_plan,
+    find_active_monthly_plan,
+    format_ignored_analytic_accounts_message,
+    format_missing_budget_line_message,
+    format_no_analytic_distribution_message,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -48,6 +57,25 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         string='Budget Warning',
         compute='_compute_monthly_budget_check'
     )
+    is_budget_reserved = fields.Boolean(
+        string='Budget Reserved',
+        compute='_compute_is_budget_reserved',
+    )
+
+    @api.depends('state')
+    def _compute_is_budget_reserved(self):
+        Commitment = self.env['budget.commitment'].sudo()
+        for req in self:
+            if req.state in RESERVED_PR_STATES:
+                has_commitment = Commitment.search([
+                    ('document_model', '=', req._name),
+                    ('document_id', '=', req.id),
+                    ('state', 'in', ('reserved', 'used')),
+                    ('budget_source', '=', 'monthly')
+                ], limit=1)
+                req.is_budget_reserved = bool(has_commitment)
+            else:
+                req.is_budget_reserved = False
 
     def _compute_budget_approval_id(self):
         ApprovalReq = self.env['buz.monthly.budget.approval.request'].sudo()
@@ -58,28 +86,25 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             ], limit=1, order='id desc')
             rec.buz_budget_approval_id = req
 
-    @api.depends('requisition_deadline', 'request_date', 'vendor_id', 'vendor_id.property_supplier_payment_term_id', 'requisition_order_ids.partner_id')
+    def _get_request_open_date(self):
+        """Return the PR open/request date used as the budget reference date."""
+        if self.request_date:
+            return self.request_date
+        if self.create_date:
+            return self.create_date.date()
+        return fields.Date.context_today(self)
+
+    @api.depends('requisition_deadline', 'request_date', 'vendor_id', 'vendor_id.property_supplier_payment_term_id')
     def _compute_payment_date(self):
         for req in self:
             if req.payment_date_manual:
                 req.payment_date = req.payment_date_manual
                 continue
 
-            # Priority logic:
-            # 1. Vendor payment term from header (if used)
             payment_term = req.vendor_id.property_supplier_payment_term_id
-            
-            # 2. Vendor payment term from the first line that has one
-            if not payment_term and req.requisition_order_ids:
-                for line in req.requisition_order_ids:
-                    if line.partner_id and line.partner_id.property_supplier_payment_term_id:
-                        payment_term = line.partner_id.property_supplier_payment_term_id
-                        break
-                        
             if payment_term:
-                p_date = req.request_date or fields.Date.today()
-                
-                # Check method availability directly to avoid exception overhead
+                p_date = req._get_request_open_date()
+
                 if hasattr(payment_term, 'compute'):
                     res = payment_term.compute(value=1, date_ref=p_date)
                     if res and res[0] and res[0][0]:
@@ -97,18 +122,15 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                             sign=1
                         )
                         if res and getattr(res, 'get', None) and res.get('line_ids'):
-                            # Odoo 17 returns a dict containing line_ids list
                             lines = res.get('line_ids')
                             req.payment_date = lines[-1].get('date') if lines else p_date
                             continue
                         elif res and isinstance(res, list):
-                            # Other versions might return list of dicts directly
                             req.payment_date = res[-1].get('date') if res else p_date
                             continue
                     except Exception as e:
                         _logger.warning("biz_monthly_analytic_budget _compute_terms failed: %s", e)
-                        
-                # Ultimate fallback: manual parsing of days
+
                 max_days = 0
                 for line in payment_term.line_ids:
                     days = getattr(line, 'days', getattr(line, 'nb_days', 0))
@@ -119,12 +141,8 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 if max_days > 0:
                     req.payment_date = p_date + timedelta(days=max_days)
                     continue
-            
-            # 3. Requisition deadline + 30 days
-            if req.requisition_deadline:
-                req.payment_date = req.requisition_deadline + timedelta(days=30)
-            else:
-                req.payment_date = (req.request_date or fields.Date.today()) + timedelta(days=30)
+
+            req.payment_date = req._get_request_open_date() + timedelta(days=30)
 
     def _inverse_payment_date(self):
         for req in self:
@@ -160,12 +178,25 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 for account_id, amount in extract_analytic_amounts(line):
                     analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
+            analytic_totals, ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
+
             if not analytic_totals:
-                req.monthly_budget_check_result = _(
-                    '<div class="alert alert-info">'
-                    'No analytic distribution found on PR lines.'
-                    '</div>'
-                )
+                if ignored_totals:
+                    ignored_names = ', '.join(
+                        escape(name)
+                        for name in self.env['account.analytic.account'].browse(
+                            list(ignored_totals.keys())
+                        ).mapped('display_name')
+                    )
+                    req.monthly_budget_check_result = _(
+                        '<div class="alert alert-info">%s</div>'
+                    ) % format_ignored_analytic_accounts_message(ignored_names)
+                else:
+                    req.monthly_budget_check_result = _(
+                        '<div class="alert alert-info">'
+                        '%s'
+                        '</div>'
+                    ) % format_no_analytic_distribution_message()
                 req.budget_warning = False
                 continue
 
@@ -186,7 +217,20 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                     )
                     continue
                 budget_line = budget_line[0]
-                total_after = budget_line.reserved_amount + budget_line.used_amount + pr_amt
+                # Only add pr_amt if this PR does not already have an active commitment
+                # (prevents double-count when the widget is re-rendered after head approval)
+                active_commitment = self.env['budget.commitment'].sudo().search([
+                    ('document_model', '=', self._name),
+                    ('document_id', '=', req.id),
+                    ('analytic_account_id', '=', account_id),
+                    ('budget_source', '=', 'monthly'),
+                    ('state', 'in', ('reserved', 'used')),
+                ], limit=1)
+                already_committed = budget_line.reserved_amount + budget_line.used_amount
+                if not active_commitment:
+                    total_after = already_committed + pr_amt
+                else:
+                    total_after = already_committed  # already counted in reserved_amount
                 remaining = budget_line.budget_amount - total_after
                 is_over = remaining < 0
                 if is_over:
@@ -206,7 +250,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                     '</table></div></div>' % (
                         status_class, status_icon, analytic.name,
                         _('Monthly Budget'), '{:,.2f}'.format(budget_line.budget_amount),
-                        _('Reserved + Used'), '{:,.2f}'.format(budget_line.reserved_amount + budget_line.used_amount),
+                        _('Reserved + Used'), '{:,.2f}'.format(already_committed),
                         _('This PR'), '{:,.2f}'.format(pr_amt),
                         _('Remaining After'), status_class,
                         '{:,.2f}'.format(remaining),
@@ -234,6 +278,11 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         for line in self.requisition_order_ids:
             for account_id, amount in extract_analytic_amounts(line):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+
+        analytic_totals, _ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
+
+        if not analytic_totals:
+            return
 
         pr_amount = sum(analytic_totals.values())
         
@@ -275,40 +324,37 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 'default_amount_reserved': reserved,
                 'default_amount_limit': limit_amt,
                 'default_amount_overage': overage,
+                'default_plan_id': plan.id,
             }
         }
 
     # ── Budget enforcement ───────────────────────────────────────
 
     def action_confirm_requisition(self):
-        """Override: check and reserve monthly analytic budget upon PR submission."""
-        # Note: Prompt says "Purchase Requisition: Head Approve". 
-        # But existing code does it at action_confirm_requisition.
-        # I will keep it at confirm and also add it to head approval to be safe.
+        """Override: check monthly analytic budget upon PR submission."""
         for req in self:
             req._check_monthly_analytic_budget()
-        result = super().action_confirm_requisition()
-        # Record reservations after successful submission
-        for req in self:
-            req._reserve_monthly_analytic_budget()
-        return result
+        return super().action_confirm_requisition()
 
     def action_head_approval(self):
         """Override: check budget on head approval."""
         for req in self:
             req._check_monthly_analytic_budget()
-        result = super().action_head_approval()
-        for req in self:
-            req._reserve_monthly_analytic_budget()
-        return result
+        return super().action_head_approval()
 
     def action_purchase_approval(self):
         """Override: check budget on purchase approval."""
         for req in self:
             req._check_monthly_analytic_budget()
-        result = super().action_purchase_approval()
-        for req in self:
-            req._reserve_monthly_analytic_budget()
+        return super().action_purchase_approval()
+
+    def write(self, vals):
+        prev_states = {rec.id: rec.state for rec in self}
+        result = super().write(vals)
+        if 'state' in vals:
+            for rec in self:
+                if rec.state in RESERVED_PR_STATES and prev_states.get(rec.id) != rec.state:
+                    rec._reserve_monthly_analytic_budget()
         return result
 
     def _check_monthly_analytic_budget(self):
@@ -329,7 +375,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
 
         plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
         if not plan:
-            return  # No monthly plan active — allow
+            raise UserError(_('ไม่พบแผนงบประมาณรายเดือน (Budget Plan) ที่รองรับสำหรับวันที่คาดว่าจะชำระเงินของเอกสารนี้'))
 
         # Aggregate by analytic account
         analytic_totals = {}
@@ -337,8 +383,20 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             for account_id, amount in extract_analytic_amounts(line):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
+        analytic_totals, ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
+
         if not analytic_totals:
-            return  # No analytic distribution — allow
+            if ignored_totals:
+                ignored_names = ', '.join(
+                    self.env['account.analytic.account'].browse(list(ignored_totals.keys())).mapped('display_name')
+                )
+                _logger.info(
+                    'PR %s analytics ignored because they are not configured on plan %s: %s',
+                    self.name,
+                    plan.name,
+                    ignored_names,
+                )
+            return  # No plan-configured analytic distribution to check
 
         AnalyticAccount = self.env['account.analytic.account']
         BudgetLine = self.env['monthly.budget.line']
@@ -350,10 +408,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             dims = {'analytic_account_id': account_id}
             budget_line = BudgetLine._find_budget_line(plan, dims)
             if not budget_line:
-                raise UserError(_(
-                    'No monthly budget line found for analytic account "%s".\n'
-                    'Please add it to the monthly budget plan "%s" first.'
-                ) % (analytic.name, plan.name))
+                raise UserError(format_missing_budget_line_message(analytic.name, plan.name))
 
             budget_line = budget_line[:1] if len(budget_line) > 1 else budget_line
             
@@ -430,14 +485,16 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             for account_id, amount in extract_analytic_amounts(line, BudgetLine):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
+        analytic_totals, _ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
+
         if not analytic_totals:
             return
 
         # --- Concurrency: acquire row-level lock BEFORE reading budget values ---
         BudgetLine._lock_budget_lines(list(analytic_totals.keys()), plan.id)
 
-        # Re-read plan budget lines AFTER acquiring the lock
-        plan.invalidate_recordset(['budget_line_ids'])
+        # Re-read the current snapshot AFTER acquiring the lock
+        plan._refresh_budget_snapshot(refresh_report=False)
 
         for account_id, total_amt in analytic_totals.items():
             analytic = AnalyticAccount.browse(account_id)
@@ -450,32 +507,33 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 continue
             budget_line = budget_line[0]
 
-            # Idempotency: skip if already reserved by this document
-            commitment = self.env['budget.commitment'].sudo().search([
+            # Idempotency: keep one active reservation per document/analytic.
+            commitments = self.env['budget.commitment'].sudo().search([
                 ('document_model', '=', self._name),
                 ('document_id', '=', self.id),
                 ('analytic_account_id', '=', account_id),
                 ('budget_source', '=', 'monthly'),
                 ('state', '=', 'reserved'),
-            ], limit=1)
-            if commitment:
-                _logger.debug(
-                    'PR %s already has reservation for analytic %s — skipping',
-                    self.name, analytic.name,
-                )
-                continue
-
-            # Create commitment audit record
-            engine.reserve_budget({
-                'budget_source': 'monthly',
-                'document_model': self._name,
-                'document_id': self.id,
-                'amount': total_amt,
-                'date': target_date,
-                'company_id': self.company_id.id,
-                'analytic_account_id': account_id,
-                'note': _('Reserved from PR %s - %s') % (self.name, analytic.name),
-            })
+            ])
+            note = _('Reserved from PR %s - %s') % (self.name, analytic.name)
+            
+            if commitments:
+                commitment = commitments[0]
+                if commitment.amount != total_amt or commitment.date != target_date:
+                    commitment.write({'amount': total_amt, 'date': target_date, 'note': note})
+                if len(commitments) > 1:
+                    commitments[1:].action_release()
+            else:
+                engine.reserve_budget({
+                    'budget_source': 'monthly',
+                    'document_model': self._name,
+                    'document_id': self.id,
+                    'amount': total_amt,
+                    'date': target_date,
+                    'company_id': self.company_id.id,
+                    'analytic_account_id': account_id,
+                    'note': note,
+                })
             _logger.info(
                 'Monthly budget reserved: PR=%s analytic=%s amount=%.4f plan=%s',
                 self.name, analytic.name, total_amt, plan.name,
@@ -485,21 +543,24 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
 
     def action_head_cancel(self):
         """Release monthly budget reservations when head cancels PR."""
+        result = super().action_head_cancel()
         for req in self:
             req._release_monthly_analytic_budget()
-        return super().action_head_cancel()
+        return result
 
     def action_purchase_cancel(self):
         """Release monthly budget reservations when purchase cancels PR."""
+        result = super().action_purchase_cancel()
         for req in self:
             req._release_monthly_analytic_budget()
-        return super().action_purchase_cancel()
+        return result
 
     def action_cancel_requisition(self):
         """Release monthly budget reservations when requester cancels PR."""
+        result = super().action_cancel_requisition()
         for req in self:
             req._release_monthly_analytic_budget()
-        return super().action_cancel_requisition()
+        return result
 
     def _release_monthly_analytic_budget(self):
         """Release previously reserved monthly budget amounts."""

@@ -8,8 +8,11 @@ to avoid code duplication (DRY principle).
 import json
 import logging
 from decimal import Decimal
+from odoo import _
 
 _logger = logging.getLogger(__name__)
+
+RESERVED_PR_STATES = ('waiting_purchase_approval', 'approved', 'purchase_order_created', 'received')
 
 
 def find_active_monthly_plan(env, target_date, company_id):
@@ -45,7 +48,7 @@ def extract_analytic_amounts(line, budget_line_model=None):
     :returns: list of (analytic_account_id (int), allocated_amount (float))
     """
     distribution = line.analytic_distribution
-    _logger.info("budget_utils PR line %s analytic_distribution=%r price_subtotal=%r", getattr(line, 'id', None), distribution, line.price_subtotal)
+    _logger.debug("budget_utils PR line %s analytic_distribution=%r price_subtotal=%r", getattr(line, 'id', None), distribution, line.price_subtotal)
     if not distribution:
         return []
 
@@ -88,3 +91,48 @@ def extract_analytic_amounts(line, budget_line_model=None):
             except (ValueError, TypeError):
                 continue
     return result
+
+
+def filter_analytic_totals_for_plan(plan, analytic_totals):
+    """
+    Keep only analytic accounts that are configured on the given budget plan.
+
+    If the plan does not yet have any budget lines, the totals are returned as-is
+    so the normal "missing budget line" validation still applies.
+    """
+    if not plan or not analytic_totals:
+        return analytic_totals, {}
+
+    allowed_ids = set(plan.budget_line_ids.mapped('analytic_account_id').ids)
+    if not allowed_ids:
+        return analytic_totals, {}
+
+    filtered_totals = {}
+    ignored_totals = {}
+    for account_id, amount in analytic_totals.items():
+        if account_id in allowed_ids:
+            filtered_totals[account_id] = amount
+        else:
+            ignored_totals[account_id] = amount
+
+    return filtered_totals, ignored_totals
+
+
+def format_ignored_analytic_accounts_message(ignored_names):
+    """Return the standard message for analytics excluded from plan checks."""
+    return _(
+        'Analytic accounts not configured in this plan were ignored: %s'
+    ) % ignored_names
+
+
+def format_no_analytic_distribution_message():
+    """Return the standard message for documents without analytic totals."""
+    return _('No analytic distribution found on document lines.')
+
+
+def format_missing_budget_line_message(analytic_name, plan_name):
+    """Return the standard message for a missing monthly budget line."""
+    return _(
+        'No monthly budget line found for analytic account "%s".\n'
+        'Please add it to the monthly budget plan "%s" first.'
+    ) % (analytic_name, plan_name)

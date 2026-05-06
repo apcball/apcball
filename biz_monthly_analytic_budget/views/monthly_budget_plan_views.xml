@@ -1,5 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- ====================== budget.commitment INLINE LIST ====================== -->
+    <record id="view_budget_commitment_list" model="ir.ui.view">
+        <field name="name">budget.commitment.list</field>
+        <field name="model">budget.commitment</field>
+        <field name="arch" type="xml">
+            <tree string="Commitments" create="false" edit="false" delete="false" decoration-muted="state == 'released'">
+                <field name="date"/>
+                <field name="name"/>
+                <field name="document_ref"/>
+                <button name="action_open_document" type="object" icon="fa-external-link" string="Open Document"/>
+                <field name="analytic_account_id"/>
+                <field name="amount" widget="monetary"/>
+                <field name="state" widget="badge" 
+                       decoration-info="state == 'reserved'"
+                       decoration-warning="state == 'used'"
+                       decoration-muted="state == 'released'"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
     <!-- ====================== monthly.budget.line INLINE LIST (sub-view) ===== -->
     <!-- Defined first so it exists when the plan form view is validated          -->
     <record id="view_monthly_budget_line_form_sublist" model="ir.ui.view">
@@ -41,6 +62,11 @@
                             string="Recompute Budget"
                             type="object"
                             invisible="state == 'draft'"/>
+                    <button name="action_backfill_monthly_budget_commitments"
+                            string="Backfill Commitments"
+                            type="object"
+                            class="btn-warning"
+                            invisible="state != 'confirmed'"/>
                     <button name="action_amend_budget"
                             string="Amend Budget"
                             type="object"
@@ -63,6 +89,14 @@
                            statusbar_visible="draft,confirmed,closed"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button"
+                                type="object"
+                                name="action_view_commitments"
+                                icon="fa-list-alt">
+                            <field name="commitment_count" widget="statinfo" string="Commitments"/>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name" readonly="1"/>

@@ -3,6 +3,8 @@ import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
+from .budget_utils import format_missing_budget_line_message
+
 _logger = logging.getLogger(__name__)
 
 
@@ -80,16 +82,15 @@ class MonthlyBudgetFixedCost(models.Model):
 
             budget_line = rec._find_budget_line_for_fixed_cost()
             if not budget_line:
-                raise UserError(_(
-                    'No monthly budget line found for analytic account "%s".\n'
-                    'Please add it to the monthly budget plan first.'
-                ) % rec.analytic_account_id.name)
+                raise UserError(
+                    format_missing_budget_line_message(rec.analytic_account_id.name, rec.plan_id.name)
+                )
             
             # --- Concurrency: acquire row-level lock BEFORE reading budget values ---
             self.env['monthly.budget.line']._lock_budget_lines([rec.analytic_account_id.id], rec.plan_id.id)
-            
-            # Re-read budget line AFTER acquiring the lock
-            budget_line.invalidate_recordset(['available_amount'])
+
+            # Re-read the current snapshot AFTER acquiring the lock
+            rec.plan_id._refresh_budget_snapshot(refresh_report=False)
 
             if budget_line.available_amount < rec.amount:
                 raise UserError(_("Insufficient budget for fixed cost: %s. Available is %s, required is %s") % (

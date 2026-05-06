@@ -85,167 +85,65 @@ class MonthlyBudgetReport(models.Model):
 
                 UNION ALL
 
-                -- Actual entries (posted vendor bills / credit notes)
+                -- Used entries (monthly budget commitments in used state)
                 SELECT
                     'actual' as entry_type,
-                    am.name as name,
-                    (CASE WHEN am.move_type = 'in_refund'
-                          THEN -aml.price_subtotal
-                          ELSE  aml.price_subtotal END)
-                    * CAST(aml.analytic_distribution->>wbl.analytic_account_id::text AS numeric)
-                    / 100.0 as amount,
+                    COALESCE(bc.document_ref, bc.document_model || ':' || bc.document_id::text) as name,
+                    bc.amount as amount,
                     0.0 as budget_amt,
-                    (CASE WHEN am.move_type = 'in_refund'
-                          THEN -aml.price_subtotal
-                          ELSE  aml.price_subtotal END)
-                    * CAST(aml.analytic_distribution->>wbl.analytic_account_id::text AS numeric)
-                    / 100.0 as actual_amt,
-                    -((CASE WHEN am.move_type = 'in_refund'
-                            THEN -aml.price_subtotal
-                            ELSE  aml.price_subtotal END)
-                      * CAST(aml.analytic_distribution->>wbl.analytic_account_id::text AS numeric)
-                      / 100.0) as remaining_amt,
+                    bc.amount as actual_amt,
+                    -bc.amount as remaining_amt,
                     100.0 as utilization,
-                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) as date,
-                    am.company_id as company_id,
+                    bc.date as date,
+                    bc.company_id as company_id,
                     wbl.id as budget_line_id,
                     wbl.plan_id as plan_id,
                     wbl.analytic_account_id as analytic_account_id,
                     wbl.department_id as department_id,
                     wbl.project_id as project_id,
                     wbl.category as category
-                FROM account_move_line aml
-                JOIN account_move am ON aml.move_id = am.id
+                FROM budget_commitment bc
                 JOIN monthly_budget_plan wbp ON
-                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) >= wbp.date_from AND
-                    COALESCE(am.invoice_date_due, am.invoice_date, aml.date) <= wbp.date_to AND
-                    wbp.company_id = am.company_id AND
+                    bc.date >= wbp.date_from AND
+                    bc.date <= wbp.date_to AND
+                    wbp.company_id = bc.company_id AND
                     wbp.state = 'confirmed'
-                JOIN monthly_budget_line wbl ON wbl.plan_id = wbp.id
-                WHERE am.state IN ('draft', 'posted')
-                  AND am.move_type IN ('in_invoice', 'in_refund')
-                  AND aml.analytic_distribution IS NOT NULL
-                  AND jsonb_typeof(aml.analytic_distribution) = 'object'
-                  AND aml.analytic_distribution ? wbl.analytic_account_id::text
+                JOIN monthly_budget_line wbl ON
+                    wbl.plan_id = wbp.id AND
+                    wbl.analytic_account_id = bc.analytic_account_id
+                WHERE bc.budget_source = 'monthly'
+                  AND bc.state = 'used'
 
                 UNION ALL
 
-                -- Reserved: Active PRs (not yet converted to a confirmed PO)
+                -- Reserved: monthly budget commitments in reserved state
                 SELECT
                     'reserved' as entry_type,
-                    pr.name as name,
-                    (prl.price_subtotal * CAST(dist.value AS numeric) / 100.0) as amount,
+                    COALESCE(bc.document_ref, bc.document_model || ':' || bc.document_id::text) as name,
+                    bc.amount as amount,
                     0.0 as budget_amt,
                     0.0 as actual_amt,
-                    -(prl.price_subtotal * CAST(dist.value AS numeric) / 100.0) as remaining_amt,
+                    -bc.amount as remaining_amt,
                     0.0 as utilization,
-                    pr.payment_date as date,
-                    pr.company_id as company_id,
+                    bc.date as date,
+                    bc.company_id as company_id,
                     wbl.id as budget_line_id,
                     wbl.plan_id as plan_id,
                     wbl.analytic_account_id as analytic_account_id,
                     wbl.department_id as department_id,
                     wbl.project_id as project_id,
                     wbl.category as category
-                FROM requisition_order prl
-                JOIN employee_purchase_requisition pr ON prl.requisition_product_id = pr.id
-                CROSS JOIN jsonb_each_text(prl.analytic_distribution) AS dist(key, value)
+                FROM budget_commitment bc
                 JOIN monthly_budget_plan wbp ON
-                    pr.payment_date >= wbp.date_from AND
-                    pr.payment_date <= wbp.date_to AND
-                    wbp.company_id = pr.company_id AND
+                    bc.date >= wbp.date_from AND
+                    bc.date <= wbp.date_to AND
+                    wbp.company_id = bc.company_id AND
                     wbp.state = 'confirmed'
                 JOIN monthly_budget_line wbl ON
                      wbl.plan_id = wbp.id AND
-                     wbl.analytic_account_id::text = dist.key
-                WHERE pr.state NOT IN ('draft', 'cancel', 'cancelled', 'rejected')
-                  AND prl.analytic_distribution IS NOT NULL
-                  AND jsonb_typeof(prl.analytic_distribution) = 'object'
-                  AND NOT EXISTS (
-                      SELECT 1 FROM purchase_order po
-                      WHERE (po.requisition_order = pr.name
-                             OR po.pr_number = pr.name
-                             OR po.origin = pr.name)
-                        AND po.state IN ('purchase', 'done')
-                  )
-
-                UNION ALL
-
-                -- Reserved: RFQs (Draft POs) not linked to an active PR
-                SELECT
-                    'reserved' as entry_type,
-                    po.name as name,
-                    (pol.price_subtotal * CAST(dist.value AS numeric) / 100.0) as amount,
-                    0.0 as budget_amt,
-                    0.0 as actual_amt,
-                    -(pol.price_subtotal * CAST(dist.value AS numeric) / 100.0) as remaining_amt,
-                    0.0 as utilization,
-                    po.payment_date as date,
-                    po.company_id as company_id,
-                    wbl.id as budget_line_id,
-                    wbl.plan_id as plan_id,
-                    wbl.analytic_account_id as analytic_account_id,
-                    wbl.department_id as department_id,
-                    wbl.project_id as project_id,
-                    wbl.category as category
-                FROM purchase_order_line pol
-                JOIN purchase_order po ON pol.order_id = po.id
-                CROSS JOIN jsonb_each_text(pol.analytic_distribution) AS dist(key, value)
-                JOIN monthly_budget_plan wbp ON
-                    po.payment_date >= wbp.date_from AND
-                    po.payment_date <= wbp.date_to AND
-                    wbp.company_id = po.company_id AND
-                    wbp.state = 'confirmed'
-                JOIN monthly_budget_line wbl ON
-                     wbl.plan_id = wbp.id AND
-                     wbl.analytic_account_id::text = dist.key
-                WHERE po.state = 'draft'
-                  AND pol.analytic_distribution IS NOT NULL
-                  AND jsonb_typeof(pol.analytic_distribution) = 'object'
-                  AND NOT EXISTS (
-                      SELECT 1 FROM employee_purchase_requisition pr
-                      WHERE (po.requisition_order = pr.name
-                             OR po.pr_number = pr.name
-                             OR po.origin = pr.name)
-                        AND pr.state NOT IN ('draft', 'cancel', 'cancelled', 'rejected')
-                  )
-
-                UNION ALL
-
-                -- Reserved: Unbilled Confirmed POs
-                SELECT
-                    'reserved' as entry_type,
-                    po.name as name,
-                    ((GREATEST(0, pol.product_qty - pol.qty_invoiced) * pol.price_unit)
-                     * CAST(dist.value AS numeric) / 100.0) as amount,
-                    0.0 as budget_amt,
-                    0.0 as actual_amt,
-                    -((GREATEST(0, pol.product_qty - pol.qty_invoiced) * pol.price_unit)
-                      * CAST(dist.value AS numeric) / 100.0) as remaining_amt,
-                    0.0 as utilization,
-                    COALESCE(po.payment_date, po.date_order::date) as date,
-                    po.company_id as company_id,
-                    wbl.id as budget_line_id,
-                    wbl.plan_id as plan_id,
-                    wbl.analytic_account_id as analytic_account_id,
-                    wbl.department_id as department_id,
-                    wbl.project_id as project_id,
-                    wbl.category as category
-                FROM purchase_order_line pol
-                JOIN purchase_order po ON pol.order_id = po.id
-                CROSS JOIN jsonb_each_text(pol.analytic_distribution) AS dist(key, value)
-                JOIN monthly_budget_plan wbp ON
-                    COALESCE(po.payment_date, po.date_order::date) >= wbp.date_from AND
-                    COALESCE(po.payment_date, po.date_order::date) <= wbp.date_to AND
-                    wbp.company_id = po.company_id AND
-                    wbp.state = 'confirmed'
-                JOIN monthly_budget_line wbl ON
-                     wbl.plan_id = wbp.id AND
-                     wbl.analytic_account_id::text = dist.key
-                WHERE po.state IN ('purchase', 'done')
-                  AND (pol.product_qty - pol.qty_invoiced) > 0
-                  AND pol.analytic_distribution IS NOT NULL
-                  AND jsonb_typeof(pol.analytic_distribution) = 'object'
+                     wbl.analytic_account_id = bc.analytic_account_id
+                WHERE bc.budget_source = 'monthly'
+                  AND bc.state = 'reserved'
 
             )
             SELECT

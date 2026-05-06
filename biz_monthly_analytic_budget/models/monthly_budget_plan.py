@@ -4,6 +4,12 @@ import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
+from .budget_utils import (
+    RESERVED_PR_STATES,
+    extract_analytic_amounts,
+    filter_analytic_totals_for_plan,
+)
+
 _logger = logging.getLogger(__name__)
 
 _MONTH_SELECTION = [
@@ -136,6 +142,43 @@ class MonthlyBudgetPlan(models.Model):
     )
 
     # ── computed totals ──────────────────────────────────────────
+    
+    commitment_count = fields.Integer(
+        string='Commitments',
+        compute='_compute_commitment_count'
+    )
+
+    def _compute_commitment_count(self):
+        Commitment = self.env['budget.commitment'].sudo()
+        for plan in self:
+            count = Commitment.search_count([
+                ('budget_source', '=', 'monthly'),
+                ('date', '>=', plan.date_from),
+                ('date', '<=', plan.date_to),
+                ('company_id', '=', plan.company_id.id),
+                ('state', 'in', ('reserved', 'used')),
+            ])
+            plan.commitment_count = count
+
+    def action_view_commitments(self):
+        self.ensure_one()
+        return {
+            'name': _('Budget Commitments (Reserved & Used)'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'budget.commitment',
+            'view_mode': 'list,form',
+            'domain': [
+                ('budget_source', '=', 'monthly'),
+                ('date', '>=', self.date_from),
+                ('date', '<=', self.date_to),
+                ('company_id', '=', self.company_id.id),
+                ('state', 'in', ('reserved', 'used')),
+            ],
+            'context': {
+                'default_budget_source': 'monthly',
+                'default_company_id': self.company_id.id,
+            }
+        }
 
     allocated_amount = fields.Monetary(
         string='Total Allocated',
@@ -221,8 +264,32 @@ class MonthlyBudgetPlan(models.Model):
         current transaction sees consistent values immediately.
         """
         self.ensure_one()
+        # Clear any cached computed values before recomputing so opened forms
+        # do not keep showing stale reserved/used totals after budget changes.
+        self.invalidate_recordset([
+            'allocated_amount',
+            'reserved_amount',
+            'used_amount',
+            'available_amount',
+            'allocated_percentage',
+            'carried_amount',
+        ])
+        self.budget_line_ids.invalidate_recordset([
+            'reserved_amount',
+            'used_amount',
+            'available_amount',
+            'utilization_rate',
+        ])
         self.budget_line_ids._recompute_line_balance()
         self._compute_totals()
+        self.invalidate_recordset([
+            'allocated_amount',
+            'reserved_amount',
+            'used_amount',
+            'available_amount',
+            'allocated_percentage',
+            'carried_amount',
+        ])
         if refresh_report:
             try:
                 self.env['monthly.budget.report'].refresh_materialized_view()
@@ -230,7 +297,319 @@ class MonthlyBudgetPlan(models.Model):
                 _logger.warning(
                     'Could not refresh budget report MV after budget snapshot refresh: %s',
                     e,
-                )
+            )
+
+    def _filter_plan_analytic_totals(self, analytic_totals):
+        """
+        Restrict document analytic totals to the analytics defined on this plan.
+        """
+        self.ensure_one()
+        return filter_analytic_totals_for_plan(self, analytic_totals)
+
+    def _sync_existing_pr_reservations(self):
+        """Backfill/update reservation commitments for PRs already past Head approval."""
+        BudgetLine = self.env['monthly.budget.line']
+        Commitment = self.env['budget.commitment'].sudo()
+        PurchaseOrder = self.env['purchase.order'].sudo()
+        engine = self.env['budget.engine']
+
+        synced_count = 0
+        for plan in self:
+            if not plan.date_from or not plan.date_to:
+                continue
+
+            prs = self.env['employee.purchase.requisition'].sudo().search([
+                ('state', 'in', RESERVED_PR_STATES),
+                ('payment_date', '>=', plan.date_from),
+                ('payment_date', '<=', plan.date_to),
+                ('company_id', '=', plan.company_id.id),
+            ])
+            if not prs:
+                continue
+
+            pr_names = [name for name in prs.mapped('name') if name]
+            confirmed_pos = PurchaseOrder.search([
+                ('state', 'in', ['purchase', 'done']),
+                ('company_id', '=', plan.company_id.id),
+                '|', '|',
+                ('requisition_order', 'in', pr_names),
+                ('pr_number', 'in', pr_names),
+                ('origin', 'in', pr_names),
+            ]) if pr_names else PurchaseOrder.browse()
+            confirmed_pr_names = set()
+            for po in confirmed_pos:
+                for value in (getattr(po, 'requisition_order', '') or '',
+                              getattr(po, 'pr_number', '') or '',
+                              po.origin or ''):
+                    if value:
+                        confirmed_pr_names.add(value.strip())
+
+            for pr in prs.filtered(lambda rec: rec.name not in confirmed_pr_names):
+                analytic_totals = {}
+                for line in pr.requisition_order_ids:
+                    for account_id, amount in extract_analytic_amounts(line, BudgetLine):
+                        analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+
+                analytic_totals, _ignored_totals = plan._filter_plan_analytic_totals(analytic_totals)
+
+                for account_id, amount in analytic_totals.items():
+                    if not amount:
+                        continue
+                    budget_line = BudgetLine._find_budget_line(
+                        plan, {'analytic_account_id': account_id}, log_fallback=False
+                    )
+                    if not budget_line:
+                        continue
+
+                    used_commitment = Commitment.search([
+                        ('document_model', '=', pr._name),
+                        ('document_id', '=', pr.id),
+                        ('analytic_account_id', '=', account_id),
+                        ('budget_source', '=', 'monthly'),
+                        ('state', '=', 'used'),
+                    ], limit=1)
+                    if used_commitment:
+                        continue
+
+                    reserved_commitments = Commitment.search([
+                        ('document_model', '=', pr._name),
+                        ('document_id', '=', pr.id),
+                        ('analytic_account_id', '=', account_id),
+                        ('budget_source', '=', 'monthly'),
+                        ('state', '=', 'reserved'),
+                    ], order='id asc')
+                    note = _('Reserved from PR %s - %s') % (
+                        pr.name,
+                        self.env['account.analytic.account'].sudo().browse(account_id).display_name,
+                    )
+                    if reserved_commitments:
+                        primary = reserved_commitments[0]
+                        duplicate_reservations = reserved_commitments - primary
+                        if duplicate_reservations:
+                            duplicate_reservations.action_release()
+                        primary.write({
+                            'amount': amount,
+                            'date': pr.payment_date,
+                            'company_id': pr.company_id.id,
+                            'note': note,
+                        })
+                    else:
+                        engine.reserve_budget({
+                            'budget_source': 'monthly',
+                            'document_model': pr._name,
+                            'document_id': pr.id,
+                            'amount': amount,
+                            'date': pr.payment_date,
+                            'company_id': pr.company_id.id,
+                            'analytic_account_id': account_id,
+                            'note': note,
+                        })
+                    synced_count += 1
+
+        return synced_count
+
+    def _sync_existing_po_reservations(self):
+        """Backfill/update used commitments for confirmed POs that already exist."""
+        BudgetLine = self.env['monthly.budget.line']
+        Commitment = self.env['budget.commitment'].sudo()
+        PurchaseOrder = self.env['purchase.order'].sudo()
+        engine = self.env['budget.engine']
+
+        synced_count = 0
+        for plan in self:
+            if not plan.date_from or not plan.date_to:
+                continue
+
+            plan_start = fields.Datetime.to_datetime(plan.date_from)
+            plan_end = fields.Datetime.to_datetime(plan.date_to).replace(hour=23, minute=59, second=59)
+
+            pos = PurchaseOrder.search([
+                ('state', 'in', ['purchase', 'done']),
+                ('company_id', '=', plan.company_id.id),
+                '|',
+                '&', ('payment_date', '>=', plan.date_from),
+                     ('payment_date', '<=', plan.date_to),
+                '&', ('payment_date', '=', False),
+                     '&', ('date_order', '>=', plan_start),
+                          ('date_order', '<=', plan_end),
+            ])
+            if not pos:
+                continue
+
+            for po in pos:
+                analytic_totals = {}
+                for line in po.order_line:
+                    for account_id, amount in extract_analytic_amounts(line, BudgetLine):
+                        analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+
+                analytic_totals, _ignored_totals = plan._filter_plan_analytic_totals(analytic_totals)
+                if not analytic_totals:
+                    continue
+
+                document_model, document_id = po._get_budget_document_identity()
+                po_date = po.payment_date or (po.date_order.date() if po.date_order else plan.date_from)
+                for account_id, amount in analytic_totals.items():
+                    if not amount:
+                        continue
+
+                    budget_line = BudgetLine._find_budget_line(
+                        plan, {'analytic_account_id': account_id}, log_fallback=False
+                    )
+                    if not budget_line:
+                        continue
+
+                    used_commitments = Commitment.search([
+                        ('document_model', '=', document_model),
+                        ('document_id', '=', document_id),
+                        ('analytic_account_id', '=', account_id),
+                        ('budget_source', '=', 'monthly'),
+                        ('state', '=', 'used'),
+                    ], order='id asc')
+
+                    note = _('Consumed by PO %s - %s') % (
+                        po.name,
+                        self.env['account.analytic.account'].sudo().browse(account_id).display_name,
+                    )
+                    if used_commitments:
+                        primary = used_commitments[0]
+                        duplicate_used = used_commitments - primary
+                        if duplicate_used:
+                            duplicate_used.action_release()
+                        primary.write({
+                            'amount': amount,
+                            'date': po_date,
+                            'company_id': po.company_id.id,
+                            'note': note,
+                        })
+                    else:
+                        engine.consume_budget({
+                            'budget_source': 'monthly',
+                            'document_model': document_model,
+                            'document_id': document_id,
+                            'amount': amount,
+                            'date': po_date,
+                            'company_id': po.company_id.id,
+                            'analytic_account_id': account_id,
+                            'note': note,
+                        })
+                        
+                    # Also clean up stale reserved
+                    stale_reserved = Commitment.search([
+                        ('document_model', '=', document_model),
+                        ('document_id', '=', document_id),
+                        ('analytic_account_id', '=', account_id),
+                        ('budget_source', '=', 'monthly'),
+                        ('state', '=', 'reserved'),
+                    ])
+                    if stale_reserved:
+                        stale_reserved.action_release()
+                        
+                    synced_count += 1
+
+        return synced_count
+
+    def _sync_existing_rfq_reservations(self):
+        """Backfill/update reservation commitments for direct RFQs / draft POs."""
+        PurchaseOrder = self.env['purchase.order'].sudo()
+
+        synced_count = 0
+        for plan in self:
+            if not plan.date_from or not plan.date_to:
+                continue
+
+            rfqs = PurchaseOrder.search([
+                ('state', 'in', ['draft', 'sent', 'to approve']),
+                ('company_id', '=', plan.company_id.id),
+            ])
+            if not rfqs:
+                continue
+
+            for po in rfqs:
+                po_date = po.payment_date or (po.date_order.date() if po.date_order else False)
+                if not po_date or not (plan.date_from <= po_date <= plan.date_to):
+                    continue
+                if po._has_active_source_requisition_for_plan(plan):
+                    continue
+                before = self.env['budget.commitment'].sudo().search_count([
+                    ('document_model', '=', po._name),
+                    ('document_id', '=', po.id),
+                    ('budget_source', '=', 'monthly'),
+                    ('state', '=', 'reserved'),
+                ])
+                po._reserve_monthly_budget_for_direct_rfq()
+                after = self.env['budget.commitment'].sudo().search_count([
+                    ('document_model', '=', po._name),
+                    ('document_id', '=', po.id),
+                    ('budget_source', '=', 'monthly'),
+                    ('state', '=', 'reserved'),
+                ])
+                if after > before:
+                    synced_count += 1
+
+        return synced_count
+
+    def _sync_existing_bill_reservations(self):
+        """Backfill/update reservation commitments for vendor bills."""
+        AccountMove = self.env['account.move'].sudo()
+
+        synced_count = 0
+        for plan in self:
+            if not plan.date_from or not plan.date_to:
+                continue
+
+            bills = AccountMove.search([
+                ('move_type', 'in', ('in_invoice', 'in_refund')),
+                ('state', 'in', ('draft', 'posted')),
+                ('company_id', '=', plan.company_id.id),
+            ])
+            if not bills:
+                continue
+
+            for bill in bills:
+                bill_date = bill._get_bill_target_date()
+                if not bill_date or not (plan.date_from <= bill_date <= plan.date_to):
+                    continue
+                before = self.env['budget.commitment'].sudo().search_count([
+                    ('document_model', '=', bill._name),
+                    ('document_id', '=', bill.id),
+                    ('budget_source', '=', 'monthly'),
+                    ('state', 'in', ('reserved', 'used')),
+                ])
+                bill._sync_monthly_bill_budget()
+                after = self.env['budget.commitment'].sudo().search_count([
+                    ('document_model', '=', bill._name),
+                    ('document_id', '=', bill.id),
+                    ('budget_source', '=', 'monthly'),
+                    ('state', 'in', ('reserved', 'used')),
+                ])
+                if after > before:
+                    synced_count += 1
+
+        return synced_count
+
+    def _sync_existing_reservations(self):
+        """Backfill/update commitments for documents that predate the active plan."""
+        self.ensure_one()
+        synced_pr_count = self._sync_existing_pr_reservations()
+        synced_po_count = self._sync_existing_po_reservations()
+        synced_rfq_count = self._sync_existing_rfq_reservations()
+        synced_bill_count = self._sync_existing_bill_reservations()
+
+        if synced_pr_count or synced_po_count or synced_rfq_count or synced_bill_count:
+            parts = []
+            if synced_pr_count:
+                parts.append(_("PR reservations: %s") % synced_pr_count)
+            if synced_po_count:
+                parts.append(_("PO reservations: %s") % synced_po_count)
+            if synced_rfq_count:
+                parts.append(_("RFQ reservations: %s") % synced_rfq_count)
+            if synced_bill_count:
+                parts.append(_("Bill reservations: %s") % synced_bill_count)
+            self.message_post(
+                body=_("Synced monthly budget commitments (%s).") % ", ".join(parts)
+            )
+
+        return synced_pr_count, synced_po_count, synced_rfq_count, synced_bill_count
 
     # ── ORM ──────────────────────────────────────────────────────
 
@@ -272,11 +651,9 @@ class MonthlyBudgetPlan(models.Model):
         if self.state != 'draft':
             raise ValidationError(_('Only draft plans can be confirmed.'))
         self.write({'state': 'confirmed'})
-        # Refresh materialized view so dashboard shows updated data immediately
-        try:
-            self.env['monthly.budget.report'].refresh_materialized_view()
-        except Exception as e:
-            _logger.warning('Could not refresh budget report MV after plan confirm: %s', e)
+        self._sync_existing_reservations()
+        # Single snapshot + MV refresh at the end (avoids double refresh from _sync_existing_reservations)
+        self._refresh_budget_snapshot(refresh_report=True)
 
     def action_close(self):
         self.ensure_one()
@@ -298,20 +675,48 @@ class MonthlyBudgetPlan(models.Model):
         Recompute budget by refreshing all live computed fields.
 
         How it works:
-        - reserved_amount, used_amount are all live
-          computed fields that read directly from PRs, POs, and Invoices.
-        - We invalidate the cache and explicitly invoke the compute methods so
-          plan totals are refreshed in the same transaction.
-        - The materialized view is refreshed for dashboard accuracy.
-
-        Note: We do NOT re-create commitment audit records here.
-        Those are created during the normal PR/PO workflow and serve as
-        an audit trail only — they are not the source of truth for amounts.
+        - It first clears all existing monthly commitments for this plan's period.
+        - Then it loops through PRs, POs, RFQs, and Bills to rebuild the true audit trail.
+        - Finally, it refreshes the materialized views.
         """
         self.ensure_one()
 
+        # Hard reset: clear all existing monthly commitments for this plan period
+        if self.date_from and self.date_to:
+            domain = [
+                ('budget_source', '=', 'monthly'),
+                ('company_id', '=', self.company_id.id),
+                ('date', '>=', self.date_from),
+                ('date', '<=', self.date_to),
+            ]
+            old_commitments = self.env['budget.commitment'].sudo().search(domain)
+            if old_commitments:
+                old_commitments.unlink()
+
+        self._sync_existing_reservations()
+
         # Refresh the current plan snapshot and dashboard MV in one place.
         self._refresh_budget_snapshot(refresh_report=True)
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'reload',
+        }
+
+    def action_backfill_monthly_budget_commitments(self):
+        """One-time backfill for legacy documents and commitments."""
+        self.ensure_one()
+        if self.state != 'confirmed':
+            raise ValidationError(_("Only confirmed plans can run backfill."))
+
+        pr_count, po_count, rfq_count, bill_count = self._sync_existing_reservations()
+        self._refresh_budget_snapshot(refresh_report=True)
+
+        self.message_post(
+            body=_(
+                "One-time budget backfill completed. PR: %s, PO: %s, RFQ: %s, Bill: %s"
+            ) % (pr_count, po_count, rfq_count, bill_count)
+        )
 
         return {
             'type': 'ir.actions.client',

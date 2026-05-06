@@ -58,12 +58,41 @@ export class BudgetDashboard extends Component {
                 console.warn("Chart.js might already be loaded in the environment.");
             }
             await this.loadFilterOptions();
-            // Auto-select the most recent plan if available
-            if (this.state.filterOptions.plans.length > 0) {
-                this.state.filters.plan_id = String(this.state.filterOptions.plans[0].id);
-            }
+            this.selectDefaultPlan();
             await this.loadData();
         });
+    }
+
+    getCurrentMonthPlan(plans) {
+        const today = new Date();
+        const currentMonth = today.getMonth() + 1;
+        const currentYear = today.getFullYear();
+        return (plans || []).find((plan) => {
+            const planMonth = parseInt(plan.month, 10);
+            const planYear = parseInt(plan.year, 10);
+            return planMonth === currentMonth && planYear === currentYear;
+        }) || null;
+    }
+
+    selectDefaultPlan() {
+        const plans = this.state.filterOptions.plans || [];
+        if (!plans.length) {
+            this.state.filters.plan_id = '';
+            return;
+        }
+
+        const planIds = plans.map((plan) => String(plan.id));
+        const currentSelected = this.state.filters.plan_id && planIds.includes(this.state.filters.plan_id)
+            ? this.state.filters.plan_id
+            : '';
+        const currentMonthPlan = this.getCurrentMonthPlan(plans);
+
+        if (currentMonthPlan) {
+            this.state.filters.plan_id = String(currentMonthPlan.id);
+            return;
+        }
+
+        this.state.filters.plan_id = currentSelected || String(plans[0].id);
     }
 
     async loadFilterOptions() {
@@ -112,11 +141,7 @@ export class BudgetDashboard extends Component {
             const companyId = this.state.filters.company_id || null;
             const plans = await this.rpc('/budget/dashboard/plans', { company_id: companyId ? parseInt(companyId) : null });
             this.state.filterOptions.plans = plans || [];
-            // Reset plan selection if current plan not in new list
-            const planIds = (plans || []).map(p => String(p.id));
-            if (!planIds.includes(this.state.filters.plan_id)) {
-                this.state.filters.plan_id = planIds.length > 0 ? planIds[0] : '';
-            }
+            this.selectDefaultPlan();
         } catch (e) {
             console.error("Failed to reload plans", e);
         }

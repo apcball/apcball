@@ -22,6 +22,7 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
     document_type = fields.Selection([
         ('pr', 'Purchase Requisition (PR)'),
         ('po', 'Purchase Order (PO)'),
+        ('bill', 'Vendor Bill (Bill)'),
     ], string='Document Type', required=True, tracking=True)
 
     ref_pr_id = fields.Many2one(
@@ -33,6 +34,12 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
     ref_po_id = fields.Many2one(
         'purchase.order',
         string='Purchase Order',
+        ondelete='cascade',
+        index=True,
+    )
+    ref_bill_id = fields.Many2one(
+        'account.move',
+        string='Vendor Bill',
         ondelete='cascade',
         index=True,
     )
@@ -90,19 +97,28 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
         string='Company',
         default=lambda self: self.env.company,
     )
+    plan_id = fields.Many2one(
+        'monthly.budget.plan',
+        string='Budget Plan',
+        ondelete='set null',
+        index=True,
+        help='Active monthly budget plan at the time of request.',
+    )
 
     document_ref = fields.Char(
         string='Document',
         compute='_compute_document_ref',
     )
 
-    @api.depends('ref_pr_id', 'ref_po_id', 'document_type')
+    @api.depends('ref_pr_id', 'ref_po_id', 'ref_bill_id', 'document_type')
     def _compute_document_ref(self):
         for rec in self:
             if rec.document_type == 'pr' and rec.ref_pr_id:
                 rec.document_ref = rec.ref_pr_id.name
             elif rec.document_type == 'po' and rec.ref_po_id:
                 rec.document_ref = rec.ref_po_id.name
+            elif rec.document_type == 'bill' and rec.ref_bill_id:
+                rec.document_ref = rec.ref_bill_id.name
             else:
                 rec.document_ref = ''
 
@@ -118,8 +134,12 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
         
         # ── Feature 5: Auto-Approve Threshold ────────────────────────
         for rec in records:
-            if rec.state == 'pending' and rec.budget_line_id:
-                plan = rec.budget_line_id.plan_id
+            if rec.state == 'pending':
+                # Resolve the plan: prefer direct plan_id, fallback to budget_line.plan_id
+                plan = rec.plan_id or (rec.budget_line_id.plan_id if rec.budget_line_id else False)
+                if not plan:
+                    continue
+
                 auto_approve = False
                 
                 # Check absolute amount threshold
@@ -262,7 +282,8 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
     def _get_or_create_pending_request(self, document_type, ref_field, ref_id,
                                         budget_line, amount_requested,
                                         amount_used, amount_reserved,
-                                        amount_limit, amount_overage):
+                                        amount_limit, amount_overage,
+                                        plan_id=False):
         domain = [
             ('document_type', '=', document_type),
             (ref_field, '=', ref_id),
@@ -284,5 +305,6 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
             'amount_overage': amount_overage,
             'requester_id': self.env.uid,
             'company_id': self.env.company.id,
+            'plan_id': plan_id or False,
         }
         return self.create(vals)

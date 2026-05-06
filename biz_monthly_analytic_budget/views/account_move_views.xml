@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_move_form_inherit_monthly_budget" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.monthly.budget</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="buz_budget_approval_id" invisible="1"/>
+                <field name="buz_budget_approval_state" invisible="1"/>
+                <button name="action_request_monthly_budget_approval"
+                        string="Request Budget Approval"
+                        type="object"
+                        class="btn-danger"
+                        invisible="not budget_warning or buz_budget_approval_state == 'approved' or state != 'draft'"/>
+            </xpath>
+            <xpath expr="//field[@name='invoice_date']" position="after">
+                <field name="monthly_budget_plan_id" 
+                       readonly="1" 
+                       invisible="move_type not in ('in_invoice', 'in_refund')"/>
+                <field name="budget_warning" invisible="1"/>
+            </xpath>
+            <xpath expr="//notebook" position="before">
+                <div class="o_row" invisible="move_type not in ('in_invoice', 'in_refund')">
+                    <field name="monthly_budget_check_result" widget="html" nolabel="1"/>
+                    <button name="action_check_monthly_budget"
+                            string="Check Budget"
+                            type="object"
+                            class="btn-secondary ms-2 align-self-start"
+                            invisible="not monthly_budget_plan_id or state != 'draft'"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
