@@ -1,20 +1,15 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 from .budget_utils import (
+    collect_analytic_ids_from_lines,
     extract_analytic_amounts,
-    filter_analytic_totals_for_plan,
     find_active_monthly_plan,
-    format_ignored_analytic_accounts_message,
-    format_missing_budget_line_message,
-    format_no_analytic_distribution_message,
+    get_first_plan_from_groups,
+    split_analytic_totals_by_plan,
 )
-
-from odoo.exceptions import UserError
-from markupsafe import escape
-from odoo import _, api, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -79,7 +74,17 @@ class AccountMove(models.Model):
                 continue
             target_date = move._get_bill_target_date()
             if target_date:
-                plan = find_active_monthly_plan(self.env, target_date, move.company_id.id)
+                analytic_totals = {}
+                for line in move.invoice_line_ids:
+                    for account_id, amount in extract_analytic_amounts(line, self.env['monthly.budget.line']):
+                        analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+                grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
+                    self.env, target_date, move.company_id.id, analytic_totals,
+                )
+                plan = get_first_plan_from_groups(grouped_totals) or find_active_monthly_plan(
+                    self.env, target_date, move.company_id.id,
+                    analytic_account_ids=collect_analytic_ids_from_lines(move.invoice_line_ids),
+                )
                 move.monthly_budget_plan_id = plan.id if plan else False
             else:
                 move.monthly_budget_plan_id = False
@@ -97,7 +102,6 @@ class AccountMove(models.Model):
         return moves
 
     def write(self, vals):
-        prev_states = {rec.id: rec.state for rec in self}
         if 'invoice_date_due' in vals and not self.env.context.get('skip_monthly_bill_budget_sync'):
             vals = dict(vals)
             vals['monthly_bill_due_date_from_po'] = False
@@ -113,9 +117,8 @@ class AccountMove(models.Model):
             'purchase_id',
         )):
             for move in self:
-                prev_state = prev_states.get(move.id)
-                move._sync_monthly_bill_budget(previous_state=prev_state)
-                
+                move._sync_monthly_bill_budget()
+
                 # Trigger PO to recalculate its unbilled reserved amount
                 source_po = move._get_related_purchase_order()
                 if source_po:
@@ -125,10 +128,7 @@ class AccountMove(models.Model):
         return result
 
     def action_post(self):
-        """Synchronize monthly budget when vendor bills are posted."""
-        for move in self:
-            if move.move_type in ('in_invoice', 'in_refund'):
-                move._check_monthly_analytic_budget_limit()
+        """Post vendor bills without monthly budget enforcement."""
         return super().action_post()
 
     def button_draft(self):
@@ -156,10 +156,9 @@ class AccountMove(models.Model):
                 
         return res
 
-    def _sync_monthly_bill_budget(self, previous_state=None):
+    def _sync_monthly_bill_budget(self):
         """Synchronize bill commitments based on source and current state."""
         BudgetLine = self.env['monthly.budget.line']
-        engine = self.env['budget.engine']
         for move in self:
             if move.move_type not in ('in_invoice', 'in_refund'):
                 continue
@@ -181,26 +180,29 @@ class AccountMove(models.Model):
             if not target_date:
                 continue
 
-            plan = find_active_monthly_plan(self.env, target_date, move.company_id.id)
-            if not plan:
-                continue
-
             analytic_totals = {}
             for line in move.invoice_line_ids:
                 for account_id, amount in extract_analytic_amounts(line, BudgetLine):
                     analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
-            analytic_totals, _ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
-            if not analytic_totals:
+            grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
+                self.env, target_date, move.company_id.id, analytic_totals,
+            )
+            if not grouped_totals:
                 continue
 
             if move.state == 'cancel':
-                move._release_monthly_bill_budget(plan, analytic_totals, target_date)
+                for plan, plan_totals in grouped_totals:
+                    move._release_monthly_bill_budget(plan, plan_totals, target_date)
                 continue
 
-            # Both draft and posted bills are considered "used" budget
-            if move.state in ('draft', 'posted'):
-                move._sync_monthly_bill_usage(plan, analytic_totals, target_date)
+            # Draft bills → reserved commitment; Posted bills → used commitment
+            if move.state == 'draft':
+                for plan, plan_totals in grouped_totals:
+                    move._sync_monthly_bill_reservation(plan, plan_totals, target_date)
+            elif move.state == 'posted':
+                for plan, plan_totals in grouped_totals:
+                    move._sync_monthly_bill_usage(plan, plan_totals, target_date)
 
     def _get_related_purchase_order(self):
         """Return the PO(s) linked to this bill, if any."""
@@ -425,15 +427,15 @@ class AccountMove(models.Model):
             target_date = move._get_bill_target_date()
             if not target_date:
                 target_date = fields.Date.context_today(move)
-            plan = find_active_monthly_plan(self.env, target_date, move.company_id.id)
             analytic_totals = {}
-            if plan:
-                BudgetLine = self.env['monthly.budget.line']
-                for line in move.invoice_line_ids:
-                    for account_id, amount in extract_analytic_amounts(line, BudgetLine):
-                        analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
-                analytic_totals, _ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
-            if not plan or not analytic_totals:
+            BudgetLine = self.env['monthly.budget.line']
+            for line in move.invoice_line_ids:
+                for account_id, amount in extract_analytic_amounts(line, BudgetLine):
+                    analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+            grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
+                self.env, target_date, move.company_id.id, analytic_totals,
+            )
+            if not grouped_totals:
                 self.env['budget.engine'].release_budget({
                     'budget_source': 'monthly',
                     'document_model': move._name,
@@ -443,7 +445,8 @@ class AccountMove(models.Model):
                 })
                 continue
 
-            move._release_monthly_bill_budget(plan, analytic_totals, target_date)
+            for plan, plan_totals in grouped_totals:
+                move._release_monthly_bill_budget(plan, plan_totals, target_date)
 
     @api.depends('invoice_line_ids.price_subtotal', 'invoice_line_ids.analytic_distribution', 'invoice_date_due', 'date', 'invoice_date')
     def _compute_monthly_budget_check(self):
@@ -452,212 +455,16 @@ class AccountMove(models.Model):
                 move.monthly_budget_check_result = ''
                 move.budget_warning = False
                 continue
-                
-            target_date = move._get_bill_target_date()
-            if not target_date or not move.invoice_line_ids:
-                move.monthly_budget_check_result = ''
-                move.budget_warning = False
-                continue
-
-            plan = find_active_monthly_plan(self.env, target_date, move.company_id.id)
-            if not plan:
-                move.monthly_budget_check_result = _(
-                    '<div class="alert alert-info">No active monthly analytic budget plan found for the target date.</div>'
-                )
-                move.budget_warning = False
-                continue
-
-            analytic_totals = {}
-            for line in move.invoice_line_ids:
-                for account_id, amount in extract_analytic_amounts(line, self.env['monthly.budget.line']):
-                    analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
-
-            analytic_totals, ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
-
-            if not analytic_totals:
-                move.monthly_budget_check_result = _('<div class="alert alert-info">No matching budget lines.</div>')
-                move.budget_warning = False
-                continue
-
-            html_parts = []
-            has_warning = False
-            AnalyticAccount = self.env['account.analytic.account']
-            BudgetLine = self.env['monthly.budget.line']
-            
-            source_pos = move._get_related_purchase_order()
-            has_po = bool(source_pos)
-            
-            for account_id, bill_amt in analytic_totals.items():
-                analytic = AnalyticAccount.browse(account_id)
-                if not analytic.exists():
-                    continue
-                dims = {'analytic_account_id': account_id}
-                budget_line = BudgetLine._find_budget_line(plan, dims, log_fallback=False)
-                if not budget_line:
-                    html_parts.append('<div class="alert alert-warning">%s</div>' % format_missing_budget_line_message(analytic.name, plan.name))
-                    continue
-                budget_line = budget_line[0]
-                
-                total_committed = budget_line.reserved_amount + budget_line.used_amount
-                
-                # Direct bill, not yet saved/consumed
-                if not has_po and move.state not in ('draft', 'posted'):
-                    total_committed += bill_amt
-                    
-                remaining = budget_line.budget_amount - total_committed
-                is_over = remaining < 0
-                if is_over:
-                    has_warning = True
-                status_class = 'danger' if is_over else 'success'
-                status_icon = '&#10060;' if is_over else '&#9989;'
-                
-                html_parts.append(
-                    '<div class="card mb-2 border-%s">'
-                    '<div class="card-body p-2">'
-                    '<h6 class="card-title">%s %s</h6>'
-                    '<table class="table table-sm table-borderless mb-0">'
-                    '<tr><td>%s</td><td class="text-end">%s</td></tr>'
-                    '<tr><td>%s</td><td class="text-end">%s</td></tr>'
-                    '<tr class="border-top"><td><strong>%s</strong></td>'
-                    '<td class="text-end text-%s"><strong>%s %s</strong></td></tr>'
-                    '</table></div></div>' % (
-                        status_class, status_icon, analytic.name,
-                        _('Monthly Budget'), '{:,.2f}'.format(budget_line.budget_amount),
-                        _('Reserved + Used'), '{:,.2f}'.format(budget_line.reserved_amount + budget_line.used_amount),
-                        _('Remaining After'), status_class, '{:,.2f}'.format(remaining),
-                        _('OK') if not is_over else _('Exceeded!'),
-                    )
-                )
-            move.monthly_budget_check_result = ''.join(html_parts)
-            move.budget_warning = has_warning
+            move.monthly_budget_check_result = ''
+            move.budget_warning = False
 
     def action_check_monthly_budget(self):
         self.ensure_one()
-        self._compute_monthly_budget_check()
         return True
 
     def action_request_monthly_budget_approval(self):
         self.ensure_one()
-        target_date = self._get_bill_target_date()
-        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
-        if not plan:
-            return
-
-        analytic_totals = {}
-        for line in self.invoice_line_ids:
-            for account_id, amount in extract_analytic_amounts(line, self.env['monthly.budget.line']):
-                analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
-
-        analytic_totals, _ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
-        if not analytic_totals:
-            return
-
-        bill_amount = sum(analytic_totals.values())
-        limit_amt = 0.0
-        used = 0.0
-        reserved = 0.0
-        budget_line_names = []
-        BudgetLine = self.env['monthly.budget.line']
-        
-        for account_id, amt in analytic_totals.items():
-            dims = {'analytic_account_id': account_id}
-            bl = BudgetLine._find_budget_line(plan, dims, log_fallback=False)
-            if bl:
-                limit_amt += bl.budget_amount
-                used += bl.used_amount
-                reserved += bl.reserved_amount
-                budget_line_names.append(bl.analytic_account_id.name)
-                
-        overage = max(0.0, used + reserved - limit_amt)
-
-        return {
-            'name': _('Request Monthly Budget Approval'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'monthly.budget.request.reason.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_document_type': 'bill',
-                'default_ref_id': self.id,
-                'default_budget_line_names': ', '.join(budget_line_names),
-                'default_amount_requested': bill_amount,
-                'default_amount_used': used,
-                'default_amount_reserved': reserved,
-                'default_amount_limit': limit_amt,
-                'default_amount_overage': overage,
-                'default_plan_id': plan.id,
-            }
-        }
+        return True
 
     def _check_monthly_analytic_budget_limit(self):
-        self.ensure_one()
-        ApprovalReq = self.env['buz.monthly.budget.approval.request'].sudo()
-        
-        # Bypass if approved
-        approved_bill = ApprovalReq.search([
-            ('document_type', '=', 'bill'),
-            ('ref_bill_id', '=', self.id),
-            ('state', '=', 'approved'),
-        ], limit=1)
-        if approved_bill:
-            return
-            
-        # Bypass if linked to approved PO
-        source_pos = self._get_related_purchase_order()
-        if source_pos:
-            approved_po = ApprovalReq.search([
-                ('document_type', '=', 'po'),
-                ('ref_po_id', 'in', source_pos.ids),
-                ('state', '=', 'approved'),
-            ], limit=1)
-            if approved_po:
-                return
-
-        target_date = self._get_bill_target_date()
-        if not target_date:
-            return
-
-        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
-        if not plan:
-            return
-
-        analytic_totals = {}
-        for line in self.invoice_line_ids:
-            for account_id, amount in extract_analytic_amounts(line, self.env['monthly.budget.line']):
-                analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
-
-        analytic_totals, _ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
-        if not analytic_totals:
-            return
-
-        AnalyticAccount = self.env['account.analytic.account']
-        BudgetLine = self.env['monthly.budget.line']
-        violations = []
-        for account_id, bill_amt in analytic_totals.items():
-            analytic = AnalyticAccount.browse(account_id)
-            if not analytic.exists():
-                continue
-            dims = {'analytic_account_id': account_id}
-            budget_line = BudgetLine._find_budget_line(plan, dims)
-            if not budget_line:
-                raise UserError(format_missing_budget_line_message(analytic.name, plan.name))
-
-            budget_line = budget_line[:1]
-            total_committed = budget_line.reserved_amount + budget_line.used_amount
-            
-            if total_committed > budget_line.budget_amount:
-                violations.append({
-                    'analytic': analytic.name,
-                    'budget': budget_line.budget_amount,
-                    'committed': total_committed,
-                    'overage': total_committed - budget_line.budget_amount,
-                })
-
-        if violations:
-            msg_lines = [_('Monthly Analytic Budget Exceeded!\n')]
-            for v in violations:
-                msg_lines.append(_(
-                    'Analytic: %s\n  Budget: %s | Committed: %s | Over by: %s\n'
-                ) % (v['analytic'], '{:,.2f}'.format(v['budget']), '{:,.2f}'.format(v['committed']), '{:,.2f}'.format(v['overage'])))
-            msg_lines.append(_('\nPlease click "Request Budget Approval" button on the bill.'))
-            raise UserError('\n'.join(msg_lines))
+        return True

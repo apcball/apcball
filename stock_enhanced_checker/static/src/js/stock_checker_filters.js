@@ -1,29 +1,24 @@
 /** @odoo-module **/
 /**
  * File: static/src/js/stock_checker_filters.js
- * Purpose: Filter configuration and search debounce utilities
- *          for the Stock Enhanced Checker dashboard.
+ * Purpose: Filter config, debounce, and formatting utilities.
  */
 
 /**
- * Available filter configurations for the stock checker.
- * Each filter has a key (sent to backend) and a display label.
+ * Filter definitions with icons for the filter bar pills.
  */
 export const STOCK_FILTERS = [
-    { key: 'all',          label: 'All Products' },
-    { key: 'in_stock',     label: 'In Stock' },
-    { key: 'out_of_stock', label: 'Out of Stock' },
-    { key: 'low_stock',    label: 'Low Stock' },
+    { key: 'all',          label: 'All',         icon: 'th-large' },
+    { key: 'in_stock',     label: 'In Stock',    icon: 'check-circle' },
+    { key: 'out_of_stock', label: 'Out of Stock', icon: 'times-circle' },
+    { key: 'low_stock',    label: 'Low Stock',   icon: 'exclamation-circle' },
 ];
 
 /**
- * Create a debounced version of a function.
- * The returned function delays invoking `fn` until after `delay` ms
- * have elapsed since the last time the debounced function was invoked.
- *
- * @param {Function} fn - Function to debounce
- * @param {number} delay - Delay in milliseconds (default 300)
- * @returns {Function} Debounced function
+ * Debounce helper.
+ * @param {Function} fn
+ * @param {number} delay
+ * @returns {Function}
  */
 export function debounce(fn, delay = 300) {
     let timer = null;
@@ -38,15 +33,12 @@ export function debounce(fn, delay = 300) {
 
 /**
  * Format a numeric quantity for display.
- * Shows up to 3 decimal places, removing trailing zeros.
- *
- * @param {number} qty - The quantity value
- * @returns {string} Formatted string
+ * @param {number} qty
+ * @returns {string}
  */
 export function formatQty(qty) {
     if (qty === null || qty === undefined || isNaN(qty)) return '0';
     const n = parseFloat(qty);
-    // Show up to 3 decimals, strip trailing zeros
     return n.toLocaleString(undefined, {
         minimumFractionDigits: 0,
         maximumFractionDigits: 3,

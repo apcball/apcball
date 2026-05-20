@@ -4,33 +4,30 @@ from odoo import models, fields, api
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
-    kanban_location_ids = fields.Many2many(
-        'stock.location',
-        string='Kanban Display Locations',
-        domain=[('usage', '=', 'internal')]
+    kanban_warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Kanban Warehouse',
+    )
+
+    kanban_pricelist_id = fields.Many2one(
+        'product.pricelist',
+        string='Kanban Pricelist',
     )
 
     @api.model
     def get_values(self):
-        res = super(ResConfigSettings, self).get_values()
+        res = super().get_values()
         params = self.env['ir.config_parameter'].sudo()
-        location_ids_str = params.get_param('buz_customize_kanban.kanban_location_ids', default='')
-        
-        if location_ids_str:
-            location_ids = [int(id) for id in location_ids_str.split(',') if id.strip()]
-        else:
-            location_ids = []
-        
-        res.update(kanban_location_ids=[(6, 0, location_ids)])
+        warehouse_id = params.get_param('buz_customize_kanban.kanban_warehouse_id')
+        pricelist_id = params.get_param('buz_customize_kanban.kanban_pricelist_id')
+        res.update(
+            kanban_warehouse_id=int(warehouse_id) if warehouse_id else False,
+            kanban_pricelist_id=int(pricelist_id) if pricelist_id else False,
+        )
         return res
 
     def set_values(self):
-        super(ResConfigSettings, self).set_values()
+        super().set_values()
         params = self.env['ir.config_parameter'].sudo()
-        
-        if self.kanban_location_ids:
-            location_ids_str = ','.join(map(str, self.kanban_location_ids.ids))
-        else:
-            location_ids_str = ''
-        
-        params.set_param('buz_customize_kanban.kanban_location_ids', location_ids_str)
+        params.set_param('buz_customize_kanban.kanban_warehouse_id', self.kanban_warehouse_id.id or '')
+        params.set_param('buz_customize_kanban.kanban_pricelist_id', self.kanban_pricelist_id.id or '')

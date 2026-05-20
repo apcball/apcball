@@ -1,0 +1,11 @@
+{
+  "id": "1",
+  "subject": "Update res_config_settings.py",
+  "description": "Replace the current content of /workspace/buz_customize_kanban/models/res_config_settings.py with:\n\n```python\nfrom odoo import models, fields, api\n\n\nclass ResConfigSettings(models.TransientModel):\n    _inherit = 'res.config.settings'\n\n    kanban_warehouse_id = fields.Many2one(\n        'stock.warehouse',\n        string='Kanban Warehouse',\n    )\n\n    kanban_pricelist_id = fields.Many2one(\n        'product.pricelist',\n        string='Kanban Pricelist',\n    )\n\n    @api.model\n    def get_values(self):\n        res = super().get_values()\n        params = self.env['ir.config_parameter'].sudo()\n        warehouse_id = params.get_param('buz_customize_kanban.kanban_warehouse_id')\n        pricelist_id = params.get_param('buz_customize_kanban.kanban_pricelist_id')\n        res.update(\n            kanban_warehouse_id=int(warehouse_id) if warehouse_id else False,\n            kanban_pricelist_id=int(pricelist_id) if pricelist_id else False,\n        )\n        return res\n\n    def set_values(self):\n        super().set_values()\n        params = self.env['ir.config_parameter'].sudo()\n        params.set_param('buz_customize_kanban.kanban_warehouse_id', self.kanban_warehouse_id.id or '')\n        params.set_param('buz_customize_kanban.kanban_pricelist_id', self.kanban_pricelist_id.id or '')\n```\n\nWrite exactly this content to the file. No other changes.",
+  "owner": "coder",
+  "status": "completed",
+  "blocks": [],
+  "blocked_by": [],
+  "created_at": 1778940995,
+  "updated_at": 1778941035
+}

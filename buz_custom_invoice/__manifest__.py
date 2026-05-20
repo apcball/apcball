@@ -25,6 +25,7 @@
         'report/cerdit_note.xml',
         'report/invoice_tax.xml',
         'report/vendor_credit_note.xml',
+        'report/pos_invoice_tax.xml',
     
         
      ],  

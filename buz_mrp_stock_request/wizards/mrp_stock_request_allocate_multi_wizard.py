@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare, float_round, float_is_zero
+
+_logger = logging.getLogger(__name__)
 
 
 class MrpStockRequestAllocateMultiWizard(models.TransientModel):
@@ -62,9 +65,6 @@ class MrpStockRequestAllocateMultiWizard(models.TransientModel):
     @api.depends("request_id")
     def _compute_has_unallocated_materials(self):
         """Check if there are unallocated materials in the stock request."""
-        import logging
-        _logger = logging.getLogger(__name__)
-        
         for wizard in self:
             if not wizard.request_id:
                 wizard.has_unallocated_materials = False
@@ -106,8 +106,6 @@ class MrpStockRequestAllocateMultiWizard(models.TransientModel):
         wizard = super().create(vals)
         
         if wizard.request_id:
-            import logging
-            _logger = logging.getLogger(__name__)
             _logger.info("=== Creating MO allocations for request: %s", wizard.request_id.name)
             _logger.info("=== MOs in request: %s", wizard.request_id.mo_ids.mapped('name'))
             
@@ -466,26 +464,29 @@ class MrpStockRequestMoAllocationLine(models.TransientModel):
                 }
 
     def _perform_consumption(self):
-        """Perform consumption to MO."""
+        """Record material consumption tracking for this allocation line.
+
+        Physical stock movement is handled by standard Odoo MRP
+        (action_assign + button_mark_done). This method only ensures a raw
+        move exists on the MO for the product, then returns the quantity so
+        the caller can create the mrp.stock.request.allocation record.
+        """
         self.ensure_one()
-        
+
         mo = self.mo_allocation_id.mo_id
         product = self.product_id
         qty_to_consume = self.qty_to_consume
         uom = self.uom_id
-        lot = self.lot_id
 
-        # Find or create raw move
+        # Ensure a raw move exists for this product on the MO
         raw_move = mo.move_raw_ids.filtered(
             lambda m: m.product_id == product and m.state not in ['done', 'cancel']
         )
-        
         if not raw_move:
             if mo.state in ['done', 'cancel']:
                 raise UserError(
                     _("Cannot add materials to MO %s (state: %s)") % (mo.name, mo.state)
                 )
-            
             raw_move = self.env['stock.move'].create({
                 'name': product.display_name,
                 'product_id': product.id,
@@ -496,32 +497,10 @@ class MrpStockRequestMoAllocationLine(models.TransientModel):
                 'raw_material_production_id': mo.id,
                 'company_id': mo.company_id.id,
                 'origin': mo.name,
-                'state': 'confirmed',
             })
             raw_move._action_confirm()
-        else:
-            raw_move = raw_move[0]
 
-        # Convert quantity
-        qty_in_move_uom = uom._compute_quantity(qty_to_consume, raw_move.product_uom)
-
-        # Get location from request
-        location_src = self.mo_allocation_id.wizard_id.request_id.location_dest_id or mo.location_src_id
-        
-        # Create move line
-        move_line_vals = {
-            'move_id': raw_move.id,
-            'product_id': product.id,
-            'product_uom_id': raw_move.product_uom.id,
-            'quantity': qty_in_move_uom,
-            'location_id': location_src.id,
-            'location_dest_id': raw_move.location_dest_id.id,
-            'company_id': mo.company_id.id,
-        }
-        
-        if lot:
-            move_line_vals['lot_id'] = lot.id
-            
-        self.env['stock.move.line'].create(move_line_vals)
-
+        # Tracking-only: do NOT create stock.move.line here.
+        # Physical movement is done by standard Odoo MRP.
         return qty_to_consume
+

@@ -52,14 +52,48 @@ class RequisitionOrder(models.Model):
         help="Automatically calculated as quantity × unit price"
     )
 
+    # ── Purchase History ─────────────────────────────────────────
+    last_purchase_price = fields.Float(
+        string="Last Purchase Price",
+        compute="_compute_last_purchase_info",
+        help="Last purchase price unit from confirmed purchase orders"
+    )
+    last_purchase_date = fields.Date(
+        string="Last Purchase Date",
+        compute="_compute_last_purchase_info",
+        help="Date of the last purchase order for this product"
+    )
+
     @api.depends('quantity', 'unit_price')
     def _compute_price_subtotal(self):
         """Calculate subtotal for each line item"""
         for line in self:
             line.price_subtotal = line.quantity * line.unit_price
 
+    @api.depends('product_id')
+    def _compute_last_purchase_info(self):
+        """Fetch last purchase price and date from confirmed purchase order lines."""
+        for line in self:
+            line.last_purchase_price = 0.0
+            line.last_purchase_date = False
+            if not line.product_id:
+                continue
+            # Search purchase.order ordered by date, then get the matching line
+            last_order = self.env['purchase.order'].search([
+                ('order_line.product_id', '=', line.product_id.id),
+                ('state', 'in', ('purchase', 'done')),
+            ], order='date_order desc, id desc', limit=1)
+            if last_order:
+                last_line = last_order.order_line.filtered(
+                    lambda l: l.product_id == line.product_id
+                )[:1]
+                if last_line:
+                    line.last_purchase_price = last_line.price_unit
+                    line.last_purchase_date = last_order.date_order
+
     @api.onchange('product_id')
     def _onchange_product_id(self):
         if self.product_id:
             self.description = self.product_id.name
             self.uom = self.product_id.uom_id.id
+            self._compute_last_purchase_info()

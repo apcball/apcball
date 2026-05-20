@@ -122,18 +122,34 @@
                                         </div>
                                     </t>
                                     <!-- Company Info Section -->
-                                    <div class="row mb-2">
-                                        <div class="col-4 text-start">
+                                    <div class="row mb-1">
+                                        <div class="col-8">
+                                            <div class="company-header mb-1" style="font-size: 20px; font-weight: bold; line-height: 1;">
+                                                บริษัท โมเก้น จำกัด (สำนักงานใหญ่)
+                                            </div>
+                                            <div class="company-info" style="font-size: 18px; line-height: 1;">
+                                                9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150
+                                            </div>
+                                            <div class="company-info" style="font-size: 18px; line-height: 1;">
+                                                โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th
+                                            </div>
+                                        </div>
+                                        <div class="col-4 text-end">
                                             <img src="/buz_delivery_report/static/img/LOGO MOGEN.png"
-                                                 style="width: 150px; height: auto; object-fit: contain;margin-bottom: -30px;"
+                                                 style="width: 150px; height: auto; object-fit: contain;"
                                                  alt="Company Logo"/>
                                         </div>
+                                    </div>
+                                    <!-- Doc Number & Date -->
+                                    <div class="row mb-2">
                                         <div class="col-8">
-                                            <div class="company-header mb-1 text-end">
+                                        </div>
+                                        <div class="col-4 text-end">
+                                            <div class="company-header mb-1" style="font-size: 20px; font-weight: bold; line-height: 1;">
                                                 <strong>เลขที่เอกสาร:</strong>
                                                 <span t-field="doc.name"/>
                                             </div>
-                                            <div class="company-info text-end">
+                                            <div class="company-info" style="font-size: 18px; line-height: 1;">
                                                 <strong>วันที่เอกสาร:</strong>
                                                 <span t-field="doc.date" t-options='{"widget": "date"}'/>
                                             </div>
@@ -167,13 +183,17 @@
                                                     <strong style="width: 20%; display: inline-block;">เอกสารอ้างอิง:</strong>
                                                     <span t-esc="doc.origin"/>
                                                 </div>
+                                                 <div class="mb-2">
+                                                    <strong style="width: 40%; display: inline-block;">ประเภทการดำเนินการ:</strong>
+                                                    <span t-esc="(doc.picking_type_id.warehouse_id.name or '') + ': ' + doc.picking_type_id.name"/>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="col-6">
                                             <div class="info-box" style="height: 180px;">
                                                 <div class="mb-2">
                                                     <strong style="width: 20%; display: inline-block;">ปลายทาง:</strong>
-                                                    <span t-field="doc.location_dest_id.name"/>
+                                                    <span t-field="doc.location_dest_id.complete_name"/>
                                                 </div>
                                                 <div class="mb-2">
                                                     <strong style="width: 30%; display: inline-block;">วันที่ต้องการสินค้า:</strong>
@@ -249,7 +269,7 @@
                         </t>
                         <!-- Signatures (Internal Transfer Only) -->
                         <div class="row mt-4">
-                            <div class="col-4">
+                            <div class="col-3">
                                 <div class="text-center signature-section">
                                     <br/><br/><br/>
                                     <p>________________________</p>
@@ -257,7 +277,15 @@
                                     <p>วันที่ / Date: ___________</p>
                                 </div>
                             </div>
-                            <div class="col-4">
+                            <div class="col-3">
+                                <div class="text-center signature-section">
+                                    <br/><br/><br/>
+                                    <p>________________________</p>
+                                    <p>ผู้ส่งของ / Delivered By</p>
+                                    <p>วันที่ / Date: ___________</p>
+                                </div>
+                            </div>
+                            <div class="col-3">
                                 <div class="text-center signature-section">
                                     <br/><br/><br/>
                                     <p>________________________</p>
@@ -265,11 +293,11 @@
                                     <p>วันที่ / Date: ___________</p>
                                 </div>
                             </div>
-                            <div class="col-4">
+                            <div class="col-3">
                                 <div class="text-center signature-section">
                                     <br/><br/><br/>
                                     <p>________________________</p>
-                                    <p>ผู้รับ / Received By</p>
+                                    <p>ผู้อนุมัติ / Approved By</p>
                                     <p>วันที่ / Date: ___________</p>
                                 </div>
                             </div>

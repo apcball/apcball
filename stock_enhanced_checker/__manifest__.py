@@ -18,6 +18,7 @@
     'license': 'LGPL-3',
     'depends': ['stock', 'sale_management', 'product', 'web', 'purchase', 'buz_partner_code_auto'],
     'data': [
+        'security/security_groups.xml',
         'security/ir.model.access.csv',
         'views/stock_checker_menu.xml',
         'views/res_config_settings_view.xml',

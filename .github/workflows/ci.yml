@@ -1,0 +1,69 @@
+name: Odoo CI
+
+on:
+  push:
+    branches: [Docker_Ball]
+  pull_request:
+    branches: [Docker_Ball]
+
+jobs:
+  detect-changes:
+    runs-on: self-hosted
+    outputs:
+      modules: ${{ steps.detect.outputs.modules }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: detect
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep -oP '^[a-z_]+(?=/)' | sort -u | tr '\n' ' ')
+          echo "modules=$CHANGED" >> $GITHUB_OUTPUT
+
+  lint:
+    needs: detect-changes
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install lint tools
+        run: pip3 install pylint pylint-odoo 2>/dev/null || true
+      - name: Lint changed modules
+        run: |
+          for mod in ${{ needs.detect-changes.outputs.modules }}; do
+            echo "=== Linting $mod ==="
+            pylint --load-plugins=pylint_odoo $mod/ || true
+          done
+
+  test:
+    needs: [detect-changes, lint]
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy modules & Run Tests
+        run: |
+          for mod in ${{ needs.detect-changes.outputs.modules }}; do
+            echo "=== Testing $mod ==="
+            docker cp ./$mod odoo:/mnt/extra-addons/
+            docker exec odoo odoo -d MOG_DEV \
+              -u $mod \
+              --test-enable \
+              --stop-after-init \
+              --no-http
+          done
+
+  deploy_staging:
+    needs: test
+    runs-on: self-hosted
+    if: github.ref == 'refs/heads/Docker_Ball'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Staging
+        run: |
+          for mod in ${{ needs.detect-changes.outputs.modules }}; do
+            echo "=== Deploying $mod ==="
+            docker cp ./$mod odoo:/mnt/extra-addons/
+            docker exec odoo odoo -d MOG_DEV \
+              -u $mod \
+              --stop-after-init \
+              --no-http
+          done

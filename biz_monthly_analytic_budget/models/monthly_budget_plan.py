@@ -8,6 +8,7 @@ from .budget_utils import (
     RESERVED_PR_STATES,
     extract_analytic_amounts,
     filter_analytic_totals_for_plan,
+    find_active_monthly_plans,
 )
 
 _logger = logging.getLogger(__name__)
@@ -557,10 +558,17 @@ class MonthlyBudgetPlan(models.Model):
             if not plan.date_from or not plan.date_to:
                 continue
 
+            # Filter at DB level using invoice_date_due to reduce dataset size.
+            # Bills without a due date (PO-linked) are included via the OR clause
+            # and will be further filtered by _get_bill_target_date() in the loop.
             bills = AccountMove.search([
                 ('move_type', 'in', ('in_invoice', 'in_refund')),
                 ('state', 'in', ('draft', 'posted')),
                 ('company_id', '=', plan.company_id.id),
+                '|',
+                '&', ('invoice_date_due', '>=', plan.date_from),
+                     ('invoice_date_due', '<=', plan.date_to),
+                ('invoice_date_due', '=', False),
             ])
             if not bills:
                 continue
@@ -643,6 +651,48 @@ class MonthlyBudgetPlan(models.Model):
                 raise ValidationError(
                     _('Total percentage of budget lines (%.2f%%) exceeds 100%%.') % total_pct
                 )
+
+    @api.constrains('state', 'budget_line_ids', 'month', 'year', 'company_id')
+    def _check_no_analytic_overlap(self):
+        """Prevent the same analytic account from being assigned to more than one
+        confirmed plan for the same month, year and company.
+
+        Rule: analytic accounts in a month must be unique across all confirmed plans
+        (each analytic belongs to exactly ONE plan per month).
+        """
+        for plan in self:
+            if plan.state != 'confirmed':
+                continue
+            if not plan.month or not plan.year:
+                continue
+
+            # Collect analytics configured on THIS plan
+            own_analytic_ids = set(plan.budget_line_ids.mapped('analytic_account_id').ids)
+            if not own_analytic_ids:
+                continue
+
+            # Find other confirmed plans in the same month/year/company
+            other_plans = find_active_monthly_plans(
+                self.env, plan.date_from, plan.company_id.id
+            ).filtered(lambda p: p.id != plan.id)
+
+            for other in other_plans:
+                other_analytic_ids = set(other.budget_line_ids.mapped('analytic_account_id').ids)
+                overlap = own_analytic_ids & other_analytic_ids
+                if overlap:
+                    overlap_names = ', '.join(
+                        self.env['account.analytic.account']
+                        .browse(list(overlap))
+                        .mapped('display_name')
+                    )
+                    raise ValidationError(_(
+                        'Analytic account(s) \"%(analytics)s\" are already configured '
+                        'in another confirmed plan for the same month (%(other_plan)s).\n'
+                        'Each analytic account must belong to only ONE confirmed plan per month.'
+                    ) % {
+                        'analytics': overlap_names,
+                        'other_plan': other.name,
+                    })
 
     # ── State actions ────────────────────────────────────────────
 
@@ -771,8 +821,9 @@ class MonthlyBudgetPlan(models.Model):
         if not self.carry_forward:
             raise ValidationError(_("This plan does not have 'Carry Forward Surplus' enabled."))
 
-        # Recompute totals just to be safe before rollover
-        self.action_recompute_budget()
+        # Snapshot current balances BEFORE any recompute that may alter commitments
+        self._refresh_budget_snapshot(refresh_report=False)
+        carry_snapshot = {line.id: line.available_amount for line in self.budget_line_ids}
 
         # Find or create next month's plan
         m = int(self.month)
@@ -807,11 +858,11 @@ class MonthlyBudgetPlan(models.Model):
         BudgetLine = self.env['monthly.budget.line']
 
         for line in self.budget_line_ids:
-            if line.available_amount <= 0:
+            carry_amt = carry_snapshot.get(line.id, 0.0)
+            if carry_amt <= 0:
                 continue
-                
-            carry_amt = line.available_amount
-            # Apply limit if any
+
+            # Apply cap if configured
             if self.carry_forward_cap > 0:
                 cap_amt = line.budget_amount * (self.carry_forward_cap / 100.0)
                 carry_amt = min(carry_amt, cap_amt)
@@ -876,6 +927,12 @@ class MonthlyBudgetPlan(models.Model):
             ('date_to', '<', today)
         ])
         for plan in expired_plans:
-            plan.action_close()
-            plan.message_post(body=_("Plan auto-closed by scheduled cron job (period ended)."))
-            _logger.info('Auto-closed expired budget plan: %s', plan.name)
+            try:
+                plan.action_close()
+                plan.message_post(body=_("Plan auto-closed by scheduled cron job (period ended)."))
+                _logger.info('Auto-closed expired budget plan: %s', plan.name)
+            except Exception as e:
+                _logger.error(
+                    'Auto-close failed for budget plan %s (%s): %s',
+                    plan.name, plan.id, e,
+                )

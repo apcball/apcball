@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_invoice_document_inherit_delivery_order" inherit_id="account.report_invoice_document">
+        <!-- Add DO number after the informations row -->
+        <xpath expr="//div[@id='informations']" position="after">
+            <div t-if="o.picking_ids and o.move_type == 'out_invoice'" class="row mt-1 mb-2">
+                <div class="col-auto col-3 mw-100 mb-2">
+                    <strong>Delivery Order:</strong><br/>
+                    <span t-foreach="o.picking_ids" t-as="picking">
+                        <span t-esc="picking.name"/><t t-if="not picking_last">, </t>
+                    </span>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>

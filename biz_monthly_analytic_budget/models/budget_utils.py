@@ -15,13 +15,16 @@ _logger = logging.getLogger(__name__)
 RESERVED_PR_STATES = ('waiting_purchase_approval', 'approved', 'purchase_order_created', 'received')
 
 
-def find_active_monthly_plan(env, target_date, company_id):
-    """Find the confirmed monthly budget plan that covers target_date for the company.
+def find_active_monthly_plans(env, target_date, company_id):
+    """Return ALL confirmed monthly budget plans that cover target_date for the company.
+
+    Use this when the caller needs to route analytics across multiple plans
+    (one analytic → one plan, no overlap within a month).
 
     :param env: Odoo environment
     :param target_date: date to match against plan period
     :param company_id: int company id
-    :returns: monthly.budget.plan recordset (single or empty)
+    :returns: monthly.budget.plan recordset (may be empty, single, or multiple)
     """
     if not target_date:
         return env['monthly.budget.plan']
@@ -31,7 +34,96 @@ def find_active_monthly_plan(env, target_date, company_id):
         ('date_to', '>=', target_date),
         ('company_id', '=', company_id),
     ]
-    return env['monthly.budget.plan'].sudo().search(domain, limit=1)
+    return env['monthly.budget.plan'].sudo().search(domain)
+
+
+def find_active_monthly_plan(env, target_date, company_id, analytic_account_ids=None):
+    """Find the best-matching confirmed monthly budget plan for target_date.
+
+    When multiple confirmed plans exist for the same month (multi-plan scenario),
+    the plan whose budget lines contain the most overlap with *analytic_account_ids*
+    is preferred.  If *analytic_account_ids* is not supplied (or all plans tie),
+    the first plan in model order (year desc, month desc, id desc) is returned,
+    preserving backward-compatible behaviour.
+
+    :param env: Odoo environment
+    :param target_date: date to match against plan period
+    :param company_id: int company id
+    :param analytic_account_ids: optional collection of analytic account IDs
+        (int) present on the document lines — used to pick the correct plan
+        when several confirmed plans share the same month.
+    :returns: monthly.budget.plan recordset (single or empty)
+    """
+    plans = find_active_monthly_plans(env, target_date, company_id)
+    if not plans:
+        return env['monthly.budget.plan']
+    if len(plans) == 1:
+        return plans
+
+    # Multiple plans found for this month — pick the one that covers the analytics.
+    if analytic_account_ids:
+        analytic_ids_set = set(int(a) for a in analytic_account_ids if a)
+        best_plan = plans[:1]
+        best_coverage = -1
+        for plan in plans:
+            plan_analytics = set(plan.budget_line_ids.mapped('analytic_account_id').ids)
+            coverage = len(analytic_ids_set & plan_analytics)
+            if coverage > best_coverage:
+                best_coverage = coverage
+                best_plan = plan
+        _logger.debug(
+            'find_active_monthly_plan: %d plans found for %s company=%s; '
+            'selected plan=%s (coverage=%d/%d analytics)',
+            len(plans), target_date, company_id,
+            best_plan.name, best_coverage, len(analytic_ids_set),
+        )
+        return best_plan
+
+    # No analytics hint → fall back to first plan (original behaviour)
+    _logger.debug(
+        'find_active_monthly_plan: %d plans for %s company=%s, no analytic hint — '
+        'using first plan: %s',
+        len(plans), target_date, company_id, plans[0].name,
+    )
+    return plans[:1]
+
+
+def find_plan_for_analytics(env, target_date, company_id, analytic_account_ids):
+    """Resolve a set of analytic account IDs to their specific confirmed plan.
+
+    In the multi-plan scenario each analytic belongs to exactly one plan per
+    month (enforced by the _check_no_analytic_overlap constraint on
+    monthly.budget.plan).  This helper builds a mapping
+    ``{plan_id: {account_id: ...}}`` so callers can process analytics in
+    per-plan buckets.
+
+    :param env: Odoo environment
+    :param target_date: date to match against plan period
+    :param company_id: int company id
+    :param analytic_account_ids: iterable of analytic account IDs (int)
+    :returns: dict  { monthly.budget.plan record : set of analytic_account_id (int) }
+             Analytics that belong to no plan are placed under the key ``None``.
+    """
+    plans = find_active_monthly_plans(env, target_date, company_id)
+    analytic_ids = set(int(a) for a in analytic_account_ids if a)
+
+    if not plans:
+        return {None: analytic_ids} if analytic_ids else {}
+
+    result = {}  # plan → set of account_ids
+    unassigned = set(analytic_ids)
+
+    for plan in plans:
+        plan_analytics = set(plan.budget_line_ids.mapped('analytic_account_id').ids)
+        matched = unassigned & plan_analytics
+        if matched:
+            result[plan] = matched
+            unassigned -= matched
+
+    if unassigned:
+        result[None] = unassigned  # analytics not covered by any plan
+
+    return result
 
 
 def extract_analytic_amounts(line, budget_line_model=None):
@@ -116,6 +208,76 @@ def filter_analytic_totals_for_plan(plan, analytic_totals):
             ignored_totals[account_id] = amount
 
     return filtered_totals, ignored_totals
+
+
+def split_analytic_totals_by_plan(env, target_date, company_id, analytic_totals):
+    """Split analytic totals into per-plan buckets for multi-plan processing.
+
+    :returns: tuple ``(grouped_totals, ignored_totals)``
+      - grouped_totals: list of ``(plan, {analytic_id: amount})``
+      - ignored_totals: ``{analytic_id: amount}`` not covered by any active plan
+    """
+    if not analytic_totals:
+        return [], {}
+
+    plan_map = find_plan_for_analytics(
+        env, target_date, company_id, analytic_totals.keys()
+    )
+    grouped_totals = []
+    ignored_totals = {}
+
+    for plan, analytic_ids in plan_map.items():
+        plan_totals = {
+            account_id: analytic_totals[account_id]
+            for account_id in analytic_ids
+            if account_id in analytic_totals
+        }
+        if not plan_totals:
+            continue
+        if plan:
+            grouped_totals.append((plan, plan_totals))
+        else:
+            ignored_totals.update(plan_totals)
+
+    return grouped_totals, ignored_totals
+
+
+def get_first_plan_from_groups(grouped_totals):
+    """Return the first plan from grouped totals for backwards-compatible fields."""
+    for plan, _totals in grouped_totals:
+        return plan
+    return False
+
+
+def collect_analytic_ids_from_lines(lines):
+    """Return the set of analytic account IDs (int) referenced by *lines*.
+
+    Lines must carry an ``analytic_distribution`` field (standard Odoo 17 widget).
+    This is a lightweight scan — it does NOT compute amounts, just IDs.
+
+    :param lines: recordset of document lines (PO lines, PR order lines, bill lines…)
+    :returns: set of int analytic account IDs
+    """
+    result = set()
+    for line in lines:
+        distribution = line.analytic_distribution
+        if not distribution:
+            continue
+        if isinstance(distribution, str):
+            try:
+                import json as _json
+                distribution = _json.loads(distribution)
+            except Exception:
+                continue
+        if not isinstance(distribution, dict):
+            continue
+        for key in distribution:
+            for part in str(key).split(','):
+                try:
+                    result.add(int(part.strip()))
+                except (ValueError, TypeError):
+                    pass
+    return result
 
 
 def format_ignored_analytic_accounts_message(ignored_names):

@@ -1,0 +1,4 @@
+- [my_identity](my_identity.md) — มะนาวเป็นผู้ช่วยที่เก่งรอบด้านของคุณ Ball
+- [user_role](user_role.md)
+- [module_readme_convention](module_readme_convention.md) — ทุกครั้งที่สร้าง module ใหม่หรือ update feature ต้องอัปเดต README.md ใน module นั้นด้วย
+- [odoo_dev_database](odoo_dev_database.md) — Odoo development database and container info

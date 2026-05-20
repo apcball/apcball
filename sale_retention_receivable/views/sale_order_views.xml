@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_retention" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.retention</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='other_information']" position="inside">
+                <field name="retention_enabled" invisible="1"/>
+                <group name="retention" string="Retention" groups="sale_retention_receivable.group_retention_user,account.group_account_user">
+                    <field name="retention_enabled"/>
+                    <field name="retention_percent"
+                           invisible="not retention_enabled"
+                           required="retention_enabled"/>
+                    <field name="retention_days"
+                           invisible="not retention_enabled"
+                           required="retention_enabled"/>
+                    <field name="retention_amount" invisible="not retention_enabled"/>
+                    <field name="retention_due_date" invisible="not retention_enabled"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

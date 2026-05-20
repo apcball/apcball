@@ -157,7 +157,7 @@
                                 </div>
                             </div>
                             <div class="col-4 text-end">
-                                <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
+                                <img src="/buz_custom_invoice/static/logo/LOGO%20MOGEN.png" 
                                      style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
@@ -201,15 +201,15 @@
                             <div style="display: table-row;">
                                 <!-- ซ้าย -->
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-right: 5px;">
-                                    <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 100%; box-sizing: border-box;">
-                                        <div><strong>ชื่อลูกค้า:</strong> <span t-field="doc.partner_id.name"/></div>
+                                    <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 192px; box-sizing: border-box;">
+                                        <div><strong>ชื่อลูกค้า:</strong> <span t-field="doc.partner_id.name"/> <span t-field="doc.partner_id.branch"/></div>
                                         <div><strong>เลขประจำตัวผู้เสียภาษี:</strong> <span t-field="doc.partner_id.vat"/></div>
                                         <div>
                                             <strong>ที่อยู่:</strong>
                                             <span t-field="doc.partner_id.street"/>
-                                            <t t-if="doc.partner_id.city"> ตำบล<span t-field="doc.partner_id.city"/></t>
-                                            <t t-if="doc.partner_id.state_id"> อำเภอ<span t-field="doc.partner_id.state_id.name"/></t>
-                                            <t t-if="doc.partner_id.state_id"> จังหวัด<span t-field="doc.partner_id.state_id.name"/></t>
+                                            <span t-field="doc.partner_id.street2"/>
+                                            <span t-field="doc.partner_id.city"/>
+                                            <span t-field="doc.partner_id.state_id.name"/>
                                             <span t-field="doc.partner_id.zip"/>
                                         </div>
                                         <div><strong>โทรศัพท์:</strong> <span t-field="doc.partner_id.phone"/></div>
@@ -218,7 +218,7 @@
 
                                 <!-- ขวา -->
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-left: 5px;">
-                                    <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 100%; box-sizing: border-box;">
+                                    <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 192px; box-sizing: border-box;">
 
                                         <!-- แก้ไขตรงนี้ -->
                                         <div style="display: flex; justify-content: space-between; margin-top: 10px;">
@@ -228,13 +228,7 @@
                                             </div>
                                             <div style="width: 35%;">
                                                 <strong>ลงวันที่:</strong>
-                                                <t t-if="doc.picking_ids">
-                                                    <t t-set="picking_size" t-value="len(doc.picking_ids)"/>
-                                                    <t t-foreach="doc.picking_ids" t-as="picking">
-                                                        <span t-field="picking.scheduled_date" t-options='{"format": "dd/MM/yyyy"}'/>
-                                                        <t t-if="picking_index + 1 &lt; picking_size">, </t>
-                                                    </t>
-                                                </t>
+                                                <span t-if="doc.reversed_entry_id" t-field="doc.reversed_entry_id.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
                                             </div>
                                         </div>
 
@@ -252,7 +246,13 @@
                                             </div>
                                             <div style="width: 35%;">
                                                 <strong>ลงวันที่:</strong>
-                                                <span t-if="doc.picking_ids" t-field="doc.picking_ids[0].date_done" t-options='{"format": "dd/MM/yyyy"}'/>
+                                                <t t-if="doc.delivery_note">
+                                                    <t t-set="delivery_picking" t-value="doc.env['stock.picking'].sudo().search([('name', '=', doc.delivery_note.strip())], limit=1)"/>
+                                                    <span t-if="delivery_picking" t-field="delivery_picking.date_done" t-options='{"format": "dd/MM/yyyy"}'/>
+                                                </t>
+                                                <t t-else="">
+                                                    <span t-if="doc.picking_ids" t-field="doc.picking_ids[0].date_done" t-options='{"format": "dd/MM/yyyy"}'/>
+                                                </t>
                                             </div>
                                         </div>
                                     </div>
@@ -364,8 +364,8 @@
                                                 <!-- แสดงผลเรียงตามหัวข้อ -->
                                                 <div style=""><span t-esc="'{:,.2f}'.format(correct_amount_untaxed)"/></div>
                                                 <div style=""><span t-esc="'{:,.2f}'.format(origin_amount_untaxed)"/></div>
+                                                <div style=""><span t-esc="'{:,.2f}'.format(abs(difference_untaxed))"/></div>
                                                 <div style=""><span t-esc="'{:,.2f}'.format(correct_amount_untaxed)"/></div>
-                                                <div style=""><span t-esc="'{:,.2f}'.format(difference_untaxed)"/></div>
                                                 <div style=""><span t-esc="'{:,.2f}'.format(amount_tax)"/></div>
                                                 <div style=""><span t-esc="'{:,.2f}'.format(amount_total)"/></div>
                                             </div>

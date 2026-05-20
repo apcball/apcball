@@ -96,12 +96,6 @@ class PurchaseOrder(models.Model):
     approval_token = fields.Char(string='Approval Token', copy=False)
     approval_token_created = fields.Datetime(string='Token Created On', copy=False)
     approval_token_expired = fields.Boolean(string='Token Expired', default=False, copy=False)
-    approval_token_id = fields.Many2one(
-        'approval.token',
-        string='Approval Token Record',
-        copy=False,
-        ondelete='set null',
-    )
     reject_reason = fields.Text(string='Rejection Reason', copy=False)
 
 
@@ -553,16 +547,8 @@ class PurchaseOrder(models.Model):
         result = []
         for rec in self:
             name = rec.description or "รายการ"
-            result.append((rec.id, name))
+        result.append((rec.id, name))
         return result
-
-    def _invalidate_approval_token(self, reason):
-        """Mark the linked approval token as used or cancelled."""
-        self.ensure_one()
-        if self.approval_token_id and self.approval_token_id.state == 'active':
-            state = 'used' if reason in ('approved', 'rejected') else 'cancelled'
-            self.approval_token_id.sudo().write({'state': state})
-        self.write({'approval_token_expired': True})
 
     # LINE Approval Mixin Methods
     def _get_line_approval_approver(self):

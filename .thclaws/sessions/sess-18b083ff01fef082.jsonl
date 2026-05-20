@@ -1,0 +1,8 @@
+{"type":"header","id":"sess-18b083ff01fef082","model":"openrouter/deepseek/deepseek-v4-flash:free","cwd":"/workspace","created_at":1779066984}
+{"type":"user","content":[{"type":"text","text":"hi"}],"timestamp":1779067110}
+{"type":"user","content":[{"type":"text","text":"hi"}],"timestamp":1779067184}
+{"type":"assistant","content":[{"type":"text","text":"สวัสดีคุณ Ball ครับ! มีอะไรให้ช่วยไหมครับ?"}],"timestamp":1779067184,"provider":"openrouter","model":"openrouter/minimax/minimax-m2.5:free"}
+{"type":"user","content":[{"type":"text","text":"hi"}],"timestamp":1779067242}
+{"type":"user","content":[{"type":"text","text":"hi"}],"timestamp":1779067299}
+{"type":"user","content":[{"type":"text","text":"hi"}],"timestamp":1779067303}
+{"type":"assistant","content":[{"type":"text","text":"\nสวัสดีครับ! มีอะไรให้ช่วยเหลือคุณ Ball วันนี้ไหมครับ?"}],"timestamp":1779067303,"provider":"openrouter","model":"openrouter/arcee-ai/trinity-large-thinking:free"}

@@ -1,0 +1,10 @@
+{"type":"header","id":"sess-18af9b3977ae49af","model":"openrouter/ai21/jamba-large-1.7","cwd":"/srv/docker/odoo/custom-addons","created_at":1778811048}
+{"type":"user","content":[{"type":"text","text":"model openrouter/qwen/qwen3-coder:free"}],"timestamp":1778811165}
+{"type":"assistant","content":[{"type":"text","text":"The provided input appears to reference a model or artifact name, possibly related to a specific coding assistant or tool. However, without additional context or a specific task associated with the name, it's unclear what action you want. Could you clarify what you'd like to do with this model or artifact? For example:\n\n- Are you asking to configure or use this model in some way?\n- Do you need to integrate it into a workflow?\n- Are you seeking information about it?\n\nIf you're simply noting this as a tool in use, let me know how I should incorporate it into the current context.<|eom|>"}],"timestamp":1778811165,"provider":"openrouter","model":"openrouter/ai21/jamba-large-1.7"}
+{"type":"user","content":[{"type":"text","text":"hi"}],"timestamp":1778811240}
+{"type":"user","content":[{"type":"text","text":"hi"}],"timestamp":1778811265}
+{"type":"assistant","content":[{"type":"text","text":"Hi! How can I help you today?"}],"timestamp":1778811265,"provider":"openrouter","model":"openrouter/minimax/minimax-m2.5:free"}
+{"type":"plan_snapshot","plan":null,"timestamp":1778811303}
+{"type":"goal_snapshot","goal":null,"timestamp":1778811303}
+{"type":"plan_snapshot","plan":null,"timestamp":1778811308}
+{"type":"goal_snapshot","goal":null,"timestamp":1778811308}

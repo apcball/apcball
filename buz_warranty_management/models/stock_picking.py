@@ -43,7 +43,7 @@ class StockPicking(models.Model):
                     'partner_id': partner.id,
                     'product_id': product.id,
                     'lot_id': move_line.lot_id.id if move_line.lot_id else False,
-                    'start_date': picking.date_done.date() if picking.date_done else picking.scheduled_date,
+                    'start_date': picking.scheduled_date.date() if picking.scheduled_date else fields.Date.today(),
                     'sale_order_id': sale_order.id if sale_order else False,
                     'picking_id': picking.id,
                     'state': 'active',

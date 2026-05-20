@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Form View -->
+    <record id="view_buz_tr_bank_export_form" model="ir.ui.view">
+        <field name="name">buz.tr.bank.export.form</field>
+        <field name="model">buz.tr.bank.export</field>
+        <field name="arch" type="xml">
+            <form string="Document of transfer money abroad">
+                <header>
+                    <button name="action_confirm" string="Confirm" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_cancel" string="Cancel" type="object" invisible="state not in ('draft', 'confirmed')"/>
+                    <button name="action_draft" string="Set to Draft" type="object" invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="transfer_date" readonly="state != 'draft'"/>
+                            <field name="vendor_id" readonly="state != 'draft'"/>
+                            <field name="destination_bank" readonly="state != 'draft'"/>
+                            <field name="account_no" readonly="state != 'draft'"/>
+                            <field name="attn" readonly="state != 'draft'"/>
+                            <field name="terms_of_payment" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="refer_to" readonly="state != 'draft'"/>
+                            <field name="trading_conditions" readonly="state != 'draft'"/>
+                            <field name="type_of_goods" readonly="state != 'draft'"/>
+                            <field name="arrival_date" readonly="state != 'draft'"/>
+                            <field name="currency_id" readonly="state != 'draft'"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="payment_id" invisible="not payment_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Transfer Lines">
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="lot_no"/>
+                                    <field name="import_date"/>
+                                    <field name="etd_date"/>
+                                    <field name="invoice_id"/>
+                                    <field name="ref_no"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                    <field name="amount"/>
+                                    <field name="transfer_amount"/>
+                                </tree>
+                            </field>
+                            <group class="oe_subtotal_footer oe_right">
+                                <field name="total_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <field name="add_reduce_amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="state != 'draft'"/>
+                                <field name="grand_total_amount" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
+                            </group>
+                            <group>
+                                <field name="amount_text"/>
+                                <field name="remark" placeholder="Remark..." readonly="state != 'draft'"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Tree View -->
+    <record id="view_buz_tr_bank_export_tree" model="ir.ui.view">
+        <field name="name">buz.tr.bank.export.tree</field>
+        <field name="model">buz.tr.bank.export</field>
+        <field name="arch" type="xml">
+            <tree string="Document of transfer money abroad">
+                <field name="name"/>
+                <field name="transfer_date"/>
+                <field name="vendor_id"/>
+                <field name="grand_total_amount"/>
+                <field name="currency_id"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'confirmed'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_buz_tr_bank_export" model="ir.actions.act_window">
+        <field name="name">Bank Export</field>
+        <field name="res_model">buz.tr.bank.export</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new Bank Export Document
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_buz_tr_bank_export"
+              name="Bank Transfer Export"
+              parent="account.menu_finance_payables"
+              action="action_buz_tr_bank_export"
+              groups="buz_tr_bank_export.group_tr_bank_export_user"
+              sequence="50"/>
+
+</odoo>

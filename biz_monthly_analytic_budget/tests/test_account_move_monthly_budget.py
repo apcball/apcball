@@ -4,6 +4,8 @@ from unittest.mock import Mock, patch
 from odoo import fields
 from odoo.tests.common import TransactionCase
 
+from ..models import budget_utils
+
 
 class TestAccountMoveMonthlyBudget(TransactionCase):
 
@@ -187,3 +189,30 @@ class TestAccountMoveMonthlyBudget(TransactionCase):
         self.assertTrue(all(call['document_model'] == 'account.move' for call in release_calls))
         self.assertTrue(all(call['document_id'] == bill.id for call in release_calls))
         self.assertTrue(all(call['budget_source'] == 'monthly' for call in release_calls))
+
+    def test_action_post_bypasses_monthly_budget_validation(self):
+        bill = self.env['account.move'].new({'move_type': 'in_invoice'})
+
+        with patch.object(type(bill), '_check_monthly_analytic_budget_limit', return_value=None) as check_mock:
+            with patch('odoo.addons.account.models.account_move.AccountMove.action_post', return_value='posted'):
+                result = bill.action_post()
+
+        self.assertEqual(result, 'posted')
+        check_mock.assert_not_called()
+
+    def test_split_analytic_totals_by_plan_routes_each_analytic_to_its_plan(self):
+        plan_a = Mock(name='Plan A')
+        plan_b = Mock(name='Plan B')
+
+        with patch.object(budget_utils, 'find_plan_for_analytics', return_value={
+            plan_a: {10},
+            plan_b: {20},
+            None: {30},
+        }):
+            grouped_totals, ignored_totals = budget_utils.split_analytic_totals_by_plan(
+                self.env, fields.Date.to_date('2026-05-01'), self.env.company.id,
+                {10: 100.0, 20: 200.0, 30: 300.0},
+            )
+
+        self.assertEqual(grouped_totals, [(plan_a, {10: 100.0}), (plan_b, {20: 200.0})])
+        self.assertEqual(ignored_totals, {30: 300.0})

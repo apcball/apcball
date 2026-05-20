@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Action: Open Retention Records from Invoice -->
+    <record id="action_sale_retention_receivable_from_invoice" model="ir.actions.act_window">
+        <field name="name">Retention Receivable</field>
+        <field name="res_model">sale.retention.receivable</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('invoice_id', '=', active_id)]</field>
+        <field name="context">{'default_invoice_id': active_id}</field>
+    </record>
+
+    <record id="view_invoice_form_inherit_retention" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.retention</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Retention smart button on invoice form -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_retention_records" type="object"
+                        class="oe_stat_button"
+                        icon="fa-handshake-o"
+                        string="Retention"
+                        invisible="not retention_enabled"
+                        context="{'default_invoice_id': active_id}">
+                    <field name="retention_record_count" widget="statinfo" string="Retention"/>
+                </button>
+            </xpath>
+
+            <!-- Retention fields in invoice -->
+            <xpath expr="//page[@id='other_tab']//group" position="inside">
+                <field name="retention_enabled" invisible="1"/>
+                <group name="retention" string="Retention" groups="sale_retention_receivable.group_retention_user,account.group_account_user"
+                       invisible="move_type not in ('out_invoice', 'out_refund')">
+                    <field name="retention_enabled"/>
+                    <field name="retention_percent"
+                           invisible="not retention_enabled"
+                           required="retention_enabled"/>
+                    <field name="retention_days"
+                           invisible="not retention_enabled"
+                           required="retention_enabled"/>
+                    <field name="retention_amount" invisible="not retention_enabled"/>
+                    <field name="retention_due_date" invisible="not retention_enabled"/>
+                    <field name="retention_state" invisible="not retention_enabled"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

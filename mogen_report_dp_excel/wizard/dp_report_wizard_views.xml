@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_dp_report_wizard_form" model="ir.ui.view">
+        <field name="name">mogen.report.dp.excel.wizard.form</field>
+        <field name="model">mogen.report.dp.excel.wizard</field>
+        <field name="arch" type="xml">
+            <form string="DP Excel Report">
+                <group>
+                    <group string="Date Range">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group string="Filters">
+                        <field name="do_status"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_export_excel" string="Export Excel" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_dp_report_wizard" model="ir.actions.act_window">
+        <field name="name">DP Excel Report</field>
+        <field name="res_model">mogen.report.dp.excel.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_dp_report_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_dp_report_wizard"
+              name="DP Excel Report"
+              parent="sale.menu_sale_report"
+              action="action_dp_report_wizard"
+              sequence="90"/>
+</odoo>

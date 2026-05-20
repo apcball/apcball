@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_po_credit_note_wizard_user,po.credit.note.wizard.user,model_po_credit_note_wizard,base.group_user,1,1,1,0
+access_po_credit_note_wizard_line_user,po.credit.note.wizard.line.user,model_po_credit_note_wizard_line,base.group_user,1,1,1,0
+access_so_credit_note_wizard_user,so.credit.note.wizard.user,model_so_credit_note_wizard,base.group_user,1,1,1,0
+access_so_credit_note_wizard_line_user,so.credit.note.wizard.line.user,model_so_credit_note_wizard_line,base.group_user,1,1,1,0

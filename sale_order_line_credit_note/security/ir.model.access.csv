@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_order_credit_note_wizard,sale.order.credit.note.wizard,model_sale_order_credit_note_wizard,sales_team.group_sale_manager,1,1,1,1
+access_sale_order_credit_note_wizard_line,sale.order.credit.note.wizard.line,model_sale_order_credit_note_wizard_line,sales_team.group_sale_manager,1,1,1,1
+access_sale_order_credit_note_wizard_inv,sale.order.credit.note.wizard,model_sale_order_credit_note_wizard,account.group_account_invoice,1,1,1,1
+access_sale_order_credit_note_wizard_line_inv,sale.order.credit.note.wizard.line,model_sale_order_credit_note_wizard_line,account.group_account_invoice,1,1,1,1
+access_account_move_source_sale,account.move.source.sale,model_account_move,account.group_account_invoice,1,0,0,0
+access_account_move_line_source_sale,account.move.line.source.sale,model_account_move_line,account.group_account_invoice,1,0,0,0

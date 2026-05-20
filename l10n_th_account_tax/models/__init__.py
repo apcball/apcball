@@ -14,4 +14,3 @@ from . import account_withholding_tax
 from . import account_withholding_move
 from . import account_tax
 from . import res_partner
-from . import purchase_order

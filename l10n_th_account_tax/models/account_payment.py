@@ -168,4 +168,4 @@ class AccountPayment(models.Model):
 
     def create_wht_cert(self):
         self.ensure_one()
-        self.move_id.create_wht_cert()
+        return self.move_id.create_wht_cert()

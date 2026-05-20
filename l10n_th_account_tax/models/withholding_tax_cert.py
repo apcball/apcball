@@ -90,6 +90,16 @@ class WithholdingTaxCert(models.Model):
         readonly=True,
         copy=False,
     )
+    book_no = fields.Char(
+        string="เล่มที่",
+        copy=False,
+        tracking=True,
+    )
+    wht_no = fields.Char(
+        string="ลำดับที่",
+        copy=False,
+        tracking=True,
+    )
     date = fields.Date(
         required=True,
         compute="_compute_wht_cert_data",

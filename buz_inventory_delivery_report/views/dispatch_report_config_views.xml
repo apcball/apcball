@@ -183,6 +183,8 @@
                                     <field name="col_qty_left"/>
                                     <field name="col_unit_left"/>
                                     <field name="col_remark_left"/>
+                                    <field name="col_component_qty_left"/>
+                                    <field name="col_component_unit_left"/>
                                 </group>
                             </group>
                         </page>

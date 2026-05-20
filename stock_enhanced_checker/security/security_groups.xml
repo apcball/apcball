@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Stock Checker: Viewer (view stock only, no quotation) -->
+    <record id="group_stock_checker_viewer" model="res.groups">
+        <field name="name">Stock Checker / Viewer</field>
+        <field name="category_id" ref="base.module_category_inventory"/>
+        <field name="comment">Can view stock data but cannot create quotations.</field>
+    </record>
+
+    <!-- Stock Checker: Quotation Creator (view stock + create quotation) -->
+    <record id="group_stock_checker_quotation" model="res.groups">
+        <field name="name">Stock Checker / Quotation Creator</field>
+        <field name="category_id" ref="base.module_category_inventory"/>
+        <field name="comment">Can view stock data and create sale quotations.</field>
+        <field name="implied_ids" eval="[(4, ref('group_stock_checker_viewer'))]"/>
+    </record>
+</odoo>

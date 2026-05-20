@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_trial_balance_wizard" model="ir.ui.view">
+            <field name="name">Trial Balance Wizard</field>
+            <field name="model">account.trial.balance.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Trial Balance Report">
+                    <group>
+                        <group>
+                            <field name="date_from" required="1"/>
+                            <field name="date_to" required="1"/>
+                        </group>
+                        <group>
+                            <field name="company_id" options="{'no_create': True}" required="1"/>
+                            <field name="target_move" widget="radio"/>
+                        </group>
+                    </group>
+                    <field name="journal_ids"
+                           widget="many2many_tags"
+                           placeholder="All journals (leave empty for all)"/>
+                    <footer>
+                        <button name="action_print_pdf"
+                                type="object"
+                                string="Print PDF"
+                                class="btn-primary"
+                                icon="fa-print"/>
+                        <button name="action_export_xlsx"
+                                type="object"
+                                string="Export Excel"
+                                class="btn-secondary"
+                                icon="fa-file-excel"/>
+                        <button string="Cancel" class="btn-link" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_trial_balance_wizard" model="ir.actions.act_window">
+            <field name="name">Trial Balance Report</field>
+            <field name="res_model">account.trial.balance.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>

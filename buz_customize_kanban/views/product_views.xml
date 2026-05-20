@@ -10,7 +10,8 @@
                 <field name="qty_available"/>
                 <field name="incoming_qty"/>
                 <field name="outgoing_qty"/>
-                <field name="available_qty"/>
+                <field name="kanban_available_qty"/>
+                <field name="kanban_price"/>
             </xpath>
             <xpath expr="//div[hasclass('o_kanban_record_top')]" position="replace">
                 <div class="o_kanban_record_top">
@@ -41,19 +42,34 @@
                 <attribute name="invisible">1</attribute>
             </field>
             <field name="list_price" position="after">
-                <field name="price_with_vat" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="kanban_price" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                 <!-- Stock Information -->
                 <div class="mt-2">
                     <div class="d-flex gap-1">
                         <span><strong>Available:</strong></span>
-                        <span><strong><field name="available_qty" widget="float" options="{'digits': [16,2]}"/> <field name="uom_id"/></strong></span>
+                        <span><strong><field name="kanban_available_qty" widget="float" options="{'digits': [16,2]}"/> <field name="uom_id"/></strong></span>
                     </div>
                 </div>
-                <!-- Add product tags below the price -->
+                <!-- Product tags -->
                 <div class="mt-2">
                     <field name="product_tag_ids" widget="many2many_tags"/>
                 </div>
             </field>
+        </field>
+    </record>
+
+    <!-- Inherit product search view to add warehouse filter -->
+    <record id="product_template_search_view_inherit_warehouse" model="ir.ui.view">
+        <field name="name">product.template.search.warehouse.inherit</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="warehouse_id" string="Warehouse"/>
+                <separator/>
+                <filter name="filter_in_warehouse" string="Has Stock in Warehouse"
+                        domain="[('warehouse_id', '!=', False)]"/>
+            </xpath>
         </field>
     </record>
 </odoo>

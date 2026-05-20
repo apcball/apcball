@@ -12,7 +12,7 @@ class WarrantyReplacementIssueWizard(models.TransientModel):
         'warranty.claim',
         string='Warranty Claim',
         required=True,
-        default=lambda self: self._context.get('default_claim_id') or self._context.get('claim_id') or self._context.get('active_id')
+        default=lambda self: self._context.get('default_claim_id') or self._context.get('claim_id')
     )
     partner_id = fields.Many2one(
         'res.partner',
@@ -62,7 +62,7 @@ class WarrantyReplacementIssueWizard(models.TransientModel):
         
         # Load claim lines marked for replacement
         # Check both context and active_id for claim_id
-        claim_id = self._context.get('claim_id') or self._context.get('default_claim_id') or self._context.get('active_id')
+        claim_id = self._context.get('claim_id') or self._context.get('default_claim_id')
         if claim_id:
             claim = self.env['warranty.claim'].browse(claim_id)
             if claim.exists():

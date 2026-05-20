@@ -1,0 +1,17 @@
+{
+  "id": "7",
+  "subject": "Upgrade module via docker",
+  "description": "Run docker upgrade for buz_customize_kanban: docker exec -it odoo odoo -d MOG_DEV -u buz_customize_kanban --stop-after-init --no-http",
+  "owner": "coder",
+  "status": "completed",
+  "blocks": [],
+  "blocked_by": [
+    "task-1",
+    "task-2",
+    "task-3",
+    "task-4",
+    "task-5"
+  ],
+  "created_at": 1778941070,
+  "updated_at": 1778941276
+}

@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_tr_bank_export,buz.tr.bank.export,model_buz_tr_bank_export,buz_tr_bank_export.group_tr_bank_export_user,1,1,1,1
+access_buz_tr_bank_export_line,buz.tr.bank.export.line,model_buz_tr_bank_export_line,buz_tr_bank_export.group_tr_bank_export_user,1,1,1,1

@@ -52,10 +52,14 @@
                             }
 
                             th, td {
-                                border: 1px solid  #fff; !important;
+                                border: 1px solid #fff !important;
                                 padding: 4px 6px;
                                 font-size: 16px;
                                 background-color: #fff;
+                            }
+
+                            #order-line-table, #order-line-table th, #order-line-table td {
+                                border: 1px solid #000 !important;
                             }
 
                             thead th {
@@ -102,7 +106,7 @@
                             
                         </div>
                         <div class="col-4 text-end">
-                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                            <img src="/buz_inventory_delivery_report/static/img/LOGO%20MOGEN.png"
                                  style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                         </div>
                     </div>
@@ -299,15 +303,15 @@
 
 
                 <!-- Order Lines -->
-                <div style="min-height:920px; position:relative; box-sizing:border-box; display: flex; flex-direction: column;">
+                <div style="min-height:420px; position:relative; box-sizing:border-box; display: flex; flex-direction: column;">
                     <!-- กำหนด min-height เพื่อให้ตารางไม่สูงเกินเฟรม A4 ประมาณ 297mm แต่เหลือที่ให้ footer -->
-                    <table style="margin-top: 6px;">
+                    <table id="order-line-table" style="margin-top: 6px;">
                       <thead>
                         <tr>
-                          <th style="width: 5%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">ลำดับ</th>
-                          <th style="width: 40%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">ชื่อสินค้า</th>
-                          <th style="width: 15%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">จำนวน</th>
-                          <th style="width: 10%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">หน่วย</th>
+                          <th style="width: 5%; padding-top:2px; padding-bottom:2px;">ลำดับ</th>
+                          <th style="width: 40%; padding-top:2px; padding-bottom:2px;">ชื่อสินค้า</th>
+                          <th style="width: 15%; padding-top:2px; padding-bottom:2px;">จำนวน</th>
+                          <th style="width: 10%; padding-top:2px; padding-bottom:2px;">หน่วย</th>
                         </tr>
                       </thead>
                       <tbody>

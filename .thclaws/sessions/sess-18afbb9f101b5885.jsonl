@@ -1,0 +1,4 @@
+{"type":"header","id":"sess-18afbb9f101b5885","model":"zai/glm-5.1","cwd":"/srv/docker/odoo/custom-addons","created_at":1778846669}
+{"type":"plan_snapshot","plan":null,"timestamp":1778846669}
+{"type":"user","content":[{"type":"text","text":"Hi"}],"timestamp":1778846733}
+{"type":"assistant","content":[{"type":"thinking","content":"The user just said \"Hi\". This is a simple greeting. Let me check if there are any existing todos first, as per the guidelines."},{"type":"text","text":"Hi! How can I help you today?"}],"timestamp":1778846733,"provider":"zai","model":"zai/glm-5.1"}

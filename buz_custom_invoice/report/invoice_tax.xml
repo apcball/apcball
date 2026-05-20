@@ -160,7 +160,7 @@
                                 </div>
                             </div>
                             <div class="col-4 text-end">
-                                <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
+                                <img src="/buz_custom_invoice/static/logo/LOGO%20MOGEN.png" 
                                      style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
@@ -195,6 +195,13 @@
                             <div style="width: 50%; text-align: left;margin-top: 40px;">
                                 <strong style="width: auto; display: inline-block;"></strong>
                                 <span t-field="doc.invoice_origin"/>
+                                <t t-if="doc.picking_ids">
+                                    <t t-set="picking_size" t-value="len(doc.picking_ids)"/>
+                                    <t t-foreach="doc.picking_ids" t-as="picking">
+                                        <span t-field="picking.name"/>
+                                        <t t-if="picking_index + 1 &lt; picking_size">, </t>
+                                    </t>
+                                </t>
                             </div>
                         
                             <!-- ฝั่งขวา: เลขที่เอกสาร + วันที่ -->
@@ -220,14 +227,14 @@
                                 <!-- ซ้าย -->
                                 <div style="display: table-cell; width: 50%; vertical-align: top; padding-right: 5px;">
                                     <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; height: 192px; box-sizing: border-box;">
-                                        <div><strong>ชื่อลูกค้า:</strong> <span t-field="doc.partner_id.name"/></div>
+                                        <div><strong>ชื่อลูกค้า:</strong> <span t-field="doc.partner_id.name"/> <span t-field="doc.partner_id.branch"/></div>
                                         <div><strong>เลขประจำตัวผู้เสียภาษี:</strong> <span t-field="doc.partner_id.vat"/></div>
                                         <div>
                                             <strong>ที่อยู่:</strong>
                                             <span t-field="doc.partner_id.street"/>
-                                            <t t-if="doc.partner_id.city"> ตำบล<span t-field="doc.partner_id.city"/></t>
-                                            <t t-if="doc.partner_id.state_id"> อำเภอ<span t-field="doc.partner_id.state_id.name"/></t>
-                                            <t t-if="doc.partner_id.state_id"> จังหวัด<span t-field="doc.partner_id.state_id.name"/></t>
+                                            <span t-field="doc.partner_id.street2"/>
+                                            <span t-field="doc.partner_id.city"/>
+                                            <span t-field="doc.partner_id.state_id.name"/>
                                             <span t-field="doc.partner_id.zip"/>
                                         </div>
                                         <div><strong>โทรศัพท์:</strong> <span t-field="doc.partner_id.phone"/></div>
@@ -240,9 +247,9 @@
                                         <div style="margin-bottom:2px;">สถานที่ส่ง: 
                                             <span t-field="doc.partner_shipping_id.name"/>
                                             <span t-field="doc.partner_shipping_id.street"/>
-                                            <t t-if="doc.partner_shipping_id.city">ตำบล<span t-field="doc.partner_shipping_id.city"/></t>
-                                            <t t-if="doc.partner_shipping_id.state_id">อำเภอ<span t-field="doc.partner_shipping_id.state_id.name"/></t>
-                                            <t t-if="doc.partner_shipping_id.state_id">จังหวัด<span t-field="doc.partner_shipping_id.state_id.name"/></t>
+                                            <span t-field="doc.partner_shipping_id.street2"/>
+                                            <span t-field="doc.partner_shipping_id.city"/>
+                                            <span t-field="doc.partner_shipping_id.state_id.name"/>
                                             <span t-field="doc.partner_shipping_id.zip"/>
                                         </div>
 
@@ -253,7 +260,8 @@
                                             </div>
                                             <div style="width: 50%;">
                                               <strong>เลขที่ใบสั่งขาย:</strong>
-                                              <span t-esc="(doc.invoice_line_ids and doc.invoice_line_ids[0].sale_line_ids and doc.invoice_line_ids[0].sale_line_ids[0].order_id.client_order_ref) or ''"/>
+                                              <t t-set="so" t-value="doc.invoice_line_ids and doc.invoice_line_ids[0].sale_line_ids and doc.invoice_line_ids[0].sale_line_ids[0].order_id"/>
+                                              <span t-esc="(so and so.client_order_ref) or (so and so.name) or ''"/>
                                             </div>
                                           </div>
                                           
@@ -333,7 +341,9 @@
                                             <span t-field="line.price_unit" t-options='{"widget": "float", "precision": 2}'/>
                                         </td>
                                         <td style="border: 1px solid black; text-align: right; vertical-align: middle;">
-                                            <span t-field="line.discount"/>
+                                            <t t-if="line.discount_fixed">
+                                                <span t-field="line.discount_fixed" t-options='{"widget": "float", "precision": 2}'/> ฿
+                                            </t>
                                         </td>
                                         <td style="border: 1px solid black; text-align: right; vertical-align: middle;">
                                             <span t-field="line.price_subtotal" t-options='{"widget": "float", "precision": 2}'/>
@@ -349,19 +359,19 @@
                                     <tr>
                                         <td colspan="4" style="text-align: left; border-top: 1px solid #000; line-height: 1;  vertical-align: top; padding: 0;">
                                             <!-- ส่วนบน -->
-                                            <div style="min-height: 135px; line-height: 0.8; margin-top: 10px; max-height: 120px; height: 135px; padding: 10px; box-sizing: border-box; border-bottom: 1.5px solid #000;">
-                                                <div style="line-height: 1; font-size: 15px;">
-                                                    <strong>หมายเหตุ:</strong>
-                                                    <div style="margin-bottom: 1.8px;">* หากพ้นกำหนด 7 วัน นับจากวันที่ในเอกสารใบนี้ ทางบริษัทขอสงวนสิทธิ์ในการเปลี่ยนแปลงหรือแก้ไข</div>
-                                                    <div style="margin-bottom: 1.8px;">* กรุณาตรวจสอบสินค้าอยู่ในสภาพเรียบร้อย และมีจำนวนถูกต้องตามรายการข้างต้น ก่อนลงลายมือชื่อ เพื่อรับสินค้า</div>
-                                                    <div style="margin-bottom: 1.8px;">* หากสินค้าเสียหายหรือมีความผิดผลาด โปรดแจ้งบริษัทฯ ภายใน 7 วัน มิฉะนั้น บริษัทจะไม่รับผิดชอบความเสียหายที่เกิดขึ้น</div>
-                                                    <div style="margin-bottom: 1.8px;">* หากชำระเงินแล้ว ต้องมีลายเซนต์ผู้รับเงินจึงจะถูกต้องสมบูรณ์</div>
-                                                    <div style="margin-bottom: 1.8px;">* กรณีชำระด้วยเช็ค ใบเสร็จรับเงินจะถือว่าถูกต้องสมบูรณ์ก็ต่อเมื่อบริษัทฯ ได้เรียกเก็บตามเช็คเรียบร้อยแล้ว</div>
-                                                    <div style="margin-bottom: 1.8px;">* กรณีที่ผิดนัดชำระหนี้ ทางบริษัทฯ จะคิดดอกเบี้ย ในอัตราร้อยละ 1.25 ต่อเดือน ของยอดหนี้สินค้า</div>
+                                            <div style="min-height: 145px; height: 145px; margin-top: 10px; padding: 8px 10px; box-sizing: border-box; border-bottom: 1.5px solid #000;">
+                                                <div style="line-height: 1.25; font-size: 12px;">
+                                                    <strong style="font-size: 14px;">หมายเหตุ ผิด ตก ยกเว้น E. &amp; O.E.</strong>
+                                                    <div style="margin-bottom: 1.7px;">* หากพ้นกำหนดเป็นเวลา 7 วัน นับจากวันที่ในเอกสารฉบับนี้ ทางบริษัทฯ ขอสงวนสิทธิ์ในการเปลี่นแปลงหรือแก้ไข</div>
+                                                    <div style="margin-bottom: 1.7px;">* กรุณาตรวจสอบสินค้าที่ได้รับอยู่ในสภาพเรียบร้อยและมีจำนวนถูกต้องตามรายการข้างต้น ก่อนลงมือชื่อ เพื่อรับสินค้า</div>
+                                                    <div style="margin-bottom: 1.7px;">* หากสินค้าเสียหายหรือมีความผิดผลาด โปรดแจ้งบริษัทฯ ภายใน 7 วัน มิฉะนั้นบริษัทฯ จะไม่รับผิดชอบความเสียหายที่เกิดขึ้น</div>
+                                                    <div style="margin-bottom: 1.7px;">* หากชำระเงินแล้ว ต้องมีลายเซนต์ผู้รับเงินจึงจะถูกต้องสมบูรณ์</div>
+                                                    <div style="margin-bottom: 1.7px;">* กรณีชำระด้วยเช็ค ใบเสร็จรับเงินจะถือว่าถูกต้องและสมบูรณ์ต่อเมื่อบริษัทฯ ได้เรียกเก็บตามเช็คเรียบร้อยแล้ว</div>
+                                                    <div style="margin-bottom: 1.7px;">* ในกรณีที่ผิดชำระหนี้ ทางบริษัทฯ จะคิดดอกเบี้ย ในอัตราร้อยล่ะ 1.25 ต่อเดือน ของยอดหนี้ค่าสินค้า</div>
                                                 </div>
                                             </div>
                                             <!-- ส่วนล่าง -->
-                                            <div style="min-height: 35px; height: 45px; padding: 10px; box-sizing: border-box;font-size: 20px;">
+                                            <div style="min-height: 35px; height: 35px; padding: 5px 10px; box-sizing: border-box; font-size: 18px; line-height: 1.2;">
                                                 <strong>จำนวนเงิน (ตัวอักษร):</strong>
                                                 <span t-esc="doc.amount_total_text_th"/>
                                             </div>
@@ -376,7 +386,7 @@
                                         </td>
                                         <td style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 18px; vertical-align: top;">
                                             <div>
-                                                <t t-set="amount_total" t-value="doc.amount_total or 0.0"/>
+                                                <t t-set="amount_total" t-value="doc.amount_untaxed or 0.0"/>
                                                 <t t-set="amount_tax" t-value="doc.amount_tax or 0.0"/>
                                                 <t t-set="grand_total" t-value="doc.amount_total or 0.0"/>
                                         

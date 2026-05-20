@@ -1,0 +1,17 @@
+{
+  "id": "6",
+  "subject": "Upgrade module via docker",
+  "description": "Check KMS for the docker upgrade command and run it for buz_customize_kanban.",
+  "owner": "coder",
+  "status": "completed",
+  "blocks": [],
+  "blocked_by": [
+    "task-1",
+    "task-2",
+    "task-3",
+    "task-4",
+    "task-5"
+  ],
+  "created_at": 1778941048,
+  "updated_at": 1778941251
+}

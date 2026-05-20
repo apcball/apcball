@@ -1,0 +1,18 @@
+{
+  "name": "kanban-customize",
+  "description": "Customize product kanban view with warehouse and pricelist selection",
+  "created_at": 1778940977,
+  "lead_agent_id": "lead",
+  "members": [
+    {
+      "name": "coder",
+      "prompt": "You are an Odoo 17 developer. You implement code changes delegated by the lead. Follow instructions precisely. The working directory is /workspace. The module is at /workspace/buz_customize_kanban/.",
+      "role": "Code changes for buz_customize_kanban module",
+      "color": null,
+      "cwd": null,
+      "is_active": true,
+      "tmux_pane_id": null,
+      "isolation": null
+    }
+  ]
+}

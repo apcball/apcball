@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Menu item under Accounting > Reporting -->
+        <menuitem id="menu_account_trial_balance"
+                  name="Trial Balance"
+                  parent="account.menu_finance_reports"
+                  action="action_trial_balance_wizard"
+                  sequence="10"/>
+    </data>
+</odoo>

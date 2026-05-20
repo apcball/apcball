@@ -11,6 +11,7 @@
                 Create a new record!
             </p>
         </field>
+        <field name="context">{'search_default_my_requisitions': 1}</field>
     </record>
 
     <record id="employee_purchase_requisition_view_form" model="ir.ui.view">
@@ -173,6 +174,8 @@
                                 <tree editable="bottom">
                                     <field name="product_id"/>
                                     <field name="description"/>
+                                    <field name="last_purchase_price" string="Last Price" optional="hide"/>
+                                    <field name="last_purchase_date" string="Last Date" optional="hide"/>
                                     <field name="analytic_distribution"
                                            widget="analytic_distribution"
                                            groups="analytic.group_analytic_accounting"
@@ -189,14 +192,6 @@
                             </field>
                             <group class="oe_subtotal_footer oe_right">
                                 <field name="total_amount" string="ยอดรวมทั้งหมด" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
-                            </group>
-                        </page>
-                        <page string="Picking Details"
-                              groups="employee_purchase_requisition.employee_requisition_manager,employee_purchase_requisition.employee_requisition_head">
-                            <group>
-                                <group>
-                                    <!-- Destination location moved to main group, only editable in draft -->
-                                </group>
                             </group>
                         </page>
                         <page string="Other Info">
@@ -275,7 +270,7 @@
                                         <field name="requisition_date"/>
                                     </div>
                                     <div>
-                                        <strong>Total: <field name="total_amount" widget="monetary"/></strong>
+                                        <strong>Total: <field name="total_amount" widget="monetary" options="{'currency_field': 'company_currency_id'}"/></strong>
                                     </div>
                                     <div>
                                         <field name="state" widget="badge"
@@ -301,6 +296,8 @@
                 <field name="name"/>
                 <field name="employee_id"/>
                 <field name="dept_id"/>
+                <filter string="My Requisitions" name="my_requisitions"
+                        domain="[('employee_id.user_id', '=', uid)]"/>
                 <group expand="1" string="Group By">
                     <filter string="Employee" name="employee_id"
                             context="{'group_by':'employee_id', 'residual_visible':True}"/>

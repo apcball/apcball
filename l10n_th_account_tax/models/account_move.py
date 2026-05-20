@@ -1,10 +1,17 @@
 # Copyright 2019 Ecosoft Co., Ltd (https://ecosoft.co.th/)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
 
+import logging
+
 from odoo import _, Command, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.float_utils import float_compare, float_round
 from odoo.tools.misc import format_date
+
+from .withholding_tax_cert import WHT_CERT_INCOME_TYPE
+
+
+_logger = logging.getLogger(__name__)
 
 
 class AccountMoveLine(models.Model):
@@ -200,16 +207,9 @@ class AccountMoveLine(models.Model):
         }
         return taxinv_dict
 
-    def _apply_wht_tax_from_purchase_line(self):
-        for line in self.filtered(
-            lambda aml: aml.purchase_line_id.wht_tax_id and not aml.wht_tax_id
-        ):
-            line.wht_tax_id = line.purchase_line_id.wht_tax_id
-
     @api.model_create_multi
     def create(self, vals_list):
         move_lines = super().create(vals_list)
-        move_lines._apply_wht_tax_from_purchase_line()
         TaxInvoice = self.env["account.move.tax.invoice"]
         sign = self.env.context.get("reverse_tax_invoice") and -1 or 1
         for line in move_lines:
@@ -355,9 +355,7 @@ class AccountMove(models.Model):
         """
         for rec in self:
             wht_tax = bool(rec.line_ids.mapped("wht_tax_id"))
-            # origin_payment_id may not exist on older Odoo versions (e.g. 17),
-            # so use getattr to safely access it.
-            origin_payment = getattr(rec, "origin_payment_id", False)
+            origin_payment = rec._get_related_payment()
             not_inv = rec.move_type == "entry" and not (
                 origin_payment and origin_payment.payment_type == "inbound"
             )
@@ -385,6 +383,20 @@ class AccountMove(models.Model):
         )
         action["domain"] = [("id", "in", self.wht_cert_ids.ids)]
         return action
+
+    def _get_related_payment(self):
+        """Return the payment linked to this journal entry, if any.
+
+        Odoo 17 does not expose ``origin_payment_id`` on ``account.move`` in
+        this codebase, so we fall back to the matching ``account.payment``
+        record by ``move_id``. This keeps WHT certificates and withholding
+        moves linked to the payment form after creation.
+        """
+        self.ensure_one()
+        payment = getattr(self, "origin_payment_id", False)
+        if payment:
+            return payment
+        return self.env["account.payment"].search([("move_id", "=", self.id)], limit=1)
 
     def js_assign_outstanding_line(self, line_id):
         move_line = self.env["account.move.line"].browse(line_id)
@@ -518,7 +530,7 @@ class AccountMove(models.Model):
 
             # On payment JE, keep track of move when PIT not withheld,
             # use data from vendor bill
-            payment_id = getattr(move, "origin_payment_id", False)
+            payment_id = move._get_related_payment()
             if payment_id and not payment_id.wht_move_ids.mapped("is_pit"):
                 active_ids = self.env.context.get("active_ids", [])
                 model = self.env.context.get("active_model")
@@ -683,6 +695,17 @@ class AccountMove(models.Model):
         Group by partner and income type, regardless of wht_tax_id
         """
         self.ensure_one()
+        payment = self._get_related_payment()
+        income_type_labels = dict(WHT_CERT_INCOME_TYPE)
+        if not self.wht_move_ids and payment:
+            voucher_lines = self._get_voucher_lines_from_payment(payment)
+            if voucher_lines:
+                cert = self._create_cert_from_voucher_lines(voucher_lines, payment)
+                action = self.env["ir.actions.act_window"]._for_xml_id(
+                    "l10n_th_account_tax.action_withholding_tax_cert_menu"
+                )
+                action["domain"] = [("id", "in", cert.ids)]
+                return action
         # Auto-fill missing Type of Income from related withholding tax default
         for w in self.wht_move_ids.filtered(lambda w: not w.wht_cert_income_type):
             if w.wht_tax_id and w.wht_tax_id.wht_cert_income_type:
@@ -697,7 +720,71 @@ class AccountMove(models.Model):
                 _("Please select Type of Income on every withholding moves")
             )
         certs = self._preapare_wht_certs()
-        self.env["withholding.tax.cert"].create(certs)
+        if not certs:
+            raise UserError(_("No withholding tax moves were found to create certs."))
+
+        created_certs = self.env["withholding.tax.cert"].create(certs)
+        action = self.env["ir.actions.act_window"]._for_xml_id(
+            "l10n_th_account_tax.action_withholding_tax_cert_menu"
+        )
+        action["domain"] = [("id", "in", created_certs.ids)]
+        return action
+
+    def _get_voucher_lines_from_payment(self, payment):
+        self.ensure_one()
+        if "account.payment.voucher.line" not in self.env.registry:
+            return False
+
+        bill_moves = self.env["account.move"].browse()
+        for line in payment.move_id.line_ids.filtered(lambda l: l.reconciled):
+            partials = line.matched_debit_ids | line.matched_credit_ids
+            counterpart_lines = partials.mapped("debit_move_id") | partials.mapped("credit_move_id")
+            bill_moves |= counterpart_lines.mapped("move_id").filtered(lambda m: m.id != payment.move_id.id)
+        if not bill_moves:
+            return False
+
+        voucher_lines = self.env["account.payment.voucher.line"].search([("move_id", "in", bill_moves.ids)])
+        return voucher_lines.filtered(lambda line: line.wht_amount > 0 and getattr(line, "buz_wht_tax_id", False))
+
+    def _create_cert_from_voucher_lines(self, voucher_lines, payment):
+        self.ensure_one()
+        if not voucher_lines:
+            return self.env["withholding.tax.cert"].browse()
+
+        income_type_labels = dict(WHT_CERT_INCOME_TYPE)
+        cert_line_vals = []
+        wht_tax_set = set()
+        partner = payment.partner_id
+        for voucher_line in voucher_lines:
+            wht_tax = voucher_line.buz_wht_tax_id
+            income_type = wht_tax.wht_cert_income_type or "5"
+            cert_line_vals.append(
+                Command.create(
+                    {
+                        "wht_cert_income_type": income_type,
+                        "wht_cert_income_desc": income_type_labels.get(
+                            income_type, wht_tax.display_name
+                        ),
+                        "base": abs(voucher_line.wht_base_amount or 0.0),
+                        "amount": abs(voucher_line.wht_amount or 0.0),
+                        "wht_tax_id": wht_tax.id,
+                    }
+                )
+            )
+            wht_tax_set.add(wht_tax.id)
+
+        cert_vals = {
+            "move_id": self.id,
+            "payment_id": payment.id,
+            "partner_id": partner.id,
+            "date": self.date,
+            "wht_line": cert_line_vals,
+        }
+        wht_tax = self.env["account.withholding.tax"].browse(list(wht_tax_set))
+        income_tax_form = wht_tax.mapped("income_tax_form")
+        if len(income_tax_form) == 1:
+            cert_vals["income_tax_form"] = income_tax_form[0]
+        return self.env["withholding.tax.cert"].create(cert_vals)
 
     def _preapare_wht_certs(self):
         """Create withholding tax certs, 1 cert per partner"""
@@ -756,6 +843,9 @@ class AccountMove(models.Model):
             income_tax_form = wht_tax.mapped("income_tax_form")
             if len(income_tax_form) == 1:
                 cert_vals.update({"income_tax_form": income_tax_form[0]})
+            payment = self._get_related_payment()
+            if payment:
+                cert_vals["payment_id"] = payment.id
             cert_list.append(cert_vals)
         return cert_list
 

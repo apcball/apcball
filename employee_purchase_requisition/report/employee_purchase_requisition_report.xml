@@ -154,13 +154,13 @@
                     <!-- กลาง: แผนที่ขอ -->
                     <div style="width: 33%; text-align: center;">
                         <strong>แผนที่ขอ:</strong>
-                        <t t-esc="o.request_plan"/>
+                        <t t-esc="o.request_plan.strftime('%d/%m/%Y') if o.request_plan else ''"/>
                     </div>
                 
                     <!-- ขวาสุด: เลขที่ใบที่ขอ -->
                     <div style="width: 33%; text-align: right;">
                         <strong>เลขที่ใบที่ขอ:</strong>
-                        <t t-esc="o.request_number"/>
+                        <t t-esc="o.name"/>
                     </div>
                 </div>
 
@@ -193,15 +193,15 @@
                             <td style="border: 1px solid #000; text-align: right;"><t t-esc="line.quantity or ''"/></td>
                             <td style="border: 1px solid #000; text-align: center;"><t t-esc="line.product_id.uom_id.name or ''"/></td>
                             <td style="border: 1px solid #000; text-align: center;">
-                                <t t-if="'unit_price' in line">
-                                       <t t-esc="line.unit_price"/>
-                                   </t>
+                                <t t-esc="line.unit_price or ''"/>
                                </td>
                             <td style="border: 1px solid #000; text-align: center;">
                                 <t t-esc="'{:,.2f}'.format((line.quantity or 0.0) * (line.unit_price or 0.0))"/>
                             </td>
                             <td style="border: 1px solid #000; text-align: center;">
-                              <t t-esc="'need_date' in line and line['need_date'] and line['need_date'].strftime('%d/%m/%Y') or ''"/>
+                              <t t-if="line.need_date">
+                                  <t t-esc="line.need_date.strftime('%d/%m/%Y')"/>
+                              </t>
                             </td>
                             <td style="border: 1px solid #000; text-align: center;">
                               <t t-if="line.partner_id">
@@ -209,13 +209,13 @@
                               </t>
                             </td>
                              <td style="border: 1px solid #000; text-align: center;">
-                              <t t-if="'delivery_location_id' in line and line['delivery_location_id']">
-                                  <t t-esc="line['delivery_location_id'].display_name"/>
+                              <t t-if="line.delivery_location_id">
+                                  <t t-esc="line.delivery_location_id.display_name"/>
                               </t>
                             </td>
                             <td style="border: 1px solid #000;">
-                              <t t-if="'reason_requisition' in line and line['reason_requisition']">
-                                  <t t-esc="line['reason_requisition']"/>
+                              <t t-if="line.description">
+                                  <t t-esc="line.description"/>
                               </t>
                             </td>
                           </tr>
@@ -241,7 +241,7 @@
                       
                       <div style="margin-top:15px;">
                         <strong>หมายเหตุ:</strong>
-                        <t t-set="note_text" t-value="o.note or ''"/>
+                        <t t-set="note_text" t-value="o.requisition_description or ''"/>
                         <span t-esc="note_text"/>
                       </div>
 

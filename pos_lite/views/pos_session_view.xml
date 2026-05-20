@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Session Tree -->
+    <record id="view_pos_lite_session_tree" model="ir.ui.view">
+        <field name="name">pos.lite.session.tree</field>
+        <field name="model">pos.lite.session</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'opened'" decoration-muted="state == 'closed'">
+                <field name="name"/>
+                <field name="config_id"/>
+                <field name="state"/>
+                <field name="date_open" string="Open"/>
+                <field name="date_close" string="Close"/>
+                <field name="user_id" string="Cashier"/>
+                <field name="order_count_sales" string="Sales"/>
+                <field name="order_count_returns" string="Returns"/>
+                <field name="amount_net" string="Net"/>
+                <field name="company_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Session Form -->
+    <record id="view_pos_lite_session_form" model="ir.ui.view">
+        <field name="name">pos.lite.session.form</field>
+        <field name="model">pos.lite.session</field>
+        <field name="arch" type="xml">
+            <form string="POS Lite Session">
+                <header>
+                    <button name="action_close_session" type="object" string="Close Session" class="oe_highlight" invisible="state != 'opened'" confirm="Close this session? Pending draft orders must be processed first."/>
+                    <button name="action_reopen_session" type="object" string="Reopen" invisible="state != 'closed'" groups="pos_lite.group_pos_lite_manager"/>
+                    <button name="action_print_session_summary" type="object" string="Print Summary" invisible="state != 'closed'" groups="pos_lite.group_pos_lite_user"/>
+                    <field name="state" widget="statusbar" statusbar_visible="opened,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <field name="currency_id" invisible="1"/>
+                    <group>
+                        <group string="Session Info">
+                            <field name="config_id"/>
+                            <field name="date_open"/>
+                            <field name="date_close"/>
+                            <field name="user_id"/>
+                            <field name="close_user_id"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group string="Summary">
+                            <field name="order_count_sales"/>
+                            <field name="order_count_returns"/>
+                            <field name="order_count"/>
+                            <field name="amount_untaxed" widget="monetary"/>
+                            <field name="amount_tax" widget="monetary"/>
+                            <field name="amount_total" widget="monetary"/>
+                            <field name="amount_refund" widget="monetary"/>
+                            <field name="amount_net" widget="monetary" style="font-weight: bold; font-size: 1.2em;"/>
+                        </group>
+                    </group>
+                    <group string="Payment Breakdown" col="5">
+                        <group>
+                            <field name="payment_cash" widget="monetary" string="Cash"/>
+                        </group>
+                        <group>
+                            <field name="payment_transfer" widget="monetary" string="Transfer"/>
+                        </group>
+                        <group>
+                            <field name="payment_card" widget="monetary" string="Card"/>
+                        </group>
+                        <group>
+                            <field name="payment_promptpay" widget="monetary" string="PromptPay"/>
+                        </group>
+                        <group>
+                            <field name="payment_other" widget="monetary" string="Other"/>
+                        </group>
+                    </group>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_orders" type="object" class="oe_stat_button" icon="fa-list">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="order_count"/></span>
+                                <span class="o_stat_text">Orders</span>
+                            </div>
+                        </button>
+                    </div>
+                    <group string="Notes">
+                        <field name="note" nolabel="1" placeholder="Session notes..."/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Session Search -->
+    <record id="view_pos_lite_session_search" model="ir.ui.view">
+        <field name="name">pos.lite.session.search</field>
+        <field name="model">pos.lite.session</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="config_id"/>
+                <field name="user_id"/>
+                <filter string="Open" name="open" domain="[('state', '=', 'opened')]"/>
+                <filter string="Closed" name="closed" domain="[('state', '=', 'closed')]"/>
+                <filter string="Today" name="today" domain="[('date_open', '&gt;=', (context_today()).strftime('%Y-%m-%d 00:00:00'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Config" name="group_config" context="{'group_by': 'config_id'}"/>
+                    <filter string="Cashier" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Date" name="group_date" context="{'group_by': 'date_open:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Session Action -->
+    <record id="action_pos_lite_session" model="ir.actions.act_window">
+        <field name="name">Sessions</field>
+        <field name="res_model">pos.lite.session</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No sessions yet. Open your first session to start selling.</p>
+        </field>
+    </record>
+</odoo>

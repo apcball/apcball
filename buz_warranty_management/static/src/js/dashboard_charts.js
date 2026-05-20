@@ -10,6 +10,7 @@ export class DashboardChart extends Component {
     static template = "buz_warranty_management.DashboardChart";
     static props = {
         ...standardFieldProps,
+        chartId: { type: String, optional: true },
     };
     
     static extractProps({ attrs, field }) {
@@ -199,7 +200,6 @@ export class DashboardChart extends Component {
                     link.href = url;
                     link.click();
                 } else {
-                    // Simple chart fallback
                     this.notification.add(
                         "PNG export not available with simple charts",
                         { type: "info" }
@@ -213,7 +213,6 @@ export class DashboardChart extends Component {
                     link.href = url;
                     link.click();
                 } else {
-                    // Simple chart fallback
                     this.notification.add(
                         "JPG export not available with simple charts",
                         { type: "info" }
@@ -237,11 +236,14 @@ export class DashboardChart extends Component {
 // Pie Chart Component
 export class PieChart extends DashboardChart {
     static template = "buz_warranty_management.PieChart";
+    static props = {
+        ...standardFieldProps,
+        chartId: { type: String, optional: true },
+    };
     
     static extractProps({ attrs, field }) {
         return {
-            ...super.extractProps({ attrs, field }),
-            chartId: attrs.chartId || attrs.chartid || field.name,
+            ...DashboardChart.extractProps({ attrs, field }),
         };
     }
     
@@ -275,11 +277,14 @@ export class PieChart extends DashboardChart {
 // Line Chart Component
 export class LineChart extends DashboardChart {
     static template = "buz_warranty_management.LineChart";
+    static props = {
+        ...standardFieldProps,
+        chartId: { type: String, optional: true },
+    };
     
     static extractProps({ attrs, field }) {
         return {
-            ...super.extractProps({ attrs, field }),
-            chartId: attrs.chartId || attrs.chartid || field.name,
+            ...DashboardChart.extractProps({ attrs, field }),
         };
     }
     
@@ -316,11 +321,14 @@ export class LineChart extends DashboardChart {
 // Bar Chart Component
 export class BarChart extends DashboardChart {
     static template = "buz_warranty_management.BarChart";
+    static props = {
+        ...standardFieldProps,
+        chartId: { type: String, optional: true },
+    };
     
     static extractProps({ attrs, field }) {
         return {
-            ...super.extractProps({ attrs, field }),
-            chartId: attrs.chartId || attrs.chartid || field.name,
+            ...DashboardChart.extractProps({ attrs, field }),
         };
     }
     

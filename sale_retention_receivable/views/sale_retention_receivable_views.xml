@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- List View -->
+    <record id="view_sale_retention_receivable_tree" model="ir.ui.view">
+        <field name="name">sale.retention.receivable.tree</field>
+        <field name="model">sale.retention.receivable</field>
+        <field name="arch" type="xml">
+            <tree>
+                <header>
+                    <button
+                        name="action_open_collection_wizard"
+                        type="object"
+                        string="Collect Selected"
+                        class="btn-primary"
+                    />
+                </header>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="invoice_id"/>
+                <field name="sale_order_id"/>
+                <field name="invoice_date"/>
+                <field name="retention_due_date"/>
+                <field name="retention_amount" sum="Total"/>
+                <field name="collected_amount" sum="Total"/>
+                <field name="balance_amount" sum="Total"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_sale_retention_receivable_form" model="ir.ui.view">
+        <field name="name">sale.retention.receivable.form</field>
+        <field name="model">sale.retention.receivable</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_collection_wizard" type="object"
+                                string="Collect"
+                                class="oe_stat_button"
+                                icon="fa-money"
+                                invisible="state not in ('open', 'partially_collected')"/>
+                        <button name="action_view_collection_moves" type="object"
+                                class="oe_stat_button"
+                                icon="fa-book"
+                                invisible="collection_move_count == 0">
+                            <field name="collection_move_count" widget="statinfo" string="Journal Entries"/>
+                        </button>
+                        <button name="action_draft" type="object"
+                                string="Set to Draft"
+                                class="oe_stat_button"
+                                icon="fa-pencil"
+                                invisible="state != 'cancelled'"/>
+                        <button name="action_cancel" type="object"
+                                string="Cancel"
+                                class="oe_stat_button"
+                                icon="fa-times"
+                                invisible="state in ('collected', 'cancelled')"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="partner_id"/>
+                            <field name="invoice_id"/>
+                            <field name="sale_order_id"/>
+                            <field name="payment_id"/>
+                            <field name="state" widget="badge"/>
+                        </group>
+                        <group>
+                            <field name="retention_percent"/>
+                            <field name="retention_amount"/>
+                            <field name="collected_amount"/>
+                            <field name="balance_amount"/>
+                            <field name="retention_account_id"/>
+                            <field name="collection_move_ids" widget="many2many_tags" optional="show"/>
+                            <field name="invoice_date"/>
+                            <field name="retention_due_date"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_sale_retention_receivable_search" model="ir.ui.view">
+        <field name="name">sale.retention.receivable.search</field>
+        <field name="model">sale.retention.receivable</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="name"/>
+                <field name="invoice_id"/>
+                <filter name="open" string="Open"
+                        domain="[('state', '=', 'open')]"/>
+                <filter name="partially_collected" string="Partially Collected"
+                        domain="[('state', '=', 'partially_collected')]"/>
+                <filter name="due" string="Overdue"
+                        domain="[('state', 'in', ('open', 'partially_collected')), ('retention_due_date', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_partner" string="Customer"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_by_state" string="State"
+                            context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Pivot View -->
+    <record id="view_sale_retention_receivable_pivot" model="ir.ui.view">
+        <field name="name">sale.retention.receivable.pivot</field>
+        <field name="model">sale.retention.receivable</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="retention_amount" type="measure" string="Retention Amount"/>
+                <field name="collected_amount" type="measure" string="Collected Amount"/>
+                <field name="balance_amount" type="measure" string="Balance"/>
+                <field name="partner_id" type="row"/>
+                <field name="state" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Collection Wizard Form View -->
+    <record id="view_sale_retention_collection_wizard_form" model="ir.ui.view">
+        <field name="name">sale.retention.collection.wizard.form</field>
+        <field name="model">sale.retention.collection.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="partner_id"/>
+                    <field name="journal_id"/>
+                    <field name="bank_account_id"/>
+                    <field name="payment_date"/>
+                </group>
+                <field name="retention_line_ids">
+                    <tree editable="bottom">
+                        <field name="retention_id"/>
+                        <field name="partner_id"/>
+                        <field name="invoice_id"/>
+                        <field name="invoice_date"/>
+                        <field name="due_date"/>
+                        <field name="retention_amount"/>
+                        <field name="collected_amount"/>
+                        <field name="balance_amount"/>
+                        <field name="collect_amount"/>
+                    </tree>
+                </field>
+                <group>
+                    <field name="total_to_collect"/>
+                </group>
+                <footer>
+                    <button name="action_collect" string="Collect" type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action for Collection Wizard -->
+    <record id="action_sale_retention_collection_wizard" model="ir.actions.act_window">
+        <field name="name">Collect Retention</field>
+        <field name="res_model">sale.retention.collection.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

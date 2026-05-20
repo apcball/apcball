@@ -61,17 +61,33 @@ class StockCheckerController(http.Controller):
         )
 
     @http.route('/stock_checker/create_quotation', type='json', auth='user', methods=['POST'])
-    def create_quotation(self, lines=None):
+    def create_quotation(self, lines=None, partner_id=None, partner_name=None):
         """
         Create a Sale Order quotation from selected product lines.
 
         :param lines: list of {'product_id': int, 'qty': float, 'price': float}
+        :param partner_id: int or None — existing partner ID
+        :param partner_name: str or None — name for a new partner
         :return: dict with 'sale_order_id' and 'name'
         """
         if lines is None:
             lines = []
         helper = request.env['stock.checker.helper']
-        return helper.create_quotation(lines)
+        return helper.create_quotation(
+            lines,
+            partner_id=partner_id,
+            partner_name=partner_name,
+        )
+
+    @http.route('/stock_checker/user_rights', type='json', auth='user', methods=['POST'])
+    def get_user_rights(self):
+        """
+        Return the current user's stock checker permissions.
+
+        :return: dict with 'can_create_quotation'
+        """
+        helper = request.env['stock.checker.helper']
+        return helper.get_user_rights()
 
     @http.route('/stock_checker/preferences', type='json', auth='user', methods=['POST'])
     def get_preferences(self):

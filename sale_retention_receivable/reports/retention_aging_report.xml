@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_retention_aging">
+        <t t-call="web.html_container">
+            <t t-set="today_dt" t-value="datetime.now()"/>
+            <t t-set="today_date" t-value="today_dt.strftime('%Y-%m-%d')"/>
+            <t t-set="docs" t-value="docs"/>
+            <t t-set="open_retentions" t-value="docs.filtered(lambda r: r.state in ('open', 'partially_collected'))"/>
+
+            <div class="page">
+                <h2>Retention Aging Report</h2>
+                <p>As of: <t t-esc="today_date"/></p>
+
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Invoice</th>
+                            <th>Due Date</th>
+                            <th>Retention Amount</th>
+                            <th>Collected</th>
+                            <th>Balance</th>
+                            <th>Aging Bucket</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="open_retentions" t-as="r">
+                            <t t-set="dd" t-value="r.retention_due_date"/>
+                            <t t-set="bucket">
+                                <t t-if="not dd or dd &gt;= today_dt.date()">Not Due</t>
+                                <t t-elif="(today_dt.date() - dd).days &lt;= 30">0-30 Days</t>
+                                <t t-elif="(today_dt.date() - dd).days &lt;= 60">31-60 Days</t>
+                                <t t-elif="(today_dt.date() - dd).days &lt;= 90">61-90 Days</t>
+                                <t t-else="">Over 90 Days</t>
+                            </t>
+                            <tr>
+                                <td><t t-esc="r.partner_id.display_name"/></td>
+                                <td><t t-esc="r.invoice_id.name if r.invoice_id else ''"/></td>
+                                <td><t t-esc="r.retention_due_date"/></td>
+                                <td class="text-right"><t t-esc="r.retention_amount"/></td>
+                                <td class="text-right"><t t-esc="r.collected_amount"/></td>
+                                <td class="text-right"><t t-esc="r.balance_amount"/></td>
+                                <td><t t-esc="bucket"/></td>
+                            </tr>
+                        </t>
+                        <t t-if="not open_retentions">
+                            <tr>
+                                <td colspan="7" class="text-center">No open retention records.</td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+
+                <t t-if="open_retentions">
+                    <h3>Aging Summary</h3>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Aging Bucket</th>
+                                <th>Count</th>
+                                <th>Total Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-set="not_due_list" t-value="[]"/>
+                            <t t-set="bucket_30_list" t-value="[]"/>
+                            <t t-set="bucket_60_list" t-value="[]"/>
+                            <t t-set="bucket_90_list" t-value="[]"/>
+                            <t t-set="bucket_plus_list" t-value="[]"/>
+                            <t t-foreach="open_retentions" t-as="r">
+                                <t t-set="dd" t-value="r.retention_due_date"/>
+                                <t t-if="not dd or dd &gt;= today_dt.date()">
+                                    <t t-set="not_due_list" t-value="not_due_list + [r]"/>
+                                </t>
+                                <t t-elif="(today_dt.date() - dd).days &lt;= 30">
+                                    <t t-set="bucket_30_list" t-value="bucket_30_list + [r]"/>
+                                </t>
+                                <t t-elif="(today_dt.date() - dd).days &lt;= 60">
+                                    <t t-set="bucket_60_list" t-value="bucket_60_list + [r]"/>
+                                </t>
+                                <t t-elif="(today_dt.date() - dd).days &lt;= 90">
+                                    <t t-set="bucket_90_list" t-value="bucket_90_list + [r]"/>
+                                </t>
+                                <t t-else="">
+                                    <t t-set="bucket_plus_list" t-value="bucket_plus_list + [r]"/>
+                                </t>
+                            </t>
+                            <tr>
+                                <td>Not Due</td>
+                                <td><t t-esc="len(not_due_list)"/></td>
+                                <td class="text-right"><t t-esc="sum(r.balance_amount for r in not_due_list)"/></td>
+                            </tr>
+                            <tr>
+                                <td>0-30 Days Overdue</td>
+                                <td><t t-esc="len(bucket_30_list)"/></td>
+                                <td class="text-right"><t t-esc="sum(r.balance_amount for r in bucket_30_list)"/></td>
+                            </tr>
+                            <tr>
+                                <td>31-60 Days Overdue</td>
+                                <td><t t-esc="len(bucket_60_list)"/></td>
+                                <td class="text-right"><t t-esc="sum(r.balance_amount for r in bucket_60_list)"/></td>
+                            </tr>
+                            <tr>
+                                <td>61-90 Days Overdue</td>
+                                <td><t t-esc="len(bucket_90_list)"/></td>
+                                <td class="text-right"><t t-esc="sum(r.balance_amount for r in bucket_90_list)"/></td>
+                            </tr>
+                            <tr>
+                                <td>Over 90 Days</td>
+                                <td><t t-esc="len(bucket_plus_list)"/></td>
+                                <td class="text-right"><t t-esc="sum(r.balance_amount for r in bucket_plus_list)"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </t>
+            </div>
+        </t>
+    </template>
+</odoo>

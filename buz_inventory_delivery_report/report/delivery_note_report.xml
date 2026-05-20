@@ -8,8 +8,8 @@
         <field name="orientation">Portrait</field>
         <field name="margin_top">3</field>
         <field name="margin_bottom">3</field>
-        <field name="margin_left">3</field>
-        <field name="margin_right">3</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">96</field>
@@ -43,8 +43,8 @@
                                 padding: 0 !important;
                             }
                             html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
-                                font-family: '<t t-esc="config.font_family or 'Sarabun'"/>', sans-serif !important;
-                                font-size: <t t-esc="config.font_size or 14"/>px;
+                                font-family: 'Sarabun', sans-serif !important;
+                                font-size: 20px !important;
                                 line-height: <t t-esc="config.line_spacing or 1.2"/>;
                             }
                             table {
@@ -53,14 +53,22 @@
                             }
 
                             th, td {
-                                border: 1px solid  #fff; !important;
+                                border: 1px solid #fff !important;
                                 padding: 4px 6px;
                                 font-size: 16px;
                                 background-color: #fff;
                             }
 
+                            #order-line-table, #order-line-table th, #order-line-table td {
+                                border: 1px solid #000 !important;
+                            }
+
+                            .doc-title {
+                                font-size: 25px !important;
+                            }
+
                             thead th {
-                                font-size: 18px;
+                                font-size: 16px;
                                 font-weight: bold;
                                 background-color: #fff;
                                 text-align: center;
@@ -123,7 +131,7 @@
                             
                         </div>
                         <div class="col-4 text-end">
-                            <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                            <img src="/buz_inventory_delivery_report/static/img/LOGO%20MOGEN.png"
                                  style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                         </div>
                     </div>
@@ -131,7 +139,7 @@
                      <!-- Document Title -->
                      <div class="row mb-3">
                         <div class="col-4 offset-4 text-center">
-                            <div class="doc-title" style=" padding: 10px; font-size: 24px;  line-height: 1; ">
+                            <div class="doc-title" style=" padding: 10px; font-size: 25px;  line-height: 1; ">
                                 ใบส่งมอบงาน/ตรวจรับการติดตั้ง
                             </div>
                         </div>
@@ -139,7 +147,7 @@
 
                     
                 <!-- Customer and Document Info -->
-                <div class="row" style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 20px; margin-top: -40px; ">
+                <div class="row" style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 16px; margin-top: -40px; ">
 
                     <!--  เรียน, ผู้แจ้งงาน, ผู้ Confirm -->
                     <div style="flex: 1;margin-top: -40px;line-height: -5; ">
@@ -184,7 +192,7 @@
                 </div>
 
                   <!-- ประเภทลูกค้า -->
-                    <div style="font-size: 20px; margin-bottom: 2px; line-height: 1;margin-top: -20px;">
+                    <div style="font-size: 18px; margin-bottom: 2px; line-height: 1;margin-top: -20px;">
                          ประเภทลูกค้า:
                          <span style="border: 1px solid black; display: inline-block; width: 15px; height: 15px; line-height: 15px; text-align: center; margin: 0 10px 0 5px; vertical-align: middle; cursor: pointer;"></span> Project
                          <span style="border: 1px solid black; display: inline-block; width: 15px; height: 15px; line-height: 15px; text-align: center; margin: 0 10px 0 15px; vertical-align: middle; cursor: pointer;"></span> End User
@@ -275,13 +283,13 @@
                       <!-- Order Lines -->
                       <div style="min-height:920px; position:relative; box-sizing:border-box; display: flex; flex-direction: column;">
                         <!-- กำหนด min-height เพื่อให้ตารางไม่สูงเกินเฟรม A4 ประมาณ 297mm แต่เหลือที่ให้ footer -->
-                        <table style="margin-top: 6px;">
+                        <table id="order-line-table" style="margin-top: 6px;">
                           <thead>
                             <tr>
-                              <th style="width: 5%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">ลำดับ</th>
-                              <th style="width: 40%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">ชื่อสินค้า</th>
-                              <th style="width: 15%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">จำนวน</th>
-                              <th style="width: 10%; border-top: 1px solid #fff !important; padding-top:2px; padding-bottom:2px;">หน่วย</th>
+                              <th style="width: 5%; padding-top:2px; padding-bottom:2px;">ลำดับ</th>
+                              <th style="width: 40%; padding-top:2px; padding-bottom:2px;">ชื่อสินค้า</th>
+                              <th style="width: 15%; padding-top:2px; padding-bottom:2px;">จำนวน</th>
+                              <th style="width: 10%; padding-top:2px; padding-bottom:2px;">หน่วย</th>
                             </tr>
                           </thead>
                           <tbody>

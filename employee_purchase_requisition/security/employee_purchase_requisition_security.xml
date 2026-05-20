@@ -6,7 +6,6 @@
         <field name="sequence">20</field>
     </record>
 
-    <!-- User groups -->
     <record id="employee_requisition_user" model="res.groups">
         <field name="name">Requisition Users</field>
         <field name="category_id" ref="employee_requisition"/>

@@ -14,7 +14,7 @@
         id="menu_stock_enhanced_checker_app"
         name="Stock Checker"
         web_icon="stock_enhanced_checker,static/description/icon.png"
-        groups="stock.group_stock_user"
+        groups="stock_enhanced_checker.group_stock_checker_viewer"
         sequence="75"
     />
 
@@ -24,7 +24,7 @@
         name="Stock Checker"
         parent="menu_stock_enhanced_checker_app"
         action="action_stock_enhanced_checker"
-        groups="stock.group_stock_user"
+        groups="stock_enhanced_checker.group_stock_checker_viewer"
         sequence="10"
     />
 </odoo>

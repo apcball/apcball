@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_bank_export_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.basic_layout">
+                    <div class="page" style="font-size: 14px; font-family: 'Sarabun', 'Arial', sans-serif;">
+                        <style>
+                            .be-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 10px;
+                            }
+                            .be-table th, .be-table td {
+                                border: 1px solid black;
+                                padding: 4px;
+                            }
+                            .be-table th {
+                                text-align: center;
+                                font-weight: normal;
+                            }
+                            .header-table {
+                                width: 100%;
+                                margin-bottom: 5px;
+                            }
+                            .header-table td {
+                                padding: 2px 5px;
+                            }
+                            .signature-table {
+                                width: 100%;
+                                margin-top: 50px;
+                            }
+                            .signature-table td {
+                                padding: 10px 5px;
+                            }
+                            .underline {
+                                border-bottom: 1px solid black;
+                                display: inline-block;
+                                width: 250px;
+                            }
+                        </style>
+
+                        <div class="row">
+                            <div class="col-4">
+                                <h1 style="font-weight: normal; margin: 0; padding-top: 10px;">MOGEN</h1>
+                            </div>
+                            <div class="col-8 text-center" style="padding-top: 10px;">
+                                <h4 style="margin: 0; font-weight: normal;">Document of transfer money abroad</h4>
+                                <h4 style="margin: 0; font-weight: normal;">เอกสารแนบการโอนเงินต่างประเทศ</h4>
+                            </div>
+                        </div>
+                        
+                        <div class="row" style="margin-bottom: 5px;">
+                            <div class="col-12 text-end">
+                                <span>Issued Date : <span t-esc="datetime.datetime.now().strftime('%d/%m/%Y')"/></span>
+                            </div>
+                        </div>
+                        
+                        <div style="border-top: 2px solid black; border-bottom: 2px solid black; padding: 5px 0;">
+                            <table class="header-table">
+                                <tr>
+                                    <td style="width: 15%; text-align: right;">Transfer date:</td>
+                                    <td style="width: 35%;"><span t-field="o.transfer_date"/></td>
+                                    <td style="width: 15%; text-align: right;">No.:</td>
+                                    <td style="width: 35%;"><span t-field="o.name"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align: right;">Pay to:</td>
+                                    <td><span t-field="o.vendor_id.name"/></td>
+                                    <td style="text-align: right;">Refer to:</td>
+                                    <td><span t-field="o.refer_to"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align: right;">Destination Bank:</td>
+                                    <td><span t-field="o.destination_bank"/></td>
+                                    <td style="text-align: right;">Trading conditions:</td>
+                                    <td><span t-field="o.trading_conditions"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align: right;">Account No.:</td>
+                                    <td><span t-field="o.account_no"/></td>
+                                    <td style="text-align: right;">Type of goods:</td>
+                                    <td><span t-field="o.type_of_goods"/></td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align: right;">Attn:</td>
+                                    <td><span t-field="o.attn"/></td>
+                                    <td style="text-align: right;">Arrival date:</td>
+                                    <td><span t-field="o.arrival_date"/></td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <div style="padding: 5px 0;">
+                            <span>Terms of payment: <span t-field="o.terms_of_payment"/></span>
+                        </div>
+                        
+                        <table class="be-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%;">No.</th>
+                                    <th style="width: 10%;">Lot No.</th>
+                                    <th style="width: 12%;">Import date</th>
+                                    <th style="width: 12%;">ETDDATE</th>
+                                    <th style="width: 15%;">Invoice No.</th>
+                                    <th style="width: 16%;">Ref.No.</th>
+                                    <th style="width: 15%; text-align: right;">Amount</th>
+                                    <th style="width: 15%; text-align: right;">Transfer Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-set="idx" t-value="1"/>
+                                <t t-foreach="o.line_ids" t-as="line">
+                                    <tr>
+                                        <td class="text-center"><span t-esc="idx"/></td>
+                                        <td><span t-field="line.lot_no"/></td>
+                                        <td><span t-field="line.import_date" t-options='{"widget": "date", "format": "d/M/yyyy"}'/></td>
+                                        <td><span t-field="line.etd_date" t-options='{"widget": "date", "format": "d/M/yyyy"}'/></td>
+                                        <td><span t-field="line.invoice_id.name"/></td>
+                                        <td><span t-field="line.ref_no"/></td>
+                                        <td class="text-end"><span t-esc="line.amount" t-options='{"widget": "float", "precision": 2}'/></td>
+                                        <td class="text-end"><span t-esc="line.transfer_amount" t-options='{"widget": "float", "precision": 2}'/></td>
+                                    </tr>
+                                    <t t-set="idx" t-value="idx + 1"/>
+                                </t>
+                                <!-- Padding rows to match the image -->
+                                <t t-if="idx &lt; 10">
+                                    <t t-foreach="range(idx, 10)" t-as="pad">
+                                        <tr>
+                                            <td>&#160;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                                        </tr>
+                                    </t>
+                                </t>
+                                
+                                <tr>
+                                    <td colspan="6" style="border-right: none; border-bottom: none;"></td>
+                                    <td class="text-end" style="border-left: none; border-bottom: none;">Total</td>
+                                    <td class="text-end" style="border-bottom: none;"><span t-esc="o.total_amount" t-options='{"widget": "float", "precision": 2}'/></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="border-right: none; border-top: none;"></td>
+                                    <td class="text-end" style="border-left: none; border-top: none;">Add/Reduce</td>
+                                    <td class="text-end" style="border-top: none;"><span t-esc="o.add_reduce_amount" t-options='{"widget": "float", "precision": 2}'/></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" style="border-right: none;"></td>
+                                    <td class="text-end" style="border-left: none;">Grand total Amount</td>
+                                    <td class="text-end"><span t-esc="o.grand_total_amount" t-options='{"widget": "float", "precision": 2}'/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <div style="margin-top: 10px;">
+                            <span>Say: <span t-field="o.amount_text"/></span>
+                        </div>
+                        
+                        <div style="margin-top: 10px;">
+                            <span>Remark: <span t-field="o.remark"/></span>
+                        </div>
+                        
+                        <table class="signature-table">
+                            <tr>
+                                <td style="width: 25%; text-align: right;">Issued By:</td>
+                                <td style="width: 45%;"><span class="underline"></span></td>
+                                <td style="width: 30%;">(Purchasing and Import officer)</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: right;">Checked By 1:</td>
+                                <td><span class="underline"></span></td>
+                                <td>(Purchasing and Product Planning manager)</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: right;">Checked By 2:</td>
+                                <td><span class="underline"></span></td>
+                                <td>(Accounting Ass't Manager)</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: right;">Checked By 3:</td>
+                                <td><span class="underline"></span></td>
+                                <td>(Accounting Manager)</td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td style="text-align: right; padding-top: 20px;">Approved by: <span class="underline"></span></td>
+                                <td></td>
+                            </tr>
+                        </table>
+                        
+                        <div class="row" style="margin-top: 30px; font-size: 10px;">
+                            <div class="col-6">
+                                <span>อนุมัติใช้วันที่ 01/04/2561</span>
+                            </div>
+                            <div class="col-6 text-end">
+                                <span>FM-PUR-12 Rev.00</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_bank_export">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="buz_tr_bank_export.report_bank_export_document" t-lang="env.user.lang"/>
+            </t>
+        </t>
+    </template>
+</odoo>

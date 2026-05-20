@@ -235,27 +235,19 @@ class WarrantyCard(models.Model):
 
     @api.model
     def _search_claim_count(self, operator, value):
-        """Search method for claim_count field"""
-        # Search warranty cards with specific number of claims
-        if operator in ('=', '!=', '>', '>=', '<', '<='):
-            warranty_cards = self.env['warranty.card'].search([])
-            result_ids = []
-            for w in warranty_cards:
-                claim_count = len(w.claim_ids)
-                if operator == '=' and claim_count == value:
-                    result_ids.append(w.id)
-                elif operator == '!=' and claim_count != value:
-                    result_ids.append(w.id)
-                elif operator == '>' and claim_count > value:
-                    result_ids.append(w.id)
-                elif operator == '>=' and claim_count >= value:
-                    result_ids.append(w.id)
-                elif operator == '<' and claim_count < value:
-                    result_ids.append(w.id)
-                elif operator == '<=' and claim_count <= value:
-                    result_ids.append(w.id)
-            return [('id', 'in', result_ids)]
-        return [('id', '=', False)]
+        """Search method for claim_count field — uses SQL for performance."""
+        query = """
+            SELECT wc.id
+            FROM warranty_card wc
+            GROUP BY wc.id
+            HAVING (
+                SELECT COUNT(*) FROM warranty_claim wcl
+                WHERE wcl.warranty_card_id = wc.id
+            ) %s %%s
+        """ % operator
+        self.env.cr.execute(query, (value,))
+        ids = [row[0] for row in self.env.cr.fetchall()]
+        return [('id', 'in', ids)]
 
     @api.model
     def _search_days_remaining(self, operator, value):

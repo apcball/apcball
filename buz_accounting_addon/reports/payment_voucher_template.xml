@@ -167,6 +167,24 @@
                                     </td>
                                 </tr>
 
+                                <!-- Line 1.5: Bank Fee (If exists) -->
+                                <tr t-if="o.bank_free_dis > 0" style="vertical-align: top;">
+                                    <td class="text-center">
+                                        Bank Fee
+                                    </td>
+                                    <td>
+                                        Bank Charge
+                                    </td>
+                                    <td></td>
+                                    <td class="text-center">
+                                        <span t-field="o.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                    </td>
+                                    <td></td>
+                                    <td class="text-end">
+                                        <span t-field="o.bank_free_dis" t-options='{"widget": "float", "precision": 2}'/>
+                                    </td>
+                                </tr>
+
                                 <!-- Line 2: WHT (If exists) -->
                                 <tr t-if="o.amount_total_wht > 0" style="vertical-align: top;">
                                     <td class="text-center">

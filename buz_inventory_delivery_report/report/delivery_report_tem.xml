@@ -67,12 +67,6 @@
                                 border: none !important;
                             }
                             
-                            .table-bordered,
-                            .table-bordered td,
-                            .table-bordered th {
-                                border: none !important;
-                            }
-
                             .page {
                                 page-break-after: always;
                             }
@@ -95,11 +89,9 @@
                          <t t-set="groups_of_8" t-value="[move_list[i:i+8] for i in range(0, len(move_list), 8)]"/>
                          <t t-set="page_number" t-value="1"/>
                          <t t-set="total_pages" t-value="groups_of_8 and len(groups_of_8) or 0"/>
-                         <t t-set="page_number" t-value="1"/>
                          <t t-foreach="groups_of_8" t-as="group">
                              <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
-                          <t t-set="groups_of_8" t-value="[move_list[i:i+8] for i in range(0, len(move_list), 8)]"/>
- 
+
                           <t t-if="groups_of_8">
                               <div>
                              <!-- เงื่อนไขแสดงเลขหน้าเฉพาะถ้ามีหลายหน้า -->
@@ -129,7 +121,7 @@
                                    </div>
                                </div>
                                <div class="col-4 text-end">
-                                   <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                   <img src="/buz_inventory_delivery_report/static/img/LOGO%20MOGEN.png"
                                         style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                                </div>
                            </div>
@@ -137,7 +129,7 @@
                             <!-- Document Title -->
                             <div class="row mb-3">
                                <div class="col-4 offset-4 text-center">
-                                   <div class="doc-title" style="padding: 14px; margin-bottom: -10px;font-size: 24px; font-family: 'TH SarabunPSK', 'THSarabunNew', Tahoma, Arial, sans-serif;">
+                                   <div class="doc-title" style="padding: 14px; margin-bottom: -10px;font-size: 24px;">
                                        ใบส่งสินค้ากรณี-เคลม
                                    </div>
                                </div>

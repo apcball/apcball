@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Paper Format -->
+        <record id="paperformat_stock_request" model="report.paperformat">
+            <field name="name">Stock Request A4</field>
+            <field name="default" eval="True"/>
+            <field name="format">A4</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">5</field>
+            <field name="margin_bottom">5</field>
+            <field name="margin_left">8</field>
+            <field name="margin_right">8</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">90</field>
+        </record>
+
+        <!-- Report Action -->
+        <record id="report_stock_request" model="ir.actions.report">
+            <field name="name">ใบเบิกสินค้าเข้า JOB</field>
+            <field name="model">mrp.stock.request</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">buz_mrp_stock_request.report_stock_request_template</field>
+            <field name="report_file">buz_mrp_stock_request.report_stock_request_template</field>
+            <field name="print_report_name">'ใบเบิกสินค้าเข้า JOB - %s' % (object.name or '')</field>
+            <field name="paperformat_id" ref="buz_mrp_stock_request.paperformat_stock_request"/>
+            <field name="binding_model_id" ref="buz_mrp_stock_request.model_mrp_stock_request"/>
+            <field name="binding_type">report</field>
+        </record>
+
+        <!-- QWeb Template -->
+        <template id="report_stock_request_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="doc">
+                    <t t-call="web.external_layout">
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_mrp_stock_request/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                                font-weight: normal;
+                            }
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_mrp_stock_request/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                font-weight: bold;
+                            }
+                            html, body, .page, table, th, td, div, p, span, h2, h5 {
+                                font-family: 'Sarabun', sans-serif !important;
+                                font-size: 20px;
+                            }
+                            .sr-title {
+                                font-size: 28px;
+                                font-weight: bold;
+                                text-align: center;
+                                margin-bottom: 10px;
+                            }
+                            .sr-info-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 10px;
+                            }
+                            .sr-info-table td {
+                                padding: 2px 8px;
+                                vertical-align: top;
+                            }
+                            .sr-info-table .sr-label {
+                                font-weight: bold;
+                                white-space: nowrap;
+                                width: 160px;
+                            }
+                            .sr-line-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 10px;
+                            }
+                            .sr-line-table th {
+                                border: 1px solid #000;
+                                padding: 4px 8px;
+                                text-align: center;
+                                font-weight: bold;
+                                background-color: #f0f0f0;
+                            }
+                            .sr-line-table td {
+                                border: 1px solid #000;
+                                padding: 3px 8px;
+                            }
+                            .sr-line-table .sr-num {
+                                text-align: center;
+                                width: 40px;
+                            }
+                            .sr-line-table .sr-qty {
+                                text-align: right;
+                                width: 100px;
+                            }
+                            .sr-sign-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-top: 30px;
+                            }
+                            .sr-sign-table td {
+                                text-align: center;
+                                width: 50%;
+                                vertical-align: top;
+                                padding: 0 10px;
+                            }
+                            .sr-sign-line {
+                                border-bottom: 1px solid #000;
+                                margin-top: 50px;
+                                margin-bottom: 5px;
+                            }
+                            .page-break {
+                                page-break-before: always;
+                            }
+                            header {
+                                border-bottom: none !important;
+                            }
+                            .o_report_layout_standard header,
+                            .o_report_layout_background header {
+                                border-bottom: 0 !important;
+                            }
+                        </style>
+
+                        <!-- Pagination: split lines into groups of 15 per page -->
+                        <t t-set="line_list" t-value="doc.line_ids"/>
+                        <t t-set="lines_per_page" t-value="20"/>
+                        <t t-set="groups" t-value="[line_list[i:i+lines_per_page] for i in range(0, len(line_list), lines_per_page)]"/>
+                        <t t-set="total_pages" t-value="len(groups) if groups else 1"/>
+                        <t t-set="page_num" t-value="0"/>
+
+                        <t t-foreach="groups" t-as="group">
+                            <t t-set="page_num" t-value="page_num + 1"/>
+                            <div t-attf-style="#{page_num != 1 and 'page-break-before: always;' or ''}">
+
+                                <!-- Page number (only if multiple pages) -->
+                                <t t-if="total_pages &gt; 1">
+                                    <div style="text-align: right; font-weight: bold; margin-bottom: 5px;">
+                                        หน้า <t t-esc="page_num"/> / <t t-esc="total_pages"/>
+                                    </div>
+                                </t>
+
+                                <!-- Title -->
+                                <div class="sr-title">ใบเบิกสินค้าเข้า JOB</div>
+
+                                <!-- Info Section (every page) -->
+                                <table class="sr-info-table">
+                                    <tr>
+                                        <td class="sr-label">เลขที่ Request:</td>
+                                        <td><t t-esc="doc.name"/></td>
+                                        <td class="sr-label">วันที่ต้องการของ:</td>
+                                        <td><t t-esc="doc.request_date" t-options="{'widget': 'date'}"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="sr-label">เลขที่ MO:</td>
+                                        <td>
+                                            <t t-foreach="doc.mo_ids" t-as="mo">
+                                                <span><t t-esc="mo.name"/></span><t t-if="not mo_last">, </t>
+                                            </t>
+                                        </td>
+                                        <td class="sr-label">ผู้เบิก:</td>
+                                        <td><t t-esc="doc.requested_by.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="sr-label">จากคลัง:</td>
+                                        <td><t t-esc="doc.location_id.complete_name"/></td>
+                                        <td class="sr-label">ไปยังคลัง:</td>
+                                        <td><t t-esc="doc.location_dest_id.complete_name"/></td>
+                                    </tr>
+                                    <tr t-if="doc.note">
+                                        <td class="sr-label">หมายเหตุ:</td>
+                                        <td colspan="3"><t t-esc="doc.note"/></td>
+                                    </tr>
+                                </table>
+
+                                <!-- Line Items Table -->
+                                <table class="sr-line-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sr-num">ลำดับ</th>
+                                            <th>รหัสสินค้า</th>
+                                            <th>รายละเอียด</th>
+                                            <th class="sr-qty">จำนวน</th>
+                                            <th>หน่วย</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-set="offset" t-value="(page_num - 1) * lines_per_page"/>
+                                        <t t-set="line_idx" t-value="0"/>
+                                        <t t-foreach="group" t-as="line">
+                                            <t t-set="line_idx" t-value="line_idx + 1"/>
+                                            <tr>
+                                                <td class="sr-num"><t t-esc="offset + line_idx"/></td>
+                                                <td><t t-esc="line.product_id.default_code or ''"/></td>
+                                                <td><t t-esc="line.product_id.display_name"/></td>
+                                                <td class="sr-qty"><t t-esc="'%.2f' % line.qty_requested"/></td>
+                                                <td><t t-esc="line.uom_id.name"/></td>
+                                            </tr>
+                                        </t>
+                                        <!-- Fill empty rows to keep consistent height -->
+                                        <t t-foreach="range(lines_per_page - len(group))" t-as="i">
+                                            <tr style="height: 28px;">
+                                                <td class="sr-num">&#160;</td>
+                                                <td>&#160;</td>
+                                                <td>&#160;</td>
+                                                <td class="sr-qty">&#160;</td>
+                                                <td>&#160;</td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </t>
+
+                        <!-- Signature Section (only on last page) -->
+                        <table class="sr-sign-table">
+                            <tr>
+                                <td>
+                                    <div style="font-weight:bold;">ผู้เบิก</div>
+                                    <div class="sr-sign-line"></div>
+                                    <div>(
+                                        <span style="display:inline-block; width:120px;">&#160;</span>
+                                        <span style="display:inline-block; width:80px;">&#160;</span>
+                                        <span>)</span>
+                                    </div>
+                                    <div>วันที่: ......./......./...........</div>
+                                </td>
+                                <td>
+                                    <div style="font-weight:bold;">ผู้อนุมัติ</div>
+                                    <div class="sr-sign-line"></div>
+                                    <div>(
+                                        <span style="display:inline-block; width:120px;">&#160;</span>
+                                        <span style="display:inline-block; width:80px;">&#160;</span>
+                                        <span>)</span>
+                                    </div>
+                                    <div>วันที่: ......./......./...........</div>
+                                </td>
+                            </tr>
+                        </table>
+
+                    </t>
+                </t>
+            </t>
+        </template>
+
+    </data>
+</odoo>

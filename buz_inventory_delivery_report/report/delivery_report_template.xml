@@ -8,8 +8,8 @@
         <field name="orientation">Portrait</field>
         <field name="margin_top">3</field>
         <field name="margin_bottom">3</field>
-        <field name="margin_left">3</field>
-        <field name="margin_right">3</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">96</field>
@@ -39,7 +39,7 @@
                             }
                             
                             html, body, page, table, th, td, div, p, span, h1, h2, h3, h4, h5, h6 {
-                                font-family: '<t t-esc="config.font_family or 'Sarabun'"/>', sans-serif !important;
+                                font-family: 'Sarabun', sans-serif !important;
                                 font-size: <t t-esc="config.font_size or 14"/>px;
                                 line-height: <t t-esc="config.line_spacing or 1.2"/>;
                             }
@@ -131,7 +131,7 @@
                                    </div>
                                </div>
                                <div class="col-4 text-end">
-                                   <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                   <img src="/buz_inventory_delivery_report/static/img/LOGO%20MOGEN.png"
                                         style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                                </div>
                            </div>
@@ -179,30 +179,36 @@
                                </div>
                            </div>
 
-                           <table class="table table-bordered" style="width: 100%; table-layout: fixed; text-align: center;">
+                           <table class="table table-bordered" style="width: 100%; table-layout: fixed; text-align: center; border-collapse: collapse; margin-top: 10px; border: 2px solid #000;">
                                <thead>
                                    <tr>
-                                       <th style="font-size: 20px;">เลขที่ใบขออนุมัติเปลี่ยนสินค้า</th>
-                                       <th style="font-size: 20px;">ประเภทรถ</th>
-                                       <th style="font-size: 20px;">ทะเบียนรถ</th>
-                                       <th style="font-size: 20px;">พนักงานขับรถ</th>
+                                       <th style="font-size: 18px; padding: 8px 5px; border: 1px solid #000; font-weight: bold;">
+                                           เลขที่ใบขออนุมัติเปลี่ยนสินค้า
+                                       </th>
+                                       <th style="font-size: 18px; padding: 8px 5px; border: 1px solid #000; font-weight: bold;">
+                                           ประเภทรถ
+                                       </th>
+                                       <th style="font-size: 18px; padding: 8px 5px; border: 1px solid #000; font-weight: bold;">
+                                           ทะเบียนรถ
+                                       </th>
+                                       <th style="font-size: 18px; padding: 8px 5px; border: 1px solid #000; font-weight: bold;">
+                                           พนักงานขับรถ
+                                       </th>
                                    </tr>
                                </thead>
                                <tbody>
                                    <tr>
-                                       <!-- ช่องนี้ใช้ค่าจากฟิลด์ในระบบ - แก้ไขให้ใช้ field ที่มีอยู่จริง -->
-                                       <td>
+                                       <td style="font-size: 20px; padding: 8px 5px; border: 1px solid #000; vertical-align: middle;">
                                            <t t-if="o.origin">
                                                <span t-field="o.origin" style="font-size: 20px;"/>
                                            </t>
                                            <t t-else="">
-                                              <div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div>
+                                              <div style="min-height: 28px;">&#160;</div>
                                            </t>
                                        </td>
-                                       <!-- ช่องว่างไว้สำหรับเขียนด้วยลายมือ -->
-                                       <td><div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div></td>
-                                       <td><div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div></td>
-                                       <td><div style="height: 1.5em; border-bottom: 1px solid #000; font-size: 20px;"></div></td>
+                                       <td style="font-size: 20px; padding: 8px 5px; border: 1px solid #000; vertical-align: middle;"><div style="min-height: 28px;">&#160;</div></td>
+                                       <td style="font-size: 20px; padding: 8px 5px; border: 1px solid #000; vertical-align: middle;"><div style="min-height: 28px;">&#160;</div></td>
+                                       <td style="font-size: 20px; padding: 8px 5px; border: 1px solid #000; vertical-align: middle;"><div style="min-height: 28px;">&#160;</div></td>
                                    </tr>
                                </tbody>
                            </table>

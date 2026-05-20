@@ -33,6 +33,13 @@
                             <field name="journal_id"/>
                         </group>
                     </group>
+                    <group string="Receipt Settings">
+                        <group>
+                            <field name="phone"/>
+                            <field name="vat_number"/>
+                            <field name="branch_number"/>
+                        </group>
+                    </group>
                 </sheet>
             </form>
         </field>

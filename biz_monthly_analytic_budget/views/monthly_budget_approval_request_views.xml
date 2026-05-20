@@ -38,6 +38,8 @@
                                    invisible="document_type != 'pr'"/>
                             <field name="ref_po_id" readonly="1"
                                    invisible="document_type != 'po'"/>
+                            <field name="ref_bill_id" readonly="1"
+                                   invisible="document_type != 'bill'"/>
                         </group>
                         <group string="Requester">
                             <field name="requester_id" readonly="1"/>
@@ -117,6 +119,7 @@
                 <filter string="Rejected" name="rejected" domain="[('state','=','rejected')]"/>
                 <filter string="PR" name="type_pr" domain="[('document_type','=','pr')]"/>
                 <filter string="PO" name="type_po" domain="[('document_type','=','po')]"/>
+                <filter string="Bill" name="type_bill" domain="[('document_type','=','bill')]"/>
                 <group expand="0" string="Group By">
                     <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
                     <filter string="Document Type" name="group_type" context="{'group_by': 'document_type'}"/>

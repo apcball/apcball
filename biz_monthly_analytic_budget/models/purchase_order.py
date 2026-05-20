@@ -8,12 +8,14 @@ from odoo.exceptions import UserError
 
 from .budget_utils import (
     RESERVED_PR_STATES,
+    collect_analytic_ids_from_lines,
     extract_analytic_amounts,
-    filter_analytic_totals_for_plan,
-    find_active_monthly_plan,
+    find_active_monthly_plans,
+    get_first_plan_from_groups,
     format_ignored_analytic_accounts_message,
     format_missing_budget_line_message,
     format_no_analytic_distribution_message,
+    split_analytic_totals_by_plan,
 )
 
 _logger = logging.getLogger(__name__)
@@ -117,59 +119,52 @@ class PurchaseOrder(models.Model):
             if order.payment_date_manual:
                 order.payment_date = order.payment_date_manual
                 continue
-            
-            # Priority logic:
-            # 2. Vendor payment term
-            payment_term = order.partner_id.property_supplier_payment_term_id
-            if payment_term:
-                p_date = order.date_order or fields.Date.today()
-                # Check method availability directly to avoid exception overhead
-                if hasattr(payment_term, 'compute'):
-                    res = payment_term.compute(value=1, date_ref=p_date)
-                    if res and res[0] and res[0][0]:
-                        order.payment_date = res[0][0]
-                        continue
-                elif hasattr(payment_term, '_compute_terms'):
-                    try:
-                        res = payment_term._compute_terms(
-                            date_ref=p_date,
-                            currency=order.company_id.currency_id,
-                            company=order.company_id,
-                            taxes_and_subtotals=[{'name': '', 'tax_amount': 0.0, 'base_amount': 1.0}],
-                            untaxed_amount=1.0,
-                            empty_taxes=True,
-                            sign=1
-                        )
-                        if res and getattr(res, 'get', None) and res.get('line_ids'):
-                            # Odoo 17 returns a dict containing line_ids list
-                            lines = res.get('line_ids')
-                            order.payment_date = lines[-1].get('date') if lines else p_date
-                            continue
-                        elif res and isinstance(res, list):
-                            # Other versions might return list of dicts directly
-                            order.payment_date = res[-1].get('date') if res else p_date
-                            continue
-                    except Exception as e:
-                        _logger.warning("biz_monthly_analytic_budget _compute_terms failed: %s", e)
-                        
-                # Ultimate fallback: manual parsing of days
-                max_days = 0
-                for line in payment_term.line_ids:
-                    days = getattr(line, 'days', getattr(line, 'nb_days', 0))
-                    months = getattr(line, 'months', 0)
-                    total_days = (months * 30) + days
-                    if total_days > max_days:
-                        max_days = total_days
-                if max_days > 0:
-                    order.payment_date = p_date + timedelta(days=max_days)
-                    continue
+            order.payment_date = order._get_auto_payment_date()
 
-            # Final fallback: no vendor payment term, use date_order + 30 days
-            order.payment_date = (order.date_order or fields.Date.today()) + timedelta(days=30)
+    def _get_auto_payment_date(self):
+        self.ensure_one()
+        payment_term = self.partner_id.property_supplier_payment_term_id
+        p_date = order_date = self.date_order or fields.Date.today()
+        if payment_term:
+            if hasattr(payment_term, 'compute'):
+                res = payment_term.compute(value=1, date_ref=p_date)
+                if res and res[0] and res[0][0]:
+                    return res[0][0]
+            elif hasattr(payment_term, '_compute_terms'):
+                try:
+                    res = payment_term._compute_terms(
+                        date_ref=p_date,
+                        currency=self.company_id.currency_id,
+                        company=self.company_id,
+                        taxes_and_subtotals=[{'name': '', 'tax_amount': 0.0, 'base_amount': 1.0}],
+                        untaxed_amount=1.0,
+                        empty_taxes=True,
+                        sign=1
+                    )
+                    if res and getattr(res, 'get', None) and res.get('line_ids'):
+                        lines = res.get('line_ids')
+                        return lines[-1].get('date') if lines else p_date
+                    if res and isinstance(res, list):
+                        return res[-1].get('date') if res else p_date
+                except Exception as e:
+                    _logger.warning("biz_monthly_analytic_budget _compute_terms failed: %s", e)
+
+            max_days = 0
+            for line in payment_term.line_ids:
+                days = getattr(line, 'days', getattr(line, 'nb_days', 0))
+                months = getattr(line, 'months', 0)
+                total_days = (months * 30) + days
+                if total_days > max_days:
+                    max_days = total_days
+            if max_days > 0:
+                return p_date + timedelta(days=max_days)
+
+        return order_date + timedelta(days=30)
 
     def _inverse_payment_date(self):
         for order in self:
-            order.payment_date_manual = order.payment_date
+            auto_payment_date = order._get_auto_payment_date()
+            order.payment_date_manual = False if order.payment_date == auto_payment_date else order.payment_date
 
     def write(self, vals):
         result = super().write(vals)
@@ -213,24 +208,16 @@ class PurchaseOrder(models.Model):
                 order.budget_warning = False
                 continue
 
-            plan = find_active_monthly_plan(self.env, target_date, order.company_id.id)
-            if not plan:
-                order.monthly_budget_check_result = _(
-                    '<div class="alert alert-info">'
-                    'No active monthly analytic budget plan found for the expected payment date.'
-                    '</div>'
-                )
-                order.budget_warning = False
-                continue
-
             analytic_totals = {}
             for line in order.order_line:
                 for account_id, amount in extract_analytic_amounts(line):
                     analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
-            analytic_totals, ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
+            grouped_totals, ignored_totals = split_analytic_totals_by_plan(
+                self.env, target_date, order.company_id.id, analytic_totals,
+            )
 
-            if not analytic_totals:
+            if not grouped_totals:
                 if ignored_totals:
                     ignored_names = ', '.join(
                         escape(name)
@@ -254,64 +241,60 @@ class PurchaseOrder(models.Model):
             has_warning = False
             AnalyticAccount = self.env['account.analytic.account']
             BudgetLine = self.env['monthly.budget.line']
-            has_pr = order._has_active_source_requisition_for_plan(plan)
-            
-            if has_pr:
-                order.monthly_budget_check_result = _(
-                    '<div class="alert alert-success">'
-                    '<strong>Budget Covered by PR:</strong> งบประมาณถูกจองและตรวจสอบผ่าน PR ต้นทางเรียบร้อยแล้ว'
-                    '</div>'
-                )
-                order.budget_warning = False
-                continue
-                
-            for account_id, po_amt in analytic_totals.items():
-                analytic = AnalyticAccount.browse(account_id)
-                if not analytic.exists():
-                    continue
-                dims = {'analytic_account_id': account_id}
-                budget_line = BudgetLine._find_budget_line(plan, dims, log_fallback=False)
-                if not budget_line:
+            for plan, plan_totals in grouped_totals:
+                has_pr = order._has_active_source_requisition_for_plan(plan)
+                if has_pr:
                     html_parts.append(
-                        '<div class="alert alert-warning">%s</div>'
-                        % format_missing_budget_line_message(analytic.name, plan.name)
+                        _(
+                            '<div class="alert alert-success"><strong>Budget Covered by PR:</strong> '
+                            'งบประมาณถูกจองและตรวจสอบผ่าน PR ต้นทางเรียบร้อยแล้ว (%s)</div>'
+                        ) % escape(plan.name)
                     )
                     continue
-                budget_line = budget_line[0]
-                
-                # Check if this PO is already reserved
-                total_committed = budget_line.reserved_amount + budget_line.used_amount
-                if not has_pr and not order._is_counted_in_monthly_budget_reserve(plan):
-                    # New/uncounted direct PO: add it for preview.
-                    total_committed += po_amt
-                
-                remaining = budget_line.budget_amount - total_committed
-                is_over = remaining < 0
-                if is_over:
-                    has_warning = True
-                status_class = 'danger' if is_over else 'success'
-                status_icon = '&#10060;' if is_over else '&#9989;'
-                
-                html_parts.append(
-                    '<div class="card mb-2 border-%s">'
-                    '<div class="card-body p-2">'
-                    '<h6 class="card-title">%s %s</h6>'
-                    '<table class="table table-sm table-borderless mb-0">'
-                    '<tr><td>%s</td><td class="text-end">%s</td></tr>'
-                    '<tr><td>%s</td><td class="text-end">%s</td></tr>'
-                    '<tr><td>%s</td><td class="text-end">%s</td></tr>'
-                    '<tr class="border-top"><td><strong>%s</strong></td>'
-                    '<td class="text-end text-%s"><strong>%s %s</strong></td></tr>'
-                    '</table></div></div>' % (
-                        status_class, status_icon, analytic.name,
-                        _('Monthly Budget'), '{:,.2f}'.format(budget_line.budget_amount),
-                        _('Reserved + Used'), '{:,.2f}'.format(budget_line.reserved_amount + budget_line.used_amount),
-                        _('This PO'), '{:,.2f}'.format(po_amt),
-                        _('Remaining After'), status_class,
-                        '{:,.2f}'.format(remaining),
-                        _('OK') if not is_over else _('Exceeded!'),
+
+                for account_id, po_amt in plan_totals.items():
+                    analytic = AnalyticAccount.browse(account_id)
+                    if not analytic.exists():
+                        continue
+                    budget_line = BudgetLine._find_budget_line(plan, {'analytic_account_id': account_id}, log_fallback=False)
+                    if not budget_line:
+                        html_parts.append(
+                            '<div class="alert alert-warning">%s</div>'
+                            % format_missing_budget_line_message(analytic.name, plan.name)
+                        )
+                        continue
+                    budget_line = budget_line[0]
+
+                    total_committed = budget_line.reserved_amount + budget_line.used_amount
+                    if not order._is_counted_in_monthly_budget_reserve(plan):
+                        total_committed += po_amt
+
+                    remaining = budget_line.budget_amount - total_committed
+                    is_over = remaining < 0
+                    if is_over:
+                        has_warning = True
+                    status_class = 'danger' if is_over else 'success'
+                    status_icon = '&#10060;' if is_over else '&#9989;'
+                    html_parts.append(
+                        '<div class="card mb-2 border-%s">'
+                        '<div class="card-body p-2">'
+                        '<h6 class="card-title">%s %s <small class="text-muted">(%s)</small></h6>'
+                        '<table class="table table-sm table-borderless mb-0">'
+                        '<tr><td>%s</td><td class="text-end">%s</td></tr>'
+                        '<tr><td>%s</td><td class="text-end">%s</td></tr>'
+                        '<tr><td>%s</td><td class="text-end">%s</td></tr>'
+                        '<tr class="border-top"><td><strong>%s</strong></td>'
+                        '<td class="text-end text-%s"><strong>%s %s</strong></td></tr>'
+                        '</table></div></div>' % (
+                            status_class, status_icon, analytic.name, escape(plan.name),
+                            _('Monthly Budget'), '{:,.2f}'.format(budget_line.budget_amount),
+                            _('Reserved + Used'), '{:,.2f}'.format(budget_line.reserved_amount + budget_line.used_amount),
+                            _('This PO'), '{:,.2f}'.format(po_amt),
+                            _('Remaining After'), status_class,
+                            '{:,.2f}'.format(remaining),
+                            _('OK') if not is_over else _('Exceeded!'),
+                        )
                     )
-                )
             order.monthly_budget_check_result = ''.join(html_parts)
             order.budget_warning = has_warning
 
@@ -324,11 +307,6 @@ class PurchaseOrder(models.Model):
             target_date = order.payment_date
             if not target_date:
                 continue
-            plan = find_active_monthly_plan(self.env, target_date, order.company_id.id)
-            if not plan:
-                continue
-            if order._has_active_source_requisition_for_plan(plan):
-                continue
             # Only reserve while the PO is still before confirmation.
             if order.state not in ('draft', 'sent', 'to approve'):
                 continue
@@ -337,50 +315,55 @@ class PurchaseOrder(models.Model):
                 for account_id, amount in extract_analytic_amounts(line, BudgetLine):
                     analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
-            analytic_totals, _ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
-            if not analytic_totals:
+            grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
+                self.env, target_date, order.company_id.id, analytic_totals,
+            )
+            if not grouped_totals:
                 continue
 
-            BudgetLine._lock_budget_lines(list(analytic_totals.keys()), plan.id)
-            plan._refresh_budget_snapshot(refresh_report=False)
-
-            for account_id, amount in analytic_totals.items():
-                if not amount:
+            for plan, plan_totals in grouped_totals:
+                if order._has_active_source_requisition_for_plan(plan):
                     continue
-                analytic = AnalyticAccount.browse(account_id)
-                if not analytic.exists():
-                    continue
-                if not BudgetLine._find_budget_line(plan, {'analytic_account_id': account_id}, log_fallback=False):
-                    continue
+                BudgetLine._lock_budget_lines(list(plan_totals.keys()), plan.id)
+                plan._refresh_budget_snapshot(refresh_report=False)
 
-                existing = self.env['budget.commitment'].sudo().search([
-                    ('document_model', '=', order._name),
-                    ('document_id', '=', order.id),
-                    ('analytic_account_id', '=', account_id),
-                    ('budget_source', '=', 'monthly'),
-                    ('state', '=', 'reserved'),
-                ], limit=1)
-                if existing:
-                    if existing.amount != amount or existing.date != target_date:
-                        existing.write({
-                            'amount': amount,
-                            'date': target_date,
-                            'note': _('Reserved from PO %s - %s') % (order.name, analytic.name),
-                        })
-                    continue
+                for account_id, amount in plan_totals.items():
+                    if not amount:
+                        continue
+                    analytic = AnalyticAccount.browse(account_id)
+                    if not analytic.exists():
+                        continue
+                    if not BudgetLine._find_budget_line(plan, {'analytic_account_id': account_id}, log_fallback=False):
+                        continue
 
-                engine.reserve_budget({
-                    'budget_source': 'monthly',
-                    'document_model': order._name,
-                    'document_id': order.id,
-                    'amount': amount,
-                    'date': target_date,
-                    'company_id': order.company_id.id,
-                    'analytic_account_id': account_id,
-                    'note': _('Reserved from PO %s - %s') % (order.name, analytic.name),
-                })
+                    existing = self.env['budget.commitment'].sudo().search([
+                        ('document_model', '=', order._name),
+                        ('document_id', '=', order.id),
+                        ('analytic_account_id', '=', account_id),
+                        ('budget_source', '=', 'monthly'),
+                        ('state', '=', 'reserved'),
+                    ], limit=1)
+                    if existing:
+                        if existing.amount != amount or existing.date != target_date:
+                            existing.write({
+                                'amount': amount,
+                                'date': target_date,
+                                'note': _('Reserved from PO %s - %s') % (order.name, analytic.name),
+                            })
+                        continue
 
-            plan._refresh_budget_snapshot(refresh_report=True)
+                    engine.reserve_budget({
+                        'budget_source': 'monthly',
+                        'document_model': order._name,
+                        'document_id': order.id,
+                        'amount': amount,
+                        'date': target_date,
+                        'company_id': order.company_id.id,
+                        'analytic_account_id': account_id,
+                        'note': _('Reserved from PO %s - %s') % (order.name, analytic.name),
+                    })
+
+                plan._refresh_budget_snapshot(refresh_report=True)
 
     def action_check_monthly_budget(self):
         """Button action to trigger monthly budget check recomputation."""
@@ -392,18 +375,15 @@ class PurchaseOrder(models.Model):
         """Submit a monthly budget approval request when budget is exceeded."""
         self.ensure_one()
         target_date = self.payment_date
-        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
-        if not plan:
-            return
-
         analytic_totals = {}
         for line in self.order_line:
             for account_id, amount in extract_analytic_amounts(line):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
-        analytic_totals, _ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
-
-        if not analytic_totals:
+        grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
+            self.env, target_date, self.company_id.id, analytic_totals,
+        )
+        if not grouped_totals:
             return
 
         po_amount = sum(analytic_totals.values())
@@ -414,28 +394,25 @@ class PurchaseOrder(models.Model):
         AnalyticAccount = self.env['account.analytic.account']
         BudgetLine = self.env['monthly.budget.line']
         budget_line_names = []
-        has_pr = self._has_active_source_requisition_for_plan(plan)
-        po_already_reserved = self._is_counted_in_monthly_budget_reserve(plan)
-        
-        for account_id, amt in analytic_totals.items():
-            analytic = AnalyticAccount.browse(account_id)
-            if not analytic.exists():
-                continue
-            dims = {'analytic_account_id': account_id}
-            bl = BudgetLine._find_budget_line(plan, dims, log_fallback=False)
-            if bl:
-                limit_amt += bl.budget_amount
-                used += bl.used_amount
-                
-                # if this is a direct PO, it hasn't reserved anything yet, 
-                # so we need to add its amount to overage calculation
-                if not has_pr and not po_already_reserved:
-                    reserved += bl.reserved_amount + po_amount
-                else:
-                    reserved += bl.reserved_amount
-                budget_line_names.append(bl.analytic_account_id.name)
+        for plan, plan_totals in grouped_totals:
+            has_pr = self._has_active_source_requisition_for_plan(plan)
+            po_already_reserved = self._is_counted_in_monthly_budget_reserve(plan)
+            for account_id, amt in plan_totals.items():
+                analytic = AnalyticAccount.browse(account_id)
+                if not analytic.exists():
+                    continue
+                bl = BudgetLine._find_budget_line(plan, {'analytic_account_id': account_id}, log_fallback=False)
+                if bl:
+                    limit_amt += bl.budget_amount
+                    used += bl.used_amount
+                    if not has_pr and not po_already_reserved:
+                        reserved += bl.reserved_amount + amt
+                    else:
+                        reserved += bl.reserved_amount
+                    budget_line_names.append('%s (%s)' % (bl.analytic_account_id.name, plan.name))
                 
         overage = max(0.0, used + reserved - limit_amt)
+        primary_plan = get_first_plan_from_groups(grouped_totals)
 
         return {
             'name': _('Request Monthly Budget Approval'),
@@ -452,7 +429,7 @@ class PurchaseOrder(models.Model):
                 'default_amount_reserved': reserved,
                 'default_amount_limit': limit_amt,
                 'default_amount_overage': overage,
-                'default_plan_id': plan.id,
+                'default_plan_id': primary_plan.id if primary_plan else False,
             }
         }
 
@@ -502,51 +479,42 @@ class PurchaseOrder(models.Model):
         if not target_date:
             return
 
-        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
-        if not plan:
-            raise UserError(_('ไม่พบแผนงบประมาณรายเดือน (Budget Plan) ที่รองรับสำหรับวันที่คาดว่าจะชำระเงินของเอกสารนี้'))
-
         analytic_totals = {}
         for line in self.order_line:
             for account_id, amount in extract_analytic_amounts(line):
                 analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
 
-        analytic_totals, _ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
+        grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
+            self.env, target_date, self.company_id.id, analytic_totals,
+        )
+        if not grouped_totals:
+            raise UserError(_('ไม่พบแผนงบประมาณรายเดือน (Budget Plan) ที่รองรับสำหรับวันที่คาดว่าจะชำระเงินของเอกสารนี้'))
 
         AnalyticAccount = self.env['account.analytic.account']
         BudgetLine = self.env['monthly.budget.line']
         violations = []
-        for account_id, po_amt in analytic_totals.items():
-            analytic = AnalyticAccount.browse(account_id)
-            if not analytic.exists():
-                continue
-            dims = {'analytic_account_id': account_id}
-            budget_line = BudgetLine._find_budget_line(plan, dims)
-            if not budget_line:
-                raise UserError(format_missing_budget_line_message(analytic.name, plan.name))
-
-            budget_line = budget_line[:1] or budget_line
-            
-            # total_committed = already used + already reserved
-            total_committed = budget_line.reserved_amount + budget_line.used_amount
-            
-            # If it's a direct PO (no PR), it hasn't reserved anything yet, so we must add po_amt.
-            # If it came from a PR, the PR already reserved it, so it's already in total_committed.
-            # However, if the PO amount is higher than what was reserved by PR, we should check that too.
-            # For simplicity, if it's a direct PO, we add it. 
-            # If it's from PR, we assume it's already in reserved_amount.
-            
+        for plan, plan_totals in grouped_totals:
             has_pr = self._has_active_source_requisition_for_plan(plan)
-            if not has_pr and not self._is_counted_in_monthly_budget_reserve(plan):
-                total_committed += po_amt
-            
-            if total_committed > budget_line.budget_amount:
-                violations.append({
-                    'analytic': analytic.name,
-                    'budget': budget_line.budget_amount,
-                    'committed': total_committed,
-                    'overage': total_committed - budget_line.budget_amount,
-                })
+            for account_id, po_amt in plan_totals.items():
+                analytic = AnalyticAccount.browse(account_id)
+                if not analytic.exists():
+                    continue
+                budget_line = BudgetLine._find_budget_line(plan, {'analytic_account_id': account_id})
+                if not budget_line:
+                    raise UserError(format_missing_budget_line_message(analytic.name, plan.name))
+
+                budget_line = budget_line[:1] or budget_line
+                total_committed = budget_line.reserved_amount + budget_line.used_amount
+                if not has_pr and not self._is_counted_in_monthly_budget_reserve(plan):
+                    total_committed += po_amt
+
+                if total_committed > budget_line.budget_amount:
+                    violations.append({
+                        'analytic': '%s (%s)' % (analytic.name, plan.name),
+                        'budget': budget_line.budget_amount,
+                        'committed': total_committed,
+                        'overage': total_committed - budget_line.budget_amount,
+                    })
 
         if violations:
             msg_lines = [_('Monthly Analytic Budget Exceeded!\n')]
@@ -584,10 +552,6 @@ class PurchaseOrder(models.Model):
         if not target_date:
             return
 
-        plan = find_active_monthly_plan(self.env, target_date, self.company_id.id)
-        if not plan:
-            return
-
         # Aggregate UNBILLED amounts by analytic across all PO lines
         analytic_totals = {}
         for line in self.order_line:
@@ -613,64 +577,63 @@ class PurchaseOrder(models.Model):
                     if account_id not in analytic_totals:
                         analytic_totals[account_id] = 0.0
 
-        analytic_totals, _ignored_totals = filter_analytic_totals_for_plan(plan, analytic_totals)
+        grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
+            self.env, target_date, self.company_id.id, analytic_totals,
+        )
+        if not grouped_totals:
+            return
 
-        # --- Concurrency: acquire row-level lock BEFORE reading budget values ---
-        BudgetLine._lock_budget_lines(list(analytic_totals.keys()), plan.id)
+        for plan, plan_totals in grouped_totals:
+            BudgetLine._lock_budget_lines(list(plan_totals.keys()), plan.id)
+            plan._refresh_budget_snapshot(refresh_report=False)
 
-        # Re-read the current snapshot AFTER acquiring the lock
-        plan._refresh_budget_snapshot(refresh_report=False)
+            for account_id, amount in plan_totals.items():
+                analytic = AnalyticAccount.browse(account_id)
+                if not analytic.exists():
+                    continue
+                budget_line = BudgetLine._find_budget_line(plan, {'analytic_account_id': account_id})
+                if not budget_line:
+                    continue
 
-        for account_id, amount in analytic_totals.items():
-            analytic = AnalyticAccount.browse(account_id)
-            if not analytic.exists():
-                continue
-            dims = {'analytic_account_id': account_id}
-            budget_line = BudgetLine._find_budget_line(plan, dims)
-            if not budget_line:
-                continue
+                document_model, document_id = self._get_budget_document_identity()
+                commitments = self.env['budget.commitment'].sudo().search([
+                    ('document_model', '=', document_model),
+                    ('document_id', '=', document_id),
+                    ('analytic_account_id', '=', account_id),
+                    ('budget_source', '=', 'monthly'),
+                    ('state', '=', 'reserved'),
+                ])
+                note = _('Reserved (Unbilled) by PO %s - %s') % (self.name, analytic.name)
 
-            document_model, document_id = self._get_budget_document_identity()
+                if commitments:
+                    commitment = commitments[0]
+                    if commitment.amount != amount or commitment.date != target_date:
+                        commitment.write({'amount': amount, 'date': target_date, 'note': note})
+                    if len(commitments) > 1:
+                        commitments[1:].action_release()
+                else:
+                    engine.reserve_budget({
+                        'budget_source': 'monthly',
+                        'document_model': document_model,
+                        'document_id': document_id,
+                        'amount': amount,
+                        'date': target_date,
+                        'company_id': self.company_id.id,
+                        'analytic_account_id': account_id,
+                        'note': note,
+                    })
 
-            commitments = self.env['budget.commitment'].sudo().search([
-                ('document_model', '=', document_model),
-                ('document_id', '=', document_id),
-                ('analytic_account_id', '=', account_id),
-                ('budget_source', '=', 'monthly'),
-                ('state', '=', 'reserved'),
-            ])
-            note = _('Reserved (Unbilled) by PO %s - %s') % (self.name, analytic.name)
-            
-            if commitments:
-                commitment = commitments[0]
-                if commitment.amount != amount or commitment.date != target_date:
-                    commitment.write({'amount': amount, 'date': target_date, 'note': note})
-                if len(commitments) > 1:
-                    commitments[1:].action_release()
-            else:
-                engine.reserve_budget({
-                    'budget_source': 'monthly',
-                    'document_model': document_model,
-                    'document_id': document_id,
-                    'amount': amount,
-                    'date': target_date,
-                    'company_id': self.company_id.id,
-                    'analytic_account_id': account_id,
-                    'note': note,
-                })
-            
-            # Also release any stale 'used' commitments on the PO itself, since PO is now 'reserved'
-            stale_used = self.env['budget.commitment'].sudo().search([
-                ('document_model', '=', document_model),
-                ('document_id', '=', document_id),
-                ('analytic_account_id', '=', account_id),
-                ('budget_source', '=', 'monthly'),
-                ('state', '=', 'used'),
-            ])
-            if stale_used:
-                stale_used.action_release()
+                stale_used = self.env['budget.commitment'].sudo().search([
+                    ('document_model', '=', document_model),
+                    ('document_id', '=', document_id),
+                    ('analytic_account_id', '=', account_id),
+                    ('budget_source', '=', 'monthly'),
+                    ('state', '=', 'used'),
+                ])
+                if stale_used:
+                    stale_used.action_release()
 
-        plan._refresh_budget_snapshot(refresh_report=True)
+            plan._refresh_budget_snapshot(refresh_report=True)
 
     def _get_source_requisition(self):
         """Return the source employee PR linked to this PO, if any."""
@@ -693,25 +656,44 @@ class PurchaseOrder(models.Model):
         """True only when a linked PR is actually reserved by this monthly plan."""
         self.ensure_one()
         req = self._get_source_requisition()
-        return bool(
+        if not (
             req
             and req.state in RESERVED_PR_STATES
             and req.payment_date
             and plan.date_from <= req.payment_date <= plan.date_to
             and req.company_id.id == plan.company_id.id
-        )
+        ):
+            return False
+
+        plan_analytic_ids = plan.budget_line_ids.mapped('analytic_account_id').ids
+        if not plan_analytic_ids:
+            return False
+
+        return bool(self.env['budget.commitment'].sudo().search([
+            ('document_model', '=', 'employee.purchase.requisition'),
+            ('document_id', '=', req.id),
+            ('analytic_account_id', 'in', plan_analytic_ids),
+            ('budget_source', '=', 'monthly'),
+            ('state', 'in', ('reserved', 'used')),
+        ], limit=1))
 
     def _is_counted_in_monthly_budget_reserve(self, plan):
-        """Return whether this PO should already be present in reserved_amount."""
+        """Return whether this PO already has an active monthly budget commitment.
+
+        Checks for actual commitment records (reserved or used) rather than
+        relying on date-range membership alone, which could give false positives.
+        """
         self.ensure_one()
-        if self.state not in ('draft', 'sent', 'to approve', 'purchase', 'done'):
+        plan_analytic_ids = plan.budget_line_ids.mapped('analytic_account_id').ids
+        if not plan_analytic_ids:
             return False
-        po_date = self.payment_date or (self.date_order.date() if self.date_order else False)
-        return bool(
-            po_date
-            and plan.date_from <= po_date <= plan.date_to
-            and self.company_id.id == plan.company_id.id
-        )
+        return bool(self.env['budget.commitment'].sudo().search([
+            ('document_model', '=', self._name),
+            ('document_id', '=', self.id),
+            ('analytic_account_id', 'in', plan_analytic_ids),
+            ('budget_source', '=', 'monthly'),
+            ('state', 'in', ('reserved', 'used')),
+        ], limit=1))
 
     def _get_source_requisition_id(self):
         """
@@ -741,8 +723,11 @@ class PurchaseOrder(models.Model):
             if prev_state == 'purchase':
                 order._release_monthly_analytic_budget_on_cancel()
             else:
-                plan = find_active_monthly_plan(self.env, order.payment_date, order.company_id.id)
-                if plan and not order._has_active_source_requisition_for_plan(plan) and prev_state in ('draft', 'sent', 'to approve'):
+                active_plans = find_active_monthly_plans(self.env, order.payment_date, order.company_id.id)
+                if active_plans and any(
+                    not order._has_active_source_requisition_for_plan(plan)
+                    for plan in active_plans
+                ) and prev_state in ('draft', 'sent', 'to approve'):
                     order._release_monthly_analytic_budget_on_cancel()
         # Refresh materialized view after budget release
         try:
@@ -798,8 +783,6 @@ class PurchaseOrder(models.Model):
         """
         self.ensure_one()
         engine = self.env['budget.engine']
-        plan = find_active_monthly_plan(self.env, self.payment_date, self.company_id.id)
-
         document_model, document_id = self._get_budget_document_identity()
 
         # Mark related commitment records as released
@@ -811,5 +794,5 @@ class PurchaseOrder(models.Model):
             'company_id': self.company_id.id,
         })
 
-        if plan:
+        for plan in find_active_monthly_plans(self.env, self.payment_date, self.company_id.id):
             plan._refresh_budget_snapshot(refresh_report=True)

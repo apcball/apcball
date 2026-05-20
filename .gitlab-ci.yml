@@ -1,0 +1,52 @@
+stages:
+  - lint
+  - test
+  - deploy
+
+variables:
+  ODOO_CONTAINER: odoo
+  DB_NAME: MOG_DEV
+
+lint:
+  stage: lint
+  image: python:3.10
+  script:
+    - pip install pylint pylint-odoo
+    - |
+      MODULES=$(git diff --name-only HEAD~1 HEAD | grep -oP '^[a-z_]+(?=/)' | sort -u)
+      for mod in $MODULES; do
+        echo "=== Linting $mod ==="
+        pylint --load-plugins=pylint_odoo $mod/ || true
+      done
+  allow_failure: true
+
+test:
+  stage: test
+  tags:
+    - self-hosted
+  script:
+    - |
+      MODULES=$(git diff --name-only HEAD~1 HEAD | grep -oP '^[a-z_]+(?=/)' | sort -u)
+      for mod in $MODULES; do
+        echo "=== Testing $mod ==="
+        docker cp ./$mod ${ODOO_CONTAINER}:/mnt/extra-addons/
+        docker exec ${ODOO_CONTAINER} odoo -d ${DB_NAME} \
+          -u $mod --test-enable --stop-after-init --no-http
+      done
+
+deploy_staging:
+  stage: deploy
+  tags:
+    - self-hosted
+  script:
+    - |
+      MODULES=$(git diff --name-only HEAD~1 HEAD | grep -oP '^[a-z_]+(?=/)' | sort -u)
+      for mod in $MODULES; do
+        echo "=== Deploying $mod ==="
+        docker cp ./$mod ${ODOO_CONTAINER}:/mnt/extra-addons/
+        docker exec ${ODOO_CONTAINER} odoo -d ${DB_NAME} \
+          -u $mod --stop-after-init --no-http
+      done
+  only:
+    - Docker_Ball
+  when: manual

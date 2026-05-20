@@ -1,288 +1,197 @@
-```markdown
-# Odoo 17 Stock Check Module — AI Code Generation Prompt
+# Prompt: สร้าง Odoo 17 Module สำหรับ Export รายงาน DP เป็น Excel
 
-## Role
-You are a Senior Odoo 17 Developer. Generate a complete, production-ready Odoo 17 module
-based on the requirements below. Output all Python, XML, and manifest files with full code.
-Do not skip any file. Do not use placeholder comments like `# TODO` or `# add logic here`.
+## Objective
 
----
+สร้าง custom module สำหรับ Odoo 17 เพื่อ export รายงาน DP จากหน้า Sale Order เป็นไฟล์ Excel (.xlsx)
 
-## Module Identity
-- **Technical Name:** `buz_stock_check_enhanced`
-- **Display Name:** Stock Check Enhanced
-- **Version:** 17.0.1.0.0
-- **Dependencies:** `stock`, `sale_management`, `product`, `web`
-- **License:** LGPL-3
+Report ต้องถูกเรียกจากหน้า Sale Order เพราะต้องดึงข้อมูลจาก:
+- Sale Order
+- Customer / Billing Address / Shipping Address
+- Invoice
+- Delivery Order / Picking
+- Sale Order Lines
 
----
+## Module Name
 
-## Core Features Required
+`mogen_report_dp_excel`
 
-### 1. Warehouse & Location Selection (Header Filter Bar)
-- Dropdown to select **Warehouse** (res.model: `stock.warehouse`)
-- Dropdown to select **Location** filtered by selected warehouse
-  - Default to internal locations only (`usage = 'internal'`)
-- Both dropdowns must be **dynamic** — changing warehouse reloads location list
-- Persist last selection per user using `ir.config_parameter` or session
+## Odoo Version
 
-### 2. Product Stock Table (Main View)
-Display a list/table of products with the following columns:
+Odoo 17 Community / Enterprise
 
-| Column | Description |
-|---|---|
-| Checkbox | Multi-select toggle per row |
-| Product Name | `product.product` display name |
-| Internal Reference | `product.default_code` |
-| On Hand Qty | `qty_on_hand` at selected location |
-| **Actual Available Qty** | `qty_on_hand` MINUS `qty_reserved` (outgoing reserved) — NOT Odoo's default `virtual_available` |
-| Incoming Qty | Confirmed incoming moves (`state in ('assigned','confirmed','waiting')`) filtered by selected location as destination |
-| UoM | Unit of measure |
-| Reorder Point | From `stock.warehouse.orderpoint` if exists |
-| Select Qty | Editable numeric field for quotation quantity |
+## Main Model
 
-> ⚠️ CRITICAL: "Actual Available Qty" must be calculated as:
-> `qty_on_hand - qty_reserved`
-> where `qty_reserved` = sum of `reserved_availability` from outgoing `stock.move.line`
-> Do NOT use `product.with_context(location=...).virtual_available`
+ใช้ model หลักเป็น:
 
-### 3. Multi-Select & Quotation Creation
-- **Select All** checkbox in table header
-- Each row has individual checkbox
-- A **"Create …
-[22/4/2026  09:35] IamManow001101_bot: # prompt.md สำหรับ `stock_enhanced_checker`
+```python
+sale.order
+Report Location
 
-นี่คือไฟล์ `prompt.md` ที่ให้ AI ตัวอื่นไปสร้าง module ต่อได้เลยบอล 👇
+เพิ่มปุ่มหรือ action ในหน้า Sale Order:
 
----
+เมนู Print
+ชื่อรายงาน: DP Excel Report
+Export เป็น .xlsx
+Dependencies
+depends = [
+    "sale_management",
+    "account",
+    "stock",
+]
+Required Feature
 
-```markdown
-# Prompt: Generate Odoo 17 Module — `stock_enhanced_checker`
+เมื่อผู้ใช้เปิด Sale Order แล้วกด Print > DP Excel Report ระบบต้อง generate Excel โดยใช้ข้อมูลจาก Sale Order ปัจจุบัน
 
-## Role
-You are a Senior Odoo 17 Developer. Generate a fully working Odoo 17 module
-based on the requirements below. Output all Python and XML files with correct
-structure, no placeholders, no pseudo-code.
+Data Mapping
+Header Data
 
----
+ดึงข้อมูลจาก Sale Order:
 
-## Module Identity
-- **Technical Name:** `stock_enhanced_checker`
-- **Display Name:** Stock Enhanced Checker
-- **Version:** 17.0.1.0.0
-- **Dependencies:** `stock`, `sale_management`, `product`
-- **License:** LGPL-3
+Field	Odoo Field
+เลขที่ SO	sale.order.name
+วันที่ SO	sale.order.date_order
+ลูกค้า	sale.order.partner_id.name
+ที่อยู่ลูกค้า	sale.order.partner_id.contact_address
+Billing Address	sale.order.partner_invoice_id.contact_address
+Shipping Address	sale.order.partner_shipping_id.contact_address
+Salesperson	sale.order.user_id.name
+Invoice Data
 
----
+ดึงจาก:
 
-## Core Features
+sale.order.invoice_ids
 
-### 1. Stock Check Dashboard (Main UI)
-- A dedicated menu item under **Inventory** named **"Stock Checker"**
-- Built as an OWL component (client action) for a clean, modern UI
-- Page layout:
-  - **Top bar:** Warehouse selector (dropdown) + Location selector
-    (dropdown, filtered by selected warehouse) + Search bar (product name / ref)
-  - **Product list table** (see Section 2)
-  - **Bottom action bar:** "Create Quotation" button (active only when
-    ≥1 product is ticked)
+ข้อมูลที่ต้องใช้:
 
-### 2. Product List Table Columns
-| Column | Description |
-|---|---|
-| ☑ Checkbox | Multi-select per row |
-| Product Name | Linked to product form |
-| Internal Ref | `product.default_code` |
-| On Hand | `qty_available` at selected location |
-| Reserved | `outgoing_qty` (reserved for existing orders) |
-| **Available (Actual)** | `qty_available - outgoing_qty` — NOT the Odoo default "virtual available" |
-| **Incoming** | Sum of confirmed PO lines not yet received (`purchase.order.line` where `state='purchase'` and `qty_received < product_qty`) |
-| Qty to Quote | Editable number input per row (auto-filled when ticked) |
-| Unit Price | Editable, pulled from product sales price |
+Field	Odoo Field
+Invoice No	invoice.name
+Invoice Date	invoice.invoice_date
+Invoice Amount	invoice.amount_total
+Invoice State	invoice.payment_state
 
-### 3. Warehouse & Location Selector Behavior
-- Warehouse dropdown loads all active warehouses (`stock.warehouse`)
-- Location dropdown shows only **internal locations** under the selected
-  warehouse's `lot_stock_id` (recursive children)
-- Default: user's default warehouse + main stock location
-- Changing warehouse resets location to that warehouse's default stock location
-- All stock quantities must recalculate immediately on location change (no
-  page reload — use RPC call)
+ใช้เฉพาะ invoice ที่ไม่ถูก cancel:
 
-### 4. Available Quantity Calculation (Critical)
-```
-actual_available = qty_on_hand_at_location - qty_reserved_at_location
-```
-- Use `stock.quant` to get `qty_on_hand` filtered by `location_id`
-- Use `stock.move.line` with `state in ('partially_available','assigned')`
-  to get reserved qty at that location
-- **Do NOT use** `product.product`'s `virtual_available` field
-- Display negative available qty in **red**
+invoice.state != "cancel"
+Delivery / DO Data
 
-### 5. Incoming Stock Calculation
-```
-incoming_qty = SUM of (product_qty - qty_received)
-               FROM purchase.order.line
-               WHERE order_id.state = 'purchase'
-               AND product_id = current product
-               AND (qty_received < product_qty)
-```
-- Group by product, show total pending incoming quantity
-- Tooltip on hover shows PO references (e.g., "PO/2024/0042, PO/2024/0055")
+ดึงจาก:
 
-### 6. Multi-Select & Quotation Creation
-- Checkbox on each row; "Select All" checkbox in header
-- Ticking a row auto-populates `qty_to_quote` with `actual_available`
-  (user can override)
-- **"Create Quotation" button** behavior:
-  1. Collect all ticked rows with `qty_to_quote > 0`
-  2. Create a `sale.order` in **draft** state
-  3. Add one `sale.order.line` per selected product with the entered qty
-     and unit price
-  4. Open the created quotation form in a new breadcrumb (do not navigate away)
-  5. Show a success toast notification
+sale.order.picking_ids
 
-### 7. Search & Filter
-- Real-time search by product name or internal reference (debounce 300ms)
-- Filter buttons: **All | In Stock | Out of Stock | Low Stock**
-  (Low Stock = available < 5, configurable via Settings)
-- "Low Stock Threshold" setting in **Inventory > Configuration > Settings**
-  (integer field, default = 5)
+ข้อมูลที่ต้องใช้:
 
-### 8. Per[22/4/2026  09:14] Apichart Pangsalung: ช่วยออกแบบ module odoo17 สำหรับ เช็ค stock บน odoo มี config สามารถเลือก warehouse และ location ที่จะแสดงได้ มี UI ที่สวยงามน่าใช้ สามารถติ๊กเลือกได้หลายรายการและ กด create quotation ได้จากหน้า check stock ได้เลย หน้า สินค้าจะแสดงจำนวนที่ขายได้จริงไม่ติด จอง และ แสดงจำนวนที่จะเข้ามาเร็วๆนี้  เขียนเป็น prompt.md เพิ่อให้ ai generate module
-[22/4/2026  09:18] IamManow001101_bot: # prompt.md สำหรับ AI ตัวอื่น
+Field	Odoo Field
+DO No	picking.name
+Scheduled Date	picking.scheduled_date
+Delivery Status	picking.state
+Product Line Data
 
-นี่คือไฟล์ `prompt.md` ที่เขียนเป็นภาษาอังกฤษทั้งหมดตามที่ขอ 👇
+ดึงจาก:
 
----
+sale.order.order_line
 
-```markdown
-# Odoo 17 Stock Check Module — AI Code Generation Prompt
+ไม่เอา section/note:
 
-## Role
-You are a Senior Odoo 17 Developer. Generate a complete, production-ready Odoo 17 module
-based on the requirements below. Output all Python, XML, and manifest files with full code.
-Do not skip any file. Do not use placeholder comments like `# TODO` or `# add logic here`.
+not line.display_type
 
----
+ข้อมูลที่ต้องแสดง:
 
-## Module Identity
-- **Technical Name:** `stock_check_enhanced`
-- **Display Name:** Stock Check Enhanced
-- **Version:** 17.0.1.0.0
-- **Dependencies:** `stock`, `sale_management`, `product`, `web`
-- **License:** LGPL-3
+Column	Odoo Field
+ลำดับ	running number
+Product Code	line.product_id.default_code
+Description	line.name
+Quantity	line.product_uom_qty
+UoM	line.product_uom.name
+Unit Price	line.price_unit
+Subtotal	line.price_subtotal
+Tax	line.price_tax
+Total	line.price_total
+Excel Layout
 
----
+ไฟล์ Excel ต้องเป็นแนวนอน คล้ายรายงานในภาพตัวอย่าง
 
-## Core Features Required
+Sheet Name
+DP Report
+Page Setup
+Paper size: A4
+Orientation: Landscape
+Fit to width: 1 page
+Fit to height: automatic
+Font หลัก: TH Sarabun New หรือ fallback เป็น Arial
+Header row ต้องมี border
+ทุก cell ในตารางต้องมี border
+ตัวเลขชิดขวา
+วันที่ format เป็น dd/mm/yyyy
+จำนวนเงิน format เป็น #,##0.00
+Excel Columns
 
-### 1. Warehouse & Location Selection (Header Filter Bar)
-- Dropdown to select **Warehouse** (res.model: `stock.warehouse`)
-- Dropdown to select **Location** filtered by selected warehouse
-  - Default to internal locations only (`usage = 'internal'`)
-- Both dropdowns must be **dynamic** — changing warehouse reloads location list
-- Persist last selection per user using `ir.config_parameter` or session
+สร้างตาราง columns ตามนี้:
 
-### 2. Product Stock Table (Main View)
-Display a list/table of products with the following columns:
+No	Column Name
+1	ลำดับ
+2	วันที่ SO
+3	SO No
+4	Invoice No
+5	DO No
+6	Customer
+7	Billing Address
+8	Shipping Address
+9	Product Code
+10	Description
+11	Quantity
+12	UoM
+13	Unit Price
+14	Subtotal
+15	Tax
+16	Total
+Technical Requirement
 
-| Column | Description |
-|---|---|
-| Checkbox | Multi-select toggle per row |
-| Product Name | `product.product` display name |
-| Internal Reference | `product.default_code` |
-| On Hand Qty | `qty_on_hand` at selected location |
-| **Actual Available Qty** | `qty_on_hand` MINUS `qty_reserved` (outgoing reserved) — NOT Odoo's default `virtual_available` |
-| Incoming Qty | Confirmed incoming moves (`state in ('assigned','confirmed','waiting')`) filtered by selected location as destination |
-| UoM | Unit of measure |
-| Reorder Point | From `stock.warehouse.orderpoint` if exists |
-| Select Qty | Editable numeric field for quotation quantity |
+ใช้ xlsxwriter ในการสร้าง Excel
 
-> ⚠️ CRITICAL: "Actual Available Qty" must be calculated as:
-> `qty_on_hand - qty_reserved`
-> where `qty_reserved` = sum of `reserved_availability` from outgoing `stock.move.line`
-> Do NOT use `product.with_context(location=...).virtual_available`
+สร้าง report class แบบ abstract model:
 
-### 3. Multi-Select & Quotation Creation
-- **Select All** checkbox in table header
-- Each row has individual checkbox
-- A **"Create …
-[22/4/2026  09:35] IamManow001101_bot: formance Requirements
-- Load products lazily — default show 50 rows, "Load More" button at bottom
-- Use a single RPC call (`/web/dataset/call_kw`) to fetch all required data
-  in one batch per location change
-- Cache warehouse/location tree on first load
+class ReportDPExcel(models.AbstractModel):
+    _name = "report.mogen_report_dp_excel.report_dp_xlsx"
 
----
+ใช้ method:
 
-## File Structure Required
-```
-stock_enhanced_checker/
+def generate_xlsx_report(self, workbook, data, records):
+Expected Files
+
+สร้าง module structure ดังนี้:
+
+mogen_report_dp_excel/
 ├── __init__.py
 ├── __manifest__.py
-├── models/
+├── report/
 │   ├── __init__.py
-│   ├── stock_checker.py          # Transient or helper model with compute methods
-│   └── res_config_settings.py    # Low stock threshold setting
-├── controllers/
-│   ├── __init__.py
-│   └── stock_checker_controller.py  # JSON RPC endpoints
-├── static/
-│   └── src/
-│       ├── js/
-│       │   ├── stock_checker_action.js   # OWL Component (main)
-│       │   ├── stock_checker_table.js    # OWL Sub-component: table
-│       │   └── stock_checker_filters.js  # OWL Sub-component: filters/search
-│       ├── xml/
-│       │   ├── stock_checker_action.xml  # OWL templates
-│       │   └── stock_checker_table.xml
-│       └── css/
-│           └── stock_checker.css
-├── views/
-│   ├── stock_checker_menu.xml    # Menu + Client Action registration
-│   └── res_config_settings_view.xml
+│   ├── report_dp_xlsx.py
+│   └── report_action.xml
 └── security/
     └── ir.model.access.csv
-```
+Report Action
 
----
+สร้าง report action ที่ bind กับ sale.order
 
-## UI/UX Design Guidelines
-- Use **Bootstrap 5** classes (already available in Odoo 17)
-- Table header: sticky on scroll
-- Selected rows: highlight with light blue background (`#e8f4fd`)
-- Available qty column: green if > 0, red if ≤ 0, orange if ≤ low_stock_threshold
-- Incoming qty: show with a small arrow-up icon (✅ Odoo icon `fa-arrow-up`)
-- "Create Quotation" button: `btn-primary`, disabled state when nothing selected
-- Responsive: hide "Internal Ref" column on small screens
+<field name="model">sale.order</field>
+<field name="binding_model_id" ref="sale.model_sale_order"/>
+<field name="binding_type">report</field>
+Output Filename
 
----
+ชื่อไฟล์ export:
 
-## Security
-- Access: Users with `stock.group_stock_user` can view
-- Only users with `sales_team.group_sale_salesman` can create quotations
-- No new security groups needed — reuse existing Odoo groups
+DP_Report_<SO Number>.xlsx
 
----
+ตัวอย่าง:
 
-## Coding Standards
-- Follow Odoo 17 OWL 2.0 component patterns (use `useState`, `useService`,
-  `onWillStart`, `onWillUpdateProps`)
-- Use `this.orm.call()` for RPC — do NOT use deprecated `this._rpc()`
-- All Python methods must have docstrings
-- No hardcoded strings in JS — use `_t()` for translations
-- Python: follow PEP8, max line length 120
-- XML: all views must have `id` and proper `string` attributes
+DP_Report_S00045.xlsx
+Validation
 
----
+ต้องรองรับกรณี:
 
-## Output Instructions
-1. Generate **every file** listed in the file structure — no skipping
-2. Each file must be **complete and functional** — no `# TODO` or `...`
-3. Start each file with a comment block: filename + purpose
-4. After all files, provide a **Setup Instructions** section explaining:
-   - How to install the module
-   - Any required Odoo configuration
-   - How to test each feature
-```
+Sale Order ไม่มี invoice
+Sale Order ไม่มี delivery order
+Sale Order มี invoice หลายใบ
+Sale Order มี delivery order หลายใบ
+Sale Order มีหลาย product lines
+Field บางตัวเป็นค่าว่าง ต้องไม่ error

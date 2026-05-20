@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Paper Format -->
+        <record id="paperformat_trial_balance" model="report.paperformat">
+            <field name="name">Trial Balance A4</field>
+            <field name="default" eval="True"/>
+            <field name="format">A4</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">10</field>
+            <field name="margin_bottom">10</field>
+            <field name="margin_left">4</field>
+            <field name="margin_right">4</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">90</field>
+        </record>
+
+        <!-- Report Action -->
+        <record id="action_report_trial_balance" model="ir.actions.report">
+            <field name="name">Trial Balance</field>
+            <field name="model">account.trial.balance.wizard</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">account_trial_balance.report_trial_balance_document</field>
+            <field name="report_file">account_trial_balance.report_trial_balance_document</field>
+            <field name="print_report_name">'Trial_Balance_%s_%s' % (object.date_from, object.date_to)</field>
+            <field name="binding_model_id" ref="model_account_trial_balance_wizard"/>
+            <field name="binding_type">report</field>
+            <field name="paperformat_id" ref="paperformat_trial_balance"/>
+        </record>
+        <!-- Report Template -->
+        <template id="report_trial_balance_document">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="doc">
+                    <t t-call="web.external_layout">
+                        <div class="page">
+                            <style>
+                                table.o_main_table {
+                                    page-break-inside: auto;
+                                }
+                                table.o_main_table thead {
+                                    display: table-header-group;
+                                }
+                                table.o_main_table tr {
+                                    page-break-inside: avoid;
+                                    page-break-after: auto;
+                                }
+                            </style>
+                            <div class="oe_structure"/>
+
+                            <div class="row">
+                                <div class="col-12 text-center">
+                                    <h2 class="mb-1" style="font-weight: 600;">งบทดลอง</h2>
+                                    <h4 style="font-weight: 400; color: #555;">Trial Balance</h4>
+                                    <p style="font-size: 12px; color: #777; margin: 0;">
+                                        Period: <span t-field="doc.date_from"/> to <span t-field="doc.date_to"/>
+                                    </p>
+                                    <p t-if="doc.journal_ids" style="font-size: 11px; color: #888;">
+                                        Journals: <t t-foreach="doc.journal_ids" t-as="j"><span t-field="j.code"/> </t>
+                                    </p>
+                                    <p t-else="" style="font-size: 11px; color: #888;">All Journals</p>
+                                </div>
+                            </div>
+
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <t t-set="data" t-value="doc._get_trial_balance_data()"/>
+                                    <t t-if="not data.get('lines')">
+                                        <p class="text-center text-muted">No data for the selected period.</p>
+                                    </t>
+                                    <t t-else="">
+                                        <t t-foreach="data['lines']" t-as="group">
+                                            <!-- Group Header -->
+                                            <div class="row mt-4 mb-1">
+                                                <div class="col-12">
+                                                    <h5 style="font-weight: 600; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 4px;">
+                                                        <t t-esc="group['type']"/>
+                                                    </h5>
+                                                </div>
+                                            </div>
+
+                                            <!-- Line Items -->
+                                            <table class="table table-sm o_main_table">
+                                                <thead>
+                                                    <tr style="background-color: #f8f9fa;">
+                                                        <th style="width: 12%;">Code</th>
+                                                        <th style="width: 38%;">Account</th>
+                                                        <th class="text-right" style="width: 16%;">Debit</th>
+                                                        <th class="text-right" style="width: 16%;">Credit</th>
+                                                        <th class="text-right" style="width: 18%;">Balance</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <t t-foreach="group['lines']" t-as="line">
+                                                        <tr>
+                                                            <td><span t-esc="line['code']"/></td>
+                                                            <td><span t-esc="line['name']"/></td>
+                                                            <td class="text-right">
+                                                                <span t-esc="formatLang(line['debit'], digits=2)"/>
+                                                            </td>
+                                                            <td class="text-right">
+                                                                <span t-esc="formatLang(line['credit'], digits=2)"/>
+                                                            </td>
+                                                            <td class="text-right">
+                                                                <span t-esc="formatLang(line['balance'], digits=2)"/>
+                                                            </td>
+                                                        </tr>
+                                                    </t>
+                                                    <!-- Group Total -->
+                                                    <tr style="font-weight: 600; background-color: #eaf2f8; border-top: 2px solid #3498db;">
+                                                        <td colspan="2" style="font-size: 12px;">Total <t t-esc="group['type']"/></td>
+                                                        <td class="text-right">
+                                                            <span t-esc="formatLang(group['total_debit'], digits=2)"/>
+                                                        </td>
+                                                        <td class="text-right">
+                                                            <span t-esc="formatLang(group['total_credit'], digits=2)"/>
+                                                        </td>
+                                                        <td class="text-right">
+                                                            <span t-esc="formatLang(group['total_balance'], digits=2)"/>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </t>
+
+                                        <!-- Grand Total -->
+                                        <div class="row mt-3">
+                                            <div class="col-12">
+                                                <table class="table table-sm" style="border-top: 3px double #2c3e50;">
+                                                    <tr style="font-weight: 700; font-size: 13px; background-color: #d5e8d4;">
+                                                        <td style="width: 50%;">Grand Total</td>
+                                                        <td class="text-right" style="width: 16%;">
+                                                            <span t-esc="formatLang(data['grand_total']['debit'], digits=2)"/>
+                                                        </td>
+                                                        <td class="text-right" style="width: 16%;">
+                                                            <span t-esc="formatLang(data['grand_total']['credit'], digits=2)"/>
+                                                        </td>
+                                                        <td class="text-right" style="width: 18%;">
+                                                            <span t-esc="formatLang(data['grand_total']['balance'], digits=2)"/>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <div class="oe_structure"/>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>

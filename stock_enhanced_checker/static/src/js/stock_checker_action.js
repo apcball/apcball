@@ -1,97 +1,93 @@
 /** @odoo-module **/
 /**
  * File: static/src/js/stock_checker_action.js
- * Purpose: Main OWL component for the Stock Enhanced Checker client action.
- *          Handles all state management: warehouse/location selection,
- *          product loading, search/filter, multi-select, and quotation creation.
+ * Purpose: Main OWL component for Stock Enhanced Checker client action.
  */
 
-import { Component, useState, onWillStart, onWillUpdateProps } from "@odoo/owl";
+import { Component, useState, onWillStart } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 import { StockCheckerTable } from "./stock_checker_table";
 import { STOCK_FILTERS, debounce, formatQty } from "./stock_checker_filters";
 
-/**
- * StockCheckerAction
- *
- * Root OWL component registered as the "stock_enhanced_checker.StockCheckerAction"
- * client action tag. Manages the complete stock checker dashboard lifecycle.
- */
 class StockCheckerAction extends Component {
     static template = "stock_enhanced_checker.StockCheckerAction";
     static components = { StockCheckerTable };
-
-    // ── Lifecycle ──────────────────────────────────────────────────────────
 
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
-
-        /** @type {string[]} */
         this.filters = STOCK_FILTERS;
 
-        /** @type {ReturnType<typeof useState>} */
         this.state = useState({
-            // Warehouse & location
             warehouses: [],
             locations: [],
+            pricelists: [],
             selectedWarehouseId: false,
             selectedLocationId: false,
+            selectedPricelistId: false,
 
-            // Product data
             products: [],
             total: 0,
             offset: 0,
             limit: 50,
 
-            // UI
             loading: false,
             creating: false,
             search: '',
             filterType: 'all',
             toast: null,
+            theme: 'dark',
 
-            // Selection
+            stats: { in_stock: 0, low_stock: 0, out_of_stock: 0, with_incoming: 0 },
+
+            canCreateQuotation: false,
+
             selectedIds: [],
-            qtys: {},      // { productId: qty }
-            prices: {},    // { productId: price }
+            qtys: {},
+            prices: {},
 
-            // Partner
             partnerCode: '',
             partnerName: '',
             selectedPartnerId: false,
             partnerResults: [],
         });
 
-        /** Debounced partner code search */
         this._debouncedPartnerSearch = debounce(this._searchPartner.bind(this), 300);
-        this._debouncedSearch = null;
 
         onWillStart(async () => {
             await this._init();
         });
     }
 
-    // ── Init ───────────────────────────────────────────────────────────────
+    // ── Init ───────────────────────────────────────────────────────────
 
-    /**
-     * Initialise the component: load warehouses and restore user preferences.
-     */
     async _init() {
         this.state.loading = true;
         try {
-            // Load warehouses and user prefs in parallel
-            const [warehouses, prefs] = await Promise.all([
+            const savedTheme = localStorage.getItem('sc_theme');
+            if (savedTheme === 'light' || savedTheme === 'dark') {
+                this.state.theme = savedTheme;
+            }
+
+            const [warehouses, prefs, rights, pricelists] = await Promise.all([
                 this.orm.call('stock.checker.helper', 'get_warehouses', []),
                 this.orm.call('stock.checker.helper', 'get_user_preferences', []),
+                this.orm.call('stock.checker.helper', 'get_user_rights', []),
+                this.orm.call('stock.checker.helper', 'get_pricelists', []),
             ]);
 
             this.state.warehouses = warehouses;
+            this.state.pricelists = pricelists;
+            this.state.canCreateQuotation = rights.can_create_quotation;
 
-            // Restore or default warehouse
+            // Restore pricelist preference
+            if (prefs.pricelist_id) {
+                this.state.selectedPricelistId = prefs.pricelist_id;
+            }
+
             let warehouseId = prefs.warehouse_id;
             if (!warehouseId && warehouses.length) {
                 warehouseId = warehouses[0].id;
@@ -101,7 +97,6 @@ class StockCheckerAction extends Component {
                 this.state.selectedWarehouseId = warehouseId;
                 await this._loadLocations(warehouseId);
 
-                // Restore or default location
                 let locationId = prefs.location_id;
                 if (!locationId && this.state.locations.length) {
                     locationId = this.state.locations[0].id;
@@ -117,12 +112,8 @@ class StockCheckerAction extends Component {
         }
     }
 
-    // ── Data Loaders ───────────────────────────────────────────────────────
+    // ── Data Loaders ───────────────────────────────────────────────────
 
-    /**
-     * Load internal locations for a given warehouse.
-     * @param {number} warehouseId
-     */
     async _loadLocations(warehouseId) {
         const locs = await this.orm.call(
             'stock.checker.helper', 'get_locations', [], { warehouse_id: warehouseId }
@@ -130,10 +121,6 @@ class StockCheckerAction extends Component {
         this.state.locations = locs;
     }
 
-    /**
-     * Load (or reload) stock data for the current location/filter/search.
-     * @param {boolean} reset - If true, reset offset and product list
-     */
     async _loadStockData(reset = false) {
         if (!this.state.selectedLocationId) return;
 
@@ -152,15 +139,32 @@ class StockCheckerAction extends Component {
                     filter_type: this.state.filterType,
                     offset: this.state.offset,
                     limit: this.state.limit,
+                    pricelist_id: this.state.selectedPricelistId || false,
                 }
             );
 
             if (reset) {
                 this.state.products = result.products;
+                // Reset prices from pricelist when data reloads
+                const newPrices = {};
+                for (const p of result.products) {
+                    if (this.state.selectedIds.includes(p.id)) {
+                        // Keep user-edited price if already selected
+                        if (this.state.prices[p.id] !== undefined) {
+                            newPrices[p.id] = this.state.prices[p.id];
+                        } else {
+                            newPrices[p.id] = p.list_price;
+                        }
+                    }
+                }
+                this.state.prices = { ...this.state.prices, ...newPrices };
             } else {
                 this.state.products = [...this.state.products, ...result.products];
             }
             this.state.total = result.total;
+            if (result.stats) {
+                this.state.stats = result.stats;
+            }
         } catch (err) {
             this._showToast('error', _t('Error'), _t('Failed to load stock data.'));
             console.error('[StockChecker] get_stock_data error:', err);
@@ -169,19 +173,12 @@ class StockCheckerAction extends Component {
         }
     }
 
-    // ── Public methods (bound to template events) ──────────────────────────
+    // ── Event Handlers ─────────────────────────────────────────────────
 
-    /**
-     * Expose public loadStockData for refresh button.
-     */
     async loadStockData() {
         await this._loadStockData(true);
     }
 
-    /**
-     * Handle warehouse dropdown change.
-     * @param {Event} ev
-     */
     async onWarehouseChange(ev) {
         const warehouseId = parseInt(ev.target.value) || false;
         this.state.selectedWarehouseId = warehouseId;
@@ -191,7 +188,6 @@ class StockCheckerAction extends Component {
 
         if (warehouseId) {
             await this._loadLocations(warehouseId);
-            // Auto-select the first location (warehouse default stock)
             if (this.state.locations.length) {
                 this.state.selectedLocationId = this.state.locations[0].id;
                 await this._loadStockData(true);
@@ -202,10 +198,6 @@ class StockCheckerAction extends Component {
         }
     }
 
-    /**
-     * Handle location dropdown change.
-     * @param {Event} ev
-     */
     async onLocationChange(ev) {
         const locationId = parseInt(ev.target.value) || false;
         this.state.selectedLocationId = locationId;
@@ -220,12 +212,41 @@ class StockCheckerAction extends Component {
         }
     }
 
-    // ── Partner Search ───────────────────────────────────────────────────────
+    async onPricelistChange(ev) {
+        const pricelistId = parseInt(ev.target.value) || false;
+        this.state.selectedPricelistId = pricelistId;
 
-    /**
-     * Handle partner code input — update state and trigger debounced RPC search.
-     * @param {InputEvent} ev
-     */
+        // Reload data with new pricelist prices
+        if (this.state.selectedLocationId) {
+            // Reset prices so they update from pricelist
+            this.state.prices = {};
+            await this._loadStockData(true);
+        }
+        this._savePreferences();
+    }
+
+    onSearchType(ev) {
+        this.state.search = ev.target.value;
+    }
+
+    async onSearchKeydown(ev) {
+        if (ev.key === 'Enter') {
+            await this._loadStockData(true);
+        }
+    }
+
+    async onFilterChange(filterKey) {
+        this.state.filterType = filterKey;
+        await this._loadStockData(true);
+    }
+
+    async loadMore() {
+        this.state.offset += this.state.limit;
+        await this._loadStockData(false);
+    }
+
+    // ── Partner ────────────────────────────────────────────────────────
+
     onPartnerCodeInput(ev) {
         this.state.partnerCode = ev.target.value;
         this.state.selectedPartnerId = false;
@@ -236,19 +257,12 @@ class StockCheckerAction extends Component {
         this._debouncedPartnerSearch();
     }
 
-    /**
-     * Close the partner dropdown on Escape key.
-     * @param {KeyboardEvent} ev
-     */
     onPartnerCodeKeydown(ev) {
         if (ev.key === 'Escape') {
             this.state.partnerResults = [];
         }
     }
 
-    /**
-     * Execute partner search RPC (called after debounce delay).
-     */
     async _searchPartner() {
         const q = this.state.partnerCode;
         if (!q || !q.trim()) {
@@ -266,10 +280,6 @@ class StockCheckerAction extends Component {
         }
     }
 
-    /**
-     * Select a partner from the autocomplete dropdown.
-     * @param {{ id: number, name: string, ref: string, display: string }} partner
-     */
     onSelectPartner(partner) {
         this.state.selectedPartnerId = partner.id;
         this.state.partnerCode = partner.ref || partner.display;
@@ -277,57 +287,13 @@ class StockCheckerAction extends Component {
         this.state.partnerResults = [];
     }
 
-    /**
-     * Handle customer name input — clears selected partner since user may be
-     * typing a new (non-existing) customer name.
-     * @param {InputEvent} ev
-     */
     onPartnerNameInput(ev) {
         this.state.partnerName = ev.target.value;
         this.state.selectedPartnerId = false;
     }
 
-    /**
-     * Handle search input typing — update local state only, no RPC.
-     * The actual search fires when the user presses Enter.
-     * @param {InputEvent} ev
-     */
-    onSearchType(ev) {
-        this.state.search = ev.target.value;
-    }
+    // ── Selection ──────────────────────────────────────────────────────
 
-    /**
-     * Handle search keydown — trigger load only when Enter is pressed.
-     * @param {KeyboardEvent} ev
-     */
-    async onSearchKeydown(ev) {
-        if (ev.key === 'Enter') {
-            await this._loadStockData(true);
-        }
-    }
-
-    /**
-     * Handle filter pill click.
-     * @param {string} filterKey
-     */
-    async onFilterChange(filterKey) {
-        this.state.filterType = filterKey;
-        await this._loadStockData(true);
-    }
-
-    /**
-     * Load the next page of products.
-     */
-    async loadMore() {
-        this.state.offset += this.state.limit;
-        await this._loadStockData(false);
-    }
-
-    // ── Selection ──────────────────────────────────────────────────────────
-
-    /**
-     * Toggle all products' selection state.
-     */
     onToggleAll() {
         if (this.allSelected) {
             this.state.selectedIds = [];
@@ -339,7 +305,6 @@ class StockCheckerAction extends Component {
             for (const p of this.state.products) {
                 if (!newIds.includes(p.id)) {
                     newIds.push(p.id);
-                    // Auto-fill qty with 1 as default
                     newQtys[p.id] = 1;
                     newPrices[p.id] = p.list_price;
                 }
@@ -350,10 +315,6 @@ class StockCheckerAction extends Component {
         }
     }
 
-    /**
-     * Toggle individual product row selection.
-     * @param {number} productId
-     */
     onToggleRow(productId) {
         const idx = this.state.selectedIds.indexOf(productId);
         if (idx >= 0) {
@@ -361,53 +322,29 @@ class StockCheckerAction extends Component {
         } else {
             const product = this.state.products.find(p => p.id === productId);
             this.state.selectedIds = [...this.state.selectedIds, productId];
-            // Auto-fill qty with 1 as default if not yet set
             if (this.state.qtys[productId] === undefined && product) {
-                this.state.qtys = {
-                    ...this.state.qtys,
-                    [productId]: 1,
-                };
+                this.state.qtys = { ...this.state.qtys, [productId]: 1 };
             }
             if (this.state.prices[productId] === undefined && product) {
-                this.state.prices = {
-                    ...this.state.prices,
-                    [productId]: product.list_price,
-                };
+                this.state.prices = { ...this.state.prices, [productId]: product.list_price };
             }
         }
     }
 
-    /**
-     * Update the qty to quote for a product.
-     * @param {number} productId
-     * @param {number} qty
-     */
     onQtyChange(productId, qty) {
         this.state.qtys = { ...this.state.qtys, [productId]: qty };
     }
 
-    /**
-     * Update the unit price for a product.
-     * @param {number} productId
-     * @param {number} price
-     */
     onPriceChange(productId, price) {
         this.state.prices = { ...this.state.prices, [productId]: price };
     }
 
-    /**
-     * Clear all selections.
-     */
     clearSelection() {
         this.state.selectedIds = [];
     }
 
-    // ── Computed ───────────────────────────────────────────────────────────
+    // ── Computed ───────────────────────────────────────────────────────
 
-    /**
-     * Whether all currently displayed products are selected.
-     * @returns {boolean}
-     */
     get allSelected() {
         return (
             this.state.products.length > 0 &&
@@ -415,37 +352,23 @@ class StockCheckerAction extends Component {
         );
     }
 
-    /**
-     * Compute summary statistics from the current product list.
-     * @returns {{ inStock: number, outOfStock: number, lowStock: number, withIncoming: number }}
-     */
     get stats() {
-        const products = this.state.products;
-        const threshold = products[0]?.low_stock_threshold ?? 5;
-        return {
-            inStock:     products.filter(p => p.actual_available > threshold).length,
-            lowStock:    products.filter(p => p.actual_available > 0 && p.actual_available <= threshold).length,
-            outOfStock:  products.filter(p => p.actual_available <= 0).length,
-            withIncoming:products.filter(p => p.incoming_qty > 0).length,
-        };
+        return this.state.stats;
     }
 
-    // ── Quotation Creation ─────────────────────────────────────────────────
+    get selectedPricelistCurrency() {
+        const pl = this.state.pricelists.find(p => p.id === this.state.selectedPricelistId);
+        return pl ? pl.currency : '';
+    }
 
-    /**
-     * Create a sale.order quotation from the selected products.
-     * Opens the created quotation form via action service.
-     */
+    // ── Quotation ──────────────────────────────────────────────────────
+
     async createQuotation() {
         const lines = this.state.selectedIds
             .map(id => {
                 const qty = this.state.qtys[id] || 0;
                 if (qty <= 0) return null;
-                return {
-                    product_id: id,
-                    qty: qty,
-                    price: this.state.prices[id] ?? 0,
-                };
+                return { product_id: id, qty, price: this.state.prices[id] ?? 0 };
             })
             .filter(Boolean);
 
@@ -462,8 +385,8 @@ class StockCheckerAction extends Component {
                     lines,
                     partner_id: this.state.selectedPartnerId || false,
                     partner_name: (!this.state.selectedPartnerId && this.state.partnerName)
-                        ? this.state.partnerName
-                        : false,
+                        ? this.state.partnerName : false,
+                    pricelist_id: this.state.selectedPricelistId || false,
                 }
             );
 
@@ -472,18 +395,10 @@ class StockCheckerAction extends Component {
                 return;
             }
 
-            // Build toast message including partner info
             const partnerInfo = this.state.partnerName ? ` for ${this.state.partnerName}` : '';
-            this._showToast(
-                'success',
-                _t('Quotation Created'),
-                _t('%(name)s%(partner)s has been created.', {
-                    name: result.name,
-                    partner: partnerInfo,
-                })
-            );
+            this._showToast('success', _t('Quotation Created'),
+                _t('%(name)s%(partner)s has been created.', { name: result.name, partner: partnerInfo }));
 
-            // Open created quotation
             await this.action.doAction({
                 type: 'ir.actions.act_window',
                 res_model: 'sale.order',
@@ -492,7 +407,6 @@ class StockCheckerAction extends Component {
                 target: 'current',
             });
 
-            // Reset selection and partner fields
             this.state.selectedIds = [];
             this.state.qtys = {};
             this.state.prices = {};
@@ -500,7 +414,6 @@ class StockCheckerAction extends Component {
             this.state.partnerName = '';
             this.state.selectedPartnerId = false;
             this.state.partnerResults = [];
-
         } catch (err) {
             this._showToast('error', _t('Error'), _t('Failed to create quotation.'));
             console.error('[StockChecker] create_quotation error:', err);
@@ -509,11 +422,8 @@ class StockCheckerAction extends Component {
         }
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────
 
-    /**
-     * Save warehouse/location preferences for the current user.
-     */
     async _savePreferences() {
         try {
             await this.orm.call(
@@ -521,50 +431,31 @@ class StockCheckerAction extends Component {
                 {
                     warehouse_id: this.state.selectedWarehouseId,
                     location_id: this.state.selectedLocationId,
+                    pricelist_id: this.state.selectedPricelistId || false,
                 }
             );
-        } catch (err) {
-            // Non-critical, fail silently
-        }
+        } catch (_) { }
     }
 
-    /**
-     * Show a toast notification for a given duration.
-     * @param {'success'|'error'|'info'} type
-     * @param {string} title
-     * @param {string} msg
-     * @param {number} [duration=4000] - Auto-dismiss duration in ms
-     */
     _showToast(type, title, msg, duration = 4000) {
         this.state.toast = { type, title, msg };
         if (this._toastTimer) clearTimeout(this._toastTimer);
-        this._toastTimer = setTimeout(() => {
-            this.state.toast = null;
-        }, duration);
+        this._toastTimer = setTimeout(() => { this.state.toast = null; }, duration);
     }
 
-    /**
-     * Dismiss the current toast immediately.
-     */
     clearToast() {
         this.state.toast = null;
-        if (this._toastTimer) {
-            clearTimeout(this._toastTimer);
-            this._toastTimer = null;
-        }
+        if (this._toastTimer) { clearTimeout(this._toastTimer); this._toastTimer = null; }
     }
 
-    /**
-     * Expose formatQty to the template.
-     * @param {number} qty
-     * @returns {string}
-     */
-    formatQty(qty) {
-        return formatQty(qty);
+    toggleTheme() {
+        this.state.theme = this.state.theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('sc_theme', this.state.theme);
     }
+
+    formatQty(qty) { return formatQty(qty); }
 }
 
-// Register as a client action tag
 registry.category("actions").add(
     "stock_enhanced_checker.StockCheckerAction",
     StockCheckerAction

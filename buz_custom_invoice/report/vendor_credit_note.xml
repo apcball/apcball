@@ -165,8 +165,8 @@
                          <!-- Document Title -->
                          <div class="row mb-2">
                             <div class="col-12 text-center">
-                                        <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">ใบแจ้งหนี้/ใบกำกับภาษี</h2>
-                                        <p style="margin: 0; padding: 0; font-size: 18px; font-weight: bold;">Invoice / Tax Invoice</p>
+                                        <h2 style="margin: 0; padding: 0; font-weight: bold; font-size: 25px; margin-top: 10px;">ใบเพิ่มหนี้/ใบกำกับภาษี</h2>
+                                        <p style="margin: 0; padding: 0; font-size: 18px; font-weight: bold;">Debit Note / Tax Invoice</p>
                              </div>
                         </div> 
 
@@ -193,9 +193,9 @@
                                         <div>
                                             <strong>ที่อยู่:</strong>
                                             <span t-field="doc.partner_id.street"/>
-                                            <t t-if="doc.partner_id.city"> ตำบล<span t-field="doc.partner_id.city"/></t>
-                                            <t t-if="doc.partner_id.state_id"> อำเภอ<span t-field="doc.partner_id.state_id.name"/></t>
-                                            <t t-if="doc.partner_id.state_id"> จังหวัด<span t-field="doc.partner_id.state_id.name"/></t>
+                                            <span t-field="doc.partner_id.street2"/>
+                                            <span t-field="doc.partner_id.city"/>
+                                            <span t-field="doc.partner_id.state_id.name"/>
                                             <span t-field="doc.partner_id.zip"/>
                                         </div>
                                         <div><strong>โทรศัพท์:</strong> <span t-field="doc.partner_id.phone"/></div>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_sale_order_credit_note_button" model="ir.ui.view">
+        <field name="name">sale.order.credit.note.button</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Add button in the header, after the last existing button -->
+            <xpath expr="//header" position="inside">
+                <field name="has_posted_invoices" invisible="1"/>
+                <button name="action_open_credit_note_wizard"
+                        string="Create Credit Note"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="state not in ['sale', 'done'] or invoice_status == 'no'"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

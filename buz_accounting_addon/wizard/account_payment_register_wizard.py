@@ -80,11 +80,9 @@ class AccountPaymentRegisterWizard(models.TransientModel):
         # Process WHT if applicable
         # Process WHT if applicable
         if self.wht_amount > 0:
-            pass
-            # Create WHT entries
-            # self.voucher_line_id.voucher_id._create_wht_entries(self.voucher_line_id, payment, self.partner_id)
-            # Create WHT certificates if module is installed - Commented out to prevent double creation (l10n_th handles it)
-            # self.voucher_line_id.voucher_id._create_wht_certificates(self.voucher_line_id, payment, self.partner_id)
+            self.voucher_line_id.voucher_id._create_wht_certificates(
+                self.voucher_line_id, payment, self.partner_id
+            )
         
         # Return action to show the created payment
         return {

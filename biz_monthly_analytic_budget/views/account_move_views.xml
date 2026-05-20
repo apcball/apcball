@@ -12,7 +12,7 @@
                         string="Request Budget Approval"
                         type="object"
                         class="btn-danger"
-                        invisible="not budget_warning or buz_budget_approval_state == 'approved' or state != 'draft'"/>
+                        invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='invoice_date']" position="after">
                 <field name="monthly_budget_plan_id" 
@@ -27,7 +27,7 @@
                             string="Check Budget"
                             type="object"
                             class="btn-secondary ms-2 align-self-start"
-                            invisible="not monthly_budget_plan_id or state != 'draft'"/>
+                            invisible="1"/>
                 </div>
             </xpath>
         </field>

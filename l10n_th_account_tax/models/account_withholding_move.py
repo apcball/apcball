@@ -100,8 +100,9 @@ class AccountWithholdingMove(models.Model):
         for rec in self:
             rec.date = rec.move_id and rec.move_id.date or False
             rec.calendar_year = rec.date and rec.date.strftime("%Y")
-            # origin_payment_id may not exist on older Odoo versions
-            rec.payment_id = getattr(rec.move_id, "origin_payment_id", False)
+            # Keep the payment link working on Odoo 17 where origin_payment_id
+            # is not available on account.move in this addon.
+            rec.payment_id = rec.move_id._get_related_payment()
 
     @api.depends("wht_tax_id")
     def _compute_wht_cert_income_type(self):

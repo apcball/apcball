@@ -36,14 +36,14 @@
                     <button name="action_confirm" type="object" string="Confirm" 
                             class="oe_highlight" invisible="state != 'draft'" 
                             help="Confirm the request to create the internal transfer"/>
-                    <!-- DISABLED: Allocate button removed - simplified workflow -->
-                    <!-- Materials automatically available at destination location after validate picking -->
-                    <!-- <button name="action_allocate_wizard" type="object" string="Allocate to MO"
+                    <button name="action_mark_done" type="object" string="Mark Done"
                             class="oe_highlight" invisible="state != 'requested'"
-                            help="Allocate issued materials to specific Manufacturing Orders"/> -->
-                    <button name="action_cancel" type="object" string="Cancel" 
-                            invisible="state not in ['draft', 'requested']" 
+                            help="Mark this stock request as Done"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state not in ['draft', 'requested']"
                             confirm="Are you sure you want to cancel this request?"/>
+                    <button name="%(buz_mrp_stock_request.report_stock_request)d" type="action" string="Print ใบเบิกสินค้า"
+                            class="oe_highlight" invisible="state == 'cancel'"/>
                     <button name="action_draft" type="object" string="Reset to Draft" 
                             invisible="state != 'cancel'" 
                             groups="buz_mrp_stock_request.group_mrp_stock_request_manager"/>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_move_form_inherit_delivery_order" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.delivery.order</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Delivery Order field right after the journal div -->
+            <xpath expr="//div[@name='journal_div']" position="after">
+                <field name="available_picking_ids" invisible="1"/>
+                <field name="picking_ids"
+                       invisible="move_type not in ('out_invoice', 'out_refund')"
+                       widget="many2many_tags"
+                       options="{'no_create': True, 'no_open': True}"
+                       readonly="state in ('posted', 'cancel')"
+                       string="Delivery Order"/>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

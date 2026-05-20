@@ -23,14 +23,23 @@ class MrpProductionAllocateWizard(models.TransientModel):
 
     @api.model
     def default_get(self, fields_list):
-        """Populate wizard with MO."""
+        """Set default MO only. Lines are populated in create() to avoid
+        the readonly-field-stripping issue when Odoo re-sends form data."""
         res = super().default_get(fields_list)
-        
         mo_id = self.env.context.get('default_mo_id')
         if mo_id:
             res['mo_id'] = mo_id
-        
         return res
+
+    @api.model
+    def create(self, vals):
+        """Create wizard record first, then populate lines so all required
+        fields (product_id, uom_id, etc.) are set directly on the DB records
+        and are never re-created from client-submitted form data."""
+        wizard = super().create(vals)
+        if wizard.mo_id:
+            wizard._populate_wizard()
+        return wizard
     
     @api.depends("mo_id")
     def _compute_has_unallocated_materials(self):
@@ -57,7 +66,7 @@ class MrpProductionAllocateWizard(models.TransientModel):
         self.ensure_one()
         
         if not self.mo_id:
-            self.debug_info = "ERROR: No MO"
+            _logger.warning("_populate_wizard called with no mo_id")
             return
         
         _logger.info("=== Populating wizard for MO: %s", self.mo_id.name)
@@ -89,12 +98,23 @@ class MrpProductionAllocateWizard(models.TransientModel):
             
             product = move.product_id
             uom = product.uom_id
-            
-            # Required vs consumed
+
+            # Required vs actually consumed
+            # NOTE: In Odoo 17, move.quantity is auto-filled with reserved qty by
+            # action_assign() even before the move is 'done'. We must only count
+            # quantity that has truly been consumed (move state == 'done').
             required_qty = move.product_uom._compute_quantity(move.product_uom_qty, uom)
-            consumed_qty = move.product_uom._compute_quantity(move.quantity, uom)
+            if move.state == 'done':
+                consumed_qty = move.product_uom._compute_quantity(move.quantity, uom)
+            else:
+                # Sum only done move lines (partially done scenario)
+                consumed_qty = sum(
+                    ml.product_uom_id._compute_quantity(ml.quantity, uom)
+                    for ml in move.move_line_ids
+                    if ml.state == 'done'
+                )
             missing_qty = max(required_qty - consumed_qty, 0.0)
-            
+
             if missing_qty > 0:
                 if product.id not in missing_components:
                     missing_components[product.id] = {'qty': 0.0, 'uom': uom}
@@ -205,81 +225,59 @@ class MrpProductionAllocateWizard(models.TransientModel):
                 error_msg = _("Cannot allocate materials.\n\nProblems found:\n%s\n\nPlease enter quantities greater than 0.") % "\n".join(problems[:5])
                 raise UserError(error_msg)
         
-        # Validate
+        # Validate quantities
         for line in lines_to_process:
             if line.qty_to_consume <= 0:
                 raise ValidationError(_("Quantity must be positive for %s") % line.product_id.name)
-            
             if float_compare(line.qty_to_consume, line.available_qty, precision_rounding=line.uom_id.rounding) > 0:
                 raise ValidationError(
-                    _("Quantity %.2f exceeds available %.2f for %s") % 
+                    _("Quantity %.2f exceeds available %.2f for %s") %
                     (line.qty_to_consume, line.available_qty, line.product_id.name)
                 )
-        
-        # Group by request line and allocate
+
+        # Create allocation tracking records.
+        # Physical stock movement (reservation → consumption) is already handled by
+        # standard Odoo MRP (action_assign + button_mark_done on the MO).
+        # This wizard only records WHICH stock request materials were approved for
+        # each MO — driving qty_allocated / qty_available_to_allocate on request lines.
         summary_lines = []
         for line in lines_to_process:
             req_line = line.request_line_id
-            product = line.product_id
-            uom = line.uom_id
-            qty_to_consume = line.qty_to_consume
-            
-            # Find or create raw material move
             raw_move = self.mo_id.move_raw_ids.filtered(
-                lambda m: m.product_id == product and m.state not in ['done', 'cancel']
+                lambda m: m.product_id == line.product_id and m.state not in ['done', 'cancel']
             )
-            
-            if not raw_move:
-                # Create a new raw move
+            if not raw_move and self.mo_id.state not in ['done', 'cancel']:
+                # No raw move from BOM — create one so MO can track this component
                 raw_move = self.env['stock.move'].create({
-                    'name': product.display_name,
-                    'product_id': product.id,
-                    'product_uom_qty': qty_to_consume,
-                    'product_uom': uom.id,
+                    'name': line.product_id.display_name,
+                    'product_id': line.product_id.id,
+                    'product_uom_qty': line.qty_to_consume,
+                    'product_uom': line.uom_id.id,
                     'location_id': self.mo_id.location_src_id.id,
-                    'location_dest_id': product.property_stock_production.id,
+                    'location_dest_id': line.product_id.property_stock_production.id,
                     'raw_material_production_id': self.mo_id.id,
                     'company_id': self.mo_id.company_id.id,
                     'origin': self.mo_id.name,
-                    'state': 'confirmed',
                 })
                 raw_move._action_confirm()
-            else:
-                raw_move = raw_move[0]
-            
-            # Convert qty to move's UoM
-            qty_in_move_uom = uom._compute_quantity(qty_to_consume, raw_move.product_uom)
-            
-            # Get source location from request
-            location_src = req_line.request_id.location_dest_id or self.mo_id.location_src_id
-            
-            # Create move line for consumption
-            move_line_vals = {
-                'move_id': raw_move.id,
-                'product_id': product.id,
-                'product_uom_id': raw_move.product_uom.id,
-                'quantity': qty_in_move_uom,
-                'location_id': location_src.id,
-                'location_dest_id': raw_move.location_dest_id.id,
-                'company_id': self.mo_id.company_id.id,
-            }
-            
-            if line.lot_id:
-                move_line_vals['lot_id'] = line.lot_id.id
-            
-            self.env['stock.move.line'].create(move_line_vals)
-            
-            # Update allocation
-            req_line.qty_allocated += qty_to_consume
-            
-            summary_lines.append(product.name)
-            _logger.info("=== Allocated: %s, qty=%.2f", product.name, qty_to_consume)
-        
-        # Recompute quantities
+
+            # Create allocation tracking record only.
+            # Physical consumption is handled by standard Odoo MRP when MO is marked done.
+            self.env['mrp.stock.request.allocation'].create({
+                'request_line_id': req_line.id,
+                'mo_id': self.mo_id.id,
+                'uom_id': line.uom_id.id,
+                'qty_consumed': line.qty_to_consume,
+                'lot_id': line.lot_id.id if line.lot_id else False,
+            })
+
+            summary_lines.append(line.product_id.name)
+            _logger.info("=== Allocated (tracked): %s qty=%.2f", line.product_id.name, line.qty_to_consume)
+
+        # Recompute request quantities
         for request in self.mo_id.stock_request_ids:
             request._compute_issued_quantities()
-        
-        # Show success message and close wizard
+
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -291,6 +289,7 @@ class MrpProductionAllocateWizard(models.TransientModel):
                 'next': {'type': 'ir.actions.act_window_close'},
             }
         }
+
     
     def action_mark_as_done(self):
         """Open mark as done confirmation wizard."""

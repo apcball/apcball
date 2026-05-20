@@ -4,6 +4,9 @@ access_pos_lite_order_line_user,pos_lite.order.line user,model_pos_lite_order_li
 access_pos_lite_payment_user,pos_lite.payment user,model_pos_lite_payment,pos_lite.group_pos_lite_user,1,1,1,0
 access_pos_lite_config_user,pos_lite.config read,model_pos_lite_config,pos_lite.group_pos_lite_user,1,0,0,0
 access_pos_lite_config_manager,pos_lite.config manager,model_pos_lite_config,pos_lite.group_pos_lite_manager,1,1,1,0
+access_pos_lite_session_user,pos_lite.session user,model_pos_lite_session,pos_lite.group_pos_lite_user,1,1,1,0
+access_pos_lite_session_manager,pos_lite.session manager,model_pos_lite_session,pos_lite.group_pos_lite_manager,1,1,1,1
 access_pos_lite_payment_wizard_user,pos_lite.payment.wizard user,model_pos_lite_payment_wizard,pos_lite.group_pos_lite_user,1,1,1,0
 access_pos_lite_return_wizard_user,pos_lite.return.wizard user,model_pos_lite_return_wizard,pos_lite.group_pos_lite_user,1,1,1,0
 access_pos_lite_return_wizard_line_user,pos_lite.return.wizard line user,model_pos_lite_return_wizard_line,pos_lite.group_pos_lite_user,1,1,1,0
+access_pos_lite_return_wizard_exchange_line_user,pos_lite.return.wizard.exchange.line user,model_pos_lite_return_wizard_exchange_line,pos_lite.group_pos_lite_user,1,1,1,0

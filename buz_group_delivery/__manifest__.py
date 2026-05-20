@@ -6,7 +6,7 @@
     'description': """
         This module adds grouping functionality for delivery addresses in Sale Order form.
     """,
-    'depends': ['sale_management'],
+    'depends': ['sale_management', 'stock'],
     'data': [
         'views/sale_order_views.xml',
     ],

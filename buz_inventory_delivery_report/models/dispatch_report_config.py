@@ -132,6 +132,12 @@ class DispatchReportConfig(models.Model):
                                    help='คอลัมน์หน่วย')
     col_unit_width = fields.Integer(string='Unit Column - Width (px)', default=80,
                                     help='ความกว้างคอลัมน์หน่วย')
+                                    
+    # Positions for BOM components
+    col_component_qty_left = fields.Integer(string='Component Qty - Left Offset (px)', default=285,
+                                            help='คอลัมน์จำนวน (เฉพาะสินค้าส่วนประกอบ)')
+    col_component_unit_left = fields.Integer(string='Component Unit - Left Offset (px)', default=360,
+                                             help='คอลัมน์หน่วย (เฉพาะสินค้าส่วนประกอบ)')
     
     col_unit_price_left = fields.Integer(string='Unit Price Column - Left Offset (px)', default=605,
                                         help='คอลัมน์ราคาต่อหน่วย')
@@ -465,7 +471,8 @@ class DispatchReportConfig(models.Model):
                     'signature_receiver_top', 'signature_receiver_left', 'signature_checker_top', 'signature_checker_left',
                     'signature_approver_top', 'signature_approver_left', 'logo_top', 'logo_left',
                     'company_name_top', 'company_name_left', 'doc_title_top', 'doc_title_left',
-                    'col_no_left', 'col_code_left', 'col_name_left', 'col_qty_left', 'col_unit_left', 'col_remark_left')
+                    'col_no_left', 'col_code_left', 'col_name_left', 'col_qty_left', 'col_unit_left', 'col_remark_left',
+                    'col_component_qty_left', 'col_component_unit_left')
     def _check_position_within_page(self):
         """Validate that all positions are not negative (removed page bounds check)"""
         for record in self:
@@ -528,6 +535,8 @@ class DispatchReportConfig(models.Model):
                 'col_qty_left': 'Column Qty Left',
                 'col_unit_left': 'Column Unit Left',
                 'col_remark_left': 'Column Remark Left',
+                'col_component_qty_left': 'Component Qty Left',
+                'col_component_unit_left': 'Component Unit Left',
             }
             
             for field_name, label in left_fields.items():

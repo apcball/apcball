@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Sale Order Form View Extension -->
+    <record id="sale_order_form_view_inherit" model="ir.ui.view">
+        <field name="name">sale.order.form.view.inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="has_refundable_lines" invisible="1"/>
+            </xpath>
+            <xpath expr="//button[@name='action_view_invoice']" position="before">
+                <button name="action_open_so_credit_note_wizard"
+                        type="object"
+                        string="Create Credit Note"
+                        class="oe_highlight"
+                        invisible="state != 'sale' or not has_refundable_lines"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

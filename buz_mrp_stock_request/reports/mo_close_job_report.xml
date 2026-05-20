@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Paper Format -->
+        <record id="paperformat_mo_close_job" model="report.paperformat">
+            <field name="name">MO Close Job A4</field>
+            <field name="default" eval="True"/>
+            <field name="format">A4</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">5</field>
+            <field name="margin_bottom">5</field>
+            <field name="margin_left">8</field>
+            <field name="margin_right">8</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">90</field>
+        </record>
+
+        <!-- Report Action -->
+        <record id="report_mo_close_job" model="ir.actions.report">
+            <field name="name">ใบปิด Job (MO)</field>
+            <field name="model">mrp.production</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">buz_mrp_stock_request.report_mo_close_job_template</field>
+            <field name="report_file">buz_mrp_stock_request.report_mo_close_job_template</field>
+            <field name="print_report_name">'ใบปิด Job - %s' % (object.name or '')</field>
+            <field name="paperformat_id" ref="buz_mrp_stock_request.paperformat_mo_close_job"/>
+            <field name="binding_model_id" ref="mrp.model_mrp_production"/>
+            <field name="binding_type">report</field>
+        </record>
+
+        <!-- QWeb Template -->
+        <template id="report_mo_close_job_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="mo">
+                    <t t-call="web.external_layout">
+                        <style>
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_mrp_stock_request/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                                font-weight: normal;
+                            }
+                            @font-face {
+                                font-family: 'Sarabun';
+                                src: url('/buz_mrp_stock_request/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                font-weight: bold;
+                            }
+                            html, body, .page, table, th, td, div, p, span, h2, h5 {
+                                font-family: 'Sarabun', sans-serif !important;
+                                font-size: 20px;
+                            }
+                            .mc-title {
+                                font-size: 28px;
+                                font-weight: bold;
+                                text-align: center;
+                                margin-bottom: 10px;
+                            }
+                            .mc-info-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 10px;
+                            }
+                            .mc-info-table td {
+                                padding: 2px 8px;
+                                vertical-align: top;
+                            }
+                            .mc-info-table .mc-label {
+                                font-weight: bold;
+                                white-space: nowrap;
+                                width: 160px;
+                            }
+                            .mc-section-title {
+                                font-size: 22px;
+                                font-weight: bold;
+                                margin-top: 15px;
+                                margin-bottom: 5px;
+                            }
+                            .mc-line-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 10px;
+                            }
+                            .mc-line-table th {
+                                border: 1px solid #000;
+                                padding: 4px 8px;
+                                text-align: center;
+                                font-weight: bold;
+                                background-color: #f0f0f0;
+                            }
+                            .mc-line-table td {
+                                border: 1px solid #000;
+                                padding: 3px 8px;
+                            }
+                            .mc-line-table .mc-num {
+                                text-align: center;
+                                width: 40px;
+                            }
+                            .mc-line-table .mc-qty {
+                                text-align: right;
+                                width: 100px;
+                            }
+                            .mc-sign-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-top: 30px;
+                            }
+                            .mc-sign-table td {
+                                text-align: center;
+                                width: 50%;
+                                vertical-align: top;
+                                padding: 0 10px;
+                            }
+                            .mc-sign-line {
+                                border-bottom: 1px solid #000;
+                                margin-top: 50px;
+                                margin-bottom: 5px;
+                            }
+                            header {
+                                border-bottom: none !important;
+                            }
+                            .o_report_layout_standard header,
+                            .o_report_layout_background header {
+                                border-bottom: 0 !important;
+                            }
+                        </style>
+
+                        <div class="page">
+                            <!-- Title -->
+                            <div class="mc-title">ใบปิด Job (MO)</div>
+
+                            <!-- Info Section -->
+                            <table class="mc-info-table">
+                                <tr>
+                                    <td class="mc-label">เลขที่ Job (MO):</td>
+                                    <td><t t-esc="mo.name"/></td>
+                                </tr>
+                                <tr>
+                                    <td class="mc-label">วันที่เอกสาร:</td>
+                                    <td><t t-esc="mo.date_start" t-options="{'widget': 'date'}" t-if="mo.date_start"/><t t-if="not mo.date_start">&#160;</t></td>
+                                </tr>
+                                <tr>
+                                    <td class="mc-label">คลังปลายทาง:</td>
+                                    <td><t t-esc="mo.location_dest_id.complete_name"/></td>
+                                </tr>
+                            </table>
+
+                            <!-- 1. Finished Product -->
+                            <div class="mc-section-title">สินค้าที่ผลิตได้</div>
+                            <table class="mc-line-table">
+                                <thead>
+                                    <tr>
+                                        <th class="mc-num">ลำดับ</th>
+                                        <th>รหัสสินค้า</th>
+                                        <th>รายละเอียด</th>
+                                        <th class="mc-qty">จำนวน</th>
+                                        <th>หน่วย</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="mc-num">1</td>
+                                        <td><t t-esc="mo.product_id.default_code or ''"/></td>
+                                        <td><t t-esc="mo.product_id.display_name"/></td>
+                                        <td class="mc-qty"><t t-esc="'%.2f' % mo.product_qty"/></td>
+                                        <td><t t-esc="mo.product_uom_id.name"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <!-- 2. By-Products -->
+                            <t t-set="by_products" t-value="mo.move_finished_ids.filtered(lambda m: m.product_id.id != mo.product_id.id and m.state != 'cancel')"/>
+                            <t t-if="by_products">
+                                <div class="mc-section-title">By-Product</div>
+                                <table class="mc-line-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="mc-num">ลำดับ</th>
+                                            <th>รหัสสินค้า</th>
+                                            <th>รายละเอียด</th>
+                                            <th class="mc-qty">จำนวน</th>
+                                            <th>หน่วย</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-set="bp_num" t-value="0"/>
+                                        <t t-foreach="by_products" t-as="bp">
+                                            <t t-set="bp_num" t-value="bp_num + 1"/>
+                                            <tr>
+                                                <td class="mc-num"><t t-esc="bp_num"/></td>
+                                                <td><t t-esc="bp.product_id.default_code or ''"/></td>
+                                                <td><t t-esc="bp.product_id.display_name"/></td>
+                                                <td class="mc-qty"><t t-esc="'%.2f' % bp.product_uom_qty"/></td>
+                                                <td><t t-esc="bp.product_uom.name"/></td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </t>
+
+                            <!-- Signature Section -->
+                            <table class="mc-sign-table">
+                                <tr>
+                                    <td>
+                                        <div style="font-weight:bold;">ผู้ผลิต</div>
+                                        <div class="mc-sign-line"></div>
+                                        <div>(
+                                            <span style="display:inline-block; width:120px;">&#160;</span>
+                                            <span style="display:inline-block; width:80px;">&#160;</span>
+                                            <span>)</span>
+                                        </div>
+                                        <div>วันที่: ......./......./...........</div>
+                                    </td>
+                                    <td>
+                                        <div style="font-weight:bold;">ผู้อนุมัติ</div>
+                                        <div class="mc-sign-line"></div>
+                                        <div>(
+                                            <span style="display:inline-block; width:120px;">&#160;</span>
+                                            <span style="display:inline-block; width:80px;">&#160;</span>
+                                            <span>)</span>
+                                        </div>
+                                        <div>วันที่: ......./......./...........</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
+                    </t>
+                </t>
+            </t>
+        </template>
+
+    </data>
+</odoo>

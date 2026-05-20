@@ -216,6 +216,7 @@ class MrpStockRequestMarkDoneWizard(models.TransientModel):
             'origin': _('Auto-transfer: %s') % request.name,
             'company_id': request.company_id.id,
             'note': _('Automatic transfer of unallocated materials when marking request as Done'),
+            'stock_request_id': request.id,
         }
         
         picking = self.env['stock.picking'].create(picking_vals)
@@ -248,7 +249,7 @@ class MrpStockRequestMarkDoneWizard(models.TransientModel):
             # In production, you might need lot selection logic
             if move.state == 'assigned':
                 for move_line in move.move_line_ids:
-                    move_line.qty_done = move_line.product_uom_qty
+                    move_line.quantity = move_line.reserved_qty or move_line.product_uom_qty
             else:
                 # Create move line manually if not assigned
                 move_line_vals = {

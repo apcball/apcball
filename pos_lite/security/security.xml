@@ -13,6 +13,7 @@
             <field name="implied_ids" eval="[(4, ref('group_pos_lite_user'))]"/>
         </record>
 
+        <!-- Multi-company rules -->
         <record id="rule_pos_lite_order_multi_company" model="ir.rule">
             <field name="name">POS Lite Order multi-company</field>
             <field name="model_id" ref="model_pos_lite_order"/>
@@ -37,6 +38,13 @@
         <record id="rule_pos_lite_config_multi_company" model="ir.rule">
             <field name="name">POS Lite Config multi-company</field>
             <field name="model_id" ref="model_pos_lite_config"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('group_pos_lite_user')), (4, ref('group_pos_lite_manager'))]"/>
+        </record>
+
+        <record id="rule_pos_lite_session_multi_company" model="ir.rule">
+            <field name="name">POS Lite Session multi-company</field>
+            <field name="model_id" ref="model_pos_lite_session"/>
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_pos_lite_user')), (4, ref('group_pos_lite_manager'))]"/>
         </record>

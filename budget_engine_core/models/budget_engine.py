@@ -57,7 +57,7 @@ class BudgetEngine(models.AbstractModel):
         """
         self._validate_context(context_data)
         vals = self._build_commitment_vals(context_data, state='reserved')
-        commitment = self.env['budget.commitment'].create(vals)
+        commitment = self.env['budget.commitment'].sudo().create(vals)
         return commitment
 
     @api.model
@@ -76,7 +76,7 @@ class BudgetEngine(models.AbstractModel):
             return existing
         # No prior reservation: create a usage record directly
         vals = self._build_commitment_vals(context_data, state='used')
-        return self.env['budget.commitment'].create(vals)
+        return self.env['budget.commitment'].sudo().create(vals)
 
     @api.model
     def release_budget(self, context_data):
@@ -98,7 +98,7 @@ class BudgetEngine(models.AbstractModel):
         ]
         if context_data.get('analytic_account_id'):
             domain.append(('analytic_account_id', '=', context_data['analytic_account_id']))
-        existing = self.env['budget.commitment'].search(domain)
+        existing = self.env['budget.commitment'].sudo().search(domain)
         if existing:
             existing.action_release()
         return existing
@@ -139,4 +139,4 @@ class BudgetEngine(models.AbstractModel):
         ]
         if context_data.get('analytic_account_id'):
             domain.append(('analytic_account_id', '=', context_data['analytic_account_id']))
-        return self.env['budget.commitment'].search(domain)
+        return self.env['budget.commitment'].sudo().search(domain)

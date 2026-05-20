@@ -8,10 +8,13 @@
                 <group>
                     <field name="order_id" readonly="1"/>
                     <field name="company_id" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
                     <field name="payment_method"/>
                     <field name="amount"/>
                     <field name="journal_id"/>
+                    <field name="reference"/>
                     <field name="note"/>
+                    <field name="auto_process"/>
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Confirm" class="oe_highlight"/>

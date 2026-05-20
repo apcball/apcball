@@ -124,20 +124,20 @@
                                 </div>
                             </div>
                             <div class="col-4 text-end">
-                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                <img src="/buz_inventory_delivery_report/static/img/LOGO%20MOGEN.png"
                                      style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
 
                          <!-- Document Title -->
-                            <div class="row mb-3">
+                            <div class="row mb-3" style="margin-top: -130px;">
                                <div class="col-4 offset-4 text-center">
-                                   <div class="doc-title" style="padding: 14px; margin-bottom: -85px;font-size: 26px; font-family: 'TH SarabunPSK', 'THSarabunNew', Tahoma, Arial, sans-serif;">
+                                   <div class="doc-title" style="padding: 14px; font-size: 26px;">
                                     ใบคืนสินค้ายืมโชว์
                                    </div>
                                </div>
-                               <div class="col-4 text-end" style="margin-bottom: -340px;">
-                                  <div style="font-size: 18px; font-family: 'TH SarabunPSK', 'THSarabunNew', Tahoma, Arial, sans-serif; margin-top: -25px;">
+                               <div class="col-4 text-end" style="">
+                                  <div style="font-size: 18px;">
                                       <span>เลขที่: </span>
                                       <span t-esc="o.name"/>
                                   </div>
@@ -227,12 +227,10 @@
                                 <!-- แถวที่ 1 -->
                                 <tr>
                                     <th style="width: 3%; border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="3">ลำดับ</th>
-                                    <th style="width: 8%; border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="3">รหัสสินค้า</th>
-                                    <th style="width: 16%; border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="3">ชื่อสินค้า</th>
+                                    <th style="width: 15%; border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="3">รหัสสินค้า</th>
+                                    <th style="width: 30%; border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="3">ชื่อสินค้า</th>
                                     <th style="width: 6%; border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="3">วันที่จัดส่ง</th>
-                                    <th style="width: 7%; border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="3">SO No</th>
-                                    <th style="width: 7%; border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="3">DP No</th>
-                                    <th style="width: 7%; border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="3">IV No</th>
+                                    <th style="width: 7%; border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="3">BG No</th>
                                     <th style="width: 6%; border: 1px solid black; text-align: center; vertical-align: middle;" rowspan="3">จำนวน</th>
                                     <th style="width: 30%; border: 1px solid black;" colspan="8">สภาพสินค้า</th>
                                 </tr>
@@ -272,13 +270,7 @@
                                         <t t-esc="move.date.strftime('%d/%m/%Y') if move.date else ''"/>
                                     </td>
                                     <td style="border: 1px solid black; padding: 2px 3px;">
-                                        <t t-esc="move.sale_line_id.order_id.name if move.sale_line_id and move.sale_line_id.order_id else ''"/>
-                                    </td>
-                                    <td style="border: 1px solid black; padding: 2px 3px;">
-                                        <t t-esc="move.dp_no if 'dp_no' in move else ''"/>
-                                    </td>
-                                    <td style="border: 1px solid black; padding: 2px 3px;">
-                                        <t t-esc="move.iv_no if 'iv_no' in move else ''"/>
+                                        <t t-esc="o.origin or ''"/>
                                     </td>
                                     <td style="border: 1px solid black; padding: 2px 3px;">
                                         <t t-esc="'%.0f' % move.product_uom_qty"/>
@@ -299,9 +291,21 @@
                                            <t t-if="len(group) == 7">
                                             <t t-set="empty_rows" t-value="7 - len(group)"/>
                                             <t t-foreach="range(empty_rows)" t-as="i">
-                                                <tr class="data-row" style="font-size: 20px; height: 50px; line-height: 50px;">
-                                                    <td style="text-align: center;"></td>
-                                                    <td></td><td></td><td></td><td></td>
+                                                <tr class="data-row" style="height: 50px;">
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
+                                                    <td style="border: 1px solid black;"></td>
                                                 </tr>
                                             </t>
                                         </t>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Pivot View: Sales Summary -->
+    <record id="view_pos_lite_order_pivot" model="ir.ui.view">
+        <field name="name">pos.lite.order.pivot</field>
+        <field name="model">pos.lite.order</field>
+        <field name="arch" type="xml">
+            <pivot string="Sales Analysis">
+                <field name="channel" type="row"/>
+                <field name="date_order" interval="day" type="col"/>
+                <field name="amount_total" type="measure"/>
+                <field name="amount_untaxed" type="measure"/>
+                <field name="amount_tax" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Graph View: Sales by Channel -->
+    <record id="view_pos_lite_order_graph" model="ir.ui.view">
+        <field name="name">pos.lite.order.graph</field>
+        <field name="model">pos.lite.order</field>
+        <field name="arch" type="xml">
+            <graph string="Sales by Channel" type="bar">
+                <field name="channel" type="row"/>
+                <field name="amount_total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Graph View: Sales Trend -->
+    <record id="view_pos_lite_order_graph_trend" model="ir.ui.view">
+        <field name="name">pos.lite.order.graph.trend</field>
+        <field name="model">pos.lite.order</field>
+        <field name="arch" type="xml">
+            <graph string="Sales Trend" type="line">
+                <field name="date_order" interval="day" type="row"/>
+                <field name="amount_total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Action: Sales Analysis (Pivot + Graph) -->
+    <record id="action_pos_lite_sales_analysis" model="ir.actions.act_window">
+        <field name="name">Sales Analysis</field>
+        <field name="res_model">pos.lite.order</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="domain">[('is_return', '=', False), ('state', 'in', ['paid', 'done'])]</field>
+        <field name="context">{'search_default_this_month': 1}</field>
+    </record>
+
+    <!-- Action: Daily Sales -->
+    <record id="action_pos_lite_daily_sales" model="ir.actions.act_window">
+        <field name="name">Daily Sales</field>
+        <field name="res_model">pos.lite.order</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="domain">[('is_return', '=', False), ('state', 'in', ['paid', 'done'])]</field>
+        <field name="context">{'search_default_today': 1}</field>
+    </record>
+
+    <!-- Action: Returns Report -->
+    <record id="action_pos_lite_returns_report" model="ir.actions.act_window">
+        <field name="name">Returns Report</field>
+        <field name="res_model">pos.lite.order</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="domain">[('is_return', '=', True)]</field>
+        <field name="context">{'search_default_this_month': 1}</field>
+    </record>
+</odoo>

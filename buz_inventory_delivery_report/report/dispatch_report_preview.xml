@@ -6,6 +6,8 @@
             <t t-foreach="docs" t-as="config">
                 <!-- Convert px to mm: 96 DPI = 1px = 0.2646mm -->
                 <t t-set="px_to_mm" t-value="0.2646"/>
+                <t t-set="info_line_gap_px" t-value="max(30, int((config.font_size or 14) * 1.8))"/>
+                <t t-set="dispatch_location_top_px" t-value="max(config.dispatch_location_top, config.customer_address_top + info_line_gap_px)"/>
                 
                 <div class="page" style="width: 210mm; height: 297mm; position: relative; font-family: 'Sarabun', sans-serif; font-size: 14px; page-break-after: always; margin: 0; padding: 0; overflow: visible; box-sizing: border-box; border: 2px solid #333; background: #ffffff;">
                     
@@ -97,13 +99,8 @@
                     </div>
                     
                     <!-- Customer Address -->
-                    <div t-attf-style="position: absolute; top: {{config.customer_address_top * px_to_mm}}mm; left: {{config.customer_address_left * px_to_mm}}mm; max-width: 80mm; z-index: 3;">
+                    <div t-attf-style="position: absolute; top: {{config.customer_address_top * px_to_mm}}mm; left: {{config.customer_address_left * px_to_mm}}mm; max-width: {{config.customer_address_width * px_to_mm}}mm; z-index: 3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         <span class="position-label">ที่อยู่: 123 ถนนทดสอบ แขวงทดสอบ เขททดสอบ กรุงเทพฯ 10100</span>
-                    </div>
-                    
-                    <!-- Customer Phone -->
-                    <div t-attf-style="position: absolute; top: {{config.customer_phone_top * px_to_mm}}mm; left: {{config.customer_phone_left * px_to_mm}}mm; z-index: 3;">
-                        <span class="position-label">โทร: 02-123-4567</span>
                     </div>
                     
                     <!-- Vehicle Type -->
@@ -122,7 +119,7 @@
                     </div>
                     
                     <!-- Dispatch Location -->
-                    <div t-attf-style="position: absolute; top: {{config.dispatch_location_top * px_to_mm}}mm; left: {{config.dispatch_location_left * px_to_mm}}mm; z-index: 3;">
+                    <div t-attf-style="position: absolute; top: {{dispatch_location_top_px * px_to_mm}}mm; left: {{config.dispatch_location_left * px_to_mm}}mm; z-index: 3;">
                         <span class="position-label">สถานที่จ่ายสินค้า: คลังสินค้าหลัก</span>
                     </div>
                     

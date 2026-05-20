@@ -1,7 +1,6 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare, float_round, float_is_zero
-from odoo.tools.translate import _
 
 
 class MrpProduction(models.Model):
@@ -18,39 +17,33 @@ class MrpProduction(models.Model):
         "request_id",
         string="Stock Requests",
     )
-    has_available_to_allocate = fields.Boolean(
-        string="Has Materials to Allocate",
-        compute="_compute_has_available_to_allocate",
-        help="Indicates if there are materials available to allocate from stock requests",
-    )
-    available_allocations_count = fields.Integer(
-        string="Available Allocations Count",
-        compute="_compute_has_available_to_allocate",
+    pending_stock_request_count = fields.Integer(
+        string="Pending Stock Requests",
+        compute="_compute_pending_stock_request_count",
+        help="Number of stock requests in 'requested' state with un-issued materials",
     )
 
     def _compute_mrp_stock_request_count(self):
         for mo in self:
             mo.mrp_stock_request_count = len(mo.stock_request_ids)
 
-    def _compute_has_available_to_allocate(self):
-        """Check if there are materials available to allocate to this MO."""
+    def _compute_pending_stock_request_count(self):
+        """Count stock requests that are 'requested' but picking not yet validated."""
         for mo in self:
             count = 0
-            has_available = False
-            # Check all linked stock requests
             for request in mo.stock_request_ids:
-                if request.state in ['requested', 'done']:
-                    # Check if any line has available quantity
-                    for line in request.line_ids:
-                        if float_compare(
-                            line.qty_available_to_allocate,
-                            0.0,
+                if request.state == 'requested':
+                    # Picking not yet validated = no materials issued
+                    has_issued = any(
+                        float_compare(
+                            line.qty_issued, 0.0,
                             precision_rounding=line.uom_id.rounding
-                        ) > 0:
-                            has_available = True
-                            count += 1
-            mo.has_available_to_allocate = has_available
-            mo.available_allocations_count = count
+                        ) > 0
+                        for line in request.line_ids
+                    )
+                    if not has_issued:
+                        count += 1
+            mo.pending_stock_request_count = count
 
     def action_view_stock_requests(self):
         """
@@ -126,12 +119,6 @@ class MrpProduction(models.Model):
         
         return picking_type
 
-    # DISABLED: Allocation wizard removed - simplified workflow
-    # Materials automatically available at destination location after validate picking
-    # def action_allocate_materials_quick(self):
-    #     """Open quick allocation wizard for this MO with pre-filtered materials."""
-    #     pass
-
 
 class StockPicking(models.Model):
     _inherit = "stock.picking"
@@ -158,23 +145,63 @@ class StockPicking(models.Model):
         }
 
     def _action_done(self):
-        """Update request when picking is done."""
+        """Recompute issued quantities and notify linked MOs when picking is done."""
         res = super()._action_done()
         
-        # Update related stock requests and auto-mark as done
         for picking in self:
             if picking.stock_request_id:
                 request = picking.stock_request_id
                 request._compute_issued_quantities()
-                
-                # Auto-mark as done after validate (simplified workflow)
-                if request.state == 'requested':
-                    request.write({"state": "done"})
-                    request.message_post(
-                        body=_("Stock Request marked as Done automatically after transfer validation. Materials are now available at %s.") % request.location_dest_id.complete_name,
-                        subtype_id=self.env.ref("mail.mt_note").id
-                    )
-        
+                request.message_post(
+                    body=_("Transfer validated. Materials are now available at %s and ready to be allocated to MOs.") % request.location_dest_id.complete_name,
+                    subtype_id=self.env.ref("mail.mt_note").id
+                )
+
+                # Notify each linked MO — post in chatter + create activity
+                for mo in request.mo_ids:
+                    # Build material list for this MO
+                    material_lines = []
+                    for req_line in request.line_ids:
+                        if float_compare(
+                            req_line.qty_available_to_allocate, 0.0,
+                            precision_rounding=req_line.uom_id.rounding
+                        ) > 0:
+                            material_lines.append(
+                                "• %s %s of %s" % (
+                                    req_line.qty_available_to_allocate,
+                                    req_line.uom_id.name,
+                                    req_line.product_id.display_name,
+                                )
+                            )
+
+                    if material_lines:
+                        body = _(
+                            "📦 <b>Materials Ready for Allocation</b><br/>"
+                            "Stock Request <b>%s</b> has been validated.<br/>"
+                            "The following materials are now available at <b>%s</b>:<br/>%s<br/><br/>"
+                            "👉 Click <b>Allocate Materials</b> to consume them into this MO."
+                        ) % (
+                            request.name,
+                            request.location_dest_id.complete_name,
+                            "<br/>".join(material_lines),
+                        )
+                        mo.message_post(
+                            body=body,
+                            subtype_id=self.env.ref("mail.mt_note").id,
+                        )
+
+                        # Create activity for MO responsible to allocate
+                        if mo.user_id:
+                            mo.activity_schedule(
+                                'mail.mail_activity_data_todo',
+                                user_id=mo.user_id.id,
+                                note=_(
+                                    "Materials from Stock Request %s are ready. "
+                                    "Please allocate them to this MO."
+                                ) % request.name,
+                                summary=_("Allocate Materials from %s") % request.name,
+                            )
+
         return res
 
 
@@ -322,10 +349,6 @@ class MrpStockRequest(models.Model):
         for request in self:
             request.qty_issued_total = sum(request.line_ids.mapped("qty_issued"))
             request.qty_remaining_total = sum(request.line_ids.mapped("qty_remaining"))
-            
-            # Auto-update state to done when all materials are allocated
-            if request.state == 'requested' and request.qty_remaining_total == 0.0 and request.qty_issued_total > 0.0:
-                request.state = 'done'
 
     @api.onchange('picking_type_id')
     def _onchange_picking_type_id(self):
@@ -599,6 +622,66 @@ class MrpStockRequest(models.Model):
             
         return action
 
+    def action_allocate_wizard(self):
+        """Open allocation wizard — auto-select wizard based on MO count."""
+        self.ensure_one()
+        if self.state != 'requested':
+            raise UserError(_("Materials can only be allocated in the Requested state."))
+
+        if not self.mo_ids:
+            raise UserError(_("No Manufacturing Orders linked to this request."))
+
+        # Check that picking has been validated (qty_issued > 0)
+        has_issued = any(
+            float_compare(line.qty_issued, 0.0, precision_rounding=line.uom_id.rounding) > 0
+            for line in self.line_ids
+        )
+        if not has_issued:
+            raise UserError(_("No materials have been issued yet. Please validate the transfer first."))
+
+        if len(self.mo_ids) == 1:
+            # Single MO — open simple allocate wizard
+            return {
+                "name": _("Allocate Materials to MO"),
+                "type": "ir.actions.act_window",
+                "view_mode": "form",
+                "res_model": "mrp.stock.request.allocate.wizard",
+                "target": "new",
+                "context": {
+                    "default_request_id": self.id,
+                    "default_mo_id": self.mo_ids[0].id,
+                },
+            }
+        else:
+            # Multi MO — open multi-allocate wizard
+            return {
+                "name": _("Allocate Materials to MOs"),
+                "type": "ir.actions.act_window",
+                "view_mode": "form",
+                "res_model": "mrp.stock.request.allocate.multi.wizard",
+                "target": "new",
+                "context": {
+                    "default_request_id": self.id,
+                },
+            }
+
+    def action_mark_done(self):
+        """Open mark done wizard for manual completion."""
+        self.ensure_one()
+        if self.state != 'requested':
+            raise UserError(_("Only requested stock requests can be marked as done."))
+
+        return {
+            "name": _("Mark Stock Request as Done"),
+            "type": "ir.actions.act_window",
+            "view_mode": "form",
+            "res_model": "mrp.stock.request.mark.done.wizard",
+            "target": "new",
+            "context": {
+                "default_request_id": self.id,
+            },
+        }
+
     def action_cancel(self):
         """Cancel the request and create return picking for issued materials."""
         for request in self:
@@ -608,49 +691,64 @@ class MrpStockRequest(models.Model):
             # Handle done pickings - create return pickings for issued materials
             done_pickings = request.picking_ids.filtered(lambda p: p.state == "done")
             return_pickings = self.env['stock.picking']
-            
+
             for picking in done_pickings:
                 # Check if materials are still available (not allocated)
                 unallocated_lines = []
                 for line in request.line_ids:
-                    if line.qty_available_to_allocate > 0:
+                    if float_compare(
+                        line.qty_available_to_allocate, 0.0,
+                        precision_rounding=line.uom_id.rounding
+                    ) > 0:
                         unallocated_lines.append({
                             'product_id': line.product_id,
                             'qty': line.qty_available_to_allocate,
                             'uom_id': line.uom_id,
                         })
-                
+
                 if unallocated_lines:
-                    # Create return picking
-                    picking_type = request.location_id.warehouse_id.int_type_id or self.env['stock.picking.type'].search([
+                    # Find return picking type with fallback chain
+                    picking_type = self.env['stock.picking.type'].search([
                         ('code', '=', 'internal'),
-                        ('warehouse_id', '=', request.location_id.warehouse_id.id)
+                        ('warehouse_id', '=', request.location_dest_id.warehouse_id.id),
+                        ('company_id', '=', request.company_id.id),
                     ], limit=1)
-                    
+                    if not picking_type:
+                        picking_type = self.env['stock.picking.type'].search([
+                            ('code', '=', 'internal'),
+                            ('company_id', '=', request.company_id.id),
+                        ], limit=1)
+                    if not picking_type:
+                        raise UserError(_(
+                            "Cannot create return picking: no internal operation type found. "
+                            "Please create one in Inventory > Configuration > Operation Types."
+                        ))
+
                     return_picking_vals = {
                         'picking_type_id': picking_type.id,
-                        'location_id': request.location_dest_id.id,  # From issued location
-                        'location_dest_id': request.location_id.id,  # Back to warehouse
+                        'location_id': request.location_dest_id.id,
+                        'location_dest_id': request.location_id.id,
                         'origin': _('Return: %s') % request.name,
-                        'move_ids': [],
+                        'company_id': request.company_id.id,
+                        'stock_request_id': request.id,
                     }
-                    
-                    # Create moves for unallocated materials
+
+                    move_lines = []
                     for line_data in unallocated_lines:
-                        move_vals = {
+                        move_lines.append((0, 0, {
                             'name': _('Return: %s') % line_data['product_id'].name,
                             'product_id': line_data['product_id'].id,
                             'product_uom_qty': line_data['qty'],
                             'product_uom': line_data['uom_id'].id,
                             'location_id': request.location_dest_id.id,
                             'location_dest_id': request.location_id.id,
-                        }
-                        return_picking_vals['move_ids'].append((0, 0, move_vals))
-                    
-                    if return_picking_vals['move_ids']:
-                        return_picking = self.env['stock.picking'].create(return_picking_vals)
-                        return_picking.action_confirm()
-                        return_pickings |= return_picking
+                            'company_id': request.company_id.id,
+                        }))
+
+                    return_picking_vals['move_ids'] = move_lines
+                    return_picking = self.env['stock.picking'].create(return_picking_vals)
+                    return_picking.action_confirm()
+                    return_pickings |= return_picking
 
             # Cancel pickings that are not done
             pickings_to_cancel = request.picking_ids.filtered(lambda p: p.state not in ["done", "cancel"])
@@ -662,9 +760,10 @@ class MrpStockRequest(models.Model):
             # Post message with return picking info
             message = _("Stock request cancelled.")
             if return_pickings:
-                message += _("\n\nReturn picking(s) created: %s") % ", ".join(return_pickings.mapped('name'))
+                picking_links = ", ".join(return_pickings.mapped('name'))
+                message += _("\n\nReturn picking(s) created: %s") % picking_links
                 message += _("\nPlease validate the return picking(s) to return materials to warehouse.")
-            
+
             request.message_post(
                 body=message,
                 subtype_id=self.env.ref("mail.mt_note").id
@@ -757,16 +856,16 @@ class MrpStockRequestLine(models.Model):
         copy=False,
     )
 
-    @api.depends("move_ids.state", "move_ids.product_uom_qty", "move_ids.product_uom")
+    @api.depends("move_ids.state", "move_ids.quantity", "move_ids.product_uom")
     def _compute_qty_issued(self):
         """Compute issued quantity from done moves."""
         for line in self:
             qty_issued = 0.0
             done_moves = line.move_ids.filtered(lambda m: m.state == 'done')
             for move in done_moves:
-                # Convert move quantity to line UoM
+                # Use move.quantity (done qty in Odoo 17), not product_uom_qty (demand)
                 qty_issued += move.product_uom._compute_quantity(
-                    move.product_uom_qty,
+                    move.quantity,
                     line.uom_id
                 )
             line.qty_issued = qty_issued
@@ -789,16 +888,18 @@ class MrpStockRequestLine(models.Model):
         """Compute remaining quantity."""
         for line in self:
             remaining = line.qty_requested - line.qty_issued
-            # Ensure not negative
-            line.qty_remaining = max(remaining, 0.0)
+            line.qty_remaining = max(remaining, 0.0) if float_compare(
+                remaining, 0.0, precision_rounding=line.uom_id.rounding
+            ) > 0 else 0.0
 
     @api.depends("qty_issued", "qty_allocated")
     def _compute_qty_available_to_allocate(self):
         """Compute available quantity to allocate."""
         for line in self:
             available = line.qty_issued - line.qty_allocated
-            # Ensure not negative
-            line.qty_available_to_allocate = max(available, 0.0)
+            line.qty_available_to_allocate = max(available, 0.0) if float_compare(
+                available, 0.0, precision_rounding=line.uom_id.rounding
+            ) > 0 else 0.0
 
     @api.onchange("product_id")
     def _onchange_product_id(self):

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Wizard Form View -->
+    <record id="view_sale_order_credit_note_wizard_form" model="ir.ui.view">
+        <field name="name">sale.order.credit.note.wizard.form</field>
+        <field name="model">sale.order.credit.note.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Credit Note">
+                <group>
+                    <group>
+                        <field name="sale_id" invisible="1"/>
+                        <field name="allowed_invoice_ids" invisible="1"/>
+                        <field name="invoice_id"
+                               string="Invoice"
+                               placeholder="Select a posted invoice..."/>
+                        <field name="reason"
+                               string="Reason"
+                               placeholder="Reason for credit note (optional)"/>
+                    </group>
+                </group>
+
+                <group string="Invoice Lines to Credit">
+                    <field name="line_ids" nolabel="1">
+                        <tree editable="bottom" create="false" delete="false">
+                            <field name="wizard_id" invisible="1"/>
+                            <field name="invoice_line_id" invisible="1"/>
+                            <field name="selected" widget="boolean_toggle"/>
+                            <field name="product_id"/>
+                            <field name="name" optional="show"/>
+                            <field name="invoiced_qty"/>
+                            <field name="credited_qty"/>
+                            <field name="refundable_qty"/>
+                            <field name="credit_qty"
+                                   readonly="not selected"/>
+                            <field name="price_unit"/>
+                            <field name="discount"/>
+                            <field name="tax_ids" widget="many2many_tags"/>
+                            <field name="sale_line_id" optional="hidden"/>
+                        </tree>
+                    </field>
+                </group>
+
+                <footer>
+                    <button name="action_create_credit_note"
+                            string="Create Credit Note"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action (opened programmatically) -->
+    <record id="action_sale_order_credit_note_wizard" model="ir.actions.act_window">
+        <field name="name">Create Credit Note</field>
+        <field name="res_model">sale.order.credit.note.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

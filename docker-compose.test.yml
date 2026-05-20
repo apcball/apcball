@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  postgres-test:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: MOG_TEST
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+    ports:
+      - "5433:5432"
+
+  odoo-test:
+    image: my-odoo:17
+    depends_on:
+      - postgres-test
+    volumes:
+      - ./:/mnt/extra-addons
+    command: >
+      odoo -d MOG_TEST
+      --db_host=postgres-test
+      --db_user=odoo
+      --db_password=odoo
+      --addons-path=/mnt/extra-addons
+      -u buz_commercial_invoice
+      --test-enable
+      --stop-after-init
+      --no-http

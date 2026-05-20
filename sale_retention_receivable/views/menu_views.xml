@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Actions come BEFORE menu items that reference them -->
+
+    <record id="action_sale_retention_receivable" model="ir.actions.act_window">
+        <field name="name">Retention Receivable</field>
+        <field name="res_model">sale.retention.receivable</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_sale_retention_receivable_open" model="ir.actions.act_window">
+        <field name="name">Open Retentions</field>
+        <field name="res_model">sale.retention.receivable</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="domain">[('state', 'in', ('open', 'partially_collected'))]</field>
+        <field name="help" type="html">
+            <p>Open retention records waiting to be collected.</p>
+        </field>
+    </record>
+
+    <record id="action_sale_retention_receivable_due" model="ir.actions.act_window">
+        <field name="name">Due Retentions</field>
+        <field name="res_model">sale.retention.receivable</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="context">{'search_default_due': 1}</field>
+        <field name="help" type="html">
+            <p>Retention records that have passed their due date.</p>
+        </field>
+    </record>
+
+    <record id="action_sale_retention_receivable_collected" model="ir.actions.act_window">
+        <field name="name">Collected Retentions</field>
+        <field name="res_model">sale.retention.receivable</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="domain">[('state', '=', 'collected')]</field>
+        <field name="help" type="html">
+            <p>Fully collected retention records.</p>
+        </field>
+    </record>
+
+    <record id="action_sale_retention_receivable_aging" model="ir.actions.act_window">
+        <field name="name">Retention Aging</field>
+        <field name="res_model">sale.retention.receivable</field>
+        <field name="view_mode">pivot</field>
+        <field name="domain">[('state', 'in', ('open', 'partially_collected'))]</field>
+        <field name="help" type="html">
+            <p>Retention aging analysis.</p>
+        </field>
+    </record>
+
+    <!-- Menu items -->
+    <menuitem id="menu_sale_retention_receivable_root"
+              name="Retention Receivable"
+              parent="account.menu_finance_receivables"
+              sequence="50"/>
+
+    <menuitem id="menu_sale_retention_receivable_open"
+              name="Open Retentions"
+              parent="menu_sale_retention_receivable_root"
+              action="action_sale_retention_receivable_open"
+              sequence="10"/>
+
+    <menuitem id="menu_sale_retention_receivable_due"
+              name="Due Retentions"
+              parent="menu_sale_retention_receivable_root"
+              action="action_sale_retention_receivable_due"
+              sequence="20"/>
+
+    <menuitem id="menu_sale_retention_receivable_collected"
+              name="Collected Retentions"
+              parent="menu_sale_retention_receivable_root"
+              action="action_sale_retention_receivable_collected"
+              sequence="30"/>
+
+    <menuitem id="menu_sale_retention_receivable_aging"
+              name="Retention Aging"
+              parent="menu_sale_retention_receivable_root"
+              action="action_sale_retention_receivable_aging"
+              sequence="40"/>
+
+    <menuitem id="menu_sale_retention_collection_wizard"
+              name="Collect Retention"
+              parent="menu_sale_retention_receivable_root"
+              action="action_sale_retention_collection_wizard"
+              sequence="50"/>
+</odoo>

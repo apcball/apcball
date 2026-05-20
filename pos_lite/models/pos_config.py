@@ -29,6 +29,15 @@ class PosLiteConfig(models.Model):
         help='Default cash/bank journal for POS Lite payments',
         check_company=True,
     )
+    branch_number = fields.Char(
+        string='Branch Number',
+        help='Thai tax branch number (e.g. 00000 for head office). Shown on receipts.',
+    )
+    phone = fields.Char(string='Phone', help='Phone number shown on receipt')
+    vat_number = fields.Char(
+        string='Tax ID Override',
+        help='Override company VAT for receipt. Leave empty to use company VAT.',
+    )
 
     @api.model
     def get_default_config(self, company=None):

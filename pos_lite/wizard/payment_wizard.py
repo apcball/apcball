@@ -14,6 +14,8 @@ class PosLitePaymentWizard(models.TransientModel):
         ('cash', 'Cash'),
         ('transfer', 'Transfer'),
         ('card', 'Card'),
+        ('promptpay', 'PromptPay'),
+        ('other', 'Other'),
     ], default='cash', required=True)
     amount = fields.Monetary(required=True)
     journal_id = fields.Many2one(
@@ -21,7 +23,12 @@ class PosLitePaymentWizard(models.TransientModel):
         domain="[('type', 'in', ('cash', 'bank')), ('company_id', '=', company_id)]",
         check_company=True,
     )
+    reference = fields.Char(string='Reference')
     note = fields.Char()
+    auto_process = fields.Boolean(
+        string='Process after payment', default=True,
+        help='Automatically process the order after this payment is registered.',
+    )
 
     @api.onchange('payment_method')
     def _onchange_payment_method(self):
@@ -37,21 +44,20 @@ class PosLitePaymentWizard(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         order = self.order_id
-        if order.state != 'draft':
-            raise UserError(_('Only draft orders can be paid.'))
+        if order.state not in ('draft', 'held'):
+            raise UserError(_('Only draft or held orders can be paid.'))
+        if order.state == 'held':
+            order.write({'state': 'draft'})
         default_journal = order._get_default_payment_journal()
         payment_amount = -abs(self.amount) if order.is_return else self.amount
-        payment_vals = {
+        self.env['pos.lite.payment'].create({
             'order_id': order.id,
             'payment_method': self.payment_method,
             'amount': payment_amount,
             'journal_id': self.journal_id.id or (default_journal.id if default_journal else False),
+            'reference': self.reference,
             'note': self.note,
-        }
-        payment = order.payment_ids[:1]
-        if payment:
-            payment.write(payment_vals)
-        else:
-            self.env['pos.lite.payment'].create(payment_vals)
-        order.action_process_order()
+        })
+        if self.auto_process:
+            order.action_process_order()
         return {'type': 'ir.actions.act_window_close'}

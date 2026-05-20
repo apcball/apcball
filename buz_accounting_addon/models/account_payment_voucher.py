@@ -45,6 +45,11 @@ class AccountPaymentVoucher(models.Model):
         domain="[('payment_type', '=', 'outbound'), ('journal_id', '=', destination_journal_id)]",
         tracking=True
     )
+    bank_free_dis = fields.Monetary(
+        string="Bank Fee",
+        currency_field="currency_id",
+        help="Optional bank fee deducted by the bank."
+    )
     check_number = fields.Char(string="Check Number", tracking=True)
     check_date = fields.Date(string="Check Date", tracking=True)
     check_pay_to = fields.Char(string="Pay to in name of", tracking=True)
@@ -53,6 +58,7 @@ class AccountPaymentVoucher(models.Model):
     amount_total_gross = fields.Monetary(string="Total Gross", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_wht = fields.Monetary(string="Total WHT", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_net = fields.Monetary(string="Total Net", currency_field="currency_id", compute="_compute_amount_totals", store=True)
+    amount_total_bank_fee = fields.Monetary(string="Total Bank Fee", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     
     # Payment status based on amount paid
     payment_state = fields.Selection([
@@ -91,12 +97,13 @@ class AccountPaymentVoucher(models.Model):
             vals['name'] = self.env['ir.sequence'].next_by_code('buz.account.payment.voucher') or '/'
         return super().write(vals)
 
-    @api.depends("line_ids.amount_to_pay_gross", "line_ids.wht_amount")
+    @api.depends("line_ids.amount_to_pay_gross", "line_ids.wht_amount", "bank_free_dis")
     def _compute_amount_totals(self):
         for voucher in self:
             voucher.amount_total_gross = sum(line.amount_to_pay_gross for line in voucher.line_ids)
             voucher.amount_total_wht = sum(line.wht_amount for line in voucher.line_ids)
             voucher.amount_total_net = sum(line.amount_to_pay_net for line in voucher.line_ids)
+            voucher.amount_total_bank_fee = voucher.bank_free_dis or 0.0
 
     @api.depends('amount_total_net', 'line_ids.payment_state')
     def _compute_payment_state(self):
@@ -335,8 +342,7 @@ class AccountPaymentVoucher(models.Model):
         
         # Check if withholding.tax.cert model is available
         try:
-            cert_model = self.env['withholding.tax.cert']
-            wht_move_model = self.env['account.withholding.move']
+            self.env['withholding.tax.cert']
         except KeyError:
             _logger.error("Withholding tax models not available - l10n_th_account_tax module may not be installed")
             raise UserError(_("Withholding Tax Certificate feature is not available. Please install l10n_th_account_tax module."))
@@ -346,100 +352,80 @@ class AccountPaymentVoucher(models.Model):
         if not move:
             raise UserError(_("Payment %s has no journal entry.") % payment.name)
         
-        # Check WHT move lines
-        wht_move_lines = move.line_ids.filtered('wht_tax_id')
-        _logger.info(f"Payment {payment.name} - Total move lines: {len(move.line_ids)}, WHT lines: {len(wht_move_lines)}")
-        
-        if not wht_move_lines:
+        voucher_lines = wht_lines.filtered(lambda line: line.wht_amount > 0 and line.buz_wht_tax_id)
+        if not voucher_lines:
             raise UserError(_(
                 "Cannot create WHT certificate for payment %s\n\n"
-                "No withholding tax lines found in journal entry.\n\n"
-                "This payment was not created with WHT configuration.\n"
-                "Please re-register the payment through Payment Voucher with WHT Tax properly configured."
+                "No voucher lines with WHT tax were found."
             ) % payment.name)
         
-        # Check or create WHT move records
-        wht_moves = move.wht_move_ids if hasattr(move, 'wht_move_ids') else self.env['account.withholding.move'].browse()
-        _logger.info(f"Payment {payment.name} - Existing WHT move records: {len(wht_moves)}")
-        
-        if not wht_moves:
-            _logger.info(f"Creating WHT move records for payment {payment.name}")
-            # Create WHT moves from WHT move lines
-            try:
-                for wht_ml in wht_move_lines:
-                    if not wht_ml.wht_tax_id:
-                        continue
-                    
-                    # Prepare WHT move values
-                    wht_vals = move._prepare_wht_move_vals(wht_ml) if hasattr(move, '_prepare_wht_move_vals') else {
-                        'move_id': move.id,
-                        'partner_id': wht_ml.partner_id.id,
-                        'amount_income': abs(wht_ml.tax_base_amount) if wht_ml.tax_base_amount else abs(wht_ml.balance),
-                        'amount_wht': abs(wht_ml.balance),
-                        'wht_tax_id': wht_ml.wht_tax_id.id,
-                        'wht_cert_income_type': wht_ml.wht_tax_id.wht_cert_income_type or '5',
-                        'company_id': wht_ml.company_id.id,
-                    }
-                    
-                    wht_move = wht_move_model.create(wht_vals)
-                    _logger.info(f"Created WHT move record {wht_move.id} for move line {wht_ml.id}")
-                    wht_moves |= wht_move
-                    
-            except Exception as e:
-                _logger.error(f"Error creating WHT move records: {str(e)}", exc_info=True)
-                raise UserError(_(
-                    "Failed to create WHT move records for payment %s:\n%s\n\n"
-                    "Please contact administrator."
-                ) % (payment.name, str(e)))
-        
-        # Ensure all WHT moves have income type
-        for wht_move in wht_moves:
-            if not wht_move.wht_cert_income_type:
-                income_type = '5'  # Default: ค่าจ้างทำของ ค่าบริการ ค่าเช่า ค่าขนส่ง ฯลฯ 3 เตรส
-                if wht_move.wht_tax_id and wht_move.wht_tax_id.wht_cert_income_type:
-                    income_type = wht_move.wht_tax_id.wht_cert_income_type
-                
-                wht_move.write({'wht_cert_income_type': income_type})
-                _logger.info(f"Set income type {income_type} for WHT move {wht_move.id}")
-        
         # Now create certificates using standard method
-        if hasattr(payment, 'create_wht_cert'):
-            try:
-                _logger.info(f"Calling create_wht_cert() for payment {payment.name}")
-                payment.create_wht_cert()
-                
-                # Refresh to get newly created certificates
-                created_certs = self.env['withholding.tax.cert'].search([
-                    ('payment_id', '=', payment.id)
-                ])
-                
-                if created_certs:
-                    _logger.info(f"Successfully created {len(created_certs)} WHT certificate(s) for payment {payment.name}")
-                    self.message_post(
-                        body=_("WHT Certificate(s) created: %s") % ', '.join(created_certs.mapped('name'))
-                    )
-                else:
-                    _logger.error(f"create_wht_cert() completed but no certificates were found")
-                    raise UserError(_(
-                        "WHT certificate creation completed but no certificates were found.\n"
-                        "Please check payment %s manually."
-                    ) % payment.name)
-                    
+        try:
+            created_certs = self._create_wht_certs_from_voucher_lines(
+                voucher_lines, payment, partner
+            )
+            if created_certs:
+                _logger.info(
+                    "Successfully created %d WHT certificate(s) for payment %s",
+                    len(created_certs),
+                    payment.name,
+                )
+                self.message_post(
+                    body=_("WHT Certificate(s) created: %s") % ', '.join(created_certs.mapped('name'))
+                )
                 return created_certs
-                
-            except UserError as e:
-                raise
-            except Exception as e:
-                _logger.error(f"Error calling create_wht_cert(): {str(e)}", exc_info=True)
-                raise UserError(_(
-                    "Failed to create WHT certificate for payment %s:\n%s\n\n"
-                    "Please check the system log for details."
-                ) % (payment.name, str(e)))
-        else:
+
             raise UserError(_(
-                "WHT Certificate creation method not found.\n"
-                "Please ensure l10n_th_account_tax module is properly installed."
-            ))
+                "WHT certificate creation completed but no certificates were found.\n"
+                "Please check payment %s manually."
+            ) % payment.name)
+
+        except UserError:
+            raise
+        except Exception as e:
+            _logger.error("Error calling create_wht_cert(): %s", str(e), exc_info=True)
+            raise UserError(_(
+                "Failed to create WHT certificate for payment %s:\n%s\n\n"
+                "Please check the system log for details."
+            ) % (payment.name, str(e)))
+
+    def _create_wht_certs_from_voucher_lines(self, voucher_lines, payment, partner):
+        """Create WHT certificates directly from payment voucher lines."""
+        self.ensure_one()
+        if not voucher_lines:
+            return self.env["withholding.tax.cert"].browse()
+
+        income_type_labels = dict(self.env["withholding.tax.cert.line"]._fields["wht_cert_income_type"].selection)
+        cert_line_vals = []
+        wht_tax_set = set()
+        for voucher_line in voucher_lines:
+            wht_tax = voucher_line.buz_wht_tax_id
+            income_type = wht_tax.wht_cert_income_type or "5"
+            cert_line_vals.append(
+                (0, 0, {
+                    "wht_cert_income_type": income_type,
+                    "wht_cert_income_desc": income_type_labels.get(income_type, wht_tax.display_name),
+                    "base": abs(voucher_line.wht_base_amount or 0.0),
+                    "amount": abs(voucher_line.wht_amount or 0.0),
+                    "wht_tax_id": wht_tax.id,
+                })
+            )
+            wht_tax_set.add(wht_tax.id)
+
+        cert_vals = {
+            "move_id": payment.move_id.id,
+            "payment_id": payment.id,
+            "partner_id": partner.id,
+            "date": payment.date,
+            "wht_line": cert_line_vals,
+        }
+        wht_tax = self.env["account.withholding.tax"].browse(list(wht_tax_set))
+        income_tax_form = wht_tax.mapped("income_tax_form")
+        if len(income_tax_form) == 1:
+            cert_vals["income_tax_form"] = income_tax_form[0]
+
+        cert = self.env["withholding.tax.cert"].create(cert_vals)
+        return cert
 
 
     
@@ -560,6 +546,8 @@ class AccountPaymentVoucher(models.Model):
         total_gross = sum(line.amount_to_pay_gross for line in self.line_ids)
         total_wht = sum(line.wht_amount for line in self.line_ids)
         total_net = sum(line.amount_to_pay_net for line in self.line_ids)
+        bank_fee = self.bank_free_dis or 0.0
+        total_disbursement = total_net + bank_fee
 
         # 1. Debit Line (Payable) - Aggregated
         if total_gross > 0:
@@ -612,7 +600,28 @@ class AccountPaymentVoucher(models.Model):
                 'credit': total_wht,
             })
 
-        # 3. Credit Line (Bank/Cash)
+        # 3. Debit Line (Bank Fee Expense)
+        if bank_fee > 0:
+            bank_fee_account = self.env['account.account'].search([
+                ('code', '=', '533201'),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            if not bank_fee_account:
+                bank_fee_account = self.env['account.account'].search([
+                    ('account_type', '=', 'expense'),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+
+            lines.append({
+                'code': bank_fee_account.code if bank_fee_account else '533201',
+                'name': bank_fee_account.name if bank_fee_account else _('Bank Fee Expense'),
+                'ref': voucher_name,
+                'date': date,
+                'debit': bank_fee,
+                'credit': 0.0,
+            })
+
+        # 4. Credit Line (Bank/Cash)
         bank_journal = self.destination_journal_id
         if bank_journal:
             # Use default account of the journal
@@ -626,7 +635,7 @@ class AccountPaymentVoucher(models.Model):
                 'ref': voucher_name,
                 'date': date,
                 'debit': 0.0,
-                'credit': total_net,
+                'credit': total_disbursement,
             })
             
         return lines

@@ -7,20 +7,33 @@
         <field name="arch" type="xml">
             <field name="partner_shipping_id" position="replace">
                 <field name="partner_shipping_id" 
-                       domain="[('id', 'in', grouped_partner_shipping_ids)]"
+                       domain="[('id', 'in', grouped_partner_ids)]"
                        options="{'no_create': True, 'no_create_edit': True}"
                        context="{'show_address': 1}"
                        widget="res_partner_many2one"/>
-                <field name="grouped_partner_shipping_ids" invisible="1"/>
+                <field name="grouped_partner_ids" invisible="1"/>
             </field>
             <field name="partner_invoice_id" position="replace">
                 <field name="partner_invoice_id"
-                       domain="[('id', 'in', grouped_partner_invoice_ids)]"
+                       domain="[('id', 'in', grouped_partner_ids)]"
                        options="{'no_create': True, 'no_create_edit': True}"
                        context="{'show_address': 1}"
                        widget="res_partner_many2one"/>
-                <field name="grouped_partner_invoice_ids" invisible="1"/>
             </field>
+        </field>
+    </record>
+
+    <record id="view_picking_form_inherit_buz_group_delivery" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.buz.group.delivery</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="replace">
+                <field name="partner_id" nolabel="1" readonly="state in ['cancel', 'done']"
+                       domain="[('id', 'in', grouped_partner_ids)]"
+                       context="{'show_address': 1}"/>
+                <field name="grouped_partner_ids" invisible="1"/>
+            </xpath>
         </field>
     </record>
 </odoo>
