@@ -47,6 +47,7 @@ jobs:
               --network=host \
               -v ${{ github.workspace }}/${mod}:/mnt/extra-addons/${mod} \
               my-odoo:17 \
+              --config /dev/null \
               -d MOG_DEV \
               --db_host=localhost \
               --db_user=odoo \
