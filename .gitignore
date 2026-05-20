@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+*.log
+.venv/
+.env
+uploads/
+*.tar.gz
