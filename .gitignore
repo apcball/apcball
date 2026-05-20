@@ -5,3 +5,5 @@ __pycache__/
 .env
 uploads/
 *.tar.gz
+-e 
+.thclaws/
