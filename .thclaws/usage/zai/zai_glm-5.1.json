@@ -28,10 +28,10 @@
     "requests": 34
   },
   "2026-05-20": {
-    "input": 783907,
-    "output": 66028,
+    "input": 797219,
+    "output": 68270,
     "cache_write": 0,
-    "cache_read": 12527616,
-    "requests": 30
+    "cache_read": 13062080,
+    "requests": 32
   }
 }

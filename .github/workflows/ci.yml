@@ -39,13 +39,20 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - name: Copy modules & Run Tests
+      - name: Run Tests in Isolated Container
         run: |
           for mod in ${{ needs.detect-changes.outputs.modules }}; do
             echo "=== Testing $mod ==="
-            docker cp ./$mod odoo:/mnt/extra-addons/
-            docker exec odoo odoo -d MOG_DEV \
-              -u $mod \
+            docker run --rm \
+              --network=host \
+              -v ${{ github.workspace }}/${mod}:/mnt/extra-addons/${mod} \
+              my-odoo:17 \
+              -d MOG_DEV \
+              --db_host=localhost \
+              --db_user=odoo \
+              --db_password=odoo \
+              --addons-path=/mnt/extra-addons \
+              -u ${mod} \
               --test-enable \
               --stop-after-init \
               --no-http
