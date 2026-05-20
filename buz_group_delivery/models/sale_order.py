@@ -62,6 +62,20 @@ class StockPicking(models.Model):
         compute='_compute_grouped_partner_ids',
     )
 
+    parent_partner_id = fields.Many2one(
+        'res.partner',
+        string='Parent Partner',
+        compute='_compute_parent_partner_id',
+    )
+
+    @api.depends('partner_id')
+    def _compute_parent_partner_id(self):
+        for picking in self:
+            if picking.partner_id:
+                picking.parent_partner_id = picking.partner_id.parent_id or picking.partner_id
+            else:
+                picking.parent_partner_id = False
+
     @api.depends('partner_id')
     def _compute_grouped_partner_ids(self):
         for picking in self:

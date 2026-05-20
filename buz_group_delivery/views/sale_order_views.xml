@@ -31,8 +31,9 @@
             <xpath expr="//field[@name='partner_id']" position="replace">
                 <field name="partner_id" nolabel="1" readonly="state in ['cancel', 'done']"
                        domain="[('id', 'in', grouped_partner_ids)]"
-                       context="{'show_address': 1}"/>
+                       context="{'show_address': 1, 'default_parent_id': parent_partner_id, 'default_type': 'delivery'}"/>
                 <field name="grouped_partner_ids" invisible="1"/>
+                <field name="parent_partner_id" invisible="1"/>
             </xpath>
         </field>
     </record>
