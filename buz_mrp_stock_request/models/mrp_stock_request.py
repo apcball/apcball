@@ -888,8 +888,9 @@ class MrpStockRequestLine(models.Model):
         """Compute remaining quantity."""
         for line in self:
             remaining = line.qty_requested - line.qty_issued
+            rounding = line.uom_id.rounding or 0.01
             line.qty_remaining = max(remaining, 0.0) if float_compare(
-                remaining, 0.0, precision_rounding=line.uom_id.rounding
+                remaining, 0.0, precision_rounding=rounding
             ) > 0 else 0.0
 
     @api.depends("qty_issued", "qty_allocated")
@@ -897,8 +898,9 @@ class MrpStockRequestLine(models.Model):
         """Compute available quantity to allocate."""
         for line in self:
             available = line.qty_issued - line.qty_allocated
+            rounding = line.uom_id.rounding or 0.01
             line.qty_available_to_allocate = max(available, 0.0) if float_compare(
-                available, 0.0, precision_rounding=line.uom_id.rounding
+                available, 0.0, precision_rounding=rounding
             ) > 0 else 0.0
 
     @api.onchange("product_id")
