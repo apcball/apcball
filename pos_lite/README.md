@@ -8,9 +8,17 @@ POS Lite is a simplified Point-of-Sale module designed for manual order entry sc
 
 ## 🎯 Features
 
+### POS Terminal
+- **Odoo 19-style UI**: Modern grid layout with product cards, category filters, and search
+- **Standalone HTML page**: `/pos_lite/ui` with vanilla JS (no OWL dependencies)
+- **Customer info**: Name, phone, customer address, delivery address
+- **Order cart**: Add/remove items, adjust quantities, real-time totals
+- **Payment modal**: Cash/Transfer/Card with change calculation
+- **API integration**: JSON endpoints for products and order creation
+
 ### Order Management
 - **Multi-channel support**: Phone, LINE, Walk-in, Other
-- **Customer information**: Name, phone, address, tax ID
+- **Customer information**: Name, phone, **customer address**, **delivery address**
 - **Warehouse selection**: Per-order warehouse assignment
 - **Pricelist support**: Automatic price calculation based on pricelist
 - **Order lines**: Add products with quantity, price, discount
@@ -41,6 +49,9 @@ pos_lite/
 ├── __init__.py
 ├── __manifest__.py
 ├── README.md
+├── controllers/
+│   ├── __init__.py
+│   └── main.py                    # POS Terminal routes (/pos_lite/ui)
 ├── data/
 │   └── sequence_data.xml          # Order sequence configuration
 ├── models/
@@ -60,11 +71,14 @@ pos_lite/
 ├── views/
 │   ├── menu.xml                   # Menu items
 │   ├── pos_order_view.xml         # Order form/tree/search views
-│   └── pos_config_view.xml        # Configuration views
+│   ├── pos_config_view.xml        # Configuration views
+│   └── pos_lite_terminal.xml      # POS Terminal standalone HTML template
 ├── wizard/
 │   ├── __init__.py
 │   ├── payment_wizard.py          # Payment wizard model
-│   └── payment_wizard_view.xml    # Payment wizard form
+│   ├── payment_wizard_view.xml    # Payment wizard form
+│   ├── return_wizard.py           # Return wizard model
+│   └── return_wizard_view.xml     # Return wizard form
 └── static/
     └── description/
         └── icon.png               # Module icon
@@ -308,3 +322,40 @@ LGPL-3
 ---
 
 *Last updated: 2026-04-29*
+
+## 📝 Changelog
+
+### Version 17.0.3.2.0 (Current)
+**Date:** 2026-05-21  
+**Changes:**
+- ✅ 新增 POS Terminal UI (Odoo 19 風格設計)
+- ✅ POS Terminal 使用獨立 HTML 頁面 + vanilla JS (不再依賴 OWL)
+- ✅ 產品網格、搜尋、分類篩選
+- ✅ 客戶資訊 + 送貨地址
+- ✅ 購物車管理 (增減數量、即時總計)
+- ✅ 付款彈窗 (現金/轉帳/刷卡 + 找零計算)
+- ✅ JSON API 端點 (`/pos_lite/api/products`, `/pos_lite/api/create_order`)
+- ✅ 修復升級後白屏問題
+
+**Technical:**
+- Controller: `controllers/main.py` 新增 `/pos_lite/ui` route
+- Template: `views/pos_lite_terminal.xml` 獨立 HTML 模板
+- Menu action: 從 `ir.actions.client` 改回 `ir.actions.act_url`
+- Removed: OWL JS modules, unused assets
+- Removed: `website` dependency (不再需要)
+- Removed: `pos_lite_ui.xml` template
+
+### Version 17.0.3.1.0
+**Date:** 2026-05-28  
+**Changes:**
+- ✅ เพิ่มฟิลด์ `delivery_address` (Delivery Address) ใน `pos.lite.order`
+- ✅ เพิ่มการแสดง **Customer Address** และ **Delivery Address** ใน POS Order Form View
+- ✅ เพิ่มการแสดงทั้งสอง Address ใน Receipt Template (58mm, 80mm, A4)
+- ✅ อัปเดต Tree View ให้แสดง Delivery Address (optional column)
+- ✅ เพิ่มคำอธิบาย string ให้ฟิลด์ address ทั้งสองชัดเจนขึ้น
+
+**Technical:**
+- Field `delivery_address` (Char, tracking=True) เพิ่มใน `models/pos_order.py`
+- View update: `views/pos_order_view.xml` (form & tree)
+- Report update: `report/receipt_report.xml` (แสดง address ในใบเสร็จ)
+- ถ้าไม่กรอก Delivery Address จะแสดง Customer Address แทน (fallback)
