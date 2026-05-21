@@ -89,4 +89,7 @@ class StockPicking(models.Model):
                     ('parent_id', '=', parent.id),
                 ])
             else:
-                picking.grouped_partner_ids = False
+                # No partner selected yet — show all contacts so user can pick any
+                picking.grouped_partner_ids = self.env['res.partner'].search([
+                    ('type', 'in', ['delivery', 'contact', 'invoice', 'other']),
+                ])
