@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'POS Lite',
-    'version': '17.0.3.0.0',
+    'version': '17.0.3.1.0',
     'category': 'Sales',
     'summary': 'Lightweight form-based order entry for phone, LINE, and walk-in orders',
     'description': """
@@ -43,6 +43,7 @@ Features:
         'views/pos_session_view.xml',
         'views/report_views.xml',
         'views/menu.xml',
+        'views/pos_lite_terminal.xml',
         'wizard/payment_wizard_view.xml',
         'wizard/return_wizard_view.xml',
     ],
