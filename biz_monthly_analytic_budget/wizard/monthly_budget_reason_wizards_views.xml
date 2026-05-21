@@ -16,10 +16,22 @@
                     <field name="ref_id"/>
                     <field name="budget_line_names"/>
                     <field name="amount_requested"/>
+                    <field name="amount_analytic"/>
                     <field name="amount_used"/>
                     <field name="amount_reserved"/>
                     <field name="amount_limit"/>
                     <field name="amount_overage"/>
+                    <field name="plan_id"/>
+                </group>
+                <group>
+                    <div class="alert alert-info" role="alert" colspan="2" style="font-size: 13px;">
+                        <strong>📊 Budget Breakdown</strong><br/>
+                        Document Amount: <field name="amount_requested" widget="monetary" style="display:inline; width:auto;"/> THB<br/>
+                        Analytic Allocation: <field name="amount_analytic" widget="monetary" style="display:inline; width:auto;"/> THB<br/>
+                        <span invisible="amount_analytic == amount_requested">
+                            <span class="text-warning">⚠️ ยอด Analytic ต่างจากยอดเอกสาร (อาจเกิดจาก analytic distribution แบ่ง % หรือบาง line ไม่มี analytic)</span>
+                        </span>
+                    </div>
                 </group>
                 <field name="reason" placeholder="ระบุเหตุผลในการขอเพิ่มงบประมาณชั่วคราว..." style="width: 100%; min-height: 120px;"/>
                 <footer>

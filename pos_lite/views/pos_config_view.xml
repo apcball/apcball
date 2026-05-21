@@ -38,6 +38,7 @@
                             <field name="phone"/>
                             <field name="vat_number"/>
                             <field name="branch_number"/>
+                            <field name="employee_id"/>
                         </group>
                     </group>
                 </sheet>

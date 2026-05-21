@@ -21,6 +21,7 @@
                 <field name="invoice_id"/>
                 <field name="picking_id"/>
                 <field name="session_id" optional="hide"/>
+                <field name="employee_id" optional="show" string="Employee"/>
             </tree>
         </field>
     </record>
@@ -35,6 +36,7 @@
                 <field name="warehouse_id"/>
                 <field name="channel"/>
                 <field name="session_id"/>
+                <field name="employee_id"/>
                 <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
                 <filter string="Held" name="held" domain="[('state', '=', 'held')]"/>
                 <filter string="Paid" name="paid" domain="[('state', '=', 'paid')]"/>
@@ -52,6 +54,7 @@
                     <filter string="Warehouse" name="group_warehouse" context="{'group_by': 'warehouse_id'}"/>
                     <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
                     <filter string="Session" name="group_session" context="{'group_by': 'session_id'}"/>
+                    <filter string="Employee" name="group_employee" context="{'group_by': 'employee_id'}"/>
                     <filter string="Date" name="group_date" context="{'group_by': 'date_order:day'}"/>
                 </group>
             </search>
@@ -127,6 +130,7 @@
                             <field name="warehouse_id" options="{'no_create': True}"/>
                             <field name="pricelist_id"/>
                             <field name="session_id" options="{'no_create': True}"/>
+                            <field name="employee_id" readonly="1"/>
                             <field name="company_id" invisible="1"/>
                             <field name="is_return" invisible="1"/>
                         </group>
@@ -167,6 +171,7 @@
                             <field name="line_ids" mode="tree" nolabel="1">
                                 <tree editable="bottom" decoration-danger="is_low_stock">
                                     <field name="company_id" invisible="1"/>
+                                    <field name="product_image" widget="image" class="oe_avatar" options="{'size': [40, 40]}" string=" "/>
                                     <field name="product_id" context="{'pos_lite_search': 1}" string="Product"/>
                                     <field name="description"/>
                                     <field name="qty"/>

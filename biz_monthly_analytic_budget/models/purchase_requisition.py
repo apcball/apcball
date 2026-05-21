@@ -308,10 +308,11 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         if not grouped_totals:
             return
 
-        pr_amount = sum(analytic_totals.values())
+        # Document Amount = actual PR total (sum of all line subtotals)
+        pr_amount = sum(self.requisition_order_ids.mapped('price_subtotal'))
+        # Analytic Amount = sum of allocated amounts across budget plans
+        analytic_amount = sum(analytic_totals.values())
         
-        # We can't link to a single budget line if there are multiple.
-        # We find the total limits, used, etc across the affected analytics for this PR
         limit_amt = 0.0
         used = 0.0
         reserved = 0.0
@@ -331,7 +332,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                     reserved += bl.reserved_amount
                     budget_line_names.append('%s (%s)' % (bl.analytic_account_id.name, plan.name))
                 
-        overage = max(0.0, used + reserved + pr_amount - limit_amt)
+        overage = max(0.0, used + reserved + analytic_amount - limit_amt)
         primary_plan = get_first_plan_from_groups(grouped_totals)
 
         return {
@@ -345,6 +346,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 'default_ref_id': self.id,
                 'default_budget_line_names': ', '.join(budget_line_names),
                 'default_amount_requested': pr_amount,
+                'default_amount_analytic': analytic_amount,
                 'default_amount_used': used,
                 'default_amount_reserved': reserved,
                 'default_amount_limit': limit_amt,
@@ -352,6 +354,81 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
                 'default_plan_id': primary_plan.id if primary_plan else False,
             }
         }
+
+    # ── Recompute Approval Request on document change ────────────
+
+    def _recompute_budget_approval_request(self):
+        """Recompute amounts on existing pending/approved budget approval requests
+        when the PR is modified (lines changed, amounts changed, etc.)."""
+        self.ensure_one()
+        ApprovalReq = self.env['buz.monthly.budget.approval.request'].sudo()
+        requests = ApprovalReq.search([
+            ('document_type', '=', 'pr'),
+            ('ref_pr_id', '=', self.id),
+            ('state', 'in', ('pending', 'approved')),
+        ])
+        if not requests:
+            return
+
+        target_date = self.payment_date
+        if not target_date:
+            return
+
+        analytic_totals = {}
+        for line in self.requisition_order_ids:
+            for account_id, amount in extract_analytic_amounts(line):
+                analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+
+        grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
+            self.env, target_date, self.company_id.id, analytic_totals,
+        )
+        if not grouped_totals:
+            return
+
+        pr_amount = sum(self.requisition_order_ids.mapped('price_subtotal'))
+        analytic_amount = sum(analytic_totals.values())
+
+        limit_amt = 0.0
+        used = 0.0
+        reserved = 0.0
+        budget_line_names = []
+        BudgetLine = self.env['monthly.budget.line']
+        AnalyticAccount = self.env['account.analytic.account']
+
+        for plan, plan_totals in grouped_totals:
+            for account_id, amt in plan_totals.items():
+                analytic = AnalyticAccount.browse(account_id)
+                if not analytic.exists():
+                    continue
+                bl = BudgetLine._find_budget_line(plan, {'analytic_account_id': account_id}, log_fallback=False)
+                if bl:
+                    limit_amt += bl.budget_amount
+                    used += bl.used_amount
+                    reserved += bl.reserved_amount
+                    budget_line_names.append('%s (%s)' % (bl.analytic_account_id.name, plan.name))
+
+        overage = max(0.0, used + reserved + analytic_amount - limit_amt)
+        primary_plan = get_first_plan_from_groups(grouped_totals)
+
+        for req in requests:
+            req.write({
+                'amount_requested': pr_amount,
+                'amount_analytic': analytic_amount,
+                'amount_used': used,
+                'amount_reserved': reserved,
+                'amount_limit': limit_amt,
+                'amount_overage': overage,
+                'budget_line_name': ', '.join(budget_line_names) or req.budget_line_name,
+                'plan_id': primary_plan.id if primary_plan else req.plan_id.id,
+            })
+
+        # Refresh only affected plans (case-by-case, skip MV for speed)
+        affected_plans = set()
+        for plan, _plan_totals in grouped_totals:
+            affected_plans.add(plan.id)
+        if affected_plans:
+            for plan in self.env['monthly.budget.plan'].browse(list(affected_plans)):
+                plan._refresh_budget_snapshot(refresh_report=False)
 
     # ── Budget enforcement ───────────────────────────────────────
 
@@ -380,7 +457,43 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
             for rec in self:
                 if rec.state in RESERVED_PR_STATES and prev_states.get(rec.id) != rec.state:
                     rec._reserve_monthly_analytic_budget()
+        # Sync expected payment to linked POs (and cascade to Bills via PO)
+        if 'payment_date' in vals and not self.env.context.get('skip_expected_payment_sync'):
+            for rec in self:
+                rec._sync_payment_date_to_linked_documents()
+        # Recompute existing approval requests when PR lines or amounts change
+        _approval_trigger_fields = {
+            'requisition_order_ids', 'payment_date', 'payment_date_manual',
+        }
+        if _approval_trigger_fields & set(vals.keys()) and not self.env.context.get('skip_approval_recompute'):
+            for rec in self:
+                rec._recompute_budget_approval_request()
         return result
+
+    def _sync_payment_date_to_linked_documents(self):
+        """Sync PR expected payment date to linked POs, which then cascade to Bills."""
+        self.ensure_one()
+        PurchaseOrder = self.env['purchase.order'].sudo()
+        # Find POs that originated from this PR
+        linked_pos = PurchaseOrder.search([
+            ('company_id', '=', self.company_id.id),
+            '|', '|',
+            ('requisition_order', '=', self.name),
+            ('pr_number', '=', self.name),
+            ('origin', '=', self.name),
+        ])
+        for po in linked_pos:
+            po.with_context(skip_expected_payment_sync=True).write({
+                'payment_date': self.payment_date,
+                'payment_date_manual': self.payment_date,
+            })
+            # PO.write will trigger _sync_linked_vendor_bills via its own write()
+            # but since we use skip_expected_payment_sync, we call it explicitly
+            po._sync_linked_vendor_bills()
+            # Refresh budget reservations for the PO
+            po._reserve_monthly_budget_for_direct_rfq()
+            if po.state in ('purchase', 'done'):
+                po._consume_monthly_analytic_budget()
 
     def _check_monthly_analytic_budget(self):
         """Verify each PR line's analytic distribution has sufficient monthly budget."""

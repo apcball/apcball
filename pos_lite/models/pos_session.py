@@ -28,6 +28,12 @@ class PosLiteSession(models.Model):
         'res.users', default=lambda self: self.env.user,
         readonly=True, string='Opened By',
     )
+    employee_id = fields.Many2one(
+        'hr.employee', string='Employee', required=True,
+        default=lambda self: self._default_employee_id(),
+        tracking=True, check_company=True,
+        domain="[('company_id', '=', company_id)]",
+    )
     close_user_id = fields.Many2one('res.users', readonly=True, string='Closed By')
     order_ids = fields.One2many('pos.lite.order', 'session_id', string='Orders')
     order_count = fields.Integer(compute='_compute_stats', string='Orders')
@@ -49,6 +55,17 @@ class PosLiteSession(models.Model):
     _sql_constraints = [
         ('name_unique', 'unique(name)', 'Session number must be unique.'),
     ]
+
+    def _default_employee_id(self):
+        employee = self.env['hr.employee'].search([
+            ('user_id', '=', self.env.uid),
+            ('company_id', 'in', self.env.companies.ids),
+        ], limit=1)
+        if not employee:
+            config = self.env['pos.lite.config'].get_default_config()
+            if config and config.employee_id:
+                return config.employee_id
+        return employee
 
     @api.depends('order_ids.state', 'order_ids.amount_total', 'order_ids.is_return')
     def _compute_stats(self):

@@ -14,7 +14,8 @@ class MonthlyBudgetRequestReasonWizard(models.TransientModel):
     
     ref_id = fields.Integer(string='Document ID', required=True)
     budget_line_names = fields.Char(string='Budget Analytic Lines')
-    amount_requested = fields.Float(string='Document Amount')
+    amount_requested = fields.Float(string='Document Amount', help='ยอดรวมของเอกสารจริง (untaxed)')
+    amount_analytic = fields.Float(string='Analytic Amount', help='ยอดที่กระจายไป analytic accounts (อาจต่างจาก Document Amount ถ้ามีหลาย analytic หรือ distribution ไม่ครบ)')
     amount_used = fields.Float(string='Already Used')
     amount_reserved = fields.Float(string='Already Reserved')
     amount_limit = fields.Float(string='Budget Limit')
@@ -42,6 +43,7 @@ class MonthlyBudgetRequestReasonWizard(models.TransientModel):
             budget_line=False,  # Multiple analytics — store names in budget_line_name
             plan_id=self.plan_id.id if self.plan_id else False,
             amount_requested=self.amount_requested,
+            amount_analytic=self.amount_analytic,
             amount_used=self.amount_used,
             amount_reserved=self.amount_reserved,
             amount_limit=self.amount_limit,

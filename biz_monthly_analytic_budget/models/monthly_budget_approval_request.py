@@ -56,7 +56,8 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
     amount_limit = fields.Float(string='Budget Limit', tracking=True)
     amount_used = fields.Float(string='Already Used', tracking=True)
     amount_reserved = fields.Float(string='Already Reserved', tracking=True)
-    amount_requested = fields.Float(string='Document Amount', tracking=True)
+    amount_requested = fields.Float(string='Document Amount', tracking=True, help='ยอดรวมของเอกสารจริง (untaxed)')
+    amount_analytic = fields.Float(string='Analytic Amount', tracking=True, help='ยอดที่กระจายไป analytic accounts')
     amount_overage = fields.Float(string='Over by', tracking=True)
 
     reason = fields.Text(
@@ -283,6 +284,7 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
                                         budget_line, amount_requested,
                                         amount_used, amount_reserved,
                                         amount_limit, amount_overage,
+                                        amount_analytic=0.0,
                                         plan_id=False):
         domain = [
             ('document_type', '=', document_type),
@@ -291,6 +293,15 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
         ]
         existing = self.search(domain, limit=1)
         if existing:
+            # Update existing request with latest amounts
+            existing.write({
+                'amount_requested': amount_requested,
+                'amount_analytic': amount_analytic,
+                'amount_used': amount_used,
+                'amount_reserved': amount_reserved,
+                'amount_limit': amount_limit,
+                'amount_overage': amount_overage,
+            })
             return existing
 
         vals = {
@@ -302,6 +313,7 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
             'amount_used': amount_used,
             'amount_reserved': amount_reserved,
             'amount_requested': amount_requested,
+            'amount_analytic': amount_analytic,
             'amount_overage': amount_overage,
             'requester_id': self.env.uid,
             'company_id': self.env.company.id,

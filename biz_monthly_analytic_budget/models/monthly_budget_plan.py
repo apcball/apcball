@@ -936,3 +936,44 @@ class MonthlyBudgetPlan(models.Model):
                     'Auto-close failed for budget plan %s (%s): %s',
                     plan.name, plan.id, e,
                 )
+
+    @api.model
+    def _cron_refresh_confirmed_plans(self):
+        """Cron job to refresh all confirmed budget plan snapshots.
+
+        Only processes plans that have budget commitments (activity) to avoid
+        unnecessary work on empty plans.  Refreshes plan line balances and
+        the materialized view in one pass.
+        """
+        confirmed_plans = self.search([('state', '=', 'confirmed')])
+        if not confirmed_plans:
+            return
+
+        Commitment = self.env['budget.commitment'].sudo()
+        refreshed = 0
+        for plan in confirmed_plans:
+            if not plan.date_from or not plan.date_to:
+                continue
+            # Only refresh plans that have at least one commitment in their period
+            has_activity = Commitment.search_count([
+                ('budget_source', '=', 'monthly'),
+                ('company_id', '=', plan.company_id.id),
+                ('date', '>=', plan.date_from),
+                ('date', '<=', plan.date_to),
+                ('state', 'in', ('reserved', 'used')),
+            ])
+            if not has_activity and not plan.budget_line_ids.filtered(lambda l: l.reserved_amount or l.used_amount):
+                continue
+            try:
+                plan._refresh_budget_snapshot(refresh_report=False)
+                refreshed += 1
+            except Exception as e:
+                _logger.error('Cron refresh failed for plan %s (%s): %s', plan.name, plan.id, e)
+
+        # Single MV refresh at the end (not per-plan)
+        try:
+            self.env['monthly.budget.report'].refresh_materialized_view()
+        except Exception as e:
+            _logger.warning('Cron MV refresh failed: %s', e)
+
+        _logger.info('Cron refreshed %d/%d confirmed budget plan snapshots', refreshed, len(confirmed_plans))

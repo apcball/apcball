@@ -50,6 +50,10 @@ class PosLiteOrder(models.Model):
         domain="[('state', '=', 'opened'), ('company_id', '=', company_id)]",
         check_company=True,
     )
+    employee_id = fields.Many2one(
+        related='session_id.employee_id', string='Employee',
+        store=True, readonly=True, tracking=True,
+    )
     line_ids = fields.One2many('pos.lite.order.line', 'order_id', string='Order Lines')
     payment_ids = fields.One2many('pos.lite.payment', 'order_id', string='Payments')
     amount_untaxed = fields.Monetary(compute='_compute_amounts', store=True)
@@ -107,15 +111,37 @@ class PosLiteOrder(models.Model):
             if vals.get('name', '/') == '/' or not vals.get('name'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('pos.lite.order') or '/'
         orders = super().create(vals_list)
-        # Auto-assign to current open session
         for order in orders:
-            if not order.session_id and not order.is_return:
-                session = self.env['pos.lite.session'].search([
-                    ('state', '=', 'opened'),
+            if order.is_return:
+                continue
+            if not order.session_id:
+                # Find employee of current user
+                employee = self.env['hr.employee'].search([
+                    ('user_id', '=', self.env.uid),
                     ('company_id', '=', order.company_id.id),
                 ], limit=1)
-                if session:
-                    order.session_id = session.id
+                if employee:
+                    session = self.env['pos.lite.session'].search([
+                        ('state', '=', 'opened'),
+                        ('employee_id', '=', employee.id),
+                        ('company_id', '=', order.company_id.id),
+                    ], limit=1)
+                    if session:
+                        order.session_id = session.id
+                if not order.session_id:
+                    # Fallback: any open session for the company
+                    session = self.env['pos.lite.session'].search([
+                        ('state', '=', 'opened'),
+                        ('company_id', '=', order.company_id.id),
+                    ], limit=1)
+                    if session:
+                        order.session_id = session.id
+            # Validate: must have open session
+            if not order.session_id:
+                raise UserError(_(
+                    'Cannot create order: No open session found. '
+                    'Please open a POS Lite session first.'
+                ))
         return orders
 
     @api.onchange('partner_id')
@@ -655,6 +681,10 @@ class PosLiteOrderLine(models.Model):
     company_id = fields.Many2one(related='order_id.company_id', store=True, readonly=True)
     currency_id = fields.Many2one(related='order_id.currency_id', store=True, readonly=True)
     product_id = fields.Many2one('product.product', required=True, domain="[('sale_ok', '=', True)]", check_company=True)
+    product_image = fields.Binary(
+        related='product_id.image_128', string='Image',
+        readonly=True, store=False,
+    )
     description = fields.Char()
     qty = fields.Float(default=1.0)
     price_unit = fields.Monetary(required=True)

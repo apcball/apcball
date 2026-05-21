@@ -48,5 +48,42 @@
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_pos_lite_user')), (4, ref('group_pos_lite_manager'))]"/>
         </record>
+
+        <!-- Employee sees own sessions; manager sees all -->
+        <record id="rule_pos_lite_session_employee" model="ir.rule">
+            <field name="name">POS Lite Session own employee</field>
+            <field name="model_id" ref="model_pos_lite_session"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_pos_lite_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_pos_lite_session_manager_all" model="ir.rule">
+            <field name="name">POS Lite Session manager all</field>
+            <field name="model_id" ref="model_pos_lite_session"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_pos_lite_manager'))]"/>
+        </record>
+
+        <record id="rule_pos_lite_order_employee" model="ir.rule">
+            <field name="name">POS Lite Order own employee</field>
+            <field name="model_id" ref="model_pos_lite_order"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_pos_lite_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_pos_lite_order_manager_all" model="ir.rule">
+            <field name="name">POS Lite Order manager all</field>
+            <field name="model_id" ref="model_pos_lite_order"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_pos_lite_manager'))]"/>
+        </record>
     </data>
 </odoo>

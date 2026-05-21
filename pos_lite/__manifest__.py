@@ -31,6 +31,7 @@ Features:
         'stock',
         'account',
         'sale_management',
+        'hr',
     ],
     'data': [
         'security/security.xml',

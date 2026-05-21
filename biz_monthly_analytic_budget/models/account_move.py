@@ -125,7 +125,51 @@ class AccountMove(models.Model):
                     for po in source_po:
                         if po.state in ('purchase', 'done'):
                             po._consume_monthly_analytic_budget()
+        # Sync bill due date back to PO and PR when user changes it on the bill
+        if 'invoice_date_due' in vals and not self.env.context.get('skip_expected_payment_sync'):
+            for move in self:
+                move._sync_due_date_to_source_documents()
+        # Recompute existing approval requests when bill lines or dates change
+        _approval_trigger_fields = {
+            'invoice_line_ids', 'line_ids', 'invoice_date_due',
+            'invoice_date', 'date',
+        }
+        if _approval_trigger_fields & set(vals.keys()) and not self.env.context.get('skip_approval_recompute'):
+            for move in self:
+                if move.move_type in ('in_invoice', 'in_refund'):
+                    move._recompute_budget_approval_request()
         return result
+
+    def _sync_due_date_to_source_documents(self):
+        """Sync bill invoice_date_due back to PO expected payment and PR expected payment."""
+        self.ensure_one()
+        if self.move_type not in ('in_invoice', 'in_refund'):
+            return
+        if not self.invoice_date_due:
+            return
+        # Sync back to PO
+        source_pos = self._get_related_purchase_order()
+        for po in source_pos:
+            if po.payment_date != self.invoice_date_due:
+                po.sudo().with_context(skip_expected_payment_sync=True).write({
+                    'payment_date': self.invoice_date_due,
+                    'payment_date_manual': self.invoice_date_due,
+                })
+                # Re-reserve/re-consume PO budget with new date
+                if po.state in ('draft', 'sent', 'to approve'):
+                    po._reserve_monthly_budget_for_direct_rfq()
+                elif po.state in ('purchase', 'done'):
+                    po._consume_monthly_analytic_budget()
+                # PO will sync to PR via its own _sync_payment_date_bidirectional
+                # but since we use skip_expected_payment_sync context, do it here
+                source_pr = po._get_source_requisition()
+                if source_pr and source_pr.payment_date != self.invoice_date_due:
+                    source_pr.sudo().with_context(skip_expected_payment_sync=True).write({
+                        'payment_date': self.invoice_date_due,
+                        'payment_date_manual': self.invoice_date_due,
+                    })
+                    if source_pr.state in RESERVED_PR_STATES:
+                        source_pr._reserve_monthly_analytic_budget()
 
     def action_post(self):
         """Post vendor bills without monthly budget enforcement."""
@@ -468,3 +512,96 @@ class AccountMove(models.Model):
 
     def _check_monthly_analytic_budget_limit(self):
         return True
+
+    def _recompute_budget_approval_request(self):
+        """Recompute amounts on existing pending/approved budget approval requests
+        when the Bill is modified. Also recompute linked PO and PR requests."""
+        self.ensure_one()
+        ApprovalReq = self.env['buz.monthly.budget.approval.request'].sudo()
+
+        # Find requests linked to this bill
+        requests = ApprovalReq.search([
+            ('document_type', '=', 'bill'),
+            ('ref_bill_id', '=', self.id),
+            ('state', 'in', ('pending', 'approved')),
+        ])
+
+        # Also recompute linked PO requests
+        source_pos = self._get_related_purchase_order()
+        for po in source_pos:
+            requests |= ApprovalReq.search([
+                ('document_type', '=', 'po'),
+                ('ref_po_id', '=', po.id),
+                ('state', 'in', ('pending', 'approved')),
+            ])
+            # And linked PR requests
+            source_pr = po._get_source_requisition()
+            if source_pr:
+                requests |= ApprovalReq.search([
+                    ('document_type', '=', 'pr'),
+                    ('ref_pr_id', '=', source_pr.id),
+                    ('state', 'in', ('pending', 'approved')),
+                ])
+
+        if not requests:
+            return
+
+        target_date = self._get_bill_target_date()
+        if not target_date:
+            return
+
+        BudgetLine = self.env['monthly.budget.line']
+        analytic_totals = {}
+        for line in self.invoice_line_ids:
+            for account_id, amount in extract_analytic_amounts(line, BudgetLine):
+                analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+
+        grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
+            self.env, target_date, self.company_id.id, analytic_totals,
+        )
+        if not grouped_totals:
+            return
+
+        bill_amount = self.amount_untaxed
+        analytic_amount = sum(analytic_totals.values())
+
+        limit_amt = 0.0
+        used = 0.0
+        reserved = 0.0
+        budget_line_names = []
+        AnalyticAccount = self.env['account.analytic.account']
+
+        for plan, plan_totals in grouped_totals:
+            for account_id, amt in plan_totals.items():
+                analytic = AnalyticAccount.browse(account_id)
+                if not analytic.exists():
+                    continue
+                bl = BudgetLine._find_budget_line(plan, {'analytic_account_id': account_id}, log_fallback=False)
+                if bl:
+                    limit_amt += bl.budget_amount
+                    used += bl.used_amount
+                    reserved += bl.reserved_amount
+                    budget_line_names.append('%s (%s)' % (bl.analytic_account_id.name, plan.name))
+
+        overage = max(0.0, used + reserved + analytic_amount - limit_amt)
+        primary_plan = get_first_plan_from_groups(grouped_totals)
+
+        for req in requests:
+            req.write({
+                'amount_requested': bill_amount,
+                'amount_analytic': analytic_amount,
+                'amount_used': used,
+                'amount_reserved': reserved,
+                'amount_limit': limit_amt,
+                'amount_overage': overage,
+                'budget_line_name': ', '.join(budget_line_names) or req.budget_line_name,
+                'plan_id': primary_plan.id if primary_plan else req.plan_id.id,
+            })
+
+        # Refresh only affected plans (case-by-case, skip MV for speed)
+        affected_plans = set()
+        for plan, _plan_totals in grouped_totals:
+            affected_plans.add(plan.id)
+        if affected_plans:
+            for plan in self.env['monthly.budget.plan'].browse(list(affected_plans)):
+                plan._refresh_budget_snapshot(refresh_report=False)

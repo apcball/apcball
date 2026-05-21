@@ -1,3 +1,0 @@
-{"type":"header","id":"sess-18af9d8ebd68d6f0","model":"zai/glm-5.1","cwd":"/srv/docker/odoo/custom-addons","created_at":1778813614}
-{"type":"user","content":[{"type":"text","text":"hi"}],"timestamp":1778813645}
-{"type":"assistant","content":[{"type":"thinking","content":"The user said \"hi\". Simple greeting, I'll respond concisely."},{"type":"text","text":"Hi! How can I help you today?"}],"timestamp":1778813645,"provider":"zai","model":"zai/glm-5.1"}

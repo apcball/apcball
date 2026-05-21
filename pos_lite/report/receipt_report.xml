@@ -77,6 +77,7 @@
                         <div t-if="o.partner_phone">Phone: <span t-esc="o.partner_phone"/></div>
                         <div>Channel: <span t-esc="dict(o._fields['channel'].selection).get(o.channel, o.channel)"/></div>
                         <div>Cashier: <span t-esc="o.create_uid.name"/></div>
+                        <div t-if="o.employee_id">Employee: <span t-esc="o.employee_id.name"/></div>
                         <div t-if="o.is_return and o.return_of_order_id">Original: <span t-esc="o.return_of_order_id.name"/></div>
                         <div t-if="o.return_reason">Reason: <span t-esc="o.return_reason"/></div>
                     </div>
@@ -201,6 +202,7 @@
                             <td><strong>Closed:</strong> <span t-esc="s.date_close.strftime('%Y-%m-%d %H:%M') if s.date_close else 'N/A'"/></td></tr>
                         <tr><td><strong>Cashier:</strong> <span t-esc="s.user_id.name"/></td>
                             <td><strong>Closed By:</strong> <span t-if="s.close_user_id" t-esc="s.close_user_id.name"/><span t-else="">-</span></td></tr>
+                        <tr t-if="s.employee_id"><td colspan="2"><strong>Employee:</strong> <span t-esc="s.employee_id.name"/></td></tr>
                     </table>
 
                     <h4>Sales Summary</h4>

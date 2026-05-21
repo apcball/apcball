@@ -38,6 +38,12 @@ class PosLiteConfig(models.Model):
         string='Tax ID Override',
         help='Override company VAT for receipt. Leave empty to use company VAT.',
     )
+    employee_id = fields.Many2one(
+        'hr.employee', string='Default Employee',
+        domain="[('company_id', '=', company_id)]",
+        check_company=True,
+        help='Default employee for new sessions created from this config.',
+    )
 
     @api.model
     def get_default_config(self, company=None):

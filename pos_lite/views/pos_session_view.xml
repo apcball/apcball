@@ -8,6 +8,7 @@
             <tree decoration-success="state == 'opened'" decoration-muted="state == 'closed'">
                 <field name="name"/>
                 <field name="config_id"/>
+                <field name="employee_id" string="Employee"/>
                 <field name="state"/>
                 <field name="date_open" string="Open"/>
                 <field name="date_close" string="Close"/>
@@ -40,6 +41,7 @@
                     <group>
                         <group string="Session Info">
                             <field name="config_id"/>
+                            <field name="employee_id"/>
                             <field name="date_open"/>
                             <field name="date_close"/>
                             <field name="user_id"/>
@@ -104,12 +106,14 @@
                 <field name="name"/>
                 <field name="config_id"/>
                 <field name="user_id"/>
+                <field name="employee_id"/>
                 <filter string="Open" name="open" domain="[('state', '=', 'opened')]"/>
                 <filter string="Closed" name="closed" domain="[('state', '=', 'closed')]"/>
                 <filter string="Today" name="today" domain="[('date_open', '&gt;=', (context_today()).strftime('%Y-%m-%d 00:00:00'))]"/>
                 <group expand="0" string="Group By">
                     <filter string="Config" name="group_config" context="{'group_by': 'config_id'}"/>
                     <filter string="Cashier" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Employee" name="group_employee" context="{'group_by': 'employee_id'}"/>
                     <filter string="Date" name="group_date" context="{'group_by': 'date_open:day'}"/>
                 </group>
             </search>

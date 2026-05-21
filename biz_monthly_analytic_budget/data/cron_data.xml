@@ -16,15 +16,10 @@
 
         <!-- Hourly cron: recompute budget line balances for all confirmed plans -->
         <record id="ir_cron_monthly_budget_recompute_lines" model="ir.cron">
-            <field name="name">Monthly Budget: Refresh Report &amp; Recompute Lines</field>
-            <field name="model_id" ref="model_monthly_budget_report"/>
+            <field name="name">Monthly Budget: Refresh Plan Snapshots</field>
+            <field name="model_id" ref="model_monthly_budget_plan"/>
             <field name="state">code</field>
-            <field name="code">
-model.refresh_materialized_view()
-confirmed_plans = env['monthly.budget.plan'].search([('state', '=', 'confirmed')])
-for plan in confirmed_plans:
-    plan.budget_line_ids._recompute_line_balance()
-            </field>
+            <field name="code">model._cron_refresh_confirmed_plans()</field>
             <field name="interval_number">4</field>
             <field name="interval_type">hours</field>
             <field name="numbercall">-1</field>

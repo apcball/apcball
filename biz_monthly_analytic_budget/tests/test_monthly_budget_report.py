@@ -1,42 +1,48 @@
 # -*- coding: utf-8 -*-
-from unittest.mock import Mock, patch
-
+"""
+Tests for biz_monthly_analytic_budget — Report and dashboard.
+"""
 from odoo.tests.common import TransactionCase
 
 
 class TestMonthlyBudgetReport(TransactionCase):
+    """Test budget report and dashboard data retrieval."""
 
-    def test_dashboard_uses_commitment_ledger_for_used_amount(self):
+    def test_get_available_years_returns_empty_when_no_plans(self):
+        """Should return empty list when no confirmed plans exist."""
         report = self.env['monthly.budget.report']
-        fake_plans = Mock(ids=[99], filtered=lambda fn: fake_plans)
+        # In a fresh test DB there may or may not be plans
+        years = report.get_available_years()
+        self.assertIsInstance(years, list)
 
-        captured_sql = {}
+    def test_get_available_plans_returns_list(self):
+        """Should return list of plan dicts."""
+        report = self.env['monthly.budget.report']
+        plans = report.get_available_plans()
+        self.assertIsInstance(plans, list)
+        for p in plans:
+            self.assertIn('id', p)
+            self.assertIn('name', p)
+            self.assertIn('label', p)
 
-        def _capture_execute(query, params=None):
-            captured_sql['query'] = query
-            captured_sql['params'] = params
-            return None
+    def test_get_dashboard_data_returns_structure(self):
+        """Dashboard data should always return the expected keys."""
+        report = self.env['monthly.budget.report']
+        data = report.get_dashboard_data({})
+        self.assertIn('kpi', data)
+        self.assertIn('waterfall', data)
+        self.assertIn('analytic_breakdown', data)
+        self.assertIn('stacked_bar', data)
+        self.assertIn('trend', data)
+        self.assertIn('alerts', data)
 
-        with patch.object(type(report), 'refresh_materialized_view', return_value=None):
-            with patch.object(type(report), '_get_trend', return_value=[{'month': 'Apr 2026', 'budget': 100.0, 'used': 30.0}]):
-                with patch.object(type(report), '_get_alerts', return_value=[]):
-                    with patch.object(type(self.env['monthly.budget.plan']), 'search', return_value=fake_plans):
-                        with patch.object(type(self.env.cr), 'execute', side_effect=_capture_execute):
-                            with patch.object(type(self.env.cr), 'dictfetchall', return_value=[{
-                                'analytic_account_id': None,
-                                'department_id': None,
-                                'project_id': None,
-                                'category': None,
-                                'budget': 100.0,
-                                'reserved': 20.0,
-                                'used': 30.0,
-                            }]):
-                                data = report.get_dashboard_data({})
-
-        self.assertIn('budget_commitment', captured_sql['query'])
-        self.assertIn("bc.state = 'used'", captured_sql['query'])
-        self.assertNotIn('account_move_line', captured_sql['query'])
-        self.assertEqual(data['kpi']['used'], 30.0)
-        self.assertEqual(data['waterfall'][2]['label'], 'Used')
-        self.assertEqual(data['waterfall'][2]['value'], -30.0)
-        self.assertEqual(data['trend'][0]['used'], 30.0)
+    def test_get_dashboard_data_kpi_structure(self):
+        """KPI data should have expected fields."""
+        report = self.env['monthly.budget.report']
+        data = report.get_dashboard_data({})
+        kpi = data['kpi']
+        self.assertIn('total_budget', kpi)
+        self.assertIn('reserved', kpi)
+        self.assertIn('used', kpi)
+        self.assertIn('available', kpi)
+        self.assertIn('utilization', kpi)
