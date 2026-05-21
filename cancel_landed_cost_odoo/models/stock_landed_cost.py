@@ -82,24 +82,26 @@ class StockLandedCost(models.Model):
         })
         reversal_move.action_post()
 
-        # Reset original JE to draft (keep for audit trail)
+        # Reset original JE to draft then delete
         if original_move.state == 'posted':
             original_move.button_draft()
+        original_move.unlink()
 
         return reversal_move
 
     def _unlink_svl_layers(self):
         """Remove SVL layers created by this landed cost.
 
-        Instead of creating negative SVL (which doesn't update remaining_qty chain),
-        we directly delete the LC SVL layers and recompute parent chain.
-
-        This is the correct approach because:
-        - LC SVL has stock_valuation_layer_id pointing to parent move SVL
-        - Deleting LC SVL will allow parent SVL remaining_qty to be correct
-        - Odoo will recompute the chain automatically
+        Deletes LC SVL layers and recomputes parent chain remaining_qty.
+        This allows re-validation to create fresh SVL layers.
         """
         self.ensure_one()
+
+        # Collect parent layers before deleting
+        parent_layer_ids = set()
+        for layer in self.stock_valuation_layer_ids:
+            if layer.stock_valuation_layer_id:
+                parent_layer_ids.add(layer.stock_valuation_layer_id.id)
 
         # Delete SVL layers in reverse order (newest first)
         svl_layers = self.stock_valuation_layer_ids.sorted(key=lambda l: -l.id)
@@ -109,53 +111,34 @@ class StockLandedCost(models.Model):
                 if layer.account_move_id.state == 'posted':
                     layer.account_move_id.button_draft()
                 layer.account_move_id.unlink()
-
-            # Remember parent layer to recompute remaining_qty later
-            parent_layer = layer.stock_valuation_layer_id
-
-            # Delete the SVL
             layer.sudo().unlink()
 
         # Recompute remaining_qty for affected parent layers
-        self._recompute_parent_remaining_qty()
+        self._recompute_parent_remaining_qty(parent_layer_ids)
 
-    def _recompute_parent_remaining_qty(self):
-        """Recompute remaining_qty for parent SVL layers affected by this LC.
-
-        After deleting LC SVL, the parent move SVL's remaining_qty
-        needs to be recalculated based on its remaining child SVLs.
-        """
-        self.ensure_one()
-
-        # Find all move SVLs that were referenced by this LC's valuation lines
-        parent_layer_ids = set()
-        for line in self.valuation_adjustment_lines.filtered(lambda l: l.move_id):
-            for svl in line.move_id.stock_valuation_layer_ids:
-                parent_layer_ids.add(svl.id)
-
+    def _recompute_parent_remaining_qty(self, parent_layer_ids):
+        """Recompute remaining_qty for parent SVL layers after LC SVL deletion."""
         if not parent_layer_ids:
             return
 
-        parent_layers = self.env['stock.valuation.layer'].browse(parent_layer_ids)
+        parent_layers = self.env['stock.valuation.layer'].browse(parent_layer_ids).exists()
         for parent in parent_layers:
-            # Sum remaining_qty of all child SVLs
+            # remaining_qty = parent.quantity - sum of child SVL quantities that are outgoing
             child_layers = self.env['stock.valuation.layer'].search([
                 ('stock_valuation_layer_id', '=', parent.id),
             ])
-            child_remaining = sum(child_layers.mapped('remaining_qty'))
+            # Sum of value reduction from children (outgoing moves, other LCs, etc.)
+            child_value_out = sum(
+                c.value for c in child_layers if c.value < 0
+            )
+            # Original remaining should be restored by the LC SVL deletion
+            # Simply recompute: remaining_qty = quantity - abs(outgoing from children)
+            outgoing = parent.quantity + child_value_out  # child_value_out is negative
+            new_remaining = parent.quantity - abs(outgoing) if outgoing < 0 else parent.quantity
 
-            # parent remaining_qty = parent quantity - sum of child outgoing quantities
-            # But LC SVL is now deleted, so remaining_qty should increase
-            # Recalculate: remaining = quantity - (quantity consumed by children)
-            outgoing_qty = parent.quantity - child_remaining
-            new_remaining = parent.quantity - outgoing_qty
-
-            # Only update if different
-            if float_compare(
-                new_remaining, parent.remaining_qty,
-                precision_rounding=parent.product_id.uom_id.rounding or 0.01
-            ) != 0:
-                parent.sudo().remaining_qty = new_remaining
+            rounding = parent.product_id.uom_id.rounding or 0.01
+            if float_compare(new_remaining, parent.remaining_qty, precision_rounding=rounding) != 0:
+                parent.sudo().remaining_qty = max(new_remaining, 0.0)
 
     def _revert_vendor_bill_lines(self):
         """Remove landed cost lines from vendor bill and reset to draft."""
@@ -171,38 +154,46 @@ class StockLandedCost(models.Model):
     def _revert_landed_cost_entries(self):
         """Revert all entries created by a landed cost.
 
-        Order matters:
-        1. Revert average cost price (product.standard_price)
-        2. Create reversal JE for the original account_move
-        3. Delete SVL layers created by LC + recompute parent chain
+        Order:
+        1. Revert average cost price
+        2. Create reversal JE + delete original JE
+        3. Delete SVL layers + recompute parent chain
         4. Remove vendor bill landed cost lines
-        5. Keep valuation_adjustment_lines for re-validate reference
+        5. Keep valuation_adjustment_lines — needed for re-validate
+        6. Reset state to draft so user can validate again
         """
         self.ensure_one()
 
         # 1. Revert average cost price
         self._revert_average_cost()
 
-        # 2. Create reversal journal entry for original JE
+        # 2. Create reversal JE + delete original
         self._create_reversal_journal_entry()
 
-        # 3. Delete SVL layers + recompute parent remaining_qty
+        # 3. Delete SVL layers + recompute parent
         self._unlink_svl_layers()
 
-        # 4. Remove vendor bill landed cost lines
+        # 4. Remove vendor bill LC lines
         self._revert_vendor_bill_lines()
 
+        # 5. valuation_adjustment_lines kept — user can re-validate
+        # Clear former_cost and additional_landed_cost so Odoo recalculates
+        self.valuation_adjustment_lines.write({
+            'former_cost': 0.0,
+            'additional_landed_cost': 0.0,
+        })
+
     def action_landed_cost_cancel(self):
-        """Cancel landed cost → state = cancelled."""
+        """Cancel landed cost → reset to draft for re-validation."""
         for rec in self:
             rec._revert_landed_cost_entries()
-            rec.write({'state': 'cancel'})
+            rec.write({'state': 'draft', 'is_cancel': False})
 
     def action_landed_cost_reset_and_cancel(self):
-        """Cancel landed cost → state = draft (reset)."""
+        """Cancel landed cost → reset to draft."""
         for rec in self:
             rec._revert_landed_cost_entries()
-            rec.write({'state': 'draft'})
+            rec.write({'state': 'draft', 'is_cancel': False})
 
     def action_landed_cost_cancel_and_delete(self):
         """Cancel and delete the landed cost record."""
@@ -219,7 +210,8 @@ class StockLandedCost(models.Model):
             'cancel_landed_cost_odoo.land_cost_cancel_modes')
 
         if landed_mode == 'cancel':
-            self.write({'state': 'cancel', 'is_cancel': True})
+            # Reset to draft so user can re-validate
+            self.write({'state': 'draft', 'is_cancel': False})
         elif landed_mode == 'cancel_draft':
             self.write({'state': 'draft', 'is_cancel': False})
         elif landed_mode == 'cancel_delete':
@@ -231,4 +223,3 @@ class StockLandedCost(models.Model):
                 'view_mode': 'tree,form',
                 'target': 'current',
             }
-
