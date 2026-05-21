@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2
       - id: detect
         run: |
           CHANGED=$(git diff --name-only HEAD~1 HEAD | grep -oP '^[a-z_]+(?=/)' | sort -u | tr '\n' ' ')
@@ -25,8 +25,12 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - name: Install lint tools
-        run: pip3 install pylint pylint-odoo 2>/dev/null || true
+      - name: Cache lint tools
+        id: cache-pip
+        run: |
+          if ! command -v pylint &> /dev/null; then
+            pip3 install pylint pylint-odoo 2>/dev/null || true
+          fi
       - name: Lint changed modules
         run: |
           for mod in ${{ needs.detect-changes.outputs.modules }}; do
@@ -41,18 +45,23 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run Tests in Isolated Container
         run: |
+          # Create minimal config that points to localhost
+          cat > /tmp/odoo_test.conf << 'EOF'
+          [options]
+          db_host = localhost
+          db_port = 5432
+          db_user = odoo
+          db_password = odoo
+          addons_path = /mnt/extra-addons
+          EOF
           for mod in ${{ needs.detect-changes.outputs.modules }}; do
             echo "=== Testing $mod ==="
             docker run --rm \
               --network=host \
               -v ${{ github.workspace }}/${mod}:/mnt/extra-addons/${mod} \
+              -v /tmp/odoo_test.conf:/etc/odoo/odoo.conf:ro \
               my-odoo:17 \
-              --config /dev/null \
               -d MOG_DEV \
-              --db_host=localhost \
-              --db_user=odoo \
-              --db_password=odoo \
-              --addons-path=/mnt/extra-addons \
               -u ${mod} \
               --test-enable \
               --stop-after-init \
