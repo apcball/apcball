@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models, _
-from odoo.tools.float_utils import float_is_zero
+from odoo.tools.float_utils import float_is_zero, float_compare
 from collections import defaultdict
 from odoo.exceptions import UserError
 
@@ -48,8 +48,7 @@ class StockLandedCost(models.Model):
     def _create_reversal_journal_entry(self):
         """Create a reversal journal entry that reverses the original JE.
 
-        Instead of deleting the original JE, we create a reversal entry
-        so the accounting remains correct and auditable.
+        Creates reversal (flip debit/credit) and resets original JE to draft.
         """
         self.ensure_one()
 
@@ -58,15 +57,14 @@ class StockLandedCost(models.Model):
 
         original_move = self.account_move_id
 
-        # Build reversal move lines (flip debit/credit)
         reversal_lines = []
         for line in original_move.line_ids:
             reversal_lines.append((0, 0, {
                 'name': _('Reversal of: %s') % line.name,
                 'account_id': line.account_id.id,
                 'partner_id': line.partner_id.id,
-                'debit': line.credit,  # flip
-                'credit': line.debit,  # flip
+                'debit': line.credit,
+                'credit': line.debit,
                 'quantity': line.quantity,
                 'product_id': line.product_id.id,
                 'product_uom_id': line.product_uom_id.id,
@@ -90,80 +88,74 @@ class StockLandedCost(models.Model):
 
         return reversal_move
 
-    def _revert_svl_layers(self):
-        """Revert stock valuation layers by creating negative SVL entries.
+    def _unlink_svl_layers(self):
+        """Remove SVL layers created by this landed cost.
 
-        For real_time valuation products, also creates proper JE.
+        Instead of creating negative SVL (which doesn't update remaining_qty chain),
+        we directly delete the LC SVL layers and recompute parent chain.
+
+        This is the correct approach because:
+        - LC SVL has stock_valuation_layer_id pointing to parent move SVL
+        - Deleting LC SVL will allow parent SVL remaining_qty to be correct
+        - Odoo will recompute the chain automatically
         """
         self.ensure_one()
 
-        for layer in self.stock_valuation_layer_ids.filtered(lambda l: l.value):
-            product = layer.product_id
-            svl_vals = {
-                'product_id': layer.product_id.id,
-                'company_id': layer.company_id.id,
-                'quantity': -(layer.quantity or 0),
-                'remaining_qty': -(layer.remaining_qty or 0),
-                'unit_cost': layer.unit_cost,
-                'value': -layer.value,
-                'description': _('Reversal of Landed Cost: %s') % self.name,
-                'stock_valuation_layer_id': layer.id,
-                'stock_landed_cost_id': self.id,
-            }
+        # Delete SVL layers in reverse order (newest first)
+        svl_layers = self.stock_valuation_layer_ids.sorted(key=lambda l: -l.id)
+        for layer in svl_layers:
+            # Delete linked account move first if exists
+            if layer.account_move_id:
+                if layer.account_move_id.state == 'posted':
+                    layer.account_move_id.button_draft()
+                layer.account_move_id.unlink()
 
-            if product.valuation != 'real_time':
-                # Manual valuation — just create SVL, no JE needed
-                self.env['stock.valuation.layer'].create(svl_vals)
-            else:
-                # Real time valuation — create SVL + JE
-                svl = self.env['stock.valuation.layer'].create(svl_vals)
-                self._create_svl_reversal_move(svl, layer)
+            # Remember parent layer to recompute remaining_qty later
+            parent_layer = layer.stock_valuation_layer_id
 
-    def _create_svl_reversal_move(self, svl, original_layer):
-        """Create account move for SVL reversal (real_time valuation)."""
-        product = svl.product_id
-        if product.valuation != 'real_time':
+            # Delete the SVL
+            layer.sudo().unlink()
+
+        # Recompute remaining_qty for affected parent layers
+        self._recompute_parent_remaining_qty()
+
+    def _recompute_parent_remaining_qty(self):
+        """Recompute remaining_qty for parent SVL layers affected by this LC.
+
+        After deleting LC SVL, the parent move SVL's remaining_qty
+        needs to be recalculated based on its remaining child SVLs.
+        """
+        self.ensure_one()
+
+        # Find all move SVLs that were referenced by this LC's valuation lines
+        parent_layer_ids = set()
+        for line in self.valuation_adjustment_lines.filtered(lambda l: l.move_id):
+            for svl in line.move_id.stock_valuation_layer_ids:
+                parent_layer_ids.add(svl.id)
+
+        if not parent_layer_ids:
             return
 
-        valuation_account = product.categ_id.property_stock_valuation_account_id
-        expense_account = product.categ_id.property_stock_account_output_categ_id \
-            or product.categ_id.property_account_expense_categ_id
+        parent_layers = self.env['stock.valuation.layer'].browse(parent_layer_ids)
+        for parent in parent_layers:
+            # Sum remaining_qty of all child SVLs
+            child_layers = self.env['stock.valuation.layer'].search([
+                ('stock_valuation_layer_id', '=', parent.id),
+            ])
+            child_remaining = sum(child_layers.mapped('remaining_qty'))
 
-        if not valuation_account or not expense_account:
-            return
+            # parent remaining_qty = parent quantity - sum of child outgoing quantities
+            # But LC SVL is now deleted, so remaining_qty should increase
+            # Recalculate: remaining = quantity - (quantity consumed by children)
+            outgoing_qty = parent.quantity - child_remaining
+            new_remaining = parent.quantity - outgoing_qty
 
-        journal = product.categ_id.property_stock_journal \
-            or self.env['account.move'].with_company(self.company_id)._get_default_journal()
-
-        amount = abs(svl.value)
-        move = self.env['account.move'].create({
-            'journal_id': journal.id,
-            'date': fields.Date.today(),
-            'ref': _('Reversal of Landed Cost SVL: %s') % self.name,
-            'move_type': 'entry',
-            'line_ids': [
-                (0, 0, {
-                    'name': _('Reversal Landed Cost: %s') % product.display_name,
-                    'account_id': valuation_account.id,
-                    'product_id': product.id,
-                    'quantity': abs(svl.quantity) if svl.quantity else 1,
-                    'product_uom_id': product.uom_id.id,
-                    'debit': 0,
-                    'credit': amount,
-                }),
-                (0, 0, {
-                    'name': _('Reversal Landed Cost: %s') % product.display_name,
-                    'account_id': expense_account.id,
-                    'product_id': product.id,
-                    'quantity': abs(svl.quantity) if svl.quantity else 1,
-                    'product_uom_id': product.uom_id.id,
-                    'debit': amount,
-                    'credit': 0,
-                }),
-            ],
-        })
-        move.action_post()
-        svl.account_move_id = move
+            # Only update if different
+            if float_compare(
+                new_remaining, parent.remaining_qty,
+                precision_rounding=parent.product_id.uom_id.rounding or 0.01
+            ) != 0:
+                parent.sudo().remaining_qty = new_remaining
 
     def _revert_vendor_bill_lines(self):
         """Remove landed cost lines from vendor bill and reset to draft."""
@@ -182,9 +174,9 @@ class StockLandedCost(models.Model):
         Order matters:
         1. Revert average cost price (product.standard_price)
         2. Create reversal JE for the original account_move
-        3. Create reversal SVL + JE for each valuation layer
+        3. Delete SVL layers created by LC + recompute parent chain
         4. Remove vendor bill landed cost lines
-        5. DO NOT delete valuation_adjustment_lines — keep for audit & re-validate
+        5. Keep valuation_adjustment_lines for re-validate reference
         """
         self.ensure_one()
 
@@ -194,14 +186,11 @@ class StockLandedCost(models.Model):
         # 2. Create reversal journal entry for original JE
         self._create_reversal_journal_entry()
 
-        # 3. Revert SVL layers with proper accounting
-        self._revert_svl_layers()
+        # 3. Delete SVL layers + recompute parent remaining_qty
+        self._unlink_svl_layers()
 
         # 4. Remove vendor bill landed cost lines
         self._revert_vendor_bill_lines()
-
-        # 5. Keep valuation_adjustment_lines for reference
-        # (needed if user wants to re-validate the landed cost)
 
     def action_landed_cost_cancel(self):
         """Cancel landed cost → state = cancelled."""
@@ -242,3 +231,4 @@ class StockLandedCost(models.Model):
                 'view_mode': 'tree,form',
                 'target': 'current',
             }
+
