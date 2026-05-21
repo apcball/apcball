@@ -53,7 +53,7 @@ jobs:
           db_host = ${PG_HOST}
           db_port = 5432
           db_user = odoo
-          db_password = odoo
+          db_password = odoo_password_placeholder
           addons_path = /mnt/extra-addons
           EOF
           for mod in ${{ needs.detect-changes.outputs.modules }}; do
