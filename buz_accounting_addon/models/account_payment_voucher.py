@@ -50,6 +50,11 @@ class AccountPaymentVoucher(models.Model):
         currency_field="currency_id",
         help="Optional bank fee deducted by the bank."
     )
+    other_income_dis = fields.Monetary(
+        string="Other Income",
+        currency_field="currency_id",
+        help="Other income deducted from disbursement."
+    )
     check_number = fields.Char(string="Check Number", tracking=True)
     check_date = fields.Date(string="Check Date", tracking=True)
     check_pay_to = fields.Char(string="Pay to in name of", tracking=True)
@@ -59,6 +64,7 @@ class AccountPaymentVoucher(models.Model):
     amount_total_wht = fields.Monetary(string="Total WHT", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_net = fields.Monetary(string="Total Net", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_bank_fee = fields.Monetary(string="Total Bank Fee", currency_field="currency_id", compute="_compute_amount_totals", store=True)
+    amount_total_other_income = fields.Monetary(string="Total Other Income", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     
     # Payment status based on amount paid
     payment_state = fields.Selection([
@@ -97,13 +103,14 @@ class AccountPaymentVoucher(models.Model):
             vals['name'] = self.env['ir.sequence'].next_by_code('buz.account.payment.voucher') or '/'
         return super().write(vals)
 
-    @api.depends("line_ids.amount_to_pay_gross", "line_ids.wht_amount", "bank_free_dis")
+    @api.depends("line_ids.amount_to_pay_gross", "line_ids.wht_amount", "bank_free_dis", "other_income_dis")
     def _compute_amount_totals(self):
         for voucher in self:
             voucher.amount_total_gross = sum(line.amount_to_pay_gross for line in voucher.line_ids)
             voucher.amount_total_wht = sum(line.wht_amount for line in voucher.line_ids)
             voucher.amount_total_net = sum(line.amount_to_pay_net for line in voucher.line_ids)
             voucher.amount_total_bank_fee = voucher.bank_free_dis or 0.0
+            voucher.amount_total_other_income = voucher.other_income_dis or 0.0
 
     @api.depends('amount_total_net', 'line_ids.payment_state')
     def _compute_payment_state(self):
@@ -547,7 +554,8 @@ class AccountPaymentVoucher(models.Model):
         total_wht = sum(line.wht_amount for line in self.line_ids)
         total_net = sum(line.amount_to_pay_net for line in self.line_ids)
         bank_fee = self.bank_free_dis or 0.0
-        total_disbursement = total_net + bank_fee
+        other_income = self.other_income_dis or 0.0
+        total_disbursement = total_net + bank_fee - other_income
 
         # 1. Debit Line (Payable) - Aggregated
         if total_gross > 0:
@@ -621,22 +629,81 @@ class AccountPaymentVoucher(models.Model):
                 'credit': 0.0,
             })
 
-        # 4. Credit Line (Bank/Cash)
-        bank_journal = self.destination_journal_id
-        if bank_journal:
-            # Use default account of the journal
-            bank_account = bank_journal.default_account_id
-            if not bank_account: # Try to find from inbound/outbound payment method lines if complex
-                 bank_account = bank_journal.outbound_payment_method_line_ids[:1].payment_account_id
-            
+        # 3.5 Credit Line (Other Income — reduces disbursement)
+        if other_income > 0:
+            other_income_account = self.env['account.account'].search([
+                ('code', 'in', ['423000', '42300']),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            if not other_income_account:
+                other_income_account = self.env['account.account'].search([
+                    ('name', 'ilike', 'รายได้อื่น'),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+            if not other_income_account:
+                other_income_account = self.env['account.account'].search([
+                    ('account_type', '=', 'income'),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+
             lines.append({
-                'code': bank_account.code if bank_account else '???',
-                'name': bank_account.name if bank_account else bank_journal.name,
+                'code': other_income_account.code if other_income_account else '423000',
+                'name': other_income_account.name if other_income_account else _('รายได้อื่น'),
+                'ref': voucher_name,
+                'date': date,
+                'debit': 0.0,
+                'credit': other_income,
+            })
+
+        # 4. Credit Line (Bank/Cash or Checks/Notes Payable)
+        is_check = False
+        if self.payment_type == 'check':
+            is_check = True
+        elif self.payment_method_line_id:
+            method_name = self.payment_method_line_id.name or ''
+            method_code = getattr(self.payment_method_line_id, 'code', '') or ''
+            method_pm_code = ''
+            if hasattr(self.payment_method_line_id, 'payment_method_id') and self.payment_method_line_id.payment_method_id:
+                method_pm_code = self.payment_method_line_id.payment_method_id.code or ''
+            
+            if any(term in method_name.lower() or term in method_code.lower() or term in method_pm_code.lower() for term in ['check', 'cheque']):
+                is_check = True
+
+        if is_check:
+            check_payable_account = self.env['account.account'].search([
+                ('code', '=', '211100'),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            if not check_payable_account:
+                check_payable_account = self.env['account.account'].search([
+                    ('name', 'ilike', 'ตั๋วเงินจ่าย'),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+
+            lines.append({
+                'code': check_payable_account.code if check_payable_account else '211100',
+                'name': check_payable_account.name if check_payable_account else _('ตั๋วเงินจ่าย'),
                 'ref': voucher_name,
                 'date': date,
                 'debit': 0.0,
                 'credit': total_disbursement,
             })
+        else:
+            bank_journal = self.destination_journal_id
+            if bank_journal:
+                # Use default account of the journal
+                bank_account = bank_journal.default_account_id
+                if not bank_account: # Try to find from inbound/outbound payment method lines if complex
+                     bank_account = bank_journal.outbound_payment_method_line_ids[:1].payment_account_id
+
+                lines.append({
+                    'code': bank_account.code if bank_account else '???',
+                    'name': bank_account.name if bank_account else bank_journal.name,
+                    'ref': voucher_name,
+                    'date': date,
+                    'debit': 0.0,
+                    'credit': total_disbursement,
+                })
             
         return lines
 
