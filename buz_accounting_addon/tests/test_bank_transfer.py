@@ -10,17 +10,18 @@ class TestAccountBankTransfer(common.TransactionCase):
         
         self.company = self.env.company
         
-        # Create Journals
+        # Create Journals — use unique codes to avoid collision with MOG_DEV data
+        import uuid
         self.bank_journal_1 = self.env['account.journal'].create({
-            'name': 'Bank 1',
+            'name': 'Test Bank 1',
             'type': 'bank',
-            'code': 'BNK1',
+            'code': 'TBT' + uuid.uuid4().hex[:3].upper(),
             'currency_id': self.company.currency_id.id,
         })
         self.bank_journal_2 = self.env['account.journal'].create({
-            'name': 'Bank 2',
+            'name': 'Test Bank 2',
             'type': 'bank',
-            'code': 'BNK2',
+            'code': 'TBT' + uuid.uuid4().hex[:3].upper(),
             'currency_id': self.company.currency_id.id,
         })
 
