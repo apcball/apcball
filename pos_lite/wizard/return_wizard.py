@@ -135,19 +135,16 @@ class PosLiteReturnWizard(models.TransientModel):
 
             ex_journal = exchange_order._get_default_payment_journal()
             ex_diff = exchange_order.amount_total - refund_amount
-            if ex_diff > 0:
-                # Customer pays the difference
-                self.env['pos.lite.payment'].create({
-                    'order_id': exchange_order.id,
-                    'payment_method': 'cash',
-                    'amount': ex_diff,
-                    'journal_id': ex_journal.id if ex_journal else False,
-                    'note': _('Net payment after exchange with %s') % return_order.name,
-                })
-                exchange_order.action_process_order()
-            else:
-                # Even exchange or customer gets money back (already refunded via return order)
-                exchange_order.action_process_order()
+            # Always create payment for full exchange amount so action_process_order passes.
+            # The return order already handles the refund separately.
+            self.env['pos.lite.payment'].create({
+                'order_id': exchange_order.id,
+                'payment_method': 'cash',
+                'amount': exchange_order.amount_total,
+                'journal_id': ex_journal.id if ex_journal else False,
+                'note': _('Exchange payment (diff from %s: %s)') % (return_order.name, ex_diff),
+            })
+            exchange_order.action_process_order()
 
             return {
                 'type': 'ir.actions.act_window',

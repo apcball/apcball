@@ -276,7 +276,7 @@ class TestExchangeFlow(TestReturnExchangeBase):
         self.assertTrue(exchange_order)
 
     def test_exchange_with_difference_customer_pays(self):
-        """exchange ลูกค้าต้องจ่ายเพิ่ม → wizard สร้าง payment ส่วนต่าง"""
+        """exchange ลูกค้าต้องจ่ายเพิ่ม → payment ครอบ amount_total, order done"""
         order = self._create_and_process_order([
             (self.product_a.id, 1, 100.0),  # 100
         ])
@@ -285,12 +285,12 @@ class TestExchangeFlow(TestReturnExchangeBase):
             'is_exchange': True,
         })
         wizard._onchange_order_id()
-        # Exchange product_b ราคา 150 → ต้องจ่ายเพิ่ม 50
+        # Exchange product_b ราคา 200 → ต้องจ่ายเพิ่ม 100
         exchange_line = self.env['pos.lite.return.wizard.exchange.line'].create({
             'wizard_id': wizard.id,
             'product_id': self.product_b.id,
             'qty': 1,
-            'price_unit': 150.0,
+            'price_unit': 200.0,
         })
         wizard.write({'exchange_line_ids': [(4, exchange_line.id)]})
         wizard.action_confirm()
@@ -299,6 +299,6 @@ class TestExchangeFlow(TestReturnExchangeBase):
             ('exchange_of_order_id', '=', order.id),
         ], limit=1)
         self.assertTrue(exchange_order)
-        # Note: exchange with payment difference relies on wizard paying ex_diff.
-        # If exchange amount > refund, payment covers only diff — verify exchange order exists.
         self.assertTrue(exchange_order.is_exchange)
+        self.assertEqual(exchange_order.state, 'done')
+        self.assertEqual(exchange_order.amount_total, 200.0)
