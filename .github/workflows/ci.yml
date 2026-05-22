@@ -66,6 +66,8 @@ jobs:
 
             echo "=== Testing $mod ==="
 
+            # Install missing pip packages, then run Odoo test.
+            # We override the entrypoint to install deps first.
             docker run --rm \
               --network backend \
               -e HOST=postgres \
@@ -74,14 +76,18 @@ jobs:
               -e PASSWORD=odoo_password_placeholder \
               -v /srv/docker/odoo/custom-addons:/mnt/custom-addons:ro \
               -v /srv/docker/odoo/data:/var/lib/odoo \
-              my-odoo:17 \
-              -d MOG_DEV \
-              --addons-path=/mnt/custom-addons \
-              -u "$mod" \
-              --test-enable \
-              --test-tags "/$mod" \
-              --stop-after-init \
-              --no-http
+              --entrypoint /bin/bash \
+              my-odoo:17 -c "
+                pip3 install --no-cache-dir openpyxl 2>/dev/null &&
+                /entrypoint.sh odoo \
+                  -d MOG_DEV \
+                  --addons-path=/mnt/custom-addons \
+                  -u $mod \
+                  --test-enable \
+                  --test-tags '/$mod' \
+                  --stop-after-init \
+                  --no-http
+              "
 
             EXIT_CODE=$?
             if [ $EXIT_CODE -ne 0 ]; then
