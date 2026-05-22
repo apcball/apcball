@@ -359,3 +359,4 @@ LGPL-3
 - View update: `views/pos_order_view.xml` (form & tree)
 - Report update: `report/receipt_report.xml` (แสดง address ในใบเสร็จ)
 - ถ้าไม่กรอก Delivery Address จะแสดง Customer Address แทน (fallback)
+
