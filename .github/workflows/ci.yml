@@ -55,8 +55,9 @@ jobs:
             exit 0
           fi
 
-          # Mount the full custom-addons from host so all dependencies are available.
-          # Use --network=backend to reach postgres container by DNS name.
+          # Odoo entrypoint.sh appends DB_ARGS AFTER user CLI args,
+          # and the last arg wins. So we must pass HOST/USER/PASSWORD
+          # as environment variables instead of --db_* CLI flags.
           for mod in $MODULES; do
             if [ ! -d "$mod" ]; then
               echo "=== Skip $mod (directory not found) ==="
@@ -67,14 +68,14 @@ jobs:
 
             docker run --rm \
               --network backend \
+              -e HOST=postgres \
+              -e PORT=5432 \
+              -e USER=odoo \
+              -e PASSWORD=odoo_password_placeholder \
               -v /srv/docker/odoo/custom-addons:/mnt/custom-addons:ro \
               -v /srv/docker/odoo/data:/var/lib/odoo \
               my-odoo:17 \
               -d MOG_DEV \
-              --db_host=postgres \
-              --db_port=5432 \
-              --db_user=odoo \
-              --db_password=odoo_password_placeholder \
               --addons-path=/mnt/custom-addons \
               -u "$mod" \
               --test-enable \
@@ -103,10 +104,6 @@ jobs:
               echo "=== Deploying $mod ==="
               docker cp "./$mod" odoo:/mnt/custom-addons/
               docker exec odoo odoo -d MOG_DEV \
-                --db_host=postgres \
-                --db_user=odoo \
-                --db_password=odoo_password_placeholder \
-                --addons-path=/mnt/custom-addons \
                 -u "$mod" \
                 --stop-after-init \
                 --no-http
