@@ -213,4 +213,5 @@ class TestPlanLifecycle(TransactionCase, BudgetTestMixin):
         })
         plan.invalidate_recordset(['allocated_amount', 'allocated_percentage'])
         self.assertAlmostEqual(plan.allocated_amount, 10000.0, places=2)
-        self.assertAlmostEqual(plan.allocated_percentage, 100.0, places=2)
+        # allocated_percentage is a ratio (0-1), not percentage (0-100)
+        self.assertAlmostEqual(plan.allocated_percentage, 1.0, places=2)
