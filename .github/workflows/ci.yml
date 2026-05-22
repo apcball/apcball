@@ -17,16 +17,16 @@ jobs:
           fetch-depth: 2
       - id: detect
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep -oP '^[a-z_]+(?=/)' | sort -u | tr '\n' ' ')
-          echo "modules=$CHANGED" >> $GITHUB_OUTPUT
+          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep -oP '^[a-z][a-z0-9_]+(?=/)' | sort -u | tr '\n' ' ')
+          echo "modules=$CHANGED" >> "$GITHUB_OUTPUT"
+          echo "Detected modules: $CHANGED"
 
   lint:
     needs: detect-changes
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - name: Cache lint tools
-        id: cache-pip
+      - name: Ensure lint tools
         run: |
           if ! command -v pylint &> /dev/null; then
             pip3 install pylint pylint-odoo 2>/dev/null || true
@@ -34,8 +34,12 @@ jobs:
       - name: Lint changed modules
         run: |
           for mod in ${{ needs.detect-changes.outputs.modules }}; do
-            echo "=== Linting $mod ==="
-            pylint --load-plugins=pylint_odoo $mod/ || true
+            if [ -d "$mod" ]; then
+              echo "=== Linting $mod ==="
+              pylint --load-plugins=pylint_odoo "$mod/" || true
+            else
+              echo "=== Skip lint $mod (directory not found) ==="
+            fi
           done
 
   test:
@@ -45,30 +49,45 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run Tests in Isolated Container
         run: |
-          # Get postgres container IP on backend network
-          PG_HOST=$(docker inspect postgres --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
-          echo "Postgres IP: $PG_HOST"
-          cat > /tmp/odoo_test.conf << EOF
-          [options]
-          db_host = ${PG_HOST}
-          db_port = 5432
-          db_user = odoo
-          db_password = odoo_password_placeholder
-          addons_path = /mnt/extra-addons
-          EOF
-          for mod in ${{ needs.detect-changes.outputs.modules }}; do
+          MODULES="${{ needs.detect-changes.outputs.modules }}"
+          if [ -z "$MODULES" ]; then
+            echo "No modules detected, skipping tests."
+            exit 0
+          fi
+
+          # Mount the full custom-addons from host so all dependencies are available.
+          # Use --network=backend to reach postgres container by DNS name.
+          for mod in $MODULES; do
+            if [ ! -d "$mod" ]; then
+              echo "=== Skip $mod (directory not found) ==="
+              continue
+            fi
+
             echo "=== Testing $mod ==="
+
             docker run --rm \
               --network backend \
-              -v ${{ github.workspace }}/${mod}:/mnt/extra-addons/${mod} \
-              -v /tmp/odoo_test.conf:/etc/odoo/odoo.conf:ro \
+              -v /srv/docker/odoo/custom-addons:/mnt/custom-addons:ro \
+              -v /srv/docker/odoo/data:/var/lib/odoo \
               my-odoo:17 \
-              -d MOG_TEST \
-              -u ${mod} \
+              -d MOG_DEV \
+              --db_host=postgres \
+              --db_port=5432 \
+              --db_user=odoo \
+              --db_password=odoo_password_placeholder \
+              --addons-path=/mnt/custom-addons \
+              -u "$mod" \
               --test-enable \
-              --test-tags /${mod} \
+              --test-tags "/$mod" \
               --stop-after-init \
               --no-http
+
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -ne 0 ]; then
+              echo "=== FAILED: $mod (exit $EXIT_CODE) ==="
+              exit $EXIT_CODE
+            fi
+            echo "=== PASSED: $mod ==="
           done
 
   deploy_staging:
@@ -80,10 +99,16 @@ jobs:
       - name: Deploy to Staging
         run: |
           for mod in ${{ needs.detect-changes.outputs.modules }}; do
-            echo "=== Deploying $mod ==="
-            docker cp ./$mod odoo:/mnt/extra-addons/
-            docker exec odoo odoo -d MOG_DEV \
-              -u $mod \
-              --stop-after-init \
-              --no-http
+            if [ -d "$mod" ]; then
+              echo "=== Deploying $mod ==="
+              docker cp "./$mod" odoo:/mnt/custom-addons/
+              docker exec odoo odoo -d MOG_DEV \
+                --db_host=postgres \
+                --db_user=odoo \
+                --db_password=odoo_password_placeholder \
+                --addons-path=/mnt/custom-addons \
+                -u "$mod" \
+                --stop-after-init \
+                --no-http
+            fi
           done
