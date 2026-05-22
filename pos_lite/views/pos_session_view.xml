@@ -28,6 +28,7 @@
         <field name="arch" type="xml">
             <form string="POS Lite Session">
                 <header>
+                    <button name="action_open_terminal" type="object" string="🖥 Open POS Terminal" class="oe_highlight" invisible="state != 'opened'"/>
                     <button name="action_close_session" type="object" string="Close Session" class="oe_highlight" invisible="state != 'opened'" confirm="Close this session? Pending draft orders must be processed first."/>
                     <button name="action_reopen_session" type="object" string="Reopen" invisible="state != 'closed'" groups="pos_lite.group_pos_lite_manager"/>
                     <button name="action_print_session_summary" type="object" string="Print Summary" invisible="state != 'closed'" groups="pos_lite.group_pos_lite_user"/>

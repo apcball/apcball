@@ -32,7 +32,8 @@ class PosLiteOrder(models.Model):
     customer_name = fields.Char(tracking=True)
     partner_id = fields.Many2one('res.partner', tracking=True, check_company=True)
     partner_phone = fields.Char(tracking=True)
-    partner_address = fields.Char(tracking=True)
+    partner_address = fields.Char(tracking=True, string='Customer Address')
+    delivery_address = fields.Char(tracking=True, string='Delivery Address')
     partner_tax_id = fields.Char(tracking=True)
     warehouse_id = fields.Many2one(
         'stock.warehouse', required=True,
@@ -596,6 +597,7 @@ class PosLiteOrder(models.Model):
             'partner_id': self.partner_id.id if self.partner_id else False,
             'partner_phone': self.partner_phone,
             'partner_address': self.partner_address,
+            'delivery_address': self.delivery_address,
             'partner_tax_id': self.partner_tax_id,
             'warehouse_id': self.warehouse_id.id,
             'pricelist_id': self.pricelist_id.id,

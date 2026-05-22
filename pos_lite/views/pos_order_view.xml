@@ -10,6 +10,7 @@
                 <field name="state"/>
                 <field name="channel"/>
                 <field name="partner_id"/>
+                <field name="delivery_address" optional="hide" string="Delivery"/>
                 <field name="warehouse_id"/>
                 <field name="amount_total" sum="Total"/>
                 <field name="amount_paid" sum="Paid"/>
@@ -121,7 +122,8 @@
                             <field name="customer_name" placeholder="Customer Name"/>
                             <field name="partner_id" context="{'pos_lite_partner_search': 1}" options="{'no_create_edit': False}"/>
                             <field name="partner_phone"/>
-                            <field name="partner_address"/>
+                            <field name="partner_address" string="Customer Address"/>
+                            <field name="delivery_address" string="Delivery Address" placeholder="Leave blank to use customer address"/>
                             <field name="partner_tax_id"/>
                         </group>
                         <group string="Order">

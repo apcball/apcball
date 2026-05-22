@@ -151,3 +151,12 @@ class PosLiteSession(models.Model):
     def action_print_session_summary(self):
         self.ensure_one()
         return self.env.ref('pos_lite.action_report_pos_lite_session').report_action(self)
+
+    def action_open_terminal(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_url',
+            'name': 'POS Lite Terminal',
+            'url': '/pos_lite/ui?session_id=%d' % self.id,
+            'target': 'self',
+        }

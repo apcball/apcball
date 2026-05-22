@@ -44,6 +44,7 @@ Features:
         'views/report_views.xml',
         'views/menu.xml',
         'views/pos_lite_terminal.xml',
+        'views/product_product_view.xml',
         'wizard/payment_wizard_view.xml',
         'wizard/return_wizard_view.xml',
     ],

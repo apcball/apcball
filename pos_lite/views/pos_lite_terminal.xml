@@ -223,6 +223,9 @@ body {
                 </style>
             </head>
             <body>
+                <script>
+                    const CURRENT_SESSION_ID = <t t-esc="session_id or 'null'"/>;
+                </script>
                 <div class="pos-topbar">
                     <div class="pos-topbar-left">
                         <div class="pos-topbar-brand">POS Lite</div>
@@ -440,6 +443,7 @@ async function confirmPayment() {
         partner_address: document.getElementById('custAddress').value,
         delivery_address: document.getElementById('custDelivery').value,
         channel: 'walkin',
+        session_id: CURRENT_SESSION_ID,
         line_ids: state.orderLines.map(l => [0, 0, { product_id: l.productId, qty: l.qty, price_unit: l.price, discount: 0 }]),
         payment_ids: [[0, 0, { payment_method: state.currentMethod, amount: paid, reference: document.getElementById('payReference').value, state: 'paid' }]],
     };

@@ -1,23 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Action for POS Lite Terminal -->
-    <record id="action_pos_lite_terminal" model="ir.actions.act_url">
-        <field name="name">POS Lite Terminal</field>
-        <field name="url">/pos_lite/ui</field>
-        <field name="target">self</field>
-    </record>
-
     <menuitem id="menu_pos_lite_root"
               name="POS Lite"
               sequence="60"
               web_icon="pos_lite,static/description/icon.png"
               groups="pos_lite.group_pos_lite_user"/>
-
-    <menuitem id="menu_pos_lite_terminal"
-              name="POS Lite Terminal"
-              parent="menu_pos_lite_root"
-              action="action_pos_lite_terminal"
-              sequence="5"/>
 
     <menuitem id="menu_pos_lite_orders"
               name="Orders"

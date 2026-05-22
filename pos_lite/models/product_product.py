@@ -1,9 +1,21 @@
 # -*- coding: utf-8 -*-
-from odoo import api, models
+from odoo import api, fields, models
+
+
+class ProductTemplate(models.Model):
+    _inherit = 'product.template'
+
+    can_be_pos = fields.Boolean(string='Can be POS', default=False)
 
 
 class ProductProduct(models.Model):
     _inherit = 'product.product'
+
+    can_be_pos = fields.Boolean(
+        string='Can be POS',
+        related='product_tmpl_id.can_be_pos',
+        readonly=False
+    )
 
     @api.model
     def name_search(self, name='', args=None, operator='ilike', limit=100):
