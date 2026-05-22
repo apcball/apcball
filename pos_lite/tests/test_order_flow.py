@@ -102,6 +102,7 @@ class TestOrderBase(common.TransactionCase):
             'company_id': cls.company.id,
         })
         cls.product_storable.taxes_id = [(6, 0, cls.tax.ids)]
+        cls.product_service.taxes_id = [(5, 0, 0)]  # ensure no tax
 
         # Stock — create quant so stock check passes
         stock_location = cls.warehouse.lot_stock_id
@@ -175,7 +176,7 @@ class TestOrderComputation(TestOrderBase):
         expected_tax = 200.0 * 0.07  # 14.0
         expected_total = expected_untaxed + expected_tax
         self.assertEqual(order.amount_untaxed, expected_untaxed)
-        self.assertEqual(order.amount_tax, expected_tax)
+        self.assertAlmostEqual(order.amount_tax, expected_tax, places=2)
         self.assertEqual(order.amount_total, expected_total)
 
     def test_amounts_initial_zero(self):

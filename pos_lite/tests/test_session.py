@@ -22,6 +22,7 @@ class TestSessionBase(common.TransactionCase):
             'categ_id': cls.category.id,
             'sale_ok': True,
             'list_price': 100.0,
+            'taxes_id': [(5, 0, 0)],  # no tax for predictable test amounts
         })
 
         # Partner
@@ -128,6 +129,13 @@ class TestSessionOpenClose(TestSessionBase):
             'company_id': self.company.id,
         })
         session.action_close_session()
+        # Close any other open sessions that would block reopen
+        open_sessions = self.env['pos.lite.session'].search([
+            ('company_id', '=', self.company.id),
+            ('state', '=', 'opened'),
+        ])
+        for s in open_sessions:
+            s.action_close_session()
         session.action_reopen_session()
         self.assertEqual(session.state, 'opened')
         self.assertFalse(session.date_close)
