@@ -49,10 +49,9 @@ class TestSessionBase(common.TransactionCase):
             'company_id': cls.company.id,
         })
 
-        # Employee
+        # Employee (no user_id to avoid UniqueViolation on hr_employee_user_uniq)
         cls.employee = cls.env['hr.employee'].create({
             'name': 'Test Emp',
-            'user_id': cls.env.ref('base.user_admin').id,
             'company_id': cls.company.id,
         })
 

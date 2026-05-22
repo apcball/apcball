@@ -72,10 +72,9 @@ class TestOrderBase(common.TransactionCase):
             'company_id': cls.company.id,
         })
 
-        # Employee — linked to admin user (needed for session auto-assignment)
+        # Employee (no user_id to avoid UniqueViolation on hr_employee_user_uniq)
         cls.employee = cls.env['hr.employee'].create({
             'name': 'Test Employee',
-            'user_id': cls.env.ref('base.user_admin').id,
             'company_id': cls.company.id,
         })
 
