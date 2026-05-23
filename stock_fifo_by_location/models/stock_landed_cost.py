@@ -333,7 +333,10 @@ class StockLandedCost(models.Model):
             ], limit=1)
 
             if existing:
-                existing.landed_cost_value = allocated_value
+                existing.landed_cost_value = float_round(
+                    existing.landed_cost_value + allocated_value,
+                    precision_digits=precision,
+                )
                 existing.quantity = target_qty
             else:
                 lc_location_model.create({
