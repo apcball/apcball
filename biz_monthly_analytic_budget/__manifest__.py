@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Monthly Analytic Budget (Mogen)',
-    'version': '17.0.2.0.0',
+    'version': '17.0.2.1.0',
     'category': 'Purchase',
     'summary': 'Multi-dimensional monthly budget control based on analytic accounts, department, project, and category',
     'description': """

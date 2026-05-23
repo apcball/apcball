@@ -8,5 +8,13 @@
             <field name="padding">4</field>
             <field name="company_id" eval="False"/>
         </record>
+    <!-- Sequence for Approval Requests -->
+        <record id="seq_monthly_budget_approval_request" model="ir.sequence">
+            <field name="name">Monthly Budget Approval Request</field>
+            <field name="code">buz.monthly.budget.approval.request</field>
+            <field name="prefix">AR/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>

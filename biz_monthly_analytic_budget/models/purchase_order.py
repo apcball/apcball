@@ -534,8 +534,14 @@ class PurchaseOrder(models.Model):
         primary_plan = get_first_plan_from_groups(grouped_totals)
 
         for req in requests:
+            if req.document_type == 'pr':
+                # Use PR's own total when recomputing a PR-linked request
+                pr = req.ref_pr_id
+                pr_amount = sum(pr.requisition_order_ids.mapped('price_subtotal')) if pr else 0.0
+            else:
+                pr_amount = po_amount
             update_vals = {
-                'amount_requested': po_amount if req.document_type == 'po' else po_amount,
+                'amount_requested': pr_amount,
                 'amount_analytic': analytic_amount,
                 'amount_used': used,
                 'amount_reserved': reserved,
