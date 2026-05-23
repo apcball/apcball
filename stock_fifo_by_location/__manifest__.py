@@ -1,6 +1,6 @@
 {
-    'name': 'Buz Stock FIFO by Warehouse',
-    'version': '17.0.1.2.6',
+    'name': 'Stock FIFO by Warehouse (Transfer ≠ Consumption)',
+    'version': '17.0.2.0.0',
     'category': 'Inventory/Stock',
     'author': 'APC Ball',
     'website': 'https://github.com/apcball/apcball',
@@ -16,6 +16,7 @@
         'data/edge_case_config.xml',
         'data/logging_config.xml',
         'data/concurrency_config.xml',
+        'views/stock_valuation_layer_views.xml',
         'views/stock_quant_views.xml',
         'wizard/stock_valuation_recalculate_wizard_views.xml',
         'wizard/stock_shortage_resolution_wizard_views.xml',
@@ -28,60 +29,62 @@
         'python': [],
     },
     'description': '''
-Stock FIFO by Warehouse with Landed Cost Support
-================================================
+Stock FIFO by Warehouse — Transfer ≠ Consumption
+==================================================
 
-This module extends Odoo 17's stock valuation system to support FIFO (First-In-First-Out)
-cost accounting on a per-warehouse basis. Each stock valuation layer now includes a warehouse
-reference, ensuring that COGS calculations and inventory valuations are correct when managing
-inventory across multiple warehouses.
+Core Principle: Internal Transfer is NOT consumption.
+It only changes the physical location/warehouse of inventory.
+The original cost layer (origin) is NOT consumed until a real external out occurs.
 
-Core Features:
-- Adds warehouse_id field to stock.valuation.layer for per-warehouse FIFO tracking
-- Automatic population of warehouse_id when receiving/transferring/delivering inventory
-- Independent FIFO queue for each warehouse - no mixing between warehouses
-- Intra-warehouse moves properly tracked with warehouse_id (no skipping)
-- Inter-warehouse transfers properly track cost flow between warehouses
-- FIX v17.0.1.1.0: Enhanced validation and landed cost tracking
-  * Added warehouse consistency constraint
-  * Return moves now include landed costs
-  * Improved landed cost transfer validation
-- Shortage handling with configurable fallback policy
-- Migration script for existing valuation layers
-- Full integration with Odoo 17 stock and stock_account modules
+Architecture: Dual-Quantity Tracking
+-------------------------------------
+Each SVL tracks TWO quantities:
 
-NEW: Landed Cost Support by Warehouse
-- Per-warehouse landed cost tracking with stock.valuation.layer.landed.cost model
-- Automatic landed cost allocation during inter-warehouse transfers
-- Proportional landed cost distribution based on quantity transferred
-- Audit trail for all cost allocations via stock.landed.cost.allocation
-- Service method: calculate_fifo_cost_with_landed_cost() for accurate COGS
-- Full integration with stock_landed_costs module
-- Enhanced validation to prevent negative values
-- Comprehensive landed cost tests
+1. remaining_qty (Odoo standard) — controls valuation balance
+   - Decreases on BOTH transfer and external out
+   - Prevents double-counting in Odoo's inventory valuation report
+   - sum(remaining_value) = correct total valuation (never doubled)
 
-Multi-Warehouse Scenarios:
-- Inter-warehouse transfers automatically allocate landed costs
-- Transit locations fully supported for multi-warehouse transfers
-- Intra-warehouse moves properly tracked in warehouse FIFO queue
-- Return moves preserve original cost including landed costs
-- Shortage handling with optional fallback to other warehouses
-- Cascading transfers maintain accurate landed cost tracking
-- Comprehensive unit and integration tests
+2. origin_remaining_qty (cost origin) — tracks real consumption
+   - Decreases ONLY on external out (sale, scrap, production consume, inventory loss)
+   - Internal transfers do NOT reduce this
+   - Used for landed cost resolution and audit trail
+   - Transfer ≠ Consumption: this is the field that proves it
 
-Key Benefits:
-✓ True warehouse-level FIFO: Each warehouse maintains its own independent FIFO queue
-✓ Cost propagation: Accurate cost transfer when moving between warehouses
-✓ Landed cost accuracy: 100% accurate landed cost tracking per warehouse
-✓ Data integrity: Validation ensures all layers have proper warehouse assignment
-✓ Return accuracy: Returns use original cost including landed costs
-✓ Full Balance Zero: Return full quantity results in balance = 0
+Layer Types:
+- Cost Layer: Created by Receipt (PO, production). The "cost mother".
+- Position Layer: Created by internal transfer. Links back to origin via origin_valuation_layer_id.
+
+Transfer Flow:
+  Receipt → WH1 Cost Layer A (remaining_qty=100, origin_remaining_qty=100)
+  Transfer WH1→WH2:
+    Layer A: remaining_qty -= 100, origin_remaining_qty stays 100
+    Layer B (position): remaining_qty = 100, origin_valuation_layer_id = A
+  Valuation = sum(remaining_value) = A.remaining_value + B.remaining_value → no doubling
+
+External Out (Sale from WH2):
+  Consume Layer B → reduce B.remaining_qty
+  Trace to origin A → reduce A.origin_remaining_qty
+
+Landed Cost Flow:
+  Landed cost → find origin Layer A (via origin_valuation_layer_id chain)
+  Even if goods moved to WH2/WH3, Layer A is still the cost origin
+  Apply adjustment → distribute to current positions
 
 Requirements:
 - Odoo 17 with stock and stock_account modules installed
 - stock_landed_costs module for landed cost functionality
 
 Version History:
+- 17.0.2.0.0: TRANSFER ≠ CONSUMPTION ARCHITECTURE
+  * Dual-quantity tracking: remaining_qty (valuation) vs origin_remaining_qty (cost origin)
+  * Internal transfers reduce remaining_qty but NOT origin_remaining_qty
+  * External out reduces BOTH remaining_qty and origin_remaining_qty
+  * Position layers link to cost origin via origin_valuation_layer_id
+  * Landed cost resolves through origin chain regardless of current warehouse
+  * No valuation doubling: sum(remaining_value) remains correct
+  * Key benefit: Landed cost retroactively applied after transfers still works
+- 17.0.1.2.8: Previous stable version
 - 17.0.1.2.6: CRITICAL FIX - Override product._get_fifo_candidates()
   * Root cause found: Odoo calls product._run_fifo() → product._get_fifo_candidates()
   * Our stock.valuation.layer._run_fifo() override was NEVER called!

@@ -26,8 +26,83 @@ class StockValuationLayer(models.Model):
         'stock.warehouse',
         string='Warehouse',
         index=True,
+        store=True,
+        readonly=False,
         help='The warehouse where this layer applies. Used for per-warehouse FIFO tracking.',
         ondelete='restrict',
+    )
+
+    origin_valuation_layer_id = fields.Many2one(
+        'stock.valuation.layer',
+        string='Origin Cost Layer',
+        index=True,
+        ondelete='restrict',
+        help='Original receipt/cost layer that this warehouse position comes from.',
+    )
+
+    def _compute_warehouse_id(self):
+        """
+        Override Odoo core's compute method.
+        
+        Odoo core has warehouse_id as a non-stored compute field.
+        We override it to preserve our stored value instead of recomputing.
+        Only compute for layers that don't already have warehouse_id set.
+        """
+        for svl in self:
+            if svl.warehouse_id:
+                # Already set (from create vals or previous compute) — keep it
+                continue
+            # Fallback: try to derive from stock_move_id like Odoo core does
+            if svl.stock_move_id:
+                move = svl.stock_move_id
+                if move.location_id.usage == 'internal' and move.location_id.warehouse_id:
+                    svl.warehouse_id = move.location_id.warehouse_id.id
+                elif move.location_dest_id.warehouse_id:
+                    svl.warehouse_id = move.location_dest_id.warehouse_id.id
+
+    position_layer_ids = fields.One2many(
+        'stock.valuation.layer',
+        'origin_valuation_layer_id',
+        string='Warehouse Position Layers',
+        help='Warehouse-specific position layers derived from this origin cost layer.',
+    )
+
+    source_warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Source Warehouse',
+        help='Warehouse where this position originated before the current transfer.',
+    )
+
+    current_warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Current Warehouse',
+        related='warehouse_id',
+        store=True,
+        readonly=True,
+    )
+
+    transfer_move_id = fields.Many2one(
+        'stock.move',
+        string='Transfer Move',
+        help='Internal transfer move that created this warehouse position layer.',
+    )
+
+    is_position_layer = fields.Boolean(
+        string='Is Warehouse Position Layer',
+        default=False,
+        help='Technical flag: true for layers created to represent warehouse position only.',
+    )
+
+    origin_remaining_qty = fields.Float(
+        string='Origin Remaining Qty',
+        digits='Product Unit of Measure',
+        help='Remaining quantity on the original cost layer. Internal transfers do not reduce this.',
+    )
+
+    origin_remaining_value = fields.Float(
+        string='Origin Remaining Value',
+        digits='Product Price',
+        help='Remaining value on the original cost layer. Internal transfers do not reduce this.',
     )
     
     # SQL Constraints for performance
@@ -69,6 +144,27 @@ class StockValuationLayer(models.Model):
         compute='_compute_total_landed_cost',
         digits='Product Price',
         help='Total landed cost across all warehouses for this layer.'
+    )
+
+    position_qty_available = fields.Float(
+        string='Position Qty Available',
+        compute='_compute_position_valuation_fields',
+        digits='Product Unit of Measure',
+        help='Available quantity at the current warehouse position.',
+    )
+
+    current_origin_unit_cost = fields.Float(
+        string='Current Origin Unit Cost',
+        compute='_compute_position_valuation_fields',
+        digits='Product Price',
+        help='Current unit cost from the origin layer including landed cost updates.',
+    )
+
+    position_valuation = fields.Float(
+        string='Position Valuation',
+        compute='_compute_position_valuation_fields',
+        digits='Product Price',
+        help='Warehouse valuation = position qty x current origin unit cost.',
     )
     
     @api.model
@@ -130,6 +226,64 @@ class StockValuationLayer(models.Model):
                                 f"({move.location_dest_id.warehouse_id.name}) from dest location (fallback)"
                             )
         
+        # Priority 2.5: Fallback for inventory adjustment locations (usage='inventory')
+        # When _apply_inventory() creates moves, one side may be a Virtual Location
+        # (usage='inventory') which doesn't have a warehouse_id.
+        # We need to derive warehouse from the OTHER side (internal location).
+        if not vals.get('warehouse_id') and vals.get('stock_move_id'):
+            move = self.env['stock.move'].browse(vals['stock_move_id'])
+            if move:
+                source_usage = move.location_id.usage if move.location_id else None
+                dest_usage = move.location_dest_id.usage if move.location_dest_id else None
+                
+                # Internal → Inventory (stock decrease via adjustment)
+                if source_usage == 'internal' and dest_usage == 'inventory':
+                    if move.location_id.warehouse_id:
+                        vals['warehouse_id'] = move.location_id.warehouse_id.id
+                        _create_logger.info(
+                            f"📍 Inventory adj (decrease): set warehouse_id={vals['warehouse_id']} "
+                            f"({move.location_id.warehouse_id.name}) from source internal location"
+                        )
+                # Inventory → Internal (stock increase via adjustment)
+                elif source_usage == 'inventory' and dest_usage == 'internal':
+                    if move.location_dest_id.warehouse_id:
+                        vals['warehouse_id'] = move.location_dest_id.warehouse_id.id
+                        _create_logger.info(
+                            f"📍 Inventory adj (increase): set warehouse_id={vals['warehouse_id']} "
+                            f"({move.location_dest_id.warehouse_id.name}) from dest internal location"
+                        )
+                # 🔴 FIX: Transit → Inventory (stock decrease at transit via adjustment)
+                elif source_usage == 'transit' and dest_usage == 'inventory':
+                    if move.location_id.warehouse_id:
+                        vals['warehouse_id'] = move.location_id.warehouse_id.id
+                        _create_logger.info(
+                            f"📍 Inventory adj transit (decrease): set warehouse_id={vals['warehouse_id']} "
+                            f"({move.location_id.warehouse_id.name}) from source transit location"
+                        )
+                # 🔴 FIX: Inventory → Transit (stock increase at transit via adjustment)
+                elif source_usage == 'inventory' and dest_usage == 'transit':
+                    if move.location_dest_id.warehouse_id:
+                        vals['warehouse_id'] = move.location_dest_id.warehouse_id.id
+                        _create_logger.info(
+                            f"📍 Inventory adj transit (increase): set warehouse_id={vals['warehouse_id']} "
+                            f"({move.location_dest_id.warehouse_id.name}) from dest transit location"
+                        )
+                # Production → Internal or Internal → Production
+                elif source_usage == 'production' and dest_usage == 'internal':
+                    if move.location_dest_id.warehouse_id:
+                        vals['warehouse_id'] = move.location_dest_id.warehouse_id.id
+                        _create_logger.info(
+                            f"📍 Production (incoming): set warehouse_id={vals['warehouse_id']} "
+                            f"({move.location_dest_id.warehouse_id.name}) from dest internal location"
+                        )
+                elif source_usage == 'internal' and dest_usage == 'production':
+                    if move.location_id.warehouse_id:
+                        vals['warehouse_id'] = move.location_id.warehouse_id.id
+                        _create_logger.info(
+                            f"📍 Production (consumption): set warehouse_id={vals['warehouse_id']} "
+                            f"({move.location_id.warehouse_id.name}) from source internal location"
+                        )
+
         # Priority 3: Try to get from move_line through stock_move
         if not vals.get('warehouse_id') and vals.get('stock_move_id'):
             move = self.env['stock.move'].browse(vals['stock_move_id'])
@@ -144,6 +298,13 @@ class StockValuationLayer(models.Model):
                         vals['warehouse_id'] = move_line.location_id.warehouse_id.id
                         break
         
+        if vals.get('quantity', 0) > 0 and not vals.get('origin_valuation_layer_id'):
+            vals.setdefault('origin_remaining_qty', vals.get('quantity', 0.0))
+            vals.setdefault('origin_remaining_value', vals.get('value', 0.0))
+        else:
+            vals.setdefault('origin_remaining_qty', 0.0)
+            vals.setdefault('origin_remaining_value', 0.0)
+
         if vals.get('warehouse_id'):
             wh = self.env['stock.warehouse'].browse(vals['warehouse_id'])
             _create_logger.info(
@@ -239,7 +400,7 @@ class StockValuationLayer(models.Model):
             company_id = self.env.company.id
         
         layers = self._get_fifo_queue(product_id, warehouse_id, company_id)
-        return sum(layer.quantity for layer in layers)
+        return sum(layer.remaining_qty for layer in layers)
     
     @api.depends('landed_cost_ids.landed_cost_value')
     def _compute_total_landed_cost(self):
@@ -248,6 +409,28 @@ class StockValuationLayer(models.Model):
         for layer in self:
             total = sum(layer.landed_cost_ids.mapped('landed_cost_value'))
             layer.total_landed_cost = float_round(total, precision_digits=precision)
+
+    @api.depends(
+        'remaining_qty',
+        'origin_valuation_layer_id.origin_remaining_qty',
+        'origin_valuation_layer_id.origin_remaining_value',
+        'origin_remaining_qty',
+        'origin_remaining_value',
+    )
+    def _compute_position_valuation_fields(self):
+        precision = self.env['decimal.precision'].precision_get('Product Price')
+        for layer in self:
+            origin_layer = layer.origin_valuation_layer_id or layer
+            qty_available = layer.remaining_qty if layer.quantity > 0 else 0.0
+            origin_qty = origin_layer.origin_remaining_qty or 0.0
+            origin_value = origin_layer.origin_remaining_value or 0.0
+            if origin_qty > 0:
+                unit_cost = float_round(origin_value / origin_qty, precision_digits=precision)
+            else:
+                unit_cost = float_round(origin_layer.unit_cost or 0.0, precision_digits=precision)
+            layer.position_qty_available = qty_available
+            layer.current_origin_unit_cost = unit_cost
+            layer.position_valuation = float_round(qty_available * unit_cost, precision_digits=precision)
     
     @api.constrains('warehouse_id', 'quantity', 'remaining_qty', 'remaining_value')
     def _check_warehouse_consistency(self):
@@ -266,10 +449,21 @@ class StockValuationLayer(models.Model):
         from odoo.exceptions import ValidationError
         import logging
         _logger = logging.getLogger(__name__)
-        
+
+        if self.env.context.get('skip_warehouse_consistency_check'):
+            return
+
         for layer in self:
             # Skip validation for layers with zero quantity (fully consumed)
             if float_compare(abs(layer.quantity), 0, precision_digits=2) == 0:
+                continue
+            
+            # Skip validation for layers created by Odoo core (no stock_move_id).
+            # When switching valuation method (e.g. manual → real_time), Odoo creates
+            # out_svl / in_svl layers directly without going through stock moves.
+            # These layers may not have warehouse_id set and are not part of our
+            # per-warehouse FIFO tracking — they are one-time adjustment layers.
+            if not layer.stock_move_id:
                 continue
             
             # Layers with quantity MUST have warehouse_id
@@ -414,31 +608,56 @@ class StockValuationLayer(models.Model):
         
         precision = self.env['decimal.precision'].precision_get('Product Price')
         return float_round(total_landed_cost, precision_digits=precision)
+
+    @api.model
+    def get_landed_cost_at_location(self, product_id, location_id, company_id=None):
+        """Backward-compatible wrapper that resolves a location to its warehouse."""
+        location = location_id
+        if isinstance(location_id, int):
+            location = self.env['stock.location'].browse(location_id)
+        warehouse = location.warehouse_id if location else False
+        if not warehouse:
+            return 0.0
+        return self.get_landed_cost_at_warehouse(product_id, warehouse, company_id)
     
     def _run_fifo(self, quantity, company):
         """
-        🔴 CRITICAL OVERRIDE: Run FIFO per warehouse instead of globally.
+        Transfer ≠ Consumption: FIFO with dual-quantity tracking.
         
-        This is the KEY fix for the valuation issue. Odoo standard _run_fifo() 
-        calculates remaining_qty by consuming from ALL warehouses together,
-        which is incorrect for per-warehouse FIFO tracking.
+        Two quantities per layer:
+        - remaining_qty (Odoo valuation): reduced on BOTH transfer and external out
+        - origin_remaining_qty (cost origin): reduced ONLY on external out
         
-        This override ensures FIFO consumption respects warehouse boundaries:
-        - Each warehouse maintains its own independent FIFO queue
-        - remaining_qty is calculated per warehouse
-        - No cross-warehouse consumption
+        Internal transfer: consumes remaining_qty but NOT origin_remaining_qty.
+        External out (sale, scrap, production): consumes BOTH.
         
-        Args:
-            quantity: float - quantity to consume (negative for outgoing)
-            company: res.company - company context
-            
-        Returns:
-            None - updates remaining_qty and remaining_value in place
+        This prevents valuation doubling while preserving cost origin for landed costs.
         """
         import logging
         _logger = logging.getLogger(__name__)
         
         self.ensure_one()
+
+        move = self.stock_move_id
+        
+        # Detect internal transfer: internal/transit → internal/transit, different warehouses
+        is_internal_transfer = bool(
+            move
+            and move.location_id
+            and move.location_dest_id
+            and move.location_id.usage in ('internal', 'transit')
+            and move.location_dest_id.usage in ('internal', 'transit')
+            and move.location_id.warehouse_id
+            and move.location_dest_id.warehouse_id
+            and move.location_id.warehouse_id.id != move.location_dest_id.warehouse_id.id
+            and not move.origin_returned_move_id
+        )
+        
+        # Returns also should NOT reduce origin_remaining_qty — they add stock back
+        is_return = bool(move and move.origin_returned_move_id)
+        
+        # Transfer ≠ Consumption: internal transfers and returns skip origin reduction
+        skip_origin_reduction = is_internal_transfer or is_return
         
         # For positive quantity (incoming), set remaining = quantity
         if quantity > 0 or float_compare(quantity, 0, precision_rounding=self.product_id.uom_id.rounding) == 0:
@@ -446,94 +665,75 @@ class StockValuationLayer(models.Model):
             self.remaining_value = self.value
             return
         
-        # Negative quantity (outgoing) - need to consume from FIFO queue
-        # CRITICAL: Only consume from the SAME warehouse
+        # Negative quantity (outgoing) - consume from FIFO queue at THIS warehouse
+        _logger.debug(
+            f"🔧 _run_fifo() Layer {self.id}: Product={self.product_id.display_name}, "
+            f"Qty={quantity}, Internal Transfer={is_internal_transfer}"
+        )
         
-        # 🔴 CRITICAL FIX v17.0.1.2.6: This method is now mostly unused
-        # since we override product._get_fifo_candidates() instead
-        # But keep for manual calls to _run_fifo() (e.g., inter-warehouse transfers)
-        
-        _logger.error(f"🔧 _run_fifo() Layer {self.id}: Product={self.product_id.display_name}, Qty={quantity}")
-        
-        # Flush and invalidate to ensure warehouse_id is current
+        # Flush to ensure warehouse_id is current
         self.flush_recordset(['warehouse_id', 'product_id', 'company_id'])
         self.invalidate_recordset(['warehouse_id', 'product_id', 'company_id'])
         
-        # Get warehouse_id - should be set by now from create()
         layer_warehouse_id = self.warehouse_id.id if self.warehouse_id else False
         
         if not layer_warehouse_id:
             _logger.error(
-                f"❌ Layer {self.id} for product {self.product_id.display_name} "
-                f"has NO warehouse_id in _run_fifo() even after flush+refresh! "
-                f"This will cause incorrect FIFO consumption. "
-                f"Falling back to standard FIFO (consuming from all warehouses)."
+                f"❌ Layer {self.id} has NO warehouse_id in _run_fifo()! "
+                f"Falling back to standard FIFO."
             )
-            return super(StockValuationLayer, self)._run_fifo(quantity, company)
+            return super()._run_fifo(quantity, company)
         
-        # 🔴 CRITICAL FIX v17.0.1.2.3: Flush pending database writes before querying
-        # This ensures we see all recently created layers (e.g., return moves)
-        # Without this, we might not see layers created in the same transaction
-        self.env['stock.valuation.layer'].flush_model(['product_id', 'warehouse_id', 'remaining_qty', 'company_id', 'create_date'])
+        # Flush pending writes so we see all recently created layers
+        self.env['stock.valuation.layer'].flush_model([
+            'product_id', 'warehouse_id', 'remaining_qty',
+            'company_id', 'create_date',
+        ])
         
-        # Get FIFO queue for this product at THIS warehouse only
+        # Search FIFO candidates at THIS warehouse only
         candidates_domain = [
             ('product_id', '=', self.product_id.id),
-            ('warehouse_id', '=', layer_warehouse_id),  # 🔴 KEY: Same warehouse only
+            ('warehouse_id', '=', layer_warehouse_id),
             ('remaining_qty', '>', 0),
             ('company_id', '=', company.id),
         ]
         
-        _logger.error(f"🔧 Step 4: Searching candidates with domain: {candidates_domain}")
-        
         candidates = self.search(candidates_domain, order='create_date, id')
         
-        # Get warehouse name for logging
         warehouse_name = self.warehouse_id.name if self.warehouse_id else 'Unknown'
-        
-        _logger.error(
-            f"🔍 _run_fifo() QUERY RESULT - Layer {self.id}: "
-            f"Product={self.product_id.display_name}, "
-            f"Warehouse={warehouse_name} (ID={layer_warehouse_id}), "
-            f"Consuming qty={abs(quantity):.2f}, "
-            f"Found {len(candidates)} candidate layers"
+        _logger.debug(
+            f"🔍 _run_fifo() Layer {self.id}: Warehouse={warehouse_name} (ID={layer_warehouse_id}), "
+            f"Consuming qty={abs(quantity)}, Found {len(candidates)} candidates, "
+            f"Internal Transfer={is_internal_transfer}"
         )
         
-        if candidates:
-            _logger.error(f"🔍 Candidate layers found:")
-            for c in candidates[:5]:  # Show first 5
-                _logger.error(f"  - Layer {c.id}: warehouse={c.warehouse_id.name if c.warehouse_id else 'None'} (ID={c.warehouse_id.id if c.warehouse_id else 'None'}), remaining={c.remaining_qty}")
-        
         qty_to_take_on_candidates = abs(quantity)
-        tmp_value = 0  # Accumulator for total value consumed
+        tmp_value = 0
         
-        # 🚀 PERFORMANCE: Collect all updates in batch for bulk write
         updates_to_write = []
         
         for candidate in candidates:
-            # How much can we take from this candidate?
             qty_taken_on_candidate = min(qty_to_take_on_candidates, candidate.remaining_qty)
-            
-            # Calculate value proportion
-            candidate_unit_cost = candidate.remaining_value / candidate.remaining_qty if candidate.remaining_qty > 0 else 0
+            candidate_unit_cost = (
+                candidate.remaining_value / candidate.remaining_qty
+                if candidate.remaining_qty > 0 else 0
+            )
             value_taken_on_candidate = qty_taken_on_candidate * candidate_unit_cost
             
-            # Update candidate's remaining
             new_remaining_qty = candidate.remaining_qty - qty_taken_on_candidate
             new_remaining_value = candidate.remaining_value - value_taken_on_candidate
             
-            # Ensure no negative remaining due to rounding
             if new_remaining_qty < 0:
                 new_remaining_qty = 0
                 new_remaining_value = 0
             
-            _logger.error(
-                f"  📥 CONSUMING from Layer {candidate.id} at warehouse {candidate.warehouse_id.name if candidate.warehouse_id else 'None'} (ID={candidate.warehouse_id.id if candidate.warehouse_id else 'None'}): "
-                f"qty_taken={qty_taken_on_candidate:.2f} @ {candidate_unit_cost:.4f}/unit = {value_taken_on_candidate:.4f}, "
+            _logger.debug(
+                f"  📥 CONSUMING from Layer {candidate.id} at {candidate.warehouse_id.name}: "
+                f"qty_taken={qty_taken_on_candidate:.2f}, "
                 f"remaining: {candidate.remaining_qty:.2f} → {new_remaining_qty:.2f}"
             )
             
-            # Store update for batch write
+            # Always update remaining_qty / remaining_value (Odoo standard valuation)
             updates_to_write.append({
                 'record': candidate,
                 'vals': {
@@ -541,40 +741,49 @@ class StockValuationLayer(models.Model):
                     'remaining_value': new_remaining_value,
                 }
             })
+
+            # Transfer ≠ Consumption: only reduce origin_remaining_qty on EXTERNAL out
+            if not skip_origin_reduction:
+                origin_layer = candidate.origin_valuation_layer_id or candidate
+                origin_unit_cost = (
+                    origin_layer.origin_remaining_value / origin_layer.origin_remaining_qty
+                    if origin_layer.origin_remaining_qty > 0 else candidate_unit_cost
+                )
+                new_origin_remaining_qty = origin_layer.origin_remaining_qty - qty_taken_on_candidate
+                new_origin_remaining_value = origin_layer.origin_remaining_value - (
+                    qty_taken_on_candidate * origin_unit_cost
+                )
+                if new_origin_remaining_qty < 0:
+                    new_origin_remaining_qty = 0.0
+                    new_origin_remaining_value = 0.0
+                updates_to_write.append({
+                    'record': origin_layer,
+                    'vals': {
+                        'origin_remaining_qty': new_origin_remaining_qty,
+                        'origin_remaining_value': new_origin_remaining_value,
+                    }
+                })
             
-            # Accumulate total value
             tmp_value += value_taken_on_candidate
             qty_to_take_on_candidates -= qty_taken_on_candidate
             
-            # 🚀 PERFORMANCE: Early exit if we've consumed enough
             if float_compare(qty_to_take_on_candidates, 0, precision_rounding=self.product_id.uom_id.rounding) <= 0:
                 break
         
-        # 🚀 PERFORMANCE: Bulk write all updates at once
+        # Bulk write all updates
         for update in updates_to_write:
             update['record'].write(update['vals'])
         
-        # If we couldn't consume all qty from FIFO queue (shortage)
+        # Shortage: use standard_price fallback
         if float_compare(qty_to_take_on_candidates, 0, precision_rounding=self.product_id.uom_id.rounding) > 0:
             _logger.warning(
-                f"⚠️ FIFO shortage: Product {self.product_id.display_name} at {self.warehouse_id.name}: "
-                f"Need {abs(quantity):.2f}, but only {abs(quantity) - qty_to_take_on_candidates:.2f} available. "
-                f"Shortage: {qty_to_take_on_candidates:.2f} - Using standard_price fallback"
+                f"⚠️ FIFO shortage: {self.product_id.display_name} at {warehouse_name}: "
+                f"Need {abs(quantity)}, shortage {qty_to_take_on_candidates:.2f} — using standard_price"
             )
-            # Use standard_price for the shortage
             tmp_value += qty_to_take_on_candidates * self.product_id.standard_price
         
-        _logger.debug(
-            f"✅ _run_fifo() complete: "
-            f"Total value consumed: {tmp_value:.4f}, "
-            f"Setting this layer (ID={self.id}) remaining to 0"
-        )
-        
-        # Update this layer's values
-        # Negative layers don't have remaining (they are consumption)
-        # IMPORTANT: Use 0.0 (float) not 0 to ensure proper database storage
+        # Negative layers don't have remaining
         self.write({
             'remaining_qty': 0.0,
             'remaining_value': 0.0,
         })
-

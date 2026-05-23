@@ -237,9 +237,8 @@ def _recalculate_remaining_by_warehouse(env):
             
             total_products += 1
             
-            # Commit every 100 products
+            # Log progress every 100 products
             if total_products % 100 == 0:
-                env.cr.commit()
                 _logger.info(f"    Progress: {total_products} products processed...")
     
     return total_products, total_layers

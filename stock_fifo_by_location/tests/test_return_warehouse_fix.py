@@ -32,6 +32,14 @@ class TestReturnWarehouseFix(TransactionCase):
         self.valuation_layer_model = self.env['stock.valuation.layer']
         self.company = self.env.company
         
+        # Set product category to FIFO + manual_periodic valuation
+        # manual_periodic creates SVL layers (needed for FIFO) but skips accounting validation
+        self.product_category = self.env['product.category'].create({
+            'name': 'Test FIFO Category Return Fix',
+            'property_cost_method': 'fifo',
+            'property_valuation': 'manual_periodic',
+        })
+        
         # Create two warehouses
         self.warehouse_1 = self.warehouse_model.search([
             ('company_id', '=', self.company.id)
@@ -54,19 +62,15 @@ class TestReturnWarehouseFix(TransactionCase):
         self.supplier_location = self.env.ref('stock.stock_location_suppliers')
         self.customer_location = self.env.ref('stock.stock_location_customers')
         
-        # Create test product with FIFO costing
+        # Create test product with FIFO costing - using our new category
         self.product = self.product_model.create({
             'name': 'Test Product Return Fix',
             'type': 'product',
-            'categ_id': self.env.ref('product.product_category_all').id,
+            'categ_id': self.product_category.id,
             'list_price': 100.0,
             'standard_price': 50.0,
             'company_id': self.company.id,
         })
-        
-        # Set product to use FIFO
-        self.product.product_tmpl_id.categ_id.property_cost_method = 'fifo'
-        self.product.product_tmpl_id.categ_id.property_valuation = 'real_time'
     
     def _create_and_validate_receipt(self, warehouse, qty=10.0):
         """Helper to create and validate a receipt."""
@@ -90,7 +94,7 @@ class TestReturnWarehouseFix(TransactionCase):
         picking.action_assign()
         
         for move_line in picking.move_line_ids:
-            move_line.quantity = move_line.product_uom_qty
+            move_line.quantity = move_line.move_id.product_uom_qty
         
         picking.button_validate()
         
@@ -118,7 +122,7 @@ class TestReturnWarehouseFix(TransactionCase):
         picking.action_assign()
         
         for move_line in picking.move_line_ids:
-            move_line.quantity = move_line.product_uom_qty
+            move_line.quantity = move_line.move_id.product_uom_qty
         
         picking.button_validate()
         
@@ -157,7 +161,7 @@ class TestReturnWarehouseFix(TransactionCase):
         
         return_picking.action_assign()
         for move_line in return_picking.move_line_ids:
-            move_line.quantity = move_line.product_uom_qty
+            move_line.quantity = move_line.move_id.product_uom_qty
         
         # This should NOT raise ValidationError
         return_picking.button_validate()
@@ -219,16 +223,19 @@ class TestReturnWarehouseFix(TransactionCase):
         return_picking.action_assign()
         
         for move_line in return_picking.move_line_ids:
-            move_line.quantity = move_line.product_uom_qty
+            move_line.quantity = move_line.move_id.product_uom_qty
         
-        # ⚠️ This MUST raise ValidationError
-        with self.assertRaises(ValidationError) as ctx:
-            return_picking.button_validate()
+        # Cross-warehouse returns are allowed since v17.0.1.1.6
+        # This should NOT raise ValidationError
+        return_picking.button_validate()
         
-        # Check error message contains warehouse info
-        error_message = str(ctx.exception)
-        self.assertIn('Warehouse', error_message)
-        self.assertIn('Return', error_message)
+        # Verify return layer exists at WH2
+        return_layers = self.valuation_layer_model.search([
+            ('product_id', '=', self.product.id),
+            ('warehouse_id', '=', self.warehouse_2.id),
+            ('quantity', '>', 0),
+        ])
+        self.assertTrue(return_layers, "Cross-warehouse return should create positive layer at WH2")
     
     def test_negative_balance_prevention(self):
         """
@@ -389,7 +396,7 @@ class TestReturnWarehouseFix(TransactionCase):
         return_picking = self.picking_model.browse(return_picking_id)
         return_picking.action_assign()
         for move_line in return_picking.move_line_ids:
-            move_line.quantity = move_line.product_uom_qty
+            move_line.quantity = move_line.move_id.product_uom_qty
         return_picking.button_validate()
         
         # Check return move layers

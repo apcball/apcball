@@ -48,7 +48,7 @@ class ProductProduct(models.Model):
             # Fallback to standard behavior
             return super()._get_fifo_candidates(company)
         
-        _logger.error(
+        _logger.debug(
             f"🔍 _get_fifo_candidates() for Product={self.display_name}, "
             f"Warehouse ID={warehouse_id}, Company={company.name}"
         )
@@ -66,13 +66,13 @@ class ProductProduct(models.Model):
             order='create_date, id'
         )
         
-        _logger.error(
+        _logger.debug(
             f"✅ Found {len(candidates)} FIFO candidates at warehouse_id={warehouse_id}"
         )
         
         if candidates:
             for c in candidates[:5]:  # Log first 5
-                _logger.error(
+                _logger.debug(
                     f"  - Layer {c.id}: qty={c.quantity}, "
                     f"remaining={c.remaining_qty}, "
                     f"warehouse={c.warehouse_id.name if c.warehouse_id else 'None'}"

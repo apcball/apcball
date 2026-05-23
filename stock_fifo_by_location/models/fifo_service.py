@@ -2,7 +2,7 @@
 """
 FIFO Service and Helper Classes
 
-Provides helper methods for per-location FIFO queue management and cost calculations.
+Provides helper methods for per-warehouse FIFO queue management and cost calculations.
 """
 
 from odoo import models, fields, api
@@ -12,7 +12,7 @@ from odoo.tools import float_compare, float_round
 
 class FifoService(models.AbstractModel):
     """
-    Service model for FIFO-related operations on a per-location basis.
+    Service model for FIFO-related operations on a per-warehouse basis.
     
     Provides methods to:
     - Calculate COGS based on FIFO queue for a specific location
@@ -38,7 +38,7 @@ class FifoService(models.AbstractModel):
             Recordset of stock.valuation.layer ordered oldest-first (FIFO)
         """
         if isinstance(product_id, int):
-            product_id = self.env['stock.product.product'].browse(product_id)
+            product_id = self.env['product.product'].browse(product_id)
         
         if isinstance(warehouse_id, int):
             warehouse_id = self.env['stock.warehouse'].browse(warehouse_id)
@@ -64,7 +64,7 @@ class FifoService(models.AbstractModel):
             float: Available quantity
         """
         if isinstance(product_id, int):
-            product_id = self.env['stock.product.product'].browse(product_id)
+            product_id = self.env['product.product'].browse(product_id)
         
         if isinstance(warehouse_id, int):
             warehouse_id = self.env['stock.warehouse'].browse(warehouse_id)
@@ -104,7 +104,7 @@ class FifoService(models.AbstractModel):
             }
         """
         if isinstance(product_id, int):
-            product_id = self.env['stock.product.product'].browse(product_id)
+            product_id = self.env['product.product'].browse(product_id)
         
         if isinstance(warehouse_id, int):
             warehouse_id = self.env['stock.warehouse'].browse(warehouse_id)
@@ -137,11 +137,18 @@ class FifoService(models.AbstractModel):
             # How much can we consume from this layer?
             qty_to_consume = min(
                 qty_remaining,
-                float_round(layer.quantity, precision_digits=precision)
+                float_round(layer.remaining_qty, precision_digits=precision)
             )
             
+            # Transfer ≠ Consumption: use origin layer's unit cost for position layers
+            origin = layer.origin_valuation_layer_id
+            if origin and origin.origin_remaining_qty > 0:
+                effective_unit_cost = origin.origin_remaining_value / origin.origin_remaining_qty
+            else:
+                effective_unit_cost = layer.unit_cost
+            
             # Calculate cost for this consumption
-            layer_cost = qty_to_consume * layer.unit_cost
+            layer_cost = qty_to_consume * effective_unit_cost
             total_cost += layer_cost
             
             layers_consumed.append({
@@ -201,7 +208,7 @@ class FifoService(models.AbstractModel):
             UserError if allow_fallback=False and shortage exists
         """
         if isinstance(product_id, int):
-            product_id = self.env['stock.product.product'].browse(product_id)
+            product_id = self.env['product.product'].browse(product_id)
         
         if isinstance(warehouse_id, int):
             warehouse_id = self.env['stock.warehouse'].browse(warehouse_id)
@@ -470,6 +477,34 @@ class FifoService(models.AbstractModel):
             default='True'
         )
         return enabled.lower() == 'true'
+
+    @api.model
+    def get_available_qty_at_location(self, product_id, location_id, company_id=None):
+        """Backward-compatible wrapper that resolves a location to its warehouse."""
+        location = location_id
+        if isinstance(location_id, int):
+            location = self.env['stock.location'].browse(location_id)
+        warehouse = location.warehouse_id if location else False
+        if not warehouse:
+            return 0.0
+        return self.get_available_qty_at_warehouse(product_id, warehouse, company_id)
+
+    @api.model
+    def validate_location_availability(self, product_id, location_id, quantity,
+                                       allow_fallback=False, company_id=None):
+        """Backward-compatible wrapper around warehouse-based validation."""
+        location = location_id
+        if isinstance(location_id, int):
+            location = self.env['stock.location'].browse(location_id)
+        warehouse = location.warehouse_id if location else False
+        if not warehouse:
+            raise UserError('Cannot determine warehouse from location.')
+        result = self.validate_warehouse_availability(
+            product_id, warehouse, quantity, allow_fallback=allow_fallback, company_id=company_id
+        )
+        if 'fallback_warehouses' in result:
+            result['fallback_locations'] = result['fallback_warehouses']
+        return result
     
     @api.model
     def get_landed_cost_at_warehouse(self, product_id, warehouse_id, company_id=None):
@@ -487,7 +522,7 @@ class FifoService(models.AbstractModel):
             float: Total landed cost at warehouse
         """
         if isinstance(product_id, int):
-            product_id = self.env['stock.product.product'].browse(product_id)
+            product_id = self.env['product.product'].browse(product_id)
         
         if isinstance(warehouse_id, int):
             warehouse_id = self.env['stock.warehouse'].browse(warehouse_id)
@@ -554,7 +589,13 @@ class FifoService(models.AbstractModel):
                     break
                 
                 qty_to_consume = min(qty_remaining, layer.remaining_qty)
-                layer_cost = qty_to_consume * layer.unit_cost
+                # Transfer ≠ Consumption: resolve origin cost for position layers
+                origin = layer.origin_valuation_layer_id
+                if origin and origin.origin_remaining_qty > 0:
+                    effective_unit_cost = origin.origin_remaining_value / origin.origin_remaining_qty
+                else:
+                    effective_unit_cost = layer.unit_cost
+                layer_cost = qty_to_consume * effective_unit_cost
                 total_cost += layer_cost
                 qty_remaining -= qty_to_consume
             
@@ -583,7 +624,7 @@ class FifoService(models.AbstractModel):
             float: Unit landed cost (landed_cost_value / qty_available)
         """
         if isinstance(product_id, int):
-            product_id = self.env['stock.product.product'].browse(product_id)
+            product_id = self.env['product.product'].browse(product_id)
         
         if isinstance(warehouse_id, int):
             warehouse_id = self.env['stock.warehouse'].browse(warehouse_id)
@@ -634,7 +675,7 @@ class FifoService(models.AbstractModel):
             }
         """
         if isinstance(product_id, int):
-            product_id = self.env['stock.product.product'].browse(product_id)
+            product_id = self.env['product.product'].browse(product_id)
         
         if isinstance(warehouse_id, int):
             warehouse_id = self.env['stock.warehouse'].browse(warehouse_id)
@@ -728,22 +769,3 @@ class FifoService(models.AbstractModel):
             'layers': base_cost_result['layers']
         }
 
-
-class ConfigParameter(models.Model):
-    """
-    Configuration parameters for stock_fifo_by_location module.
-    
-    Provides settings for:
-    - Shortage handling policy (error vs fallback)
-    - Location validation enable/disable
-    - Debug/logging options
-    """
-    
-    _name = 'config.parameter'
-    _inherit = 'ir.config_parameter'
-    
-    # These are just markers - actual params stored in ir.config_parameter
-    # Examples:
-    # stock_fifo_by_location.shortage_policy -> 'error' or 'fallback'
-    # stock_fifo_by_location.enable_validation -> 'True' or 'False'
-    # stock_fifo_by_location.debug_mode -> 'True' or 'False'

@@ -150,6 +150,15 @@ class StockMove(models.Model):
         svl_vals_list = []
         for move in self:
             warehouse = move._get_fifo_valuation_layer_warehouse()
+            source_wh = move.location_id.warehouse_id if move.location_id else None
+            dest_wh = move.location_dest_id.warehouse_id if move.location_dest_id else None
+            is_internal_transfer = bool(
+                source_wh and dest_wh
+                and source_wh.id != dest_wh.id
+                and move.location_id.usage in ('internal', 'transit')
+                and move.location_dest_id.usage in ('internal', 'transit')
+                and not move.origin_returned_move_id
+            )
             
             _logger.info(
                 f"🏭 _create_out_svl for move {move.name}: "
@@ -161,8 +170,39 @@ class StockMove(models.Model):
                 # Set warehouse_id in context so layer gets it during creation
                 move = move.with_context(fifo_warehouse_id=warehouse.id)
             
-            # Get standard vals
-            move_vals = move._get_out_svl_vals(forced_quantity)
+            if is_internal_transfer:
+                # Transfer ≠ Consumption: create out SVL with origin layer link
+                # _run_fifo will reduce remaining_qty but NOT origin_remaining_qty
+                fifo_result = self.env['fifo.service'].calculate_fifo_cost_with_landed_cost(
+                    move.product_id, source_wh, forced_quantity or move.product_qty, move.company_id.id
+                )
+                move_vals = []
+                for layer_info in fifo_result.get('layers', []):
+                    source_layer = self.env['stock.valuation.layer'].browse(layer_info['layer_id'])
+                    origin_layer = source_layer.origin_valuation_layer_id or source_layer
+                    qty_consumed = layer_info['qty_consumed']
+                    layer_cost = layer_info['cost']
+                    unit_cost = layer_cost / qty_consumed if qty_consumed else 0.0
+                    move_vals.append({
+                        'stock_move_id': move.id,
+                        'product_id': move.product_id.id,
+                        'company_id': move.company_id.id,
+                        'description': f'Transfer OUT: {source_wh.name} → {dest_wh.name}',
+                        'quantity': -qty_consumed,
+                        'unit_cost': unit_cost,
+                        'value': -layer_cost,
+                        'remaining_qty': 0.0,
+                        'remaining_value': 0.0,
+                        'warehouse_id': source_wh.id,
+                        'origin_valuation_layer_id': origin_layer.id,
+                        'source_warehouse_id': source_wh.id,
+                        'transfer_move_id': move.id,
+                    })
+                if not move_vals:
+                    move_vals = move._get_out_svl_vals(forced_quantity)
+            else:
+                # Get standard vals
+                move_vals = move._get_out_svl_vals(forced_quantity)
             
             # Add warehouse_id to each val dict
             if warehouse:
@@ -183,6 +223,83 @@ class StockMove(models.Model):
         _logger.info(f"🔨 Creating {len(svl_vals_list)} valuation layers")
         return self.env['stock.valuation.layer'].sudo().create(svl_vals_list)
     
+    def _create_in_svl(self, forced_quantity=None):
+        """
+        Override to use custom cost for inventory adjustment increases.
+        
+        When inventory is increased via adjustment, we use the cost rule
+        selected by the user instead of standard FIFO logic.
+        """
+        svl_vals_list = []
+        non_adjustment_moves = self.env['stock.move']
+        
+        # Check if this is an inventory adjustment with custom cost rules
+        cost_rules = self.env.context.get('inventory_cost_rules', {})
+        
+        for move in self:
+            # Check if this move is from inventory adjustment
+            is_inventory_adjustment = (
+                move.location_id.usage == 'inventory' and
+                move.location_dest_id.usage == 'internal'
+            )
+            
+            if is_inventory_adjustment and move.product_id.cost_method == 'fifo':
+                # Get warehouse for this adjustment
+                warehouse = move.location_dest_id.warehouse_id
+                
+                # Try to get cost from quant's cost rule
+                quant = self.env['stock.quant'].search([
+                    ('product_id', '=', move.product_id.id),
+                    ('location_id', '=', move.location_dest_id.id),
+                ], limit=1)
+                
+                if quant and (quant.inventory_cost_rule or quant.id in cost_rules):
+                    # Calculate cost based on rule
+                    unit_cost = quant._get_inventory_cost_for_increase(warehouse=warehouse)
+                    
+                    # Get standard SVL values
+                    move_vals = move._get_in_svl_vals(forced_quantity=forced_quantity)
+                    
+                    # Override unit_cost with calculated cost
+                    for vals in move_vals:
+                        vals['unit_cost'] = unit_cost
+                        vals['value'] = vals['quantity'] * unit_cost
+                        
+                        # Set warehouse_id
+                        if warehouse:
+                            vals['warehouse_id'] = warehouse.id
+                        
+                        _logger.info(
+                            f"Inventory adjustment IN: {move.product_id.name} "
+                            f"at {warehouse.name if warehouse else 'Unknown'}: "
+                            f"{vals['quantity']} units @ {unit_cost}/unit = {vals['value']}"
+                        )
+                    
+                    svl_vals_list.extend(move_vals)
+                    continue
+            
+            # Track moves that don't match for standard processing
+            non_adjustment_moves |= move
+        
+        # Process non-adjustment moves with standard logic
+        if non_adjustment_moves:
+            standard_svls = super(StockMove, non_adjustment_moves)._create_in_svl(
+                forced_quantity=forced_quantity
+            )
+            if svl_vals_list:
+                # Combine custom SVLs with standard ones
+                custom_svls = self.env['stock.valuation.layer'].sudo().create(svl_vals_list)
+                return custom_svls | standard_svls
+            return standard_svls
+        
+        # All moves were inventory adjustments with custom cost
+        if svl_vals_list:
+            return self.env['stock.valuation.layer'].sudo().create(svl_vals_list)
+        
+        # Fallback: no moves matched at all
+        return super()._create_in_svl(forced_quantity=forced_quantity)
+    
+
     def _action_done(self, cancel_backorder=False):
         """
         Override move completion to ensure warehouse context is passed to layer operations.
@@ -204,6 +321,9 @@ class StockMove(models.Model):
         # After standard layer creation, update them with correct warehouse_id
         self._update_created_layers_warehouse()
         
+        # Transfer ≠ Consumption: reduce origin_remaining_qty on external out only
+        self._reduce_origin_on_external_out()
+        
         # Handle landed cost allocation for inter-warehouse transfers
         self._allocate_landed_cost_for_inter_warehouse()
         
@@ -211,48 +331,17 @@ class StockMove(models.Model):
     
     def _ensure_inter_warehouse_valuation_layers(self):
         """
-        🔴 CRITICAL: Ensure BOTH negative (source) AND positive (dest) valuation layers
-        exist for inter-warehouse transfers AND their return moves.
+        Transfer ≠ Consumption: Create position layers for internal transfers.
         
-        แนวคิดที่ถูกต้องเวลา Transfer ข้ามคลัง A → B:
+        For internal transfers (WH-A → WH-B):
+        - Odoo standard already creates negative+positive SVLs and runs _run_fifo()
+        - _run_fifo() already consumed remaining_qty at source (Odoo valuation)
+        - _run_fifo() did NOT consume origin_remaining_qty (Transfer ≠ Consumption)
+        - We just need to ensure the positive layer at dest has origin_valuation_layer_id
         
-        1. คลังต้นทาง (WH-A) - ทำเหมือน "เบิกออก":
-           - หา FIFO layer ของ WH-A ตาม quantity ที่ย้าย
-           - remaining_qty ลดลง (ผ่าน _run_fifo)
-           - สร้าง SVL out:
-             * quantity = -qty
-             * value = -cost_total (from FIFO)
-             * warehouse_id = WH-A
-        
-        2. คลังปลายทาง (WH-B) - ต้องมี "in layer ใหม่" เสมอ:
-           - quantity = +qty
-           - value = +cost_total เดิมจาก WH-A
-           - unit_cost = cost_total / qty
-           - warehouse_id = WH-B
-           - layer นี้คือแหล่ง FIFO ของ WH-B สำหรับการขาย/เบิกครั้งต่อไป
-        
-        🔄 Return Move ข้ามคลัง (B → A):
-        
-        1. คลังต้นทาง B (ที่รับคืน) - ทำเหมือน "เบิกออก":
-           - หา FIFO layer ของ WH-B ตาม quantity ที่คืน
-           - remaining_qty ลดลง (ผ่าน _run_fifo)
-           - สร้าง SVL out:
-             * quantity = -qty
-             * value = -cost_total (from original transfer)
-             * warehouse_id = WH-B
-        
-        2. คลังปลายทาง A (ที่คืนกลับไป) - ต้องมี "in layer ใหม่" เสมอ:
-           - quantity = +qty
-           - value = +cost_total เดิมจาก original transfer
-           - unit_cost = cost_total / qty
-           - warehouse_id = WH-A
-           - remaining_qty = qty (เพิ่ม FIFO queue กลับมา)
-        
-        ⚠️ ถ้าข้อ 2 ไม่ทำ:
-        - ที่คลัง A จะมี stock ปริมาณ แต่ไม่มี valuation layer
-        - remaining_qty = 0 ตลอด
-        - พอขายจาก WH-A ระบบจะหา layer ไม่เจอ
-        - ไปหยิบ global layer / หรือ warehouse อื่น / หรือคำนวณผิด
+        For return moves (WH-B → WH-A):
+        - Same principle: Odoo creates layers, _run_fifo runs
+        - We ensure position layer links back to cost origin
         """
         import logging
         _logger = logging.getLogger(__name__)
@@ -260,120 +349,87 @@ class StockMove(models.Model):
         valuation_layer_model = self.env['stock.valuation.layer']
         
         for move in self:
-            # Only process done moves
             if move.state != 'done':
                 continue
             
             product = move.product_id
-            
-            # Skip if product is not storable or not using FIFO valuation
             if product.type != 'product':
                 continue
-            
-            # Check if product uses FIFO costing
             if product.categ_id.property_cost_method != 'fifo':
-                _logger.debug(f"Skip {move.name}: Product {product.name} not using FIFO")
                 continue
             
             source_wh = move.location_id.warehouse_id if move.location_id else None
             dest_wh = move.location_dest_id.warehouse_id if move.location_dest_id else None
             
-            # Only for inter-warehouse transfers (different warehouses)
             if not (source_wh and dest_wh and source_wh.id != dest_wh.id):
                 continue
             
-            # Skip if source/dest is not internal location
             if move.location_id.usage not in ('internal', 'transit') or \
                move.location_dest_id.usage not in ('internal', 'transit'):
-                _logger.debug(f"Skip {move.name}: Not internal transfer (usage: {move.location_id.usage} -> {move.location_dest_id.usage})")
                 continue
             
-            # 🆕 Check if this is a return move
             is_return_move = bool(move.origin_returned_move_id)
+            move_type = "RETURN" if is_return_move else "TRANSFER"
             
-            # Check what layers already exist for this move
             existing_layers = valuation_layer_model.search([
                 ('stock_move_id', '=', move.id),
             ])
             
-            has_negative_source = any(
-                l.quantity < 0 and l.warehouse_id and l.warehouse_id.id == source_wh.id 
-                for l in existing_layers
-            )
-            has_positive_dest = any(
-                l.quantity > 0 and l.warehouse_id and l.warehouse_id.id == dest_wh.id 
-                for l in existing_layers
-            )
-            
-            move_type = "RETURN" if is_return_move else "TRANSFER"
-            _logger.debug(
+            _logger.info(
                 f"📦 Inter-warehouse {move_type} {move.name}: "
                 f"{source_wh.name} → {dest_wh.name}, "
                 f"Product: {product.name}, Qty: {move.product_qty}, "
-                f"Existing layers: {len(existing_layers)}, "
-                f"Has negative@source: {has_negative_source}, "
-                f"Has positive@dest: {has_positive_dest}"
+                f"Existing layers: {len(existing_layers)}"
             )
             
             company = move.company_id
             
-            # 🔴 STEP 1: Determine unit cost
-            # For return moves, use cost from original transfer
-            # For regular transfers, get FIFO cost from source warehouse
+            # ── Determine unit cost from source FIFO or original move ──
+            unit_cost = 0.0
+            origin_layer = None
+            
             if is_return_move and move.origin_returned_move_id:
-                # Get cost from original transfer's layers
                 original_move = move.origin_returned_move_id
-                original_layers = valuation_layer_model.search([
+                original_neg_layers = valuation_layer_model.search([
                     ('stock_move_id', '=', original_move.id),
-                    ('quantity', '<', 0),  # Negative layer (outgoing from original source)
+                    ('quantity', '<', 0),
                 ], limit=1)
+                if original_neg_layers:
+                    unit_cost = abs(original_neg_layers[0].unit_cost)
+                    origin_layer = original_neg_layers[0].origin_valuation_layer_id or original_neg_layers[0]
                 
-                if original_layers:
-                    unit_cost = abs(original_layers[0].unit_cost)
-                    total_cost = unit_cost * move.product_qty
-                    _logger.info(
-                        f"🔄 Return move: Using original transfer cost: "
-                        f"unit={unit_cost:.4f}, total={total_cost:.4f}"
-                    )
-                else:
-                    # Fallback if no original layer found
-                    _logger.warning(f"⚠️ Return move but no original layer found, using FIFO")
-                    fifo_service = self.env['fifo.service']
-                    fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
-                        product, source_wh, move.product_qty, company.id
-                    )
-                    if isinstance(fifo_result, dict):
-                        unit_cost = fifo_result.get('unit_cost', 0.0)
-                        total_cost = fifo_result.get('cost', 0.0)
-                    else:
-                        unit_cost = float(fifo_result) if fifo_result else 0.0
-                        total_cost = unit_cost * move.product_qty
-            else:
-                # Regular transfer: Get FIFO cost from SOURCE warehouse
+                if unit_cost <= 0:
+                    original_pos_layers = valuation_layer_model.search([
+                        ('stock_move_id', '=', original_move.id),
+                        ('quantity', '>', 0),
+                    ], limit=1)
+                    if original_pos_layers:
+                        unit_cost = abs(original_pos_layers[0].unit_cost)
+                        origin_layer = original_pos_layers[0].origin_valuation_layer_id or original_pos_layers[0]
+            
+            if unit_cost <= 0:
                 fifo_service = self.env['fifo.service']
                 fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
                     product, source_wh, move.product_qty, company.id
                 )
-                
-                # Extract unit cost
                 if isinstance(fifo_result, dict):
                     unit_cost = fifo_result.get('unit_cost', 0.0)
-                    total_cost = fifo_result.get('cost', 0.0)
                 else:
                     unit_cost = float(fifo_result) if fifo_result else 0.0
-                    total_cost = unit_cost * move.product_qty
             
-            # Fallback to standard price if still zero
             if unit_cost <= 0:
                 unit_cost = product.standard_price or 0.0
-                total_cost = unit_cost * move.product_qty
-                _logger.warning(f"⚠️ FIFO cost is 0, using standard_price fallback: {unit_cost}")
             
-            _logger.info(f"💰 Cost for {move_type}: unit={unit_cost:.4f}, total={total_cost:.4f}")
+            total_cost = unit_cost * move.product_qty
             
-            # 🔴 STEP 2: Create negative layer at source warehouse (if not exists)
+            # ── Handle NEGATIVE layer at source warehouse ──
+            negative_layers = existing_layers.filtered(lambda l: l.quantity < 0)
+            has_negative_source = any(
+                l.warehouse_id and l.warehouse_id.id == source_wh.id
+                for l in negative_layers
+            )
+            
             if not has_negative_source:
-                neg_desc = f'Return OUT: {source_wh.name} → {dest_wh.name}' if is_return_move else f'Transfer OUT: {source_wh.name} → {dest_wh.name}'
                 neg_layer = valuation_layer_model.sudo().create({
                     'stock_move_id': move.id,
                     'product_id': product.id,
@@ -381,62 +437,82 @@ class StockMove(models.Model):
                     'quantity': -move.product_qty,
                     'unit_cost': unit_cost,
                     'value': -total_cost,
-                    'remaining_qty': 0.0,  # Negative layers don't have remaining
+                    'remaining_qty': 0.0,
                     'remaining_value': 0.0,
                     'company_id': company.id,
-                    'description': neg_desc,
+                    'description': f'{move_type} OUT: {source_wh.name} → {dest_wh.name}',
                 })
-                _logger.info(f"✅ Created NEGATIVE layer at {source_wh.name}: qty={-move.product_qty}, value={-total_cost:.4f}")
-                
-                # 🔴 CRITICAL: Run FIFO to consume from source warehouse's FIFO queue
-                # This will reduce remaining_qty of existing layers at source warehouse
+                # _run_fifo will consume remaining_qty but NOT origin_remaining_qty
                 neg_layer._run_fifo(-move.product_qty, company)
-                _logger.info(f"✅ Ran FIFO consumption at {source_wh.name}")
+                negative_layers = neg_layer
+                _logger.info(f"✅ Created negative layer at {source_wh.name}")
             else:
-                _logger.info(f"ℹ️ Negative layer at {source_wh.name} already exists (created by Odoo)")
-                # 🆕 FIX: Check if existing negative layer has correct warehouse_id
-                neg_layers = [l for l in existing_layers if l.quantity < 0]
-                for neg_layer in neg_layers:
+                for neg_layer in negative_layers:
                     if neg_layer.warehouse_id and neg_layer.warehouse_id.id != source_wh.id:
-                        _logger.warning(
-                            f"⚠️ Fixing negative layer {neg_layer.id}: "
-                            f"Wrong warehouse {neg_layer.warehouse_id.name} → {source_wh.name}"
-                        )
                         neg_layer.warehouse_id = source_wh.id
             
-            # 🔴 STEP 3: Create positive layer at destination warehouse (if not exists)
-            # 🆕 CRITICAL FIX: This is essential for BOTH transfers AND returns!
+            # ── Resolve origin cost layer from the consumed candidates ──
+            if not origin_layer:
+                # Find which layer was consumed at source — get its origin
+                if negative_layers:
+                    if is_return_move:
+                        # For returns: the consumed layers at source are position layers
+                        # Their origin_valuation_layer_id points to the cost origin
+                        pass
+                    # Get the most recent consumed layer at source warehouse
+                    consumed_at_source = valuation_layer_model.search([
+                        ('product_id', '=', product.id),
+                        ('warehouse_id', '=', source_wh.id),
+                        ('quantity', '>', 0),
+                        ('remaining_qty', '<', 1e-6),  # fully consumed or near-zero
+                    ], order='write_date desc', limit=1)
+                    if consumed_at_source and consumed_at_source.origin_valuation_layer_id:
+                        origin_layer = consumed_at_source.origin_valuation_layer_id
+                    elif consumed_at_source:
+                        origin_layer = consumed_at_source
+            
+            # ── Handle POSITIVE layer at destination warehouse ──
+            positive_layers = existing_layers.filtered(lambda l: l.quantity > 0)
+            has_positive_dest = any(
+                l.warehouse_id and l.warehouse_id.id == dest_wh.id
+                for l in positive_layers
+            )
+            
             if not has_positive_dest:
-                pos_desc = f'Return IN: {source_wh.name} → {dest_wh.name}' if is_return_move else f'Transfer IN: {source_wh.name} → {dest_wh.name}'
-                pos_layer = valuation_layer_model.sudo().create({
+                # Create position layer at dest linked to cost origin
+                pos_vals = {
                     'stock_move_id': move.id,
                     'product_id': product.id,
                     'warehouse_id': dest_wh.id,
                     'quantity': move.product_qty,
                     'unit_cost': unit_cost,
                     'value': total_cost,
-                    'remaining_qty': move.product_qty,  # ✅ This becomes FIFO source for dest warehouse
+                    'remaining_qty': move.product_qty,
                     'remaining_value': total_cost,
                     'company_id': company.id,
-                    'description': pos_desc,
-                })
-                action = "returned to" if is_return_move else "transferred to"
+                    'description': f'{move_type} IN: {source_wh.name} → {dest_wh.name}',
+                    'source_warehouse_id': source_wh.id,
+                    'transfer_move_id': move.id,
+                    'is_position_layer': True,
+                }
+                if origin_layer:
+                    pos_vals['origin_valuation_layer_id'] = origin_layer.id
+                
+                valuation_layer_model.sudo().create(pos_vals)
                 _logger.info(
-                    f"✅ Created POSITIVE layer at {dest_wh.name}: "
-                    f"qty={move.product_qty}, value={total_cost:.4f}, "
-                    f"remaining_qty={move.product_qty} (Stock {action} FIFO queue)"
+                    f"✅ Created POSITION layer at {dest_wh.name} "
+                    f"(origin: {origin_layer.id if origin_layer else 'N/A'})"
                 )
             else:
-                _logger.info(f"ℹ️ Positive layer at {dest_wh.name} already exists (created by Odoo)")
-                # 🆕 FIX: Check if existing positive layer has correct warehouse_id
-                pos_layers = [l for l in existing_layers if l.quantity > 0]
-                for pos_layer in pos_layers:
+                # Ensure existing positive layer has correct warehouse and origin link
+                for pos_layer in positive_layers:
                     if pos_layer.warehouse_id and pos_layer.warehouse_id.id != dest_wh.id:
-                        _logger.warning(
-                            f"⚠️ Fixing positive layer {pos_layer.id}: "
-                            f"Wrong warehouse {pos_layer.warehouse_id.name} → {dest_wh.name}"
-                        )
                         pos_layer.warehouse_id = dest_wh.id
+                    if origin_layer and not pos_layer.origin_valuation_layer_id:
+                        pos_layer.origin_valuation_layer_id = origin_layer.id
+                        pos_layer.is_position_layer = True
+                        pos_layer.source_warehouse_id = source_wh.id
+                        pos_layer.transfer_move_id = move.id
             
             _logger.info(
                 f"🎉 Inter-warehouse {move_type} complete: "
@@ -494,13 +570,15 @@ class StockMove(models.Model):
                 elif original_move.location_dest_id and original_move.location_dest_id.usage == 'internal':
                     original_wh = original_move.location_dest_id.warehouse_id
                 
-                # CRITICAL FIX: Get unit cost from the ACTUAL delivery layer
-                # Do NOT try to consume from FIFO queue (it's empty after delivery)
-                # Instead, use the unit_cost that was calculated during the original delivery
+                # CRITICAL FIX v17.0.1.2.7: Get unit cost from the ACTUAL original layer
+                # Supports BOTH:
+                #   1. Sales returns (original = delivery → has NEGATIVE layer)
+                #   2. Vendor returns (original = receipt → has POSITIVE layer only)
+                # Also handles import ordering where return is processed before receipt
                 if original_wh:
                     try:
                         # Step 1: Find the NEGATIVE delivery layer from original move
-                        # This layer contains the actual unit_cost used when delivering
+                        # This works for SALES RETURNS where original was a delivery/sale
                         original_delivery_layers = valuation_layer_model.search([
                             ('stock_move_id', '=', original_move.id),
                             ('quantity', '<', 0),  # NEGATIVE layer (outgoing/consumption)
@@ -509,10 +587,9 @@ class StockMove(models.Model):
                         
                         if original_delivery_layers:
                             # The delivery layer's unit_cost is the FIFO cost at consumption time
-                            # (which includes landed costs already applied)
                             base_delivery_unit_cost = abs(original_delivery_layers[0].unit_cost)
                             
-                            # Step 2: Get any additional landed costs that should be included
+                            # Get any additional landed costs
                             lc_model = self.env['stock.valuation.layer.landed.cost']
                             delivery_lc_records = lc_model.search([
                                 ('valuation_layer_id', '=', original_delivery_layers[0].id),
@@ -521,37 +598,92 @@ class StockMove(models.Model):
                             
                             unit_lc = 0.0
                             if delivery_lc_records:
-                                # Get unit landed cost (landed_cost_value / quantity)
                                 lc_value = sum(delivery_lc_records.mapped('landed_cost_value'))
                                 lc_qty = delivery_lc_records[0].quantity or 1
                                 unit_lc = lc_value / lc_qty if lc_qty > 0 else 0.0
                             
-                            # Total unit cost = base delivery cost + unit landed cost
                             return_unit_cost = base_delivery_unit_cost + unit_lc
                             return_total_cost = return_unit_cost * move.product_qty
                             
                             _logger.info(
                                 f"Return move {move.name}: "
-                                f"Using delivery layer unit cost: {base_delivery_unit_cost}/unit + "
+                                f"Using NEGATIVE delivery layer unit cost: {base_delivery_unit_cost}/unit + "
                                 f"LC: {unit_lc}/unit = {return_unit_cost}/unit total"
                             )
                         else:
-                            # Fallback: Try FIFO calculation if no delivery layer found
-                            _logger.warning(
-                                f"Return move {move.name}: "
-                                f"No delivery layer found, falling back to FIFO calculation"
-                            )
+                            # 🔴 FIX v17.0.1.2.7: Step 2 - Try POSITIVE receipt layer
+                            # For VENDOR RETURNS: original move is a receipt (Vendor → Stock)
+                            # which only has a POSITIVE layer, not negative
+                            original_receipt_layers = valuation_layer_model.search([
+                                ('stock_move_id', '=', original_move.id),
+                                ('quantity', '>', 0),  # POSITIVE layer (receipt/incoming)
+                            ], limit=1)
                             
-                            fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
-                                move.product_id,
-                                original_wh,
-                                move.product_qty,
-                                move.company_id.id
-                            )
-                            
-                            if fifo_result['cost'] > 0 and fifo_result['qty'] > 0:
-                                return_unit_cost = fifo_result['unit_cost']
-                                return_total_cost = fifo_result['cost']
+                            if original_receipt_layers:
+                                base_receipt_unit_cost = abs(original_receipt_layers[0].unit_cost)
+                                
+                                # Get any landed costs on the receipt layer
+                                lc_model = self.env['stock.valuation.layer.landed.cost']
+                                receipt_lc_records = lc_model.search([
+                                    ('valuation_layer_id', '=', original_receipt_layers[0].id),
+                                ])
+                                
+                                unit_lc = 0.0
+                                if receipt_lc_records:
+                                    lc_value = sum(receipt_lc_records.mapped('landed_cost_value'))
+                                    lc_qty = abs(original_receipt_layers[0].quantity) or 1
+                                    unit_lc = lc_value / lc_qty if lc_qty > 0 else 0.0
+                                
+                                return_unit_cost = base_receipt_unit_cost + unit_lc
+                                return_total_cost = return_unit_cost * move.product_qty
+                                
+                                _logger.info(
+                                    f"Return move {move.name}: "
+                                    f"Using POSITIVE receipt layer unit cost: {base_receipt_unit_cost}/unit + "
+                                    f"LC: {unit_lc}/unit = {return_unit_cost}/unit total "
+                                    f"(original move was a receipt, not a delivery)"
+                                )
+                            else:
+                                # Step 3: Try FIFO calculation
+                                _logger.warning(
+                                    f"Return move {move.name}: "
+                                    f"No original layer found (neither negative nor positive), "
+                                    f"trying FIFO calculation"
+                                )
+                                
+                                fifo_result = fifo_service.calculate_fifo_cost_with_landed_cost(
+                                    move.product_id,
+                                    original_wh,
+                                    move.product_qty,
+                                    move.company_id.id
+                                )
+                                
+                                if isinstance(fifo_result, dict) and fifo_result.get('cost', 0) > 0 and fifo_result.get('qty', 0) > 0:
+                                    return_unit_cost = fifo_result['unit_cost']
+                                    return_total_cost = fifo_result['cost']
+                                    _logger.info(
+                                        f"Return move {move.name}: "
+                                        f"Using FIFO calculation: {return_unit_cost}/unit"
+                                    )
+                                else:
+                                    # 🔴 FIX v17.0.1.2.7: Step 4 - Final fallback
+                                    # Use original move's price_unit (from PO/SO)
+                                    # This handles import ordering where return is processed
+                                    # before receipt SVL exists
+                                    original_price = abs(original_move.price_unit) if original_move.price_unit else 0.0
+                                    if original_price > 0:
+                                        return_unit_cost = original_price
+                                        return_total_cost = return_unit_cost * move.product_qty
+                                        _logger.info(
+                                            f"Return move {move.name}: "
+                                            f"Using original move price_unit fallback: {return_unit_cost}/unit"
+                                        )
+                                    else:
+                                        _logger.warning(
+                                            f"Return move {move.name}: "
+                                            f"Could not determine return cost from any source. "
+                                            f"Layer will keep its current unit_cost."
+                                        )
                     except Exception as e:
                         _logger.warning(
                             f"Failed to calculate return unit cost for move {move.name}: {e}"
@@ -561,62 +693,191 @@ class StockMove(models.Model):
                 # Determine correct warehouse based on layer quantity and move type
                 is_return = bool(move.origin_returned_move_id)
                 
+                # Detect internal transfer for position layer linking
+                is_inter_wh = bool(
+                    source_wh and dest_wh and source_wh.id != dest_wh.id
+                    and move.location_id.usage in ('internal', 'transit')
+                    and move.location_dest_id.usage in ('internal', 'transit')
+                )
+                
                 if layer.quantity < 0:
                     # Negative layer (outgoing/consumption)
                     if is_return:
-                        # 🔴 CRITICAL FIX: Return move negative layer at SOURCE warehouse
-                        # Return move: A → B (returning stock from A back to B)
-                        # - Negative layer at A (consume from A's FIFO queue)
-                        # - Positive layer at B (add to B's FIFO queue)
                         if source_wh and (not layer.warehouse_id or layer.warehouse_id.id != source_wh.id):
                             layer.warehouse_id = source_wh.id
                             _logger.info(
                                 f"Return move: Set negative layer {layer.id} "
-                                f"to source warehouse {source_wh.name} (consuming from FIFO queue)"
+                                f"to source warehouse {source_wh.name}"
                             )
                     else:
-                        # Regular outgoing: use source warehouse
                         if source_wh and (not layer.warehouse_id or layer.warehouse_id.id != source_wh.id):
                             layer.warehouse_id = source_wh.id
                     
-                    # Fix unit_cost for return moves using FIFO cost with landed costs from ORIGINAL warehouse
+                    # Fix unit_cost for return moves
                     if return_unit_cost is not None and return_unit_cost > 0:
                         layer.unit_cost = return_unit_cost
                         layer.value = layer.quantity * return_unit_cost
-                        _logger.info(
-                            f"Return negative layer {layer.id}: "
-                            f"Set unit_cost={return_unit_cost} (from original WH: {original_wh.name if original_wh else 'Unknown'}), "
-                            f"value={layer.value}, warehouse={layer.warehouse_id.name if layer.warehouse_id else 'None'}"
-                        )
                         
                 elif layer.quantity > 0:
                     # Positive layer (incoming) - ALWAYS use destination warehouse
                     if dest_wh and (not layer.warehouse_id or layer.warehouse_id.id != dest_wh.id):
                         layer.warehouse_id = dest_wh.id
-                        if is_return:
+                    
+                    # Transfer ≠ Consumption: link position layers to cost origin
+                    if is_inter_wh and not is_return:
+                        if not layer.origin_valuation_layer_id:
+                            # Find the origin layer from the negative layer of this move
+                            neg_layers = layers.filtered(lambda l: l.quantity < 0 and l.origin_valuation_layer_id)
+                            if neg_layers:
+                                layer.origin_valuation_layer_id = neg_layers[0].origin_valuation_layer_id.id
+                            else:
+                                # Find origin from consumed source layers at source warehouse
+                                consumed_at_source = valuation_layer_model.search([
+                                    ('product_id', '=', move.product_id.id),
+                                    ('warehouse_id', '=', source_wh.id),
+                                    ('quantity', '>', 0),
+                                ], order='write_date desc', limit=1)
+                                if consumed_at_source:
+                                    origin = consumed_at_source.origin_valuation_layer_id or consumed_at_source
+                                    layer.origin_valuation_layer_id = origin.id
+                            layer.is_position_layer = True
+                            layer.source_warehouse_id = source_wh.id
+                            layer.transfer_move_id = move.id
                             _logger.info(
-                                f"Cross-warehouse return: Set positive layer {layer.id} "
-                                f"to destination warehouse {dest_wh.name} "
-                                f"(cost from original WH: {original_wh.name if original_wh else 'Unknown'})"
+                                f"Position layer {layer.id} linked to origin {layer.origin_valuation_layer_id.id}"
                             )
                     
-                    # Fix unit_cost for return moves using FIFO cost with landed costs from ORIGINAL warehouse
+                    # Fix unit_cost for return moves
                     if return_unit_cost is not None and return_unit_cost > 0:
                         layer.unit_cost = return_unit_cost
                         layer.value = layer.quantity * return_unit_cost
-                        _logger.info(
-                            f"Return positive layer {layer.id}: "
-                            f"Set unit_cost={return_unit_cost} (from original WH: {original_wh.name if original_wh else 'Unknown'}), "
-                            f"value={layer.value}, warehouse={layer.warehouse_id.name if layer.warehouse_id else 'None'}"
-                        )
                     
-                    # Copy landed cost allocations from original move to return move
-                    # This ensures landed costs are properly tracked and reversed
+                    # Copy landed cost allocations for returns
                     if is_return:
                         self._copy_landed_cost_to_return(
                             move.origin_returned_move_id, move, layer
                         )
-                    # Creating new LC records would double-count the costs
+    
+    def _reduce_origin_on_external_out(self):
+        """
+        Transfer ≠ Consumption: reduce origin_remaining_qty on external out only.
+        
+        Odoo core's _run_fifo() only reduces remaining_qty/remaining_value.
+        It doesn't know about origin_remaining_qty/origin_remaining_value.
+        This method traces each consumed candidate back to its cost origin
+        and reduces origin_remaining_qty by the external out quantity.
+        
+        Skips: internal transfers (handled in SVL._run_fifo), returns.
+        """
+        import logging
+        _logger = logging.getLogger(__name__)
+        
+        svl_model = self.env['stock.valuation.layer']
+        
+        for move in self:
+            if move.product_id.type != 'product':
+                continue
+            if move.product_id.categ_id.property_cost_method != 'fifo':
+                continue
+            
+            source_wh = move.location_id.warehouse_id if move.location_id else None
+            dest_wh = move.location_dest_id.warehouse_id if move.location_dest_id else None
+            
+            # Skip internal transfers — they are handled by SVL._run_fifo()
+            is_internal_transfer = bool(
+                source_wh and dest_wh and source_wh.id != dest_wh.id
+                and move.location_id.usage in ('internal', 'transit')
+                and move.location_dest_id.usage in ('internal', 'transit')
+                and not move.origin_returned_move_id
+            )
+            # Also skip intra-warehouse moves (same warehouse)
+            is_intra_wh = bool(
+                source_wh and dest_wh and source_wh.id == dest_wh.id
+                and move.location_id.usage in ('internal', 'transit')
+                and move.location_dest_id.usage in ('internal', 'transit')
+            )
+            if is_internal_transfer or is_intra_wh:
+                continue
+            
+            # Skip returns
+            if move.origin_returned_move_id:
+                continue
+            
+            # This is an external out (sale, scrap, production consume, etc.)
+            # Find negative layers for this move
+            neg_layers = svl_model.search([
+                ('stock_move_id', '=', move.id),
+                ('quantity', '<', 0),
+            ])
+            
+            for neg_layer in neg_layers:
+                qty_consumed = abs(neg_layer.quantity)
+                warehouse = neg_layer.warehouse_id or source_wh
+                if not warehouse:
+                    continue
+                
+                # Find which layers were consumed by this sale at this warehouse
+                # These are layers whose remaining_qty was reduced by _run_fifo()
+                # We need to find candidates that still exist and trace to their origin
+                candidates = svl_model.search([
+                    ('product_id', '=', move.product_id.id),
+                    ('warehouse_id', '=', warehouse.id),
+                    ('quantity', '>', 0),
+                    ('company_id', '=', move.company_id.id),
+                ], order='create_date, id')
+                
+                # For each candidate, reduce its origin's origin_remaining_qty
+                # proportional to how much was consumed
+                # Since _run_fifo already reduced remaining_qty, we can infer
+                # what was consumed by looking at candidates that had stock before
+                # 
+                # Simpler approach: reduce origin of ALL candidates that still have
+                # stock at this warehouse, proportional to their remaining_qty
+                # But that's not accurate...
+                #
+                # Best approach: use the same FIFO logic to determine what was consumed
+                # and reduce those specific origins
+                remaining_to_reduce = qty_consumed
+                
+                for candidate in candidates:
+                    if remaining_to_reduce <= 0:
+                        break
+                    
+                    taken = min(remaining_to_reduce, candidate.remaining_qty)
+                    origin = candidate.origin_valuation_layer_id or candidate
+                    
+                    new_orem = origin.origin_remaining_qty - taken
+                    if new_orem < 0:
+                        new_orem = 0.0
+                    
+                    origin_unit_cost = (
+                        origin.origin_remaining_value / origin.origin_remaining_qty
+                        if origin.origin_remaining_qty > 0 else 0.0
+                    )
+                    new_orem_val = origin.origin_remaining_value - (taken * origin_unit_cost)
+                    if new_orem_val < 0:
+                        new_orem_val = 0.0
+                    
+                    origin.sudo().write({
+                        'origin_remaining_qty': new_orem,
+                        'origin_remaining_value': new_orem_val,
+                    })
+                    
+                    # Also reduce origin_remaining_qty on the position layer itself
+                    if candidate.origin_valuation_layer_id and candidate.id != origin.id:
+                        pos_new_orem = candidate.origin_remaining_qty - taken
+                        if pos_new_orem < 0:
+                            pos_new_orem = 0.0
+                        candidate.sudo().write({
+                            'origin_remaining_qty': pos_new_orem,
+                        })
+                    
+                    _logger.debug(
+                        f"📉 External out: origin {origin.id} orem "
+                        f"{origin.origin_remaining_qty + taken:.0f} → {new_orem:.0f}"
+                    )
+                    
+                    remaining_to_reduce -= taken
     
     def _allocate_landed_cost_for_inter_warehouse(self):
         """
@@ -672,66 +933,80 @@ class StockMove(models.Model):
         if source_wh.id == dest_wh.id:
             return
         
-        # Get landed costs at source warehouse for this product
-        source_lc_value = self.env['stock.valuation.layer'].get_landed_cost_at_warehouse(
-            product, source_wh, company.id
-        )
-        
-        if source_lc_value == 0:
-            # No landed costs to transfer
-            return
-        
-        # Get total quantity available at source warehouse
-        source_qty = self.env['stock.valuation.layer']._get_total_available_qty(
-            product, source_wh, company.id
-        )
-        
-        # Calculate proportion of landed cost to transfer
         precision = self.env['decimal.precision'].precision_get('Product Price')
-        if source_qty > 0:
-            proportion = qty_transferred / source_qty
-            lc_to_transfer = source_lc_value * proportion
-            lc_to_transfer = float_round(lc_to_transfer, precision_digits=precision)
-        else:
-            lc_to_transfer = 0.0
-        
-        # Get or create valuation layers for landed cost tracking
-        # The negative layer (source) and positive layer (destination)
-        negative_layer = None
-        positive_layer = None
-        
-        for layer in layers:
-            if layer.quantity < 0 and layer.warehouse_id and layer.warehouse_id.id == source_wh.id:
-                negative_layer = layer
-            elif layer.quantity > 0 and layer.warehouse_id and layer.warehouse_id.id == dest_wh.id:
-                positive_layer = layer
-        
-        if not (negative_layer and positive_layer):
-            return
-        
-        # Create landed cost allocation records
-        # For source: negative landed cost (reducing source warehouse's landed cost)
-        # For destination: positive landed cost (adding to destination warehouse's landed cost)
-        
-        # We need to allocate from existing layers to the new warehouses
-        self._transfer_landed_cost_between_warehouses(
-            product, source_wh, dest_wh, company,
-            qty_transferred, lc_to_transfer, negative_layer, positive_layer
+        lc_model = self.env['stock.valuation.layer.landed.cost']
+
+        positive_layers = layers.filtered(
+            lambda l: l.quantity > 0 and l.warehouse_id and l.warehouse_id.id == dest_wh.id
         )
-        
-        # Record the allocation in history
+        total_transferred_lc = 0.0
+        source_lc_before = self.env['stock.valuation.layer'].get_landed_cost_at_warehouse(
+            product, source_wh, company.id
+        )
+        dest_lc_before = self.env['stock.valuation.layer'].get_landed_cost_at_warehouse(
+            product, dest_wh, company.id
+        )
+
+        for positive_layer in positive_layers:
+            origin_layer = positive_layer.origin_valuation_layer_id
+            if not origin_layer:
+                continue
+
+            source_lc = lc_model.search([
+                ('valuation_layer_id', '=', origin_layer.id),
+                ('warehouse_id', '=', source_wh.id),
+            ], limit=1)
+            if not source_lc or source_lc.quantity <= 0:
+                continue
+
+            qty_for_layer = positive_layer.quantity
+            lc_to_transfer = float_round(
+                qty_for_layer * source_lc.unit_landed_cost,
+                precision_digits=precision
+            )
+            if float_compare(lc_to_transfer, 0, precision_digits=precision) <= 0:
+                continue
+
+            source_lc.write({
+                'landed_cost_value': float_round(
+                    max(0.0, source_lc.landed_cost_value - lc_to_transfer),
+                    precision_digits=precision
+                ),
+                'quantity': max(0.0, source_lc.quantity - qty_for_layer),
+            })
+
+            dest_lc = lc_model.search([
+                ('valuation_layer_id', '=', positive_layer.id),
+                ('warehouse_id', '=', dest_wh.id),
+            ], limit=1)
+            if dest_lc:
+                dest_lc.write({
+                    'landed_cost_value': float_round(
+                        dest_lc.landed_cost_value + lc_to_transfer,
+                        precision_digits=precision
+                    ),
+                    'quantity': dest_lc.quantity + qty_for_layer,
+                })
+            else:
+                lc_model.create({
+                    'valuation_layer_id': positive_layer.id,
+                    'warehouse_id': dest_wh.id,
+                    'landed_cost_value': lc_to_transfer,
+                    'quantity': qty_for_layer,
+                })
+            total_transferred_lc += lc_to_transfer
+
+        if float_compare(total_transferred_lc, 0, precision_digits=precision) <= 0:
+            return
+
         self.env['stock.landed.cost.allocation'].create({
             'move_id': move.id,
             'quantity_transferred': qty_transferred,
-            'source_layer_landed_cost_before': source_lc_value,
-            'source_layer_landed_cost_after': source_lc_value - lc_to_transfer,
-            'destination_layer_landed_cost_before': self.env['stock.valuation.layer'].get_landed_cost_at_warehouse(
-                product, dest_wh, company.id
-            ),
-            'destination_layer_landed_cost_after': self.env['stock.valuation.layer'].get_landed_cost_at_warehouse(
-                product, dest_wh, company.id
-            ) + lc_to_transfer,
-            'landed_cost_transferred': lc_to_transfer,
+            'source_layer_landed_cost_before': source_lc_before,
+            'source_layer_landed_cost_after': source_lc_before - total_transferred_lc,
+            'destination_layer_landed_cost_before': dest_lc_before,
+            'destination_layer_landed_cost_after': dest_lc_before + total_transferred_lc,
+            'landed_cost_transferred': total_transferred_lc,
             'notes': f'Automatic landed cost allocation during inter-warehouse transfer: {qty_transferred} units of {product.name}',
         })
     

@@ -40,7 +40,7 @@ def test_inter_warehouse_transfer(env):
     _logger.info("="*80)
     
     # Get models
-    Product = env['stock.product.product']
+    Product = env['product.product']
     Location = env['stock.location']
     Warehouse = env['stock.warehouse']
     Move = env['stock.move']
