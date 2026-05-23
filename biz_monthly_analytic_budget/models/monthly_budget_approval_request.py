@@ -3,6 +3,12 @@ import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
+from .budget_utils import (
+    extract_analytic_amounts,
+    get_first_plan_from_groups,
+    split_analytic_totals_by_plan,
+)
+
 _logger = logging.getLogger(__name__)
 
 
@@ -111,6 +117,22 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
         compute='_compute_document_ref',
     )
 
+    @api.model
+    def _ensure_approval_request_sequence(self):
+        sequence_code = 'buz.monthly.budget.approval.request'
+        sequence = self.env['ir.sequence'].sudo().search([
+            ('code', '=', sequence_code),
+        ], limit=1)
+        if not sequence:
+            sequence = self.env['ir.sequence'].sudo().create({
+                'name': 'Monthly Budget Approval Request',
+                'code': sequence_code,
+                'prefix': 'AR/%(year)s/',
+                'padding': 5,
+                'company_id': False,
+            })
+        return sequence
+
     @api.depends('ref_pr_id', 'ref_po_id', 'ref_bill_id', 'document_type')
     def _compute_document_ref(self):
         for rec in self:
@@ -127,34 +149,30 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('name', _('New')) == _('New'):
+                self._ensure_approval_request_sequence()
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'buz.monthly.budget.approval.request'
                 ) or _('New')
-        
+
         records = super().create(vals_list)
-        
-        # ── Feature 5: Auto-Approve Threshold ────────────────────────
+
         for rec in records:
             if rec.state == 'pending':
-                # Resolve the plan: prefer direct plan_id, fallback to budget_line.plan_id
                 plan = rec.plan_id or (rec.budget_line_id.plan_id if rec.budget_line_id else False)
                 if not plan:
                     continue
 
                 auto_approve = False
-                
-                # Check absolute amount threshold
+
                 if plan.auto_approve_threshold > 0 and rec.amount_overage <= plan.auto_approve_threshold:
                     auto_approve = True
-                
-                # Check percentage threshold
+
                 if not auto_approve and plan.auto_approve_pct > 0 and rec.amount_limit > 0:
                     overage_pct = (rec.amount_overage / rec.amount_limit) * 100.0
                     if overage_pct <= plan.auto_approve_pct:
                         auto_approve = True
-                        
+
                 if auto_approve:
-                    # using SUPERUSER_ID for auto-approval
                     rec.write({
                         'state': 'approved',
                         'approver_id': self.env.ref('base.user_root').id,
@@ -167,18 +185,16 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
                                'Note: %s') % rec.note,
                     )
                     rec._notify_requester('approved')
-        
+
         return records
 
     def action_approve(self):
         self.ensure_one()
-        # Ensure only budget manager can approve
-        # Using the monthly module budget manager group
         if not self.env.user.has_group('biz_monthly_analytic_budget.group_monthly_budget_manager'):
             raise UserError(_('Only Monthly Budget Managers can approve budget requests.'))
         if self.state != 'pending':
             raise UserError(_('Only pending requests can be approved.'))
-            
+
         return {
             'name': _('Approve Budget Request'),
             'type': 'ir.actions.act_window',
@@ -197,7 +213,7 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
             raise UserError(_('Only Monthly Budget Managers can reject budget requests.'))
         if self.state != 'pending':
             raise UserError(_('Only pending requests can be rejected.'))
-            
+
         return {
             'name': _('Reject Budget Request'),
             'type': 'ir.actions.act_window',
@@ -265,9 +281,6 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
 
     def _notify_budget_managers(self):
         self.ensure_one()
-        # In monthly we don't necessarily have a predefined template.
-        # Fallback to simple chatter message to budget manager group if needed.
-        # However, they might want an email template similar to weekly.
         manager_group = self.env.ref(
             'biz_monthly_analytic_budget.group_monthly_budget_manager', raise_if_not_found=False
         )
@@ -278,6 +291,106 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
                     body=_('A new Monthly Budget Approval Request has been created and is waiting for your approval.'),
                     partner_ids=managers.mapped('partner_id').ids,
                 )
+
+    def _prepare_amounts_from_source_document(self):
+        self.ensure_one()
+        BudgetLine = self.env['monthly.budget.line']
+        AnalyticAccount = self.env['account.analytic.account']
+
+        if self.document_type == 'pr':
+            doc = self.ref_pr_id
+            if not doc or not doc.payment_date:
+                return False, set()
+            analytic_totals = {}
+            for line in doc.requisition_order_ids:
+                for account_id, amount in extract_analytic_amounts(line):
+                    analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+            target_date = doc.payment_date
+            document_amount = sum(doc.requisition_order_ids.mapped('price_subtotal'))
+            overage_mode = 'analytic'
+        elif self.document_type == 'po':
+            doc = self.ref_po_id
+            if not doc or not doc.payment_date:
+                return False, set()
+            analytic_totals = {}
+            for line in doc.order_line:
+                for account_id, amount in extract_analytic_amounts(line):
+                    analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+            target_date = doc.payment_date
+            document_amount = doc.amount_untaxed
+            overage_mode = 'po'
+        elif self.document_type == 'bill':
+            doc = self.ref_bill_id
+            target_date = doc._get_bill_target_date() if doc else False
+            if not doc or not target_date:
+                return False, set()
+            analytic_totals = {}
+            for line in doc.invoice_line_ids:
+                for account_id, amount in extract_analytic_amounts(line, BudgetLine):
+                    analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
+            document_amount = doc.amount_untaxed
+            overage_mode = 'analytic'
+        else:
+            return False, set()
+
+        grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
+            self.env, target_date, doc.company_id.id, analytic_totals,
+        )
+        if not grouped_totals:
+            return False, set()
+
+        analytic_amount = sum(analytic_totals.values())
+        limit_amt = 0.0
+        used = 0.0
+        reserved = 0.0
+        budget_line_names = []
+        affected_plan_ids = set()
+
+        for plan, plan_totals in grouped_totals:
+            affected_plan_ids.add(plan.id)
+            has_pr = doc._has_active_source_requisition_for_plan(plan) if self.document_type == 'po' else False
+            po_already_reserved = doc._is_counted_in_monthly_budget_reserve(plan) if self.document_type == 'po' else False
+            for account_id, amt in plan_totals.items():
+                analytic = AnalyticAccount.browse(account_id)
+                if not analytic.exists():
+                    continue
+                bl = BudgetLine._find_budget_line(plan, {'analytic_account_id': account_id}, log_fallback=False)
+                if not bl:
+                    continue
+                limit_amt += bl.budget_amount
+                used += bl.used_amount
+                if self.document_type == 'po' and not has_pr and not po_already_reserved:
+                    reserved += bl.reserved_amount + amt
+                else:
+                    reserved += bl.reserved_amount
+                budget_line_names.append('%s (%s)' % (bl.analytic_account_id.name, plan.name))
+
+        if overage_mode == 'po':
+            overage = max(0.0, used + reserved - limit_amt)
+        else:
+            overage = max(0.0, used + reserved + analytic_amount - limit_amt)
+
+        primary_plan = get_first_plan_from_groups(grouped_totals)
+        vals = {
+            'amount_requested': document_amount,
+            'amount_analytic': analytic_amount,
+            'amount_used': used,
+            'amount_reserved': reserved,
+            'amount_limit': limit_amt,
+            'amount_overage': overage,
+            'budget_line_name': ', '.join(budget_line_names) or self.budget_line_name,
+            'plan_id': primary_plan.id if primary_plan else self.plan_id.id,
+        }
+        return vals, affected_plan_ids
+
+    def _refresh_amounts_from_source_document(self):
+        affected_plan_ids = set()
+        for rec in self:
+            vals, plan_ids = rec._prepare_amounts_from_source_document()
+            if vals:
+                rec.write(vals)
+            affected_plan_ids.update(plan_ids)
+        return affected_plan_ids
 
     @api.model
     def _get_or_create_pending_request(self, document_type, ref_field, ref_id,
@@ -293,15 +406,20 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
         ]
         existing = self.search(domain, limit=1)
         if existing:
-            # Update existing request with latest amounts
-            existing.write({
+            write_vals = {
                 'amount_requested': amount_requested,
                 'amount_analytic': amount_analytic,
                 'amount_used': amount_used,
                 'amount_reserved': amount_reserved,
                 'amount_limit': amount_limit,
                 'amount_overage': amount_overage,
-            })
+            }
+            if existing.name in (False, _('New')):
+                self._ensure_approval_request_sequence()
+                write_vals['name'] = self.env['ir.sequence'].next_by_code(
+                    'buz.monthly.budget.approval.request'
+                ) or existing.name
+            existing.write(write_vals)
             return existing
 
         vals = {

@@ -9,6 +9,7 @@
         'stock',
         'stock_account',
         'stock_landed_costs',
+        'account',
     ],
     'data': [
         'security/ir.model.access.csv',
@@ -20,6 +21,7 @@
         'views/stock_quant_views.xml',
         'wizard/stock_valuation_recalculate_wizard_views.xml',
         'wizard/stock_shortage_resolution_wizard_views.xml',
+        'report/landed_cost_distribution_report_views.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'installable': True,

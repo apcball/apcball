@@ -1,0 +1,479 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_service_receipt_tree" model="ir.ui.view">
+        <field name="name">service.receipt.tree</field>
+        <field name="model">service.receipt</field>
+        <field name="arch" type="xml">
+            <tree string="Service Receipts">
+                <field name="name"/>
+                <field name="requester_name"/>
+                <field name="partner_id"/>
+                <field name="service_date"/>
+                <field name="schedule_start"/>
+                <field name="technician_ids" widget="many2many_tags"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_service_receipt_form" model="ir.ui.view">
+        <field name="name">service.receipt.form</field>
+        <field name="model">service.receipt</field>
+        <field name="arch" type="xml">
+            <form string="Service Receipt">
+                <header>
+                    <button name="action_print_pdf" string="Print PDF" type="object" class="btn-primary"/>
+                    <button name="action_confirm" string="Confirm" type="object" invisible="state != 'draft'" class="btn-primary"/>
+                    <button name="action_waiting_replacement" string="Replacement Flow" type="object" invisible="state not in ['draft', 'confirmed']"/>
+                    <button name="action_waiting_invoice" string="Out Warranty Flow" type="object" invisible="state not in ['draft', 'confirmed']"/>
+                    <button name="action_create_customer_invoice" string="Create Invoice" type="object" class="btn-warning" invisible="invoice_status != 'to_invoice'"/>
+                    <button name="action_view_invoice" string="View Invoice" type="object" invisible="not invoice_id"/>
+                    <button name="action_done" string="Done" type="object" invisible="state not in ['draft', 'confirmed', 'waiting_replacement', 'waiting_invoice']" class="btn-success"/>
+                    <button name="action_cancel" string="Cancel" type="object" invisible="state == 'cancel'"/>
+                    <button name="action_draft" string="Reset to Draft" type="object" invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,waiting_replacement,waiting_invoice,done,cancel"/>
+                </header>
+                <sheet>
+                    <group string="Display">
+                        <field name="form_language" widget="radio" options="{'horizontal': true}"/>
+                    </group>
+
+                    <div invisible="form_language != 'th'">
+                        <group>
+                            <group string="เอกสาร">
+                                <field name="name" string="เลขที่เอกสาร"/>
+                                <field name="company_id" string="บริษัท" groups="base.group_multi_company"/>
+                                <field name="partner_id" string="ลูกค้า"/>
+                                <field name="calendar_event_id" string="ปฏิทิน" readonly="1"/>
+                                <field name="service_case_type" string="ประเภทเคส"/>
+                                <field name="invoice_status" string="สถานะวางบิล" readonly="1"/>
+                                <field name="invoice_id" string="ใบแจ้งหนี้" readonly="1"/>
+                            </group>
+                            <group string="ตารางนัดหมายช่าง">
+                                <field name="technician_ids" string="ช่างผู้รับผิดชอบ" widget="many2many_tags"/>
+                                <field name="service_date" string="วันที่เข้าบริการ"/>
+                                <field name="service_time" string="เวลาเข้าบริการ" widget="float_time"/>
+                                <field name="schedule_start" string="เริ่มนัดหมาย"/>
+                                <field name="schedule_end" string="สิ้นสุดนัดหมาย"/>
+                            </group>
+                        </group>
+
+                        <group string="ข้อมูลผู้แจ้งและผู้ขอรับบริการ">
+                            <group>
+                                <field name="informer_name" string="ผู้แจ้ง"/>
+                                <field name="informer_phone" string="โทรศัพท์ผู้แจ้ง"/>
+                                <field name="request_date" string="วันที่แจ้ง"/>
+                                <field name="requester_name" string="ชื่อผู้ขอรับบริการ"/>
+                                <field name="requester_phone" string="โทรศัพท์ผู้ขอรับบริการ"/>
+                            </group>
+                            <group>
+                                <field name="warranty_no" string="เลขที่ใบรับประกัน"/>
+                                <field name="shop_name" string="ซื้อผ่านร้าน"/>
+                                <field name="service_address" string="ที่อยู่บริการ"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <page string="สินค้า">
+                                <field name="line_ids">
+                                    <tree editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="product_id" string="สินค้า"/>
+                                        <field name="description" string="รายละเอียดสินค้า"/>
+                                        <field name="quantity" string="จำนวน"/>
+                                        <field name="resolution_type" string="ผลการบริการ"/>
+                                        <field name="replacement_product_id" string="สินค้าเปลี่ยน"/>
+                                        <field name="replacement_qty" string="จำนวนเปลี่ยน"/>
+                                        <field name="bill_customer" string="คิดเงินลูกค้า"/>
+                                        <field name="invoice_qty" string="จำนวนบิล"/>
+                                        <field name="price_unit" string="ราคาต่อหน่วย"/>
+                                        <field name="issue_detail" string="ปัญหาที่แจ้ง"/>
+                                        <field name="appointment_detail" string="ข้อมูลนัดหมาย"/>
+                                        <field name="product_detail" string="ข้อมูลสินค้าเพิ่มเติม"/>
+                                    </tree>
+                                </field>
+                            </page>
+
+                            <page string="รายละเอียดงานบริการ">
+                                <group string="ข้อมูลการนัดหมาย">
+                                    <group>
+                                        <field name="usage_years" string="อายุการใช้งาน ปี"/>
+                                        <field name="product_in_warranty" string="สินค้าในระยะประกัน"/>
+                                        <field name="product_out_warranty" string="สินค้าพ้นระยะประกัน"/>
+                                    </group>
+                                    <group>
+                                        <field name="charge_customer" string="เก็บเงิน"/>
+                                        <field name="appointment_info" string="อื่นๆ"/>
+                                    </group>
+                                </group>
+
+                                <group string="กรณีเปลี่ยนแปลงการนัดหมาย">
+                                    <group>
+                                        <field name="change_cancel_by_customer" string="ลูกค้ายกเลิกนัด"/>
+                                        <field name="change_no_staff" string="เจ้าหน้าที่ไม่มี"/>
+                                        <field name="change_no_parts" string="ไม่มีอะไหล่"/>
+                                    </group>
+                                    <group>
+                                        <field name="change_other" string="เหตุผลอื่น"/>
+                                    </group>
+                                </group>
+
+                                <group string="การเปลี่ยนสินค้า / นอกประกัน">
+                                    <group>
+                                        <field name="replacement_reason" string="เหตุผลการเปลี่ยนสินค้า"/>
+                                        <field name="replacement_date" string="วันที่เปลี่ยนสินค้า"/>
+                                    </group>
+                                    <group>
+                                        <field name="charge_customer" string="คิดเงินลูกค้า"/>
+                                        <field name="invoice_status" string="สถานะ Invoice" readonly="1"/>
+                                    </group>
+                                </group>
+
+                                <group string="งานบริการ">
+                                    <group>
+                                        <field name="service_install_check" string="แนะนำการติดตั้ง/ตรวจเช็ค"/>
+                                        <field name="service_repair" string="ซ่อม/แก้ไข"/>
+                                        <field name="service_install" string="ประกอบ/ติดตั้ง"/>
+                                    </group>
+                                    <group>
+                                        <field name="service_troubleshoot" string="ตรวจสอบ/แนะนำการแก้ไข"/>
+                                        <field name="service_compensation" string="ชดเชย"/>
+                                        <field name="service_other" string="อื่นๆ"/>
+                                    </group>
+                                </group>
+
+                                <group string="ประเภทที่พักอาศัย">
+                                    <group>
+                                        <field name="residence_house" string="บ้านเดี่ยว"/>
+                                        <field name="residence_townhouse" string="ทาวน์เฮาส์"/>
+                                        <field name="residence_condo" string="คอนโด/อพาร์ทเม้นท์"/>
+                                        <field name="residence_shophouse" string="ตึกแถว/อาคารพาณิชย์"/>
+                                    </group>
+                                    <group>
+                                        <field name="residence_hotel" string="โรงแรม/รีสอร์ท"/>
+                                        <field name="residence_government" string="หน่วยงานราชการ"/>
+                                        <field name="residence_private" string="หน่วยงานเอกชน"/>
+                                        <field name="residence_other" string="อื่นๆ"/>
+                                    </group>
+                                </group>
+
+                                <group string="รายละเอียดการแก้ไข">
+                                    <field name="repair_detail" nolabel="1"/>
+                                </group>
+
+                                <group string="ขั้นตอนการติดตั้ง">
+                                    <group>
+                                        <field name="install_silicone" string="งานซิลิโคนเรียบร้อย"/>
+                                        <field name="install_accessories" string="ติดตั้งอุปกรณ์ครบ"/>
+                                    </group>
+                                    <group>
+                                        <field name="install_tested" string="ทดสอบการทำงานเรียบร้อย"/>
+                                        <field name="install_site_ready" string="หน้างานพร้อม"/>
+                                    </group>
+                                </group>
+
+                                <group string="กรณีเบิกสินค้า">
+                                    <group>
+                                        <field name="box_condition" string="สภาพกล่อง"/>
+                                    </group>
+                                    <group>
+                                        <field name="product_condition" string="สภาพสินค้า"/>
+                                    </group>
+                                    <group>
+                                        <field name="accessory_condition" string="อุปกรณ์"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <page string="สรุปและลายเซ็น">
+                                <group string="สรุปปัญหา">
+                                    <group>
+                                        <field name="summary_installation" string="การติดตั้ง"/>
+                                        <field name="summary_usage" string="การใช้งาน"/>
+                                        <field name="summary_sanitary" string="ระบบสุขาภิบาล"/>
+                                        <field name="summary_unknown" string="ไม่ทราบสาเหตุ"/>
+                                    </group>
+                                    <group>
+                                        <field name="summary_quality" string="คุณภาพสินค้า"/>
+                                        <field name="summary_transport" string="การขนส่ง"/>
+                                        <field name="summary_lifetime" string="อายุการใช้งาน"/>
+                                        <field name="summary_other" string="อื่นๆ"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <field name="suggestion" string="ข้อเสนอแนะเพิ่มเติม"/>
+                                    <field name="note" string="หมายเหตุ"/>
+                                </group>
+                                <group string="ผู้ลงนาม">
+                                    <group>
+                                        <field name="service_by_name" string="ผู้ให้บริการ"/>
+                                        <field name="service_by_date" string="วันที่ผู้ให้บริการ"/>
+                                    </group>
+                                    <group>
+                                        <field name="customer_sign_name" string="ผู้รับบริการ"/>
+                                        <field name="customer_sign_date" string="วันที่ผู้รับบริการ"/>
+                                    </group>
+                                    <group>
+                                        <field name="approver_name" string="ผู้อนุมัติ"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </div>
+
+                    <div invisible="form_language != 'en'">
+                        <group>
+                            <group string="Document">
+                                <field name="name"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="partner_id"/>
+                                <field name="calendar_event_id" readonly="1"/>
+                                <field name="service_case_type"/>
+                                <field name="invoice_status" readonly="1"/>
+                                <field name="invoice_id" readonly="1"/>
+                            </group>
+                            <group string="Technician Schedule">
+                                <field name="technician_ids" widget="many2many_tags"/>
+                                <field name="service_date"/>
+                                <field name="service_time" widget="float_time"/>
+                                <field name="schedule_start"/>
+                                <field name="schedule_end"/>
+                            </group>
+                        </group>
+
+                        <group string="Requester Information">
+                            <group>
+                                <field name="informer_name"/>
+                                <field name="informer_phone"/>
+                                <field name="request_date"/>
+                                <field name="requester_name"/>
+                                <field name="requester_phone"/>
+                            </group>
+                            <group>
+                                <field name="warranty_no"/>
+                                <field name="shop_name"/>
+                                <field name="service_address"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <page string="Products">
+                                <field name="line_ids">
+                                    <tree editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="product_id"/>
+                                        <field name="description"/>
+                                        <field name="quantity"/>
+                                        <field name="resolution_type"/>
+                                        <field name="replacement_product_id"/>
+                                        <field name="replacement_qty"/>
+                                        <field name="bill_customer"/>
+                                        <field name="invoice_qty"/>
+                                        <field name="price_unit"/>
+                                        <field name="issue_detail"/>
+                                        <field name="appointment_detail"/>
+                                        <field name="product_detail"/>
+                                    </tree>
+                                </field>
+                            </page>
+
+                            <page string="Service Details">
+                                <group string="Appointment Information">
+                                    <group>
+                                        <field name="usage_years"/>
+                                        <field name="product_in_warranty"/>
+                                        <field name="product_out_warranty"/>
+                                    </group>
+                                    <group>
+                                        <field name="charge_customer"/>
+                                        <field name="appointment_info"/>
+                                    </group>
+                                </group>
+
+                                <group string="Change of Appointment">
+                                    <group>
+                                        <field name="change_cancel_by_customer"/>
+                                        <field name="change_no_staff"/>
+                                        <field name="change_no_parts"/>
+                                    </group>
+                                    <group>
+                                        <field name="change_other"/>
+                                    </group>
+                                </group>
+
+                                <group string="Replacement / Out of Warranty">
+                                    <group>
+                                        <field name="replacement_reason"/>
+                                        <field name="replacement_date"/>
+                                    </group>
+                                    <group>
+                                        <field name="charge_customer"/>
+                                        <field name="invoice_status" readonly="1"/>
+                                    </group>
+                                </group>
+
+                                <group string="Service Job">
+                                    <group>
+                                        <field name="service_install_check"/>
+                                        <field name="service_repair"/>
+                                        <field name="service_install"/>
+                                    </group>
+                                    <group>
+                                        <field name="service_troubleshoot"/>
+                                        <field name="service_compensation"/>
+                                        <field name="service_other"/>
+                                    </group>
+                                </group>
+
+                                <group string="Residence Type">
+                                    <group>
+                                        <field name="residence_house"/>
+                                        <field name="residence_townhouse"/>
+                                        <field name="residence_condo"/>
+                                        <field name="residence_shophouse"/>
+                                    </group>
+                                    <group>
+                                        <field name="residence_hotel"/>
+                                        <field name="residence_government"/>
+                                        <field name="residence_private"/>
+                                        <field name="residence_other"/>
+                                    </group>
+                                </group>
+
+                                <group string="Repair Detail">
+                                    <field name="repair_detail" nolabel="1"/>
+                                </group>
+
+                                <group string="Installation Checklist">
+                                    <group>
+                                        <field name="install_silicone"/>
+                                        <field name="install_accessories"/>
+                                    </group>
+                                    <group>
+                                        <field name="install_tested"/>
+                                        <field name="install_site_ready"/>
+                                    </group>
+                                </group>
+
+                                <group string="Withdrawn Product Condition">
+                                    <group>
+                                        <field name="box_condition"/>
+                                    </group>
+                                    <group>
+                                        <field name="product_condition"/>
+                                    </group>
+                                    <group>
+                                        <field name="accessory_condition"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <page string="Summary &amp; Signatures">
+                                <group string="Problem Summary">
+                                    <group>
+                                        <field name="summary_installation"/>
+                                        <field name="summary_usage"/>
+                                        <field name="summary_sanitary"/>
+                                        <field name="summary_unknown"/>
+                                    </group>
+                                    <group>
+                                        <field name="summary_quality"/>
+                                        <field name="summary_transport"/>
+                                        <field name="summary_lifetime"/>
+                                        <field name="summary_other"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <field name="suggestion"/>
+                                    <field name="note"/>
+                                </group>
+                                <group string="Signatures">
+                                    <group>
+                                        <field name="service_by_name"/>
+                                        <field name="service_by_date"/>
+                                    </group>
+                                    <group>
+                                        <field name="customer_sign_name"/>
+                                        <field name="customer_sign_date"/>
+                                    </group>
+                                    <group>
+                                        <field name="approver_name"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </div>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_service_receipt_search" model="ir.ui.view">
+        <field name="name">service.receipt.search</field>
+        <field name="model">service.receipt</field>
+        <field name="arch" type="xml">
+            <search string="Service Receipts">
+                <field name="name"/>
+                <field name="requester_name"/>
+                <field name="partner_id"/>
+                <field name="technician_ids"/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Confirmed" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Technician" name="group_technician" context="{'group_by': 'technician_id'}"/>
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Service Date" name="group_service_date" context="{'group_by': 'service_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_service_receipt_calendar" model="ir.ui.view">
+        <field name="name">service.receipt.calendar</field>
+        <field name="model">service.receipt</field>
+        <field name="arch" type="xml">
+            <calendar string="Service Schedule"
+                      date_start="schedule_start"
+                      date_stop="schedule_end"
+                      color="technician_id"
+                      mode="week"
+                      quick_create="false"
+                      event_open_popup="true">
+                <field name="name"/>
+                <field name="requester_name"/>
+                <field name="partner_id"/>
+                <field name="technician_id" filters="1"/>
+                <field name="state" filters="1"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="action_service_receipt" model="ir.actions.act_window">
+        <field name="name">Service Receipts</field>
+        <field name="res_model">service.receipt</field>
+        <field name="view_mode">tree,calendar,form</field>
+        <field name="context">{'search_default_group_technician': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create your first service receipt</p>
+            <p>Manage service visits, print the service receipt PDF, and sync technician appointments to calendar.</p>
+        </field>
+    </record>
+
+    <record id="action_service_receipt_calendar" model="ir.actions.act_window">
+        <field name="name">Service Schedule</field>
+        <field name="res_model">service.receipt</field>
+        <field name="view_mode">calendar,tree,form</field>
+        <field name="view_id" ref="view_service_receipt_calendar"/>
+        <field name="context">{'default_service_date': context_today()}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Plan technician appointments from the calendar.</p>
+            <p>Use this view to organize service visits by date and technician in one place.</p>
+        </field>
+    </record>
+</odoo>

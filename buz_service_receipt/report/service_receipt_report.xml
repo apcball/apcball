@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_service_receipt" model="report.paperformat">
+        <field name="name">Service Receipt A4</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">8</field>
+        <field name="margin_bottom">12</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">6</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_service_receipt" model="ir.actions.report">
+        <field name="name">Service Receipt</field>
+        <field name="model">service.receipt</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">buz_service_receipt.report_service_receipt_document</field>
+        <field name="report_file">buz_service_receipt.report_service_receipt_document</field>
+        <field name="binding_model_id" ref="model_service_receipt"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_service_receipt"/>
+    </record>
+
+    <template id="report_service_receipt_document">
+        <t t-name="buz_service_receipt.report_service_receipt_document">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <div class="page">
+                            <style>
+                                @font-face {
+                                    font-family: 'Sarabun';
+                                    src: url('/buz_service_receipt/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                                    font-weight: 700;
+                                    font-style: normal;
+                                }
+                                html, body, div, span, p, table, th, td, h1, h2, h3 {
+                                    font-family: 'Sarabun', sans-serif !important;
+                                    font-size: 12px;
+                                }
+                                .sr-title {
+                                    text-align: center;
+                                    font-size: 22px;
+                                    font-weight: bold;
+                                    margin: 8px 0 12px;
+                                }
+                                .sr-table {
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                }
+                                .sr-table td, .sr-table th {
+                                    border: 1px solid #000;
+                                    padding: 4px;
+                                    vertical-align: top;
+                                }
+                                .no-border td {
+                                    border: 0;
+                                    padding: 1px 0;
+                                }
+                                .box {
+                                    display: inline-block;
+                                    width: 11px;
+                                    text-align: center;
+                                    border: 1px solid #000;
+                                    margin-right: 4px;
+                                    font-size: 10px;
+                                    line-height: 11px;
+                                }
+                                .section {
+                                    margin-top: 8px;
+                                }
+                                .sign-cell {
+                                    height: 64px;
+                                }
+                            </style>
+                            <t t-set="service_hour" t-value="int(o.service_time or 0)"/>
+                            <t t-set="service_minute" t-value="int(round(((o.service_time or 0) - service_hour) * 60))"/>
+
+                            <table class="no-border" style="width:100%;">
+                                <tr>
+                                    <td style="width:75%;">
+                                        <strong>บริษัท โมเก้น (ประเทศไทย) จำกัด</strong><br/>
+                                        9 หมู่12 ตำบลบึงคำพร้อย อำเภอลำลูกกา จังหวัดปทุมธานี 12150<br/>
+                                        โทร 02-1509709-13 โทรสาร 02-1528801 E-mail : contact@mogen.co.th
+                                    </td>
+                                    <td style="width:25%; text-align:right;">
+                                        เลขที่เอกสาร <strong><span t-esc="o.name"/></strong>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div class="sr-title">ใบรับบริการ</div>
+
+                            <table class="no-border" style="width:100%;">
+                                <tr>
+                                    <td>ผู้แจ้ง <span t-esc="o.informer_name or ''"/></td>
+                                    <td>โทรศัพท์ <span t-esc="o.informer_phone or ''"/></td>
+                                    <td>วันที่แจ้ง <span t-esc="o.request_date.strftime('%d/%m/%Y') if o.request_date else ''"/></td>
+                                </tr>
+                                <tr>
+                                    <td>ชื่อผู้ขอรับบริการ <span t-esc="o.requester_name or ''"/></td>
+                                    <td>โทรศัพท์ <span t-esc="o.requester_phone or ''"/></td>
+                                    <td>เลขที่ใบรับประกัน <span t-esc="o.warranty_no or ''"/></td>
+                                </tr>
+                                <tr>
+                                    <td>ซื้อผ่านร้าน <span t-esc="o.shop_name or ''"/></td>
+                                    <td>วันที่เข้าบริการ <span t-esc="o.service_date.strftime('%d/%m/%Y') if o.service_date else ''"/></td>
+                                    <td>เวลา <span t-esc="'%02d:%02d' % (service_hour, service_minute) if o.service_date else ''"/></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3">ที่อยู่ <span t-esc="o.service_address or ''"/></td>
+                                </tr>
+                            </table>
+
+                            <div class="section">
+                                <table class="sr-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width:22%;">สินค้า</th>
+                                            <th style="width:8%;">จำนวน</th>
+                                            <th style="width:23%;">ปัญหาลักษณะที่แจ้ง</th>
+                                            <th style="width:23%;">ข้อมูลการนัดหมาย</th>
+                                            <th style="width:24%;">ข้อมูลสินค้า</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="o.line_ids" t-as="line">
+                                            <tr>
+                                                <td><span t-esc="line.description or line.product_id.display_name or ''"/></td>
+                                                <td style="text-align:center;"><span t-esc="line.quantity"/></td>
+                                                <td><span t-esc="line.issue_detail or ''"/></td>
+                                                <td><span t-esc="line.appointment_detail or ''"/></td>
+                                                <td><span t-esc="line.product_detail or ''"/></td>
+                                            </tr>
+                                        </t>
+                                        <t t-if="not o.line_ids">
+                                            <tr>
+                                                <td style="height:60px;"></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="section">
+                                <div><span class="box"><t t-esc="'/' if o.usage_years else ''"/></span> อายุการใช้งาน <span t-esc="o.usage_years or ''"/> ปี</div>
+                                <div><span class="box"><t t-esc="'/' if o.product_in_warranty else ''"/></span> สินค้าในระยะประกัน</div>
+                                <div><span class="box"><t t-esc="'/' if o.product_out_warranty else ''"/></span> สินค้าพ้นระยะประกัน</div>
+                                <div><span class="box"><t t-esc="'/' if o.charge_customer else ''"/></span> เก็บเงิน</div>
+                                <div><span class="box"><t t-esc="'/' if o.appointment_info else ''"/></span> อื่นๆ <span t-esc="o.appointment_info or ''"/></div>
+                            </div>
+
+                            <div class="section">
+                                กรณีมีการเปลี่ยนแปลงการบริการจากที่นัดหมายเดิม เนื่องจาก
+                                <div>
+                                    <span class="box"><t t-esc="'/' if o.change_cancel_by_customer else ''"/></span> ลูกค้ายกเลิกนัดหมายเนื่องจากไม่สะดวก
+                                    <span class="box"><t t-esc="'/' if o.change_no_staff else ''"/></span> เจ้าหน้าที่ไม่มี
+                                    <span class="box"><t t-esc="'/' if o.change_no_parts else ''"/></span> ไม่มีอะไหล่
+                                    <span class="box"><t t-esc="'/' if o.change_other else ''"/></span> อื่นๆ <span t-esc="o.change_other or ''"/>
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                งานบริการ
+                                <div>
+                                    <span class="box"><t t-esc="'/' if o.service_install_check else ''"/></span> แนะนำการติดตั้ง/ตรวจเช็ค
+                                    <span class="box"><t t-esc="'/' if o.service_repair else ''"/></span> ซ่อม/แก้ไข
+                                    <span class="box"><t t-esc="'/' if o.service_install else ''"/></span> ประกอบ/ติดตั้ง
+                                </div>
+                                <div>
+                                    <span class="box"><t t-esc="'/' if o.service_troubleshoot else ''"/></span> ตรวจสอบ/แนะนำการแก้ไข
+                                    <span class="box"><t t-esc="'/' if o.service_compensation else ''"/></span> ชดเชย
+                                    <span class="box"><t t-esc="'/' if o.service_other else ''"/></span> อื่นๆ <span t-esc="o.service_other or ''"/>
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                ประเภทที่พักอาศัย
+                                <div>
+                                    <span class="box"><t t-esc="'/' if o.residence_house else ''"/></span> บ้านเดี่ยว
+                                    <span class="box"><t t-esc="'/' if o.residence_townhouse else ''"/></span> ทาวเฮาท์
+                                    <span class="box"><t t-esc="'/' if o.residence_condo else ''"/></span> คอนโด/อพาร์ทเม้นท์
+                                    <span class="box"><t t-esc="'/' if o.residence_shophouse else ''"/></span> ตึกแถวอาคารพานิชย์
+                                </div>
+                                <div>
+                                    <span class="box"><t t-esc="'/' if o.residence_hotel else ''"/></span> โรงแรม/รีสอร์ท
+                                    <span class="box"><t t-esc="'/' if o.residence_government else ''"/></span> หน่วยงานราชการ
+                                    <span class="box"><t t-esc="'/' if o.residence_private else ''"/></span> หน่วยงานเอกชน
+                                    <span class="box"><t t-esc="'/' if o.residence_other else ''"/></span> อื่นๆ <span t-esc="o.residence_other or ''"/>
+                                </div>
+                            </div>
+
+                            <div class="section">รายละเอียดการแก้ไข: <span t-esc="o.repair_detail or ''"/></div>
+
+                            <div class="section">
+                                ขั้นตอนการติดตั้ง
+                                <span class="box"><t t-esc="'/' if o.install_silicone else ''"/></span> งานซิลิโคนเรียบร้อย
+                                <span class="box"><t t-esc="'/' if o.install_accessories else ''"/></span> ติดตั้งอุปกรณ์ครบ
+                                <span class="box"><t t-esc="'/' if o.install_tested else ''"/></span> ผ่านการตรวจสอบ/ทดสอบการทำงานเรียบร้อย
+                                <span class="box"><t t-esc="'/' if o.install_site_ready else ''"/></span> หน้างานพร้อม
+                            </div>
+
+                            <div class="section">
+                                กรณีเบิกสินค้า
+                                สภาพกล่อง <span class="box"><t t-esc="'/' if o.box_condition == 'good' else ''"/></span> ดี
+                                <span class="box"><t t-esc="'/' if o.box_condition == 'damaged' else ''"/></span> ชำรุด
+                                สภาพสินค้า <span class="box"><t t-esc="'/' if o.product_condition == 'good' else ''"/></span> ดี
+                                <span class="box"><t t-esc="'/' if o.product_condition == 'damaged' else ''"/></span> ชำรุด
+                                อุปกรณ์ <span class="box"><t t-esc="'/' if o.accessory_condition == 'complete' else ''"/></span> ครบ
+                                <span class="box"><t t-esc="'/' if o.accessory_condition == 'incomplete' else ''"/></span> ไม่ครบ
+                            </div>
+
+                            <div class="section">
+                                สรุปปัญหา
+                                <div>
+                                    <span class="box"><t t-esc="'/' if o.summary_installation else ''"/></span> การติดตั้ง
+                                    <span class="box"><t t-esc="'/' if o.summary_usage else ''"/></span> การใช้งาน
+                                    <span class="box"><t t-esc="'/' if o.summary_sanitary else ''"/></span> ระบบสุขาภิบาล
+                                    <span class="box"><t t-esc="'/' if o.summary_unknown else ''"/></span> ไม่ทราบสาเหตุ
+                                </div>
+                                <div>
+                                    <span class="box"><t t-esc="'/' if o.summary_quality else ''"/></span> คุณภาพสินค้า
+                                    <span class="box"><t t-esc="'/' if o.summary_transport else ''"/></span> การขนส่ง
+                                    <span class="box"><t t-esc="'/' if o.summary_lifetime else ''"/></span> อายุการใช้งาน
+                                    <span class="box"><t t-esc="'/' if o.summary_other else ''"/></span> อื่นๆ <span t-esc="o.summary_other or ''"/>
+                                </div>
+                            </div>
+
+                            <div class="section">ข้อเสนอแนะเพิ่มเติม: <span t-esc="o.suggestion or ''"/></div>
+                            <div class="section">หมายเหตุ: <span t-esc="o.note or ''"/></div>
+
+                            <table class="sr-table section">
+                                <tr>
+                                    <td class="sign-cell" style="width:33%; text-align:center;">
+                                        ลงชื่อ ................................................... ผู้ให้บริการ<br/>
+                                        (<span t-esc="o.service_by_name or ''"/>)<br/>
+                                        วันที่ <span t-esc="o.service_by_date.strftime('%d/%m/%Y') if o.service_by_date else ''"/>
+                                    </td>
+                                    <td class="sign-cell" style="width:33%; text-align:center;">
+                                        ลงชื่อ ................................................... ผู้รับบริการ<br/>
+                                        (<span t-esc="o.customer_sign_name or ''"/>)<br/>
+                                        วันที่ <span t-esc="o.customer_sign_date.strftime('%d/%m/%Y') if o.customer_sign_date else ''"/>
+                                    </td>
+                                    <td class="sign-cell" style="width:34%; text-align:center;">
+                                        ลงชื่อ ...................................................<br/>
+                                        (<span t-esc="o.approver_name or ''"/>)<br/>
+                                        ผู้อนุมัติให้เข้ารับบริการ
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div style="margin-top:8px; display:flex; justify-content:space-between; font-size:11px;">
+                                <div>อนุมัติใช้วันที่ 1/05/2560</div>
+                                <div>Page <span class="page"/> of <span class="topage"/></div>
+                                <div>FM-SRV-01 Rev.04</div>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

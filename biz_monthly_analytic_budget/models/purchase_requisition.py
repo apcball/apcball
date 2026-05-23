@@ -370,62 +370,7 @@ class EmployeePurchaseRequisitionMonthly(models.Model):
         if not requests:
             return
 
-        target_date = self.payment_date
-        if not target_date:
-            return
-
-        analytic_totals = {}
-        for line in self.requisition_order_ids:
-            for account_id, amount in extract_analytic_amounts(line):
-                analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
-
-        grouped_totals, _ignored_totals = split_analytic_totals_by_plan(
-            self.env, target_date, self.company_id.id, analytic_totals,
-        )
-        if not grouped_totals:
-            return
-
-        pr_amount = sum(self.requisition_order_ids.mapped('price_subtotal'))
-        analytic_amount = sum(analytic_totals.values())
-
-        limit_amt = 0.0
-        used = 0.0
-        reserved = 0.0
-        budget_line_names = []
-        BudgetLine = self.env['monthly.budget.line']
-        AnalyticAccount = self.env['account.analytic.account']
-
-        for plan, plan_totals in grouped_totals:
-            for account_id, amt in plan_totals.items():
-                analytic = AnalyticAccount.browse(account_id)
-                if not analytic.exists():
-                    continue
-                bl = BudgetLine._find_budget_line(plan, {'analytic_account_id': account_id}, log_fallback=False)
-                if bl:
-                    limit_amt += bl.budget_amount
-                    used += bl.used_amount
-                    reserved += bl.reserved_amount
-                    budget_line_names.append('%s (%s)' % (bl.analytic_account_id.name, plan.name))
-
-        overage = max(0.0, used + reserved + analytic_amount - limit_amt)
-        primary_plan = get_first_plan_from_groups(grouped_totals)
-
-        for req in requests:
-            req.write({
-                'amount_requested': pr_amount,
-                'amount_analytic': analytic_amount,
-                'amount_used': used,
-                'amount_reserved': reserved,
-                'amount_limit': limit_amt,
-                'amount_overage': overage,
-                'budget_line_name': ', '.join(budget_line_names) or req.budget_line_name,
-                'plan_id': primary_plan.id if primary_plan else req.plan_id.id,
-            })
-
-        # Refresh only affected plans (case-by-case, skip MV for speed)
-        affected_plans = set()
-        for plan, _plan_totals in grouped_totals:
-            affected_plans.add(plan.id)
+        affected_plans = requests._refresh_amounts_from_source_document()
         if affected_plans:
             for plan in self.env['monthly.budget.plan'].browse(list(affected_plans)):
                 plan._refresh_budget_snapshot(refresh_report=False)

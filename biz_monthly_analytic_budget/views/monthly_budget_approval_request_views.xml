@@ -63,17 +63,30 @@
                                    class="text-danger fw-bold"/>
                         </group>
                     </group>
-                    <group string="Reason">
-                        <field name="reason" nolabel="1"
-                               placeholder="ระบุเหตุผลในการขอเพิ่มงบประมาณชั่วคราว..."
-                               readonly="state != 'pending'"/>
-                    </group>
-                    <group string="Approver Note">
-                        <field name="note" nolabel="1"
-                               placeholder="ระบุเหตุผลในการอนุมัติ หรือปฏิเสธ..."
-                               readonly="state != 'pending'"/>
-                        <field name="approver_id" readonly="1" invisible="state == 'pending'"/>
-                        <field name="approved_date" readonly="1" invisible="state == 'pending'"/>
+                    <separator string="Reason"/>
+                    <div class="o_form_label" style="font-weight: 600; margin-bottom: 8px;">
+                        Reason
+                    </div>
+                    <field name="reason"
+                           nolabel="1"
+                           placeholder="ระบุเหตุผลในการขอเพิ่มงบประมาณชั่วคราว..."
+                           readonly="state != 'pending'"
+                           class="w-100"
+                           style="min-height: 120px; white-space: pre-wrap;"/>
+
+                    <separator string="Approver Note"/>
+                    <div class="o_form_label" style="font-weight: 600; margin-bottom: 8px; margin-top: 24px;">
+                        Approver Note
+                    </div>
+                    <field name="note"
+                           nolabel="1"
+                           placeholder="ระบุเหตุผลในการอนุมัติ หรือปฏิเสธ..."
+                           readonly="state == 'pending'"
+                           class="w-100"
+                           style="min-height: 120px; white-space: pre-wrap;"/>
+                    <group col="2" invisible="state == 'pending'">
+                        <field name="approver_id" readonly="1"/>
+                        <field name="approved_date" readonly="1"/>
                     </group>
                 </sheet>
                 <div class="oe_chatter">

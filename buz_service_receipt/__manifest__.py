@@ -1,0 +1,30 @@
+# -*- coding: utf-8 -*-
+{
+    'name': 'BUZ Service Receipt',
+    'version': '17.0.1.0.0',
+    'category': 'Services',
+    'summary': 'Service receipt form with PDF print and technician calendar sync',
+    'author': 'BUZ',
+    'website': 'https://www.buz.co.th',
+    'license': 'LGPL-3',
+    'depends': [
+        'base',
+        'mail',
+        'calendar',
+        'product',
+        'hr',
+        'account',
+    ],
+    'data': [
+        'security/security.xml',
+        'security/ir.model.access.csv',
+        'data/service_receipt_sequence.xml',
+        'report/service_receipt_report.xml',
+        'views/res_config_settings_views.xml',
+        'views/service_receipt_views.xml',
+        'views/service_receipt_menu.xml',
+    ],
+    'installable': True,
+    'application': True,
+    'auto_install': False,
+}

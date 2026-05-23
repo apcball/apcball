@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Action menu entry on stock.landed.cost form/list -->
+        <record id="action_lc_distribution_excel" model="ir.actions.server">
+            <field name="name">Export Distribution Report (Excel)</field>
+            <field name="model_id" ref="stock_landed_costs.model_stock_landed_cost"/>
+            <field name="binding_model_id" ref="stock_landed_costs.model_stock_landed_cost"/>
+            <field name="binding_view_types">list,form</field>
+            <field name="state">code</field>
+            <field name="code">
+if records:
+    action = records.action_export_distribution_excel()
+            </field>
+        </record>
+
+        <!-- Visible button on landed cost form to avoid relying only on Action menu -->
+        <record id="view_stock_landed_cost_form_export_distribution" model="ir.ui.view">
+            <field name="name">stock.landed.cost.form.export.distribution</field>
+            <field name="model">stock.landed.cost</field>
+            <field name="inherit_id" ref="stock_landed_costs.view_stock_landed_cost_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//header" position="inside">
+                    <button
+                        name="action_export_distribution_excel"
+                        string="Distribution Report"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state != 'done'"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

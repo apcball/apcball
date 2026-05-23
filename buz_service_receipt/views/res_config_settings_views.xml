@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_service_receipt" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.service.receipt</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Service Receipt" name="buz_service_receipt" groups="buz_service_receipt.group_service_receipt_manager">
+                    <block title="Calendar Sync">
+                        <setting string="Additional Employees for Calendar Sync"
+                                 help="Employees selected here will be added to every service receipt appointment event.">
+                            <field name="service_receipt_attendee_employee_ids" widget="many2many_tags"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>
