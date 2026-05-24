@@ -2,12 +2,15 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 import datetime
+import logging
 
 import requests
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import DEFAULT_SERVER_DATE_FORMAT
+
+_logger = logging.getLogger(__name__)
 
 
 class ResCurrencyRateProviderBOT(models.Model):
@@ -34,57 +37,13 @@ class ResCurrencyRateProviderBOT(models.Model):
         if self.service != "BOT":
             return super()._get_supported_currencies()
 
-        # List of currencies obrained from:
-        # https://apigw1.bot.or.th/bot/public/Stat-ExchangeRate/v2
         return [
-            "USD",
-            "GBP",
-            "EUR",
-            "JPY",
-            "HKD",
-            "MYR",
-            "SGD",
-            "BND",
-            "PHP",
-            "IDR",
-            "INR",
-            "CHF",
-            "AUD",
-            "NZD",
-            "CAD",
-            "SEK",
-            "DKK",
-            "NOK",
-            "CNY",
-            "MXN",
-            "ZAR",
-            "KRW",
-            "TWD",
-            "KWD",
-            "SAR",
-            "AED",
-            "MMK",
-            "BDT",
-            "CZK",
-            "KHR",
-            "KES",
-            "LAK",
-            "RUB",
-            "VND",
-            "EGP",
-            "PLN",
-            "LKR",
-            "IQD",
-            "BHD",
-            "OMR",
-            "JOD",
-            "QAR",
-            "MVR",
-            "NPR",
-            "PGK",
-            "ILS",
-            "HUF",
-            "PKR",
+            "USD", "GBP", "EUR", "JPY", "HKD", "MYR", "SGD", "BND",
+            "PHP", "IDR", "INR", "CHF", "AUD", "NZD", "CAD", "SEK",
+            "DKK", "NOK", "CNY", "MXN", "ZAR", "KRW", "TWD", "KWD",
+            "SAR", "AED", "MMK", "BDT", "CZK", "KHR", "KES", "LAK",
+            "RUB", "VND", "EGP", "PLN", "LKR", "IQD", "BHD", "OMR",
+            "JOD", "QAR", "MVR", "NPR", "PGK", "ILS", "HUF", "PKR",
         ]
 
     def _update_content_currency_update(
@@ -105,14 +64,12 @@ class ResCurrencyRateProviderBOT(models.Model):
                 else False
             )
             if period:
+                rate_value = float(data_detail[bot_currency.bot_currency_rate_type])
                 if period in content.keys():
-                    content[period][bot_currency.name] = 1.0 / float(
-                        data_detail[bot_currency.bot_currency_rate_type]
-                    )
+                    content[period][bot_currency.name] = 1.0 / rate_value
                 else:
                     content[period] = {
-                        bot_currency.name: 1.0
-                        / float(data_detail[bot_currency.bot_currency_rate_type])
+                        bot_currency.name: 1.0 / rate_value
                     }
 
     def _obtain_rates(self, base_currency, currencies, date_from, date_to):
@@ -126,37 +83,45 @@ class ResCurrencyRateProviderBOT(models.Model):
                     )
                 )
             ICP = self.env["ir.config_parameter"].sudo()
-            bot_client_id = self.company_id.bot_client_id
-            if not bot_client_id:
-                raise UserError(_("No bot.or.th credentials specified!"))
+            bot_api_token = self.company_id.bot_api_token
+            if not bot_api_token:
+                raise UserError(
+                    _("No BOT API token configured. "
+                      "Please set it in Settings → Currency Rate Update → BOT API Token.")
+                )
             hostname = ICP.get_param("hostname_TH_BOT")
             route_BOT = ICP.get_param("route_TH_BOT_exchange_daily")
-            url = "{}{}/?start_period={}&end_period={}".format(
+            url = "{}{}?start_period={}&end_period={}".format(
                 hostname,
                 route_BOT,
                 date_from.strftime("%Y-%m-%d"),
                 date_to.strftime("%Y-%m-%d"),
             )
-            headers = {"X-IBM-Client-Id": bot_client_id, "accept": "application/json"}
+            headers = {
+                "Authorization": bot_api_token,
+                "accept": "application/json",
+            }
             bot_currencies = self.env["res.currency"].search(
                 [("name", "in", currencies)]
             )
             content = dict()
             for bot_currency in bot_currencies:
                 currency = bot_currency.bot_currency_name
-                url = f"{url}&currency={currency}"
-                response = requests.get(url, headers=headers, timeout=15)
+                req_url = f"{url}&currency={currency}"
+                _logger.info("BOT API request: %s", req_url)
+                response = requests.get(req_url, headers=headers, timeout=15)
                 data_dict = response.json()
                 result = data_dict.get("result", False)
                 if not result:
+                    error_msg = data_dict.get("error", "")
+                    http_code = data_dict.get("httpCode", response.status_code)
+                    more_info = data_dict.get("moreInformation", error_msg)
                     raise UserError(
-                        _("httpCode: %(http_code)s\nmoreInformation: %(more_info)s")
-                        % (
-                            {
-                                "http_code": data_dict.get("httpCode", False),
-                                "more_info": data_dict.get("moreInformation", False),
-                            }
-                        )
+                        _("BOT API Error %(http_code)s\n%(more_info)s")
+                        % {
+                            "http_code": http_code,
+                            "more_info": more_info,
+                        }
                     )
                 self._update_content_currency_update(
                     bot_currency, content, result, date_from, date_to

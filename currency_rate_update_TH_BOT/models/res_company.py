@@ -7,4 +7,7 @@ from odoo import fields, models
 class ResCompany(models.Model):
     _inherit = "res.company"
 
-    bot_client_id = fields.Char(string="BOT Client ID")
+    bot_api_token = fields.Char(
+        string="BOT API Token",
+        help="API token from portal.api.bot.or.th (Authorization header value)",
+    )

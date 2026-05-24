@@ -14,12 +14,12 @@
             >
                 <setting id="bot_provider" string="BOT Provider" company_dependent="1">
                     <div class="text-muted">
-                        <a href="https://www.bot.or.th/">bot.or.th</a> credentials
+                        <a href="https://portal.api.bot.or.th/">portal.api.bot.or.th</a> API Token
                     </div>
                     <div class="content-group">
                         <div class="row mt16">
-                            <label for="bot_client_id" class="col-lg-3 o_light_label" />
-                            <field name="bot_client_id" />
+                            <label for="bot_api_token" class="col-lg-3 o_light_label" />
+                            <field name="bot_api_token" password="True" />
                         </div>
                     </div>
                 </setting>
