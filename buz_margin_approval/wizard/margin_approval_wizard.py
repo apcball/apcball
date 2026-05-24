@@ -27,8 +27,7 @@ class MarginApprovalWizard(models.TransientModel):
             msg += "\n" + _("Note: ") + self.note
         self.sale_order_id.message_post(body=msg)
         
-        # Create activities and send email
+        # Create activities for approvers
         self.sale_order_id._create_margin_approval_activities()
-        self.sale_order_id._send_margin_approval_email()
         
         return {'type': 'ir.actions.act_window_close'}

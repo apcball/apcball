@@ -357,6 +357,62 @@ class SaleOrder(models.Model):
             'context': {'default_sale_order_id': self.id}
         }
     
+    def action_cancel_margin_approval(self):
+        """Cancel pending margin approval request by sales user.
+        
+        Only allowed when:
+        - approval_state is 'pending' (not yet approved/rejected)
+        - Order is still in draft/sent state
+        
+        Actions:
+        - Reset approval_state to 'not_required'
+        - Clear approved_user_ids
+        - Cancel all pending approval activities (notifications to approvers)
+        - Log in chatter
+        """
+        self.ensure_one()
+
+        if self.approval_state != 'pending':
+            raise UserError(_("You can only cancel a pending approval request."))
+
+        if self.state not in ('draft', 'sent'):
+            raise UserError(_("You can only cancel approval on a draft or sent quotation."))
+
+        # Reset approval state
+        self.approval_state = 'not_required'
+        self.approved_user_ids = [(5, 0, 0)]
+
+        # Cancel all pending approval activities for approvers
+        self._cancel_margin_approval_activities()
+
+        # Log in chatter
+        body = _(
+            "<strong>⚠️ Margin Approval Request Cancelled by %s</strong><br/>"
+            "The approval request has been withdrawn.<br/>"
+            "You may now edit the quotation and submit a new approval request."
+        ) % self.env.user.name
+        self.message_post(body=body)
+
+        return True
+
+    def _cancel_margin_approval_activities(self):
+        """Cancel all pending margin approval activities for this order"""
+        self.ensure_one()
+
+        activity_type = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+        if not activity_type:
+            return
+
+        # Find all pending approval activities for this order (from any approver)
+        activities = self.env['mail.activity'].search([
+            ('res_model', '=', 'sale.order'),
+            ('res_id', '=', self.id),
+            ('activity_type_id', '=', activity_type.id),
+        ])
+
+        for activity in activities:
+            activity.action_feedback(feedback=_('Approval request cancelled by sales user'))
+
     def action_confirm_to_so(self):
         """Confirm To SO - for Sales users (does NOT call action_confirm)"""
         self.ensure_one()
@@ -479,6 +535,7 @@ class SaleOrder(models.Model):
                 if order.approval_state == 'approved':
                     vals['approval_state'] = 'not_required'  # Reset to allow re-request
                     vals['approved_user_ids'] = [(5, 0, 0)]  # Clear approvals
+                    vals['confirm_flow_state'] = 'draft'  # Reset confirm flow too
                     # Mark old activities as done
                     order._mark_margin_approval_activities_done()
                     # Post message about reset

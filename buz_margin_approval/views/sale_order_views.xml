@@ -49,6 +49,14 @@
                         invisible="approval_state != 'pending' or state not in ('draft', 'sent')"
                         groups="buz_margin_approval.group_margin_approval"/>
                 
+                <!-- Cancel Margin Approval Request button - Sales user can cancel their own pending request -->
+                <button name="action_cancel_margin_approval" 
+                        type="object" 
+                        string="Cancel Approval" 
+                        class="btn-secondary"
+                        invisible="approval_state != 'pending' or state not in ('draft', 'sent')"
+                        groups="buz_margin_approval.group_sales_margin_approver_user"/>
+                
                 <!-- Confirm To SO button for Sales Users - Only when margin is approved -->
                 <button name="action_confirm_to_so" 
                         type="object" 
