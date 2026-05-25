@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.float_utils import float_compare, float_is_zero
@@ -74,9 +73,27 @@ class PosLiteOrder(models.Model):
     exchange_of_order_id = fields.Many2one('pos.lite.order', readonly=True, copy=False, tracking=True, index=True)
     note = fields.Text()
     date_order = fields.Datetime(
-        string='Order Date', default=fields.Datetime.now, readonly=True,
-        states={'draft': [('readonly', False)]}, tracking=True,
+        string='Order Date', default=fields.Datetime.now, readonly=True, tracking=True,
     )
+
+    _ALLOWED_TRANSITIONS = {
+        'draft': {'held', 'paid', 'done', 'cancelled'},
+        'held': {'draft', 'cancelled'},
+        'paid': {'done', 'cancelled'},
+        'done': set(),
+        'cancelled': set(),
+    }
+
+    def write(self, vals):
+        if 'state' in vals:
+            new_state = vals['state']
+            for order in self:
+                allowed = self._ALLOWED_TRANSITIONS.get(order.state, set())
+                if new_state != order.state and new_state not in allowed:
+                    raise UserError(_(
+                        'Invalid state transition: %s → %s. Use the proper action buttons.'
+                    ) % (order.state, new_state))
+        return super().write(vals)
 
     _sql_constraints = [
         ('name_unique', 'unique(name)', 'Order number must be unique.'),
@@ -173,12 +190,12 @@ class PosLiteOrder(models.Model):
         self.ensure_one()
         partner = self.env['res.partner'].search([
             ('name', '=', WALK_IN_CUSTOMER_NAME),
-            ('company_id', 'in', [False, self.company_id.id]),
+            ('company_id', '=', self.company_id.id),
         ], limit=1)
         if not partner:
             partner = self.env['res.partner'].create({
                 'name': WALK_IN_CUSTOMER_NAME,
-                'company_id': False,
+                'company_id': self.company_id.id,
                 'customer_rank': 1,
             })
         return partner
@@ -294,12 +311,8 @@ class PosLiteOrder(models.Model):
         picking.action_assign()
         for move in picking.move_ids_without_package:
             for move_line in move.move_line_ids:
-                reserved_qty = move_line.reserved_uom_qty if hasattr(move_line, 'reserved_uom_qty') else 0.0
-                done_qty = reserved_qty or move.product_uom_qty
-                if hasattr(move_line, 'quantity'):
-                    move_line.quantity = done_qty
-                elif hasattr(move_line, 'qty_done'):
-                    move_line.qty_done = done_qty
+                done_qty = move.product_uom_qty
+                move_line.quantity = done_qty
             if not move.move_line_ids:
                 move._action_assign()
         result = picking.button_validate()
@@ -506,11 +519,8 @@ class PosLiteOrder(models.Model):
                     reverse_picking.action_assign()
                     for move in reverse_picking.move_ids_without_package:
                         for ml in move.move_line_ids:
-                            done_qty = getattr(ml, 'reserved_uom_qty', 0) or move.product_uom_qty
-                            if hasattr(ml, 'quantity'):
-                                ml.quantity = done_qty
-                            elif hasattr(ml, 'qty_done'):
-                                ml.qty_done = done_qty
+                            done_qty = ml.reserved_uom_qty or move.product_uom_qty
+                            ml.quantity = done_qty
                         if not move.move_line_ids:
                             move._action_assign()
                     result = reverse_picking.button_validate()
@@ -709,6 +719,8 @@ class PosLiteOrderLine(models.Model):
             line.available_return_qty = max(line.qty - returned_qty, 0.0)
 
     def _compute_qty_available(self):
+        # Batch: collect all (product_id, warehouse.lot_stock_id) pairs
+        lines_by_key = {}
         for line in self:
             product = line.product_id
             if not product or product.type == 'service':
@@ -720,13 +732,34 @@ class PosLiteOrderLine(models.Model):
                 line.qty_available = 0.0
                 line.is_low_stock = False
                 continue
-            quants = self.env['stock.quant'].search_read([
-                ('product_id', '=', product.id),
-                ('location_id', 'child_of', warehouse.lot_stock_id.id),
-            ], ['quantity'])
-            on_hand = sum(q['quantity'] for q in quants)
-            line.qty_available = on_hand
-            line.is_low_stock = on_hand < line.qty
+            key = (product.id, warehouse.lot_stock_id.id)
+            lines_by_key.setdefault(key, []).append(line)
+
+        if not lines_by_key:
+            return
+
+        product_ids = list({k[0] for k in lines_by_key})
+        location_ids = list({k[1] for k in lines_by_key})
+        quant_data = self.env['stock.quant'].read_group(
+            domain=[
+                ('product_id', 'in', product_ids),
+                ('location_id', 'in', location_ids),
+            ],
+            fields=['quantity:sum'],
+            groupby=['product_id', 'location_id'],
+            lazy=False,
+        )
+        qty_map = {}
+        for q in quant_data:
+            pid = q['product_id'][0] if isinstance(q['product_id'], (list, tuple)) else q['product_id']
+            lid = q['location_id'][0] if isinstance(q['location_id'], (list, tuple)) else q['location_id']
+            qty_map[(pid, lid)] = q['quantity']
+
+        for key, lines in lines_by_key.items():
+            on_hand = qty_map.get(key, 0.0)
+            for line in lines:
+                line.qty_available = on_hand
+                line.is_low_stock = on_hand < line.qty
 
     @api.depends('qty', 'price_unit', 'discount', 'product_id', 'order_id.partner_id', 'order_id.pricelist_id')
     def _compute_amounts(self):
@@ -767,7 +800,7 @@ class PosLiteOrderLine(models.Model):
                         price = pricelist._get_product_price(line.product_id, line.qty or 1.0, partner)
                     else:
                         price = pricelist._get_product_price_rule(line.product_id, line.qty or 1.0, partner)[0]
-                except (AttributeError, IndexError, TypeError, ValueError):
+                except (AttributeError, IndexError, TypeError):
                     price = line.product_id.lst_price
             line.price_unit = price
             if line.discount is None:

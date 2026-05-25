@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 {
     'name': 'POS Lite',
     'version': '17.0.3.2.0',
@@ -48,7 +47,6 @@ Features:
         'wizard/payment_wizard_view.xml',
         'wizard/return_wizard_view.xml',
     ],
-    'assets': {},
     'application': True,
     'installable': True,
     'auto_install': False,

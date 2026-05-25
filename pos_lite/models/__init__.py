@@ -1,14 +1,6 @@
-# -*- coding: utf-8 -*-
-from odoo import models
-
-_models = [
-    'res_partner',
-    'product_product',
-    'pos_config',
-    'pos_payment',
-    'pos_session',
-    'pos_order',
-]
-
-for _m in _models:
-    __import__(_m, globals(), locals(), fromlist=[''], level=1)
+from . import res_partner
+from . import product_product
+from . import pos_config
+from . import pos_payment
+from . import pos_session
+from . import pos_order

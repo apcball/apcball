@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from odoo.tests import common, tagged
 from odoo.exceptions import UserError
 
@@ -80,6 +79,10 @@ class TestReturnExchangeBase(common.TransactionCase):
             'pricelist_id': cls.pricelist.id,
             'journal_id': cls.cash_journal.id,
         })
+
+        # Advance sequences to avoid conflict with existing data in MOG_DEV
+        cls.env.cr.execute("UPDATE ir_sequence SET number_next = 9000 WHERE code = 'pos.lite.session' AND number_next < 9000")
+        cls.env.cr.execute("UPDATE ir_sequence SET number_next = 9000 WHERE code = 'pos.lite.order' AND number_next < 9000")
 
         # Session
         cls.session = cls.env['pos.lite.session'].create({

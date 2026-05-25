@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
@@ -82,7 +81,7 @@ class PosLiteSession(models.Model):
             session.amount_refund = sum(returns.mapped('amount_total'))
             session.amount_net = session.amount_total - session.amount_refund
 
-    @api.depends('order_ids.payment_ids')
+    @api.depends('order_ids.payment_ids', 'order_ids.payment_ids.amount', 'order_ids.payment_ids.payment_method', 'order_ids.state')
     def _compute_payment_breakdown(self):
         for session in self:
             payments = session.order_ids.filtered(

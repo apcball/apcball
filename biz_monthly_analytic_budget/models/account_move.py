@@ -4,6 +4,7 @@ import logging
 from odoo import _, api, fields, models
 
 from .budget_utils import (
+    RESERVED_PR_STATES,
     collect_analytic_ids_from_lines,
     extract_analytic_amounts,
     find_active_monthly_plan,

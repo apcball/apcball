@@ -128,7 +128,7 @@
                         </group>
                         <group string="Order">
                             <field name="channel"/>
-                            <field name="date_order"/>
+                            <field name="date_order" readonly="state != 'draft'"/>
                             <field name="warehouse_id" options="{'no_create': True}"/>
                             <field name="pricelist_id"/>
                             <field name="session_id" options="{'no_create': True}"/>

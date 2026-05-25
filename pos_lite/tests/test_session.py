@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from odoo.tests import common, tagged
 from odoo.exceptions import UserError
 
@@ -64,6 +63,10 @@ class TestSessionBase(common.TransactionCase):
             'pricelist_id': cls.pricelist.id,
             'journal_id': cls.cash_journal.id,
         })
+
+        # Advance sequences to avoid conflict with existing data in MOG_DEV
+        cls.env.cr.execute("UPDATE ir_sequence SET number_next = 9000 WHERE code = 'pos.lite.session' AND number_next < 9000")
+        cls.env.cr.execute("UPDATE ir_sequence SET number_next = 9000 WHERE code = 'pos.lite.order' AND number_next < 9000")
 
     def _create_draft_order(self, session):
         """Helper: สร้าง draft order ใน session ที่กำหนด"""
@@ -135,6 +138,9 @@ class TestSessionOpenClose(TestSessionBase):
             ('state', '=', 'opened'),
         ])
         for s in open_sessions:
+            # Cancel any pending orders so the session can be closed
+            pending = s.order_ids.filtered(lambda o: o.state in ('draft', 'held'))
+            pending.action_cancel()
             s.action_close_session()
         session.action_reopen_session()
         self.assertEqual(session.state, 'opened')

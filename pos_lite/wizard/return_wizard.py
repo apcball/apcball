@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -134,15 +133,13 @@ class PosLiteReturnWizard(models.TransientModel):
             })
 
             ex_journal = exchange_order._get_default_payment_journal()
-            ex_diff = exchange_order.amount_total - refund_amount
-            # Always create payment for full exchange amount so action_process_order passes.
-            # The return order already handles the refund separately.
+            # Pay the full exchange order amount (process_order validates paid >= total)
             self.env['pos.lite.payment'].create({
                 'order_id': exchange_order.id,
                 'payment_method': 'cash',
                 'amount': exchange_order.amount_total,
                 'journal_id': ex_journal.id if ex_journal else False,
-                'note': _('Exchange payment (diff from %s: %s)') % (return_order.name, ex_diff),
+                'note': _('Exchange payment for %s') % order.name,
             })
             exchange_order.action_process_order()
 
@@ -223,7 +220,7 @@ class PosLiteReturnWizardExchangeLine(models.TransientModel):
                     price = pricelist._get_product_price(self.product_id, self.qty or 1.0, partner)
                 else:
                     price = pricelist._get_product_price_rule(self.product_id, self.qty or 1.0, partner)[0]
-            except (AttributeError, IndexError, TypeError, ValueError):
+            except (AttributeError, IndexError, TypeError):
                 price = self.product_id.lst_price
         self.price_unit = price
 
