@@ -130,6 +130,8 @@
                         </table>
 
                         <!-- 2. Payment Method Table -->
+                        <t t-set="payment_main_amount" t-value="o.amount_total_gross - o.amount_total_wht - o.other_income_dis - o.bank_free_dis"/>
+                        <t t-set="payment_breakdown_total" t-value="payment_main_amount + o.bank_free_dis + o.other_income_dis + o.amount_total_wht"/>
                         <table class="table-bordered" style="margin-top: 15px;">
                             <thead>
                                 <tr class="table-header">
@@ -163,7 +165,7 @@
                                         <span t-field="o.check_pay_to"/>
                                     </td>
                                     <td class="text-end">
-                                        <span t-field="o.amount_total_net" t-options='{"widget": "float", "precision": 2}'/>
+                                        <span t-esc="payment_main_amount" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                 </tr>
 
@@ -229,7 +231,7 @@
                                         จำนวนเงิน
                                     </td>
                                     <td class="text-end" style="font-weight: bold;">
-                                        <span t-field="o.amount_total_gross" t-options='{"widget": "float", "precision": 2}'/>
+                                        <span t-esc="payment_breakdown_total" t-options='{"widget": "float", "precision": 2}'/>
                                     </td>
                                 </tr>
                             </tbody>

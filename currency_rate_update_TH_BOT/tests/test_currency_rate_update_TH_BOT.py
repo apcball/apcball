@@ -6,7 +6,6 @@ import datetime
 from dateutil.relativedelta import relativedelta
 
 from odoo import fields
-from odoo.exceptions import UserError
 from odoo.tests import common
 
 
@@ -65,13 +64,13 @@ class TestResCurrencyRateProviderBOT(common.TransactionCase):
         self.assertIn(self.eur_currency, self.bot_provider1.available_currency_ids)
         self.none_provider._update(date, date)
 
-    def test_03_update_no_clien_id(self):
-        self.my_company.bot_client_id = False
+    def test_03_update_no_api_token(self):
+        self.my_company.bot_api_token = False
         date = self.today - relativedelta(days=1)
         self.bot_provider._update(date, date)
 
-    def test_04_update_clien_id_fail(self):
-        self.my_company.bot_client_id = "Test"
+    def test_04_update_api_token_fail(self):
+        self.my_company.bot_api_token = "InvalidToken"
         date = self.today - relativedelta(days=1)
         self.bot_provider._update(date, date)
 
@@ -136,8 +135,8 @@ class TestResCurrencyRateProviderBOT(common.TransactionCase):
             date,
         )
         # Check not found currency when call api.
-        with self.assertRaises(UserError):
-            result_demo["data"]["data_header"]["last_updated"] = "2023-09-10"
-            self.bot_provider._update_content_currency_update(
-                self.eur_currency, {}, result_demo, date, date
-            )
+        result_demo["data"]["data_header"]["last_updated"] = "2023-09-10"
+        # Should return gracefully (no UserError) when data not yet available
+        self.bot_provider._update_content_currency_update(
+            self.eur_currency, {}, result_demo, date, date
+        )

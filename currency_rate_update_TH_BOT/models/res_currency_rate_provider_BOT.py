@@ -53,7 +53,14 @@ class ResCurrencyRateProviderBOT(models.Model):
         last_updated = data["data_header"]["last_updated"]
         date_last_update = datetime.datetime.strptime(last_updated, "%Y-%m-%d").date()
         if date_from > date_last_update and date_to > date_last_update:
-            raise UserError(_("BOT Last Updated: {}").format(last_updated))
+            _logger.info(
+                "BOT: data not yet available for %s to %s (last updated: %s), "
+                "will retry on next run",
+                date_from,
+                date_to,
+                last_updated,
+            )
+            return
         data_details = data["data_detail"]
         for data_detail in data_details:
             period = (
@@ -91,12 +98,6 @@ class ResCurrencyRateProviderBOT(models.Model):
                 )
             hostname = ICP.get_param("hostname_TH_BOT")
             route_BOT = ICP.get_param("route_TH_BOT_exchange_daily")
-            url = "{}{}?start_period={}&end_period={}".format(
-                hostname,
-                route_BOT,
-                date_from.strftime("%Y-%m-%d"),
-                date_to.strftime("%Y-%m-%d"),
-            )
             headers = {
                 "Authorization": bot_api_token,
                 "accept": "application/json",
@@ -105,26 +106,62 @@ class ResCurrencyRateProviderBOT(models.Model):
                 [("name", "in", currencies)]
             )
             content = dict()
-            for bot_currency in bot_currencies:
-                currency = bot_currency.bot_currency_name
-                req_url = f"{url}&currency={currency}"
-                _logger.info("BOT API request: %s", req_url)
-                response = requests.get(req_url, headers=headers, timeout=15)
-                data_dict = response.json()
-                result = data_dict.get("result", False)
-                if not result:
-                    error_msg = data_dict.get("error", "")
-                    http_code = data_dict.get("httpCode", response.status_code)
-                    more_info = data_dict.get("moreInformation", error_msg)
-                    raise UserError(
-                        _("BOT API Error %(http_code)s\n%(more_info)s")
-                        % {
-                            "http_code": http_code,
-                            "more_info": more_info,
-                        }
+            # BOT API limits query range to 31 days
+            max_period_days = 30
+            chunk_start = date_from
+            while chunk_start <= date_to:
+                chunk_end = min(
+                    chunk_start + datetime.timedelta(days=max_period_days),
+                    date_to,
+                )
+                url = "{}{}?start_period={}&end_period={}".format(
+                    hostname,
+                    route_BOT,
+                    chunk_start.strftime("%Y-%m-%d"),
+                    chunk_end.strftime("%Y-%m-%d"),
+                )
+                for bot_currency in bot_currencies:
+                    currency = bot_currency.bot_currency_name
+                    req_url = f"{url}&currency={currency}"
+                    _logger.info("BOT API request: %s", req_url)
+                    response = requests.get(req_url, headers=headers, timeout=15)
+                    data_dict = response.json()
+                    result = data_dict.get("result", False)
+                    if not result:
+                        error_msg = data_dict.get("error", "")
+                        http_code = data_dict.get(
+                            "httpCode", response.status_code
+                        )
+                        more_info = data_dict.get(
+                            "moreInformation", error_msg
+                        )
+                        raise UserError(
+                            _(
+                                "BOT API Error %(http_code)s\n%(more_info)s"
+                            )
+                            % {
+                                "http_code": http_code,
+                                "more_info": more_info,
+                            }
+                        )
+                    self._update_content_currency_update(
+                        bot_currency, content, result,
+                        chunk_start, chunk_end,
                     )
-                self._update_content_currency_update(
-                    bot_currency, content, result, date_from, date_to
+                chunk_start = chunk_end + datetime.timedelta(days=1)
+            if not content:
+                _logger.info(
+                    "BOT: no new rate data for %s to %s", date_from, date_to
+                )
+                self.message_post(
+                    body=_(
+                        "BOT: No exchange rate data available for "
+                        "%(date_from)s to %(date_to)s. "
+                        "BOT typically publishes on business days only. "
+                        "Will retry on next scheduled run."
+                    )
+                    % {"date_from": date_from, "date_to": date_to},
+                    subject=_("BOT Rate Update - No New Data"),
                 )
             return content
         return super()._obtain_rates(base_currency, currencies, date_from, date_to)
