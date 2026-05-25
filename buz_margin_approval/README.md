@@ -31,9 +31,17 @@ Enterprise-grade Odoo 17 module for controlling sales order margin approval with
 5. After approval, sales user clicks "Confirm To SO"
 6. Admin/Finance clicks "Confirm Sale" to finalize
 
+### Rewrite Quotation (Customer Rejection Flow)
+- After margin is approved, if **customer rejects** or requests price changes
+- Sales user clicks **"📝 Rewrite Quotation"** button
+- System resets approval state and logs **rewrite version** in chatter
+- Sales user can edit prices/discounts, then re-submit for approval
+- Full audit trail with version numbers (Rewrite #1, #2, ...) in Log Note
+
 ### Business States
 - **approval_state**: not_required, pending, approved, rejected
 - **confirm_flow_state**: draft, confirm_to_so, sale
+- **rewrite_count**: integer tracking rewrite versions
 
 ## Configuration
 
@@ -65,6 +73,14 @@ Margin Lines:
 4. After approval, click **"Confirm To SO"** (NOT "Confirm Sale")
 5. Notify Admin/Finance to finalize
 
+### For Sales Users (Customer Rejection / Rewrite Flow)
+1. After margin approved, send quotation to customer
+2. If customer rejects or requests price changes → click **"📝 Rewrite Quotation"**
+3. System resets approval and logs version in Log Note
+4. Edit prices/discounts as needed
+5. Click **"Request Margin Approval"** to re-submit
+6. Repeat until customer accepts
+
 ### For Approvers
 1. Receive email notification and activity
 2. Review the quotation
@@ -88,6 +104,7 @@ Margin Lines:
 - `action_request_margin_approval()` - Send approval request
 - `action_approve_margin()` - Approve by authorized user
 - `action_reject_margin()` - Reject with reason
+- `action_rewrite_quotation()` - Reset approval for price editing (customer rejection)
 
 ### Security Groups
 - `group_margin_approval` - Margin approvers

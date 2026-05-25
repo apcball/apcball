@@ -16,6 +16,14 @@ class SaleOrder(models.Model):
         ('rejected', 'Rejected'),
     ], string='Approval Status', default='not_required', copy=False)
     
+    # Rewrite tracking field
+    rewrite_count = fields.Integer(
+        string='Rewrite Version',
+        default=0,
+        copy=False,
+        help='Number of times this quotation has been rewritten after customer rejection'
+    )
+
     # Confirm flow fields
     confirm_flow_state = fields.Selection([
         ('draft', 'Quotation'),
@@ -467,9 +475,102 @@ class SaleOrder(models.Model):
         
         # Create activity for the salesperson
         self._create_cancel_notification_activity()
-        
+
         return True
-    
+
+    def action_rewrite_quotation(self):
+        """Rewrite Quotation - กลับมาแก้ไขราคาหลังจาก customer ปฏิเสธ
+
+        Flow:
+        1. Sales ส่ง quotation ให้ลูกค้าแล้ว (approved state)
+        2. ลูกค้าปฏิเสธ/ต่อรองราคา
+        3. Sales กด Rewrite Quotation → กลับมาแก้ไขราคาได้
+        4. แก้ไขเสร็จ → กด Request Margin Approval ใหม่
+
+        Actions:
+        - เพิ่ม rewrite_count +1
+        - Reset approval_state → 'not_required' (ให้ request ใหม่ได้)
+        - Reset confirm_flow_state → 'draft'
+        - Clear approved_user_ids
+        - Mark pending activities done
+        - สร้าง activity แจ้งเตือน salesperson
+        """
+        self.ensure_one()
+
+        # Only allowed when approval_state is 'approved'
+        if self.approval_state != 'approved':
+            raise UserError(_(
+                "You can only rewrite a quotation that has been approved."
+            ))
+
+        # Only allowed in draft/sent state
+        if self.state not in ('draft', 'sent'):
+            raise UserError(_(
+                "You can only rewrite a draft or sent quotation."
+            ))
+
+        # Increment rewrite count
+        self.rewrite_count += 1
+        new_version = self.rewrite_count
+
+        # Reset approval state so sales can request again
+        self.approval_state = 'not_required'
+        self.approved_user_ids = [(5, 0, 0)]  # Clear approvals
+        self.confirm_flow_state = 'draft'  # Reset confirm flow
+
+        # Mark old approval activities as done
+        self._mark_margin_approval_activities_done()
+
+        # Create activity for salesperson to remind to re-edit (log in activity only, no chatter)
+        self._create_rewrite_notification_activity(new_version)
+
+        return True
+
+    def _create_rewrite_notification_activity(self, version):
+        """Create activity to notify salesperson about rewrite action"""
+        self.ensure_one()
+
+        if not self.user_id:
+            return
+
+        activity_type = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+        if not activity_type:
+            return
+
+        summary = _('📝 Rewrite Quotation v%s: %s') % (version, self.name)
+        note = f"""
+            <p><strong style="color: orange;">Quotation Rewrite — Version {version}</strong></p>
+            <p>Sales Order: <strong>{self.name}</strong></p>
+            <p>ลูกค้า: {self.partner_id.name}</p>
+            <p>Rewrite โดย: {self.env.user.name}</p>
+            <p><strong>Action Required:</strong></p>
+            <ul>
+                <li>แก้ไขราคา/ส่วนลดตามที่ลูกค้าต้องการ</li>
+                <li>ตรวจสอบ Margin ใหม่</li>
+                <li>กด <strong>Request Margin Approval</strong> เพื่อขออนุมัติใหม่</li>
+            </ul>
+        """
+
+        # Delete old activities first
+        old_activities = self.env['mail.activity'].search([
+            ('res_model', '=', 'sale.order'),
+            ('res_id', '=', self.id),
+            ('user_id', '=', self.user_id.id),
+            ('summary', 'ilike', self.name),
+        ])
+        old_activities.unlink()
+
+        # Create new activity
+        self.env['mail.activity'].create({
+            'activity_type_id': activity_type.id,
+            'user_id': self.user_id.id,
+            'res_id': self.id,
+            'res_model_id': self.env['ir.model'].sudo().search([('model', '=', 'sale.order')], limit=1).id,
+            'summary': summary,
+            'note': note,
+            'date_deadline': fields.Date.context_today(self),
+        })
+
     def _create_cancel_notification_activity(self):
         """Create activity to notify salesperson about cancellation"""
         self.ensure_one()

@@ -16,6 +16,7 @@
                 <field name="margin_approval_user_ids" widget="many2many_tags" invisible="not margin_rule_line_id"/>
                 <field name="approval_type" invisible="not margin_rule_line_id"/>
                 <field name="approved_user_ids" widget="many2many_tags" invisible="approval_state != 'pending' or approval_type != 'all'"/>
+                <field name="rewrite_count" invisible="rewrite_count == 0"/>
             </xpath>
             
             <!-- Hide Confirm Sale button for Sales Users -->
@@ -66,12 +67,21 @@
                         groups="buz_margin_approval.group_sales_margin_approver_user"/>
                 
                 <!-- Confirm To SO button for Margin Approvers - When approved or not required -->
-                <button name="action_confirm_to_so" 
-                        type="object" 
-                        string="Confirm To SO" 
+                <button name="action_confirm_to_so"
+                        type="object"
+                        string="Confirm To SO"
                         class="btn-warning"
                         invisible="state not in ('draft', 'sent') or confirm_flow_state != 'draft' or approval_state not in ('approved', 'not_required')"
                         groups="buz_margin_approval.group_margin_approval"/>
+
+                <!-- Rewrite Quotation button - Sales user can rewrite after customer rejection -->
+                <button name="action_rewrite_quotation"
+                        type="object"
+                        string="📝 Rewrite Quotation"
+                        class="btn-info"
+                        invisible="approval_state != 'approved' or state not in ('draft', 'sent')"
+                        groups="buz_margin_approval.group_sales_margin_approver_user"
+                        confirm="ต้องการส่ง Quotation กลับมาแก้ไขราคาใช่หรือไม่?&#10;&#10;ระบบจะ Reset Approval และบันทึก Rewrite Version ใน Log Note"/>
             </xpath>
             
             <!-- Add status bar indicator for confirm flow state -->
@@ -107,7 +117,8 @@
                        decoration-danger="approval_state == 'rejected'"
                        decoration-muted="approval_state == 'not_required'"/>
                 <field name="margin_percentage" string="Margin %" optional="hide"/>
-                <field name="confirm_flow_state" 
+                <field name="rewrite_count" string="Rewrite" widget="badge" decoration-info="rewrite_count > 0" optional="hide"/>
+                <field name="confirm_flow_state"
                        string="Confirm Flow"
                        widget="badge"
                        decoration-info="confirm_flow_state == 'draft'"
@@ -125,7 +136,7 @@
         <field name="inherit_id" ref="sale.view_quotation_tree"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='state']" position="after">
-                <field name="approval_state" 
+                <field name="approval_state"
                        string="Margin Approval"
                        widget="badge"
                        decoration-warning="approval_state == 'pending'"
@@ -133,6 +144,7 @@
                        decoration-danger="approval_state == 'rejected'"
                        decoration-muted="approval_state == 'not_required'"/>
                 <field name="margin_percentage" string="Margin %" optional="hide"/>
+                <field name="rewrite_count" string="Rewrite" widget="badge" decoration-info="rewrite_count > 0" optional="hide"/>
             </xpath>
         </field>
     </record>
