@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import re
+
 from odoo import models, api
 
 
@@ -13,6 +15,20 @@ class DispatchReportPDF(models.AbstractModel):
         """
         docs = self.env['stock.picking'].browse(docids)
         
+        def clean_product_name(product):
+            name = product.name or ''
+            default_code = getattr(product, 'default_code', False) or ''
+
+            if name.startswith('[ชุด]'):
+                name = name.replace('[ชุด]', '', 1).strip()
+            if default_code and name.startswith(default_code):
+                name = name[len(default_code):].strip()
+            name = re.sub(r'^(?=[A-Z0-9._/-]*\d)[A-Z0-9._/-]+(?:\s*\([A-Z0-9._/-]+\))?\s+', '', name).strip()
+            if name.startswith('-'):
+                name = name[1:].strip()
+
+            return name
+
         def get_grouped_lines(picking):
             lines = []
             bom_grouped = {}
@@ -56,14 +72,13 @@ class DispatchReportPDF(models.AbstractModel):
                 
             for key, data_dict in bom_grouped.items():
                 prod = data_dict['product']
-                name = f"[ชุด] {prod.name}"
                 code = prod.default_code or ''
                 qty_str = '{:,.2f}'.format(data_dict['qty']) if data_dict['qty'] else ''
                 
                 lines.append({
                     'type': 'bom',
                     'display_no': str(line_no),
-                    'name': name,
+                    'name': clean_product_name(prod),
                     'code': code,
                     'qty': qty_str,
                     'uom': data_dict['uom'] or '',
@@ -85,5 +100,6 @@ class DispatchReportPDF(models.AbstractModel):
             'doc_model': 'stock.picking',
             'docs': docs,
             'get_grouped_lines': get_grouped_lines,
+            'clean_product_name': clean_product_name,
             'data': data,
         }
