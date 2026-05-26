@@ -233,13 +233,14 @@ class BOReportExcelWizard(models.TransientModel):
         vendor_city_parts = [p for p in [vendor.city, getattr(vendor.state_id, "name", ""), vendor.zip, getattr(vendor.country_id, "name", "")] if p]
         vendor_line1 = vendor_addr_lines[0] if vendor_addr_lines else ""
         vendor_line2 = ", ".join(vendor_addr_lines[1:] + vendor_city_parts)
-        delivery_location = company.name or ""
+        delivery_location = "Mogen(Thailand)Co.,Ltd. 9 Moo 12 T.Beungkhumproy A.Lumlukka Pathum Thani 12150"
         contact_person = getattr(vendor, "contact_name", False) or vendor.name or ""
         payment_term = ""
         if hasattr(vendor, "property_supplier_payment_term_id") and vendor.property_supplier_payment_term_id:
             payment_term = vendor.property_supplier_payment_term_id.name or ""
         criteria = req.type_id.name or ""
         ref_number = req.name or ""
+        ref_origin = req.origin or ""
 
         C(8, 1, "PO Number :", font=S["font_label"], alignment=S["left"], border=S["border"])
         ws.merge_cells("B8:D8")
@@ -283,7 +284,7 @@ class BOReportExcelWizard(models.TransientModel):
         C(13, 2, criteria, font=S["font_value"], alignment=S["left"], border=S["border"])
         C(13, 5, "Ref.Number", font=S["font_label"], alignment=S["left"], border=S["border"])
         ws.merge_cells("F13:K13")
-        C(13, 6, ref_number, font=S["font_value"], alignment=S["left"], border=S["border"])
+        C(13, 6, ref_origin, font=S["font_value"], alignment=S["left"], border=S["border"])
 
         # Row 14: empty separator
         ws.row_dimensions[14].height = 8
