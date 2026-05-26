@@ -284,9 +284,6 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
                 'name': 'Budget Rejected',
                 'summary': 'Monthly Budget Request Rejected',
                 'category': 'default',
-                'delay_count': 0,
-                'delay_from': 'current',
-                'decoration_type': 'warning',
             })
 
         doc.activity_schedule(
