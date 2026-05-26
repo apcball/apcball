@@ -259,6 +259,46 @@ class BuzMonthlyBudgetApprovalRequest(models.Model):
                 ) % (self.env.user.name, rec.note),
             )
             rec._notify_requester('rejected')
+            rec._create_rejection_activity_on_source_document()
+
+    def _create_rejection_activity_on_source_document(self):
+        """Create a Todo activity on the source document (PR/PO/Bill) so the
+        requester sees the rejection reason directly in their document chatter."""
+        self.ensure_one()
+        doc = False
+        if self.document_type == 'pr' and self.ref_pr_id:
+            doc = self.ref_pr_id
+        elif self.document_type == 'po' and self.ref_po_id:
+            doc = self.ref_po_id
+        elif self.document_type == 'bill' and self.ref_bill_id:
+            doc = self.ref_bill_id
+        if not doc:
+            return
+
+        ActivityType = self.env['mail.activity.type'].sudo()
+        activity_type = ActivityType.search([
+            ('name', '=', 'Budget Rejected'),
+        ], limit=1)
+        if not activity_type:
+            activity_type = ActivityType.create({
+                'name': 'Budget Rejected',
+                'summary': 'Monthly Budget Request Rejected',
+                'category': 'default',
+                'delay_count': 0,
+                'delay_from': 'current',
+                'decoration_type': 'warning',
+            })
+
+        doc.activity_schedule(
+            activity_type_id=activity_type.id,
+            user_id=self.requester_id.id or self.env.uid,
+            note=_(
+                '<strong>Budget Request Rejected</strong><br/>'
+                'Reference: %s<br/>'
+                'Rejected by: %s<br/>'
+                '<strong>Reason:</strong> %s'
+            ) % (self.name, self.env.user.name, self.note or '-'),
+        )
 
     def action_cancel(self):
         for rec in self:
