@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "odoo": {
+      "command": "uv",
+      "args": ["run", "--no-project", "python", "/srv/docker/odoo/custom-addons/mcp-odoo/mcp_odoo.py"],
+      "env": {
+        "ODOO_URL": "https://mogdev.work",
+        "ODOO_API_KEY": "5QefMvq-N3O5yYtlXgkG56JTnGBD9tqeNPUCHfNgdaY",
+        "ODOO_DB": "MOG_DEV"
+      }
+    }
+  }
+}

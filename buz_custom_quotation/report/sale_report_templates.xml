@@ -39,7 +39,7 @@
                  <!-- Cover Image Section -->
                     <div style="page-break-after: always; position: relative;">
                     <div style="text-align: center; margin: -15mm -8mm -10mm -4mm;">
-                        <img t-att-src="'/buz_custom_quotation/static/img/cover/Cover1.jpeg'" 
+                        <img t-att-src="'/buz_custom_quotation/static/img/cover/Cover-2.jpg'" 
                              style="width: calc(100% + 12mm); height: 297mm; object-fit: cover; margin: 0;"/>
                     </div>
                     <div style="position: absolute; bottom: -90px; left: 15px; z-index: 2;">
@@ -76,7 +76,7 @@
                         </div>
                         
         <!-- Company Info Section -->
-        <div style="margin: 11px 0 0 0; border: 2px solid #1E3A78; background-color: #1E3A78; padding: 10px; width: 100%;">
+        <div style="margin: 11px 0 0 0; border: 2px solid #933F95; background-color: #933F95; padding: 10px; width: 100%;">
             <div style="text-align: left; padding: 0 5%;">
                 <div style="color: white; font-size: 18px; font-weight: bold;">MOGEN CO., LTD. (HEAD OFFICE)</div>
                 <div style="color: white; font-size: 18px;">9 Moo 12, Bueng Kham Phroi, Lam Luk Ka, Pathum Thani 12150</div>
@@ -100,7 +100,7 @@
 
 
 <div style="margin-top: 0;">
-    <div style="text-align: left; margin-right: -10mm; margin-left: -10mm; background-color: #1E3A78; padding-left: 10mm; padding-right: 10mm;">
+    <div style="text-align: left; margin-right: -10mm; margin-left: -10mm; background-color: #933F95; padding-left: 10mm; padding-right: 10mm;">
     <img t-att-src="'/buz_custom_quotation/static/img/cover/logo ci mogen 2025-07-07.jpg'" style="width: 400px; margin-left: -5mm;"/>
 </div>
     <div style="text-align: left; margin-top: 0; margin-left: 0mm; margin-right: 0mm;">
@@ -176,9 +176,9 @@
     <table class="table table-sm" style="margin-top: 20px; font-size: 20px; border-collapse: collapse; border-left: none; border-right: none; width: 100%; table-layout: fixed;">
         <thead>
             <tr>
-                <th style="width: 5%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;"></th>
-                <th style="width: 25%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Product Description</th>
-                <th style="width: 12%; color: white; border: none; background-color: #1E3A78; padding: 10px; text-align: center;">Image</th>
+                <th style="width: 5%; color: white; border: none; background-color: #933F95; padding: 10px; text-align: center;"></th>
+                <th style="width: 25%; color: white; border: none; background-color: #933F95; padding: 10px; text-align: center;">Product Description</th>
+                <th style="width: 12%; color: white; border: none; background-color: #933F95; padding: 10px; text-align: center;">Image</th>
                 <th style="width: 12%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Quantity</th>
                 <th style="width: 12%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Unit Price</th>
                 <th style="width: 10%; color: white; border: none; background-color: #898989; padding: 10px; text-align: center;">Discount</th>
@@ -189,7 +189,7 @@
         <tbody>
             <tr t-foreach="group" t-as="line">
                 <t t-set="item_counter" t-value="item_counter + 1"/>
-                <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;"><span style="background-color: #1E3A78; color: white; padding: 3px 8px; border-radius: 4px; white-space: nowrap; display: inline-block;">No.<t t-esc="item_counter"/></span></td>
+                <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;"><span style="background-color: #933F95; color: white; padding: 3px 8px; border-radius: 4px; white-space: nowrap; display: inline-block;">No.<t t-esc="item_counter"/></span></td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <div><span t-field="line.name"/></div>
                 </td>
@@ -200,7 +200,7 @@
                     <span t-field="line.product_uom_qty" t-options='{"widget": "float", "precision": 0}'/> <span t-field="line.product_uom.name"/>
                 </td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <t t-if="line.normal_price and line.normal_price != 0">
+                    <t t-if="line.normal_price and line.normal_price != 0 and (line.discount_percent or 0) &gt; 0">
                         <span t-field="line.normal_price"
                               t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </t>
@@ -210,7 +210,7 @@
                     </t>
                 </td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <t t-if="line.normal_price and line.normal_price > 0">
+                    <t t-if="line.normal_price and line.normal_price > 0 and (line.discount_percent or 0) &gt; 0">
                         <t t-set="discount_percent" t-value="round((1 - (line.price_unit / line.normal_price)) * 100, 2)"/>
                         <span t-esc="discount_percent"/>%
                     </t>
@@ -219,8 +219,8 @@
                     </t>
                 </td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <t t-if="line.normal_price and line.normal_price != 0">
-                        <span t-esc="line.net_price"
+                    <t t-if="line.normal_price and line.normal_price != 0 and (line.discount_percent or 0) &gt; 0">
+                        <span t-field="line.price_unit"
                               t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </t>
                     <t t-else="">
@@ -241,7 +241,7 @@
 
     <!-- Page 3: Conditions Page -->
     <div style="page-break-before: always; margin-top: 0;">
-        <div style="text-align: left; margin-right: -10mm; margin-left: -10mm; background-color: #1E3A78; padding-left: 10mm; padding-right: 10mm;">
+        <div style="text-align: left; margin-right: -10mm; margin-left: -10mm; background-color: #933F95; padding-left: 10mm; padding-right: 10mm;">
             <img t-att-src="'/buz_custom_quotation/static/img/cover/logo-ci-mogen.png'" style="width: 400px; margin-left: -5mm;"/>
         </div>
         <div style="text-align: left; margin-top: 0; margin-left: 0mm; margin-right: 0mm;">
@@ -252,7 +252,7 @@
     <div class="row justify-content-end" style="margin-top: 20px; font-size: 20px;">
         <div class="col-4">
             <table class="table table-sm" style="border-collapse: collapse; border: none;">
-                <tr style="border-bottom: 1px solid #1E3A78;">
+                <tr style="border-bottom: 1px solid #933F95;">
                     <td style="border: none; padding: 10px 0;">
                         <span style="color: #000000; padding: 3px 8px;">Excluding vat:</span>
                     </td>
@@ -261,7 +261,7 @@
                               t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </td>
                 </tr>
-                <tr style="border-bottom: 1px solid #1E3A78;">
+                <tr style="border-bottom: 1px solid #933F95;">
                     <td style="border: none; padding: 10px 0;">
                         <span style="color: #000000; padding: 3px 8px; background-color: #ffffffff;">Vat 7%:</span>
                     </td>
@@ -270,7 +270,7 @@
                               t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </td>
                 </tr>
-                <tr style="border-bottom: 3px solid #1E3A78;">
+                <tr style="border-bottom: 3px solid #933F95;">
                     <td style="border: none; padding: 10px 0; background-color: #ffffffff; color: #000000;">
                         <span style="color: #000000; padding: 3px 8px;">Including vat:</span>
                     </td>
@@ -284,14 +284,28 @@
     </div>
 
 <!-- Signature Section -->
-<div class="signature-section" style="margin-top: 30px; text-align: right; margin-right: 20px;">
-    <div style="width: 200px; display: inline-block; text-align: center; margin-left: 600px;">
-        <p style="margin-bottom: 40px;">ผู้อนุมัติซื้อ</p>
-        <div style="border-bottom: 1px dashed #000; width: 100%;"></div>
-        <div style="margin-top: 10px; font-size: 16px;">
-            (____________________)
-        </div>
+<div class="row" style="margin-top: 20px; font-size: 20px; margin-left: -70px; margin-right: -70px;">
+    <!-- Left: ผู้อำนาจสั่งซื้อ -->
+    <div class="col-6" style="text-align: center; padding: 0 5px;">
+        <p style="margin-bottom: 5px; color: #000;">ผู้อำนาจสั่งซื้อ</p>
+        <p style="margin-bottom: 20px; color: #000; font-size: 16px;">(AUTHORIZED SIGNATURE TO ORDER)</p>
+        <div style="border-bottom: 1px dashed #000; width: 50%; margin: 0 auto;"></div>
         <div style="margin-top: 5px; font-size: 16px;">
+            (______________________________)
+        </div>
+        <div style="margin-top: 3px; font-size: 16px; color: #000;">
+            วันที่ .................................
+        </div>
+    </div>
+    <!-- Right: ผู้มีอำนาจเสนอขาย -->
+    <div class="col-6" style="text-align: center; padding: 0 5px;">
+        <p style="margin-bottom: 5px; color: #000;">ผู้มีอำนาจเสนอขาย</p>
+        <p style="margin-bottom: 20px; color: #000; font-size: 16px;">(AUTHORIZED SIGNATURE OF THE SELLER)</p>
+        <div style="border-bottom: 1px dashed #000; width: 50%; margin: 0 auto;"></div>
+        <div style="margin-top: 5px; font-size: 16px;">
+            (รณภพ เตชะวิวัฒน์วงศ์)
+        </div>
+        <div style="margin-top: 3px; font-size: 16px; color: #000;">
             วันที่ .................................
         </div>
     </div>
@@ -300,7 +314,7 @@
        <!-- Replace the existing Terms and Conditions section with: -->
 <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
     <div class="col-12">
-        <h2 style="color: #1E3A78; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Terms and Conditions</h2>
+        <h2 style="color: #000; font-size: 24px; font-weight: bold; margin-bottom: 20px;">Terms and Conditions</h2>
         <div t-field="doc.note" t-attf-style="#{'text-align:justify;text-justify:inter-word;' if doc.company_id.terms_type != 'html' else ''}" name="order_note"/>
     </div>
 </div>

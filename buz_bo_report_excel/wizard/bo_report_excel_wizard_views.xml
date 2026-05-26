@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Wizard Form View ──────────────────────────────────── -->
+    <record id="bo_report_excel_wizard_form" model="ir.ui.view">
+        <field name="name">bo.report.excel.wizard.form</field>
+        <field name="model">bo.report.excel.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Export Blanket Orders to Excel">
+                <sheet>
+                    <group>
+                        <group string="Filters">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="vendor_id"/>
+                            <field name="state"/>
+                        </group>
+                    <group name="selected_records"
+                           invisible="requisition_ids == [(6, 0, [])]">
+                        <field name="requisition_ids"
+                               nolabel="1"
+                               widget="many2many_tags"/>
+                    </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_export_excel"
+                            type="object"
+                            string="Export Excel"
+                            class="oe_highlight"/>
+                    <button string="Cancel"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Wizard Action ─────────────────────────────────────── -->
+    <record id="action_bo_report_excel_wizard" model="ir.actions.act_window">
+        <field name="name">Export Blanket Orders to Excel</field>
+        <field name="res_model">bo.report.excel.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

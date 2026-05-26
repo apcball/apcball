@@ -2,7 +2,7 @@
   "agents": {
     "lead": {
       "description": "Lead agent — orchestrates tasks using sub-agents",
-      "model": "claude-3-5-sonnet-20241022",
+      "model": "glm-5.1",
       "permissions": {
         "allow_tools": ["Task", "Read", "Write", "Edit", "Grep", "Glob", "Ls", "Bash", "WebSearch", "WebFetch", "TodoWrite", "MemoryWrite", "MemoryRead"]
       }

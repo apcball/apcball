@@ -1,0 +1,16 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mcp_api_key_user,mcp.api.key.user,model_mcp_api_key,base.group_user,1,0,0,0
+access_mcp_api_key_manager,mcp.api.key.manager,model_mcp_api_key,base.group_system,1,1,1,1
+access_mcp_sale_order,mcp.sale.order,sale.model_sale_order,base.group_user,1,1,1,0
+access_mcp_sale_order_line,mcp.sale.order.line,sale.model_sale_order_line,base.group_user,1,1,1,0
+access_mcp_product_product,mcp.product.product,product.model_product_product,base.group_user,1,1,1,0
+access_mcp_product_template,mcp.product.template,product.model_product_template,base.group_user,1,1,1,0
+access_mcp_res_partner,mcp.res.partner,base.model_res_partner,base.group_user,1,1,1,0
+access_mcp_res_company,mcp.res.company,base.model_res_company,base.group_user,1,0,0,0
+access_mcp_crm_team,mcp.crm.team,sales_team.model_crm_team,base.group_user,1,0,0,0
+access_mcp_account_move,mcp.account.move,account.model_account_move,base.group_user,1,1,1,0
+access_mcp_account_move_line,mcp.account.move.line,account.model_account_move_line,base.group_user,1,1,1,0
+access_mcp_account_account,mcp.account.account,account.model_account_account,base.group_user,1,0,0,0
+access_mcp_account_journal,mcp.account.journal,account.model_account_journal,base.group_user,1,0,0,0
+access_mcp_purchase_order,mcp.purchase.order,purchase.model_purchase_order,base.group_user,1,1,1,0
+access_mcp_purchase_order_line,mcp.purchase.order.line,purchase.model_purchase_order_line,base.group_user,1,1,1,0

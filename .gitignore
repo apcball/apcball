@@ -7,3 +7,5 @@ uploads/
 *.tar.gz
 -e 
 .thclaws/
+.codewhale/
+.deepseek/
