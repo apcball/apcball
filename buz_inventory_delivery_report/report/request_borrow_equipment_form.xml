@@ -332,13 +332,13 @@
                 </div>
 
                     <!-- หมายเหตุ -->
-                    <div style="padding: 20px; min-height: 60px; font-size: 22px;">
+                    <div style="padding: 20px; min-height: 30px; font-size: 22px;">
                         <strong style="font-size: 20px;">หมายเหตุ:</strong>
                        <span t-field="o.note" style="font-size: 22px;"/>
                     </div>
 
                     <!-- ช่องลายเซ็น 3 ส่วน -->
-                    <div style="display: flex; justify-content: space-between; font-size: 18px; margin-top: 40px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 18px; margin-top: 20px;">
 
                         <!-- ส่วนที่ 1: S/R -->
                         <div style="width: 32%; line-height: 1.8; text-align: center;">
@@ -386,11 +386,7 @@
                             <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
                          </div>
                         </div>
-                      </div>
-
-
-           
-    
+                      </div>   
                     </div>
                 </t>        
              </t>     

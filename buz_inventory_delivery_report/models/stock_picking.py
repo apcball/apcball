@@ -76,6 +76,59 @@ class StockPicking(models.Model):
             # Calculate subtotal based on move lines
             picking.price_subtotal = sum(move.product_uom_qty * picking.price_unit for move in picking.move_ids)
 
+    def _get_expanded_move_lines(self):
+        """Return move lines with BOM components expanded as sub-items.
+
+        For products that have a Kit BOM (type='phantom'), the kit line is kept
+        as a parent row and its components are appended as child rows with
+        ``is_bom_component = True`` so the QWeb template can render them with
+        indentation or different styling.
+        """
+        self.ensure_one()
+        lines = []
+        MrpBom = self.env['mrp.bom']
+        for move in self.move_ids:
+            bom_by_product = MrpBom._bom_find(
+                products=move.product_id,
+                company_id=move.company_id.id,
+                bom_type='phantom',
+            )
+            bom = bom_by_product.get(move.product_id, MrpBom)
+            if bom:
+                # Parent kit line
+                lines.append({
+                    'move': move,
+                    'is_bom_component': False,
+                    'has_bom': True,
+                    'product_id': move.product_id,
+                    'product_uom_qty': move.product_uom_qty,
+                    'product_uom': move.product_uom,
+                    'lot_ids': move.lot_ids,
+                })
+                # BOM component lines — qty = component_qty × kit_qty
+                kit_qty = move.product_uom_qty
+                for bom_line in bom.bom_line_ids:
+                    lines.append({
+                        'move': move,
+                        'is_bom_component': True,
+                        'has_bom': False,
+                        'product_id': bom_line.product_id,
+                        'product_uom_qty': bom_line.product_qty * kit_qty,
+                        'product_uom': bom_line.product_uom_id,
+                        'lot_ids': move.env['stock.production.lot'],
+                    })
+            else:
+                lines.append({
+                    'move': move,
+                    'is_bom_component': False,
+                    'has_bom': False,
+                    'product_id': move.product_id,
+                    'product_uom_qty': move.product_uom_qty,
+                    'product_uom': move.product_uom,
+                    'lot_ids': move.lot_ids,
+                })
+        return lines
+
     def get_delivery_report_values(self):
         """
         Get additional values for the delivery report

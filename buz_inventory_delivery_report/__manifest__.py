@@ -15,7 +15,7 @@
     """,
     'author': 'Your Company',
     'website': 'https://www.yourcompany.com',
-    'depends': ['stock'],
+    'depends': ['stock', 'mrp'],
     'data': [
         'views/dispatch_report_config_views.xml',
         'views/dispatch_report_coordinate_helper.xml',

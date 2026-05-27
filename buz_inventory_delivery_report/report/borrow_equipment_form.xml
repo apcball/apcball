@@ -84,6 +84,10 @@
                                 page-break-after: always;
                               }
 
+                            .signature-table td {
+                                background-color: #fff !important;
+                            }
+
                             .vendor-info, .delivery-info {
                                 font-size: 14px;
                             }
@@ -128,7 +132,7 @@
                                 </div>
                             </div>
                             <div class="col-4 text-end">
-                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)"
+                                <img src="/buz_inventory_delivery_report/static/img/LOGO MOGEN.png"
                                      style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
@@ -214,22 +218,22 @@
                         <table class="table table-sm mt-4 order-line-table" style="border-collapse: collapse; width: 100%;">
                             <thead>
                                 <tr>
-                                    <th style="width: 6%; padding: 1px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                                    <th style="width: 6%; padding: 1px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; font-weight: bold;">
                                         ลำดับ<br/><span style="font-size: 16px; font-weight: normal;">(No)</span>
                                     </th>
-                                    <th style="width: 12%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                                    <th style="width: 12%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; font-weight: bold;">
                                         รหัสสินค้า<br/><span style="font-size: 16px; font-weight: normal;">(Item No)</span>
                                     </th>
-                                    <th style="padding: 22px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                                    <th style="padding: 22px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; font-weight: bold;">
                                         รายการสินค้า<br/><span style="font-size: 16px; font-weight: normal;">(Description)</span>
                                     </th>
-                                    <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                                    <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; font-weight: bold;">
                                         จำนวน<br/><span style="font-size: 16px; font-weight: normal;">(Qty)</span>
                                     </th>
-                                    <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                                    <th style="padding: 12px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; font-weight: bold;">
                                         หน่วย<br/><span style="font-size: 16px; font-weight: normal;">(Unit)</span>
                                     </th>
-                                    <th style="width: 14%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; background-color: #f8f9fa; font-weight: bold;">
+                                    <th style="width: 14%; padding: 8px; text-align: center; vertical-align: middle; border: 1px solid black; font-size: 20px; font-weight: bold;">
                                         หมายเหตุ<br/><span style="font-size: 16px; font-weight: normal;">(Remark)</span>
                                     </th>
                                 </tr>
@@ -317,7 +321,7 @@
                         
 
                                 <!-- ผู้ขอเบิกสินค้า -->
-                               <table style="width: 100%; table-layout: fixed; text-align: center; min-height: 100px; margin-top: 15px; border: 1px solid #000;">
+                               <table class="signature-table" style="width: 100%; table-layout: fixed; text-align: center; min-height: 100px; margin-top: 15px; border: 1px solid #000;">
                                 <tbody>
                                     <tr>
                                         <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
