@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ====== Claim Tree View ====== -->
+    <record id="view_service_claim_tree" model="ir.ui.view">
+        <field name="name">service.claim.tree</field>
+        <field name="model">service.receipt</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <tree string="Claims"
+                  decoration-info="state == 'draft'"
+                  decoration-warning="state == 'waiting_replacement'"
+                  decoration-success="state == 'done'"
+                  decoration-muted="state == 'cancel'">
+                <field name="claim_number"/>
+                <field name="name" string="Service Receipt"/>
+                <field name="partner_id"/>
+                <field name="request_date"/>
+                <field name="service_date"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ====== Claim Form View ====== -->
+    <record id="view_service_claim_form" model="ir.ui.view">
+        <field name="name">service.claim.form</field>
+        <field name="model">service.receipt</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <form string="Claim">
+                <header>
+                    <button name="action_print_claim_pdf" string="Print Claim PDF" type="object" class="btn-primary"/>
+                    <button name="action_print_repair_notification_pdf" string="Print Repair" type="object" class="btn-secondary"/>
+                    <button name="action_confirm" string="Confirm" type="object"
+                            invisible="state != 'draft'" class="btn-primary"/>
+                    <button name="action_done" string="Done" type="object"
+                            invisible="state not in ['confirmed','waiting_replacement']" class="btn-success"/>
+                    <button name="action_cancel" string="Cancel" type="object"
+                            invisible="state == 'cancel'"/>
+                    <button name="action_draft" string="Reset to Draft" type="object"
+                            invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed,waiting_replacement,done,cancel"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="claim_number" readonly="state != 'draft'"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Document">
+                            <field name="name" string="Service Receipt" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="service_case_type" readonly="1"/>
+                        </group>
+                        <group string="Schedule">
+                            <field name="request_date"/>
+                            <field name="service_date"/>
+                            <field name="replacement_date"/>
+                        </group>
+                    </group>
+
+                    <group string="Customer">
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="requester_name"/>
+                            <field name="requester_phone"/>
+                        </group>
+                        <group>
+                            <field name="service_address"/>
+                            <field name="warranty_no"/>
+                            <field name="shop_name"/>
+                        </group>
+                    </group>
+
+                    <group string="Claim Info">
+                        <group>
+                            <field name="replacement_reason"/>
+                            <field name="informer_name"/>
+                            <field name="informer_phone"/>
+                        </group>
+                        <group>
+                            <field name="product_in_warranty"/>
+                            <field name="product_out_warranty"/>
+                            <field name="usage_years"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Products">
+                            <field name="line_ids" context="{'default_resolution_type': 'replace'}">
+                                <tree editable="bottom" string="Claim Items">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id" string="Product"/>
+                                    <field name="description"/>
+                                    <field name="quantity" string="Qty"/>
+                                    <field name="resolution_type" string="Resolution"/>
+                                    <field name="replacement_product_id" string="Replacement Product"/>
+                                    <field name="replacement_qty" string="Replacement Qty"/>
+                                    <field name="issue_detail" string="Issue"/>
+                                    <field name="product_detail" string="Detail"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Conditions">
+                            <group>
+                                <group string="Product Condition">
+                                    <field name="box_condition"/>
+                                    <field name="product_condition"/>
+                                    <field name="accessory_condition"/>
+                                </group>
+                                <group string="Service">
+                                    <field name="charge_customer"/>
+                                    <field name="repair_detail"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="note" string="Remark" placeholder="Notes..."/>
+                            </group>
+                        </page>
+
+                        <page string="Billing">
+                            <field name="line_ids">
+                                <tree editable="bottom" string="Billable Lines">
+                                    <field name="product_id" string="Product"/>
+                                    <field name="replacement_product_id" string="Replacement"/>
+                                    <field name="bill_customer" string="Bill"/>
+                                    <field name="invoice_qty" string="Invoice Qty"/>
+                                    <field name="price_unit" string="Unit Price"/>
+                                    <field name="invoice_description" string="Description"/>
+                                </tree>
+                            </field>
+                            <group>
+                                <group>
+                                    <field name="invoice_status" string="Invoice Status" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="invoice_id" string="Invoice" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Signatures">
+                            <group>
+                                <group>
+                                    <field name="service_by_name" string="Service Provider"/>
+                                    <field name="service_by_date"/>
+                                </group>
+                                <group>
+                                    <field name="customer_sign_name" string="Service Receiver"/>
+                                    <field name="customer_sign_date"/>
+                                </group>
+                                <group>
+                                    <field name="approver_name" string="Approver"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ====== Claim Search View ====== -->
+    <record id="view_service_claim_search" model="ir.ui.view">
+        <field name="name">service.claim.search</field>
+        <field name="model">service.receipt</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <search string="Claims">
+                <field name="claim_number"/>
+                <field name="name" string="Service Receipt"/>
+                <field name="partner_id"/>
+                <field name="requester_name"/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Waiting Replacement" name="waiting_replacement" domain="[('state', '=', 'waiting_replacement')]"/>
+                <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter string="Today" name="today" domain="[('request_date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Customer" name="group_customer" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Request Date" name="group_request_date" context="{'group_by': 'request_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ====== Claim Action ====== -->
+    <record id="action_service_claim" model="ir.actions.act_window">
+        <field name="name">Claims</field>
+        <field name="res_model">service.receipt</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('service_case_type', '=', 'replacement')]</field>
+        <field name="context">{'default_service_case_type': 'replacement'}</field>
+        <field name="search_view_id" ref="view_service_claim_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create your first claim</p>
+            <p>Manage product claims, track return and replacement pickings.</p>
+        </field>
+    </record>
+
+    <record id="action_service_claim_tree" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_service_claim_tree"/>
+        <field name="act_window_id" ref="action_service_claim"/>
+    </record>
+
+    <record id="action_service_claim_form" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_service_claim_form"/>
+        <field name="act_window_id" ref="action_service_claim"/>
+    </record>
+
+    <!-- ====== Claim Menu ====== -->
+    <menuitem id="menu_service_claim"
+              name="Claims"
+              parent="buz_service_receipt.menu_service_receipt_root"
+              sequence="15"
+              action="action_service_claim"/>
+
+</odoo>

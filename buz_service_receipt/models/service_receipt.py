@@ -19,6 +19,14 @@ class ServiceReceipt(models.Model):
         default='New',
         tracking=True,
     )
+    claim_number = fields.Char(
+        string='Claim Number',
+        readonly=True,
+        copy=False,
+        default='New',
+        tracking=True,
+        help='Auto-generated claim number assigned when claim flow starts.',
+    )
     state = fields.Selection(
         [
             ('draft', 'Draft'),
@@ -228,8 +236,10 @@ class ServiceReceipt(models.Model):
     @api.onchange('service_date', 'service_time')
     def _onchange_service_schedule(self):
         if self.service_date:
-            hour = int(self.service_time or 0.0)
-            minute = int(round(((self.service_time or 0.0) - hour) * 60))
+            raw = self.service_time or 0.0
+            total_minutes = int(round(raw * 60))
+            hour = (total_minutes // 60) % 24
+            minute = total_minutes % 60
             self.schedule_start = fields.Datetime.to_datetime(
                 f"{self.service_date} {hour:02d}:{minute:02d}:00"
             )
@@ -268,8 +278,15 @@ class ServiceReceipt(models.Model):
 
     @api.model
     def create(self, vals):
-        if vals.get('name', 'New') == 'New':
-            vals['name'] = self.env['ir.sequence'].next_by_code('service.receipt') or 'New'
+        is_claim = vals.get('service_case_type') == 'replacement'
+        if is_claim:
+            if not vals.get('claim_number') or vals.get('claim_number') == 'New':
+                vals['claim_number'] = self.env['ir.sequence'].next_by_code('service.claim') or 'New'
+            if not vals.get('name') or vals.get('name') == 'New':
+                vals['name'] = vals.get('claim_number', 'New')
+        else:
+            if vals.get('name', 'New') == 'New':
+                vals['name'] = self.env['ir.sequence'].next_by_code('service.receipt') or 'New'
         record = super().create(vals)
         record._sync_calendar_event()
         return record
@@ -355,7 +372,13 @@ class ServiceReceipt(models.Model):
     def action_confirm(self):
         self.write({'state': 'confirmed'})
 
+    def _generate_claim_number(self):
+        for record in self:
+            if not record.claim_number or record.claim_number == 'New':
+                record.claim_number = self.env['ir.sequence'].next_by_code('service.claim') or 'New'
+
     def action_waiting_replacement(self):
+        self._generate_claim_number()
         self.write({'state': 'waiting_replacement', 'service_case_type': 'replacement'})
 
     def action_waiting_invoice(self):
@@ -373,6 +396,14 @@ class ServiceReceipt(models.Model):
     def action_print_pdf(self):
         self.ensure_one()
         return self.env.ref('buz_service_receipt.action_report_service_receipt').report_action(self)
+
+    def action_print_repair_notification_pdf(self):
+        self.ensure_one()
+        return self.env.ref('buz_service_receipt.action_report_service_repair_notification').report_action(self)
+
+    def action_print_claim_pdf(self):
+        self.ensure_one()
+        return self.env.ref('buz_service_receipt.action_report_service_claim').report_action(self)
 
     def _get_billable_lines(self):
         self.ensure_one()

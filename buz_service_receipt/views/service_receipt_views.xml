@@ -131,12 +131,12 @@
 
                                 <group string="งานบริการ">
                                     <group>
-                                        <field name="service_install_check" string="แนะนำการติดตั้ง/ตรวจเช็ค"/>
+                                        <field name="service_install_check" string="ตรวจสอบ/ตรวจเช็ค"/>
                                         <field name="service_repair" string="ซ่อม/แก้ไข"/>
                                         <field name="service_install" string="ประกอบ/ติดตั้ง"/>
                                     </group>
                                     <group>
-                                        <field name="service_troubleshoot" string="ตรวจสอบ/แนะนำการแก้ไข"/>
+                                        <field name="service_troubleshoot" string="แนะนำการติดตั้ง/แก้ไข"/>
                                         <field name="service_compensation" string="ชดเชย"/>
                                         <field name="service_other" string="อื่นๆ"/>
                                     </group>
@@ -145,7 +145,7 @@
                                 <group string="ประเภทที่พักอาศัย">
                                     <group>
                                         <field name="residence_house" string="บ้านเดี่ยว"/>
-                                        <field name="residence_townhouse" string="ทาวน์เฮาส์"/>
+                                        <field name="residence_townhouse" string="ทาวน์เฮาส์/ทาวโฮม"/>
                                         <field name="residence_condo" string="คอนโด/อพาร์ทเม้นท์"/>
                                         <field name="residence_shophouse" string="ตึกแถว/อาคารพาณิชย์"/>
                                     </group>
@@ -458,7 +458,7 @@
         <field name="name">Service Receipts</field>
         <field name="res_model">service.receipt</field>
         <field name="view_mode">tree,calendar,form</field>
-        <field name="context">{'search_default_group_technician': 1}</field>
+        <field name="context">{}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Create your first service receipt</p>
             <p>Manage service visits, print the service receipt PDF, and sync technician appointments to calendar.</p>

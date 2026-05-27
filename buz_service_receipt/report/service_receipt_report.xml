@@ -289,7 +289,7 @@
                                     </thead>
                                     <tbody>
                                         <t t-foreach="o.line_ids" t-as="line">
-                                            <tr>
+                                            <tr style="height: 30px;">
                                                 <td><span t-esc="line.description or line.product_id.display_name or ''"/></td>
                                                 <td style="text-align:center;"><span t-esc="line.quantity"/></td>
                                                 <td><span t-esc="line.issue_detail or ''"/></td>
@@ -297,8 +297,8 @@
                                             </tr>
                                         </t>
                                         <t t-foreach="range(max(9 - line_count, 0))" t-as="i">
-                                            <tr>
-                                                <td style="height:6.8mm;"></td>
+                                            <tr style="height: 30px;">
+                                                <td></td>
                                                 <td></td>
                                                 <td></td>
                                                 <td></td>
@@ -307,7 +307,7 @@
                                     </tbody>
                                 </table>
 
-                                <div style="font-size: 25px; margin-top: 30px;"><b>ข้อมูลสินค้า</b></div>
+                                <div style="font-size: 25px; margin-top: 20px;"><b>ข้อมูลสินค้า</b></div>
                                 <table class="check-row">
                                     <tr>
                                         <td style="width:20%;"></td>
@@ -323,7 +323,7 @@
                                     </tr>
                                 </table>
 
-                                <div class="section-title" style="margin-top: 30px;">กรณีมีการเปลี่ยนแปลงการบริการจากที่นัดหมายเดิม เนื่องจาก</div>
+                                <div class="section-title" style="margin-top: 20px;">กรณีมีการเปลี่ยนแปลงการบริการจากที่นัดหมายเดิม เนื่องจาก</div>
                                 <table class="check-row">
                                     <tr>
                                         <td><span class="box"><t t-esc="'/' if o.change_cancel_by_customer else ''"/></span> ลูกค้ายกเลิกนัดเนื่องจากไม่สะดวก</td>
@@ -336,8 +336,8 @@
                                 <table class="check-row">
                                     <tr>
                                         <td class="section-title">งานบริการ</td>
-                                        <td><span class="box"><t t-esc="'/' if o.service_install_check else ''"/></span> แนะนำการติดตั้ง/ตรวจเช็ค</td>
-                                        <td><span class="box"><t t-esc="'/' if o.service_repair else ''"/></span> ซ่อม/แก้ไข</td>
+                                        <td><span class="box"><t t-esc="'/' if o.service_install_check else ''"/></span> ตรวจสอบ/ตรวจเช็ค</td>
+                                        <td><span class="box"><t t-esc="'/' if o.service_repair else ''"/></span> แนะนำการติดตั้ง/แก้ไข</td>
                                         <td><span class="box"><t t-esc="'/' if o.service_install else ''"/></span> ประกอบ/ติดตั้ง</td>
                                     </tr>
                                     <tr>
@@ -352,7 +352,7 @@
                                     <tr>
                                         <td class="section-title">ประเภทที่พักอาศัย</td>
                                         <td><span class="box"><t t-esc="'/' if o.residence_house else ''"/></span> บ้านเดี่ยว</td>
-                                        <td><span class="box"><t t-esc="'/' if o.residence_townhouse else ''"/></span> ทาวเฮาท์</td>
+                                        <td><span class="box"><t t-esc="'/' if o.residence_townhouse else ''"/></span> ทาวเฮาท์/ทาวโฮม</td>
                                         <td><span class="box"><t t-esc="'/' if o.residence_condo else ''"/></span> คอนโด/อพาร์ทเม้นท์</td>
                                     </tr>
                                     <tr>
@@ -365,6 +365,7 @@
 
                                 <div class="text-lines">
                                     รายละเอียดการแก้ไข <span class="dot" style="width:84%;" t-esc="o.repair_detail or ''"/>
+                                    <span class="dot"></span>
                                     <span class="dot"></span>
                                 </div>
 
@@ -416,12 +417,10 @@
                                 <div class="text-lines">
                                     ข้อเสนอแนะเพิ่มเติม <span class="dot" style="width:84%;" t-esc="o.suggestion or ''"/>
                                     <span class="dot"></span>
-                                    <span class="dot"></span>
                                 </div>
 
                                 <div class="text-lines">
                                     หมายเหตุ <span class="dot" style="width:91%;" t-esc="o.note or ''"/>
-                                    <span class="dot"></span>
                                     <span class="dot"></span>
                                 </div>
 
