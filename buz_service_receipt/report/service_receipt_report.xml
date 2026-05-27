@@ -42,10 +42,16 @@
                                     src: url('/buz_service_receipt/static/fonts/Sarabun-Bold.ttf') format('truetype');
                                     font-weight: 700;
                                 }
-                                .sr-page, .sr-page * {
+                                .sr-page {
                                     font-family: 'Sarabun', sans-serif !important;
                                     color: #000;
-                                    font-size: 13px;
+                                    font-size: 23px;
+                                    line-height: 1.18;
+                                    box-sizing: border-box;
+                                }
+                                .sr-page * {
+                                    font-family: 'Sarabun', sans-serif !important;
+                                    color: #000;
                                     line-height: 1.18;
                                     box-sizing: border-box;
                                 }
@@ -76,26 +82,25 @@
                                     padding: 0 2px;
                                 }
                                 .sr-company {
-                                    width: 58%;
+                                    width: 76%;
                                     font-weight: 700;
                                 }
                                 .sr-company div {
-                                    font-size: 14px;
+                                    font-size: 20px;
                                     white-space: nowrap;
                                 }
                                 .sr-logo {
                                     width: 24%;
-                                    text-align: center;
-                                    font-size: 31px;
-                                    letter-spacing: 7px;
-                                    font-weight: 400;
+                                    text-align: right;
                                     padding-top: 4px !important;
                                 }
+                                .sr-logo img {
+                                    max-height: 16mm;
+                                }
                                 .sr-docno {
-                                    width: 18%;
-                                    text-align: left;
+                                    text-align: right;
                                     font-weight: 700;
-                                    padding-top: 17px !important;
+                                    padding-top: 4px !important;
                                     white-space: nowrap;
                                 }
                                 .sr-title {
@@ -181,6 +186,12 @@
                                     font-weight: 700;
                                     padding: 2px 3px 0;
                                 }
+                                .sr-page .section-title-lg {
+                                    font-weight: 700;
+                                    padding: 2px 3px 0;
+                                    font-size: 20px !important;
+                                    line-height: 1.3;
+                                }
                                 .text-lines {
                                     padding: 0 3px;
                                     font-weight: 700;
@@ -200,25 +211,22 @@
                                     vertical-align: top;
                                     font-weight: 700;
                                 }
-                                .footer {
-                                    position: absolute;
-                                    bottom: 0;
-                                    left: 2mm;
-                                    right: 2mm;
+                                .sr-footer {
                                     display: table;
-                                    width: calc(100% - 4mm);
+                                    width: 100%;
                                     font-weight: 700;
+                                    padding-top: 10mm;
                                 }
-                                .footer div {
+                                .sr-footer div {
                                     display: table-cell;
-                                    font-size: 12px;
+                                    font-size: 15px;
                                 }
                             </style>
 
                             <t t-set="service_hour" t-value="int(o.service_time or 0)"/>
                             <t t-set="service_minute" t-value="int(round(((o.service_time or 0) - service_hour) * 60))"/>
                             <t t-set="line_count" t-value="len(o.line_ids)"/>
-                            <t t-set="empty_line_count" t-value="5 - line_count if line_count &lt; 5 else 0"/>
+                            <t t-set="total_rows" t-value="max(line_count, 5)"/>
 
                             <div class="sr-grid-bg"></div>
                             <div class="sr-content">
@@ -229,8 +237,10 @@
                                             <div>9 หมู่12 ตำบลบึงคำพร้อย&#160; อำเภอลำลูกกา&#160; จังหวัดปทุมธานี 12150</div>
                                             <div>โทร02-1509709-13&#160; โทรสาร 02-1528801&#160; E-mail : contact@mogen.co.th</div>
                                         </td>
-                                        <td class="sr-logo">MOGEN</td>
-                                        <td class="sr-docno">เลขที่เอกสาร <span t-esc="o.name"/></td>
+                                        <td class="sr-logo">
+                                            <img src="/buz_service_receipt/static/img/LOGO_MOGEN.png"/>
+                                            <div class="sr-docno">เลขที่เอกสาร <span t-esc="o.name"/></div>
+                                        </td>
                                     </tr>
                                 </table>
 
@@ -268,14 +278,13 @@
                                     </tr>
                                 </table>
 
-                                <table class="sr-table">
+                                <table class="sr-table" style="margin-top: 30px;">
                                     <thead>
                                         <tr>
-                                            <th style="width:12%;">สินค้า</th>
-                                            <th style="width:18%;">จำนวน (ชิ้น)</th>
-                                            <th style="width:17%;">ปัญหาลักษณะที่แจ้ง</th>
-                                            <th style="width:24%;">ข้อมูลการนัดหมาย</th>
-                                            <th style="width:29%;">ข้อมูลสินค้า</th>
+                                            <th style="width:40%;">สินค้า</th>
+                                            <th style="width:10%;">จำนวน (ชิ้น)</th>
+                                            <th style="width:30%;">ปัญหาลักษณะที่แจ้ง</th>
+                                            <th style="width:20%;">ข้อมูลการนัดหมาย</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -285,13 +294,11 @@
                                                 <td style="text-align:center;"><span t-esc="line.quantity"/></td>
                                                 <td><span t-esc="line.issue_detail or ''"/></td>
                                                 <td><span t-esc="line.appointment_detail or ''"/></td>
-                                                <td><span t-esc="line.product_detail or ''"/></td>
                                             </tr>
                                         </t>
-                                        <t t-foreach="range(empty_line_count)" t-as="i">
+                                        <t t-foreach="range(max(9 - line_count, 0))" t-as="i">
                                             <tr>
                                                 <td style="height:6.8mm;"></td>
-                                                <td></td>
                                                 <td></td>
                                                 <td></td>
                                                 <td></td>
@@ -300,37 +307,26 @@
                                     </tbody>
                                 </table>
 
+                                <div style="font-size: 25px; margin-top: 30px;"><b>ข้อมูลสินค้า</b></div>
                                 <table class="check-row">
                                     <tr>
-                                        <td style="width:38%;"></td>
-                                        <td style="width:24%;"><span class="box"><t t-esc="'/' if o.usage_years else ''"/></span> อายุการใช้งาน <span t-esc="o.usage_years or ''"/> ปี</td>
-                                        <td style="width:38%;"></td>
-                                    </tr>
-                                    <tr>
-                                        <td></td>
-                                        <td><span class="box"><t t-esc="'/' if o.product_in_warranty else ''"/></span> สินค้าในระยะประกัน</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
-                                        <td></td>
-                                        <td><span class="box"><t t-esc="'/' if o.product_out_warranty else ''"/></span> สินค้าพ้นระยะประกัน</td>
-                                        <td></td>
+                                        <td style="width:20%;"></td>
+                                        <td style="width:20%;"><span class="box"><t t-esc="'/' if o.usage_years else ''"/></span> อายุการใช้งาน <span t-esc="o.usage_years or ''"/> ปี</td>
+                                        <td style="width:30%;"><span class="box"><t t-esc="'/' if o.product_in_warranty else ''"/></span> สินค้าในระยะประกัน</td>
+                                        <td style="width:30%;"><span class="box"><t t-esc="'/' if o.product_out_warranty else ''"/></span> สินค้าพ้นระยะประกัน</td>
                                     </tr>
                                     <tr>
                                         <td></td>
                                         <td><span class="box"><t t-esc="'/' if o.charge_customer else ''"/></span> เก็บเงิน</td>
+                                        <td><span class="box"><t t-esc="'/' if o.appointment_info else ''"/></span> อื่นๆ <span t-esc="o.appointment_info or ''"/></td>
                                         <td></td>
-                                    </tr>
-                                    <tr>
-                                        <td></td>
-                                        <td colspan="2"><span class="box"><t t-esc="'/' if o.appointment_info else ''"/></span> อื่นๆ <span class="dot" style="width:56%;" t-esc="o.appointment_info or ''"/></td>
                                     </tr>
                                 </table>
 
-                                <div class="section-title">กรณีมีการเปลี่ยนแปลงการบริการจากที่นัดหมายเดิม เนื่องจาก</div>
+                                <div class="section-title" style="margin-top: 30px;">กรณีมีการเปลี่ยนแปลงการบริการจากที่นัดหมายเดิม เนื่องจาก</div>
                                 <table class="check-row">
                                     <tr>
-                                        <td><span class="box"><t t-esc="'/' if o.change_cancel_by_customer else ''"/></span> ลูกค้ายกเลิกนัดหมายเนื่องจากไม่สะดวก</td>
+                                        <td><span class="box"><t t-esc="'/' if o.change_cancel_by_customer else ''"/></span> ลูกค้ายกเลิกนัดเนื่องจากไม่สะดวก</td>
                                         <td><span class="box"><t t-esc="'/' if o.change_no_staff else ''"/></span> เจ้าหน้าที่ไม่มี</td>
                                         <td><span class="box"><t t-esc="'/' if o.change_no_parts else ''"/></span> ไม่มีอะไหล่</td>
                                         <td><span class="box"><t t-esc="'/' if o.change_other else ''"/></span> อื่นๆ <span t-esc="o.change_other or ''"/></td>
@@ -445,9 +441,8 @@
                                 </table>
                             </div>
 
-                            <div class="footer">
+                            <div class="sr-footer">
                                 <div>อนุมัติใช้วันที่ 1/05/2560</div>
-                                <div style="text-align:center;">Page <span class="page"/> of <span class="topage"/></div>
                                 <div style="text-align:right;">FM-SRV-01&#160; Rev.04</div>
                             </div>
                         </div>
