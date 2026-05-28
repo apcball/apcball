@@ -48,9 +48,9 @@
                         </group>
                     </group>
 
-                    <group string="Items to Return">
-                        <field name="line_ids" nolabel="1">
-                            <tree editable="bottom">
+                    <group string="Items to Return" col="1" colspan="4">
+                        <field name="line_ids" nolabel="1" style="min-height: 300px;">
+                            <tree editable="bottom" create="0" delete="0">
                                 <field name="company_id" invisible="1"/>
                                 <field name="order_line_id" invisible="1"/>
                                 <field name="product_id" readonly="1"/>

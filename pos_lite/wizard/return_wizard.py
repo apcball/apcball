@@ -144,6 +144,7 @@ class PosLiteReturnWizard(models.TransientModel):
             'qty': l.qty,
             'price_unit': l.price_unit,
             'discount': l.discount,
+            'discount_type': l.discount_type,
         }) for l in self.line_ids.filtered(lambda l: l.qty > 0)]
 
         # 1. Create Return Order (always)
