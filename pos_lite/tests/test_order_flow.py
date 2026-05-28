@@ -87,8 +87,9 @@ class TestOrderBase(common.TransactionCase):
         })
 
         # Advance sequences to avoid conflict with existing data in MOG_DEV
-        cls.env.cr.execute("UPDATE ir_sequence SET number_next = 9000 WHERE code = 'pos.lite.session' AND number_next < 9000")
-        cls.env.cr.execute("UPDATE ir_sequence SET number_next = 9000 WHERE code = 'pos.lite.order' AND number_next < 9000")
+        cls.env.cr.execute("UPDATE ir_sequence SET number_next = 100000 WHERE code = 'pos.lite.session' AND number_next < 100000")
+        cls.env.cr.execute("UPDATE ir_sequence SET number_next = 100000 WHERE code = 'pos.lite.order' AND number_next < 100000")
+        cls.env.invalidate_all()
 
         # POS Lite Session (opened)
         cls.session = cls.env['pos.lite.session'].create({

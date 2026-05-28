@@ -17,6 +17,37 @@
                             <field name="return_reason" placeholder="Optional return reason..."/>
                         </group>
                     </group>
+
+                    <!-- Summary Box -->
+                    <group invisible="not is_exchange">
+                        <group string="Summary" col="3">
+                            <group>
+                                <field name="return_total" readonly="1" widget="monetary" string="Return Total"/>
+                            </group>
+                            <group>
+                                <field name="exchange_total" readonly="1" widget="monetary" string="Exchange Total"/>
+                            </group>
+                            <group>
+                                <field name="exchange_difference" readonly="1" widget="monetary"
+                                       string="Difference"
+                                       decoration-success="is_customer_gets_refund == True"
+                                       decoration-danger="is_customer_pays == True"/>
+                            </group>
+                        </group>
+                        <group invisible="not is_exchange">
+                            <field name="is_customer_pays" invisible="1"/>
+                            <field name="is_customer_gets_refund" invisible="1"/>
+                            <div class="alert alert-info" colspan="2" role="alert"
+                                 invisible="is_customer_pays == False">
+                                <span>💡 Customer pays the difference (<field name="exchange_difference" widget="monetary"/>) for the new items.</span>
+                            </div>
+                            <div class="alert alert-info" colspan="2" role="alert"
+                                 invisible="is_customer_gets_refund == False">
+                                <span>💡 Customer receives a partial refund of <field name="exchange_difference" widget="monetary"/> (new items cost less than returned items).</span>
+                            </div>
+                        </group>
+                    </group>
+
                     <group string="Items to Return">
                         <field name="line_ids" nolabel="1">
                             <tree editable="bottom">
@@ -28,11 +59,17 @@
                                 <field name="qty"/>
                                 <field name="price_unit" readonly="1"/>
                                 <field name="discount_type" readonly="1"/>
-                                <field name="discount_type" readonly="1"/>
                                 <field name="discount" readonly="1"/>
                             </tree>
                         </field>
                     </group>
+
+                    <!-- Refund Payment Method -->
+                    <group string="Refund Payment">
+                        <field name="refund_payment_method"/>
+                        <field name="refund_journal_id" domain="[('type', 'in', ('cash', 'bank')), ('company_id', '=', company_id)]"/>
+                    </group>
+
                     <group invisible="not is_exchange" string="Exchange — New Items">
                         <group>
                             <field name="exchange_partner_id" invisible="not is_exchange" context="{'pos_lite_partner_search': 1}"/>
@@ -46,7 +83,6 @@
                                 <field name="description"/>
                                 <field name="qty"/>
                                 <field name="price_unit"/>
-                                <field name="discount_type" widget="radio"/>
                                 <field name="discount_type" widget="radio"/>
                                 <field name="discount"/>
                             </tree>

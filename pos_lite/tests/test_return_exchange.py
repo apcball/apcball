@@ -81,8 +81,10 @@ class TestReturnExchangeBase(common.TransactionCase):
         })
 
         # Advance sequences to avoid conflict with existing data in MOG_DEV
-        cls.env.cr.execute("UPDATE ir_sequence SET number_next = 9000 WHERE code = 'pos.lite.session' AND number_next < 9000")
-        cls.env.cr.execute("UPDATE ir_sequence SET number_next = 9000 WHERE code = 'pos.lite.order' AND number_next < 9000")
+        cls.env.cr.execute(
+            "UPDATE ir_sequence SET number_next = 100000 WHERE code IN ('pos.lite.session', 'pos.lite.order') AND number_next < 100000"
+        )
+        cls.env.invalidate_all()
 
         # Session
         cls.session = cls.env['pos.lite.session'].create({
@@ -206,6 +208,50 @@ class TestReturnFlow(TestReturnExchangeBase):
         action = return_order.action_create_return()
         self.assertEqual(action['res_model'], 'pos.lite.return.wizard')
 
+    def test_return_refund_payment_method(self):
+        """return wizard ใช้ refund_payment_method ที่เลือก ไม่ใช่ hardcode cash"""
+        order = self._create_and_process_order([
+            (self.product_a.id, 2, 100.0),
+        ])
+        wizard = self.env['pos.lite.return.wizard'].create({
+            'order_id': order.id,
+            'refund_payment_method': 'transfer',
+        })
+        wizard._onchange_order_id()
+        wizard.action_confirm()
+
+        return_order = self.env['pos.lite.order'].search([
+            ('return_of_order_id', '=', order.id),
+        ], limit=1)
+        self.assertTrue(return_order)
+        self.assertEqual(return_order.payment_ids[0].payment_method, 'transfer')
+
+    def test_return_refund_payment_with_journal(self):
+        """return wizard ใช้ refund_journal_id ที่เลือก"""
+        bank_journal = self.env['account.journal'].create({
+            'name': 'Bank Test',
+            'type': 'bank',
+            'code': 'BNKT',
+            'company_id': self.company.id,
+        })
+        order = self._create_and_process_order([
+            (self.product_a.id, 1, 100.0),
+        ])
+        wizard = self.env['pos.lite.return.wizard'].create({
+            'order_id': order.id,
+            'refund_payment_method': 'transfer',
+            'refund_journal_id': bank_journal.id,
+        })
+        wizard._onchange_order_id()
+        wizard.action_confirm()
+
+        return_order = self.env['pos.lite.order'].search([
+            ('return_of_order_id', '=', order.id),
+        ], limit=1)
+        self.assertTrue(return_order)
+        self.assertEqual(return_order.payment_ids[0].journal_id, bank_journal)
+        self.assertEqual(return_order.payment_ids[0].payment_method, 'transfer')
+
 
 @tagged('-at_install', 'post_install')
 class TestExchangeFlow(TestReturnExchangeBase):
@@ -305,3 +351,70 @@ class TestExchangeFlow(TestReturnExchangeBase):
         self.assertTrue(exchange_order.is_exchange)
         self.assertEqual(exchange_order.state, 'done')
         self.assertEqual(exchange_order.amount_total, 200.0)
+
+    def test_exchange_summary_shows_correct_values(self):
+        """wizard สรุปยอด return_total, exchange_total, exchange_difference ตรงตามรายการ"""
+        order = self._create_and_process_order([
+            (self.product_a.id, 2, 100.0),  # return: 2x100 = 200
+        ])
+        wizard = self.env['pos.lite.return.wizard'].create({
+            'order_id': order.id,
+            'is_exchange': True,
+        })
+        wizard._onchange_order_id()
+        # return 1 ชิ้น ราคา 100
+        for line in wizard.line_ids:
+            line.qty = 1.0
+        # exchange product_b ราคา 150
+        exchange_line = self.env['pos.lite.return.wizard.exchange.line'].create({
+            'wizard_id': wizard.id,
+            'product_id': self.product_b.id,
+            'qty': 2,
+            'price_unit': 150.0,
+        })
+        wizard.write({'exchange_line_ids': [(4, exchange_line.id)]})
+
+        self.assertAlmostEqual(wizard.return_total, 100.0, places=2)
+        self.assertAlmostEqual(wizard.exchange_total, 300.0, places=2)
+        self.assertAlmostEqual(wizard.exchange_difference, 200.0, places=2)
+        self.assertTrue(wizard.is_customer_pays)
+        self.assertFalse(wizard.is_customer_gets_refund)
+
+    def test_exchange_with_return_higher_value(self):
+        """exchange — return value > exchange value → exchange_difference ติดลบ (customer gets partial refund)"""
+        order = self._create_and_process_order([
+            (self.product_a.id, 1, 200.0),  # return: 200
+        ])
+        wizard = self.env['pos.lite.return.wizard'].create({
+            'order_id': order.id,
+            'is_exchange': True,
+        })
+        wizard._onchange_order_id()
+        # exchange product_b ราคา 100
+        exchange_line = self.env['pos.lite.return.wizard.exchange.line'].create({
+            'wizard_id': wizard.id,
+            'product_id': self.product_b.id,
+            'qty': 1,
+            'price_unit': 100.0,
+        })
+        wizard.write({'exchange_line_ids': [(4, exchange_line.id)]})
+
+        # Return = 200, Exchange = 100 → Difference = -100
+        self.assertAlmostEqual(wizard.return_total, 200.0, places=2)
+        self.assertAlmostEqual(wizard.exchange_total, 100.0, places=2)
+        self.assertAlmostEqual(wizard.exchange_difference, -100.0, places=2)
+        self.assertFalse(wizard.is_customer_pays)
+        self.assertTrue(wizard.is_customer_gets_refund)
+
+        # Still creates both orders successfully
+        wizard.action_confirm()
+        return_order = self.env['pos.lite.order'].search([
+            ('return_of_order_id', '=', order.id),
+        ], limit=1)
+        exchange_order = self.env['pos.lite.order'].search([
+            ('exchange_of_order_id', '=', order.id),
+        ], limit=1)
+        self.assertTrue(return_order)
+        self.assertTrue(exchange_order)
+        self.assertEqual(return_order.state, 'done')
+        self.assertEqual(exchange_order.state, 'done')

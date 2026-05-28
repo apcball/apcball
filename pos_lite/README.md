@@ -284,13 +284,29 @@ Three receipt formats are available:
    - Processes refund payment
 6. Return order moves to **Done** state
 
-### Return Features
-- **Full return**: Return all items from original order
-- **Partial return**: Return specific quantities
-- **Cash refund**: Refund to cash/bank journal
-- **Credit note**: Automatic credit note generation
-- **Stock return**: Incoming picking for warehouse
-- **Return tracking**: Track returned quantity per line
+### Creating an Exchange
+
+1. Open completed order (state = Done)
+2. Click **Exchange**
+3. Return wizard opens with Exchange mode:
+   - Select products to return (quantity, reason)
+   - Add new items in "Exchange — New Items" section
+   - Choose **Refund Payment Method** for the return credit
+   - View **Summary** box showing Return Total, Exchange Total, and Difference
+4. Click **Confirm Exchange**
+5. System automatically:
+   - Creates **Return Order** with Credit Note (out_refund) and refund payment
+   - Creates **Exchange Order** with Invoice (out_invoice) and full payment
+   - Both orders moved to Done state
+6. Accounting: return credit and exchange invoice are separate documents — net settlement happens during reconciliation
+
+### Return & Exchange Features
+- **Full/Partial return**: Return any quantity from original order
+- **Refund payment method**: Select method for refund (Cash, Transfer, Card, PromptPay)
+- **Exchange value summary**: See return total, exchange total, and difference before confirming
+- **Exchange with difference**: If new items cost more, customer pays full price (invoice basis)
+- **Exchange with credit back**: If returned items cost more, customer gets refund for returned items (credit note)
+- **Return tracking**: Track returned quantity per line with available_return_qty
 
 ### Printing Receipt
 
@@ -325,7 +341,23 @@ LGPL-3
 
 ## 📝 Changelog
 
-### Version 17.0.3.2.0 (Current)
+### Version 17.0.3.3.0 (Current)
+**Date:** 2026-05-28  
+**Changes:**
+- ✅ **เปิดปุ่ม Return/Exchange** ใน form view สำหรับ Done orders (เปลี่ยนจาก `invisible="1"` → แสดงเมื่อ `state = 'done'`)
+- ✅ **เพิ่ม Refund Payment Method** — เลือกวิธีคืนเงินได้ (Cash/Transfer/Card/PromptPay) แทน hardcode cash
+- ✅ **Exchange Summary** — wizard แสดง Return Total, Exchange Total, Difference ก่อน confirm
+- ✅ **Fix duplicate `discount_type`** — ลบ field ซ้ำใน return_wizard_view.xml
+- ✅ **Fix discount_type** — ส่ง discount_type ไปยัง exchange line command ให้ถูกต้อง
+- ✅ **เพิ่ม tests** — ทดสอบ refund payment method, journal, exchange summary, return value > exchange value
+
+**Technical:**
+- `wizard/return_wizard.py`: เพิ่ม `refund_payment_method`, `refund_journal_id`, computed `return_total`/`exchange_total`/`exchange_difference`/`is_customer_pays`/`is_customer_gets_refund`
+- `wizard/return_wizard_view.xml`: เพิ่ม Refund Payment group + Summary box + alert indicator for difference
+- `views/pos_order_view.xml`: เปลี่ยนปุ่ม Return/Exchange visibility logic
+- `tests/test_return_exchange.py`: เพิ่ม 4 tests (refund method, refund journal, exchange summary, return higher value)
+
+### Version 17.0.3.2.0
 **Date:** 2026-05-21  
 **Changes:**
 - ✅ 新增 POS Terminal UI (Odoo 19 風格設計)
