@@ -52,6 +52,32 @@
 
     <template id="report_receipt_document">
         <t t-call="web.basic_layout">
+            <style>
+                @font-face {
+                    font-family: 'Sarabun';
+                    src: url('/pos_lite/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                    font-weight: normal;
+                }
+                @font-face {
+                    font-family: 'Sarabun';
+                    src: url('/pos_lite/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                    font-weight: bold;
+                }
+                @font-face {
+                    font-family: 'Sarabun';
+                    src: url('/pos_lite/static/fonts/Sarabun-Italic.ttf') format('truetype');
+                    font-style: italic;
+                }
+                @font-face {
+                    font-family: 'Sarabun';
+                    src: url('/pos_lite/static/fonts/Sarabun-BoldItalic.ttf') format('truetype');
+                    font-weight: bold;
+                    font-style: italic;
+                }
+                .page, table, td, th, div, span, h2, h4, body {
+                    font-family: 'Sarabun', sans-serif !important;
+                }
+            </style>
             <t t-foreach="docs" t-as="o">
                 <t t-set="config" t-value="o.env['pos.lite.config'].get_default_config(o.company_id)"/>
                 <div class="page" style="font-size: 11px; line-height: 1.35;">
@@ -75,9 +101,9 @@
                         <div t-if="o.session_id">Session: <span t-esc="o.session_id.name"/></div>
                         <div t-if="o.customer_name">Customer: <span t-esc="o.customer_name"/></div>
                         <div t-if="o.partner_phone">Phone: <span t-esc="o.partner_phone"/></div>
-                        <div t-if="o.partner_address">Address: <span t-esc="o.partner_address"/></div>
-                        <div t-if="o.delivery_address">Delivery: <span t-esc="o.delivery_address"/></div>
-                        <div t-if="not o.delivery_address and o.partner_address">Delivery: <span t-esc="o.partner_address"/> (same as customer)</div>
+                        <div t-if="o.partner_invoice_id">Address: <span t-esc="o.partner_invoice_id.contact_address"/></div>
+                        <div t-if="o.partner_shipping_id">Delivery: <span t-esc="o.partner_shipping_id.contact_address"/></div>
+                        <div t-if="not o.partner_shipping_id and o.partner_invoice_id">Delivery: <span t-esc="o.partner_invoice_id.contact_address"/> (same as customer)</div>
                         <div>Channel: <span t-esc="dict(o._fields['channel'].selection).get(o.channel, o.channel)"/></div>
                         <div>Cashier: <span t-esc="o.create_uid.name"/></div>
                         <div t-if="o.employee_id">Employee: <span t-esc="o.employee_id.name"/></div>
@@ -105,20 +131,20 @@
                                         </div>
                                     </td>
                                     <td class="text-end"><span t-esc="line.qty"/></td>
-                                    <td class="text-end"><span t-esc="formatLang(line.price_unit, currency_obj=o.currency_id)"/></td>
+                                    <td class="text-end"><span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
                                     <td class="text-end"><span t-if="line.discount" t-esc="'%s%%' % line.discount"/></td>
-                                    <td class="text-end"><span t-esc="formatLang(line.price_total, currency_obj=o.currency_id)"/></td>
+                                    <td class="text-end"><span t-field="line.price_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
                                 </tr>
                             </t>
                         </tbody>
                     </table>
                     <!-- Totals -->
                     <table style="width: 100%; margin-bottom: 4px;">
-                        <tr><td>Subtotal</td><td class="text-end"><span t-esc="formatLang(o.amount_untaxed, currency_obj=o.currency_id)"/></td></tr>
-                        <tr><td>VAT / Tax</td><td class="text-end"><span t-esc="formatLang(o.amount_tax, currency_obj=o.currency_id)"/></td></tr>
+                        <tr><td>Subtotal</td><td class="text-end"><span t-field="o.amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td></tr>
+                        <tr><td>VAT / Tax</td><td class="text-end"><span t-field="o.amount_tax" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td></tr>
                         <tr style="font-weight: bold; font-size: 12px;">
                             <td><span t-esc="'Refund Total' if o.is_return else 'Total'"/></td>
-                            <td class="text-end"><span t-esc="formatLang(o.amount_total, currency_obj=o.currency_id)"/></td>
+                            <td class="text-end"><span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
                         </tr>
                     </table>
                     <!-- Payments -->
@@ -129,7 +155,7 @@
                         <t t-foreach="o.payment_ids" t-as="pay">
                             <div style="display: flex; justify-content: space-between;">
                                 <span t-esc="dict(pay._fields['payment_method'].selection).get(pay.payment_method, pay.payment_method)"/>
-                                <span t-esc="formatLang(pay.amount, currency_obj=o.currency_id)"/>
+                                <span t-field="pay.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                             </div>
                             <div t-if="pay.reference" style="font-size: 9px; color: #666; padding-left: 8px;">
                                 Ref: <span t-esc="pay.reference"/>
@@ -139,11 +165,11 @@
                     <div style="margin-top: 4px;">
                         <div style="display: flex; justify-content: space-between;">
                             <span t-esc="'Refund Paid' if o.is_return else 'Paid'"/>
-                            <span t-esc="formatLang(o.amount_paid, currency_obj=o.currency_id)"/>
+                            <span t-field="o.amount_paid" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                         </div>
                         <div t-if="o.amount_change > 0" style="display: flex; justify-content: space-between; font-weight: bold;">
                             <span>Change</span>
-                            <span t-esc="formatLang(o.amount_change, currency_obj=o.currency_id)"/>
+                            <span t-field="o.amount_change" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                         </div>
                     </div>
                     <div t-if="o.note" style="margin: 8px 0; border-top: 1px dashed #333; padding-top: 4px;">
@@ -192,46 +218,213 @@
 
     <template id="report_session_document">
         <t t-call="web.basic_layout">
+            <style>
+                @font-face {
+                    font-family: 'Sarabun';
+                    src: url('/pos_lite/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                    font-weight: normal;
+                }
+                @font-face {
+                    font-family: 'Sarabun';
+                    src: url('/pos_lite/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                    font-weight: bold;
+                }
+                @font-face {
+                    font-family: 'Sarabun';
+                    src: url('/pos_lite/static/fonts/Sarabun-Italic.ttf') format('truetype');
+                    font-style: italic;
+                }
+                @font-face {
+                    font-family: 'Sarabun';
+                    src: url('/pos_lite/static/fonts/Sarabun-BoldItalic.ttf') format('truetype');
+                    font-weight: bold;
+                    font-style: italic;
+                }
+                .page, table, td, th, div, span, h1, h2, h3, h4, body {
+                    font-family: 'Sarabun', sans-serif !important;
+                }
+                .sum-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                .sum-table td {
+                    padding: 6px 10px;
+                    font-size: 20px;
+                    border-bottom: 1px solid #e0e0e0;
+                }
+                .sum-table tr:last-child td {
+                    border-bottom: none;
+                }
+                .sum-table .label-col {
+                    width: 55%;
+                    color: #333;
+                }
+                .sum-table .value-col {
+                    width: 45%;
+                    text-align: right;
+                    font-weight: normal;
+                }
+                .section-box {
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                    margin-bottom: 16px;
+                    overflow: hidden;
+                }
+                .section-header {
+                    background: #2c3e50;
+                    color: #fff;
+                    padding: 8px 14px;
+                    font-size: 20px;
+                    font-weight: bold;
+                }
+                .section-body {
+                    padding: 0;
+                }
+                .highlight-row td {
+                    background: #eaf6ff;
+                    font-weight: bold;
+                    font-size: 22px;
+                }
+                .net-row td {
+                    background: #1a73e8;
+                    color: #fff;
+                    font-weight: bold;
+                    font-size: 24px;
+                    border-bottom: none;
+                }
+            </style>
             <t t-foreach="docs" t-as="s">
-                <t t-set="config" t-value="s.config_id"/>
-                <div class="page" style="font-size: 12px; line-height: 1.4;">
-                    <div style="text-align: center; margin-bottom: 16px;">
-                        <h2 style="margin: 0;">Session Summary</h2>
-                        <strong t-esc="s.company_id.name"/>
-                        <div>Session: <span t-esc="s.name"/></div>
+                <div class="page" style="font-size: 20px; line-height: 1.5; padding: 10px;">
+
+                    <!-- ═══ Title Bar ═══ -->
+                    <div style="background: #2c3e50; color: #fff; text-align: center; padding: 14px 10px; border-radius: 8px; margin-bottom: 16px;">
+                        <div style="font-size: 28px; font-weight: bold;">สรุปยอดขายประจำวัน</div>
+                        <div style="font-size: 20px; margin-top: 2px;">SESSION SUMMARY</div>
                     </div>
-                    <table style="width: 100%; margin-bottom: 12px;">
-                        <tr><td style="width: 50%"><strong>Opened:</strong> <span t-esc="s.date_open.strftime('%Y-%m-%d %H:%M') if s.date_open else ''"/></td>
-                            <td><strong>Closed:</strong> <span t-esc="s.date_close.strftime('%Y-%m-%d %H:%M') if s.date_close else 'N/A'"/></td></tr>
-                        <tr><td><strong>Cashier:</strong> <span t-esc="s.user_id.name"/></td>
-                            <td><strong>Closed By:</strong> <span t-if="s.close_user_id" t-esc="s.close_user_id.name"/><span t-else="">-</span></td></tr>
-                        <tr t-if="s.employee_id"><td colspan="2"><strong>Employee:</strong> <span t-esc="s.employee_id.name"/></td></tr>
-                    </table>
 
-                    <h4>Sales Summary</h4>
-                    <table class="table table-sm table-bordered" style="width: 100%; margin-bottom: 12px;">
-                        <tr><td>Sales Orders</td><td class="text-end"><span t-esc="s.order_count_sales"/></td></tr>
-                        <tr><td>Returns</td><td class="text-end"><span t-esc="s.order_count_returns"/></td></tr>
-                        <tr><td>Total Orders</td><td class="text-end"><span t-esc="s.order_count"/></td></tr>
-                        <tr><td>Gross Sales</td><td class="text-end"><span t-esc="formatLang(s.amount_total, currency_obj=s.currency_id)"/></td></tr>
-                        <tr><td>Untaxed</td><td class="text-end"><span t-esc="formatLang(s.amount_untaxed, currency_obj=s.currency_id)"/></td></tr>
-                        <tr><td>Tax</td><td class="text-end"><span t-esc="formatLang(s.amount_tax, currency_obj=s.currency_id)"/></td></tr>
-                        <tr><td>Refunds</td><td class="text-end"><span t-esc="formatLang(s.amount_refund, currency_obj=s.currency_id)"/></td></tr>
-                        <tr style="font-weight: bold; font-size: 1.1em;"><td>Net Revenue</td><td class="text-end"><span t-esc="formatLang(s.amount_net, currency_obj=s.currency_id)"/></td></tr>
-                    </table>
-
-                    <h4>Payment Breakdown</h4>
-                    <table class="table table-sm table-bordered" style="width: 100%;">
-                        <tr><td>Cash</td><td class="text-end"><span t-esc="formatLang(s.payment_cash, currency_obj=s.currency_id)"/></td></tr>
-                        <tr><td>Transfer</td><td class="text-end"><span t-esc="formatLang(s.payment_transfer, currency_obj=s.currency_id)"/></td></tr>
-                        <tr><td>Card</td><td class="text-end"><span t-esc="formatLang(s.payment_card, currency_obj=s.currency_id)"/></td></tr>
-                        <tr><td>PromptPay</td><td class="text-end"><span t-esc="formatLang(s.payment_promptpay, currency_obj=s.currency_id)"/></td></tr>
-                        <tr><td>Other</td><td class="text-end"><span t-esc="formatLang(s.payment_other, currency_obj=s.currency_id)"/></td></tr>
-                    </table>
-
-                    <div t-if="s.note" style="margin-top: 12px;">
-                        <strong>Notes:</strong> <span t-esc="s.note"/>
+                    <!-- ═══ Info Section ═══ -->
+                    <div class="section-box">
+                        <div class="section-header">📋 ข้อมูล Session</div>
+                        <div class="section-body">
+                            <table class="sum-table">
+                                <tr>
+                                    <td class="label-col" style="width: 25%;"><strong>Session:</strong></td>
+                                    <td style="width: 25%;"><span t-esc="s.name"/></td>
+                                    <td class="label-col" style="width: 25%;"><strong>สาขา:</strong></td>
+                                    <td style="width: 25%;"><span t-esc="s.company_id.name"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>เปิดเมื่อ:</strong></td>
+                                    <td><span t-esc="s.date_open.strftime('%d/%m/%Y %H:%M') if s.date_open else ''"/></td>
+                                    <td><strong>ปิดเมื่อ:</strong></td>
+                                    <td><span t-esc="s.date_close.strftime('%d/%m/%Y %H:%M') if s.date_close else 'ยังไม่ปิด'"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ผู้เปิด:</strong></td>
+                                    <td><span t-esc="s.user_id.name"/></td>
+                                    <td><strong>ผู้ปิด:</strong></td>
+                                    <td><span t-if="s.close_user_id" t-esc="s.close_user_id.name"/><span t-else="">-</span></td>
+                                </tr>
+                                <tr t-if="s.employee_id">
+                                    <td><strong>พนักงาน:</strong></td>
+                                    <td colspan="3"><span t-esc="s.employee_id.name"/></td>
+                                </tr>
+                            </table>
+                        </div>
                     </div>
+
+                    <!-- ═══ Two Column Layout ═══ -->
+                    <div style="display: flex; gap: 14px;">
+
+                        <!-- LEFT: Sales Summary -->
+                        <div style="flex: 1;">
+                            <div class="section-box">
+                                <div class="section-header">💰 สรุปยอดขาย</div>
+                                <div class="section-body">
+                                    <table class="sum-table">
+                                        <tr>
+                                            <td class="label-col">จำนวนออเดอร์ขาย</td>
+                                            <td class="value-col"><span t-esc="s.order_count_sales"/> รายการ</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-col">จำนวนคืนสินค้า</td>
+                                            <td class="value-col"><span t-esc="s.order_count_returns"/> รายการ</td>
+                                        </tr>
+                                        <tr class="highlight-row">
+                                            <td class="label-col">รวมทั้งหมด</td>
+                                            <td class="value-col"><span t-esc="s.order_count"/> รายการ</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-col">ยอดขายรวม (Gross)</td>
+                                            <td class="value-col"><span t-field="s.amount_total" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-col">ยอดก่อนภาษี</td>
+                                            <td class="value-col"><span t-field="s.amount_untaxed" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-col">ภาษี 7%</td>
+                                            <td class="value-col"><span t-field="s.amount_tax" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-col">ยอดคืนสินค้า</td>
+                                            <td class="value-col" style="color: #b00020;">- <span t-field="s.amount_refund" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                        <tr class="net-row">
+                                            <td class="label-col">💰 ยอดขายสุทธิ</td>
+                                            <td class="value-col"><span t-field="s.amount_net" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT: Payment Breakdown -->
+                        <div style="flex: 1;">
+                            <div class="section-box">
+                                <div class="section-header">💳 รายการรับชำระ</div>
+                                <div class="section-body">
+                                    <table class="sum-table">
+                                        <tr>
+                                            <td class="label-col">💵 เงินสด (Cash)</td>
+                                            <td class="value-col"><span t-field="s.payment_cash" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-col">🏦 เงินโอน (Transfer)</td>
+                                            <td class="value-col"><span t-field="s.payment_transfer" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-col">💳 บัตรเครดิต (Card)</td>
+                                            <td class="value-col"><span t-field="s.payment_card" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-col">📱 พร้อมเพย์ (PromptPay)</td>
+                                            <td class="value-col"><span t-field="s.payment_promptpay" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-col">📦 อื่นๆ (Other)</td>
+                                            <td class="value-col"><span t-field="s.payment_other" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Note box -->
+                            <div t-if="s.note" class="section-box">
+                                <div class="section-header">📝 หมายเหตุ</div>
+                                <div class="section-body" style="padding: 10px 14px;">
+                                    <span t-esc="s.note"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="margin-top: 20px; padding-top: 10px; border-top: 2px solid #2c3e50; display: flex; justify-content: space-between; font-size: 18px; color: #666;">
+                        <span>พิมพ์เมื่อ: <span t-esc="datetime.datetime.now().strftime('%d/%m/%Y %H:%M')"/></span>
+                        <span>POS Lite — <span t-esc="s.company_id.name"/></span>
+                    </div>
+
                 </div>
             </t>
         </t>

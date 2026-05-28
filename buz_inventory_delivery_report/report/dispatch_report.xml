@@ -144,12 +144,13 @@
                         <span t-esc="' '.join(address_line1_parts)"/>
                     </div>
                     
-                    <!-- Customer Address Line 2 - ที่อยู่บรรทัด 2 (อำเภอ จังหวัด รหัสไปรษณีย์) -->
+                    <!-- Customer Address Line 2 - ที่อยู่บรรทัด 2 (อำเภอ จังหวัด รหัสไปรษณีย์) — ดึงจาก Delivery Address ในหน้า DO (buz_group_delivery) -->
                     <div t-attf-style="position: absolute; top: {{customer_address_line2_top_px * px_to_mm}}mm; left: {{config.customer_address_line2_left * px_to_mm}}mm; width: 120mm; max-width: 120mm; white-space: nowrap; overflow: visible;" class="thai-text">
+                        <t t-set="delivery_partner" t-value="o.partner_id"/>
                         <t t-set="address_parts" t-value="[]"/>
-                        <t t-if="o.partner_id.city" t-set="address_parts" t-value="address_parts + [o.partner_id.city]"/>
-                        <t t-if="o.partner_id.state_id" t-set="address_parts" t-value="address_parts + [o.partner_id.state_id.name]"/>
-                        <t t-if="o.partner_id.zip" t-set="address_parts" t-value="address_parts + [o.partner_id.zip]"/>
+                        <t t-if="delivery_partner.city" t-set="address_parts" t-value="address_parts + [delivery_partner.city]"/>
+                        <t t-if="delivery_partner.state_id" t-set="address_parts" t-value="address_parts + [delivery_partner.state_id.name]"/>
+                        <t t-if="delivery_partner.zip" t-set="address_parts" t-value="address_parts + [delivery_partner.zip]"/>
                         <span t-esc="' '.join(address_parts)"/>
                         <span t-field="o.delivery_note"/>
                     </div>

@@ -36,6 +36,12 @@
               action="action_pos_lite_sales_analysis"
               sequence="22"/>
 
+    <menuitem id="menu_pos_lite_returns_report"
+              name="Returns"
+              parent="menu_pos_lite_root"
+              action="action_pos_lite_returns_report"
+              sequence="24"/>
+
     <menuitem id="menu_pos_lite_config"
               name="Configuration"
               parent="menu_pos_lite_root"

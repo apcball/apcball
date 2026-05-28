@@ -1,7 +1,7 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_pos_lite_order_user,pos_lite.order user,model_pos_lite_order,pos_lite.group_pos_lite_user,1,1,1,0
-access_pos_lite_order_line_user,pos_lite.order.line user,model_pos_lite_order_line,pos_lite.group_pos_lite_user,1,1,1,0
-access_pos_lite_payment_user,pos_lite.payment user,model_pos_lite_payment,pos_lite.group_pos_lite_user,1,1,1,0
+access_pos_lite_order_user,pos_lite.order user,model_pos_lite_order,pos_lite.group_pos_lite_user,1,1,1,1
+access_pos_lite_order_line_user,pos_lite.order.line user,model_pos_lite_order_line,pos_lite.group_pos_lite_user,1,1,1,1
+access_pos_lite_payment_user,pos_lite.payment user,model_pos_lite_payment,pos_lite.group_pos_lite_user,1,1,1,1
 access_pos_lite_config_user,pos_lite.config read,model_pos_lite_config,pos_lite.group_pos_lite_user,1,0,0,0
 access_pos_lite_config_manager,pos_lite.config manager,model_pos_lite_config,pos_lite.group_pos_lite_manager,1,1,1,0
 access_pos_lite_session_user,pos_lite.session user,model_pos_lite_session,pos_lite.group_pos_lite_user,1,1,1,0

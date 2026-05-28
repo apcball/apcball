@@ -28,7 +28,6 @@
                                 <field name="qty"/>
                                 <field name="price_unit" readonly="1"/>
                                 <field name="discount_type" readonly="1"/>
-                                <field name="discount_type" readonly="1"/>
                                 <field name="discount" readonly="1"/>
                             </tree>
                         </field>
@@ -46,7 +45,6 @@
                                 <field name="description"/>
                                 <field name="qty"/>
                                 <field name="price_unit"/>
-                                <field name="discount_type" widget="radio"/>
                                 <field name="discount_type" widget="radio"/>
                                 <field name="discount"/>
                             </tree>

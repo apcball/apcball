@@ -47,7 +47,6 @@ class PosLiteReturnWizard(models.TransientModel):
                 'price_unit': line.price_unit,
                 'discount': line.discount,
                 'discount_type': line.discount_type,
-                'discount_type': line.discount_type,
             }))
         self.line_ids = lines
 
@@ -85,7 +84,7 @@ class PosLiteReturnWizard(models.TransientModel):
             'customer_name': order.customer_name,
             'partner_id': order.partner_id.id if order.partner_id else False,
             'partner_phone': order.partner_phone,
-            'partner_invoice_id': order.partner_invoice_id.id if order.partner_invoice_id else False,
+            'partner_address': order.partner_address,
             'partner_tax_id': order.partner_tax_id,
             'warehouse_id': order.warehouse_id.id,
             'pricelist_id': order.pricelist_id.id,
@@ -117,7 +116,6 @@ class PosLiteReturnWizard(models.TransientModel):
                 'price_unit': ex.price_unit,
                 'discount': ex.discount,
                 'discount_type': ex.discount_type,
-                'discount_type': ex.discount_type,
             }) for ex in self.exchange_line_ids]
             partner = self.exchange_partner_id or order.partner_id
             exchange_order = self.env['pos.lite.order'].create({
@@ -126,7 +124,7 @@ class PosLiteReturnWizard(models.TransientModel):
                 'customer_name': partner.name if partner else order.customer_name,
                 'partner_id': partner.id if partner else False,
                 'partner_phone': (partner.phone or partner.mobile) if partner else order.partner_phone,
-                'partner_invoice_id': order.partner_invoice_id.id if order.partner_invoice_id else False,
+                'partner_address': partner.street if partner else order.partner_address,
                 'partner_tax_id': partner.vat if partner else order.partner_tax_id,
                 'warehouse_id': (self.exchange_warehouse_id or order.warehouse_id).id,
                 'pricelist_id': order.pricelist_id.id,
@@ -211,10 +209,6 @@ class PosLiteReturnWizardExchangeLine(models.TransientModel):
     qty = fields.Float(default=1.0)
     price_unit = fields.Monetary(required=True)
     discount = fields.Float(default=0.0)
-    discount_type = fields.Selection([
-        ('percent', 'Percent'),
-        ('fixed', 'Fixed'),
-    ], default='percent', string='Discount Type')
 
     @api.onchange('product_id', 'qty')
     def _onchange_product_id(self):
