@@ -35,4 +35,6 @@ class ProductProduct(models.Model):
             ('name', operator, name),
         ]
         products = self.search(domain + args, limit=limit)
-        return products.name_get() if products else super().name_search(name=name, args=args, operator=operator, limit=limit)
+        if products:
+            return [(p.id, p.display_name) for p in products]
+        return super().name_search(name=name, args=args, operator=operator, limit=limit)

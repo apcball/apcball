@@ -31,6 +31,7 @@ class PosLiteOrder(models.Model):
     customer_name = fields.Char(tracking=True)
     partner_id = fields.Many2one('res.partner', tracking=True, check_company=True)
     partner_phone = fields.Char(tracking=True)
+    partner_address = fields.Char(tracking=True)
     partner_invoice_id = fields.Many2one('res.partner', string='Invoice Address', domain="['|', ('parent_id', '=', partner_id), ('id', '=', partner_id)]")
     partner_shipping_id = fields.Many2one('res.partner', string='Delivery Address', domain="['|', ('parent_id', '=', partner_id), ('id', '=', partner_id)]")
     partner_tax_id = fields.Char(tracking=True)
@@ -167,6 +168,7 @@ class PosLiteOrder(models.Model):
         if self.partner_id:
             self.customer_name = self.partner_id.name
             self.partner_phone = self.partner_id.phone or self.partner_id.mobile
+            self.partner_address = self.partner_id.street
             self.partner_tax_id = self.partner_id.vat
             self.partner_invoice_id = self.partner_id.address_get(['invoice']).get('invoice', self.partner_id.id)
             self.partner_shipping_id = self.partner_id.address_get(['delivery']).get('delivery', self.partner_id.id)
@@ -175,6 +177,7 @@ class PosLiteOrder(models.Model):
         else:
             self.customer_name = False
             self.partner_phone = False
+            self.partner_address = False
             self.partner_tax_id = False
             self.partner_invoice_id = False
             self.partner_shipping_id = False

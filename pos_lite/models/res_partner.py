@@ -22,4 +22,6 @@ class ResPartner(models.Model):
             ('vat', '=', name),
         ]
         partners = self.search(domain + args, limit=limit)
-        return partners.name_get() if partners else super().name_search(name=name, args=args, operator=operator, limit=limit)
+        if partners:
+            return [(p.id, p.display_name) for p in partners]
+        return super().name_search(name=name, args=args, operator=operator, limit=limit)
