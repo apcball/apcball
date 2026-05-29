@@ -4,7 +4,7 @@
         <field name="name">pos.lite.order.tree</field>
         <field name="model">pos.lite.order</field>
         <field name="arch" type="xml">
-            <tree decoration-success="state in ('paid','done')" decoration-muted="state == 'cancelled'" decoration-warning="state == 'held'" decoration-danger="is_return">
+            <tree decoration-success="state in ('paid','done')" decoration-muted="state == 'cancelled'" decoration-warning="state == 'held'" decoration-danger="return_status == 'Return'">
                 <field name="name"/>
                 <field name="date_order" string="Date"/>
                 <field name="state" widget="badge" decoration-success="state in ('paid','done')" decoration-warning="state == 'held'" decoration-danger="state == 'cancelled'"/>
@@ -15,8 +15,8 @@
                 <field name="amount_total" sum="Total" widget="monetary"/>
                 <field name="amount_paid" sum="Paid" widget="monetary"/>
                 <field name="amount_residual" sum="Due" widget="monetary" decoration-danger="amount_residual > 0"/>
-                <field name="is_return" invisible="1"/>
-                <field name="is_exchange" invisible="1"/>
+                <field name="return_status" widget="badge" decoration-danger="return_status == 'Return'" decoration-success="return_status == 'Sale'" optional="show"/>
+                <field name="exchange_status" widget="badge" decoration-warning="exchange_status == 'Exchange'" decoration-muted="exchange_status == 'Direct'" optional="show"/>
                 <field name="return_of_order_id" optional="hide"/>
                 <field name="return_count" invisible="1"/>
                 <field name="invoice_id" optional="hide"/>
@@ -113,6 +113,12 @@
                                 <span class="o_stat_text">Returns</span>
                             </div>
                         </button>
+                        <button name="action_view_exchanges" type="object" class="oe_stat_button" icon="fa-exchange" invisible="is_return or exchange_count == 0">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="exchange_count"/></span>
+                                <span class="o_stat_text">Exchanges</span>
+                            </div>
+                        </button>
                         <button name="action_view_payments" type="object" class="oe_stat_button" icon="fa-money" invisible="state == 'draft'">
                             <div class="o_stat_info">
                                 <span class="o_stat_text">Payments</span>
@@ -131,8 +137,6 @@
                         <group string="👤 Customer">
                             <field name="partner_id" context="{'pos_lite_partner_search': 1}" options="{'no_create_edit': False}" placeholder="Search or create customer..."/>
                             <field name="customer_name" placeholder="Customer Name"/>
-                            <field name="partner_phone" string="Phone"/>
-                            <field name="partner_tax_id" string="Tax ID"/>
                         </group>
                         <!-- Col 2: Invoice Address -->
                         <group string="📍 Invoice Address">
@@ -167,6 +171,29 @@
                             <field name="return_reason" readonly="1"/>
                             <field name="is_exchange" invisible="1"/>
                             <field name="exchange_of_order_id" readonly="1" invisible="not is_exchange"/>
+                            <field name="exchange_return_order_id" readonly="1" invisible="not is_exchange"/>
+                        </group>
+                    </group>
+
+                    <!-- Exchange info — original order side -->
+                    <group invisible="is_return or exchange_count == 0">
+                        <group string="⇄ Exchange Summary" col="2">
+                            <field name="exchange_return_total" readonly="1" widget="monetary" string="Return Value"/>
+                            <field name="exchange_new_total" readonly="1" widget="monetary" string="New Items Value"/>
+                            <field name="exchange_difference" readonly="1" widget="monetary"
+                                   string="Difference"
+                                   decoration-success="exchange_customer_gets_refund == True"
+                                   decoration-danger="exchange_customer_pays == True"/>
+                            <field name="exchange_customer_pays" invisible="1"/>
+                            <field name="exchange_customer_gets_refund" invisible="1"/>
+                            <div class="alert alert-info" colspan="2" role="alert"
+                                 invisible="not exchange_customer_pays">
+                                <span>💡 Customer pays extra <field name="exchange_difference" widget="monetary"/> for the new items.</span>
+                            </div>
+                            <div class="alert alert-success" colspan="2" role="alert"
+                                 invisible="not exchange_customer_gets_refund">
+                                <span>💡 Customer gets refunded <field name="exchange_difference" widget="monetary" decoration-success="True"/> (new items cost less).</span>
+                            </div>
                         </group>
                     </group>
 
@@ -224,6 +251,21 @@
                                     <field name="account_payment_id" readonly="1" optional="hide"/>
                                 </tree>
                             </field>
+                        </page>
+                        <page string="🔄 Exchanges" invisible="exchange_count == 0">
+                            <group string="Exchange Orders">
+                                <field name="exchange_order_ids" nolabel="1" readonly="1">
+                                    <tree>
+                                        <field name="name"/>
+                                        <field name="date_order" string="Date"/>
+                                        <field name="state" widget="badge"
+                                               decoration-success="state in ('paid','done')"
+                                               decoration-danger="state == 'cancelled'"/>
+                                        <field name="amount_total" widget="monetary"/>
+                                        <field name="exchange_return_order_id" string="Return Order" optional="hide"/>
+                                    </tree>
+                                </field>
+                            </group>
                         </page>
                         <page string="📝 Notes">
                             <field name="note" placeholder="Add notes, delivery instructions, LINE message details..."/>

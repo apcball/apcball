@@ -66,12 +66,23 @@ class PosLiteOrder(models.Model):
     invoice_id = fields.Many2one('account.move', readonly=True, copy=False)
     picking_id = fields.Many2one('stock.picking', readonly=True, copy=False)
     is_return = fields.Boolean(default=False, copy=False, tracking=True)
+    return_status = fields.Char(compute='_compute_return_exchange_status', string='Return Status')
     return_of_order_id = fields.Many2one('pos.lite.order', readonly=True, copy=False, tracking=True, index=True)
     return_order_ids = fields.One2many('pos.lite.order', 'return_of_order_id', string='Return Orders')
     return_reason = fields.Text(copy=False)
     return_count = fields.Integer(compute='_compute_return_count', string='Returns')
     is_exchange = fields.Boolean(default=False, copy=False, tracking=True)
+    exchange_status = fields.Char(compute='_compute_return_exchange_status', string='Exchange Status')
     exchange_of_order_id = fields.Many2one('pos.lite.order', readonly=True, copy=False, tracking=True, index=True)
+    exchange_order_ids = fields.One2many('pos.lite.order', 'exchange_of_order_id', string='Exchange Orders')
+    exchange_return_order_id = fields.Many2one('pos.lite.order', readonly=True, copy=False, string='Exchange Return',
+                                               help='For exchange orders: links to the associated return order')
+    exchange_count = fields.Integer(compute='_compute_exchange_count', string='Exchanges')
+    exchange_return_total = fields.Monetary(compute='_compute_exchange_summary', string='Return Value (Exchange)')
+    exchange_new_total = fields.Monetary(compute='_compute_exchange_summary', string='New Items Value (Exchange)')
+    exchange_difference = fields.Monetary(compute='_compute_exchange_summary', string='Exchange Difference')
+    exchange_customer_pays = fields.Boolean(compute='_compute_exchange_summary', string='Customer Pays Extra')
+    exchange_customer_gets_refund = fields.Boolean(compute='_compute_exchange_summary', string='Customer Gets Refund')
     note = fields.Text()
     date_order = fields.Datetime(
         string='Order Date', default=fields.Datetime.now, readonly=True, tracking=True,
@@ -117,10 +128,48 @@ class PosLiteOrder(models.Model):
             order.amount_residual = max(total - paid_display, 0.0)
             order.amount_change = max(paid_display - total, 0.0)
 
+    @api.depends('is_return', 'is_exchange')
+    def _compute_return_exchange_status(self):
+        for order in self:
+            order.return_status = _('Return') if order.is_return else _('Sale')
+            order.exchange_status = _('Exchange') if order.is_exchange else _('Direct')
+
     @api.depends('return_order_ids')
     def _compute_return_count(self):
         for order in self:
             order.return_count = len(order.return_order_ids)
+
+    @api.depends('exchange_order_ids')
+    def _compute_exchange_count(self):
+        for order in self:
+            order.exchange_count = len(order.exchange_order_ids)
+
+    @api.depends('exchange_order_ids', 'exchange_order_ids.amount_total',
+                 'exchange_return_order_id', 'exchange_return_order_id.amount_total')
+    def _compute_exchange_summary(self):
+        """คำนวณมูลค่า return items, new items, และส่วนต่าง สำหรับ original order ที่มี exchange"""
+        for order in self:
+            if not order.is_exchange:
+                # Original order → หา exchange orders
+                ret_total = 0.0
+                new_total = 0.0
+                for ex in order.exchange_order_ids:
+                    if ex.exchange_return_order_id:
+                        ret_total += ex.exchange_return_order_id.amount_total
+                    new_total += ex.amount_total
+                order.exchange_return_total = ret_total
+                order.exchange_new_total = new_total
+                order.exchange_difference = new_total - ret_total
+                order.exchange_customer_pays = (new_total - ret_total) > 0.01
+                order.exchange_customer_gets_refund = (new_total - ret_total) < -0.01
+            else:
+                # Exchange order → ดูของตัวเอง
+                ret = order.exchange_return_order_id
+                order.exchange_return_total = ret.amount_total if ret else 0.0
+                order.exchange_new_total = order.amount_total
+                order.exchange_difference = order.amount_total - (ret.amount_total if ret else 0.0)
+                order.exchange_customer_pays = False
+                order.exchange_customer_gets_refund = False
 
     # ─── CRUD ───────────────────────────────────────────────────
 
@@ -596,6 +645,17 @@ class PosLiteOrder(models.Model):
             'res_model': 'pos.lite.order',
             'view_mode': 'tree,form',
             'domain': [('return_of_order_id', '=', self.id)],
+            'target': 'current',
+        }
+
+    def action_view_exchanges(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Exchange Orders'),
+            'res_model': 'pos.lite.order',
+            'view_mode': 'tree,form',
+            'domain': [('exchange_of_order_id', '=', self.id)],
             'target': 'current',
         }
 

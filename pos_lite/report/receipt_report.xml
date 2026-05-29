@@ -271,19 +271,25 @@
                     overflow: hidden;
                 }
                 .section-header {
-                    background: #2c3e50;
                     color: #fff;
                     padding: 8px 14px;
                     font-size: 20px;
                     font-weight: bold;
                 }
+                .section-header.sales { background: #1a73e8; }
+                .section-header.exchange { background: #e67e22; }
+                .section-header.returns { background: #c0392b; }
+                .section-header.info { background: #2c3e50; }
+                .section-header.payment { background: #27ae60; }
+                .section-header.note { background: #7f8c8d; }
                 .section-body {
                     padding: 0;
                 }
-                .highlight-row td {
-                    background: #eaf6ff;
+                .sub-header td {
+                    background: #f5f7fa;
                     font-weight: bold;
-                    font-size: 22px;
+                    font-size: 20px;
+                    color: #555;
                 }
                 .net-row td {
                     background: #1a73e8;
@@ -292,6 +298,11 @@
                     font-size: 24px;
                     border-bottom: none;
                 }
+                .refund-row td {
+                    color: #b00020;
+                }
+                .positive { color: #1a73e8; }
+                .negative { color: #c0392b; }
             </style>
             <t t-foreach="docs" t-as="s">
                 <div class="page" style="font-size: 20px; line-height: 1.5; padding: 10px;">
@@ -304,7 +315,7 @@
 
                     <!-- ═══ Info Section ═══ -->
                     <div class="section-box">
-                        <div class="section-header">📋 ข้อมูล Session</div>
+                        <div class="section-header info">📋 ข้อมูล Session</div>
                         <div class="section-body">
                             <table class="sum-table">
                                 <tr>
@@ -338,40 +349,88 @@
 
                         <!-- LEFT: Sales Summary -->
                         <div style="flex: 1;">
+                            <!-- Regular Sales -->
                             <div class="section-box">
-                                <div class="section-header">💰 สรุปยอดขาย</div>
+                                <div class="section-header sales">🛒 ขายปกติ (Regular Sales)</div>
                                 <div class="section-body">
                                     <table class="sum-table">
                                         <tr>
-                                            <td class="label-col">จำนวนออเดอร์ขาย</td>
+                                            <td class="label-col">จำนวนออเดอร์</td>
                                             <td class="value-col"><span t-esc="s.order_count_sales"/> รายการ</td>
                                         </tr>
+                                        <tr>
+                                            <td class="label-col">ยอดขายปกติ</td>
+                                            <td class="value-col"><span t-field="s.amount_regular_sales" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Exchange Sales -->
+                            <div t-if="s.order_count_exchanges" class="section-box">
+                                <div class="section-header exchange">🔄 เปลี่ยนสินค้า (Exchanges)</div>
+                                <div class="section-body">
+                                    <table class="sum-table">
+                                        <tr>
+                                            <td class="label-col">จำนวนออเดอร์เปลี่ยน</td>
+                                            <td class="value-col"><span t-esc="s.order_count_exchanges"/> รายการ</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-col">ยอดขายเปลี่ยน</td>
+                                            <td class="value-col"><span t-field="s.amount_exchange_sales" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Returns -->
+                            <div t-if="s.order_count_returns" class="section-box">
+                                <div class="section-header returns">↩️ คืนสินค้า (Returns)</div>
+                                <div class="section-body">
+                                    <table class="sum-table">
                                         <tr>
                                             <td class="label-col">จำนวนคืนสินค้า</td>
                                             <td class="value-col"><span t-esc="s.order_count_returns"/> รายการ</td>
                                         </tr>
-                                        <tr class="highlight-row">
-                                            <td class="label-col">รวมทั้งหมด</td>
+                                        <tr>
+                                            <td class="label-col">ยอดคืนสินค้า</td>
+                                            <td class="value-col negative">- <span t-field="s.amount_refund" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Grand Totals -->
+                            <div class="section-box">
+                                <div class="section-header sales" style="background: #1a73e8;">💰 ยอดขายสุทธิ</div>
+                                <div class="section-body">
+                                    <table class="sum-table">
+                                        <tr class="sub-header">
+                                            <td class="label-col">รายการ</td>
+                                            <td class="value-col">จำนวน</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-col">รวมออเดอร์ทั้งหมด</td>
                                             <td class="value-col"><span t-esc="s.order_count"/> รายการ</td>
                                         </tr>
                                         <tr>
-                                            <td class="label-col">ยอดขายรวม (Gross)</td>
-                                            <td class="value-col"><span t-field="s.amount_total" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                            <td class="label-col">ยอดขายรวม (Gross Sales)</td>
+                                            <td class="value-col positive"><span t-field="s.amount_total" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
+                                        </tr>
+                                        <tr t-if="s.order_count_returns">
+                                            <td class="label-col">หัก คืนสินค้า</td>
+                                            <td class="value-col" style="color: #b00020;">- <span t-field="s.amount_refund" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
                                         </tr>
                                         <tr>
                                             <td class="label-col">ยอดก่อนภาษี</td>
                                             <td class="value-col"><span t-field="s.amount_untaxed" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
                                         </tr>
                                         <tr>
-                                            <td class="label-col">ภาษี 7%</td>
+                                            <td class="label-col">ภาษี</td>
                                             <td class="value-col"><span t-field="s.amount_tax" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
                                         </tr>
-                                        <tr>
-                                            <td class="label-col">ยอดคืนสินค้า</td>
-                                            <td class="value-col" style="color: #b00020;">- <span t-field="s.amount_refund" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
-                                        </tr>
                                         <tr class="net-row">
-                                            <td class="label-col">💰 ยอดขายสุทธิ</td>
+                                            <td class="label-col">💰 ยอดขายสุทธิ (Net)</td>
                                             <td class="value-col"><span t-field="s.amount_net" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
                                         </tr>
                                     </table>
@@ -382,9 +441,13 @@
                         <!-- RIGHT: Payment Breakdown -->
                         <div style="flex: 1;">
                             <div class="section-box">
-                                <div class="section-header">💳 รายการรับชำระ</div>
+                                <div class="section-header payment">💳 รายการรับชำระ (Net)</div>
                                 <div class="section-body">
                                     <table class="sum-table">
+                                        <tr class="sub-header">
+                                            <td class="label-col">ช่องทาง</td>
+                                            <td class="value-col">ยอดสุทธิ</td>
+                                        </tr>
                                         <tr>
                                             <td class="label-col">💵 เงินสด (Cash)</td>
                                             <td class="value-col"><span t-field="s.payment_cash" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
@@ -405,13 +468,20 @@
                                             <td class="label-col">📦 อื่นๆ (Other)</td>
                                             <td class="value-col"><span t-field="s.payment_other" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
                                         </tr>
+                                        <tr style="border-top: 2px solid #333; font-weight: bold;">
+                                            <td class="label-col">รวมรับชำระ</td>
+                                            <td class="value-col">
+                                                <span t-esc="s.payment_cash + s.payment_transfer + s.payment_card + s.payment_promptpay + s.payment_other"
+                                                      t-options='{"widget": "monetary", "display_currency": s.currency_id}'/>
+                                            </td>
+                                        </tr>
                                     </table>
                                 </div>
                             </div>
 
                             <!-- Note box -->
                             <div t-if="s.note" class="section-box">
-                                <div class="section-header">📝 หมายเหตุ</div>
+                                <div class="section-header note">📝 หมายเหตุ</div>
                                 <div class="section-body" style="padding: 10px 14px;">
                                     <span t-esc="s.note"/>
                                 </div>

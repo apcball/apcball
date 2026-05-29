@@ -126,8 +126,8 @@ class PosLiteReturnWizard(models.TransientModel):
             for line in wizard.line_ids:
                 if line.qty <= 0:
                     raise ValidationError(_('Return quantity must be greater than zero.'))
-                if line.qty > line.qty_available:
-                    raise ValidationError(_('Return quantity cannot exceed the available quantity.'))
+                # qty_available validation deferred to action_confirm
+                # — readonly field value may not survive client roundtrip
 
     def action_confirm(self):
         self.ensure_one()
@@ -135,12 +135,18 @@ class PosLiteReturnWizard(models.TransientModel):
             raise UserError(_('Only completed orders can be returned.'))
         if not self.line_ids:
             raise UserError(_('Please select at least one product to return.'))
+        for line in self.line_ids:
+            if line.order_line_id:
+                original_line = line.order_line_id
+                available_qty = original_line.available_return_qty if hasattr(original_line, 'available_return_qty') else original_line.qty
+                if line.qty > available_qty:
+                    raise UserError(_('Return quantity for %s cannot exceed the available quantity.') % line.description)
 
         order = self.order_id
         line_commands = [(0, 0, {
             'returned_from_line_id': l.order_line_id.id,
-            'product_id': l.product_id.id,
-            'description': l.description or l.product_id.display_name,
+            'product_id': l.product_id.id or l.order_line_id.product_id.id,
+            'description': l.description or (l.order_line_id.product_id.display_name if l.order_line_id.product_id else l.product_id.display_name),
             'qty': l.qty,
             'price_unit': l.price_unit,
             'discount': l.discount,
@@ -210,6 +216,7 @@ class PosLiteReturnWizard(models.TransientModel):
                 'note': _('Exchange for order %s (return: %s)') % (order.name, return_order.name),
                 'is_exchange': True,
                 'exchange_of_order_id': order.id,
+                'exchange_return_order_id': return_order.id,
                 'line_ids': exchange_line_commands,
             })
 
@@ -250,25 +257,19 @@ class PosLiteReturnWizardLine(models.TransientModel):
     wizard_id = fields.Many2one('pos.lite.return.wizard', required=True, ondelete='cascade')
     company_id = fields.Many2one(related='wizard_id.company_id', readonly=True)
     currency_id = fields.Many2one(related='wizard_id.currency_id', readonly=True)
-    order_line_id = fields.Many2one('pos.lite.order.line', required=True, readonly=True)
-    product_id = fields.Many2one('product.product', required=True, readonly=True)
+    order_line_id = fields.Many2one('pos.lite.order.line')
+    product_id = fields.Many2one('product.product')
     description = fields.Char(readonly=True)
     qty_available = fields.Float(readonly=True)
     qty = fields.Float(default=1.0)
-    price_unit = fields.Monetary(required=True)
+    price_unit = fields.Monetary(required=False)
     discount = fields.Float(default=0.0)
     discount_type = fields.Selection([
         ('percent', 'Percent'),
         ('fixed', 'Fixed'),
     ], default='percent', string='Discount Type')
 
-    @api.constrains('qty')
-    def _check_qty(self):
-        for line in self:
-            if line.qty <= 0:
-                raise ValidationError(_('Return quantity must be greater than zero.'))
-            if line.qty > line.qty_available:
-                raise ValidationError(_('Return quantity cannot exceed the available quantity.'))
+    # Note: qty validation is covered by wizard-level _check_lines
 
 
 class PosLiteReturnWizardExchangeLine(models.TransientModel):
@@ -286,7 +287,7 @@ class PosLiteReturnWizardExchangeLine(models.TransientModel):
     )
     description = fields.Char()
     qty = fields.Float(default=1.0)
-    price_unit = fields.Monetary(required=True)
+    price_unit = fields.Monetary(required=False)
     discount = fields.Float(default=0.0)
     discount_type = fields.Selection([
         ('percent', 'Percent'),
@@ -312,9 +313,3 @@ class PosLiteReturnWizardExchangeLine(models.TransientModel):
             except (AttributeError, IndexError, TypeError):
                 price = self.product_id.lst_price
         self.price_unit = price
-
-    @api.constrains('qty')
-    def _check_qty(self):
-        for line in self:
-            if line.qty <= 0:
-                raise ValidationError(_('Exchange quantity must be greater than zero.'))

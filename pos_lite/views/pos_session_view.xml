@@ -14,6 +14,7 @@
                 <field name="date_close" string="Close"/>
                 <field name="user_id" string="Cashier"/>
                 <field name="order_count_sales" string="Sales"/>
+                <field name="order_count_exchanges" string="Exch"/>
                 <field name="order_count_returns" string="Returns"/>
                 <field name="amount_net" string="Net"/>
                 <field name="company_id" invisible="1"/>
@@ -49,12 +50,15 @@
                             <field name="company_id" invisible="1"/>
                         </group>
                         <group string="Summary">
-                            <field name="order_count_sales"/>
-                            <field name="order_count_returns"/>
-                            <field name="order_count"/>
+                            <field name="order_count_sales" string="Regular Sales"/>
+                            <field name="order_count_exchanges" string="Exchanges"/>
+                            <field name="order_count_returns" string="Returns"/>
+                            <field name="order_count" string="Total Orders"/>
+                            <field name="amount_regular_sales" widget="monetary" string="Regular Sales Amt"/>
+                            <field name="amount_exchange_sales" widget="monetary" string="Exchange Sales Amt"/>
                             <field name="amount_untaxed" widget="monetary"/>
                             <field name="amount_tax" widget="monetary"/>
-                            <field name="amount_total" widget="monetary"/>
+                            <field name="amount_total" widget="monetary" string="Gross Sales"/>
                             <field name="amount_refund" widget="monetary"/>
                             <field name="amount_net" widget="monetary" style="font-weight: bold; font-size: 1.2em;"/>
                         </group>

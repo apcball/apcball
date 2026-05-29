@@ -36,9 +36,12 @@ class PosLiteSession(models.Model):
     close_user_id = fields.Many2one('res.users', readonly=True, string='Closed By')
     order_ids = fields.One2many('pos.lite.order', 'session_id', string='Orders')
     order_count = fields.Integer(compute='_compute_stats', string='Orders')
-    order_count_sales = fields.Integer(compute='_compute_stats', string='Sales Orders')
+    order_count_sales = fields.Integer(compute='_compute_stats', string='Regular Sales')
+    order_count_exchanges = fields.Integer(compute='_compute_stats', string='Exchanges')
     order_count_returns = fields.Integer(compute='_compute_stats', string='Returns')
     amount_total = fields.Monetary(compute='_compute_stats', string='Total Sales')
+    amount_regular_sales = fields.Monetary(compute='_compute_stats', string='Regular Sales Amount')
+    amount_exchange_sales = fields.Monetary(compute='_compute_stats', string='Exchange Sales Amount')
     amount_tax = fields.Monetary(compute='_compute_stats', string='Total Tax')
     amount_untaxed = fields.Monetary(compute='_compute_stats', string='Total Untaxed')
     amount_refund = fields.Monetary(compute='_compute_stats', string='Total Refunds')
@@ -66,15 +69,20 @@ class PosLiteSession(models.Model):
                 return config.employee_id
         return employee
 
-    @api.depends('order_ids.state', 'order_ids.amount_total', 'order_ids.is_return')
+    @api.depends('order_ids.state', 'order_ids.amount_total', 'order_ids.is_return', 'order_ids.is_exchange')
     def _compute_stats(self):
         for session in self:
             done_orders = session.order_ids.filtered(lambda o: o.state in ('paid', 'done'))
             sales = done_orders.filtered(lambda o: not o.is_return)
             returns = done_orders.filtered(lambda o: o.is_return)
+            exchanges = sales.filtered(lambda o: o.is_exchange)
+            regular = sales.filtered(lambda o: not o.is_exchange)
             session.order_count = len(done_orders)
-            session.order_count_sales = len(sales)
+            session.order_count_sales = len(regular)
+            session.order_count_exchanges = len(exchanges)
             session.order_count_returns = len(returns)
+            session.amount_regular_sales = sum(regular.mapped('amount_total'))
+            session.amount_exchange_sales = sum(exchanges.mapped('amount_total'))
             session.amount_total = sum(sales.mapped('amount_total'))
             session.amount_untaxed = sum(sales.mapped('amount_untaxed'))
             session.amount_tax = sum(sales.mapped('amount_tax'))
@@ -84,14 +92,13 @@ class PosLiteSession(models.Model):
     @api.depends('order_ids.payment_ids', 'order_ids.payment_ids.amount', 'order_ids.payment_ids.payment_method', 'order_ids.state')
     def _compute_payment_breakdown(self):
         for session in self:
-            payments = session.order_ids.filtered(
-                lambda o: o.state in ('paid', 'done') and not o.is_return
-            ).mapped('payment_ids')
-            session.payment_cash = sum(p.amount for p in payments if p.payment_method == 'cash' and p.amount > 0)
-            session.payment_transfer = sum(p.amount for p in payments if p.payment_method == 'transfer' and p.amount > 0)
-            session.payment_card = sum(p.amount for p in payments if p.payment_method == 'card' and p.amount > 0)
-            session.payment_promptpay = sum(p.amount for p in payments if p.payment_method == 'promptpay' and p.amount > 0)
-            session.payment_other = sum(p.amount for p in payments if p.payment_method == 'other' and p.amount > 0)
+            done_orders = session.order_ids.filtered(lambda o: o.state in ('paid', 'done'))
+            payments = done_orders.mapped('payment_ids')
+            session.payment_cash = sum(p.amount for p in payments if p.payment_method == 'cash')
+            session.payment_transfer = sum(p.amount for p in payments if p.payment_method == 'transfer')
+            session.payment_card = sum(p.amount for p in payments if p.payment_method == 'card')
+            session.payment_promptpay = sum(p.amount for p in payments if p.payment_method == 'promptpay')
+            session.payment_other = sum(p.amount for p in payments if p.payment_method == 'other')
 
     @api.model_create_multi
     def create(self, vals_list):
