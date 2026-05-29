@@ -8,7 +8,7 @@
             <tree decoration-success="state == 'opened'" decoration-muted="state == 'closed'">
                 <field name="name"/>
                 <field name="config_id"/>
-                <field name="employee_id" string="Employee"/>
+                <field name="employee_ids" string="Employees" widget="many2many_tags"/>
                 <field name="state"/>
                 <field name="date_open" string="Open"/>
                 <field name="date_close" string="Close"/>
@@ -29,7 +29,8 @@
         <field name="arch" type="xml">
             <form string="POS Lite Session">
                 <header>
-                    <button name="action_close_session" type="object" string="Close Session" class="oe_highlight" invisible="state != 'opened'" confirm="Close this session? Pending draft orders must be processed first."/>
+                    <button name="action_open_terminal" type="object" string="🖥 Open Terminal" class="oe_highlight" invisible="state != 'opened'"/>
+                    <button name="action_close_session" type="object" string="Close Session" class="btn-secondary" invisible="state != 'opened'" confirm="Close this session? Pending draft orders must be processed first."/>
                     <button name="action_reopen_session" type="object" string="Reopen" invisible="state != 'closed'" groups="pos_lite.group_pos_lite_manager"/>
                     <button name="action_print_session_summary" type="object" string="Print Summary" invisible="state != 'closed'" groups="pos_lite.group_pos_lite_user"/>
                     <field name="state" widget="statusbar" statusbar_visible="opened,closed"/>
@@ -42,7 +43,8 @@
                     <group>
                         <group string="Session Info">
                             <field name="config_id"/>
-                            <field name="employee_id"/>
+                            <field name="employee_id" invisible="1"/>
+                            <field name="employee_ids" widget="many2many_tags"/>
                             <field name="date_open"/>
                             <field name="date_close"/>
                             <field name="user_id"/>
@@ -81,6 +83,11 @@
                         </group>
                     </group>
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_open_terminal" type="object" class="oe_stat_button" icon="fa-desktop" invisible="state != 'opened'">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Open Terminal</span>
+                            </div>
+                        </button>
                         <button name="action_view_orders" type="object" class="oe_stat_button" icon="fa-list">
                             <div class="o_stat_info">
                                 <span class="o_stat_value"><field name="order_count"/></span>
@@ -110,14 +117,14 @@
                 <field name="name"/>
                 <field name="config_id"/>
                 <field name="user_id"/>
-                <field name="employee_id"/>
+                <field name="employee_ids"/>
                 <filter string="Open" name="open" domain="[('state', '=', 'opened')]"/>
                 <filter string="Closed" name="closed" domain="[('state', '=', 'closed')]"/>
                 <filter string="Today" name="today" domain="[('date_open', '&gt;=', (context_today()).strftime('%Y-%m-%d 00:00:00'))]"/>
                 <group expand="0" string="Group By">
                     <filter string="Config" name="group_config" context="{'group_by': 'config_id'}"/>
                     <filter string="Cashier" name="group_user" context="{'group_by': 'user_id'}"/>
-                    <filter string="Employee" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Employee" name="group_employee" context="{'group_by': 'employee_ids'}"/>
                     <filter string="Date" name="group_date" context="{'group_by': 'date_open:day'}"/>
                 </group>
             </search>

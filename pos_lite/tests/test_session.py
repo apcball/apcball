@@ -102,6 +102,48 @@ class TestSessionOpenClose(TestSessionBase):
         self.assertTrue(session.date_open)
         self.assertTrue(session.name)
 
+    def test_session_multiple_employees(self):
+        """session มี employee_ids หลายคนได้"""
+        emp2 = self.env['hr.employee'].create({
+            'name': 'Test Emp 2',
+            'company_id': self.company.id,
+        })
+        emp3 = self.env['hr.employee'].create({
+            'name': 'Test Emp 3',
+            'company_id': self.company.id,
+        })
+        session = self.env['pos.lite.session'].create({
+            'config_id': self.config.id,
+            'employee_id': self.employee.id,
+            'employee_ids': [(6, 0, [self.employee.id, emp2.id, emp3.id])],
+            'company_id': self.company.id,
+        })
+        self.assertEqual(len(session.employee_ids), 3)
+        self.assertIn(emp2.id, session.employee_ids.ids)
+        self.assertIn(emp3.id, session.employee_ids.ids)
+
+    def test_session_employee_ids_reflects_employee(self):
+        """employee_ids ควรมี employee หลักเมื่อ set employee_ids ชัดเจน"""
+        session = self.env['pos.lite.session'].create({
+            'config_id': self.config.id,
+            'employee_id': self.employee.id,
+            'employee_ids': [(6, 0, [self.employee.id])],
+            'company_id': self.company.id,
+        })
+        self.assertIn(self.employee.id, session.employee_ids.ids)
+
+    def test_session_order_finds_via_employee_ids(self):
+        """Order ที่สร้างโดย employee ที่อยู่ใน employee_ids → auto-link กับ session"""
+        session = self.env['pos.lite.session'].create({
+            'config_id': self.config.id,
+            'employee_id': self.employee.id,
+            'employee_ids': [(6, 0, [self.employee.id])],
+            'company_id': self.company.id,
+        })
+        # สร้าง order โดยไม่มี session_id → system ควรหา session ผ่าน employee_ids
+        order = self._create_draft_order(session)
+        self.assertEqual(order.session_id.id, session.id)
+
     def test_close_session(self):
         """open → close → state=closed, มี date_close"""
         session = self.env['pos.lite.session'].create({

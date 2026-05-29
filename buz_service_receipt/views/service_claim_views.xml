@@ -13,7 +13,6 @@
                   decoration-success="state == 'done'"
                   decoration-muted="state == 'cancel'">
                 <field name="claim_number"/>
-                <field name="name" string="Service Receipt"/>
                 <field name="partner_id"/>
                 <field name="request_date"/>
                 <field name="service_date"/>
@@ -31,7 +30,6 @@
             <form string="Claim">
                 <header>
                     <button name="action_print_claim_pdf" string="Print Claim PDF" type="object" class="btn-primary"/>
-                    <button name="action_print_repair_notification_pdf" string="Print Repair" type="object" class="btn-secondary"/>
                     <button name="action_confirm" string="Confirm" type="object"
                             invisible="state != 'draft'" class="btn-primary"/>
                     <button name="action_done" string="Done" type="object"
@@ -49,44 +47,26 @@
                             <field name="claim_number" readonly="state != 'draft'"/>
                         </h1>
                     </div>
-                    <group>
-                        <group string="Document">
-                            <field name="name" string="Service Receipt" readonly="1"/>
-                            <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="service_case_type" readonly="1"/>
-                        </group>
-                        <group string="Schedule">
-                            <field name="request_date"/>
-                            <field name="service_date"/>
-                            <field name="replacement_date"/>
-                        </group>
-                    </group>
 
-                    <group string="Customer">
-                        <group>
-                            <field name="partner_id"/>
-                            <field name="requester_name"/>
-                            <field name="requester_phone"/>
-                        </group>
-                        <group>
-                            <field name="service_address"/>
-                            <field name="warranty_no"/>
-                            <field name="shop_name"/>
-                        </group>
-                    </group>
-
-                    <group string="Claim Info">
-                        <group>
-                            <field name="replacement_reason"/>
-                            <field name="informer_name"/>
-                            <field name="informer_phone"/>
-                        </group>
-                        <group>
-                            <field name="product_in_warranty"/>
-                            <field name="product_out_warranty"/>
-                            <field name="usage_years"/>
-                        </group>
-                    </group>
+                    <!-- Customer & Info — compact 2-col -->
+                    <div class="row">
+                        <div class="col-6">
+                            <group string="Customer">
+                                <field name="partner_id"/>
+                                <field name="requester_name"/>
+                                <field name="requester_phone"/>
+                                <field name="service_address"/>
+                            </group>
+                        </div>
+                        <div class="col-6">
+                            <group string="Info">
+                                <field name="request_date"/>
+                                <field name="service_date"/>
+                                <field name="replacement_date"/>
+                                <field name="replacement_reason"/>
+                            </group>
+                        </div>
+                    </div>
 
                     <notebook>
                         <page string="Products">
@@ -94,31 +74,22 @@
                                 <tree editable="bottom" string="Claim Items">
                                     <field name="sequence" widget="handle"/>
                                     <field name="product_id" string="Product"/>
-                                    <field name="description"/>
+                                    <field name="description" string="Description"/>
                                     <field name="quantity" string="Qty"/>
-                                    <field name="resolution_type" string="Resolution"/>
-                                    <field name="replacement_product_id" string="Replacement Product"/>
+                                    <field name="replacement_product_id" string="Replacement Code"/>
                                     <field name="replacement_qty" string="Replacement Qty"/>
+                                    <field name="price_unit" string="Extra Cost"/>
                                     <field name="issue_detail" string="Issue"/>
-                                    <field name="product_detail" string="Detail"/>
                                 </tree>
                             </field>
                         </page>
 
-                        <page string="Conditions">
+                        <page string="Product Condition">
                             <group>
-                                <group string="Product Condition">
-                                    <field name="box_condition"/>
-                                    <field name="product_condition"/>
-                                    <field name="accessory_condition"/>
-                                </group>
-                                <group string="Service">
-                                    <field name="charge_customer"/>
-                                    <field name="repair_detail"/>
-                                </group>
-                            </group>
-                            <group>
-                                <field name="note" string="Remark" placeholder="Notes..."/>
+                                <field name="box_condition"/>
+                                <field name="product_condition"/>
+                                <field name="accessory_condition"/>
+                                <field name="repair_detail" nolabel="1" placeholder="Repair detail…"/>
                             </group>
                         </page>
 
@@ -133,30 +104,30 @@
                                     <field name="invoice_description" string="Description"/>
                                 </tree>
                             </field>
-                            <group>
-                                <group>
-                                    <field name="invoice_status" string="Invoice Status" readonly="1"/>
-                                </group>
-                                <group>
-                                    <field name="invoice_id" string="Invoice" readonly="1"/>
-                                </group>
+                            <group colspan="2">
+                                <field name="invoice_status" string="Invoice Status" readonly="1"/>
+                                <field name="invoice_id" string="Invoice" readonly="1"/>
                             </group>
                         </page>
 
                         <page string="Signatures">
                             <group>
-                                <group>
-                                    <field name="service_by_name" string="Service Provider"/>
+                                <group string="Service Provider">
+                                    <field name="service_by_name"/>
                                     <field name="service_by_date"/>
                                 </group>
-                                <group>
-                                    <field name="customer_sign_name" string="Service Receiver"/>
+                                <group string="Service Receiver">
+                                    <field name="customer_sign_name"/>
                                     <field name="customer_sign_date"/>
                                 </group>
-                                <group>
-                                    <field name="approver_name" string="Approver"/>
+                                <group string="Approver">
+                                    <field name="approver_name"/>
                                 </group>
                             </group>
+                        </page>
+
+                        <page string="Note">
+                            <field name="note" nolabel="1" placeholder="Remark / Notes…"/>
                         </page>
                     </notebook>
                 </sheet>
@@ -177,7 +148,6 @@
         <field name="arch" type="xml">
             <search string="Claims">
                 <field name="claim_number"/>
-                <field name="name" string="Service Receipt"/>
                 <field name="partner_id"/>
                 <field name="requester_name"/>
                 <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>

@@ -28,8 +28,16 @@ class PosLiteSession(models.Model):
         readonly=True, string='Opened By',
     )
     employee_id = fields.Many2one(
-        'hr.employee', string='Employee', required=True,
+        'hr.employee', string='Primary Employee',
         default=lambda self: self._default_employee_id(),
+        tracking=True, check_company=True,
+        domain="[('company_id', '=', company_id)]",
+    )
+    employee_ids = fields.Many2many(
+        'hr.employee', string='Employees',
+        relation='pos_lite_session_hr_employee_rel',
+        column1='session_id', column2='employee_id',
+        default=lambda self: self._default_employee_ids(),
         tracking=True, check_company=True,
         domain="[('company_id', '=', company_id)]",
     )
@@ -68,6 +76,10 @@ class PosLiteSession(models.Model):
             if config and config.employee_id:
                 return config.employee_id
         return employee
+
+    def _default_employee_ids(self):
+        employee = self._default_employee_id()
+        return employee and employee.ids or []
 
     @api.depends('order_ids.state', 'order_ids.amount_total', 'order_ids.is_return', 'order_ids.is_exchange')
     def _compute_stats(self):

@@ -292,6 +292,14 @@ class ServiceReceipt(models.Model):
         return record
 
     def write(self, vals):
+        if vals.get('service_case_type') == 'replacement':
+            new_claim = False
+            for record in self:
+                if not record.claim_number or record.claim_number == 'New':
+                    if not new_claim:
+                        new_claim = self.env['ir.sequence'].next_by_code('service.claim') or 'New'
+                    if new_claim:
+                        record.write({'claim_number': new_claim})
         result = super().write(vals)
         tracked_fields = {
             'name', 'requester_name', 'partner_id', 'service_address', 'schedule_start',

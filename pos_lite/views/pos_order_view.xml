@@ -136,7 +136,7 @@
                         <!-- Col 1: Customer -->
                         <group string="👤 Customer">
                             <field name="partner_id" context="{'pos_lite_partner_search': 1}" options="{'no_create_edit': False}" placeholder="Search or create customer..."/>
-                            <field name="customer_name" placeholder="Customer Name"/>
+                            <field name="customer_name" placeholder="Customer Name" readonly="1"/>
                         </group>
                         <!-- Col 2: Invoice Address -->
                         <group string="📍 Invoice Address">
@@ -220,13 +220,15 @@
                     <notebook>
                         <page string="🛒 Order Lines">
                             <field name="line_ids" mode="tree" nolabel="1">
-                                <tree editable="bottom" decoration-danger="is_low_stock">
+                                <tree editable="bottom" decoration-danger="is_low_stock" decoration-warning="qty_available &gt; 0 and qty_available &lt; qty">
                                     <field name="company_id" invisible="1"/>
                                     <field name="product_image" widget="image" class="oe_avatar" options="{'size': [40, 40]}" string=" "/>
                                     <field name="product_id" context="{'pos_lite_search': 1}" string="Product"/>
                                     <field name="description"/>
                                     <field name="qty"/>
-                                    <field name="qty_available" readonly="1" string="Stock"/>
+                                    <field name="qty_available" readonly="1" string="Stock"
+                                           decoration-danger="qty_available &lt; qty"
+                                           decoration-success="qty_available &gt;= qty"/>
                                     <field name="is_low_stock" invisible="1"/>
                                     <field name="price_unit" string="Price"/>
                                     <field name="discount_type" string="Type" widget="radio"/>

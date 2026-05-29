@@ -52,8 +52,9 @@ class PosLiteOrder(models.Model):
         check_company=True,
     )
     employee_id = fields.Many2one(
-        related='session_id.employee_id', string='Employee',
-        store=True, readonly=True, tracking=True,
+        'hr.employee', string='Employee',
+        tracking=True, check_company=True,
+        domain="[('company_id', '=', company_id)]",
     )
     line_ids = fields.One2many('pos.lite.order.line', 'order_id', string='Order Lines')
     payment_ids = fields.One2many('pos.lite.payment', 'order_id', string='Payments')
@@ -191,7 +192,9 @@ class PosLiteOrder(models.Model):
                 if employee:
                     session = self.env['pos.lite.session'].search([
                         ('state', '=', 'opened'),
+                        '|',
                         ('employee_id', '=', employee.id),
+                        ('employee_ids', '=', employee.id),
                         ('company_id', '=', order.company_id.id),
                     ], limit=1)
                     if session:
@@ -207,8 +210,8 @@ class PosLiteOrder(models.Model):
             # Validate: must have open session
             if not order.session_id:
                 raise UserError(_(
-                    'Cannot create order: No open session found. '
-                    'Please open a POS Lite session first.'
+                    'ไม่สามารถสร้างออเดอร์ได้: ไม่พบ Session ที่เปิดอยู่ '
+                    'กรุณาเปิด Session ก่อนสร้างออเดอร์'
                 ))
         return orders
 
@@ -784,7 +787,7 @@ class PosLiteOrderLine(models.Model):
     discount_type = fields.Selection([
         ('percent', 'Percent'),
         ('fixed', 'Fixed'),
-    ], default='percent', string='Discount Type', required=True)
+    ], default='fixed', string='Discount Type', required=True)
     returned_from_line_id = fields.Many2one('pos.lite.order.line', copy=False, index=True)
     return_line_ids = fields.One2many('pos.lite.order.line', 'returned_from_line_id', string='Return Lines')
     returned_qty = fields.Float(compute='_compute_returned_qty', store=False)
@@ -802,6 +805,7 @@ class PosLiteOrderLine(models.Model):
             line.returned_qty = returned_qty
             line.available_return_qty = max(line.qty - returned_qty, 0.0)
 
+    @api.depends('product_id', 'qty', 'order_id.warehouse_id')
     def _compute_qty_available(self):
         # Batch: collect all (product_id, warehouse.lot_stock_id) pairs
         lines_by_key = {}
@@ -893,9 +897,9 @@ class PosLiteOrderLine(models.Model):
             if line.discount is None:
                 line.discount = 0.0
             if not line.discount_type:
-                line.discount_type = 'percent'
+                line.discount_type = 'fixed'
             if not line.discount_type:
-                line.discount_type = 'percent'
+                line.discount_type = 'fixed'
 
     @api.constrains('qty', 'price_unit', 'discount', 'discount_type')
     def _check_values(self):
