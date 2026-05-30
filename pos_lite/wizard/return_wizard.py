@@ -181,7 +181,7 @@ class PosLiteReturnWizard(models.TransientModel):
 
         # Refund payment (use selected method instead of hardcoded 'cash')
         refund_journal = self.refund_journal_id or return_order._get_default_payment_journal()
-        refund_amount = return_order.amount_total
+        refund_amount = abs(return_order.amount_total)
         self.env['pos.lite.payment'].create({
             'order_id': return_order.id,
             'payment_method': self.refund_payment_method,
@@ -225,7 +225,7 @@ class PosLiteReturnWizard(models.TransientModel):
             self.env['pos.lite.payment'].create({
                 'order_id': exchange_order.id,
                 'payment_method': self.refund_payment_method,
-                'amount': exchange_order.amount_total,
+                'amount': abs(exchange_order.amount_total),
                 'journal_id': ex_journal.id if ex_journal else False,
                 'note': _('Exchange payment for %s') % order.name,
             })

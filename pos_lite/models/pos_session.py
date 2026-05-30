@@ -98,7 +98,7 @@ class PosLiteSession(models.Model):
             session.amount_total = sum(sales.mapped('amount_total'))
             session.amount_untaxed = sum(sales.mapped('amount_untaxed'))
             session.amount_tax = sum(sales.mapped('amount_tax'))
-            session.amount_refund = sum(returns.mapped('amount_total'))
+            session.amount_refund = abs(sum(returns.mapped('amount_total')))
             session.amount_net = session.amount_total - session.amount_refund
 
     @api.depends('order_ids.payment_ids', 'order_ids.payment_ids.amount', 'order_ids.payment_ids.payment_method', 'order_ids.state')

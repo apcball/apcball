@@ -1,8 +1,32 @@
 # -*- coding: utf-8 -*-
 from odoo import http
 from odoo.http import request
+from odoo.exceptions import UserError, ValidationError
+
 
 class PosLiteController(http.Controller):
+
+    # ─── Helpers ────────────────────────────────────────────────
+
+    def _get_json_data(self):
+        """Extract JSON body from request."""
+        data = request.jsonrequest if hasattr(request, 'jsonrequest') else {}
+        return data if isinstance(data, dict) else {}
+
+    def _get_company_id(self):
+        """Current user's active company ID."""
+        return request.env.company.id
+
+    def _check_order_access(self, order_id):
+        """Browse order with sudo but verify company match."""
+        order = request.env['pos.lite.order'].sudo().browse(int(order_id))
+        if not order.exists():
+            raise ValidationError('Order not found')
+        if order.company_id.id not in request.env.companies.ids:
+            raise ValidationError('Access denied: order belongs to a different company')
+        return order
+
+    # ─── Terminal UI Page ───────────────────────────────────────
 
     @http.route('/pos_lite/ui', type='http', auth='user')
     def pos_lite_ui(self, **kwargs):
@@ -11,11 +35,13 @@ class PosLiteController(http.Controller):
             'session_id': session_id and int(session_id) or False,
         })
 
+    # ─── Session Info ───────────────────────────────────────────
+
     @http.route('/pos_lite/api/session_info', type='json', auth='user', methods=['POST'], csrf=False)
     def session_info(self, **kwargs):
         try:
-            data = request.jsonrequest if hasattr(request, 'jsonrequest') else kwargs
-            session_id = data.get('session_id') if isinstance(data, dict) else None
+            data = self._get_json_data()
+            session_id = data.get('session_id')
             result = {
                 'employees': [],
                 'default_warehouse_id': False,
@@ -25,74 +51,73 @@ class PosLiteController(http.Controller):
             }
             if session_id:
                 session = request.env['pos.lite.session'].sudo().browse(int(session_id))
-                if session.exists():
-                    # Employees from employee_ids
+                if session.exists() and session.company_id.id in request.env.companies.ids:
                     employees = session.employee_ids or session.employee_id
                     if employees:
-                        emp_data = []
-                        for e in employees:
-                            emp_data.append({
-                                'id': e.id,
-                                'name': e.name,
-                            })
-                        result['employees'] = emp_data
-                    # Default warehouse from config
+                        result['employees'] = [{'id': e.id, 'name': e.name} for e in employees]
                     if session.config_id.warehouse_id:
                         w = session.config_id.warehouse_id
                         result['default_warehouse_id'] = w.id
                         result['default_warehouse_name'] = w.name
-                    # Default pricelist from config
                     if session.config_id.pricelist_id:
                         p = session.config_id.pricelist_id
                         result['default_pricelist_id'] = p.id
                         result['default_pricelist_name'] = p.name
             if not result['employees']:
-                # Fallback: all employees of current user's company
                 employees = request.env['hr.employee'].search([
-                    ('company_id', '=', request.env.company.id),
+                    ('company_id', '=', self._get_company_id()),
                 ], limit=50)
                 result['employees'] = [{'id': e.id, 'name': e.name} for e in employees]
             return {'success': True, **result}
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+    # ─── Warehouses ─────────────────────────────────────────────
+
     @http.route('/pos_lite/api/warehouses', type='json', auth='user', methods=['POST'], csrf=False)
     def get_warehouses(self, **kwargs):
         try:
             warehouses = request.env['stock.warehouse'].search_read(
-                [],
-                ['name', 'code', 'company_id'],
+                [('company_id', '=', self._get_company_id())],
+                ['name', 'code'],
                 order='name',
             )
             return {'success': True, 'warehouses': warehouses}
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+    # ─── Products ───────────────────────────────────────────────
+
     @http.route('/pos_lite/api/products', type='json', auth='user', methods=['POST'], csrf=False)
     def get_products(self, **kwargs):
         try:
-            data = request.jsonrequest if hasattr(request, 'jsonrequest') else kwargs
-            session_id = data.get('session_id') if isinstance(data, dict) else None
-            warehouse_id = data.get('warehouse_id') if isinstance(data, dict) else None
+            data = self._get_json_data()
+            session_id = data.get('session_id')
+            warehouse_id = data.get('warehouse_id')
             warehouse = False
+            cid = self._get_company_id()
 
-            # Priority: explicit warehouse_id > session's warehouse
             if warehouse_id:
-                warehouse = request.env['stock.warehouse'].sudo().browse(int(warehouse_id))
+                warehouse = request.env['stock.warehouse'].sudo().search([
+                    ('id', '=', int(warehouse_id)),
+                    ('company_id', '=', cid),
+                ], limit=1)
             elif session_id:
                 session = request.env['pos.lite.session'].sudo().browse(int(session_id))
-                if session.exists() and session.config_id.warehouse_id:
-                    warehouse = session.config_id.warehouse_id
+                if session.exists() and session.company_id.id in request.env.companies.ids:
+                    if session.config_id.warehouse_id:
+                        warehouse = session.config_id.warehouse_id
             if not warehouse:
                 config = request.env['pos.lite.config'].get_default_config()
                 if config and config.warehouse_id:
                     warehouse = config.warehouse_id
             if not warehouse:
-                warehouse = request.env['stock.warehouse'].search([], limit=1)
+                warehouse = request.env['stock.warehouse'].search([
+                    ('company_id', '=', cid),
+                ], limit=1)
 
             location = warehouse.lot_stock_id if warehouse else False
 
-            # Find products that have stock at this warehouse location
             if location:
                 quant_data = request.env['stock.quant'].read_group(
                     domain=[('location_id', '=', location.id)],
@@ -117,70 +142,97 @@ class PosLiteController(http.Controller):
                     ['name', 'list_price', 'default_code', 'categ_id', 'barcode',
                      'taxes_id', 'image_128', 'image_256']
                 )
+                # Pre-fetch tax rates for all products
+                tax_ids_set = set()
+                for p in products:
+                    for tid in (p.get('taxes_id') or []):
+                        tax_ids_set.add(tid)
+                tax_rate_map = {}
+                if tax_ids_set:
+                    for tax in request.env['account.tax'].sudo().browse(tax_ids_set):
+                        tax_rate_map[tax.id] = tax.amount
                 for p in products:
                     p['qty_available'] = qty_map.get(p['id'], 0.0)
-                    # Convert binary fields to base64 strings for JSON serialization
+                    # Compute effective tax rate for this product
+                    tax_rate = 0.0
+                    for tid in (p.get('taxes_id') or []):
+                        tax_rate += tax_rate_map.get(tid, 0.0)
+                    p['tax_rate'] = tax_rate
                     if p.get('image_128'):
                         p['image_128'] = p['image_128'].decode() if isinstance(p['image_128'], bytes) else p['image_128']
                     if p.get('image_256'):
                         p['image_256'] = p['image_256'].decode() if isinstance(p['image_256'], bytes) else p['image_256']
             else:
                 products = []
-                qty_map = {}
 
             return {'success': True, 'products': products}
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+    # ─── Create Order (whitelisted fields only) ─────────────────
+
     @http.route('/pos_lite/api/create_order', type='json', auth='user', methods=['POST'], csrf=False)
     def create_order(self, **kwargs):
         try:
-            data = request.jsonrequest if hasattr(request, 'jsonrequest') else kwargs
-            if not isinstance(data, dict):
-                data = {}
-            # Fetch warehouse from data or session config
+            data = self._get_json_data()
+            cid = self._get_company_id()
+
+            # Resolve warehouse & pricelist from session/config
             wh_id = data.get('warehouse_id')
             session_id = data.get('session_id')
             employee_id = data.get('employee_id')
             pricelist_id = False
+
             if session_id:
                 session = request.env['pos.lite.session'].sudo().browse(int(session_id))
-                if session.exists() and session.config_id.warehouse_id:
+                if session.exists() and session.company_id.id in request.env.companies.ids:
                     wh_id = wh_id or session.config_id.warehouse_id.id
                     pricelist_id = session.config_id.pricelist_id.id
+
             if not wh_id or not pricelist_id:
                 config = request.env['pos.lite.config'].get_default_config()
                 if config:
                     wh_id = wh_id or config.warehouse_id.id
-                    if config.pricelist_id:
-                        pricelist_id = pricelist_id or config.pricelist_id.id
+                    pricelist_id = pricelist_id or (config.pricelist_id and config.pricelist_id.id)
             if not pricelist_id:
-                pricelist = request.env['product.pricelist'].search([], limit=1)
+                pricelist = request.env['product.pricelist'].search([
+                    '|', ('company_id', '=', False), ('company_id', '=', cid),
+                ], limit=1)
                 if pricelist:
                     pricelist_id = pricelist.id
-            if wh_id:
-                data['warehouse_id'] = wh_id
-            if pricelist_id:
-                data['pricelist_id'] = pricelist_id
-            if employee_id:
-                data['employee_id'] = int(employee_id)
-            order = request.env['pos.lite.order'].create(data)
-            # Process order (create invoice + picking)
-            result = order.action_quick_pay_and_process()
+
+            # Whitelisted vals only — no state, company_id, is_return injection
+            order_vals = {
+                'company_id': cid,
+                'customer_name': data.get('customer_name', ''),
+                'partner_phone': data.get('partner_phone', ''),
+                'partner_address': data.get('partner_address', ''),
+                'channel': data.get('channel', 'walkin'),
+                'note': data.get('note', ''),
+                'warehouse_id': wh_id,
+                'pricelist_id': pricelist_id,
+                'session_id': session_id or False,
+                'employee_id': int(employee_id) if employee_id else False,
+                'line_ids': data.get('line_ids', []),
+                'payment_ids': data.get('payment_ids', []),
+            }
+
+            order = request.env['pos.lite.order'].create(order_vals)
+            order.action_quick_pay_and_process()
             return {'success': True, 'order_id': order.id, 'name': order.name}
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+    # ─── Order Detail ───────────────────────────────────────────
+
     @http.route('/pos_lite/api/order_detail', type='json', auth='user', methods=['POST'], csrf=False)
     def order_detail(self, **kwargs):
         try:
-            data = request.jsonrequest if hasattr(request, 'jsonrequest') else kwargs
-            order_id = data.get('order_id') if isinstance(data, dict) else None
+            data = self._get_json_data()
+            order_id = data.get('order_id')
             if not order_id:
                 return {'success': False, 'error': 'order_id required'}
-            order = request.env['pos.lite.order'].sudo().browse(int(order_id))
-            if not order.exists():
-                return {'success': False, 'error': 'Order not found'}
+            order = self._check_order_access(order_id)
 
             base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url', '')
             order_data = {
@@ -227,14 +279,17 @@ class PosLiteController(http.Controller):
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+    # ─── Orders For Return ──────────────────────────────────────
+
     @http.route('/pos_lite/api/orders_for_return', type='json', auth='user', methods=['POST'], csrf=False)
     def orders_for_return(self, **kwargs):
         try:
-            data = request.jsonrequest if hasattr(request, 'jsonrequest') else kwargs
-            limit = data.get('limit', 50) if isinstance(data, dict) else 50
+            data = self._get_json_data()
+            limit = data.get('limit', 50)
             orders = request.env['pos.lite.order'].sudo().search([
                 ('state', '=', 'done'),
                 ('is_return', '=', False),
+                ('company_id', '=', self._get_company_id()),
             ], order='date_order desc', limit=int(limit))
             result = []
             for o in orders:
@@ -250,10 +305,12 @@ class PosLiteController(http.Controller):
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+    # ─── Create Return (with qty validation) ────────────────────
+
     @http.route('/pos_lite/api/create_return', type='json', auth='user', methods=['POST'], csrf=False)
     def create_return(self, **kwargs):
         try:
-            data = request.jsonrequest if hasattr(request, 'jsonrequest') else kwargs
+            data = self._get_json_data()
             if not isinstance(data, dict):
                 return {'success': False, 'error': 'Invalid data'}
             original_order_id = data.get('original_order_id')
@@ -261,11 +318,24 @@ class PosLiteController(http.Controller):
             if not original_order_id or not lines:
                 return {'success': False, 'error': 'original_order_id and lines required'}
 
-            original = request.env['pos.lite.order'].sudo().browse(int(original_order_id))
-            if not original.exists():
-                return {'success': False, 'error': 'Original order not found'}
+            original = self._check_order_access(original_order_id)
+            if original.state != 'done':
+                return {'success': False, 'error': 'Only completed orders can be returned'}
+
+            # Validate return qty against available_return_qty
+            for line_data in lines:
+                product_id = line_data.get('product_id')
+                return_qty = line_data.get('qty', 1)
+                orig_line = original.line_ids.filtered(lambda l: l.product_id.id == product_id)
+                if not orig_line:
+                    return {'success': False, 'error': 'Product %s not found in original order' % product_id}
+                available = orig_line[0].available_return_qty
+                if return_qty > available:
+                    return {'success': False, 'error': 'Return qty for %s exceeds available (%s > %s)' % (
+                        orig_line[0].product_id.display_name, return_qty, available)}
 
             return_vals = {
+                'company_id': original.company_id.id,
                 'customer_name': original.customer_name,
                 'partner_phone': original.partner_phone,
                 'partner_address': original.partner_address,
@@ -291,7 +361,6 @@ class PosLiteController(http.Controller):
                     'discount_type': 'fixed',
                 }])
 
-            # If exchange, add new (exchange) lines
             exchange_lines = data.get('exchange_lines', [])
             if exchange_lines:
                 return_vals['is_exchange'] = True
@@ -304,25 +373,25 @@ class PosLiteController(http.Controller):
                         'discount_type': 'fixed',
                     }])
 
-            # Payment for return (negative)
             return_vals['payment_ids'].append([0, 0, {
                 'payment_method': data.get('payment_method', 'cash'),
-                'amount': data.get('amount', 0),
+                'amount': -abs(data.get('amount', 0)),
                 'reference': data.get('reference', ''),
-                'state': 'paid',
             }])
 
             order = request.env['pos.lite.order'].create(return_vals)
-            result = order.action_quick_pay_and_process()
+            order.action_quick_pay_and_process()
             return {'success': True, 'order_id': order.id, 'name': order.name}
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+    # ─── Product Search ─────────────────────────────────────────
+
     @http.route('/pos_lite/api/product_search', type='json', auth='user', methods=['POST'], csrf=False)
     def product_search(self, **kwargs):
         try:
-            data = request.jsonrequest if hasattr(request, 'jsonrequest') else kwargs
-            term = data.get('term', '') if isinstance(data, dict) else ''
+            data = self._get_json_data()
+            term = data.get('term', '')
             products = request.env['product.product'].sudo().search([
                 '|', '|',
                 ('name', 'ilike', term),
@@ -330,6 +399,7 @@ class PosLiteController(http.Controller):
                 ('barcode', 'ilike', term),
                 ('sale_ok', '=', True),
                 ('can_be_pos', '=', True),
+                '|', ('company_id', '=', False), ('company_id', '=', self._get_company_id()),
             ], limit=20)
             result = []
             for p in products:

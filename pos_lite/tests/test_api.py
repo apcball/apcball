@@ -267,3 +267,135 @@ class TestProductApi(TestApiBase):
     def test_product_pricelist_applied(self):
         """product ต้องมี pricelist id สำหรับคำนวณราคา"""
         self.assertTrue(self.pricelist.id)
+
+@tagged('-at_install', 'post_install')
+class TestTerminalReturnFlow(TestApiBase):
+    """ทดสอบ Terminal UI return flow — จำลอง controller /pos_lite/api/create_return
+
+    จุดสำคัญ: Terminal UI ส่ง amount เป็นบวก แต่ payment model มี constraint ว่า
+    return order ต้องมี amount <= 0  ดังนั้น controller ต้อง convert เป็นลบก่อนสร้าง payment
+    """
+
+    def _simulate_terminal_return(self, order, lines, amount, payment_method='cash', reason=''):
+        """จำลอง controller create_return logic แบบใกล้เคียงจริงที่สุด"""
+        return_vals = {
+            'customer_name': order.customer_name,
+            'partner_phone': order.partner_phone,
+            'partner_address': order.partner_address,
+            'channel': order.channel,
+            'session_id': order.session_id.id,
+            'employee_id': order.employee_id.id,
+            'warehouse_id': order.warehouse_id.id,
+            'pricelist_id': order.pricelist_id.id,
+            'is_return': True,
+            'is_exchange': False,
+            'return_of_order_id': order.id,
+            'return_reason': reason,
+            'line_ids': [],
+            'payment_ids': [],
+        }
+        for line_data in lines:
+            return_vals['line_ids'].append([0, 0, {
+                'product_id': line_data['product_id'],
+                'qty': line_data.get('qty', 1),
+                'price_unit': line_data.get('price_unit', 0),
+                'discount': 0,
+                'discount_type': 'fixed',
+            }])
+        # Terminal UI ส่ง amount เป็นบวก → controller ต้อง convert เป็นลบ
+        return_vals['payment_ids'].append([0, 0, {
+            'payment_method': payment_method,
+            'amount': -abs(amount),
+            'reference': '',
+            'state': 'paid',
+        }])
+        return_order = self.env['pos.lite.order'].create(return_vals)
+        return_order.action_quick_pay_and_process()
+        return return_order
+
+    def test_terminal_return_payment_negative(self):
+        """Terminal return: payment amount ต้องเป็นลบ (fix หลัก)"""
+        order = self._create_done_order()
+        return_order = self._simulate_terminal_return(
+            order,
+            lines=[{'product_id': self.product.id, 'qty': 1, 'price_unit': 100.0}],
+            amount=100.0,
+        )
+        self.assertEqual(return_order.state, 'done')
+        self.assertTrue(return_order.is_return)
+        # Payment ต้องเป็นลบ
+        self.assertEqual(return_order.payment_ids[0].amount, -100.0)
+
+    def test_terminal_return_full_order(self):
+        """Terminal return: คืนทั้งออเดอร์ (2 ชิ้น = 200)"""
+        order = self._create_done_order()  # 2x100 = 200
+        return_order = self._simulate_terminal_return(
+            order,
+            lines=[{'product_id': self.product.id, 'qty': 2, 'price_unit': 100.0}],
+            amount=200.0,
+        )
+        self.assertEqual(return_order.state, 'done')
+        self.assertEqual(return_order.amount_total, -200.0)
+        self.assertEqual(return_order.payment_ids[0].amount, -200.0)
+        # Invoice ต้องเป็น out_refund
+        self.assertEqual(return_order.invoice_id.move_type, 'out_refund')
+
+    def test_terminal_return_partial(self):
+        """Terminal return: คืนบางส่วน (1 จาก 2 ชิ้น)"""
+        order = self._create_done_order()  # 2x100 = 200
+        return_order = self._simulate_terminal_return(
+            order,
+            lines=[{'product_id': self.product.id, 'qty': 1, 'price_unit': 100.0}],
+            amount=100.0,
+        )
+        self.assertEqual(return_order.state, 'done')
+        self.assertEqual(return_order.amount_total, -100.0)
+        self.assertEqual(return_order.payment_ids[0].amount, -100.0)
+
+    def test_terminal_return_with_transfer_payment(self):
+        """Terminal return: เลือก payment method เป็น transfer"""
+        order = self._create_done_order()
+        return_order = self._simulate_terminal_return(
+            order,
+            lines=[{'product_id': self.product.id, 'qty': 1, 'price_unit': 100.0}],
+            amount=100.0,
+            payment_method='transfer',
+        )
+        self.assertEqual(return_order.state, 'done')
+        self.assertEqual(return_order.payment_ids[0].payment_method, 'transfer')
+        self.assertEqual(return_order.payment_ids[0].amount, -100.0)
+
+    def test_terminal_return_positive_amount_should_fail(self):
+        """Verify: ถ้าส่ง amount เป็นบวก (ไม่ผ่าน -abs) → constraint ต้อง raise error"""
+        order = self._create_done_order()
+        with self.assertRaises(Exception):
+            self.env['pos.lite.order'].create({
+                'company_id': self.company.id,
+                'channel': order.channel,
+                'session_id': order.session_id.id,
+                'employee_id': order.employee_id.id,
+                'warehouse_id': order.warehouse_id.id,
+                'pricelist_id': order.pricelist_id.id,
+                'is_return': True,
+                'return_of_order_id': order.id,
+                'line_ids': [(0, 0, {
+                    'product_id': self.product.id,
+                    'qty': 1,
+                    'price_unit': 100.0,
+                })],
+                'payment_ids': [(0, 0, {
+                    'payment_method': 'cash',
+                    'amount': 100.0,  # บวก — จะติด constraint
+                })],
+            })
+
+    def test_terminal_return_with_reason(self):
+        """Terminal return: ส่ง return_reason มาด้วย"""
+        order = self._create_done_order()
+        return_order = self._simulate_terminal_return(
+            order,
+            lines=[{'product_id': self.product.id, 'qty': 1, 'price_unit': 100.0}],
+            amount=100.0,
+            reason='สินค้ามีตำหนิ',
+        )
+        self.assertEqual(return_order.return_reason, 'สินค้ามีตำหนิ')

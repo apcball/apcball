@@ -121,13 +121,21 @@ class PosLiteOrder(models.Model):
             tax = sum(order.line_ids.mapped('price_tax'))
             paid = sum(order.payment_ids.mapped('amount'))
             total = untaxed + tax
-            paid_display = abs(paid) if order.is_return else paid
-            order.amount_untaxed = untaxed
-            order.amount_tax = tax
-            order.amount_total = total
-            order.amount_paid = paid_display
-            order.amount_residual = max(total - paid_display, 0.0)
-            order.amount_change = max(paid_display - total, 0.0)
+            # Return orders: total and amounts are negative (like standard credit notes)
+            if order.is_return:
+                order.amount_untaxed = -untaxed
+                order.amount_tax = -tax
+                order.amount_total = -total
+                order.amount_paid = paid  # payments are already negative for returns
+                order.amount_residual = min(total + paid, 0.0)  # e.g. -200 + (-(-200)) = 0
+                order.amount_change = 0.0
+            else:
+                order.amount_untaxed = untaxed
+                order.amount_tax = tax
+                order.amount_total = total
+                order.amount_paid = paid
+                order.amount_residual = max(total - paid, 0.0)
+                order.amount_change = max(paid - total, 0.0)
 
     @api.depends('is_return', 'is_exchange')
     def _compute_return_exchange_status(self):
@@ -462,12 +470,14 @@ class PosLiteOrder(models.Model):
             raise UserError(_('Please add at least one order line.'))
         if self.state == 'held':
             self.write({'state': 'draft'})
-        # Check if already fully paid
-        if float_compare(self.amount_paid, self.amount_total, precision_rounding=self.currency_id.rounding) >= 0:
+        # Check if already fully paid (use absolute values for return orders)
+        abs_total = abs(self.amount_total)
+        abs_paid = abs(self.amount_paid)
+        if float_compare(abs_paid, abs_total, precision_rounding=self.currency_id.rounding) >= 0:
             self.action_process_order()
             return True
         # Create full payment automatically
-        residual = self.amount_total - self.amount_paid
+        residual = abs_total - abs_paid
         if residual <= 0:
             self.action_process_order()
             return True
@@ -489,13 +499,16 @@ class PosLiteOrder(models.Model):
                 continue
             if not order.line_ids:
                 raise UserError(_('Please add at least one order line.'))
-            paid_amount = abs(sum(order.payment_ids.mapped('amount')))
+            paid_amount = sum(order.payment_ids.mapped('amount'))
             # Allow exchange/return without separate payment if covered
             if not order.payment_ids:
                 if not (order.is_exchange and order.exchange_of_order_id):
                     raise UserError(_('At least one payment is required.'))
                 paid_amount = order.amount_total
-            if float_compare(paid_amount, order.amount_total, precision_rounding=order.currency_id.rounding) < 0:
+            # For return: amount_total is negative, paid_amount is negative → compare absolute values
+            abs_total = abs(order.amount_total)
+            abs_paid = abs(paid_amount)
+            if float_compare(abs_paid, abs_total, precision_rounding=order.currency_id.rounding) < 0:
                 if order.is_return:
                     raise UserError(_('Refund payment must cover the full return total.'))
                 raise UserError(_('Payment must cover the full total before processing.'))
@@ -522,8 +535,8 @@ class PosLiteOrder(models.Model):
                     picking = self.env['stock.picking'].create(picking_vals)
                     order.picking_id = picking.id
                     order._process_stock_picking(picking)
-            # Reconcile payments — skip, let accounting register payment via invoice
-            # order._create_account_payments_and_reconcile()
+            # Reconcile payments with invoice
+            order._create_account_payments_and_reconcile()
             order.state = 'paid'
             # Auto-done if picking done (or no shippable products)
             has_shippable = any(l.product_id.type != 'service' for l in order.line_ids)
@@ -562,36 +575,32 @@ class PosLiteOrder(models.Model):
             # Reverse/unlink picking
             if order.picking_id and order.picking_id.state == 'done':
                 if order.is_return:
-                    reverse_picking = order.picking_id.copy({
-                        'move_ids_without_package': [],
-                        'origin': _('Reverse of %s') % order.name,
-                    })
-                    for move in order.picking_id.move_ids_without_package:
-                        reverse_picking.write({
-                            'move_ids_without_package': [(0, 0, {
-                                'name': move.name,
-                                'product_id': move.product_id.id,
-                                'product_uom_qty': move.product_uom_qty,
-                                'product_uom': move.product_id.uom_id.id,
-                                'location_id': move.location_dest_id.id,
-                                'location_dest_id': move.location_id.id,
-                            })],
-                        })
-                    reverse_picking.action_confirm()
-                    reverse_picking.action_assign()
-                    for move in reverse_picking.move_ids_without_package:
-                        for ml in move.move_line_ids:
-                            done_qty = ml.reserved_uom_qty or move.product_uom_qty
-                            ml.quantity = done_qty
-                        if not move.move_line_ids:
-                            move._action_assign()
-                    result = reverse_picking.button_validate()
-                    if isinstance(result, dict) and result.get('res_model') == 'stock.immediate.transfer':
-                        self.env['stock.immediate.transfer'].with_context(result.get('context', {})).create({
-                            'pick_ids': [(6, 0, reverse_picking.ids)],
-                        }).process()
-                    elif isinstance(result, dict) and result.get('res_model') == 'stock.backorder.confirmation':
-                        self.env['stock.backorder.confirmation'].with_context(result.get('context', {})).create({}).process_cancel_backorder()
+                    # Use Odoo's stock.return.picking for safe reversal
+                    return_wizard = self.env['stock.return.picking'].with_context(
+                        active_id=order.picking_id.id,
+                        active_model='stock.picking',
+                    ).create({})
+                    return_wizard._onchange_picking_id()
+                    return_result = return_wizard._create_returns()
+                    if return_result:
+                        reverse_picking = self.env['stock.picking'].browse(return_result[0])
+                        reverse_picking.action_confirm()
+                        reverse_picking.action_assign()
+                        for move in reverse_picking.move_ids_without_package:
+                            for ml in move.move_line_ids:
+                                ml.quantity = ml.reserved_uom_qty or move.product_uom_qty
+                            if not move.move_line_ids:
+                                move._action_assign()
+                        validate_result = reverse_picking.button_validate()
+                        if isinstance(validate_result, dict):
+                            if validate_result.get('res_model') == 'stock.immediate.transfer':
+                                self.env['stock.immediate.transfer'].with_context(
+                                    validate_result.get('context', {})
+                                ).create({'pick_ids': [(6, 0, reverse_picking.ids)]}).process()
+                            elif validate_result.get('res_model') == 'stock.backorder.confirmation':
+                                self.env['stock.backorder.confirmation'].with_context(
+                                    validate_result.get('context', {})
+                                ).create({}).process_cancel_backorder()
                     order.picking_id = False
                 else:
                     raise UserError(

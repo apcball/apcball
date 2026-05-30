@@ -207,7 +207,10 @@ body {
 }
 .pos-order-line-qty-controls button:hover { border-color: var(--primary); color: var(--primary); }
 .pos-order-line-qty-controls .qty { font-size: 13px; font-weight: 600; min-width: 20px; text-align: center; }
-.pos-order-line-price { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; }
+ .pos-order-line-price { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.pos-order-line-disc { display: flex; align-items: center; gap: 2px; }
+.pos-order-line-disc input { width: 52px; font-size: 11px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 4px; text-align: right; }
+.pos-order-line-disc span { font-size: 10px; color: var(--text-secondary); }
 .pos-order-line-remove {
     border: none; background: none; cursor: pointer; color: var(--text-secondary);
     font-size: 14px; padding: 4px; border-radius: 5px; transition: all 0.1s;
@@ -745,7 +748,8 @@ function addProduct(id, name, price, code) {
     if (currentQty >= qtyAvailable) { showToast('สินค้าหมด: ' + name, 'error'); return; }
     const image = prod && prod.image_128 ? prod.image_128 : null;
     if (existing) { existing.qty += 1; }
-    else { state.orderLines.push({ productId: id, name, price, code: code || '', qty: 1, discount: 0, image: image }); }
+    const taxRate = prod && typeof prod.tax_rate === 'number' ? prod.tax_rate : 0;
+    else { state.orderLines.push({ productId: id, name, price, code: code || '', qty: 1, discount: 0, image: image, tax_rate: taxRate }); }
     renderOrder(); updateTotals();
 }
 
@@ -761,6 +765,7 @@ function changeQty(id, delta) {
     renderOrder(); updateTotals();
 }
 function removeLine(id) { state.orderLines = state.orderLines.filter(l => l.productId !== id); renderOrder(); updateTotals(); }
+function setDiscount(id, val) { const line = state.orderLines.find(l => l.productId === id); if (line) { line.discount = Math.max(parseFloat(val) || 0, 0); renderOrder(); updateTotals(); } }
 
 function renderOrder() {
     const el = document.getElementById('posOrderLines');
@@ -769,21 +774,27 @@ function renderOrder() {
     state.orderLines.forEach(l => {
         const subtotal = (l.price * l.qty).toFixed(2);
         const imgHtml = l.image ? '<img class="pos-order-line-img" src="data:image/png;base64,' + l.image + '"/>' : '<div class="pos-order-line-img-placeholder">📦</div>';
+        const discVal = l.discount || 0;
+        const lineTotal = discVal > 0 ? ((l.price - discVal) * l.qty).toFixed(2) : subtotal;
         html += '<div class="pos-order-line">' + imgHtml
             + '<div class="pos-order-line-info"><div class="pos-order-line-name">' + escapeHtml(l.name) + '</div>'
             + '<div class="pos-order-line-qty-controls">'
             + '<button onclick="changeQty(' + l.productId + ', -1)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>'
             + '<span class="qty">' + l.qty + '</span>'
             + '<button onclick="changeQty(' + l.productId + ', 1)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>'
-            + '</div></div><div class="pos-order-line-price">฿' + subtotal + '</div>'
+            + '</div></div>'
+            + '<div class="pos-order-line-disc"><input type="number" min="0" step="0.01" value="' + discVal + '" onchange="setDiscount(' + l.productId + ', this.value)" /><span>฿</span></div>'
+            + '<div class="pos-order-line-price">฿' + lineTotal + '</div>'
             + '<button class="pos-order-line-remove" onclick="removeLine(' + l.productId + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg></button></div>';
     });
     el.innerHTML = html;
 }
 
 function updateTotals() {
-    const subtotal = Math.round(state.orderLines.reduce((sum, l) => sum + l.price * l.qty, 0) * 100) / 100;
-    const tax = Math.round(subtotal * 0.07 * 100) / 100;
+    let subtotal = 0, tax = 0;
+    state.orderLines.forEach(l => { const disc = l.discount || 0; const base = Math.max(l.price - disc, 0) * l.qty; subtotal += base; tax += base * (l.tax_rate || 0) / 100; });
+    subtotal = Math.round(subtotal * 100) / 100;
+    tax = Math.round(tax * 100) / 100;
     const total = Math.round((subtotal + tax) * 100) / 100;
     document.getElementById('posSubtotal').textContent = '฿' + subtotal.toFixed(2);
     document.getElementById('posTax').textContent = '฿' + tax.toFixed(2);
@@ -795,8 +806,9 @@ function updateTotals() {
 
 // ─── Payment ────────────────────────────────────────────────
 function openPaymentModal() {
-    const total = state.orderLines.reduce((sum, l) => sum + l.price * l.qty, 0);
-    const withTax = Math.round(total * 1.07 * 100) / 100;
+    let base = 0, taxAmt = 0;
+    state.orderLines.forEach(l => { const disc = l.discount || 0; const lineBase = Math.max(l.price - disc, 0) * l.qty; base += lineBase; taxAmt += lineBase * (l.tax_rate || 0) / 100; });
+    const withTax = Math.round((base + taxAmt) * 100) / 100;
     document.getElementById('modalTotal').textContent = '฿' + withTax.toFixed(2);
     document.getElementById('payAmount').value = withTax.toFixed(2);
     document.getElementById('payChange').value = '฿0.00';
@@ -811,14 +823,15 @@ function selectPaymentMethod(btn, method) {
     btn.classList.add('active'); state.currentMethod = method;
 }
 function calcChange() {
-    const total = state.orderLines.reduce((sum, l) => sum + l.price * l.qty, 0);
-    const withTax = Math.round(total * 1.07 * 100) / 100;
+    let basePay = 0, taxPay = 0;
+    state.orderLines.forEach(l => { const disc = l.discount || 0; const lineBase = Math.max(l.price - disc, 0) * l.qty; basePay += lineBase; taxPay += lineBase * (l.tax_rate || 0) / 100; });
+    const withTax = Math.round((basePay + taxPay) * 100) / 100;
     const paid = parseFloat(document.getElementById('payAmount').value) || 0;
     document.getElementById('payChange').value = '฿' + Math.max(Math.round((paid - withTax) * 100) / 100, 0).toFixed(2);
 }
 
 async function confirmPayment() {
-    const total = state.orderLines.reduce((sum, l) => sum + l.price * l.qty, 0);
+    const total = state.orderLines.reduce((sum, l) => { const disc = l.discount || 0; return sum + Math.max(l.price - disc, 0) * l.qty; }, 0);
     const withTax = Math.round(total * 1.07 * 100) / 100;
     const paid = parseFloat(document.getElementById('payAmount').value) || 0;
     if (paid < withTax - 0.01) { showToast('จำนวนเงินไม่เพียงพอ', 'error'); return; }

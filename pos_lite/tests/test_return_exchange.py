@@ -181,7 +181,7 @@ class TestReturnFlow(TestReturnExchangeBase):
         return_order = self.env['pos.lite.order'].search([
             ('return_of_order_id', '=', order.id),
         ], limit=1)
-        self.assertEqual(return_order.amount_total, 200.0)
+        self.assertEqual(return_order.amount_total, -200.0)
         self.assertTrue(return_order.payment_ids)
         self.assertEqual(return_order.payment_ids[0].amount, -200.0)  # refund → negative
         self.assertEqual(return_order.invoice_id.move_type, 'out_refund')
