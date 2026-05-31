@@ -16,6 +16,13 @@ class SaleOrder(models.Model):
         ('rejected', 'Rejected'),
     ], string='Approval Status', default='not_required', copy=False)
     
+    # Approval date — timestamp when margin was last approved
+    margin_approval_date = fields.Datetime(
+        string='Margin Approval Date',
+        copy=False,
+        readonly=True,
+    )
+
     # Rewrite tracking field
     rewrite_count = fields.Integer(
         string='Rewrite Version',
@@ -331,11 +338,13 @@ class SaleOrder(models.Model):
         if self.approval_type == 'any':
             # Any one approver is enough
             self.approval_state = 'approved'
+            self.margin_approval_date = fields.Datetime.now()
             self._mark_margin_approval_activities_done()
         elif self.approval_type == 'all':
             # Check if all approvers have approved
             if set(self.approved_user_ids.ids) >= set(self.margin_approval_user_ids.ids):
                 self.approval_state = 'approved'
+                self.margin_approval_date = fields.Datetime.now()
                 self._mark_margin_approval_activities_done()
         
         body = _("Margin Approved by %s") % self.env.user.name
@@ -515,6 +524,7 @@ class SaleOrder(models.Model):
 
         # Reset approval state so sales can request again
         self.approval_state = 'not_required'
+        self.margin_approval_date = False
         self.approved_user_ids = [(5, 0, 0)]  # Clear approvals
         self.confirm_flow_state = 'draft'  # Reset confirm flow
 
@@ -635,6 +645,7 @@ class SaleOrder(models.Model):
             for order in self:
                 if order.approval_state == 'approved':
                     vals['approval_state'] = 'not_required'  # Reset to allow re-request
+                    vals['margin_approval_date'] = False
                     vals['approved_user_ids'] = [(5, 0, 0)]  # Clear approvals
                     vals['confirm_flow_state'] = 'draft'  # Reset confirm flow too
                     # Mark old activities as done

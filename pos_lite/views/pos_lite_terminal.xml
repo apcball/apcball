@@ -5,7 +5,7 @@
             <head>
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-                <title>POS Lite</title>
+                <title>POS Lite v2</title>
                 <style>
 :root {
     --primary: #7C3AED;
@@ -339,7 +339,10 @@ body {
             </head>
             <body>
                 <script>
-                    const CURRENT_SESSION_ID = <t t-esc="session_id or 'null'"/>;
+                    var CURRENT_SESSION_ID = null;
+                    <t t-if="session_id">
+                    CURRENT_SESSION_ID = <t t-esc="session_id"/>;
+                    </t>
                 </script>
 
                 <!-- ═══ Employee Selection Screen ═══ -->
@@ -357,7 +360,7 @@ body {
                     <div class="pos-topbar">
                         <div class="pos-topbar-left">
                             <div class="pos-topbar-brand">POS Lite</div>
-                            <div class="pos-topbar-status"><span class="dot"></span><span id="posStatusText">Online</span></div>
+                            <div class="pos-topbar-status" title="v2026.05.31b"><span class="dot"></span><span id="posStatusText">Online</span></div>
                         </div>
                         <div class="pos-topbar-info">
                             <div class="pos-topbar-emp" id="posEmployeeBadge" onclick="showEmployeeSwitch()">
@@ -633,14 +636,21 @@ function renderEmployees() {
         return;
     }
     let html = '';
-    state.employees.forEach(emp => {
+    state.employees.forEach(function(emp, idx) {
         const initial = (emp.name || '?').charAt(0).toUpperCase();
-        html += '<div class="emp-card" onclick="selectEmployee(' + emp.id + ', \'' + escapeJs(emp.name) + '\')">'
+        html += '<div class="emp-card" data-emp-idx="' + idx + '">'
             + '<div class="emp-avatar">' + initial + '</div>'
             + '<div class="emp-name">' + escapeHtml(emp.name) + '</div>'
             + '<div class="emp-sub">พนักงานขาย</div></div>';
     });
     grid.innerHTML = html;
+    grid.querySelectorAll('.emp-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+            const idx = parseInt(this.getAttribute('data-emp-idx'));
+            const emp = state.employees[idx];
+            if (emp) selectEmployee(emp.id, emp.name);
+        });
+    });
 }
 
 function selectEmployee(empId, empName) {
@@ -655,12 +665,19 @@ function selectEmployee(empId, empName) {
 function showEmployeeSwitch() {
     const list = document.getElementById('empSwitchList');
     let html = '';
-    state.employees.forEach(emp => {
+    state.employees.forEach(function(emp, idx) {
         const active = emp.id === state.selectedEmployeeId ? ' style="background:var(--primary-light);border-color:var(--primary);"' : '';
-        html += '<div class="emp-card" onclick="switchEmployee(' + emp.id + ', \'' + escapeJs(emp.name) + '\')" ' + active + '>'
+        html += '<div class="emp-card" data-switch-idx="' + idx + '"' + active + '>'
             + '<div class="emp-name" style="color:var(--text)">' + escapeHtml(emp.name) + '</div></div>';
     });
     list.innerHTML = html;
+    list.querySelectorAll('.emp-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+            const idx = parseInt(this.getAttribute('data-switch-idx'));
+            const emp = state.employees[idx];
+            if (emp) switchEmployee(emp.id, emp.name);
+        });
+    });
     document.getElementById('posEmpSwitchModal').classList.add('open');
 }
 
@@ -724,20 +741,27 @@ function renderProducts() {
     const el = document.getElementById('posProducts');
     if (!state.products.length) { el.innerHTML = '<div class="pos-no-products"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>ไม่พบสินค้า</div>'; return; }
     let html = '';
-    state.products.forEach(p => {
+    state.products.forEach(function(p, idx) {
         const price = typeof p.list_price === 'number' ? p.list_price.toFixed(2) : '0.00';
         const qty = typeof p.qty_available === 'number' ? p.qty_available : 0;
         const outOfStock = qty <= 0;
         const imageHtml = p.image_256 ? '<img class="pos-product-img" src="data:image/png;base64,' + p.image_256 + '" alt="' + escapeHtml(p.name) + '"/>' : '<div class="pos-product-img-placeholder">📦</div>';
         let badge = outOfStock ? '<span class="pos-stock-badge out-of-stock">❌ หมด</span>' : (qty < 5 ? '<span class="pos-stock-badge low-stock">⚠️ ' + qty + '</span>' : '<span class="pos-stock-badge in-stock">✅ ' + qty + '</span>');
         const cardClass = outOfStock ? 'pos-product-card out-of-stock' : 'pos-product-card';
-        const onclick = outOfStock ? '' : ' onclick="addProduct(' + p.id + ', \'' + escapeJs(p.name) + '\', ' + p.list_price + ', \'' + escapeJs(p.default_code || '') + '\')"';
-        html += '<div class="' + cardClass + '"' + onclick + '>' + imageHtml
+        const dataAttr = outOfStock ? '' : ' data-prod-idx="' + idx + '"';
+        html += '<div class="' + cardClass + '"' + dataAttr + '>' + imageHtml
             + '<div class="pos-product-info"><div class="pos-product-name">' + escapeHtml(p.name) + '</div>'
             + (p.default_code ? '<div class="pos-product-code">' + escapeHtml(p.default_code) + '</div>' : '')
             + '<div class="pos-product-price">฿' + price + '</div>' + badge + '</div></div>';
     });
     el.innerHTML = html;
+    el.querySelectorAll('.pos-product-card[data-prod-idx]').forEach(function(card) {
+        card.addEventListener('click', function() {
+            const idx = parseInt(this.getAttribute('data-prod-idx'));
+            const p = state.products[idx];
+            if (p) addProduct(p.id, p.name, p.list_price, p.default_code || '');
+        });
+    });
 }
 
 function addProduct(id, name, price, code) {
@@ -748,8 +772,7 @@ function addProduct(id, name, price, code) {
     if (currentQty >= qtyAvailable) { showToast('สินค้าหมด: ' + name, 'error'); return; }
     const image = prod && prod.image_128 ? prod.image_128 : null;
     if (existing) { existing.qty += 1; }
-    const taxRate = prod && typeof prod.tax_rate === 'number' ? prod.tax_rate : 0;
-    else { state.orderLines.push({ productId: id, name, price, code: code || '', qty: 1, discount: 0, image: image, tax_rate: taxRate }); }
+    else { state.orderLines.push({ productId: id, name, price, code: code || '', qty: 1, discount: 0, image: image, tax_rate: prod && typeof prod.tax_rate === 'number' ? prod.tax_rate : 0 }); }
     renderOrder(); updateTotals();
 }
 
@@ -942,14 +965,21 @@ async function showHistoryOrders() {
                 return;
             }
             let html = '';
-            data.orders.forEach(o => {
+            data.orders.forEach(function(o, idx) {
                 const dateStr = o.date_order ? new Date(o.date_order).toLocaleDateString('th-TH') : '';
-                html += '<div class="pos-history-order" onclick="openReturnWizard(' + o.id + ', \'' + escapeJs(o.name) + '\')">'
+                html += '<div class="pos-history-order" data-order-idx="' + idx + '">'
                     + '<div class="ho-info"><div class="ho-name">' + escapeHtml(o.name) + '</div>'
                     + '<div class="ho-meta">' + dateStr + ' · ' + escapeHtml(o.customer_name || 'ลูกค้า') + (o.employee_name ? ' · ' + escapeHtml(o.employee_name) : '') + '</div></div>'
                     + '<div class="ho-amount">฿' + Number(o.amount_total).toFixed(2) + '</div></div>';
             });
             list.innerHTML = html;
+            list.querySelectorAll('.pos-history-order').forEach(function(el) {
+                el.addEventListener('click', function() {
+                    const idx = parseInt(this.getAttribute('data-order-idx'));
+                    const o = data.orders[idx];
+                    if (o) openReturnWizard(o.id, o.name);
+                });
+            });
         }
     } catch (e) { showToast('โหลดประวัติไม่สำเร็จ', 'error'); }
 }

@@ -186,7 +186,9 @@ class PosLiteOrder(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('name', '/') == '/' or not vals.get('name'):
-                vals['name'] = self.env['ir.sequence'].next_by_code('pos.lite.order') or '/'
+                vals['name'] = self.env['ir.sequence']._safe_next_by_code(
+                    'pos.lite.order', 'pos.lite.order', prefix='POS',
+                )
         orders = super().create(vals_list)
         for order in orders:
             if order.is_return:

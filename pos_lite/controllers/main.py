@@ -31,9 +31,13 @@ class PosLiteController(http.Controller):
     @http.route('/pos_lite/ui', type='http', auth='user')
     def pos_lite_ui(self, **kwargs):
         session_id = kwargs.get('session_id')
-        return request.render('pos_lite.pos_lite_terminal', {
+        response = request.render('pos_lite.pos_lite_terminal', {
             'session_id': session_id and int(session_id) or False,
         })
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
 
     # ─── Session Info ───────────────────────────────────────────
 
@@ -63,7 +67,7 @@ class PosLiteController(http.Controller):
                         p = session.config_id.pricelist_id
                         result['default_pricelist_id'] = p.id
                         result['default_pricelist_name'] = p.name
-            if not result['employees']:
+            else:
                 employees = request.env['hr.employee'].search([
                     ('company_id', '=', self._get_company_id()),
                 ], limit=50)

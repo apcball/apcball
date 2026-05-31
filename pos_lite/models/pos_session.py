@@ -116,7 +116,9 @@ class PosLiteSession(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('name', '/') == '/' or not vals.get('name'):
-                vals['name'] = self.env['ir.sequence'].next_by_code('pos.lite.session') or '/'
+                vals['name'] = self.env['ir.sequence']._safe_next_by_code(
+                    'pos.lite.session', 'pos.lite.session', prefix='SESS',
+                )
         return super().create(vals_list)
 
     def action_close_session(self):

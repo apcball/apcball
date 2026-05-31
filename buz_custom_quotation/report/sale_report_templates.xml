@@ -283,12 +283,15 @@
         </div>
     </div>
 
-<!-- Signature Section -->
+<!-- Signature Section — Only show when margin approval is approved -->
+<t t-if="doc.approval_state == 'approved'">
 <div class="row" style="margin-top: 80px; font-size: 20px; margin-left: -70px; margin-right: -70px;">
     <!-- Left: ผู้อำนาจสั่งซื้อ -->
     <div class="col-6" style="text-align: center; padding: 0 5px;">
         <p style="margin-bottom: 5px; color: #000;">ผู้อำนาจสั่งซื้อ</p>
-        <p style="margin-bottom: 20px; color: #000; font-size: 16px;">(AUTHORIZED SIGNATURE TO ORDER)</p>
+        <p style="margin-bottom: 5px; color: #000; font-size: 16px;">(AUTHORIZED SIGNATURE TO ORDER)</p>
+        <!-- Signature placeholder ให้ลูกค้าเซ็น -->
+        <div style="height: 45px; margin-bottom: 5px;"></div>
         <div style="border-bottom: 1px dashed #000; width: 50%; margin: 0 auto;"></div>
         <div style="margin-top: 5px; font-size: 16px;">
             (______________________________)
@@ -300,16 +303,30 @@
     <!-- Right: ผู้มีอำนาจเสนอขาย -->
     <div class="col-6" style="text-align: center; padding: 0 5px;">
         <p style="margin-bottom: 5px; color: #000;">ผู้มีอำนาจเสนอขาย</p>
-        <p style="margin-bottom: 20px; color: #000; font-size: 16px;">(AUTHORIZED SIGNATURE OF THE SELLER)</p>
+        <p style="margin-bottom: 5px; color: #000; font-size: 16px;">(AUTHORIZED SIGNATURE OF THE SELLER)</p>
+        <img t-att-src="'/buz_custom_quotation/static/img/signature/signature.png'"
+             style="height: 45px; margin-bottom: 5px;"/>
         <div style="border-bottom: 1px dashed #000; width: 50%; margin: 0 auto;"></div>
         <div style="margin-top: 5px; font-size: 16px;">
             (รณภพ เตชะวิวัฒน์วงศ์)
         </div>
         <div style="margin-top: 3px; font-size: 16px; color: #000;">
-            วันที่ .................................
+            วันที่ <span t-if="doc.margin_approval_date" t-field="doc.margin_approval_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+            <span t-if="not doc.margin_approval_date">.........</span>
         </div>
     </div>
 </div>
+</t>
+
+<!-- Not Approved Notice — Show when NOT approved -->
+<t t-if="doc.approval_state != 'approved'">
+<div class="row" style="margin-top: 80px; font-size: 20px; margin-left: -70px; margin-right: -70px;">
+    <div class="col-12" style="text-align: center; padding: 20px; border: 2px dashed #cc0000; background-color: #fff3f3; border-radius: 8px;">
+        <p style="margin: 0; color: #cc0000; font-size: 22px; font-weight: bold;">⚠️ รอการอนุมัติ Margin</p>
+        <p style="margin: 5px 0 0 0; color: #666; font-size: 16px;">Quotation นี้ยังไม่ได้รับการอนุมัติ กรุณาขอ Approval ก่อนพิมพ์เอกสาร</p>
+    </div>
+</div>
+</t>
 
        <!-- Replace the existing Terms and Conditions section with: -->
 <div class="row mb-4" style="font-size: 20px; margin: 20px 15px; padding: 20px; background-color: #f5f5f5; border-radius: 10px;">
