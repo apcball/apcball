@@ -9,7 +9,7 @@
         <field name="arch" type="xml">
             <tree string="Claims"
                   decoration-info="state == 'draft'"
-                  decoration-warning="state == 'waiting_replacement'"
+                  decoration-warning="state in ('waiting_replacement','product_return','replacement_delivery')"
                   decoration-success="state == 'done'"
                   decoration-muted="state == 'cancel'">
                 <field name="claim_number"/>
@@ -29,19 +29,78 @@
         <field name="arch" type="xml">
             <form string="Claim">
                 <header>
+                    <!-- Hidden fields for invisible expressions -->
+                    <field name="charge_customer" invisible="1"/>
+                    <field name="invoice_status" invisible="1"/>
+                    <field name="sale_order_id" invisible="1"/>
+                    <field name="return_picking_id" invisible="1"/>
+                    <field name="replacement_picking_id" invisible="1"/>
+
                     <button name="action_print_claim_pdf" string="Print Claim PDF" type="object" class="btn-primary"/>
                     <button name="action_confirm" string="Confirm" type="object"
                             invisible="state != 'draft'" class="btn-primary"/>
+                    <!-- Claim: Return Picking -->
+                    <button name="action_create_return_picking" string="Receive Return"
+                            type="object" class="btn-warning"
+                            invisible="state not in ['confirmed', 'product_return']"/>
+                    <button name="action_view_return_picking" string="View Return"
+                            type="object" class="btn-info"
+                            invisible="not return_picking_id"/>
+                    <!-- Claim: Replacement Delivery -->
+                    <button name="action_create_replacement_picking" string="Send Replacement"
+                            type="object" class="btn-warning"
+                            invisible="state not in ['product_return', 'replacement_delivery']"/>
+                    <button name="action_view_replacement_picking" string="View Replacement"
+                            type="object" class="btn-info"
+                            invisible="not replacement_picking_id"/>
+                    <!-- Charge Customer: Create SO -->
+                    <button name="action_create_sale_order" string="Create SO"
+                            type="object" class="btn-warning"
+                            invisible="invoice_status != 'to_invoice' or not charge_customer"/>
+                    <button name="action_view_sale_order" string="View SO"
+                            type="object" class="btn-info"
+                            invisible="not sale_order_id"/>
                     <button name="action_done" string="Done" type="object"
-                            invisible="state not in ['confirmed','waiting_replacement']" class="btn-success"/>
+                            invisible="state not in ['confirmed','waiting_replacement','product_return','replacement_delivery']"
+                            class="btn-success"/>
                     <button name="action_cancel" string="Cancel" type="object"
                             invisible="state == 'cancel'"/>
                     <button name="action_draft" string="Reset to Draft" type="object"
                             invisible="state != 'cancel'"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,waiting_replacement,done,cancel"/>
+                           statusbar_visible="draft,confirmed,product_return,replacement_delivery,done,cancel"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <!-- Smart Button: Return Picking -->
+                        <button class="oe_stat_button" type="object"
+                                name="action_view_return_picking" icon="fa-truck"
+                                invisible="not return_picking_id"
+                                help="View return picking">
+                            <field name="return_picking_count" widget="statinfo" string="Return"/>
+                        </button>
+                        <!-- Smart Button: Replacement Picking -->
+                        <button class="oe_stat_button" type="object"
+                                name="action_view_replacement_picking" icon="fa-truck"
+                                invisible="not replacement_picking_id"
+                                help="View replacement delivery">
+                            <field name="replacement_picking_count" widget="statinfo" string="Replacement"/>
+                        </button>
+                        <!-- Smart Button: Sale Order -->
+                        <button class="oe_stat_button" type="object"
+                                name="action_view_sale_order" icon="fa-shopping-cart"
+                                invisible="not sale_order_id"
+                                help="View sale order">
+                            <field name="sale_order_count" widget="statinfo" string="SO"/>
+                        </button>
+                        <!-- Smart Button: Invoice -->
+                        <button class="oe_stat_button" type="object"
+                                name="action_view_invoice" icon="fa-file-text-o"
+                                invisible="not invoice_id"
+                                help="View customer invoice">
+                            <field name="invoice_count" widget="statinfo" string="Invoice"/>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1>
                             <field name="claim_number" readonly="state != 'draft'"/>
@@ -84,6 +143,31 @@
                             </field>
                         </page>
 
+                        <page string="Pickings">
+                            <group>
+                                <group string="Return from Customer">
+                                    <field name="return_picking_id" readonly="1"/>
+                                    <button name="action_view_return_picking" string="View Return"
+                                            type="object" class="btn-primary"
+                                            invisible="not return_picking_id"/>
+                                </group>
+                                <group string="Replacement Delivery">
+                                    <field name="replacement_picking_id" readonly="1"/>
+                                    <button name="action_view_replacement_picking" string="View Replacement"
+                                            type="object" class="btn-primary"
+                                            invisible="not replacement_picking_id"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Sale Order" invisible="not sale_order_id">
+                            <group>
+                                <field name="sale_order_id" readonly="1"/>
+                                <button name="action_view_sale_order" string="View Sale Order"
+                                        type="object" class="btn-primary"/>
+                            </group>
+                        </page>
+
                         <page string="Product Condition">
                             <group>
                                 <field name="box_condition"/>
@@ -107,6 +191,7 @@
                             <group colspan="2">
                                 <field name="invoice_status" string="Invoice Status" readonly="1"/>
                                 <field name="invoice_id" string="Invoice" readonly="1"/>
+                                <field name="sale_order_id" string="Sale Order" readonly="1"/>
                             </group>
                         </page>
 
@@ -152,6 +237,8 @@
                 <field name="requester_name"/>
                 <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
                 <filter string="Waiting Replacement" name="waiting_replacement" domain="[('state', '=', 'waiting_replacement')]"/>
+                <filter string="Product Return" name="product_return" domain="[('state', '=', 'product_return')]"/>
+                <filter string="Replacement Delivery" name="replacement_delivery" domain="[('state', '=', 'replacement_delivery')]"/>
                 <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
                 <separator/>
                 <filter string="Today" name="today" domain="[('request_date', '=', context_today().strftime('%Y-%m-%d'))]"/>

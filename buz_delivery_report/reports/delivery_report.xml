@@ -17,7 +17,7 @@
 
     <!-- Report Action -->
     <record id="action_report_delivery_custom" model="ir.actions.report">
-        <field name="name">ใบโอนสินค้า /Internal Transfers slip</field>
+        <field name="name">ใบโอนสินค้า / Internal Transfers slip</field>
         <field name="model">stock.picking</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_delivery_report.report_picking_document_custom</field>
@@ -28,7 +28,7 @@
         <field name="binding_type">report</field>
     </record>
 
-    <!-- Main Template -->
+    <!-- Transfer Template -->
     <template id="report_picking_document_custom">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">

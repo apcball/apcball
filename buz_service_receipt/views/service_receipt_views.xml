@@ -26,14 +26,77 @@
                     <button name="action_confirm" string="Confirm" type="object" invisible="state != 'draft'" class="btn-primary"/>
                     <button name="action_waiting_replacement" string="Replacement Flow" type="object" invisible="state not in ['draft', 'confirmed']"/>
                     <button name="action_waiting_invoice" string="Out Warranty Flow" type="object" invisible="state not in ['draft', 'confirmed']"/>
-                    <button name="action_create_customer_invoice" string="Create Invoice" type="object" class="btn-warning" invisible="invoice_status != 'to_invoice'"/>
-                    <button name="action_view_invoice" string="View Invoice" type="object" invisible="not invoice_id"/>
-                    <button name="action_done" string="Done" type="object" invisible="state not in ['draft', 'confirmed', 'waiting_replacement', 'waiting_invoice']" class="btn-success"/>
-                    <button name="action_cancel" string="Cancel" type="object" invisible="state == 'cancel'"/>
-                    <button name="action_draft" string="Reset to Draft" type="object" invisible="state != 'cancel'"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,waiting_replacement,waiting_invoice,done,cancel"/>
+
+                    <!-- Claim: Return Picking -->
+                    <button name="action_create_return_picking" string="Receive Return"
+                            type="object" class="btn-warning"
+                            invisible="state not in ('confirmed', 'product_return') or service_case_type != 'replacement'"/>
+                    <button name="action_view_return_picking" string="View Return"
+                            type="object" class="btn-info"
+                            invisible="not return_picking_id"/>
+                    <!-- Claim: Replacement Delivery -->
+                    <button name="action_create_replacement_picking" string="Send Replacement"
+                            type="object" class="btn-warning"
+                            invisible="state not in ('product_return', 'replacement_delivery') or service_case_type != 'replacement'"/>
+                    <button name="action_view_replacement_picking" string="View Replacement"
+                            type="object" class="btn-info"
+                            invisible="not replacement_picking_id"/>
+                    <!-- Charge Customer: Create SO -->
+                    <button name="action_create_sale_order" string="Create SO"
+                            type="object" class="btn-warning"
+                            invisible="invoice_status != 'to_invoice' or not charge_customer"/>
+                    <button name="action_view_sale_order" string="View SO"
+                            type="object" class="btn-info"
+                            invisible="not sale_order_id"/>
+                    <!-- Invoice (legacy) -->
+                    <button name="action_create_customer_invoice" string="Create Invoice"
+                            type="object" class="btn-warning"
+                            invisible="invoice_status != 'to_invoice' or charge_customer"/>
+                    <button name="action_view_invoice" string="View Invoice"
+                            type="object" class="btn-info"
+                            invisible="not invoice_id"/>
+                    <!-- Done / Cancel -->
+                    <button name="action_done" string="Done" type="object"
+                            invisible="state not in ['confirmed', 'waiting_replacement', 'waiting_invoice', 'product_return', 'replacement_delivery']"
+                            class="btn-success"/>
+                    <button name="action_cancel" string="Cancel" type="object"
+                            invisible="state == 'cancel'"/>
+                    <button name="action_draft" string="Reset to Draft" type="object"
+                            invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed,product_return,replacement_delivery,done,cancel"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <!-- Smart Button: Return Picking -->
+                        <button class="oe_stat_button" type="object"
+                                name="action_view_return_picking" icon="fa-truck"
+                                invisible="not return_picking_id"
+                                help="View return picking">
+                            <field name="return_picking_count" widget="statinfo" string="Return"/>
+                        </button>
+                        <!-- Smart Button: Replacement Picking -->
+                        <button class="oe_stat_button" type="object"
+                                name="action_view_replacement_picking" icon="fa-truck"
+                                invisible="not replacement_picking_id"
+                                help="View replacement delivery">
+                            <field name="replacement_picking_count" widget="statinfo" string="Replacement"/>
+                        </button>
+                        <!-- Smart Button: Sale Order -->
+                        <button class="oe_stat_button" type="object"
+                                name="action_view_sale_order" icon="fa-shopping-cart"
+                                invisible="not sale_order_id"
+                                help="View sale order">
+                            <field name="sale_order_count" widget="statinfo" string="SO"/>
+                        </button>
+                        <!-- Smart Button: Invoice -->
+                        <button class="oe_stat_button" type="object"
+                                name="action_view_invoice" icon="fa-file-text-o"
+                                invisible="not invoice_id"
+                                help="View customer invoice">
+                            <field name="invoice_count" widget="statinfo" string="Invoice"/>
+                        </button>
+                    </div>
                     <group string="Display">
                         <field name="form_language" widget="radio" options="{'horizontal': true}"/>
                     </group>
@@ -182,6 +245,32 @@
                                     <group>
                                         <field name="accessory_condition" string="อุปกรณ์"/>
                                     </group>
+                                </group>
+                            </page>
+
+                            <page string="Pickings" invisible="service_case_type != 'replacement'">
+                                <group>
+                                    <group string="สินค้าคืนจากลูกค้า">
+                                        <field name="return_picking_id" string="Return Picking" readonly="1"/>
+                                        <button name="action_view_return_picking" string="ดู Return Picking"
+                                                type="object" class="btn-primary"
+                                                invisible="not return_picking_id"/>
+                                    </group>
+                                    <group string="สินค้าส่งเปลี่ยน">
+                                        <field name="replacement_picking_id" string="Replacement Delivery" readonly="1"/>
+                                        <button name="action_view_replacement_picking" string="ดู Replacement Delivery"
+                                                type="object" class="btn-primary"
+                                                invisible="not replacement_picking_id"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <!-- Sale Order Tab (TH) -->
+                            <page string="Sale Order" invisible="not sale_order_id">
+                                <group>
+                                    <field name="sale_order_id" string="ใบสั่งขาย" readonly="1"/>
+                                    <button name="action_view_sale_order" string="ดูใบสั่งขาย"
+                                            type="object" class="btn-primary"/>
                                 </group>
                             </page>
 
@@ -365,6 +454,32 @@
                                     <group>
                                         <field name="accessory_condition"/>
                                     </group>
+                                </group>
+                            </page>
+
+                            <page string="Pickings" invisible="service_case_type != 'replacement'">
+                                <group>
+                                    <group string="Return from Customer">
+                                        <field name="return_picking_id" readonly="1"/>
+                                        <button name="action_view_return_picking" string="View Return"
+                                                type="object" class="btn-primary"
+                                                invisible="not return_picking_id"/>
+                                    </group>
+                                    <group string="Replacement Delivery">
+                                        <field name="replacement_picking_id" readonly="1"/>
+                                        <button name="action_view_replacement_picking" string="View Replacement"
+                                                type="object" class="btn-primary"
+                                                invisible="not replacement_picking_id"/>
+                                    </group>
+                                </group>
+                            </page>
+
+                            <!-- Sale Order Tab (EN) -->
+                            <page string="Sale Order" invisible="not sale_order_id">
+                                <group>
+                                    <field name="sale_order_id" readonly="1"/>
+                                    <button name="action_view_sale_order" string="View Sale Order"
+                                            type="object" class="btn-primary"/>
                                 </group>
                             </page>
 

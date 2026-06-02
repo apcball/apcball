@@ -10,7 +10,8 @@ class TestStockCurrentTransfer(common.TransactionCase):
         # Create test data
         self.warehouse = self.env['stock.warehouse'].create({
             'name': 'Test Warehouse',
-            'code': 'TW'
+            'code': 'TW',
+            'manufacture_steps': 'mrp_one_step',
         })
         
         self.location_src = self.warehouse.lot_stock_id

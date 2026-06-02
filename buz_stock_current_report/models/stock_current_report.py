@@ -31,6 +31,28 @@ class StockCurrentReport(models.Model):
     product_selection = fields.Boolean(string='Select', default=False)
 
     stock_date = fields.Date(string="Stock Date", default=fields.Date.context_today)
+    sale_ok = fields.Boolean(string='Can be Sold', readonly=True)
+    price_with_vat = fields.Float('Price incl. VAT', readonly=True, digits=(16, 2))
+    name_eng = fields.Char(string='Name (Eng)', readonly=True)
+    default_code = fields.Char(string='Internal Reference', readonly=True)
+    product_name = fields.Char(string='Product Name', compute='_compute_product_name')
+    product_tag_ids = fields.Many2many('product.tag', string='Tags', related='product_id.product_tmpl_id.product_tag_ids', readonly=True)
+
+    @api.depends('product_id')
+    def _compute_product_name(self):
+        for rec in self:
+            rec.product_name = rec.product_id.name or ''
+
+    def action_open_product(self):
+        """Open the product form from kanban card click"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.product',
+            'res_id': self.product_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
 
     def action_view_product_moves(self):
         """Action to view stock moves for this product/location"""
@@ -216,11 +238,15 @@ class StockCurrentReport(models.Model):
                         pt.categ_id AS category_id,
                         pt.uom_id,
                         COALESCE(sq.quantity, 0) AS quantity,
-                        COALESCE(sq.quantity, 0) + COALESCE(incoming.qty, 0) - COALESCE(outgoing.qty, 0) AS free_to_use,
+                        GREATEST(COALESCE(sq.quantity, 0) + COALESCE(incoming.qty, 0) - COALESCE(outgoing.qty, 0), 0) AS free_to_use,
                         COALESCE(incoming.qty, 0) AS incoming,
                         COALESCE(outgoing.qty, 0) AS outgoing,
                         COALESCE(pt.{price_column}, 0) AS unit_cost,
                         COALESCE(sq.quantity, 0) * COALESCE(pt.{price_column}, 0) AS total_value,
+                        COALESCE(pt.sale_ok, false) AS sale_ok,
+                        ROUND(COALESCE(pt.{price_column}, 0) * 1.07, 2) AS price_with_vat,
+                        COALESCE(pt.name_eng, '') AS name_eng,
+                        COALESCE(pp.default_code, '') AS default_code,
                         sl.usage AS location_usage,
                         CASE
                             WHEN sl.usage = 'internal' THEN 'Internal'

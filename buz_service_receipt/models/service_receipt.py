@@ -31,6 +31,8 @@ class ServiceReceipt(models.Model):
         [
             ('draft', 'Draft'),
             ('confirmed', 'Confirmed'),
+            ('product_return', 'Product Return'),
+            ('replacement_delivery', 'Replacement Delivery'),
             ('waiting_replacement', 'Waiting Replacement'),
             ('waiting_invoice', 'Waiting Invoice'),
             ('done', 'Done'),
@@ -109,6 +111,42 @@ class ServiceReceipt(models.Model):
     )
     replacement_reason = fields.Text(string='Replacement Reason')
     replacement_date = fields.Date(string='Replacement Date')
+
+    # === Stock Picking Fields (Claim Workflow) ===
+    return_picking_id = fields.Many2one(
+        'stock.picking', string='Return Picking',
+        readonly=True, copy=False,
+        help='Stock picking created to receive returned products from customer.',
+    )
+    return_picking_count = fields.Integer(
+        compute='_compute_picking_counts',
+        string='Return Picking Count',
+    )
+    replacement_picking_id = fields.Many2one(
+        'stock.picking', string='Replacement Delivery',
+        readonly=True, copy=False,
+        help='Stock picking created to deliver replacement products to customer.',
+    )
+    replacement_picking_count = fields.Integer(
+        compute='_compute_picking_counts',
+        string='Replacement Picking Count',
+    )
+    picking_count = fields.Integer(
+        compute='_compute_picking_counts',
+        string='Total Pickings',
+    )
+
+    # === Sale Order Field (Out-of-Warranty / Charge Customer) ===
+    sale_order_id = fields.Many2one(
+        'sale.order', string='Sale Order',
+        readonly=True, copy=False,
+        help='Sale order created for chargeable service / replacement.',
+    )
+    sale_order_count = fields.Integer(
+        compute='_compute_sale_order_count',
+        string='Sale Order Count',
+    )
+
     invoice_id = fields.Many2one('account.move', string='Customer Invoice', readonly=True, copy=False)
     invoice_count = fields.Integer(compute='_compute_invoice_count')
     invoice_status = fields.Selection(
@@ -189,6 +227,18 @@ class ServiceReceipt(models.Model):
     def _compute_line_count(self):
         for record in self:
             record.line_count = len(record.line_ids)
+
+    @api.depends('return_picking_id', 'replacement_picking_id')
+    def _compute_picking_counts(self):
+        for record in self:
+            record.return_picking_count = 1 if record.return_picking_id else 0
+            record.replacement_picking_count = 1 if record.replacement_picking_id else 0
+            record.picking_count = record.return_picking_count + record.replacement_picking_count
+
+    @api.depends('sale_order_id')
+    def _compute_sale_order_count(self):
+        for record in self:
+            record.sale_order_count = 1 if record.sale_order_id else 0
 
     @api.depends('technician_ids')
     def _compute_primary_technician_id(self):
@@ -387,7 +437,7 @@ class ServiceReceipt(models.Model):
 
     def action_waiting_replacement(self):
         self._generate_claim_number()
-        self.write({'state': 'waiting_replacement', 'service_case_type': 'replacement'})
+        self.write({'state': 'product_return', 'service_case_type': 'replacement'})
 
     def action_waiting_invoice(self):
         self.write({'state': 'waiting_invoice', 'service_case_type': 'out_warranty', 'charge_customer': True})
@@ -400,6 +450,224 @@ class ServiceReceipt(models.Model):
 
     def action_draft(self):
         self.write({'state': 'draft'})
+
+    # ==================== Return Picking Actions ====================
+
+    def _get_claim_return_location(self):
+        """Get or create the claim return location for receiving returned products."""
+        location = self.env.ref('buz_service_receipt.stock_location_claim_return', raise_if_not_found=False)
+        if not location:
+            warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
+            parent_location = warehouse.lot_stock_id if warehouse else self.env.ref('stock.stock_location_stock')
+            location = self.env['stock.location'].create({
+                'name': 'Claim Return',
+                'usage': 'internal',
+                'location_id': parent_location.id,
+            })
+        return location
+
+    def _get_claim_picking_type(self, picking_type_code='incoming'):
+        """Get the claim picking type."""
+        warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
+        if not warehouse:
+            if picking_type_code == 'incoming':
+                return self.env.ref('stock.picking_type_in')
+            else:
+                return self.env.ref('stock.picking_type_out')
+        if picking_type_code == 'incoming':
+            return warehouse.in_type_id
+        else:
+            return warehouse.out_type_id
+
+    def _prepare_return_move_vals(self, line):
+        """Prepare stock move values for a return line."""
+        product = line.product_id
+        if not product:
+            raise UserError(_('Please specify a product on line %s.') % line.sequence)
+        location_src = self.partner_id.property_stock_customer if self.partner_id else self.env.ref('stock.stock_location_customers')
+        location_dest = self._get_claim_return_location()
+        return {
+            'name': _('Claim Return: %s') % self.name,
+            'product_id': product.id,
+            'product_uom_qty': line.quantity,
+            'product_uom': product.uom_id.id,
+            'location_id': location_src.id,
+            'location_dest_id': location_dest.id,
+        }
+
+    def _prepare_replacement_move_vals(self, line):
+        """Prepare stock move values for a replacement delivery line."""
+        product = line.replacement_product_id
+        if not product:
+            raise UserError(_('Please specify a replacement product on line %s.') % line.sequence)
+        warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
+        location_src = warehouse.lot_stock_id if warehouse else self.env.ref('stock.stock_location_stock')
+        location_dest = self.partner_id.property_stock_customer if self.partner_id else self.env.ref('stock.stock_location_customers')
+        return {
+            'name': _('Replacement Delivery: %s') % self.name,
+            'product_id': product.id,
+            'product_uom_qty': line.replacement_qty or line.quantity,
+            'product_uom': product.uom_id.id,
+            'location_id': location_src.id,
+            'location_dest_id': location_dest.id,
+        }
+
+    def action_create_return_picking(self):
+        """Create stock picking to receive returned products from customer."""
+        self.ensure_one()
+        if self.return_picking_id:
+            return self.action_view_return_picking()
+        if not self.partner_id:
+            raise UserError(_('Please select a customer first.'))
+        replacement_lines = self.line_ids.filtered(lambda l: l.product_id)
+        if not replacement_lines:
+            raise UserError(_('No products specified on lines.'))
+
+        move_vals_list = [self._prepare_return_move_vals(line) for line in replacement_lines]
+        picking = self.env['stock.picking'].create({
+            'partner_id': self.partner_id.id,
+            'location_id': self.partner_id.property_stock_customer.id,
+            'location_dest_id': self._get_claim_return_location().id,
+            'picking_type_id': self._get_claim_picking_type('incoming').id,
+            'move_ids_without_package': [(0, 0, vals) for vals in move_vals_list],
+            'origin': self.name,
+        })
+        picking.action_confirm()
+        picking.action_assign()
+        self.write({
+            'return_picking_id': picking.id,
+            'state': 'product_return',
+        })
+        self.message_post(body=_('Return picking created: %s') % picking.name)
+        return self.action_view_return_picking()
+
+    def action_view_return_picking(self):
+        self.ensure_one()
+        if not self.return_picking_id:
+            raise UserError(_('No return picking has been created yet.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Return Picking'),
+            'res_model': 'stock.picking',
+            'res_id': self.return_picking_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    # ==================== Replacement Delivery Actions ====================
+
+    def action_create_replacement_picking(self):
+        """Create stock picking to deliver replacement products to customer."""
+        self.ensure_one()
+        if self.replacement_picking_id:
+            return self.action_view_replacement_picking()
+        if not self.partner_id:
+            raise UserError(_('Please select a customer first.'))
+        replacement_lines = self.line_ids.filtered(
+            lambda l: l.replacement_product_id
+        )
+        if not replacement_lines:
+            raise UserError(_('No lines with a replacement product specified.'))
+
+        move_vals_list = [self._prepare_replacement_move_vals(line) for line in replacement_lines]
+        picking = self.env['stock.picking'].create({
+            'partner_id': self.partner_id.id,
+            'location_id': self._get_claim_return_location().id,
+            'location_dest_id': self.partner_id.property_stock_customer.id,
+            'picking_type_id': self._get_claim_picking_type('outgoing').id,
+            'move_ids_without_package': [(0, 0, vals) for vals in move_vals_list],
+            'origin': self.name,
+        })
+        picking.action_confirm()
+        picking.action_assign()
+        self.write({
+            'replacement_picking_id': picking.id,
+            'state': 'replacement_delivery',
+        })
+        self.message_post(body=_('Replacement delivery created: %s') % picking.name)
+        return self.action_view_replacement_picking()
+
+    def action_view_replacement_picking(self):
+        self.ensure_one()
+        if not self.replacement_picking_id:
+            raise UserError(_('No replacement delivery has been created yet.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Replacement Delivery'),
+            'res_model': 'stock.picking',
+            'res_id': self.replacement_picking_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    # ==================== Sale Order Actions ====================
+
+    def _prepare_sale_order_vals(self):
+        """Prepare sale order values for chargeable service/replacement."""
+        self.ensure_one()
+        billable_lines = self._get_billable_lines()
+        order_lines = []
+        for line in billable_lines:
+            product = line.replacement_product_id or line.product_id
+            order_lines.append((0, 0, {
+                'product_id': product.id,
+                'name': line.invoice_description or line.description or product.display_name,
+                'product_uom_qty': line.invoice_qty or line.quantity or 1.0,
+                'price_unit': line.price_unit,
+            }))
+        return {
+            'partner_id': self.partner_id.id,
+            'origin': self.name,
+            'user_id': self.technician_id.id or self.env.user.id,
+            'order_line': order_lines,
+            'company_id': self.company_id.id,
+        }
+
+    def action_create_sale_order(self):
+        """Create a sale order for chargeable service/replacement."""
+        self.ensure_one()
+        if self.sale_order_id:
+            return self.action_view_sale_order()
+        if not self.partner_id:
+            raise UserError(_('Please select a customer before creating a sale order.'))
+        billable_lines = self._get_billable_lines()
+        if not billable_lines and not self.charge_customer:
+            raise UserError(_('No billable lines found. Mark lines as billable and set a unit price.'))
+        if not billable_lines:
+            raise UserError(_('Please mark at least one line as billable and set a unit price.'))
+
+        sale_order = self.env['sale.order'].create(self._prepare_sale_order_vals())
+        self.write({
+            'sale_order_id': sale_order.id,
+        })
+        self.message_post(body=_('Sale order created: %s') % sale_order.name)
+        return self.action_view_sale_order()
+
+    def action_view_sale_order(self):
+        self.ensure_one()
+        if not self.sale_order_id:
+            raise UserError(_('No sale order has been created yet.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Sale Order'),
+            'res_model': 'sale.order',
+            'res_id': self.sale_order_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    # ==================== View All Pickings ====================
+
+    def action_view_pickings(self):
+        """View all related stock pickings (return + replacement)."""
+        self.ensure_one()
+        pickings = self.return_picking_id + self.replacement_picking_id
+        if not pickings:
+            raise UserError(_('No pickings have been created yet.'))
+        action = self.env['ir.actions.act_window']._for_xml_id('stock.action_picking_tree_all')
+        action['domain'] = [('id', 'in', pickings.ids)]
+        action['context'] = {}
+        return action
 
     def action_print_pdf(self):
         self.ensure_one()

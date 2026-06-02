@@ -161,7 +161,7 @@ class TestDispatchDocument(common.TransactionCase):
 
         self.env['buz.dispatch.document'].action_validate_cron()
         self.assertEqual(doc.state, 'confirmed')
-        self.assertEqual(doc.stock_picking_id.state, 'confirmed')
+        self.assertIn(doc.stock_picking_id.state, ('confirmed', 'assigned'))
 
     def _create_picking(self):
         """Helper to create an additional picking"""

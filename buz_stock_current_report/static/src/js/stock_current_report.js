@@ -12,27 +12,8 @@ import { Component, useState, onWillStart, onMounted, onPatched } from "@odoo/ow
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 
-// Custom Kanban Record to handle clicks without navigation
-export class StockKanbanRecord extends KanbanRecord {
-    /**
-     * Override global click to prevent form opening when clicking on checkboxes or buttons
-     * This allows multi-product selection without navigation
-     */
-    onGlobalClick(ev) {
-        // Check if click is on interactive elements that shouldn't trigger navigation
-        const isInteractiveElement = ev.target.closest(
-            '.product-selection-checkbox, .transfer-product-btn, button, a, input, select, textarea'
-        );
-        
-        if (isInteractiveElement) {
-            // Don't open record form, let the element handle the click
-            return;
-        }
-        
-        // For all other clicks, call the parent method to open record form
-        super.onGlobalClick(ev);
-    }
-}
+// Kanban Record — uses default Odoo click handling via oe_kanban_global_click + type="object"
+export class StockKanbanRecord extends KanbanRecord {}
 
 // Product Selection Manager for Transfer Feature
 export class ProductSelectionManager {

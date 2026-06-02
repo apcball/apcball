@@ -19,72 +19,59 @@
                 <field name="incoming"/>
                 <field name="outgoing"/>
                 <field name="uom_id"/>
+                <field name="sale_ok"/>
+                <field name="price_with_vat"/>
+                <field name="name_eng"/>
+                <field name="default_code"/>
+                <field name="product_name"/>
+                <field name="product_tag_ids" widget="many2many_tags"/>
                 <templates>
                     <t t-name="kanban-box">
-                        <div class="oe_kanban_card o_card_product" t-att-data-record-id="record.id">
-                            <div class="o_card_product_top">
-                                <!-- Product Image -->
-                                <div class="o_card_product_img_wrapper">
+                        <a class="o_stock_card" type="object" name="action_open_product">
+                            <!-- Top: Image + Product Info -->
+                            <div class="o_sc_card_body">
+                                <div class="o_sc_photo">
                                     <img t-attf-src="/web/image/product.product/{{record.product_id.raw_value}}/image_128"
-                                         class="o_card_product_img"
-                                         alt="Product"
-                                         loading="lazy"/>
+                                         alt="" loading="lazy"/>
                                 </div>
-                                <!-- Product Info -->
-                                <div class="o_card_product_info">
-                                    <strong class="o_card_product_title"><field name="product_id"/></strong>
-                                    <div class="o_card_product_subtitle">
-                                        <i class="fa fa-map-marker"/> <field name="location_id"/>
-                                        <t t-if="record.location_type_name.raw_value">
-                                            <span class="o_badge_loc_type"><field name="location_type_name"/></span>
-                                        </t>
-                                    </div>
-                                    <span class="o_badge_wh"><i class="fa fa-building-o"/> <field name="warehouse_id"/></span>
+                                <div class="o_sc_info">
+                                    <div class="o_sc_name"><field name="product_name"/></div>
+                                    <div class="o_sc_name_eng"><field name="name_eng"/></div>
+                                    <div class="o_sc_default_code"><field name="default_code"/></div>
+                                    <div class="o_sc_tags"><field name="product_tag_ids" widget="many2many_tags"/></div>
                                 </div>
                             </div>
-
-                            <!-- Free to Use — emphasis zone -->
-                            <div class="o_card_free_zone">
-                                <div class="o_free_label">Free to Use</div>
-                                <div class="o_free_value">
-                                    <field name="free_to_use" widget="float" digits="[16,2]"/>
-                                    <span class="o_free_uom"><field name="uom_id"/></span>
+                            <!-- Divider -->
+                            <div class="o_sc_divider"/>
+                            <!-- Price + Free to Use side by side -->
+                            <div class="o_sc_data_row">
+                                <div class="o_sc_price_block">
+                                    <span class="o_sc_price_value"><field name="price_with_vat" widget="monetary"/></span>
+                                    <span class="o_sc_price_label">incl. VAT</span>
+                                </div>
+                                <div class="o_sc_data_sep"/>
+                                <div class="o_sc_stock_block">
+                                    <span class="o_sc_stock_label">Free to Use</span>
+                                    <span>
+                                        <span class="o_sc_stock_value"><field name="free_to_use" widget="float" digits="[16,2]"/></span>
+                                        <span class="o_sc_stock_uom"><field name="uom_id"/></span>
+                                    </span>
                                 </div>
                             </div>
-
-                            <!-- Stats Row -->
-                            <div class="o_card_stats_row">
-                                <div class="o_stat_item o_stat_onhand">
-                                    <div class="o_stat_val"><field name="quantity" widget="float" digits="[16,2]"/></div>
-                                    <div class="o_stat_lbl">On Hand</div>
-                                </div>
-                                <div class="o_stat_item o_stat_incoming">
-                                    <div class="o_stat_val"><field name="incoming" widget="float" digits="[16,2]"/></div>
-                                    <div class="o_stat_lbl">Incoming</div>
-                                </div>
-                                <div class="o_stat_item o_stat_outgoing">
-                                    <div class="o_stat_val"><field name="outgoing" widget="float" digits="[16,2]"/></div>
-                                    <div class="o_stat_lbl">Outgoing</div>
-                                </div>
+                            <!-- Movement badges -->
+                            <div class="o_sc_moves">
+                                <t t-if="record.incoming.raw_value &gt; 0">
+                                    <span class="o_sc_badge o_sc_badge_in">↑ <field name="incoming" widget="float" digits="[16,2]"/> incoming</span>
+                                </t>
+                                <t t-if="record.outgoing.raw_value &gt; 0">
+                                    <span class="o_sc_badge o_sc_badge_out">↓ <field name="outgoing" widget="float" digits="[16,2]"/> outgoing</span>
+                                </t>
                             </div>
-
-                            <!-- Footer Actions -->
-                            <div class="o_card_footer">
-                                <a type="object" name="action_view_product_moves"
-                                   class="o_btn_moves"
-                                   t-if="record.quantity.raw_value > 0">
-                                    <i class="fa fa-arrows-alt"/> Stock Moves
-                                </a>
-                                <button type="object" name="action_open_record"
-                                        class="o_btn_moves ms-1">
-                                    <i class="fa fa-info-circle"/> Details
-                                </button>
-                                <div class="o_card_value">
-                                    <span class="o_val_label">Value</span>
-                                    <span class="o_val_amount"><field name="total_value" widget="monetary"/></span>
-                                </div>
+                            <!-- Footer: Location -->
+                            <div class="o_sc_footer">
+                                <span class="o_sc_loc"><field name="location_id"/></span>
                             </div>
-                        </div>
+                        </a>
                     </t>
                 </templates>
             </kanban>
@@ -109,7 +96,9 @@
                 <field name="outgoing" sum="Total" optional="show"/>
                 <field name="unit_cost" string="Unit Cost" sum="Total" widget="monetary"/>
                 <field name="total_value" string="Total Value" sum="Total" widget="monetary"/>
+                <field name="price_with_vat" string="Price incl. VAT" widget="monetary"/>
                 <field name="uom_id" string="Unit" optional="hide"/>
+                <field name="sale_ok" string="Can be Sold" optional="hide"/>
                 <button name="action_view_product_moves" type="object" string="Stock Moves" icon="fa-arrows-alt" invisible="quantity == 0"/>
                 <!-- transfer button removed -->
             </tree>
@@ -127,7 +116,7 @@
             (0, 0, {'view_mode': 'tree', 'view_id': ref('view_stock_current_report_tree_with_sidebar')}),
             (0, 0, {'view_mode': 'form', 'view_id': ref('view_stock_current_report_form')})
         ]"/>
-        <field name="context">{}</field>
+        <field name="context">{'search_default_can_be_sold': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Current Stock Report with Warehouse Navigation

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- Claim Return Location: ใช้รับสินค้าคืนจากลูกค้า -->
+    <record id="stock_location_claim_return" model="stock.location">
+        <field name="name">Claim Return</field>
+        <field name="usage">internal</field>
+        <field name="scrap_location" eval="False"/>
+        <field name="return_location" eval="True"/>
+        <field name="location_id" ref="stock.stock_location_stock"/>
+    </record>
+
+    <!-- Claim Replacement Location: ใช้เก็บสินค้าที่รอส่งเปลี่ยน -->
+    <record id="stock_location_claim_replacement" model="stock.location">
+        <field name="name">Claim Replacement</field>
+        <field name="usage">internal</field>
+        <field name="scrap_location" eval="False"/>
+        <field name="return_location" eval="False"/>
+        <field name="location_id" ref="stock.stock_location_stock"/>
+    </record>
+
+</odoo>
