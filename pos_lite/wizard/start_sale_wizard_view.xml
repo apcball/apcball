@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_pos_lite_start_sale_wizard_form" model="ir.ui.view">
+        <field name="name">pos.lite.start.sale.wizard.form</field>
+        <field name="model">pos.lite.start.sale.wizard</field>
+        <field name="arch" type="xml">
+            <form string="เริ่มขาย — เลือกพนักงาน">
+                <group>
+                    <group string="📋 ข้อมูล Session">
+                        <field name="session_id" readonly="1"/>
+                        <field name="channel" widget="radio"/>
+                    </group>
+                    <group string="🧑‍💼 เลือกพนักงานขาย">
+                        <field name="allowed_employee_ids" invisible="1"/>
+                        <field name="employee_id"
+                               options="{'no_create_edit': True}"
+                               placeholder="เลือกพนักงานขาย..."/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="🛒 เริ่มขาย" class="oe_highlight"
+                            data-hotkey="shift+m"/>
+                    <button string="ยกเลิก" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

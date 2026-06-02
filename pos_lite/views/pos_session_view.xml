@@ -5,18 +5,24 @@
         <field name="name">pos.lite.session.tree</field>
         <field name="model">pos.lite.session</field>
         <field name="arch" type="xml">
-            <tree decoration-success="state == 'opened'" decoration-muted="state == 'closed'">
+            <tree decoration-success="state == 'opened'" decoration-danger="state == 'closed'"
+                  expand="1">
                 <field name="name"/>
                 <field name="config_id"/>
                 <field name="employee_ids" string="Employees" widget="many2many_tags"/>
-                <field name="state"/>
-                <field name="date_open" string="Open"/>
-                <field name="date_close" string="Close"/>
+                <field name="current_employee_id" string="พนักงานขายปัจจุบัน" optional="show"/>
+                <field name="current_channel" string="ช่องทาง" optional="show"/>
                 <field name="user_id" string="Cashier"/>
-                <field name="order_count_sales" string="Sales"/>
-                <field name="order_count_exchanges" string="Exch"/>
-                <field name="order_count_returns" string="Returns"/>
-                <field name="amount_net" string="Net"/>
+                <field name="date_open" string="วันที่เปิด"/>
+                <field name="date_close" string="วันที่ปิด" optional="hide"/>
+                <field name="order_count" string="Orders"/>
+                <field name="amount_total" widget="monetary" string="ยอดขาย"/>
+                <field name="amount_refund" widget="monetary" string="Refund" optional="hide"/>
+                <field name="amount_net" widget="monetary" string="Net"
+                       decoration-success="amount_net &gt; 0"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'opened'"
+                       decoration-warning="state == 'closed'"/>
                 <field name="company_id" invisible="1"/>
             </tree>
         </field>
@@ -29,75 +35,288 @@
         <field name="arch" type="xml">
             <form string="POS Lite Session">
                 <header>
-                    <button name="action_open_terminal" type="object" string="🖥 Open Terminal" class="oe_highlight" invisible="state != 'opened'"/>
-                    <button name="action_close_session" type="object" string="Close Session" class="btn-secondary" invisible="state != 'opened'" confirm="Close this session? Pending draft orders must be processed first."/>
-                    <button name="action_reopen_session" type="object" string="Reopen" invisible="state != 'closed'" groups="pos_lite.group_pos_lite_manager"/>
-                    <button name="action_print_session_summary" type="object" string="Print Summary" invisible="state != 'closed'" groups="pos_lite.group_pos_lite_user"/>
-                    <field name="state" widget="statusbar" statusbar_visible="opened,closed"/>
+                    <!-- Primary Actions -->
+                    <button name="action_new_order" type="object"
+                            string="🛒 สั่งขาย"
+                            class="btn-primary"
+                            invisible="state != 'opened'"/>
+                    <button name="action_open_terminal" type="object"
+                            string="🖥 Terminal"
+                            class="btn-secondary ms-2"
+                            invisible="1"/>
+                    <!-- Change Employee / Channel -->
+                    <button name="action_start_sale" type="object"
+                            string="🔄 เปลี่ยนพนักงาน"
+                            class="btn-secondary"
+                            invisible="state != 'opened'"/>
+                    <!-- Close / Reopen / Print -->
+                    <button name="action_close_session" type="object"
+                            string="ปิด Session"
+                            class="btn-warning ms-2"
+                            invisible="state != 'opened'"
+                            confirm="ปิด Session นี้? กรุณาประมวลผล draft orders ให้เสร็จก่อน"/>
+                    <button name="action_reopen_session" type="object"
+                            string="เปิดใหม่"
+                            class="btn-secondary"
+                            invisible="state != 'closed'"
+                            groups="pos_lite.group_pos_lite_manager"
+                            confirm="เปิด Session นี้ใหม่?"/>
+                    <button name="action_print_session_summary" type="object"
+                            string="🖨 พิมพ์สรุป"
+                            class="btn-secondary"
+                            invisible="state != 'closed'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="opened,closed"
+                           invisible="state == 'opened'"
+                           class="bg-success text-white fw-bold ms-2 px-3 rounded"
+                           decoration-success="state == 'opened'"
+                           decoration-muted="state == 'closed'"/>
                 </header>
                 <sheet>
-                    <div class="oe_title">
-                        <h1><field name="name" readonly="1"/></h1>
-                    </div>
                     <field name="currency_id" invisible="1"/>
-                    <group>
-                        <group string="Session Info">
-                            <field name="config_id"/>
-                            <field name="employee_id" invisible="1"/>
-                            <field name="employee_ids" widget="many2many_tags"/>
-                            <field name="date_open"/>
-                            <field name="date_close"/>
-                            <field name="user_id"/>
-                            <field name="close_user_id"/>
-                            <field name="company_id" invisible="1"/>
-                        </group>
-                        <group string="Summary">
-                            <field name="order_count_sales" string="Regular Sales"/>
-                            <field name="order_count_exchanges" string="Exchanges"/>
-                            <field name="order_count_returns" string="Returns"/>
-                            <field name="order_count" string="Total Orders"/>
-                            <field name="amount_regular_sales" widget="monetary" string="Regular Sales Amt"/>
-                            <field name="amount_exchange_sales" widget="monetary" string="Exchange Sales Amt"/>
-                            <field name="amount_untaxed" widget="monetary"/>
-                            <field name="amount_tax" widget="monetary"/>
-                            <field name="amount_total" widget="monetary" string="Gross Sales"/>
-                            <field name="amount_refund" widget="monetary"/>
-                            <field name="amount_net" widget="monetary" style="font-weight: bold; font-size: 1.2em;"/>
-                        </group>
-                    </group>
-                    <group string="Payment Breakdown" col="5">
-                        <group>
-                            <field name="payment_cash" widget="monetary" string="Cash"/>
-                        </group>
-                        <group>
-                            <field name="payment_transfer" widget="monetary" string="Transfer"/>
-                        </group>
-                        <group>
-                            <field name="payment_card" widget="monetary" string="Card"/>
-                        </group>
-                        <group>
-                            <field name="payment_promptpay" widget="monetary" string="PromptPay"/>
-                        </group>
-                        <group>
-                            <field name="payment_other" widget="monetary" string="Other"/>
-                        </group>
-                    </group>
-                    <div class="oe_button_box" name="button_box">
-                        <button name="action_open_terminal" type="object" class="oe_stat_button" icon="fa-desktop" invisible="state != 'opened'">
+                    <!-- Title + Status -->
+                    <div class="oe_title mb-3">
+                        <h1 class="d-flex align-items-center gap-3">
+                            <field name="name" readonly="1"
+                                   class="fs-2 fw-bold"/>
+                            <span invisible="state != 'opened'"
+                                  class="badge bg-success fs-6">เปิดใช้งาน</span>
+                            <span invisible="state != 'closed'"
+                                  class="badge bg-secondary fs-6">ปิดแล้ว</span>
+                        </h1>
+                    </div>
+
+                    <!-- ===== Smart Buttons Row ===== -->
+                    <div class="oe_button_box mb-4" name="button_box">
+                        <button name="action_new_order" type="object"
+                                class="oe_stat_button btn-primary"
+                                icon="fa-shopping-cart"
+                                invisible="state != 'opened'">
+                            <div class="o_stat_text fw-bold text-primary">สั่งขาย</div>
+                        </button>
+                        <button name="action_open_terminal" type="object"
+                                class="oe_stat_button"
+                                icon="fa-desktop"
+                                invisible="1">
                             <div class="o_stat_info">
-                                <span class="o_stat_text">Open Terminal</span>
+                                <span class="o_stat_text">Terminal</span>
                             </div>
                         </button>
-                        <button name="action_view_orders" type="object" class="oe_stat_button" icon="fa-list">
+                        <button name="action_view_orders" type="object"
+                                class="oe_stat_button"
+                                icon="fa-list-ol">
                             <div class="o_stat_info">
-                                <span class="o_stat_value"><field name="order_count"/></span>
+                                <span class="o_stat_value text-primary fw-bold fs-5">
+                                    <field name="order_count"/>
+                                </span>
                                 <span class="o_stat_text">Orders</span>
                             </div>
                         </button>
+                        <button name="action_start_sale" type="object"
+                                class="oe_stat_button"
+                                icon="fa-exchange"
+                                invisible="state != 'opened'">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">เปลี่ยนพนักงาน</span>
+                            </div>
+                        </button>
                     </div>
-                    <group string="Notes">
-                        <field name="note" nolabel="1" placeholder="Session notes..."/>
-                    </group>
+
+                    <!-- ===== KPI Summary Cards ===== -->
+                    <div class="row g-3 mb-4">
+                        <!-- Gross Sales -->
+                        <div class="col-6 col-lg-3">
+                            <div class="card border-start border-4 border-primary shadow-sm h-100">
+                                <div class="card-body py-3">
+                                    <div class="text-muted small text-uppercase">ยอดขายรวม</div>
+                                    <div class="fs-3 fw-bold text-primary mt-1">
+                                        <field name="amount_total" widget="monetary"
+                                               options="{'currency_field': 'currency_id'}"/>
+                                    </div>
+                                    <div class="text-muted small mt-1">
+                                        <field name="order_count_sales"/> ขาย ·
+                                        <field name="order_count_exchanges"/> เปลี่ยน
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Refunds -->
+                        <div class="col-6 col-lg-3">
+                            <div class="card border-start border-4 border-danger shadow-sm h-100">
+                                <div class="card-body py-3">
+                                    <div class="text-muted small text-uppercase">Refund</div>
+                                    <div class="fs-3 fw-bold text-danger mt-1">
+                                        <field name="amount_refund" widget="monetary"/>
+                                    </div>
+                                    <div class="text-muted small mt-1">
+                                        <field name="order_count_returns"/> รายการคืน
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Tax -->
+                        <div class="col-6 col-lg-3">
+                            <div class="card border-start border-4 border-info shadow-sm h-100">
+                                <div class="card-body py-3">
+                                    <div class="text-muted small text-uppercase">VAT</div>
+                                    <div class="fs-4 fw-bold text-info mt-1">
+                                        <field name="amount_tax" widget="monetary"/>
+                                    </div>
+                                    <div class="text-muted small mt-1">
+                                        ก่อน VAT: <field name="amount_untaxed" widget="monetary"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Net Revenue -->
+                        <div class="col-6 col-lg-3">
+                            <div class="card border-start border-4 border-success shadow-sm h-100">
+                                <div class="card-body py-3">
+                                    <div class="text-muted small text-uppercase">Net Revenue</div>
+                                    <div class="fs-3 fw-bold text-success mt-1">
+                                        <field name="amount_net" widget="monetary"/>
+                                    </div>
+                                    <div class="text-muted small mt-1">
+                                        สุทธิหลังหัก refund
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ===== Main Content ===== -->
+                    <div class="row">
+                        <!-- Left: Session Info -->
+                        <div class="col-lg-8">
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fa fa-info-circle me-2"/>
+                                        ข้อมูล Session
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-sm-6">
+                                            <span class="o_form_label text-muted small">Config (ร้าน)</span>
+                                            <div>
+                                                <field name="config_id"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <span class="o_form_label text-muted small">ผู้เปิด</span>
+                                            <div>
+                                                <field name="user_id"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <span class="o_form_label text-muted small">วันที่เปิด</span>
+                                            <div>
+                                                <field name="date_open"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <span class="o_form_label text-muted small">วันที่ปิด</span>
+                                            <div>
+                                                <field name="date_close"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <span class="o_form_label text-muted small">ผู้ปิด</span>
+                                            <div>
+                                                <field name="close_user_id"/>
+                                            </div>
+                                        </div>
+                                        <field name="employee_id" invisible="1"/>
+                                        <div class="col-12">
+                                            <span class="o_form_label text-muted small">พนักงานที่ทำงาน</span>
+                                            <div>
+                                                <field name="employee_ids" widget="many2many_tags"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <span class="o_form_label text-muted small">พนักงานขายปัจจุบัน</span>
+                                            <div>
+                                                <field name="current_employee_id"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <span class="o_form_label text-muted small">ช่องทางปัจจุบัน</span>
+                                            <div>
+                                                <field name="current_channel"/>
+                                            </div>
+                                        </div>
+                                        <field name="company_id" invisible="1"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Payment Breakdown -->
+                        <div class="col-lg-4">
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fa fa-credit-card me-2"/>
+                                        ช่องทางการชำระ
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-muted">เงินสด</span>
+                                        <span class="fw-bold fs-5">
+                                            <field name="payment_cash" widget="monetary"/>
+                                        </span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-muted">โอนเงิน</span>
+                                        <span class="fw-bold fs-5">
+                                            <field name="payment_transfer" widget="monetary"/>
+                                        </span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-muted">บัตรเครดิต</span>
+                                        <span class="fw-bold fs-5">
+                                            <field name="payment_card" widget="monetary"/>
+                                        </span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-muted">PromptPay</span>
+                                        <span class="fw-bold fs-5">
+                                            <field name="payment_promptpay" widget="monetary"/>
+                                        </span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-muted">อื่น ๆ</span>
+                                        <span class="fw-bold fs-5">
+                                            <field name="payment_other" widget="monetary"/>
+                                        </span>
+                                    </div>
+                                    <hr/>
+                                    <div class="d-flex justify-content-between align-items-center py-2 bg-light rounded px-3">
+                                        <span class="fw-bold">ยอดรวม</span>
+                                        <span class="fw-bold fs-4 text-primary">
+                                            <field name="amount_net" widget="monetary"/>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ===== Notes ===== -->
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center cursor-pointer">
+                            <h5 class="card-title mb-0">
+                                <i class="fa fa-sticky-note me-2"/>
+                                บันทึก
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <field name="note" nolabel="1"
+                                   placeholder="เพิ่มบันทึกสำหรับ session นี้..."/>
+                        </div>
+                    </div>
                 </sheet>
                 <div class="oe_chatter">
                     <field name="message_follower_ids"/>

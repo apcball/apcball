@@ -140,6 +140,7 @@ class ReportDPExcel(models.AbstractModel):
                             "uom": self._safe_text(move.product_uom.name) if move else "",
                             "unit_price": unit_price,
                             "sum_amount": unit_price * quantity,
+                            "note": self._safe_text(picking.delivery_note) if picking else "",
                         }
                     )
                     sequence += 1
@@ -265,6 +266,7 @@ class ReportDPExcel(models.AbstractModel):
             ("UoM", 10),
             ("Unit Price", 14),
             ("SUM", 14),
+            ("Note", 24),
         ]
 
         sheet = workbook.add_worksheet("DP Report")
@@ -302,6 +304,7 @@ class ReportDPExcel(models.AbstractModel):
             sheet.write(row_idx, 13, row["uom"], center_format)
             sheet.write_number(row_idx, 14, row["unit_price"] or 0.0, number_format)
             sheet.write_number(row_idx, 15, row["sum_amount"] or 0.0, number_format)
+            sheet.write(row_idx, 16, row["note"], text_format)
             row_idx += 1
 
         if not rows:

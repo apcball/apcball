@@ -453,7 +453,7 @@ class EtaxTransaction(models.Model):
                 "B02-BUYER_NAME": self.partner_id.name[:100], # ผู้ซื้อ
                 "B03-BUYER_TAX_ID_TYPE": "OTHR" if not self.partner_id.vat or self.partner_id.vat == 'N/A' else "TXID",
                 "B04-BUYER_TAX_ID": self.partner_id.vat or "N/A", # เลขประจำตัวผู้เสียภาษีอากร
-                "B05-BUYER_BRANCH_ID": self.partner_id.branch or '00000', #self.partner_branch_id, # รหัสสาขาผู้ซื้อ
+                "B05-BUYER_BRANCH_ID": (self.partner_id.branch or "")[:5] if self.partner_id.branch else '00000', #self.partner_branch_id, # รหัสสาขาผู้ซื้อ
                 "B06-BUYER_CONTACT_PERSON_NAME": "",
                 "B07-BUYER_CONTACT_DEPARTMENT_NAME": "",
                 "B08-BUYER_URIID": self.partner_id.email or "",

@@ -193,7 +193,12 @@
                                 
                                 <!-- Product Name - ชื่อสินค้า -->
                                 <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_name_left * px_to_mm}}mm; max-width: 110mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                    <span t-esc="item['name']"/>
+                                    <span t-esc="item['description_picking'] or item['name']"/>
+                                </div>
+                                
+                                <!-- Product Description - รายละเอียดสินค้า (เฉพาะ header) -->
+                                <div t-attf-style="position: absolute; top: {{current_top + (config.font_size or 14) * 0.3528}}mm; left: {{config.col_name_left * px_to_mm}}mm; max-width: 110mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 9px; color: #666666;">
+                                    <span t-esc="get_product_description(item['product'])"/>
                                 </div>
                                 
                                 <!-- Quantity - จำนวน -->
@@ -221,12 +226,14 @@
                                 </div>
                                 
                                 <!-- Product Name - ชื่อสินค้า -->
-                                <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_name_left * px_to_mm}}mm; max-width: 80mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_name_left * px_to_mm}}mm; max-width: 80mm; white-space: nowrap; overflow: visible;">
                                     <t t-if="item.get('is_component')">
-                                        <span style="padding-left: 10px; color: #000000ff;" t-esc="clean_product_name(line.product_id)"/>
+                                        <div style="padding-left: 10px; color: #000000ff;" t-esc="line.description_picking or clean_product_name(line.product_id)"/>
+                                        <div style="padding-left: 10px; color: #666666; font-size: 9px;" t-esc="get_product_description(line.product_id)"/>
                                     </t>
                                     <t t-else="">
-                                        <span t-esc="clean_product_name(line.product_id)"/>
+                                        <div t-esc="line.description_picking or clean_product_name(line.product_id)"/>
+                                        <div style="color: #666666; font-size: 9px;" t-esc="get_product_description(line.product_id)"/>
                                     </t>
                                 </div>
                                 

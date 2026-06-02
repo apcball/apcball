@@ -1,6 +1,9 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.float_utils import float_compare, float_is_zero
+import logging
+
+_logger = logging.getLogger(__name__)
 
 WALK_IN_CUSTOMER_NAME = 'Walk-in Customer'
 
@@ -244,8 +247,23 @@ class PosLiteOrder(models.Model):
             self.partner_invoice_id = False
             self.partner_shipping_id = False
 
+    @api.onchange('session_id')
+    def _onchange_session_id(self):
+        if self.session_id:
+            employees = self.session_id.employee_ids
+            if self.session_id.employee_id and self.session_id.employee_id not in employees:
+                employees |= self.session_id.employee_id
+            if self.employee_id and self.employee_id not in employees:
+                self.employee_id = False
+            if not self.employee_id and self.session_id.employee_id:
+                self.employee_id = self.session_id.employee_id
+            return {'domain': {'employee_id': [('id', 'in', employees.ids)]}}
+        return {'domain': {'employee_id': [('company_id', '=', self.company_id.id)]}}
+
     @api.onchange('company_id')
     def _onchange_company_id(self):
+        if self.warehouse_id and self.pricelist_id:
+            return  # already set from wizard context, don't overwrite
         config = self.env['pos.lite.config'].get_default_config(self.company_id)
         if config:
             self.warehouse_id = config.warehouse_id
@@ -344,12 +362,22 @@ class PosLiteOrder(models.Model):
     def _prepare_picking_vals(self):
         self.ensure_one()
         partner = self._get_or_create_customer_partner()
+        # Resolve picking type: config override → warehouse default
+        config = self.env['pos.lite.config'].get_default_config(self.company_id)
         if self.is_return:
-            picking_type = self.warehouse_id.in_type_id
+            picking_type = (
+                config.return_picking_type_id
+                if config and config.return_picking_type_id
+                else self.warehouse_id.in_type_id
+            )
             if not picking_type:
                 raise UserError(_('No incoming picking type for warehouse %s.') % self.warehouse_id.display_name)
         else:
-            picking_type = self.warehouse_id.out_type_id
+            picking_type = (
+                config.out_picking_type_id
+                if config and config.out_picking_type_id
+                else self.warehouse_id.out_type_id
+            )
             if not picking_type:
                 raise UserError(_('No outgoing picking type for warehouse %s.') % self.warehouse_id.display_name)
         customer_location = self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
@@ -772,6 +800,33 @@ class PosLiteOrder(models.Model):
     def action_print_invoice(self):
         self.ensure_one()
         return self.env.ref('pos_lite.action_report_pos_lite_invoice').report_action(self)
+
+    # ─── Migration ──────────────────────────────────────────────
+
+    def _migration_fix_return_session_id(self):
+        """Patch return/exchange orders created without session_id (pre-v17.0.3.5.0)."""
+        self.env.cr.execute("""
+            UPDATE pos_lite_order o
+            SET session_id = orig.session_id
+            FROM pos_lite_order orig
+            WHERE o.is_return = TRUE
+              AND o.session_id IS NULL
+              AND o.return_of_order_id = orig.id
+              AND orig.session_id IS NOT NULL
+        """)
+        rc = self.env.cr.rowcount
+        self.env.cr.execute("""
+            UPDATE pos_lite_order o
+            SET session_id = orig.session_id
+            FROM pos_lite_order orig
+            WHERE o.is_exchange = TRUE
+              AND o.session_id IS NULL
+              AND o.exchange_of_order_id = orig.id
+              AND orig.session_id IS NOT NULL
+        """)
+        ec = self.env.cr.rowcount
+        if rc or ec:
+            _logger.info('POS Lite migration: fixed session_id for %d return and %d exchange orders', rc, ec)
 
 
 # ═══════════════════════════════════════════════════════════════

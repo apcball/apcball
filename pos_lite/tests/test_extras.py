@@ -414,6 +414,85 @@ class TestConfig(TestAdditionalBase):
         self.assertFalse(config)
 
 
+# ─── Picking Type Config ────────────────────────────────────
+
+@tagged('-at_install', 'post_install')
+class TestPickingTypeConfig(TestAdditionalBase):
+    """Test that pos.lite.config picking_type fields are used in order processing."""
+
+    def test_config_picking_type_fields_exist(self):
+        """config มี out_picking_type_id และ return_picking_type_id"""
+        self.assertTrue(hasattr(self.config, 'out_picking_type_id'))
+        self.assertTrue(hasattr(self.config, 'return_picking_type_id'))
+
+    def test_fallback_to_warehouse_default_when_config_empty(self):
+        """เมื่อ config ไม่ได้ตั้ง picking_type → fallback เป็น warehouse default"""
+        self.assertFalse(self.config.out_picking_type_id)
+        self.assertFalse(self.config.return_picking_type_id)
+
+        # ใช้ storable product เพื่อให้มี picking
+        order = self._process_order([
+            (self.product_storable.id, 1, 200.0),
+        ])
+        self.assertTrue(order.picking_id)
+        self.assertEqual(
+            order.picking_id.picking_type_id,
+            self.warehouse.out_type_id,
+        )
+
+    def test_config_out_picking_type_used_when_set(self):
+        """เมื่อ config ตั้ง out_picking_type_id → ใช้ค่านั้นแทน warehouse default"""
+        custom_type = self.env['stock.picking.type'].create({
+            'name': 'POS Delivery Custom',
+            'code': 'outgoing',
+            'warehouse_id': self.warehouse.id,
+            'company_id': self.company.id,
+            'sequence_code': 'POSOUT',
+        })
+        self.config.out_picking_type_id = custom_type.id
+
+        order = self._process_order([
+            (self.product_storable.id, 1, 200.0),
+        ])
+        self.assertTrue(order.picking_id)
+        self.assertEqual(order.picking_id.picking_type_id, custom_type.id)
+        self.assertNotEqual(order.picking_id.picking_type_id, self.warehouse.out_type_id)
+
+    def test_config_return_picking_type_used_when_set(self):
+        """เมื่อ config ตั้ง return_picking_type_id → return order ใช้ค่านั้น"""
+        custom_return_type = self.env['stock.picking.type'].create({
+            'name': 'POS Return Custom',
+            'code': 'incoming',
+            'warehouse_id': self.warehouse.id,
+            'company_id': self.company.id,
+            'sequence_code': 'POSRET',
+        })
+        self.config.return_picking_type_id = custom_return_type.id
+
+        # สร้าง order ปกติก่อน (storable เพื่อมี picking)
+        original = self._process_order([
+            (self.product_storable.id, 1, 200.0),
+        ])
+        # สร้าง return ผ่าน wizard
+        wizard = self.env['pos.lite.return.wizard'].create({
+            'order_id': original.id,
+        })
+        wizard._onchange_order_id()
+        # เติม return line ด้วย storable product
+        wizard.line_ids.write({
+            'returned_from_line_id': original.line_ids[0].id,
+        })
+        wizard.action_confirm()
+
+        return_order = self.env['pos.lite.order'].search([
+            ('return_of_order_id', '=', original.id),
+        ], limit=1)
+        self.assertTrue(return_order)
+        self.assertTrue(return_order.picking_id)
+        self.assertEqual(return_order.picking_id.picking_type_id, custom_return_type.id)
+        self.assertNotEqual(return_order.picking_id.picking_type_id, self.warehouse.in_type_id)
+
+
 # ─── Product name_search ────────────────────────────────────
 
 @tagged('-at_install', 'post_install')

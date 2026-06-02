@@ -70,6 +70,7 @@
         "views/account_payment_register_wizard_views.xml",
         "views/bill_display_wizard_views.xml",
         "views/bill_register_payment_wizard_views.xml",
+        "views/create_receipt_wizard_views.xml",
         "views/account_invoice_receipt_action.xml",
         "views/res_partner_receipt_action.xml",
         "views/res_config_settings_views.xml",

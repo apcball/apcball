@@ -148,9 +148,9 @@ class PosLiteReturnWizard(models.TransientModel):
             'product_id': l.product_id.id or l.order_line_id.product_id.id,
             'description': l.description or (l.order_line_id.product_id.display_name if l.order_line_id.product_id else l.product_id.display_name),
             'qty': l.qty,
-            'price_unit': l.price_unit,
-            'discount': l.discount,
-            'discount_type': l.discount_type,
+            'price_unit': l.order_line_id.price_subtotal / l.order_line_id.qty if l.order_line_id and l.order_line_id.qty else l.price_unit,
+            'discount': 0.0,
+            'discount_type': 'percent',
         }) for l in self.line_ids.filtered(lambda l: l.qty > 0)]
 
         # 1. Create Return Order (always)
@@ -163,6 +163,7 @@ class PosLiteReturnWizard(models.TransientModel):
         ])
         return_order = self.env['pos.lite.order'].create({
             'company_id': order.company_id.id,
+            'session_id': order.session_id.id if order.session_id else False,
             'channel': order.channel,
             'customer_name': order.customer_name,
             'partner_id': order.partner_id.id if order.partner_id else False,
@@ -204,6 +205,7 @@ class PosLiteReturnWizard(models.TransientModel):
             partner = self.exchange_partner_id or order.partner_id
             exchange_order = self.env['pos.lite.order'].create({
                 'company_id': order.company_id.id,
+                'session_id': order.session_id.id if order.session_id else False,
                 'channel': self.exchange_channel or order.channel,
                 'customer_name': partner.name if partner else order.customer_name,
                 'partner_id': partner.id if partner else False,

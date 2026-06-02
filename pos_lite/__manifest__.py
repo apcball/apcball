@@ -1,6 +1,6 @@
 {
     'name': 'POS Lite',
-    'version': '17.0.3.3.0',
+    'version': '17.0.3.5.0',
     'category': 'Sales',
     'summary': 'Lightweight form-based order entry for phone, LINE, and walk-in orders',
     'description': """
@@ -37,6 +37,7 @@ Features:
         'security/security.xml',
         'security/ir.model.access.csv',
         'data/sequence_data.xml',
+        'data/migration_fix_return_session.xml',
         'report/receipt_report.xml',
         'report/pos_receipt_report.xml',
         'views/pos_order_view.xml',
@@ -48,6 +49,7 @@ Features:
         'views/product_product_view.xml',
         'wizard/payment_wizard_view.xml',
         'wizard/return_wizard_view.xml',
+        'wizard/start_sale_wizard_view.xml',
     ],
     'assets': {
         'web.report_assets_common': [

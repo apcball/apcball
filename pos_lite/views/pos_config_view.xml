@@ -41,6 +41,12 @@
                             <field name="employee_id"/>
                         </group>
                     </group>
+                    <group string="Stock Operation">
+                        <group>
+                            <field name="out_picking_type_id"/>
+                            <field name="return_picking_type_id"/>
+                        </group>
+                    </group>
                 </sheet>
             </form>
         </field>

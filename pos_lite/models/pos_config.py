@@ -43,6 +43,20 @@ class PosLiteConfig(models.Model):
         check_company=True,
         help='Default employee for new sessions created from this config.',
     )
+    out_picking_type_id = fields.Many2one(
+        'stock.picking.type', string='Delivery Operation Type',
+        domain="[('code', '=', 'outgoing'), ('company_id', '=', company_id)]",
+        check_company=True,
+        help='Stock operation type used for POS delivery orders. '
+             'Leave empty to use the default outgoing type from the warehouse.',
+    )
+    return_picking_type_id = fields.Many2one(
+        'stock.picking.type', string='Return Operation Type',
+        domain="[('code', '=', 'incoming'), ('company_id', '=', company_id)]",
+        check_company=True,
+        help='Stock operation type used for POS return orders. '
+             'Leave empty to use the default incoming type from the warehouse.',
+    )
 
     @api.model
     def get_default_config(self, company=None):

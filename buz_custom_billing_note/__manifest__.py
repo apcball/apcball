@@ -28,6 +28,7 @@
         'data/ir_cron.xml',
         'report/paperformat.xml',
         'wizards/add_bills_wizard_views.xml',
+        'wizards/create_billing_note_wizard_views.xml',
         'views/billing_note_views.xml',
         'views/account_move_views.xml',
         'report/billing_note_report.xml',

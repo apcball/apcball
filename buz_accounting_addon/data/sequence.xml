@@ -4,14 +4,14 @@
     <record id="seq_buz_accounting_addon" model="ir.sequence">
       <field name="name">buz Account Receipt</field>
       <field name="code">buz.account.receipt</field>
-      <field name="prefix">REC/%(year)s/</field>
+      <field name="prefix">RV/%(y)s/%(month)s/</field>
       <field name="padding">4</field>
     </record>
     
     <record id="seq_buz_accounting_addon_voucher" model="ir.sequence">
       <field name="name">buz Account Receipt Voucher</field>
       <field name="code">buz.account.receipt.voucher</field>
-      <field name="prefix">RV/%(year)s/</field>
+      <field name="prefix">RVE/%(year)s/</field>
       <field name="padding">4</field>
     </record>
     

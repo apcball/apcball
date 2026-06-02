@@ -356,7 +356,14 @@ class BillingNote(models.Model):
                 sequence_code = 'customer.billing.note'
             else:
                 sequence_code = 'vendor.billing.note'
-            vals['name'] = self.env['ir.sequence'].next_by_code(sequence_code) or '/'
+            # Use the document date to run sequence so prefix date placeholders are correct
+            doc_date = vals.get('date')
+            if doc_date:
+                vals['name'] = self.env['ir.sequence'].with_context(
+                    ir_sequence_date=doc_date,
+                ).next_by_code(sequence_code) or '/'
+            else:
+                vals['name'] = self.env['ir.sequence'].next_by_code(sequence_code) or '/'
         return super(BillingNote, self).create(vals)
 
     @api.onchange('invoice_ids')

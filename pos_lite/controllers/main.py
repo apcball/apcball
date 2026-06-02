@@ -56,6 +56,7 @@ class PosLiteController(http.Controller):
             if session_id:
                 session = request.env['pos.lite.session'].sudo().browse(int(session_id))
                 if session.exists() and session.company_id.id in request.env.companies.ids:
+                    # Only show employees assigned to this session
                     employees = session.employee_ids or session.employee_id
                     if employees:
                         result['employees'] = [{'id': e.id, 'name': e.name} for e in employees]
@@ -67,11 +68,7 @@ class PosLiteController(http.Controller):
                         p = session.config_id.pricelist_id
                         result['default_pricelist_id'] = p.id
                         result['default_pricelist_name'] = p.name
-            else:
-                employees = request.env['hr.employee'].search([
-                    ('company_id', '=', self._get_company_id()),
-                ], limit=50)
-                result['employees'] = [{'id': e.id, 'name': e.name} for e in employees]
+            # No session_id → no employees (terminal requires a session to start)
             return {'success': True, **result}
         except Exception as e:
             return {'success': False, 'error': str(e)}

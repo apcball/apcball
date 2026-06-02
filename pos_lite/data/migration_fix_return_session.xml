@@ -1,0 +1,16 @@
+<?xml version="1.1" encoding="utf-8"?>
+<odoo>
+    <!--
+        Data migration: patch return/exchange orders that were created
+        without session_id (pre-v17.0.3.5.0).
+        Links return orders to the same session as the original order.
+    -->
+    <function model="pos.lite.order" name="_migration_fix_return_session_id">
+        <value eval="[]"/>
+    </function>
+
+    <record id="migration_fix_return_session_id_done" model="ir.config_parameter">
+        <field name="key">pos_lite.migration_fix_return_session_id</field>
+        <field name="value">17.0.3.5.0</field>
+    </record>
+</odoo>

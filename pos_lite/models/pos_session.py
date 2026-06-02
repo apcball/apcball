@@ -61,6 +61,18 @@ class PosLiteSession(models.Model):
     payment_promptpay = fields.Monetary(compute='_compute_payment_breakdown', string='PromptPay')
     payment_other = fields.Monetary(compute='_compute_payment_breakdown', string='Other')
     note = fields.Text()
+    # Remember last sale selection per session
+    current_employee_id = fields.Many2one(
+        'hr.employee', string='พนักงานขายปัจจุบัน',
+        tracking=True, check_company=True,
+        domain="[('company_id', '=', company_id)]",
+    )
+    current_channel = fields.Selection([
+        ('phone', 'Phone'),
+        ('line', 'LINE'),
+        ('walkin', 'Walk-in'),
+        ('other', 'Other'),
+    ], string='ช่องทางล่าสุด', tracking=True)
 
     _sql_constraints = [
         ('name_unique', 'unique(name)', 'Session number must be unique.'),
@@ -96,8 +108,8 @@ class PosLiteSession(models.Model):
             session.amount_regular_sales = sum(regular.mapped('amount_total'))
             session.amount_exchange_sales = sum(exchanges.mapped('amount_total'))
             session.amount_total = sum(sales.mapped('amount_total'))
-            session.amount_untaxed = sum(sales.mapped('amount_untaxed'))
-            session.amount_tax = sum(sales.mapped('amount_tax'))
+            session.amount_untaxed = sum(sales.mapped('amount_untaxed')) - abs(sum(returns.mapped('amount_untaxed')))
+            session.amount_tax = sum(sales.mapped('amount_tax')) - abs(sum(returns.mapped('amount_tax')))
             session.amount_refund = abs(sum(returns.mapped('amount_total')))
             session.amount_net = session.amount_total - session.amount_refund
 
@@ -171,6 +183,58 @@ class PosLiteSession(models.Model):
     def action_print_session_summary(self):
         self.ensure_one()
         return self.env.ref('pos_lite.action_report_pos_lite_session').report_action(self)
+
+    def action_start_sale(self):
+        """เปิด wizard เลือกพนักงานขาย — ครั้งแรกหรือต้องการเปลี่ยน"""
+        self.ensure_one()
+        if self.state != 'opened':
+            raise UserError(_('Session must be opened to start selling.'))
+        employees = self.employee_ids
+        if self.employee_id and self.employee_id not in employees:
+            employees |= self.employee_id
+        if not employees:
+            raise UserError(_('No employees assigned to this session. Please add employees first.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('เลือกพนักงานขาย'),
+            'res_model': 'pos.lite.start.sale.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_session_id': self.id,
+            },
+        }
+
+    def action_new_order(self):
+        """สร้าง order ใหม่ — ใช้ค่าพนักงาน+ช่องทางที่จำไว้ใน session"""
+        self.ensure_one()
+        if self.state != 'opened':
+            raise UserError(_('Session must be opened to create orders.'))
+        if not self.current_employee_id:
+            # ยังไม่เคยเลือก → เปิด wizard
+            return self.action_start_sale()
+
+        config = self.config_id
+        ctx = {
+            'default_session_id': self.id,
+            'default_employee_id': self.current_employee_id.id,
+            'default_channel': self.current_channel or 'walkin',
+            'default_company_id': self.company_id.id,
+        }
+        if config:
+            ctx.update({
+                'default_warehouse_id': config.warehouse_id.id,
+                'default_pricelist_id': config.pricelist_id.id,
+            })
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('สั่งขาย — %s') % self.current_employee_id.name,
+            'res_model': 'pos.lite.order',
+            'view_mode': 'form',
+            'target': 'current',
+            'context': ctx,
+        }
 
     def action_open_terminal(self):
         self.ensure_one()

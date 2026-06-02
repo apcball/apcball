@@ -10,3 +10,4 @@ access_pos_lite_payment_wizard_user,pos_lite.payment.wizard user,model_pos_lite_
 access_pos_lite_return_wizard_user,pos_lite.return.wizard user,model_pos_lite_return_wizard,pos_lite.group_pos_lite_user,1,1,1,0
 access_pos_lite_return_wizard_line_user,pos_lite.return.wizard line user,model_pos_lite_return_wizard_line,pos_lite.group_pos_lite_user,1,1,1,0
 access_pos_lite_return_wizard_exchange_line_user,pos_lite.return.wizard.exchange.line user,model_pos_lite_return_wizard_exchange_line,pos_lite.group_pos_lite_user,1,1,1,0
+access_pos_lite_start_sale_wizard_user,pos_lite.start.sale.wizard user,model_pos_lite_start_sale_wizard,pos_lite.group_pos_lite_user,1,1,1,0

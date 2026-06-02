@@ -121,7 +121,7 @@
                                     <div class="info-box" style="height: 180px;">
                                         <div style="margin-bottom: 2px;">
                                             <strong style="width: 15%; display: inline-block;">นามผู้ซื้อ:</strong>
-                                            <span t-field="doc.partner_id.name"/>
+                                            <span t-field="doc.partner_id.name"/> <span t-field="doc.partner_id.branch"/>
                                         </div>
                                         <div style="margin-bottom: 2px;">
                                             <strong style="width: 10%; display: inline-block;">ที่อยู่:</strong>
@@ -132,13 +132,9 @@
                                         </div>
                                         <div style="margin-bottom: 2px;">
                                             <strong style="width: 15%; display: inline-block;">ชื่อผู้ติดต่อ:</strong>
-                                            <span t-esc="doc.partner_id.child_ids.filtered(lambda r: r.type == 'contact')[:1].name or ''"/>
-                                        </div>
-                                        <div style="margin-bottom: 2px;">
-                                            <div style="width: 60%;">
-                                                <strong style="width: 14%; display: inline-block;">โทร:</strong>
-                                                <span t-esc="doc.partner_id.phone or doc.partner_id.mobile or ''"/>
-                                            </div>
+                                            <span style="display: inline-block; width: 45%;" t-esc="doc.partner_id.child_ids.filtered(lambda r: r.type == 'contact')[:1].name or ''"/>
+                                            <strong style="width: 10%; display: inline-block;">โทร:</strong>
+                                            <span t-esc="doc.partner_id.phone or doc.partner_id.mobile or ''"/>
                                         </div>
                                     </div>
                                 </div>
@@ -225,7 +221,7 @@
                                             <span t-field="inv.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
                                         </td>
                                         <td style="text-align: center;">
-                                            <span t-esc="', '.join(inv.invoice_origin or []) if isinstance(inv.invoice_origin, list) else (inv.invoice_origin or '')"/>
+                                            <span t-esc="', '.join([r for r in set(inv.invoice_line_ids.mapped('sale_line_ids.order_id.client_order_ref')) if r])"/>
                                         </td>
                                         <td style="text-align: center;">
                                             <span t-field="inv.invoice_date_due" t-options='{"format": "dd/MM/yyyy"}'/>
@@ -253,7 +249,10 @@
                                 </tbody>
                                 <tfoot>
                                     <tr style="text-align: right;">
-                                        <td colspan="5">รวมทั้งสิ้น</td>
+                                        <td colspan="4" style="text-align: center;">
+                                            <span t-esc="'(' + doc.amount_total_words + ')' if doc.amount_total_words else ''"/>
+                                        </td>
+                                        <td>รวมทั้งสิ้น</td>
                                         <td><span t-esc="'{:,.2f}'.format(sum((doc.invoice_ids or []).mapped('amount_untaxed') or [0]))"/></td>
                                         <td><span t-esc="'{:,.2f}'.format(sum((doc.invoice_ids or []).mapped('amount_tax') or [0]))"/></td>
                                         <td><span t-esc="'{:,.2f}'.format(sum((doc.invoice_ids or []).mapped('amount_total') or [0]))"/></td>
@@ -272,7 +271,7 @@
                 <!-- เพิ่มหมายเหตุ -->
                         <t t-if="doc.note">
                             <div class="row mt-3">
-                                <div class="col-12">
+                                <div class="col-12" style="font-size: 18px;">
                                     <strong>หมายเหตุ:</strong>
                                     <span t-field="doc.note"/>
                                 </div>

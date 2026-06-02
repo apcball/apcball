@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_buz_create_receipt_wizard_form" model="ir.ui.view">
+        <field name="name">buz.create.receipt.wizard.form</field>
+        <field name="model">buz.create.receipt.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Receipt">
+                <group>
+                    <group string="Document Information">
+                        <field name="date"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_create_receipt"
+                            string="Create Receipt"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

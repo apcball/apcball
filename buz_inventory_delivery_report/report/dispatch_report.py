@@ -15,6 +15,13 @@ class DispatchReportPDF(models.AbstractModel):
         """
         docs = self.env['stock.picking'].browse(docids)
         
+        def get_product_description(product):
+            """Get description_sale from product, stripped of HTML tags"""
+            if product and product.description_sale:
+                desc = re.sub(r'<[^>]+>', '', product.description_sale).strip()
+                return desc
+            return ''
+
         def clean_product_name(product):
             name = product.name or ''
             default_code = getattr(product, 'default_code', False) or ''
@@ -27,6 +34,9 @@ class DispatchReportPDF(models.AbstractModel):
             if name.startswith('-'):
                 name = name[1:].strip()
 
+            # Prepend default_code to product name
+            if default_code:
+                return f"{default_code} {name}"
             return name
 
         def get_grouped_lines(picking):
@@ -40,22 +50,29 @@ class DispatchReportPDF(models.AbstractModel):
                     if getattr(move, 'sale_line_id', False) and move.sale_line_id:
                         group_key = f"sale_{move.sale_line_id.id}"
                         kit_product = move.sale_line_id.product_id
-                        kit_qty = move.sale_line_id.product_uom_qty
                         kit_uom = move.sale_line_id.product_uom.name
+                        sale_line = move.sale_line_id
                     else:
                         group_key = f"bom_{move.bom_line_id.bom_id.id}"
                         kit_product = move.bom_line_id.bom_id.product_tmpl_id
-                        kit_qty = 0
                         kit_uom = kit_product.uom_id.name
+                        sale_line = None
 
                     if group_key not in bom_grouped:
                         bom_grouped[group_key] = {
                             'product': kit_product,
-                            'qty': kit_qty,
+                            'qty': 0.0,
                             'uom': kit_uom,
-                            'moves': []
+                            'moves': [],
+                            'sale_line_id': sale_line,
                         }
                     bom_grouped[group_key]['moves'].append(move)
+                    # Set kit qty from the first component move only
+                    # (all components of the same kit share the same kit qty)
+                    if bom_grouped[group_key]['qty'] == 0:
+                        bl = move.bom_line_id
+                        if bl and bl.product_qty:
+                            bom_grouped[group_key]['qty'] = move.product_uom_qty / bl.product_qty
                 else:
                     normal_lines.append(move)
             
@@ -75,13 +92,22 @@ class DispatchReportPDF(models.AbstractModel):
                 code = prod.default_code or ''
                 qty_str = '{:,.2f}'.format(data_dict['qty']) if data_dict['qty'] else ''
                 
+                # Get description_picking from sale_line (has priority) or product
+                sale_line = data_dict.get('sale_line_id')
+                if sale_line and sale_line.name:
+                    description_picking = sale_line.name
+                else:
+                    description_picking = prod.description_picking or ''
+                
                 lines.append({
                     'type': 'bom',
                     'display_no': str(line_no),
                     'name': clean_product_name(prod),
+                    'product': prod,
                     'code': code,
                     'qty': qty_str,
                     'uom': data_dict['uom'] or '',
+                    'description_picking': description_picking,
                 })
                 line_no += 1
                 
@@ -101,5 +127,6 @@ class DispatchReportPDF(models.AbstractModel):
             'docs': docs,
             'get_grouped_lines': get_grouped_lines,
             'clean_product_name': clean_product_name,
+            'get_product_description': get_product_description,
             'data': data,
         }

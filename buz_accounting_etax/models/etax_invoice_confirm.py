@@ -173,8 +173,8 @@ class AccountMoveInherit(models.Model):
             'amount_vat': move.amount_tax,
             'net_amount_total': move.amount_total,
             'amount_total': move.amount_total,
-            'deposit': total_amount,
-            'notes': narration or "",
+            'deposit': total_amount
+            # 'notes': narration or "",
             # 'notes': invoice_type,
         })
 

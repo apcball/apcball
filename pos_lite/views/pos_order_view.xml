@@ -158,7 +158,7 @@
                         </group>
                         <group string="⚙ Session">
                             <field name="session_id" options="{'no_create': True}"/>
-                            <field name="employee_id" readonly="1"/>
+                            <field name="employee_id" readonly="state not in ('draft', 'held')"/>
                             <field name="company_id" invisible="1"/>
                             <field name="is_return" invisible="1"/>
                         </group>
