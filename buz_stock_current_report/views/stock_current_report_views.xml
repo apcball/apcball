@@ -113,36 +113,65 @@
                 <field name="total_value" groups="buz_stock_current_report.group_stock_cost_viewer"/>
                 <field name="unit_cost" groups="buz_stock_current_report.group_stock_cost_viewer"/>
                 <field name="uom_id"/>
-                <!-- transfer toolbar removed -->
                 <templates>
                     <t t-name="kanban-box">
-                        <div class="oe_kanban_card" t-att-data-record-id="record.id">
-                            <!-- selection checkbox removed -->
-                            <div class="oe_kanban_content">
-                                <div class="mb-2">
-                                    <strong><field name="product_id"/></strong>
-                                    <br/>
-                                    <small class="text-muted"><i class="fa fa-map-marker"/> <field name="location_id"/></small>
-                                    <t t-if="record.location_type_name.raw_value">
-                                        <span class="badge bg-secondary ms-1">
-                                            <field name="location_type_name"/>
-                                        </span>
-                                    </t>
+                        <div class="oe_kanban_card o_card_product" t-att-data-record-id="record.id">
+                            <div class="o_card_product_top">
+                                <!-- Product Image -->
+                                <div class="o_card_product_img_wrapper">
+                                    <img t-attf-src="/web/image/product.product/{{record.product_id.raw_value}}/image_128"
+                                         class="o_card_product_img"
+                                         alt="Product"
+                                         loading="lazy"/>
                                 </div>
-                                <div class="mb-2">
-                                    <div>
-                                        <span class="badge bg-primary">
-                                            <i class="fa fa-cube"/> <field name="quantity"/> <field name="uom_id"/>
-                                        </span>
+                                <!-- Product Info -->
+                                <div class="o_card_product_info">
+                                    <strong class="o_card_product_title"><field name="product_id"/></strong>
+                                    <div class="o_card_product_subtitle">
+                                        <i class="fa fa-map-marker o_text_muted_small"/> <field name="location_id"/>
+                                        <t t-if="record.location_type_name.raw_value">
+                                            <span class="o_badge_loc_type"><field name="location_type_name"/></span>
+                                        </t>
                                     </div>
-                                    <small class="d-block mt-1">Free: <strong><field name="free_to_use"/></strong></small>
+                                    <span class="o_badge_wh"><i class="fa fa-building-o"/> <field name="warehouse_id"/></span>
                                 </div>
-                                <div class="oe_kanban_bottom_left">
+                            </div>
+
+                            <!-- Free to Use — emphasis zone -->
+                            <div class="o_card_free_zone">
+                                <div class="o_free_label">Free to Use</div>
+                                <div class="o_free_value">
+                                    <field name="free_to_use" widget="float" digits="[16,2]"/>
+                                    <span class="o_free_uom"><field name="uom_id"/></span>
                                 </div>
-                                <div class="oe_kanban_bottom_right">
-                                    <a type="object" name="action_view_product_moves" class="oe_kanban_action_button" t-if="record.quantity.raw_value > 0">
-                                        <i class="fa fa-arrows-alt"/> Moves
-                                    </a>
+                            </div>
+
+                            <!-- Stats Row -->
+                            <div class="o_card_stats_row">
+                                <div class="o_stat_item o_stat_onhand">
+                                    <div class="o_stat_val"><field name="quantity" widget="float" digits="[16,2]"/></div>
+                                    <div class="o_stat_lbl">On Hand</div>
+                                </div>
+                                <div class="o_stat_item o_stat_incoming">
+                                    <div class="o_stat_val"><field name="incoming" widget="float" digits="[16,2]"/></div>
+                                    <div class="o_stat_lbl">Incoming</div>
+                                </div>
+                                <div class="o_stat_item o_stat_outgoing">
+                                    <div class="o_stat_val"><field name="outgoing" widget="float" digits="[16,2]"/></div>
+                                    <div class="o_stat_lbl">Outgoing</div>
+                                </div>
+                            </div>
+
+                            <!-- Footer Actions -->
+                            <div class="o_card_footer">
+                                <a type="object" name="action_view_product_moves"
+                                   class="o_btn_moves"
+                                   t-if="record.quantity.raw_value > 0">
+                                    <i class="fa fa-arrows-alt"/> Stock Moves
+                                </a>
+                                <div class="o_card_value" groups="buz_stock_current_report.group_stock_cost_viewer">
+                                    <span class="o_val_label">Value</span>
+                                    <span class="o_val_amount"><field name="total_value" widget="monetary"/></span>
                                 </div>
                             </div>
                         </div>
