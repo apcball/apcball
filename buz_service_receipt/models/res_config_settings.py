@@ -13,3 +13,10 @@ class ResConfigSettings(models.TransientModel):
         readonly=False,
         help='Employees who should receive service receipt calendar appointments automatically.',
     )
+    service_receipt_default_team_id = fields.Many2one(
+        'service.team',
+        related='company_id.service_receipt_default_team_id',
+        string='Default Service Team',
+        readonly=False,
+        help='Default team assigned to new service receipts.',
+    )

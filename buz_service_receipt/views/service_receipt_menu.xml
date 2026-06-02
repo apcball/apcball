@@ -17,4 +17,11 @@
               parent="menu_service_receipt_root"
               sequence="20"
               action="action_service_receipt_calendar"/>
+
+    <menuitem id="menu_service_team"
+              name="Service Teams"
+              parent="menu_service_receipt_root"
+              sequence="30"
+              action="action_service_team"
+              groups="buz_service_receipt.group_service_receipt_manager"/>
 </odoo>

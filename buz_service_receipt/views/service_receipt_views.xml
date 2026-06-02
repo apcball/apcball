@@ -10,6 +10,7 @@
                 <field name="partner_id"/>
                 <field name="service_date"/>
                 <field name="schedule_start"/>
+                <field name="team_id"/>
                 <field name="technician_ids" widget="many2many_tags"/>
                 <field name="state"/>
             </tree>
@@ -112,7 +113,8 @@
                                 <field name="invoice_status" string="สถานะวางบิล" readonly="1"/>
                                 <field name="invoice_id" string="ใบแจ้งหนี้" readonly="1"/>
                             </group>
-                            <group string="ตารางนัดหมายช่าง">
+                            <group string="ทีมบริการ">
+                                <field name="team_id" string="ทีม" options="{'no_create': True}"/>
                                 <field name="technician_ids" string="ช่างผู้รับผิดชอบ" widget="many2many_tags"/>
                                 <field name="service_date" string="วันที่เข้าบริการ"/>
                                 <field name="service_time" string="เวลาเข้าบริการ" widget="float_time"/>
@@ -321,7 +323,8 @@
                                 <field name="invoice_status" readonly="1"/>
                                 <field name="invoice_id" readonly="1"/>
                             </group>
-                            <group string="Technician Schedule">
+                            <group string="Service Team">
+                                <field name="team_id" options="{'no_create': True}"/>
                                 <field name="technician_ids" widget="many2many_tags"/>
                                 <field name="service_date"/>
                                 <field name="service_time" widget="float_time"/>
@@ -537,10 +540,12 @@
                 <field name="requester_name"/>
                 <field name="partner_id"/>
                 <field name="technician_ids"/>
+                <field name="team_id"/>
                 <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
                 <filter string="Confirmed" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
                 <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
                 <group expand="0" string="Group By">
+                    <filter string="Team" name="group_team" context="{'group_by': 'team_id'}"/>
                     <filter string="Technician" name="group_technician" context="{'group_by': 'technician_id'}"/>
                     <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
                     <filter string="Service Date" name="group_service_date" context="{'group_by': 'service_date'}"/>
@@ -556,14 +561,14 @@
             <calendar string="Service Schedule"
                       date_start="schedule_start"
                       date_stop="schedule_end"
-                      color="technician_id"
+                      color="team_id"
                       mode="week"
                       quick_create="false"
                       event_open_popup="true">
                 <field name="name"/>
                 <field name="requester_name"/>
                 <field name="partner_id"/>
-                <field name="technician_id" filters="1"/>
+                <field name="team_id" filters="1"/>
                 <field name="state" filters="1"/>
             </calendar>
         </field>

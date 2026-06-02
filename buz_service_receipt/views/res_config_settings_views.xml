@@ -7,6 +7,12 @@
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
                 <app string="Service Receipt" name="buz_service_receipt" groups="buz_service_receipt.group_service_receipt_manager">
+                    <block title="Team Configuration">
+                        <setting string="Default Service Team"
+                                 help="Default team assigned to new service receipts.">
+                            <field name="service_receipt_default_team_id"/>
+                        </setting>
+                    </block>
                     <block title="Calendar Sync">
                         <setting string="Additional Employees for Calendar Sync"
                                  help="Employees selected here will be added to every service receipt appointment event.">

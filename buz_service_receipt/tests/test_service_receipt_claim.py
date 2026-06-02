@@ -5,6 +5,62 @@ from odoo.tests import tagged, TransactionCase
 
 
 @tagged('-at_install', 'post_install')
+class TestServiceTeam(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user1 = cls.env['res.users'].create({
+            'name': 'Test Technician 1 - Team',
+            'login': 'test_tech1_team@test.com',
+            'groups_id': [(5, 0, 0)],
+        })
+        cls.user2 = cls.env['res.users'].create({
+            'name': 'Test Technician 2 - Team',
+            'login': 'test_tech2_team@test.com',
+            'groups_id': [(5, 0, 0)],
+        })
+        cls.team = cls.env['service.team'].create({
+            'name': 'Test Service Team',
+            'member_ids': [(6, 0, [cls.user1.id, cls.user2.id])],
+        })
+        cls.partner = cls.env['res.partner'].create({
+            'name': 'Test Team Customer',
+            'phone': '0812345678',
+        })
+
+    def test_01_team_onchange_fills_technicians(self):
+        """Selecting a team auto-fills technician_ids via onchange."""
+        receipt = self.env['service.receipt'].with_context(tracking_disable=True).new({
+            'partner_id': self.partner.id,
+            'request_date': fields.Date.today(),
+        })
+        self.assertFalse(receipt.technician_ids)
+        receipt.update({'team_id': self.team.id})
+        receipt._onchange_team_id()
+        self.assertEqual(set(receipt.technician_ids.ids), {self.user1.id, self.user2.id})
+
+    def test_02_team_name_unique(self):
+        """Cannot create two teams with the same name."""
+        import time
+        team_name = 'Unique Team Name Test %s' % time.time()
+        self.env['service.team'].create({'name': team_name})
+        with self.assertRaises(Exception):
+            self.env['service.team'].create({'name': team_name})
+
+    def test_03_team_on_receipt(self):
+        """Team is stored and can be searched."""
+        receipt = self.env['service.receipt'].with_context(tracking_disable=True).create({
+            'partner_id': self.partner.id,
+            'team_id': self.team.id,
+            'request_date': fields.Date.today(),
+        })
+        self.assertEqual(receipt.team_id, self.team)
+        found = self.env['service.receipt'].search([('team_id', '=', self.team.id)])
+        self.assertIn(receipt, found)
+
+
+@tagged('-at_install', 'post_install')
 class TestServiceReceiptClaim(TransactionCase):
 
     @classmethod

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_service_team_form" model="ir.ui.view">
+        <field name="name">service.team.form</field>
+        <field name="model">service.team</field>
+        <field name="arch" type="xml">
+            <form string="Service Team">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Team Name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="member_ids" widget="many2many_tags"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_service_team_tree" model="ir.ui.view">
+        <field name="name">service.team.tree</field>
+        <field name="model">service.team</field>
+        <field name="arch" type="xml">
+            <tree string="Service Teams">
+                <field name="name"/>
+                <field name="member_ids" widget="many2many_tags"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_service_team" model="ir.actions.act_window">
+        <field name="name">Service Teams</field>
+        <field name="res_model">service.team</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create your first service team</p>
+            <p>Define teams to group technicians for service scheduling.</p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>buz_service_receipt — Workflow Flow</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; color: #333; padding: 24px; }
+  h1 { text-align: center; font-size: 22px; margin-bottom: 6px; color: #1a1a2e; }
+  .subtitle { text-align: center; font-size: 13px; color: #888; margin-bottom: 32px; }
+
+  .container { max-width: 960px; margin: 0 auto; }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 28px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .legend-color { width: 14px; height: 14px; border-radius: 3px; }
+
+  /* Section */
+  .flow-section { margin-bottom: 28px; }
+  .flow-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; padding: 8px 14px; border-radius: 6px; }
+  .flow-title.claim { background: #e8f4fd; color: #1565c0; border-left: 4px solid #1565c0; }
+  .flow-title.charge { background: #fff3e0; color: #e65100; border-left: 4px solid #e65100; }
+  .flow-title.common { background: #f3e5f5; color: #6a1b9a; border-left: 4px solid #6a1b9a; }
+
+  /* Flow row */
+  .flow { display: flex; align-items: flex-start; justify-content: center; flex-wrap: wrap; gap: 0; padding: 10px 0; }
+
+  /* Step */
+  .step { display: flex; flex-direction: column; align-items: center; min-width: 110px; }
+  .box { border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 600; text-align: center; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; box-shadow: 0 2px 4px rgba(0,0,0,.08); width: 120px; }
+  .box .label { font-size: 12px; font-weight: 700; line-height: 1.3; }
+  .box .sublabel { font-size: 10px; font-weight: 400; opacity: 0.85; }
+  .box.state-draft { background: #eceff1; color: #546e7a; border: 1.5px solid #b0bec5; }
+  .box.state-confirmed { background: #e3f2fd; color: #1565c0; border: 1.5px solid #64b5f6; }
+  .box.state-return { background: #fff3e0; color: #e65100; border: 1.5px solid #ffb74d; }
+  .box.state-replacement { background: #fce4ec; color: #c62828; border: 1.5px solid #f48fb1; }
+  .box.state-waiting { background: #f3e5f5; color: #6a1b9a; border: 1.5px solid #ce93d8; }
+  .box.state-done { background: #e8f5e9; color: #2e7d32; border: 1.5px solid #81c784; }
+  .box.state-cancel { background: #ffebee; color: #b71c1c; border: 1.5px solid #ef9a9a; }
+  .box.state-invoice { background: #e0f2f1; color: #00695c; border: 1.5px solid #80cbc4; }
+  .box.state-so { background: #fff8e1; color: #f57f17; border: 1.5px solid #ffe082; }
+  .box.action { background: #f5f5f5; color: #444; border: 1.5px dashed #aaa; border-radius: 20px; min-height: 44px; width: 110px; margin-top: 6px; margin-bottom: 2px; }
+
+  /* Arrow */
+  .arrow { display: flex; align-items: center; justify-content: center; font-size: 20px; color: #aaa; padding: 0 4px; margin-top: 14px; flex-shrink: 0; }
+  .arrow.down { width: 100%; font-size: 22px; margin: 0; padding: 4px 0; }
+
+  /* Branch */
+  .branch { display: flex; gap: 32px; justify-content: flex-start; position: relative; padding-left: 60px; }
+  .branch-lane { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .branch-label { font-size: 11px; color: #888; margin-bottom: 8px; text-align: center; font-style: italic; }
+  .connector { display: flex; justify-content: center; width: 100%; margin: 4px 0; }
+  .branch::before { content: ''; position: absolute; top: -8px; bottom: 0; left: calc(60px + 60px); width: 2px; background: #ddd; }
+  .branch::after { content: ''; position: absolute; top: -8px; left: calc(60px + 60px); width: calc(100% - 120px - 60px); height: 2px; background: #ddd; }
+
+  /* Action buttons below steps */
+  .action-row { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 6px; }
+
+  /* Summary table */
+  .summary-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .summary-table th, .summary-table td { padding: 8px 12px; border: 1px solid #e0e0e0; font-size: 12px; text-align: left; }
+  .summary-table th { background: #f5f5f5; font-weight: 700; }
+  .summary-table tr:nth-child(even) { background: #fafafa; }
+
+  /* States reference */
+  .states-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 12px; }
+  .state-item { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; font-size: 12px; }
+  .state-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .state-name { font-weight: 600; }
+  .state-meaning { color: #666; font-size: 11px; }
+
+  @media (max-width: 768px) {
+    .flow { flex-direction: column; align-items: center; }
+    .arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>buz_service_receipt — Workflow</h1>
+<p class="subtitle">กระบวนการทำงานระบบรับบริการ / เคลมสินค้า / คิดค่าบริการ</p>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-color" style="background:#eceff1;border:1.5px solid #b0bec5;"></div>Draft</div>
+  <div class="legend-item"><div class="legend-color" style="background:#e3f2fd;border:1.5px solid #64b5f6;"></div>Confirmed</div>
+  <div class="legend-item"><div class="legend-color" style="background:#fff3e0;border:1.5px solid #ffb74d;"></div>Product Return</div>
+  <div class="legend-item"><div class="legend-color" style="background:#fce4ec;border:1.5px solid #f48fb1;"></div>Replacement Delivery</div>
+  <div class="legend-item"><div class="legend-color" style="background:#f3e5f5;border:1.5px solid #ce93d8;"></div>Waiting</div>
+  <div class="legend-item"><div class="legend-color" style="background:#fff8e1;border:1.5px solid #ffe082;"></div>SO / คิดเงิน</div>
+  <div class="legend-item"><div class="legend-color" style="background:#e8f5e9;border:1.5px solid #81c784;"></div>Done</div>
+  <div class="legend-item"><div class="legend-color" style="background:#ffebee;border:1.5px solid #ef9a9a;"></div>Cancel</div>
+</div>
+
+<!-- ===== COMMON: Draft → Confirmed ===== -->
+<div class="flow-section">
+  <div class="flow-title common">📋 ขั้นตอนเริ่มต้น (ทุกกรณี)</div>
+  <div class="flow">
+    <div class="step">
+      <div class="box state-draft"><span class="label">Draft</span><span class="sublabel">สร้างใบรับบริการ</span></div>
+      <div class="action-row">
+        <div class="box action">กรอกข้อมูล<br>พนักงานเทคนิค<br>สินค้า</div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="box state-confirmed"><span class="label">Confirmed</span><span class="sublabel">ยืนยันใบรับบริการ</span></div>
+      <div class="action-row">
+        <div class="box action">กด Confirm</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BRANCH ===== -->
+<div class="flow-section">
+  <div class="flow-title claim">🔄 เส้นทางที่ 1: Claim Flow (เคลมสินค้า / เปลี่ยนสินค้า)</div>
+  <div class="flow" style="padding-top:4px;">
+    <div class="step">
+      <div class="box state-confirmed"><span class="label">Confirmed</span></div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="box state-return"><span class="label">Product Return</span><span class="sublabel">รับสินค้าคืน</span></div>
+      <div class="action-row">
+        <div class="box action">กด Start Claim<br>→ สร้าง Return Picking<br>(incoming)</div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="box state-waiting"><span class="label">Waiting Replacement</span><span class="sublabel">รอสินค้าเปลี่ยน</span></div>
+      <div class="action-row">
+        <div class="box action">Validate<br>Return Picking</div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="box state-replacement"><span class="label">Replacement Delivery</span><span class="sublabel">ส่งสินค้าเปลี่ยน</span></div>
+      <div class="action-row">
+        <div class="box action">สร้าง Replacement<br>Picking (outgoing)</div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="box state-done"><span class="label">Done</span><span class="sublabel">เสร็จสิ้น</span></div>
+      <div class="action-row">
+        <div class="box action">Validate<br>Replacement Picking</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="flow-section">
+  <div class="flow-title charge">💰 เส้นทางที่ 2: Charge Customer (คิดค่าบริการ / นอกประกัน)</div>
+  <div class="flow" style="padding-top:4px;">
+    <div class="step">
+      <div class="box state-confirmed"><span class="label">Confirmed</span></div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="box state-waiting"><span class="label">Waiting Invoice</span><span class="sublabel">รอคิดค่าบริการ</span></div>
+      <div class="action-row">
+        <div class="box action">กด Charge Customer<br>→ service_case_type<br>= out_warranty</div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="box state-so"><span class="label">Create Sale Order</span><span class="sublabel">สร้าง SO</span></div>
+      <div class="action-row">
+        <div class="box action">กด Create SO<br>→ สร้าง sale.order<br>จาก billable lines</div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="box state-done"><span class="label">Done</span><span class="sublabel">เสร็จสิ้น</span></div>
+      <div class="action-row">
+        <div class="box action">กด Done</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CANCEL ===== -->
+<div class="flow-section">
+  <div class="flow-title common">❌ กรณียกเลิก</div>
+  <div class="flow" style="padding-top:4px; justify-content: center;">
+    <div class="step">
+      <div class="box state-confirmed"><span class="label">Any State</span><span class="sublabel">ระหว่างทำงาน</span></div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="box state-cancel"><span class="label">Cancelled</span><span class="sublabel">ยกเลิก</span></div>
+      <div class="action-row">
+        <div class="box action">กด Cancel</div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="box state-draft"><span class="label">Draft</span><span class="sublabel">กลับไปแก้ไข</span></div>
+      <div class="action-row">
+        <div class="box action">กด Reset to Draft</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== STATES REFERENCE ===== -->
+<div class="flow-section">
+  <div class="flow-title common">📌 สรุป States ทั้งหมด</div>
+  <div class="states-grid">
+    <div class="state-item" style="background:#eceff1;">
+      <div class="state-dot" style="background:#78909c;"></div>
+      <div><div class="state-name">draft</div><div class="state-meaning">ฉบับร่าง — กรอกข้อมูล</div></div>
+    </div>
+    <div class="state-item" style="background:#e3f2fd;">
+      <div class="state-dot" style="background:#1e88e5;"></div>
+      <div><div class="state-name">confirmed</div><div class="state-meaning">ยืนยันแล้ว — เลือกเส้นทาง</div></div>
+    </div>
+    <div class="state-item" style="background:#fff3e0;">
+      <div class="state-dot" style="background:#fb8c00;"></div>
+      <div><div class="state-name">product_return</div><div class="state-meaning">รับสินค้าคืนจากลูกค้า</div></div>
+    </div>
+    <div class="state-item" style="background:#fce4ec;">
+      <div class="state-dot" style="background:#e91e63;"></div>
+      <div><div class="state-name">replacement_delivery</div><div class="state-meaning">ส่งสินค้าเปลี่ยนให้ลูกค้า</div></div>
+    </div>
+    <div class="state-item" style="background:#f3e5f5;">
+      <div class="state-dot" style="background:#ab47bc;"></div>
+      <div><div class="state-name">waiting_replacement</div><div class="state-meaning">รอสินค้าเปลี่ยน</div></div>
+    </div>
+    <div class="state-item" style="background:#f3e5f5;">
+      <div class="state-dot" style="background:#8e24aa;"></div>
+      <div><div class="state-name">waiting_invoice</div><div class="state-meaning">รอคิดค่าบริการ</div></div>
+    </div>
+    <div class="state-item" style="background:#e8f5e9;">
+      <div class="state-dot" style="background:#43a047;"></div>
+      <div><div class="state-name">done</div><div class="state-meaning">เสร็จสิ้น</div></div>
+    </div>
+    <div class="state-item" style="background:#ffebee;">
+      <div class="state-dot" style="background:#e53935;"></div>
+      <div><div class="state-name">cancel</div><div class="state-meaning">ยกเลิก</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ACTIONS REFERENCE ===== -->
+<div class="flow-section">
+  <div class="flow-title claim">🔧 Actions ที่เกี่ยวข้อง (Claim Flow)</div>
+  <table class="summary-table">
+    <tr><th>Method</th><th>ปุ่ม / Trigger</th><th>สิ่งที่ทำ</th><th>State เปลี่ยนเป็น</th></tr>
+    <tr><td>action_confirm</td><td>Confirm</td><td>ยืนยันใบรับบริการ</td><td>confirmed</td></tr>
+    <tr><td>action_waiting_replacement</td><td>Start Claim</td><td>สร้าง claim_number, เข้าสู่ claim flow</td><td>product_return</td></tr>
+    <tr><td>action_create_return_picking</td><td>Create Return Picking</td><td>สร้าง stock.picking type incoming (รับคืน)</td><td>product_return</td></tr>
+    <tr><td>action_create_replacement_picking</td><td>Create Replacement</td><td>สร้าง stock.picking type outgoing (ส่งเปลี่ยน)</td><td>replacement_delivery</td></tr>
+    <tr><td>action_done</td><td>Done</td><td>ปิดงาน</td><td>done</td></tr>
+  </table>
+</div>
+
+<div class="flow-section">
+  <div class="flow-title charge">🔧 Actions ที่เกี่ยวข้อง (Charge Flow)</div>
+  <table class="summary-table">
+    <tr><th>Method</th><th>ปุ่ม / Trigger</th><th>สิ่งที่ทำ</th><th>State เปลี่ยนเป็น</th></tr>
+    <tr><td>action_confirm</td><td>Confirm</td><td>ยืนยันใบรับบริการ</td><td>confirmed</td></tr>
+    <tr><td>action_waiting_invoice</td><td>Charge Customer</td><td>ตั้ง charge_customer=True, case=out_warranty</td><td>waiting_invoice</td></tr>
+    <tr><td>action_create_sale_order</td><td>Create SO</td><td>สร้าง sale.order จาก billable lines</td><td>(คง state เดิม)</td></tr>
+    <tr><td>action_done</td><td>Done</td><td>ปิดงาน</td><td>done</td></tr>
+  </table>
+</div>
+
+<!-- ===== SMART BUTTONS ===== -->
+<div class="flow-section">
+  <div class="flow-title common">🔘 Smart Buttons บน Form</div>
+  <table class="summary-table">
+    <tr><th>Smart Button</th><th>Model</th><th>แสดงเมื่อ</th></tr>
+    <tr><td>Return Picking</td><td>stock.picking</td><td>มี return_picking_id</td></tr>
+    <tr><td>Replacement Delivery</td><td>stock.picking</td><td>มี replacement_picking_id</td></tr>
+    <tr><td>Total Pickings</td><td>stock.picking</td><td>มี picking ใดๆ</td></tr>
+    <tr><td>Sale Order</td><td>sale.order</td><td>มี sale_order_id</td></tr>
+    <tr><td>Customer Invoice</td><td>account.move</td><td>มี invoice_id</td></tr>
+  </table>
+</div>
+
+<!-- ===== STOCK FLOW ===== -->
+<div class="flow-section">
+  <div class="flow-title claim">📦 Stock Movement (Claim Flow)</div>
+  <div class="flow" style="padding-top:4px;">
+    <div class="step">
+      <div class="box state-return"><span class="label">Return Picking</span><span class="sublabel">incoming</span></div>
+      <div class="action-row">
+        <div class="box action">Customer<br>↓<br>Claim Return Location</div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="step">
+      <div class="box state-replacement"><span class="label">Replacement Picking</span><span class="sublabel">outgoing</span></div>
+      <div class="action-row">
+        <div class="box action">Warehouse Stock<br>↓<br>Customer</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p style="text-align:center;font-size:11px;color:#aaa;margin-top:32px;">
+  buz_service_receipt v17.0.1.0.0 — Generated from source code
+</p>
+
+</div>
+</body>
+</html>

@@ -14,3 +14,8 @@ class ResCompany(models.Model):
         string='Service Receipt Calendar Employees',
         help='Employees who should be added automatically to service receipt calendar events.',
     )
+    service_receipt_default_team_id = fields.Many2one(
+        'service.team',
+        string='Default Service Team',
+        help='Default team assigned to new service receipts.',
+    )

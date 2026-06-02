@@ -71,6 +71,11 @@ class ServiceReceipt(models.Model):
     service_time = fields.Float(string='Service Time')
     schedule_start = fields.Datetime(string='Schedule Start', tracking=True)
     schedule_end = fields.Datetime(string='Schedule End', tracking=True)
+    team_id = fields.Many2one(
+        'service.team',
+        string='Team',
+        tracking=True,
+    )
     technician_ids = fields.Many2many(
         'res.users',
         'service_receipt_res_users_rel',
@@ -282,6 +287,11 @@ class ServiceReceipt(models.Model):
                 self.requester_phone = self.partner_id.phone or self.partner_id.mobile
             if not self.service_address:
                 self.service_address = self.partner_id.contact_address
+
+    @api.onchange('team_id')
+    def _onchange_team_id(self):
+        if self.team_id:
+            self.technician_ids = [(6, 0, self.team_id.member_ids.ids)]
 
     @api.onchange('service_date', 'service_time')
     def _onchange_service_schedule(self):

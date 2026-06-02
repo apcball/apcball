@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'BUZ Service Receipt',
-    'version': '17.0.1.1.0',
+    'version': '17.0.1.2.0',
     'category': 'Services',
     'summary': 'Service receipt form with PDF print and technician calendar sync',
     'author': 'BUZ',
@@ -28,6 +28,7 @@
         'report/service_repair_notification_report.xml',
         'views/res_config_settings_views.xml',
         'views/service_receipt_views.xml',
+        'views/service_team_views.xml',
         'views/service_receipt_menu.xml',
         'views/service_claim_views.xml',
     ],
