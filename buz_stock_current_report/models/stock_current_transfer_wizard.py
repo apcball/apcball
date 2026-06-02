@@ -76,11 +76,18 @@ class StockCurrentTransferWizard(models.TransientModel):
                 
                 source_locations.add(location_id)
                 
+                # Look up actual available quantity from stock quants
+                actual_qty = self.env['stock.quant']._get_available_quantity(
+                    product_id, location_id
+                ) if product_id and location_id else 0.0
+                
+                context_qty = product_data.get('quantity', 0)
+                
                 line_vals = {
                     'product_id': product_id,
                     'source_location_id': location_id,
-                    'available_quantity': product_data.get('quantity', 0),
-                    'quantity_to_transfer': product_data.get('quantity', 0),
+                    'available_quantity': actual_qty,
+                    'quantity_to_transfer': min(context_qty, actual_qty) if context_qty else actual_qty,
                     'uom_id': product_data.get('uomId') or product_data.get('uom_id'),
                 }
                 _logger.info(f"Created line values: {line_vals}")
