@@ -3,6 +3,7 @@
     <menuitem id="menu_service_receipt_root"
               name="After_Service"
               sequence="30"
+              web_icon="buz_service_receipt,static/description/icon.png"
               groups="buz_service_receipt.group_service_receipt_user"/>
 
     <menuitem id="menu_service_receipt"

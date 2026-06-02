@@ -282,7 +282,7 @@
     <!-- ====== Claim Menu ====== -->
     <menuitem id="menu_service_claim"
               name="Claims"
-              parent="buz_service_receipt.menu_service_receipt_root"
+              parent="menu_service_receipt_root"
               sequence="15"
               action="action_service_claim"/>
 
