@@ -123,6 +123,9 @@
                 <img src="/buz_delivery_report/static/img/LOGO MOGEN.png"
                      style="width: 150px; height: auto; object-fit: contain;"
                      alt="Company Logo"/>
+                <div style="font-size: 16px; margin-top: 2px;">
+                  หน้า/PAGE: <span t-esc="page_num + 1"/> / <span t-esc="total_pages"/>
+                </div>
               </div>
             </div>
 
@@ -192,10 +195,6 @@
                             <strong style="width: 20%; display: inline-block;">ที่อยู่จัดส่ง:</strong>
                             <span t-field="doc.location_dest_id.warehouse_id.name"/>
                         </div>
-                        <div class="mb-2">
-                            <strong style="width: 20%; display: inline-block;">หน้า/PAGE:</strong>
-                            <span t-esc="page_num + 1"/> / <span t-esc="total_pages"/>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -256,9 +255,10 @@
             )"/>
             <t t-set="vat_amount" t-value="subtotal * 0.07"/>
             <t t-set="total_amount" t-value="subtotal + vat_amount"/>
-            <div class="row mt-3">
-                <div class="col-6">
-                    <div>
+            <div class="row mt-3" style="display: flex; align-items: stretch;">
+                <!-- Left: Note + Amount in Text -->
+                <div class="col-6" style="display: flex; flex-direction: column;">
+                    <div class="info-box" style="flex: 1;">
                         <div class="row">
                             <div class="col-12">
                                 <strong>หมายเหตุ / Note:</strong>
@@ -268,10 +268,18 @@
                                 <span t-else="">-</span>
                             </div>
                         </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <strong>(</strong>
+                                <span t-esc="doc.amount_to_text_th(total_amount)"/>
+                                <strong>)</strong>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="col-6">
-                    <div class="info-box" style="height: 100%;">
+                <!-- Right: Subtotal / VAT / Total -->
+                <div class="col-6" style="display: flex; flex-direction: column;">
+                    <div class="info-box" style="flex: 1;">
                         <div class="row">
                             <div class="col-6">
                                 <strong>จำนวนเงิน / Subtotal:</strong>
@@ -296,11 +304,6 @@
                                 <strong>
                                     <span t-esc="total_amount" t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
                                 </strong>
-                            </div>
-                            <div class="col-12 mt-2">
-                                <strong>(</strong>
-                                <span t-esc="doc.amount_to_text_th(total_amount)"/>
-                                <strong>)</strong>
                             </div>
                         </div>
                     </div>
