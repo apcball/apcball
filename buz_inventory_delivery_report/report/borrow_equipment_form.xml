@@ -245,7 +245,7 @@
                                                <tr class="data-row" style="font-size: 20px;">
                                                    <td style="text-align: center;"><span t-esc="current_line_number"/></td>
                                                    <td><span t-field="move.product_id.default_code"/></td>
-                                                   <td><span t-field="move.product_id"/></td>
+                                                   <td><span t-field="move.description_picking"/></td>
                                                    <td style="text-align: center;">
                                                        <t t-set="move_qty" t-value="move.product_uom_qty"/>
                                                        <span t-esc="'%.0f' % move_qty"/>

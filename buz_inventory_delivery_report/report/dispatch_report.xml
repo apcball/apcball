@@ -101,7 +101,7 @@
                     </style>
                     
                     <!-- Document Number - เลขที่เอกสาร -->
-                    <div t-attf-style="position: absolute; top: {{config.doc_number_top * px_to_mm}}mm; left: {{config.doc_number_left * px_to_mm}}mm; white-space: nowrap; word-break: keep-all;" class="thai-text">
+                    <div t-attf-style="position: absolute; top: {{config.doc_number_top * px_to_mm}}mm; left: {{config.doc_number_left * px_to_mm}}mm; max-width: 50mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" class="thai-text">
                         <span t-field="o.name"/>
                     </div>
                     
@@ -111,7 +111,7 @@
                     </div>
                     
                     <!-- SO Number - เลขที่ SO -->
-                    <div t-attf-style="position: absolute; top: {{config.so_number_top * px_to_mm}}mm; left: {{config.so_number_left * px_to_mm}}mm; white-space: nowrap; word-break: keep-all;" class="thai-text">
+                    <div t-attf-style="position: absolute; top: {{config.so_number_top * px_to_mm}}mm; left: {{config.so_number_left * px_to_mm}}mm; max-width: 50mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" class="thai-text">
                         <t t-if="o.sale_id">
                             <span t-field="o.sale_id.name"/>
                         </t>
@@ -137,7 +137,7 @@
                     </div>
                     
                     <!-- Customer Address Line 1 - ที่อยู่บรรทัด 1 -->
-                    <div t-attf-style="position: absolute; top: {{config.customer_address_top * px_to_mm}}mm; left: {{config.customer_address_left * px_to_mm}}mm; width: 120mm; max-width: 120mm; white-space: nowrap; overflow: visible;" class="thai-text">
+                    <div t-attf-style="position: absolute; top: {{config.customer_address_top * px_to_mm}}mm; left: {{config.customer_address_left * px_to_mm}}mm; width: 120mm; max-width: 120mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" class="thai-text">
                         <t t-set="address_line1_parts" t-value="[]"/>
                         <t t-if="o.partner_id.street" t-set="address_line1_parts" t-value="address_line1_parts + [o.partner_id.street]"/>
                         <t t-if="o.partner_id.street2" t-set="address_line1_parts" t-value="address_line1_parts + [o.partner_id.street2]"/>
@@ -145,7 +145,7 @@
                     </div>
                     
                     <!-- Customer Address Line 2 - ที่อยู่บรรทัด 2 (อำเภอ จังหวัด รหัสไปรษณีย์) — ดึงจาก Delivery Address ในหน้า DO (buz_group_delivery) -->
-                    <div t-attf-style="position: absolute; top: {{customer_address_line2_top_px * px_to_mm}}mm; left: {{config.customer_address_line2_left * px_to_mm}}mm; width: 120mm; max-width: 120mm; white-space: nowrap; overflow: visible;" class="thai-text">
+                    <div t-attf-style="position: absolute; top: {{customer_address_line2_top_px * px_to_mm}}mm; left: {{config.customer_address_line2_left * px_to_mm}}mm; width: 120mm; max-width: 120mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" class="thai-text">
                         <t t-set="delivery_partner" t-value="o.partner_id"/>
                         <t t-set="address_parts" t-value="[]"/>
                         <t t-if="delivery_partner.city" t-set="address_parts" t-value="address_parts + [delivery_partner.city]"/>
@@ -187,7 +187,7 @@
                                 </div>
                                 
                                 <!-- Product Code - รหัสสินค้า -->
-                                <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_code_left * px_to_mm}}mm; white-space: nowrap; word-break: keep-all;">
+                                <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_code_left * px_to_mm}}mm; max-width: 30mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <span t-esc="(item['code'] or '')[:10]"/>
                                 </div>
                                 
@@ -221,19 +221,19 @@
                                 </div>
                                 
                                 <!-- Product Code - รหัสสินค้า -->
-                                <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_code_left * px_to_mm}}mm; white-space: nowrap; word-break: keep-all;">
+                                <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_code_left * px_to_mm}}mm; max-width: 30mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <span t-esc="(line.product_id.default_code or '')[:10]"/>
                                 </div>
                                 
                                 <!-- Product Name - ชื่อสินค้า -->
-                                <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_name_left * px_to_mm}}mm; max-width: 80mm; white-space: nowrap; overflow: visible;">
+                                <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_name_left * px_to_mm}}mm; max-width: 80mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <t t-if="item.get('is_component')">
-                                        <div style="padding-left: 10px; color: #000000ff;" t-esc="line.description_picking or clean_product_name(line.product_id)"/>
-                                        <div style="padding-left: 10px; color: #666666; font-size: 9px;" t-esc="get_product_description(line.product_id)"/>
+                                        <div style="padding-left: 10px; color: #000000ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" t-esc="line.description_picking or clean_product_name(line.product_id)"/>
+                                        <div style="padding-left: 10px; color: #666666; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" t-esc="get_product_description(line.product_id)"/>
                                     </t>
                                     <t t-else="">
-                                        <div t-esc="line.description_picking or clean_product_name(line.product_id)"/>
-                                        <div style="color: #666666; font-size: 9px;" t-esc="get_product_description(line.product_id)"/>
+                                        <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" t-esc="line.description_picking or clean_product_name(line.product_id)"/>
+                                        <div style="color: #666666; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" t-esc="get_product_description(line.product_id)"/>
                                     </t>
                                 </div>
                                 
