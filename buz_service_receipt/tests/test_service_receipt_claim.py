@@ -244,3 +244,129 @@ class TestServiceReceiptClaim(TransactionCase):
 
         receipt.action_draft()
         self.assertEqual(receipt.state, 'draft')
+
+
+@tagged('-at_install', 'post_install')
+class TestServiceReceiptPickingTypeConfig(TransactionCase):
+    """Test that company-level picking type config overrides warehouse defaults."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.partner = cls.env['res.partner'].create({
+            'name': 'Test Picking Type Customer',
+            'phone': '0899999999',
+        })
+        cls.product = cls.env['product.product'].create({
+            'name': 'Test Product - PickingType',
+            'type': 'product',
+            'taxes_id': [(5, 0, 0)],
+        })
+        cls.product_replacement = cls.env['product.product'].create({
+            'name': 'Test Replacement - PickingType',
+            'type': 'product',
+            'taxes_id': [(5, 0, 0)],
+        })
+
+        # Get warehouse for company
+        cls.warehouse = cls.env['stock.warehouse'].search(
+            [('company_id', '=', cls.env.company.id)], limit=1,
+        )
+
+        # Create custom picking types for testing
+        cls.custom_return_type = cls.env['stock.picking.type'].create({
+            'name': 'Claim Return',
+            'code': 'incoming',
+            'warehouse_id': cls.warehouse.id,
+            'sequence_code': 'CLM/RT',
+            'company_id': cls.env.company.id,
+        })
+        cls.custom_replacement_type = cls.env['stock.picking.type'].create({
+            'name': 'Claim Replacement',
+            'code': 'outgoing',
+            'warehouse_id': cls.warehouse.id,
+            'sequence_code': 'CLM/RP',
+            'company_id': cls.env.company.id,
+        })
+
+    def _create_receipt(self):
+        return self.env['service.receipt'].with_context(tracking_disable=True).create({
+            'partner_id': self.partner.id,
+            'service_case_type': 'replacement',
+            'request_date': fields.Date.today(),
+            'line_ids': [(0, 0, {
+                'product_id': self.product.id,
+                'quantity': 1.0,
+                'resolution_type': 'replace',
+                'replacement_product_id': self.product_replacement.id,
+                'replacement_qty': 1.0,
+            })],
+        })
+
+    def test_01_default_picking_type(self):
+        """Without config, falls back to warehouse picking types."""
+        receipt = self._create_receipt()
+        receipt.action_confirm()
+        receipt.action_waiting_replacement()
+
+        return_type = receipt._get_claim_picking_type('incoming')
+        self.assertEqual(return_type.code, 'incoming')
+
+        replacement_type = receipt._get_claim_picking_type('outgoing')
+        self.assertEqual(replacement_type.code, 'outgoing')
+
+    def test_02_custom_return_picking_type(self):
+        """Configured return picking type is used for return pickings."""
+        # Set config
+        self.env.company.service_receipt_return_picking_type_id = self.custom_return_type
+
+        receipt = self._create_receipt()
+        receipt.action_confirm()
+        receipt.action_waiting_replacement()
+        receipt.action_create_return_picking()
+
+        self.assertEqual(
+            receipt.return_picking_id.picking_type_id,
+            self.custom_return_type,
+        )
+        # Document name should use the custom sequence code
+        self.assertTrue(receipt.return_picking_id.name)
+
+    def test_03_custom_replacement_picking_type(self):
+        """Configured replacement picking type is used for replacement deliveries."""
+        # Set config
+        self.env.company.service_receipt_replacement_picking_type_id = self.custom_replacement_type
+
+        receipt = self._create_receipt()
+        receipt.action_confirm()
+        receipt.action_waiting_replacement()
+        receipt.action_create_return_picking()
+
+        # Validate return first
+        move = receipt.return_picking_id.move_ids
+        move._set_quantity_done(move.product_uom_qty)
+        receipt.return_picking_id.button_validate()
+
+        receipt.action_create_replacement_picking()
+
+        self.assertEqual(
+            receipt.replacement_picking_id.picking_type_id,
+            self.custom_replacement_type,
+        )
+
+    def test_04_config_via_settings(self):
+        """Picking type can be set via res.config.settings."""
+        settings = self.env['res.config.settings'].create({
+            'service_receipt_return_picking_type_id': self.custom_return_type.id,
+            'service_receipt_replacement_picking_type_id': self.custom_replacement_type.id,
+        })
+        settings.execute()
+
+        self.assertEqual(
+            self.env.company.service_receipt_return_picking_type_id,
+            self.custom_return_type,
+        )
+        self.assertEqual(
+            self.env.company.service_receipt_replacement_picking_type_id,
+            self.custom_replacement_type,
+        )

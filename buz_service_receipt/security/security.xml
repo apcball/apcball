@@ -13,14 +13,14 @@
         <record id="rule_service_receipt_user" model="ir.rule">
             <field name="name">Service Receipt User Rule</field>
             <field name="model_id" ref="model_service_receipt"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="domain_force">[('company_id', 'in', allowed_company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_service_receipt_user'))]"/>
         </record>
 
         <record id="rule_service_receipt_line_user" model="ir.rule">
             <field name="name">Service Receipt Line User Rule</field>
             <field name="model_id" ref="model_service_receipt_line"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="domain_force">[('receipt_id.company_id', 'in', allowed_company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_service_receipt_user'))]"/>
         </record>
     </data>

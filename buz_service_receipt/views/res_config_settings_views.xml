@@ -13,6 +13,16 @@
                             <field name="service_receipt_default_team_id"/>
                         </setting>
                     </block>
+                    <block title="Picking Configuration">
+                        <setting string="Return Picking Type"
+                                 help="Operation type for receiving returned products from customers (claim). Determines the document sequence.">
+                            <field name="service_receipt_return_picking_type_id"/>
+                        </setting>
+                        <setting string="Replacement Picking Type"
+                                 help="Operation type for delivering replacement products to customers (claim). Determines the document sequence.">
+                            <field name="service_receipt_replacement_picking_type_id"/>
+                        </setting>
+                    </block>
                     <block title="Calendar Sync">
                         <setting string="Additional Employees for Calendar Sync"
                                  help="Employees selected here will be added to every service receipt appointment event.">

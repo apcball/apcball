@@ -20,3 +20,21 @@ class ResConfigSettings(models.TransientModel):
         readonly=False,
         help='Default team assigned to new service receipts.',
     )
+    service_receipt_return_picking_type_id = fields.Many2one(
+        'stock.picking.type',
+        related='company_id.service_receipt_return_picking_type_id',
+        string='Return Picking Type',
+        readonly=False,
+        domain="[('code', '=', 'incoming')]",
+        help='Operation type for receiving returned products from customers. '
+             'Controls the document sequence number used.',
+    )
+    service_receipt_replacement_picking_type_id = fields.Many2one(
+        'stock.picking.type',
+        related='company_id.service_receipt_replacement_picking_type_id',
+        string='Replacement Picking Type',
+        readonly=False,
+        domain="[('code', '=', 'outgoing')]",
+        help='Operation type for delivering replacement products to customers. '
+             'Controls the document sequence number used.',
+    )

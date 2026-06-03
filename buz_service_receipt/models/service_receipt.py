@@ -259,9 +259,10 @@ class ServiceReceipt(models.Model):
         for record in self:
             if record.technician_id:
                 if record.technician_id not in record.technician_ids:
-                    record.technician_ids = [(6, 0, [record.technician_id.id] + record.technician_ids.ids)]
+                    record.technician_ids = [fields.Command.link(record.technician_id.id)]
             else:
-                record.technician_ids = [(5, 0, 0)]
+                # Only clear if there are no technicians set — avoid data loss
+                pass
 
     @api.depends('invoice_id')
     def _compute_invoice_count(self):
@@ -352,14 +353,16 @@ class ServiceReceipt(models.Model):
         return record
 
     def write(self, vals):
+        # Handle claim number generation before super().write() to avoid nested write
         if vals.get('service_case_type') == 'replacement':
-            new_claim = False
-            for record in self:
-                if not record.claim_number or record.claim_number == 'New':
-                    if not new_claim:
-                        new_claim = self.env['ir.sequence'].next_by_code('service.claim') or 'New'
-                    if new_claim:
-                        record.write({'claim_number': new_claim})
+            records_needing_claim = self.filtered(
+                lambda r: not r.claim_number or r.claim_number == 'New'
+            )
+            if records_needing_claim:
+                claim_number = self.env['ir.sequence'].next_by_code('service.claim') or 'New'
+                # If batch-writing multiple records needing claim, only first gets sequence
+                # — subsequent records will get new numbers in their own write
+                vals['claim_number'] = claim_number
         result = super().write(vals)
         tracked_fields = {
             'name', 'requester_name', 'partner_id', 'service_address', 'schedule_start',
@@ -477,7 +480,16 @@ class ServiceReceipt(models.Model):
         return location
 
     def _get_claim_picking_type(self, picking_type_code='incoming'):
-        """Get the claim picking type."""
+        """Get the claim picking type from company config, fallback to warehouse default."""
+        company = self.company_id
+        if picking_type_code == 'incoming':
+            picking_type = company.service_receipt_return_picking_type_id
+            if picking_type:
+                return picking_type
+        else:
+            picking_type = company.service_receipt_replacement_picking_type_id
+            if picking_type:
+                return picking_type
         warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
         if not warehouse:
             if picking_type_code == 'incoming':
@@ -539,7 +551,7 @@ class ServiceReceipt(models.Model):
             'location_id': self.partner_id.property_stock_customer.id,
             'location_dest_id': self._get_claim_return_location().id,
             'picking_type_id': self._get_claim_picking_type('incoming').id,
-            'move_ids_without_package': [(0, 0, vals) for vals in move_vals_list],
+            'move_ids_without_package': [fields.Command.create(vals) for vals in move_vals_list],
             'origin': self.name,
         })
         picking.action_confirm()
@@ -585,7 +597,7 @@ class ServiceReceipt(models.Model):
             'location_id': self._get_claim_return_location().id,
             'location_dest_id': self.partner_id.property_stock_customer.id,
             'picking_type_id': self._get_claim_picking_type('outgoing').id,
-            'move_ids_without_package': [(0, 0, vals) for vals in move_vals_list],
+            'move_ids_without_package': [fields.Command.create(vals) for vals in move_vals_list],
             'origin': self.name,
         })
         picking.action_confirm()
@@ -619,7 +631,7 @@ class ServiceReceipt(models.Model):
         order_lines = []
         for line in billable_lines:
             product = line.replacement_product_id or line.product_id
-            order_lines.append((0, 0, {
+            order_lines.append(fields.Command.create({
                 'product_id': product.id,
                 'name': line.invoice_description or line.description or product.display_name,
                 'product_uom_qty': line.invoice_qty or line.quantity or 1.0,
@@ -709,7 +721,7 @@ class ServiceReceipt(models.Model):
         invoice_lines = []
         for line in billable_lines:
             product = line.replacement_product_id or line.product_id
-            invoice_lines.append((0, 0, {
+            invoice_lines.append(fields.Command.create({
                 'product_id': product.id,
                 'name': line.invoice_description or line.description or product.display_name,
                 'quantity': line.invoice_qty or line.quantity or 1.0,
