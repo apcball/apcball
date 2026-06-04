@@ -124,7 +124,7 @@
                                         </tr>
                                         <tr>
                                             <td style="padding: 2px;"><span class="info-label">Sale Name: </span><span t-field="doc.user_id.name"/></td>
-                                            <td style="padding: 2px;"><span class="info-label">Sale Tel: </span><span t-field="doc.user_id.phone"/></td>
+                                            <td style="padding: 2px;"><span class="info-label">Sale Tel: </span><span t-field="doc.user_id.mobile_phone"/></td>
                                         </tr>
                                         <tr>
                                             <td colspan="2" style="padding: 2px;"><span class="info-label">Sale Condition: </span><span t-field="doc.payment_term_id.name"/></td>

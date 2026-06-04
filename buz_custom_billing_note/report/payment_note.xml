@@ -147,10 +147,10 @@
                         <div class="row mb-2" style="padding-top: 0; font-size: 94%;"> <!-- Remove padding from the top -->
                             <div class="col-8">
                                 <div style="font-size: 18.8px;">
-                                    <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
-                                    <div style="font-size: 16.92px;">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
-                                    <div style="font-size: 16.92px;">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
-                                    <div style="font-size: 16.92px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                                    <div class="mb-1"><strong t-esc="doc.company_id.name"/></div>
+                                    <div style="font-size: 16.92px;"><span t-esc="doc.company_id.street or ''"/> <span t-esc="doc.company_id.street2 or ''"/> <span t-esc="doc.company_id.city or ''"/> <span t-esc="doc.company_id.zip or ''"/></div>
+                                    <div t-if="doc.company_id.vat" style="font-size: 16.92px;">เลขที่ประจําตัวผู้เสียภาษี <span t-esc="doc.company_id.vat"/></div>
+                                    <div style="font-size: 16.92px;">โทร <span t-esc="doc.company_id.phone or ''"/> <span t-if="doc.company_id.email" t-esc="'E-mail: ' + doc.company_id.email"/></div>
                                 </div>
                             </div>
                             <div class="col-4 text-end">
@@ -383,7 +383,7 @@
                                           <br/>
                                           *กรุณาจ่ายเช็คขีดคร่อมเฉพาะในนาม*
                                           <br/>
-                                          *บริษัท โมเก้น จำกัด* และขีดฆ่าหรือผู้ถือ
+                                          *<span t-esc="doc.company_id.name"/>* และขีดฆ่าหรือผู้ถือ
                                       </div>
                                   </div>
                                   <div class="footer-box" style="text-align: center; font-size: 16.92px;">
@@ -398,7 +398,7 @@
                                   <div class="footer-box" style="text-align: center; font-size: 16.92px;">
                                       ในนาม
                                       <br/>
-                                      บริษัท โมเก้น จำกัด
+                                      <span t-esc="doc.company_id.name"/>
                                       <br/>
                                       ___________________________
                                       <br/>

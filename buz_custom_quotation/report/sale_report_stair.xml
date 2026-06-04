@@ -165,7 +165,7 @@
                 </tr>
                 <tr style="border: none;">
                     <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><strong>Phone:</strong></td>
-                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.user_id.phone"/></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.user_id.mobile_phone"/></td>
                 </tr>
             </table>
         </div>

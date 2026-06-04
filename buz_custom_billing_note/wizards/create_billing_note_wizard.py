@@ -37,10 +37,11 @@ class CreateBillingNoteWizard(models.TransientModel):
         if not invoice.invoice_date_due:
             raise UserError(_('Invoice must have a due date.'))
 
-        # Check if invoice is already in a non-cancelled billing note
+        # Check if invoice is already in a non-cancelled billing note (same company)
         existing_note = self.env['billing.note'].search([
             ('invoice_ids', 'in', invoice.id),
             ('state', '!=', 'cancel'),
+            ('company_id', '=', invoice.company_id.id),
         ], limit=1)
         if existing_note:
             raise UserError(

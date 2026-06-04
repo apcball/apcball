@@ -1,5 +1,6 @@
 from odoo import models, fields, tools
 
+
 class BillingNotePaymentSummary(models.Model):
     _name = 'billing.note.payment.summary'
     _description = 'Billing Note Payment Summary'

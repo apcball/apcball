@@ -29,9 +29,23 @@
             <field name="domain_force">['|',('company_id','=',False),('company_id', 'in', company_ids)]</field>
         </record>
 
+        <record id="billing_note_line_comp_rule" model="ir.rule">
+            <field name="name">Billing Note Line Multi-Company</field>
+            <field name="model_id" ref="model_billing_note_line"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|',('company_id','=',False),('company_id', 'in', company_ids)]</field>
+        </record>
+
         <record id="billing_note_payment_comp_rule" model="ir.rule">
             <field name="name">Billing Note Payment Multi-Company</field>
             <field name="model_id" ref="model_billing_note_payment"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|',('company_id','=',False),('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="billing_note_payment_summary_comp_rule" model="ir.rule">
+            <field name="name">Billing Note Payment Summary Multi-Company</field>
+            <field name="model_id" ref="model_billing_note_payment_summary"/>
             <field name="global" eval="True"/>
             <field name="domain_force">['|',('company_id','=',False),('company_id', 'in', company_ids)]</field>
         </record>

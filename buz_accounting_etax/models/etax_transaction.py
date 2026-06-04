@@ -822,12 +822,13 @@ class EtaxTransaction(models.Model):
     @api.depends('line_ids.price_unit', 'line_ids.quantity', 'line_ids.discount')
     def _compute_amount_disc(self):
         for record in self:
-            total_disc = 0.0
-            for line in record.line_ids:
-                # discount เป็นเปอร์เซ็นต์ เช่น 10 หมายถึง 10%
-                line_disc = (line.price_unit * line.quantity) * (line.discount / 100.0)
-                total_disc += line_disc
-            record.amount_disc = total_disc
+            # total_disc = 0.0
+            # for line in record.line_ids:
+            #     # discount เป็นเปอร์เซ็นต์ เช่น 10 หมายถึง 10%
+            #     line_disc = (line.price_unit * line.quantity) * (line.discount / 100.0)
+            #     total_disc += line_disc
+            # record.amount_disc = total_disc
+            record.amount_disc = 0 #WK#1.n 20260624
 
     @api.depends('amount_untaxed', 'amount_disc')
     def _compute_net_amount(self):

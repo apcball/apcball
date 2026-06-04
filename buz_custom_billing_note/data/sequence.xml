@@ -7,7 +7,7 @@
             <field name="code">customer.billing.note</field>
             <field name="prefix">CBN-%(y)s%(month)s</field>
             <field name="padding">4</field>
-            <field name="company_id" eval="False"/>
+            <field name="company_id"/>
         </record>
 
         <!-- Vendor Billing Note Sequence -->
@@ -16,7 +16,7 @@
             <field name="code">vendor.billing.note</field>
             <field name="prefix">VBN-%(y)s%(month)s</field>
             <field name="padding">4</field>
-            <field name="company_id" eval="False"/>
+            <field name="company_id"/>
         </record>
     </data>
 </odoo>

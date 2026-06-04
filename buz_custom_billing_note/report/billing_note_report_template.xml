@@ -76,14 +76,14 @@
                             <div class="row mb-2" style="padding-top: 0;">
                                 <div class="col-8">
                                     <div style="font-size: 20px;">
-                                        <div class="mb-1"><strong>บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</strong></div>
-                                        <div style="font-size: 18px;">9 หมู่ 12 ตําบลบึงคําพรอย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
-                                        <div style="font-size: 18px;">เลขที่ประจําตัวผูเสียภาษี 0105547076103</div>
-                                        <div style="font-size: 18px;">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
+                                        <div class="mb-1"><strong t-esc="doc.company_id.name"/></div>
+                                        <div style="font-size: 18px;"><span t-esc="doc.company_id.street or ''"/> <span t-esc="doc.company_id.street2 or ''"/> <span t-esc="doc.company_id.city or ''"/> <span t-esc="doc.company_id.zip or ''"/></div>
+                                        <div t-if="doc.company_id.vat" style="font-size: 18px;">เลขที่ประจําตัวผูเสียภาษี <span t-esc="doc.company_id.vat"/></div>
+                                        <div t-if="doc.company_id.phone" style="font-size: 18px;">โทร <span t-esc="doc.company_id.phone"/> <span t-if="doc.company_id.email" t-esc="'E-mail: ' + doc.company_id.email"/></div>
                                     </div>
                                 </div>
                                 <div class="col-4 text-end">
-                                    <img src="/buz_custom_billing_note/static/img/LOGO MOGEN.png"
+                                    <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)"
                                                  style="width: 150px; height: auto; object-fit: contain;margin-bottom: -30px;"
                                                  alt="Company Logo"/>
                                 </div>
@@ -289,7 +289,7 @@
                     </div>
                     <div class="col-6">
                         <div class="text-center">
-                            <p>ในนามบริษัท โมเก้น จำกัด</p>
+                            <p>ในนาม <span t-esc="doc.company_id.name"/></p>
                             <p>ชื่อผู้รับวางบิล: ______________________</p>
         
                             <p>วันที่: ____/____/____</p>

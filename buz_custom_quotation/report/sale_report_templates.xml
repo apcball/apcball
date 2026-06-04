@@ -166,7 +166,7 @@
                 </tr>
                 <tr style="border: none;">
                     <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><strong>Phone:</strong></td>
-                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.user_id.phone"/></td>
+                    <td style="padding: 5px; border: none; background-color: #f5f5f5; color: #000000;"><span t-field="doc.user_id.mobile_phone"/></td>
                 </tr>
             </table>
         </div>
@@ -194,7 +194,7 @@
                     <div><span t-field="line.name"/></div>
                 </td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <img t-if="line.product_id.image_1920" t-att-src="image_data_uri(line.product_id.image_1920)" style="max-height: 100px;"/>
+                    <img t-if="line.product_id.image_128" t-att-src="image_data_uri(line.product_id.image_128)" style="max-height: 100px;"/>
                 </td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <span t-field="line.product_uom_qty" t-options='{"widget": "float", "precision": 0}'/> <span t-field="line.product_uom.name"/>
@@ -349,7 +349,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">buz_custom_quotation.report_saleorder_buz</field>
         <field name="report_file">buz_custom_quotation.report_saleorder_buz</field>
-        <field name="print_report_name">'Quotation - %s' % (object.name)</field>
+        <field name="print_report_name">'QT - %s' % (object.name)</field>
         <field name="binding_model_id" ref="sale.model_sale_order"/>
         <field name="binding_type">report</field>
         <field name="paperformat_id" ref="buz_custom_quotation.paperformat_invoice"/>
