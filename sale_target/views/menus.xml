@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_sale_target_root"
+              name="Sale Target"
+              parent="sale.sale_menu_root"
+              groups="sale_target.group_sale_target_user,sale_target.group_sale_target_manager"
+              sequence="20"/>
+
+    <menuitem id="menu_sale_my_target"
+              name="My Targets"
+              parent="menu_sale_target_root"
+              action="action_sale_my_target"
+              groups="sale_target.group_sale_target_user"
+              sequence="10"/>
+
+    <menuitem id="menu_sale_team_target"
+              name="Team Targets"
+              parent="menu_sale_target_root"
+              action="action_sale_team_target"
+              groups="sale_target.group_sale_target_manager"
+              sequence="20"/>
+</odoo>

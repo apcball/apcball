@@ -67,8 +67,10 @@
                     <li><strong>Theoretical Achievement:</strong> ${object.theoretical_percent}%</li>
                     <li><strong>Period:</strong> ${object.date_start} to ${object.date_end}</li>
                 </ul>
-                % if object.theoretical_status == 'above':
-                    <p style="color: green;">You are performing above the theoretical target! Keep it up!</p>
+                % if object.theoretical_status == 'completed':
+                    <p style="color: green;">Congratulations! You have achieved your target! Keep it up!</p>
+                % elif object.theoretical_status == 'on_track':
+                    <p style="color: blue;">You are on track to meet your target. Keep up the good work!</p>
                 % elif object.theoretical_status == 'below':
                     <p style="color: orange;">You are below the theoretical target. Consider increasing your efforts.</p>
                 % endif

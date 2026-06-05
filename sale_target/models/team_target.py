@@ -6,17 +6,16 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
-class SalesTarget(models.Model):
-    _name = 'sales.target'
-    _description = 'Sales Target'
+class SaleTeamTarget(models.Model):
+    _name = 'sale.team.target'
+    _description = 'Team Target'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date_start desc'
     _rec_name = 'display_name'
 
     name = fields.Char(string='Description', required=True)
     display_name = fields.Char(string='Display Name', compute='_compute_display_name', store=True)
-    user_id = fields.Many2one('res.users', string='Salesperson')
-    team_id = fields.Many2one('crm.team', string='Sales Team')
+    team_ids = fields.Many2many('crm.team', string='Sales Teams', required=True)
     responsible_id = fields.Many2one('res.users', string='Responsible', compute='_compute_responsible', store=True)
 
     target_amount = fields.Monetary(string='Target Amount', required=True, currency_field='currency_id')
@@ -48,11 +47,11 @@ class SalesTarget(models.Model):
         ('completed', 'Completed'),
     ], string='Theoretical Status', compute='_compute_theoretical_achievement', store=True)
 
-    note = fields.Text(string='Notes')
-    company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
-
     invoiced_amount = fields.Monetary(string='Invoiced Amount', compute='_compute_invoice_amounts', store=True, currency_field='currency_id')
     invoice_percent = fields.Float(string='Invoice %', compute='_compute_invoice_amounts', store=True)
+
+    note = fields.Text(string='Notes')
+    company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
 
     sale_order_line_ids = fields.One2many('sale.order.line', compute='_compute_related_lines', string='Sale Order Lines')
     invoice_line_ids = fields.One2many('account.move.line', compute='_compute_related_lines', string='Invoice Lines')
@@ -64,31 +63,29 @@ class SalesTarget(models.Model):
 
     email_notification = fields.Boolean(string='Send Email Notification', default=True)
 
-    @api.depends('name', 'user_id', 'team_id', 'date_start', 'date_end')
+    @api.depends('name', 'team_ids', 'date_start', 'date_end')
     def _compute_display_name(self):
         for record in self:
             parts = []
             if record.name:
                 parts.append(record.name)
-            if record.user_id:
-                parts.append(record.user_id.name)
-            elif record.team_id:
-                parts.append(record.team_id.name)
+            if record.team_ids:
+                parts.append(', '.join(record.team_ids.mapped('name')))
             if record.date_start and record.date_end:
                 parts.append(f"{record.date_start} - {record.date_end}")
             record.display_name = ' | '.join(parts) if parts else 'New Target'
 
-    @api.depends('user_id', 'team_id')
+    @api.depends('team_ids')
     def _compute_responsible(self):
         for record in self:
-            if record.user_id:
-                record.responsible_id = record.user_id
-            elif record.team_id and record.team_id.user_id:
-                record.responsible_id = record.team_id.user_id
-            else:
-                record.responsible_id = self.env.user
+            responsible = False
+            for team in record.team_ids:
+                if team.user_id:
+                    responsible = team.user_id
+                    break
+            record.responsible_id = responsible or self.env.user
 
-    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id', 'currency_id')
+    @api.depends('target_point', 'date_start', 'date_end', 'team_ids', 'currency_id')
     def _compute_achieved_amount(self):
         for record in self:
             achieved = 0.0
@@ -138,7 +135,7 @@ class SalesTarget(models.Model):
                 record.theoretical_percent = 0.0
                 record.theoretical_status = 'below'
 
-    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id', 'currency_id')
+    @api.depends('target_point', 'date_start', 'date_end', 'team_ids', 'currency_id')
     def _compute_invoice_amounts(self):
         for record in self:
             invoiced = 0.0
@@ -149,7 +146,7 @@ class SalesTarget(models.Model):
             record.invoiced_amount = invoiced
             record.invoice_percent = invoiced / record.target_amount if record.target_amount else 0.0
 
-    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id')
+    @api.depends('target_point', 'date_start', 'date_end', 'team_ids')
     def _compute_related_lines(self):
         for record in self:
             if record.target_point == 'sale_order':
@@ -166,7 +163,7 @@ class SalesTarget(models.Model):
                 record.sale_order_line_ids = []
                 record.invoice_line_ids = []
 
-    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id')
+    @api.depends('target_point', 'date_start', 'date_end', 'team_ids')
     def _compute_counters(self):
         for record in self:
             if not record.date_start or not record.date_end:
@@ -201,10 +198,8 @@ class SalesTarget(models.Model):
             ('date_order', '<=', self.date_end),
             ('state', 'in', ['sale', 'done']),
         ]
-        if self.user_id:
-            domain.append(('user_id', '=', self.user_id.id))
-        elif self.team_id:
-            domain.append(('team_id', '=', self.team_id.id))
+        if self.team_ids:
+            domain.append(('team_id', 'in', self.team_ids.ids))
         if self.currency_id:
             domain.append(('currency_id', '=', self.currency_id.id))
         return domain
@@ -225,10 +220,8 @@ class SalesTarget(models.Model):
                 ('invoice_date', '<=', self.date_end),
                 ('payment_state', 'in', ['paid', 'in_payment']),
             ])
-        if self.user_id:
-            domain.append(('invoice_user_id', '=', self.user_id.id))
-        elif self.team_id:
-            domain.append(('team_id', '=', self.team_id.id))
+        if self.team_ids:
+            domain.append(('team_id', 'in', self.team_ids.ids))
         if self.currency_id:
             domain.append(('currency_id', '=', self.currency_id.id))
         return domain
@@ -242,8 +235,7 @@ class SalesTarget(models.Model):
             'view_mode': 'tree,form',
             'domain': domain,
             'context': {
-                'default_user_id': self.user_id.id if self.user_id else False,
-                'default_team_id': self.team_id.id if self.team_id else False,
+                'default_team_id': self.team_ids[:1].id if self.team_ids else False,
             },
         }
 
@@ -266,10 +258,6 @@ class SalesTarget(models.Model):
             'res_model': 'account.move',
             'view_mode': 'tree,form',
             'domain': domain,
-            'context': {
-                'default_invoice_user_id': self.user_id.id if self.user_id else False,
-                'default_team_id': self.team_id.id if self.team_id else False,
-            },
         }
 
     def action_view_invoice_lines(self):
@@ -289,7 +277,7 @@ class SalesTarget(models.Model):
             if record.state != 'draft':
                 raise UserError(_('Only draft targets can be confirmed.'))
             record.state = 'confirmed'
-            record.message_post(body=_('Sales target confirmed.'))
+            record.message_post(body=_('Team target confirmed.'))
         self._send_notification_email('confirm')
         return {
             'type': 'ir.actions.client',
@@ -306,7 +294,7 @@ class SalesTarget(models.Model):
             if record.state not in ('draft', 'confirmed'):
                 raise UserError(_('Only draft or confirmed targets can be closed.'))
             record.state = 'closed'
-            record.message_post(body=_('Sales target closed.'))
+            record.message_post(body=_('Team target closed.'))
         self._send_notification_email('close')
         return {
             'type': 'ir.actions.client',
@@ -321,7 +309,7 @@ class SalesTarget(models.Model):
     def action_reset_to_draft(self):
         for record in self:
             record.state = 'draft'
-            record.message_post(body=_('Sales target reset to draft.'))
+            record.message_post(body=_('Team target reset to draft.'))
 
     def action_send_mail(self):
         self._send_notification_email('manual')
@@ -338,9 +326,9 @@ class SalesTarget(models.Model):
         if not self:
             return
         template_mapping = {
-            'confirm': 'sales_target_custom.email_template_target_confirmed',
-            'close': 'sales_target_custom.email_template_target_closed',
-            'manual': 'sales_target_custom.email_template_target_manual',
+            'confirm': 'sale_target.email_template_team_target_confirmed',
+            'close': 'sale_target.email_template_team_target_closed',
+            'manual': 'sale_target.email_template_team_target_manual',
         }
         xml_id = template_mapping.get(action_type)
         if not xml_id:
@@ -353,11 +341,6 @@ class SalesTarget(models.Model):
                         template.send_mail(record.id, force_send=True)
         except Exception as e:
             _logger.warning("Failed to send email notification: %s", str(e))
-
-    def send_achievement_notification(self):
-        for record in self:
-            if record.email_notification and record.responsible_id:
-                record._send_notification_email('manual')
 
     def action_recompute_achievement(self):
         for record in self:
@@ -377,22 +360,6 @@ class SalesTarget(models.Model):
             },
         }
 
-    @api.model
-    def recompute_all_targets(self):
-        all_targets = self.search([])
-        for target in all_targets:
-            target.action_recompute_achievement()
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Success'),
-                'message': _('All %d target calculations have been recomputed successfully.') % len(all_targets),
-                'type': 'success',
-                'sticky': True,
-            },
-        }
-
     @api.constrains('date_start', 'date_end')
     def _check_dates(self):
         for record in self:
@@ -405,38 +372,20 @@ class SalesTarget(models.Model):
             if record.target_amount <= 0:
                 raise ValidationError(_('Target amount must be greater than zero.'))
 
-    @api.constrains('user_id', 'team_id')
-    def _check_user_or_team(self):
-        for record in self:
-            if not record.user_id and not record.team_id:
-                raise ValidationError(_('Either Salesperson or Sales Team must be specified.'))
-
-    @api.constrains('user_id', 'team_id', 'date_start', 'date_end', 'target_point')
+    @api.constrains('team_ids', 'date_start', 'date_end', 'target_point')
     def _check_duplicate_targets(self):
         for record in self:
-            domain = [
+            if not record.team_ids:
+                continue
+            overlapping = self.search([
                 ('id', '!=', record.id),
                 ('date_start', '<=', record.date_end),
                 ('date_end', '>=', record.date_start),
                 ('target_point', '=', record.target_point),
                 ('state', '!=', 'closed'),
-            ]
-            if record.user_id:
-                domain.append(('user_id', '=', record.user_id.id))
-            elif record.team_id:
-                domain.append(('team_id', '=', record.team_id.id))
-            if self.search(domain):
-                raise ValidationError(_(
-                    'A target with overlapping dates already exists for this user/team and target point.'
-                ))
-
-    @api.model
-    def cron_check_achievements(self):
-        targets = self.search([
-            ('state', '=', 'confirmed'),
-            ('email_notification', '=', True),
-            ('date_end', '>=', date.today()),
-        ])
-        for target in targets:
-            if target.percent_achieved >= 1.0 or target.theoretical_status == 'below':
-                target.send_achievement_notification()
+            ])
+            for other in overlapping:
+                if other.team_ids & record.team_ids:
+                    raise ValidationError(_(
+                        'A team target with overlapping dates already exists for one or more of the selected teams and target point.'
+                    ))

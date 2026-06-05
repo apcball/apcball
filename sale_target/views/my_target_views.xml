@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Tree View -->
-    <record id="view_sales_target_tree" model="ir.ui.view">
-        <field name="name">sales.target.tree</field>
-        <field name="model">sales.target</field>
+    <record id="view_sale_my_target_tree" model="ir.ui.view">
+        <field name="name">sale.my.target.tree</field>
+        <field name="model">sale.my.target</field>
         <field name="arch" type="xml">
             <tree decoration-success="state=='confirmed'" decoration-info="state=='draft'" decoration-muted="state=='closed'" multi_edit="1">
                 <field name="display_name"/>
                 <field name="user_id" optional="show"/>
-                <field name="team_id" optional="show"/>
                 <field name="target_point" optional="show"/>
                 <field name="target_amount"/>
                 <field name="achieved_amount"/>
@@ -20,40 +18,37 @@
                 <field name="date_end" optional="show"/>
                 <field name="state" widget="badge"/>
                 <field name="currency_id" invisible="1"/>
-                <field name="responsible_id" optional="hide"/>
                 <field name="note" optional="hide"/>
             </tree>
         </field>
     </record>
 
-    <!-- Form View -->
-    <record id="view_sales_target_form" model="ir.ui.view">
-        <field name="name">sales.target.form</field>
-        <field name="model">sales.target</field>
+    <record id="view_sale_my_target_form" model="ir.ui.view">
+        <field name="name">sale.my.target.form</field>
+        <field name="model">sale.my.target</field>
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight" 
+                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight"
                             invisible="state != 'draft'"/>
                     <button name="action_close" type="object" string="Close" class="oe_highlight"
                             invisible="state != 'confirmed'"/>
                     <button name="action_send_mail" type="object" string="Send Mail" class="btn-secondary"
                             invisible="state == 'draft'"/>
-                    <button name="action_recompute_achievement" type="object" string="🔄 Recompute" class="btn-secondary"
+                    <button name="action_recompute_achievement" type="object" string="Recompute" class="btn-secondary"
                             title="Recalculate all achievement percentages"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,closed"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
                         <h1>
-                            <field name="name" placeholder="Target Description" 
+                            <field name="name" placeholder="Target Description"
                                    readonly="state != 'draft'"/>
                         </h1>
                     </div>
                     <group>
                         <group>
                             <field name="user_id" readonly="state != 'draft'"/>
-                            <field name="team_id" readonly="state != 'draft'"/>
                             <field name="responsible_id" readonly="1"/>
                             <field name="target_point" readonly="state != 'draft'"/>
                         </group>
@@ -64,7 +59,7 @@
                             <field name="date_end" readonly="state != 'draft'"/>
                         </group>
                     </group>
-                    
+
                     <notebook>
                         <page string="Achievement">
                             <group string="Actual Achievement">
@@ -89,24 +84,24 @@
                         </page>
                         <page string="Related Orders" invisible="target_point != 'sale_order'">
                             <group string="Sale Orders in Target Period">
-                                <button name="action_view_sale_orders" type="object" string="📋 View Sale Orders" class="btn-primary"/>
-                                <button name="action_view_sale_order_lines" type="object" string="📋 View Order Lines" class="btn-secondary"/>
+                                <button name="action_view_sale_orders" type="object" string="View Sale Orders" class="btn-primary"/>
+                                <button name="action_view_sale_order_lines" type="object" string="View Order Lines" class="btn-secondary"/>
                             </group>
                             <div class="alert alert-info">
                                 <strong>Target Point:</strong> Sale Order Confirm<br/>
                                 <strong>Period:</strong> <field name="date_start" readonly="1"/> to <field name="date_end" readonly="1"/><br/>
-                                <strong>Salesperson/Team:</strong> <field name="user_id" readonly="1"/><field name="team_id" readonly="1"/>
+                                <strong>Salesperson:</strong> <field name="user_id" readonly="1"/>
                             </div>
                         </page>
                         <page string="Related Invoices" invisible="target_point not in ['invoice_validate', 'invoice_paid']">
                             <group string="Invoices in Target Period">
-                                <button name="action_view_invoices" type="object" string="🧾 View Invoices" class="btn-primary"/>
-                                <button name="action_view_invoice_lines" type="object" string="🧾 View Invoice Lines" class="btn-secondary"/>
+                                <button name="action_view_invoices" type="object" string="View Invoices" class="btn-primary"/>
+                                <button name="action_view_invoice_lines" type="object" string="View Invoice Lines" class="btn-secondary"/>
                             </group>
                             <div class="alert alert-info">
                                 <strong>Target Point:</strong> <field name="target_point" readonly="1"/><br/>
                                 <strong>Period:</strong> <field name="date_start" readonly="1"/> to <field name="date_end" readonly="1"/><br/>
-                                <strong>Salesperson/Team:</strong> <field name="user_id" readonly="1"/><field name="team_id" readonly="1"/>
+                                <strong>Salesperson:</strong> <field name="user_id" readonly="1"/>
                             </div>
                         </page>
                         <page string="Notes">
@@ -118,34 +113,30 @@
         </field>
     </record>
 
-    <!-- Search View -->
-    <record id="view_sales_target_search" model="ir.ui.view">
-        <field name="name">sales.target.search</field>
-        <field name="model">sales.target</field>
+    <record id="view_sale_my_target_search" model="ir.ui.view">
+        <field name="name">sale.my.target.search</field>
+        <field name="model">sale.my.target</field>
         <field name="arch" type="xml">
             <search>
                 <field name="name" string="Description"/>
                 <field name="user_id"/>
-                <field name="team_id"/>
-                <field name="responsible_id"/>
-                
-                <filter name="my_targets" string="My Targets" 
+
+                <filter name="my_targets" string="My Targets"
                         domain="[('user_id', '=', uid)]"/>
-                <filter name="draft" string="Draft" 
+                <filter name="draft" string="Draft"
                         domain="[('state', '=', 'draft')]"/>
-                <filter name="confirmed" string="Confirmed" 
+                <filter name="confirmed" string="Confirmed"
                         domain="[('state', '=', 'confirmed')]"/>
-                <filter name="closed" string="Closed" 
+                <filter name="closed" string="Closed"
                         domain="[('state', '=', 'closed')]"/>
-                
+
                 <separator/>
                 <filter name="this_month" string="This Month"
-                        domain="[('date_start', '&lt;=', context_today().strftime('%Y-%m-%d')), 
+                        domain="[('date_start', '&lt;=', context_today().strftime('%Y-%m-%d')),
                                 ('date_end', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
-                
+
                 <group expand="0" string="Group By">
                     <filter name="group_user" string="Salesperson" context="{'group_by': 'user_id'}"/>
-                    <filter name="group_team" string="Sales Team" context="{'group_by': 'team_id'}"/>
                     <filter name="group_target_point" string="Target Point" context="{'group_by': 'target_point'}"/>
                     <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
                 </group>
@@ -153,60 +144,36 @@
         </field>
     </record>
 
-    <!-- Actions -->
-    <record id="action_sales_target" model="ir.actions.act_window">
-        <field name="name">Sales Targets</field>
-        <field name="res_model">sales.target</field>
+    <record id="action_sale_my_target" model="ir.actions.act_window">
+        <field name="name">My Targets</field>
+        <field name="res_model">sale.my.target</field>
         <field name="view_mode">tree,form</field>
-        <field name="search_view_id" ref="view_sales_target_search"/>
+        <field name="search_view_id" ref="view_sale_my_target_search"/>
         <field name="context">{'search_default_my_targets': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Create your first sales target!
+                Create your first personal target!
             </p>
             <p>
-                Set sales targets for individual salespersons or teams with specific target points
-                and track their achievements over time.
+                Set sales targets for yourself and track your achievement over time.
             </p>
         </field>
     </record>
 
-    <record id="action_sales_target_manager" model="ir.actions.act_window">
-        <field name="name">All Sales Targets</field>
-        <field name="res_model">sales.target</field>
+    <record id="action_sale_my_target_manager" model="ir.actions.act_window">
+        <field name="name">All My Targets</field>
+        <field name="res_model">sale.my.target</field>
         <field name="view_mode">tree,form</field>
-        <field name="search_view_id" ref="view_sales_target_search"/>
+        <field name="search_view_id" ref="view_sale_my_target_search"/>
         <field name="context">{}</field>
         <field name="domain">[]</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Manage all sales targets!
+                Manage all personal targets!
             </p>
             <p>
-                As a Sales Manager, you can view and manage all sales targets 
-                for your team members.
+                As a Manager, you can view and manage all personal targets for your team members.
             </p>
         </field>
     </record>
-
-    <!-- Dashboard Action -->
-    <record id="action_sales_target_analysis" model="ir.actions.act_window">
-        <field name="name">Sales Target Dashboard</field>
-        <field name="res_model">sales.target</field>
-        <field name="view_mode">kanban,tree,graph,pivot</field>
-        <field name="context">{
-            'search_default_confirmed': 1,
-            'search_default_my_targets': 1
-        }</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                Sales Target Dashboard
-            </p>
-            <p>
-                Monitor your sales target achievement with interactive gauge charts.
-                Track progress in real-time and stay motivated to reach your goals!
-            </p>
-        </field>
-    </record>
-
 </odoo>

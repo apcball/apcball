@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_sale_target_user" model="res.groups">
+        <field name="name">Sale Target User</field>
+        <field name="category_id" ref="base.module_category_sales_sales"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Users can only see and manage their own personal targets.</field>
+    </record>
+
+    <record id="group_sale_target_manager" model="res.groups">
+        <field name="name">Sale Target Manager</field>
+        <field name="category_id" ref="base.module_category_sales_sales"/>
+        <field name="implied_ids" eval="[(4, ref('group_sale_target_user'))]"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        <field name="comment">Full access to all personal and team targets.</field>
+    </record>
+
+    <data noupdate="1">
+        <!-- My Target Rules -->
+        <record id="sale_my_target_rule_user" model="ir.rule">
+            <field name="name">Sale My Target: User can see and edit own targets</field>
+            <field name="model_id" ref="model_sale_my_target"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_sale_target_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="sale_my_target_rule_manager" model="ir.rule">
+            <field name="name">Sale My Target: Manager has full access</field>
+            <field name="model_id" ref="model_sale_my_target"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_sale_target_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Team Target Rules -->
+        <record id="sale_team_target_rule_manager" model="ir.rule">
+            <field name="name">Sale Team Target: Manager has full access</field>
+            <field name="model_id" ref="model_sale_team_target"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_sale_target_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+    </data>
+</odoo>
