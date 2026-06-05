@@ -17,7 +17,8 @@ class SalesTarget(models.Model):
     name = fields.Char(string='Description', required=True)
     display_name = fields.Char(string='Display Name', compute='_compute_display_name', store=True)
     user_id = fields.Many2one('res.users', string='Salesperson')
-    team_id = fields.Many2one('crm.team', string='Sales Team')
+    team_ids = fields.Many2many('crm.team', string='Sales Teams')
+    team_member_ids = fields.Many2many('res.users', string='Team Members', compute='_compute_team_members')
     responsible_id = fields.Many2one('res.users', string='Responsible', compute='_compute_responsible', store=True)
     
     # Target Configuration
@@ -66,7 +67,7 @@ class SalesTarget(models.Model):
     # Additional Information
     note = fields.Text(string='Notes', help='Additional notes and comments about this sales target')
 
-    @api.depends('name', 'user_id', 'team_id', 'date_start', 'date_end')
+    @api.depends('name', 'user_id', 'team_ids', 'date_start', 'date_end')
     def _compute_display_name(self):
         for record in self:
             parts = []
@@ -74,23 +75,33 @@ class SalesTarget(models.Model):
                 parts.append(record.name)
             if record.user_id:
                 parts.append(f"({record.user_id.name})")
-            elif record.team_id:
-                parts.append(f"({record.team_id.name})")
+            elif record.team_ids:
+                parts.append(f"({', '.join(record.team_ids.mapped('name'))})")
             if record.date_start and record.date_end:
                 parts.append(f"[{record.date_start} - {record.date_end}]")
             record.display_name = ' '.join(parts) if parts else 'Sales Target'
 
-    @api.depends('user_id', 'team_id')
+    @api.depends('user_id', 'team_ids')
     def _compute_responsible(self):
         for record in self:
             if record.user_id:
                 record.responsible_id = record.user_id
-            elif record.team_id and record.team_id.user_id:
-                record.responsible_id = record.team_id.user_id
+            elif record.team_ids:
+                responsible = False
+                for team in record.team_ids:
+                    if team.user_id:
+                        responsible = team.user_id
+                        break
+                record.responsible_id = responsible or self.env.user
             else:
                 record.responsible_id = self.env.user
 
-    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id')
+    @api.depends('team_ids')
+    def _compute_team_members(self):
+        for record in self:
+            record.team_member_ids = record.team_ids.mapped('member_ids')
+
+    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_ids')
     def _compute_achieved_amount(self):
         for record in self:
             if not record.date_start or not record.date_end:
@@ -165,7 +176,7 @@ class SalesTarget(models.Model):
                 record.theoretical_percent = 0.0
                 record.theoretical_status = 'below'
 
-    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id')
+    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_ids')
     def _compute_counters(self):
         for record in self:
             if not record.date_start or not record.date_end:
@@ -220,8 +231,8 @@ class SalesTarget(models.Model):
         
         if self.user_id:
             domain.append(('user_id', '=', self.user_id.id))
-        elif self.team_id:
-            domain.append(('team_id', '=', self.team_id.id))
+        elif self.team_ids:
+            domain.append(('team_id', 'in', self.team_ids.ids))
             
         return domain
 
@@ -248,8 +259,8 @@ class SalesTarget(models.Model):
         
         if self.user_id:
             base_domain.append(('invoice_user_id', '=', self.user_id.id))
-        elif self.team_id:
-            base_domain.append(('team_id', '=', self.team_id.id))
+        elif self.team_ids:
+            base_domain.append(('team_id', 'in', self.team_ids.ids))
             
         return base_domain
 
@@ -265,7 +276,7 @@ class SalesTarget(models.Model):
             'domain': domain,
             'context': {
                 'default_user_id': self.user_id.id if self.user_id else False,
-                'default_team_id': self.team_id.id if self.team_id else False,
+                'default_team_id': self.team_ids[:1].id if self.team_ids else False,
             }
         }
 
@@ -296,7 +307,7 @@ class SalesTarget(models.Model):
             'context': {
                 'default_move_type': 'out_invoice',
                 'default_invoice_user_id': self.user_id.id if self.user_id else False,
-                'default_team_id': self.team_id.id if self.team_id else False,
+                'default_team_id': self.team_ids[:1].id if self.team_ids else False,
             }
         }
 
@@ -383,10 +394,10 @@ class SalesTarget(models.Model):
             if record.target_amount <= 0:
                 raise ValidationError(_('Target amount must be positive.'))
 
-    @api.constrains('user_id', 'team_id')
+    @api.constrains('user_id', 'team_ids')
     def _check_user_or_team(self):
         for record in self:
-            if not record.user_id and not record.team_id:
+            if not record.user_id and not record.team_ids:
                 raise ValidationError(_('Either Salesperson or Sales Team must be specified.'))
 
     # Notification Methods

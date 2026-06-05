@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_my_target_kanban" model="ir.ui.view">
+        <field name="name">res.users.my.target.kanban</field>
+        <field name="model">res.users</field>
+        <field name="arch" type="xml">
+            <kanban class="o_my_target_dashboard" create="0" delete="0" edit="0" records_draggable="0">
+                <field name="name"/>
+                <field name="target_amount_total"/>
+                <field name="achieved_amount_total"/>
+                <field name="remaining_amount"/>
+                <field name="target_percent"/>
+                <field name="target_status"/>
+                <field name="active_target_count"/>
+                <field name="my_sale_order_count"/>
+                <field name="my_invoice_count"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+
+                        <t t-set="target_val" t-value="record.target_amount_total.raw_value or 0"/>
+                        <t t-set="achieved_val" t-value="record.achieved_amount_total.raw_value or 0"/>
+                        <t t-set="percent" t-value="target_val > 0 ? Math.min(Math.round((achieved_val / target_val) * 100), 999) : 0"/>
+                        <t t-set="status" t-value="record.target_status.raw_value or 'no_target'"/>
+                        <t t-set="bar_color" t-value="percent >= 100 ? '#059669' : percent >= 75 ? '#2563eb' : percent >= 50 ? '#d97706' : '#dc2626'"/>
+                        <t t-set="status_text" t-value="status == 'achieved' ? 'Achieved!' : status == 'on_track' ? 'On Track' : status == 'at_risk' ? 'At Risk' : status == 'behind' ? 'Behind Target' : 'No Active Target'"/>
+
+                        <div class="o_my_target_card oe_kanban_global_click">
+
+                            <div class="o_my_card_header">
+                                <div class="o_my_card_header_left">
+                                    <img t-att-src="kanban_image('res.users', 'avatar_128', record.id.raw_value)"
+                                         alt="Avatar" class="o_my_avatar rounded-circle"/>
+                                    <div class="o_my_card_title">
+                                        <h4>My Sales Target</h4>
+                                        <span class="o_my_user_name"><t t-out="record.name.value"/></span>
+                                    </div>
+                                </div>
+                                <div class="o_my_card_badge">
+                                    <span t-attf-class="o_my_status_badge o_status_{{status}}">
+                                        <t t-out="status_text"/>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="o_my_card_divider"/>
+
+                            <div class="o_my_percent_section">
+                                <div class="o_my_percent_display">
+                                    <span class="o_my_percent_number" t-att-style="'color:' + bar_color + ';'">
+                                        <t t-out="percent"/>
+                                    </span>
+                                    <span class="o_my_percent_symbol" t-att-style="'color:' + bar_color + ';'">%</span>
+                                </div>
+                                <div class="o_my_progress_bar">
+                                    <div class="o_my_progress_track">
+                                        <div class="o_my_progress_fill"
+                                             t-att-style="'width:' + Math.min(percent, 100) + '%; background-color:' + bar_color + ';'"/>
+                                    </div>
+                                    <div class="o_my_progress_labels">
+                                        <span class="o_my_progress_achieved">
+                                            <field name="achieved_amount_total" widget="monetary"/>
+                                        </span>
+                                        <span class="o_my_progress_target">
+                                            / <field name="target_amount_total" widget="monetary"/>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="o_my_card_divider"/>
+
+                            <div class="o_my_card_metrics">
+                                <div class="o_my_metric_col">
+                                    <p class="o_my_metric_label">Target</p>
+                                    <p class="o_my_metric_value o_metric_target">
+                                        <field name="target_amount_total" widget="monetary"/>
+                                    </p>
+                                </div>
+                                <div class="o_my_metric_divider"/>
+                                <div class="o_my_metric_col">
+                                    <p class="o_my_metric_label">Achieved</p>
+                                    <p class="o_my_metric_value o_metric_achieved">
+                                        <field name="achieved_amount_total" widget="monetary"/>
+                                    </p>
+                                </div>
+                                <div class="o_my_metric_divider"/>
+                                <div class="o_my_metric_col">
+                                    <p class="o_my_metric_label">Remaining</p>
+                                    <p class="o_my_metric_value o_metric_remaining">
+                                        <field name="remaining_amount" widget="monetary"/>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="o_my_card_info">
+                                <span class="o_my_info_item">
+                                    <i class="fa fa-bullseye"/> <t t-out="record.active_target_count.raw_value or 0"/> Targets
+                                </span>
+                                <span class="o_my_info_item">
+                                    <i class="fa fa-file-text-o"/> <t t-out="record.my_sale_order_count.raw_value or 0"/> Orders
+                                </span>
+                                <span class="o_my_info_item">
+                                    <i class="fa fa-file-invoice-dollar"/> <t t-out="record.my_invoice_count.raw_value or 0"/> Invoices
+                                </span>
+                            </div>
+
+                            <t t-if="percent >= 100">
+                                <div class="o_my_achieved_banner">
+                                    <i class="fa fa-trophy"/> Target Achieved! Excellent work!
+                                </div>
+                            </t>
+
+                            <t t-if="status == 'no_target'">
+                                <div class="o_my_no_target_banner">
+                                    <i class="fa fa-info-circle"/> No active target for the current period.
+                                </div>
+                            </t>
+
+                            <div class="o_my_card_actions">
+                                <a name="%(sales_target_custom.action_my_target)d" type="action"
+                                   class="btn btn-sm btn-primary o_my_action_btn">
+                                    <i class="fa fa-list"/> My Targets
+                                </a>
+                                <a name="%(sales_target_custom.action_sales_target_analysis)d" type="action"
+                                   class="btn btn-sm btn-secondary o_my_action_btn">
+                                    <i class="fa fa-bar-chart"/> Analysis
+                                </a>
+                            </div>
+
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_my_target_dashboard" model="ir.actions.act_window">
+        <field name="name">My Target</field>
+        <field name="res_model">res.users</field>
+        <field name="view_mode">kanban</field>
+        <field name="domain">[('id', '=', uid)]</field>
+        <field name="target">current</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Welcome to My Target Dashboard!
+            </p>
+            <p>
+                Your sales target progress will appear here once your manager
+                assigns targets to you.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_my_target_dashboard_kanban" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="view_my_target_kanban"/>
+        <field name="act_window_id" ref="action_my_target_dashboard"/>
+    </record>
+
+</odoo>

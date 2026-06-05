@@ -7,35 +7,35 @@
               groups="sales_target_custom.group_sales_target_user,sales_target_custom.group_sales_target_lead,sales_target_custom.group_sales_target_manager"
               sequence="20"/>
     
-    <!-- Sales Target Menu - For Users -->
-    <menuitem id="menu_sales_target" 
-              name="My Targets" 
+    <!-- My Target - For individual users, no team field -->
+    <menuitem id="menu_my_target" 
+              name="My Target" 
               parent="menu_sales_target_root" 
-              action="action_sales_target"
+              action="action_my_target"
               groups="sales_target_custom.group_sales_target_user"
               sequence="10"/>
-    
-    <!-- Lead Menu - For Sales Target Leads -->
-    <menuitem id="menu_sales_target_lead" 
-              name="Team Targets" 
+
+    <!-- Sale Team - Team targets with M2M team selection -->
+    <menuitem id="menu_sale_team" 
+              name="Sale Team" 
               parent="menu_sales_target_root" 
-              action="action_sales_target"
-              groups="sales_target_custom.group_sales_target_lead"
-              sequence="15"/>
-    
-    <!-- Manager Menu - For Sales Target Managers -->
-    <menuitem id="menu_sales_target_manager" 
-              name="All Targets" 
-              parent="menu_sales_target_root" 
-              action="action_sales_target_manager"
+              action="action_sale_team"
               groups="sales_target_custom.group_sales_target_manager"
               sequence="20"/>
-    
-    <!-- Dashboard Menu -->
+
+    <!-- Dashboard - consolidated view with My Target / Sale Team filters -->
     <menuitem id="menu_sales_target_dashboard" 
               name="Dashboard" 
               parent="menu_sales_target_root" 
               action="action_sales_team_target_dashboard"
               groups="sales_target_custom.group_sales_target_user,sales_target_custom.group_sales_target_lead,sales_target_custom.group_sales_target_manager"
               sequence="5"/>
+
+    <!-- Manager: All Targets -->
+    <menuitem id="menu_sales_target_manager" 
+              name="All Targets" 
+              parent="menu_sales_target_root" 
+              action="action_sales_target_manager"
+              groups="sales_target_custom.group_sales_target_manager"
+              sequence="30"/>
 </odoo>

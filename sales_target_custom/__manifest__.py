@@ -1,6 +1,6 @@
 {
     "name": "buz Sales Target Management",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.1.0",
     "summary": "Sales target management for salespersons and teams with advanced features.",
     "description": """
         Sales Target Management
@@ -26,6 +26,7 @@
         "security/security.xml",
         "security/ir.model.access.csv",
         "data/email_templates.xml",
+        "views/my_target_dashboard.xml",
         "views/sales_target_views.xml",
         "views/crm_team_dashboard.xml",
         "views/sales_target_menu.xml",
