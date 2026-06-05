@@ -1,10 +1,10 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
-from datetime import date
+from datetime import datetime, date
+import calendar
 import logging
 
 _logger = logging.getLogger(__name__)
-
 
 class SalesTarget(models.Model):
     _name = 'sales.target'
@@ -13,56 +13,58 @@ class SalesTarget(models.Model):
     _order = 'date_start desc'
     _rec_name = 'display_name'
 
+    # Basic Information
     name = fields.Char(string='Description', required=True)
     display_name = fields.Char(string='Display Name', compute='_compute_display_name', store=True)
     user_id = fields.Many2one('res.users', string='Salesperson')
     team_id = fields.Many2one('crm.team', string='Sales Team')
     responsible_id = fields.Many2one('res.users', string='Responsible', compute='_compute_responsible', store=True)
-
+    
+    # Target Configuration
     target_amount = fields.Monetary(string='Target Amount', required=True, currency_field='currency_id')
     currency_id = fields.Many2one('res.currency', string='Currency', required=True, default=lambda self: self.env.company.currency_id)
     target_point = fields.Selection([
         ('sale_order', 'Sale Order Confirm'),
         ('invoice_validate', 'Invoice Validation'),
-        ('invoice_paid', 'Invoice Paid'),
+        ('invoice_paid', 'Invoice Paid')
     ], string='Target Point', required=True, default='sale_order')
-
+    
+    # Date Range
     date_start = fields.Date(string='Start Date', required=True)
     date_end = fields.Date(string='End Date', required=True)
-
+    
+    # State Management
     state = fields.Selection([
         ('draft', 'Draft'),
         ('confirmed', 'Confirmed'),
-        ('closed', 'Closed'),
+        ('closed', 'Closed')
     ], string='State', default='draft', tracking=True)
-
+    
+    # Achievement Calculations
     achieved_amount = fields.Monetary(string='Achieved Amount', compute='_compute_achieved_amount', store=True, currency_field='currency_id')
     percent_achieved = fields.Float(string='Achievement %', compute='_compute_percent_achieved', store=True)
-
+    
+    # Theoretical Achievement
     theoretical_amount = fields.Monetary(string='Theoretical Amount', compute='_compute_theoretical_achievement', store=True, currency_field='currency_id')
     theoretical_percent = fields.Float(string='Theoretical %', compute='_compute_theoretical_achievement', store=True)
     theoretical_status = fields.Selection([
         ('above', 'Above Target'),
         ('on_track', 'On Track'),
-        ('below', 'Below Target'),
-        ('completed', 'Completed'),
+        ('below', 'Below Target')
     ], string='Theoretical Status', compute='_compute_theoretical_achievement', store=True)
-
-    note = fields.Text(string='Notes')
-    company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
-
-    invoiced_amount = fields.Monetary(string='Invoiced Amount', compute='_compute_invoice_amounts', store=True, currency_field='currency_id')
-    invoice_percent = fields.Float(string='Invoice %', compute='_compute_invoice_amounts', store=True)
-
-    sale_order_line_ids = fields.One2many('sale.order.line', compute='_compute_related_lines', string='Sale Order Lines')
-    invoice_line_ids = fields.One2many('account.move.line', compute='_compute_related_lines', string='Invoice Lines')
-
+    
+    # Notification Settings
+    email_notification = fields.Boolean(string='Send Email Notification', default=True)
+    email_template_id = fields.Many2one('mail.template', string='Email Template')
+    
+    # Counters
     sale_order_count = fields.Integer(string='Sale Orders', compute='_compute_counters')
     sale_order_line_count = fields.Integer(string='Sale Order Lines', compute='_compute_counters')
     invoice_count = fields.Integer(string='Invoices', compute='_compute_counters')
     invoice_line_count = fields.Integer(string='Invoice Lines', compute='_compute_counters')
-
-    email_notification = fields.Boolean(string='Send Email Notification', default=True)
+    
+    # Additional Information
+    note = fields.Text(string='Notes', help='Additional notes and comments about this sales target')
 
     @api.depends('name', 'user_id', 'team_id', 'date_start', 'date_end')
     def _compute_display_name(self):
@@ -71,12 +73,12 @@ class SalesTarget(models.Model):
             if record.name:
                 parts.append(record.name)
             if record.user_id:
-                parts.append(record.user_id.name)
+                parts.append(f"({record.user_id.name})")
             elif record.team_id:
-                parts.append(record.team_id.name)
+                parts.append(f"({record.team_id.name})")
             if record.date_start and record.date_end:
-                parts.append(f"{record.date_start} - {record.date_end}")
-            record.display_name = ' | '.join(parts) if parts else 'New Target'
+                parts.append(f"[{record.date_start} - {record.date_end}]")
+            record.display_name = ' '.join(parts) if parts else 'Sales Target'
 
     @api.depends('user_id', 'team_id')
     def _compute_responsible(self):
@@ -88,83 +90,80 @@ class SalesTarget(models.Model):
             else:
                 record.responsible_id = self.env.user
 
-    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id', 'currency_id')
+    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id')
     def _compute_achieved_amount(self):
         for record in self:
-            achieved = 0.0
-            if record.target_point == 'sale_order':
-                domain = record._get_sale_order_domain()
-                orders = record.env['sale.order'].search(domain)
-                achieved = sum(orders.mapped('amount_total'))
-            elif record.target_point in ('invoice_validate', 'invoice_paid'):
-                domain = record._get_invoice_domain()
-                invoices = record.env['account.move'].search(domain)
-                achieved = sum(invoices.mapped('amount_total'))
-            record.achieved_amount = achieved
+            if not record.date_start or not record.date_end:
+                record.achieved_amount = 0.0
+                continue
+                
+            try:
+                if record.target_point == 'sale_order':
+                    # Get sale orders
+                    domain = record._get_sale_order_domain()
+                    sale_orders = self.env['sale.order'].search(domain)
+                    _logger.info(f"Sales Target {record.name}: Found {len(sale_orders)} sale orders with domain {domain}")
+                    _logger.info(f"Sale order amounts: {sale_orders.mapped('amount_total')}")
+                    record.achieved_amount = sum(sale_orders.mapped('amount_total'))
+                    
+                elif record.target_point in ['invoice_validate', 'invoice_paid']:
+                    # Get invoices
+                    domain = record._get_invoice_domain()
+                    invoices = self.env['account.move'].search(domain)
+                    _logger.info(f"Sales Target {record.name}: Found {len(invoices)} invoices with domain {domain}")
+                    _logger.info(f"Invoice amounts: {invoices.mapped('amount_total')}")
+                    record.achieved_amount = sum(invoices.mapped('amount_total'))
+                    
+                else:
+                    record.achieved_amount = 0.0
+                    
+            except Exception as e:
+                _logger.error(f"Error computing achieved amount: {e}")
+                record.achieved_amount = 0.0
 
     @api.depends('achieved_amount', 'target_amount')
     def _compute_percent_achieved(self):
         for record in self:
-            record.percent_achieved = record.achieved_amount / record.target_amount if record.target_amount else 0.0
+            if record.target_amount:
+                record.percent_achieved = record.achieved_amount / record.target_amount
+            else:
+                record.percent_achieved = 0.0
 
-    @api.depends('date_start', 'date_end', 'target_amount', 'achieved_amount')
+    @api.depends('target_amount', 'date_start', 'date_end')
     def _compute_theoretical_achievement(self):
         today = date.today()
         for record in self:
-            if record.date_start and record.date_end and record.target_amount:
-                total_days = (record.date_end - record.date_start).days + 1
-                if today < record.date_start:
-                    elapsed_days = 0
-                elif today > record.date_end:
-                    elapsed_days = total_days
+            if not record.date_start or not record.date_end or not record.target_amount:
+                record.theoretical_amount = 0.0
+                record.theoretical_percent = 0.0
+                record.theoretical_status = 'below'
+                continue
+                
+            # Calculate theoretical achievement based on time elapsed
+            total_days = (record.date_end - record.date_start).days + 1
+            if today <= record.date_start:
+                elapsed_days = 0
+            elif today >= record.date_end:
+                elapsed_days = total_days
+            else:
+                elapsed_days = (today - record.date_start).days + 1
+                
+            if total_days > 0:
+                time_ratio = elapsed_days / total_days
+                record.theoretical_amount = record.target_amount * time_ratio
+                record.theoretical_percent = time_ratio
+                
+                # Determine status
+                if record.achieved_amount >= record.target_amount:
+                    record.theoretical_status = 'above'
+                elif record.achieved_amount >= record.theoretical_amount:
+                    record.theoretical_status = 'on_track'
                 else:
-                    elapsed_days = (today - record.date_start).days + 1
-                if total_days > 0:
-                    time_ratio = elapsed_days / total_days
-                    record.theoretical_amount = record.target_amount * time_ratio
-                    record.theoretical_percent = time_ratio
-                    if record.achieved_amount >= record.target_amount:
-                        record.theoretical_status = 'completed'
-                    elif record.achieved_amount >= record.theoretical_amount:
-                        record.theoretical_status = 'on_track'
-                    else:
-                        record.theoretical_status = 'below'
-                else:
-                    record.theoretical_amount = 0.0
-                    record.theoretical_percent = 0.0
                     record.theoretical_status = 'below'
             else:
                 record.theoretical_amount = 0.0
                 record.theoretical_percent = 0.0
                 record.theoretical_status = 'below'
-
-    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id', 'currency_id')
-    def _compute_invoice_amounts(self):
-        for record in self:
-            invoiced = 0.0
-            if record.target_point in ('invoice_validate', 'invoice_paid'):
-                domain = record._get_invoice_domain()
-                invoices = record.env['account.move'].search(domain)
-                invoiced = sum(invoices.mapped('amount_total'))
-            record.invoiced_amount = invoiced
-            record.invoice_percent = invoiced / record.target_amount if record.target_amount else 0.0
-
-    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id')
-    def _compute_related_lines(self):
-        for record in self:
-            if record.target_point == 'sale_order':
-                domain = record._get_sale_order_domain()
-                orders = record.env['sale.order'].search(domain)
-                record.sale_order_line_ids = orders.mapped('order_line').ids
-                record.invoice_line_ids = []
-            elif record.target_point in ('invoice_validate', 'invoice_paid'):
-                domain = record._get_invoice_domain()
-                invoices = record.env['account.move'].search(domain)
-                record.invoice_line_ids = invoices.mapped('invoice_line_ids').ids
-                record.sale_order_line_ids = []
-            else:
-                record.sale_order_line_ids = []
-                record.invoice_line_ids = []
 
     @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id')
     def _compute_counters(self):
@@ -175,235 +174,214 @@ class SalesTarget(models.Model):
                 record.invoice_count = 0
                 record.invoice_line_count = 0
                 continue
-            if record.target_point == 'sale_order':
+                
+            try:
+                # Sale orders
                 sale_domain = record._get_sale_order_domain()
-                sale_orders = record.env['sale.order'].search(sale_domain)
+                sale_orders = self.env['sale.order'].search(sale_domain)
                 record.sale_order_count = len(sale_orders)
-                record.sale_order_line_count = len(sale_orders.mapped('order_line'))
-                record.invoice_count = 0
-                record.invoice_line_count = 0
-            elif record.target_point in ('invoice_validate', 'invoice_paid'):
+                
+                # Sale order lines
+                if sale_orders:
+                    sale_lines = self.env['sale.order.line'].search([('order_id', 'in', sale_orders.ids)])
+                    record.sale_order_line_count = len(sale_lines)
+                else:
+                    record.sale_order_line_count = 0
+                    
+                # Invoices
                 invoice_domain = record._get_invoice_domain()
-                invoices = record.env['account.move'].search(invoice_domain)
+                invoices = self.env['account.move'].search(invoice_domain)
                 record.invoice_count = len(invoices)
-                record.invoice_line_count = len(invoices.mapped('invoice_line_ids'))
-                record.sale_order_count = 0
-                record.sale_order_line_count = 0
-            else:
+                
+                # Invoice lines
+                if invoices:
+                    invoice_lines = self.env['account.move.line'].search([
+                        ('move_id', 'in', invoices.ids),
+                        ('display_type', 'not in', ['line_section', 'line_note'])
+                    ])
+                    record.invoice_line_count = len(invoice_lines)
+                else:
+                    record.invoice_line_count = 0
+                    
+            except Exception as e:
+                _logger.error(f"Error computing counters: {e}")
                 record.sale_order_count = 0
                 record.sale_order_line_count = 0
                 record.invoice_count = 0
                 record.invoice_line_count = 0
 
     def _get_sale_order_domain(self):
+        """Get domain for sale orders based on target configuration."""
         domain = [
-            ('date_order', '>=', self.date_start),
-            ('date_order', '<=', self.date_end),
             ('state', 'in', ['sale', 'done']),
+            ('date_order', '>=', self.date_start),
+            ('date_order', '<=', self.date_end)
         ]
+        
         if self.user_id:
             domain.append(('user_id', '=', self.user_id.id))
         elif self.team_id:
             domain.append(('team_id', '=', self.team_id.id))
-        if self.currency_id:
-            domain.append(('currency_id', '=', self.currency_id.id))
+            
         return domain
 
     def _get_invoice_domain(self):
-        domain = [
+        """Get domain for invoices based on target configuration."""
+        base_domain = [
             ('move_type', 'in', ['out_invoice', 'out_refund']),
-            ('state', 'not in', ['draft', 'cancel']),
+            ('state', 'not in', ['draft', 'cancel'])
         ]
+        
+        # Date field depends on target point
         if self.target_point == 'invoice_validate':
-            domain.extend([
+            base_domain.extend([
                 ('invoice_date', '>=', self.date_start),
-                ('invoice_date', '<=', self.date_end),
+                ('invoice_date', '<=', self.date_end)
             ])
         elif self.target_point == 'invoice_paid':
-            domain.extend([
-                ('invoice_date', '>=', self.date_start),
-                ('invoice_date', '<=', self.date_end),
+            base_domain.extend([
+                ('state', '=', 'posted'),
                 ('payment_state', 'in', ['paid', 'in_payment']),
+                ('invoice_date_due', '>=', self.date_start),
+                ('invoice_date_due', '<=', self.date_end)
             ])
+        
         if self.user_id:
-            domain.append(('invoice_user_id', '=', self.user_id.id))
+            base_domain.append(('invoice_user_id', '=', self.user_id.id))
         elif self.team_id:
-            domain.append(('team_id', '=', self.team_id.id))
-        if self.currency_id:
-            domain.append(('currency_id', '=', self.currency_id.id))
-        return domain
+            base_domain.append(('team_id', '=', self.team_id.id))
+            
+        return base_domain
 
+    # Action Methods
     def action_view_sale_orders(self):
+        """View related sale orders."""
         domain = self._get_sale_order_domain()
         return {
-            'name': _('Sale Orders - %s') % self.display_name,
             'type': 'ir.actions.act_window',
+            'name': _('Sale Orders'),
             'res_model': 'sale.order',
             'view_mode': 'tree,form',
             'domain': domain,
             'context': {
                 'default_user_id': self.user_id.id if self.user_id else False,
                 'default_team_id': self.team_id.id if self.team_id else False,
-            },
+            }
         }
 
     def action_view_sale_order_lines(self):
-        domain = self._get_sale_order_domain()
-        orders = self.env['sale.order'].search(domain)
+        """View related sale order lines."""
+        sale_domain = self._get_sale_order_domain()
+        sale_orders = self.env['sale.order'].search(sale_domain)
+        
+        domain = [('order_id', 'in', sale_orders.ids)]
         return {
-            'name': _('Sale Order Lines - %s') % self.display_name,
             'type': 'ir.actions.act_window',
+            'name': _('Sale Order Lines'),
             'res_model': 'sale.order.line',
             'view_mode': 'tree,form',
-            'domain': [('id', 'in', orders.mapped('order_line').ids)],
+            'domain': domain,
+            'context': {}
         }
 
     def action_view_invoices(self):
+        """View related invoices."""
         domain = self._get_invoice_domain()
         return {
-            'name': _('Invoices - %s') % self.display_name,
             'type': 'ir.actions.act_window',
+            'name': _('Invoices'),
             'res_model': 'account.move',
             'view_mode': 'tree,form',
             'domain': domain,
             'context': {
+                'default_move_type': 'out_invoice',
                 'default_invoice_user_id': self.user_id.id if self.user_id else False,
                 'default_team_id': self.team_id.id if self.team_id else False,
-            },
+            }
         }
 
     def action_view_invoice_lines(self):
-        domain = self._get_invoice_domain()
-        invoices = self.env['account.move'].search(domain)
+        """View related invoice lines."""
+        invoice_domain = self._get_invoice_domain()
+        invoices = self.env['account.move'].search(invoice_domain)
+        
+        domain = [
+            ('move_id', 'in', invoices.ids),
+            ('display_type', 'not in', ['line_section', 'line_note'])
+        ]
         return {
-            'name': _('Invoice Lines - %s') % self.display_name,
             'type': 'ir.actions.act_window',
+            'name': _('Invoice Lines'),
             'res_model': 'account.move.line',
             'view_mode': 'tree,form',
-            'domain': [('id', 'in', invoices.mapped('invoice_line_ids').ids)],
-            'context': {'group_by': 'move_id'},
+            'domain': domain,
+            'context': {}
         }
 
     def action_confirm(self):
+        """Confirm the sales target."""
         for record in self:
             if record.state != 'draft':
                 raise UserError(_('Only draft targets can be confirmed.'))
             record.state = 'confirmed'
             record.message_post(body=_('Sales target confirmed.'))
-        self._send_notification_email('confirm')
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Success'),
-                'message': _('Target has been confirmed successfully.'),
-                'type': 'success',
-            },
-        }
 
     def action_close(self):
+        """Close the sales target."""
         for record in self:
-            if record.state not in ('draft', 'confirmed'):
+            if record.state not in ['draft', 'confirmed']:
                 raise UserError(_('Only draft or confirmed targets can be closed.'))
             record.state = 'closed'
             record.message_post(body=_('Sales target closed.'))
-        self._send_notification_email('close')
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Success'),
-                'message': _('Target has been closed successfully.'),
-                'type': 'success',
-            },
-        }
 
     def action_reset_to_draft(self):
+        """Reset to draft state."""
         for record in self:
             record.state = 'draft'
             record.message_post(body=_('Sales target reset to draft.'))
 
     def action_send_mail(self):
-        self._send_notification_email('manual')
+        """Send achievement notification via button click."""
+        for record in self:
+            record.send_achievement_notification()
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'type': 'success',
                 'message': _('Achievement notification email has been sent.'),
-            },
+            }
         }
-
-    def _send_notification_email(self, action_type):
-        if not self:
-            return
-        template_mapping = {
-            'confirm': 'sales_target_custom.email_template_target_confirmed',
-            'close': 'sales_target_custom.email_template_target_closed',
-            'manual': 'sales_target_custom.email_template_target_manual',
-        }
-        xml_id = template_mapping.get(action_type)
-        if not xml_id:
-            return
-        try:
-            template = self.env.ref(xml_id)
-            if template:
-                for record in self:
-                    if record.responsible_id and record.responsible_id.email:
-                        template.send_mail(record.id, force_send=True)
-        except Exception as e:
-            _logger.warning("Failed to send email notification: %s", str(e))
-
-    def send_achievement_notification(self):
-        for record in self:
-            if record.email_notification and record.responsible_id:
-                record._send_notification_email('manual')
 
     def action_recompute_achievement(self):
+        """Manually recompute achievement amounts."""
         for record in self:
             record._compute_achieved_amount()
             record._compute_percent_achieved()
             record._compute_theoretical_achievement()
-            record._compute_invoice_amounts()
             record._compute_counters()
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': _('Success'),
-                'message': _('Achievement calculations have been recomputed successfully.'),
                 'type': 'success',
-                'sticky': False,
-            },
+                'message': _('Achievement amounts have been recomputed.'),
+            }
         }
 
-    @api.model
-    def recompute_all_targets(self):
-        all_targets = self.search([])
-        for target in all_targets:
-            target.action_recompute_achievement()
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Success'),
-                'message': _('All %d target calculations have been recomputed successfully.') % len(all_targets),
-                'type': 'success',
-                'sticky': True,
-            },
-        }
-
+    # Validation Methods
     @api.constrains('date_start', 'date_end')
     def _check_dates(self):
         for record in self:
-            if record.date_start and record.date_end and record.date_start > record.date_end:
-                raise ValidationError(_('Start date must be before end date.'))
+            if record.date_start and record.date_end:
+                if record.date_start > record.date_end:
+                    raise ValidationError(_('Start date must be before end date.'))
 
     @api.constrains('target_amount')
     def _check_target_amount(self):
         for record in self:
             if record.target_amount <= 0:
-                raise ValidationError(_('Target amount must be greater than zero.'))
+                raise ValidationError(_('Target amount must be positive.'))
 
     @api.constrains('user_id', 'team_id')
     def _check_user_or_team(self):
@@ -411,32 +389,35 @@ class SalesTarget(models.Model):
             if not record.user_id and not record.team_id:
                 raise ValidationError(_('Either Salesperson or Sales Team must be specified.'))
 
-    @api.constrains('user_id', 'team_id', 'date_start', 'date_end', 'target_point')
-    def _check_duplicate_targets(self):
+    # Notification Methods
+    def send_achievement_notification(self):
+        """Send achievement notification email."""
         for record in self:
-            domain = [
-                ('id', '!=', record.id),
-                ('date_start', '<=', record.date_end),
-                ('date_end', '>=', record.date_start),
-                ('target_point', '=', record.target_point),
-                ('state', '!=', 'closed'),
-            ]
-            if record.user_id:
-                domain.append(('user_id', '=', record.user_id.id))
-            elif record.team_id:
-                domain.append(('team_id', '=', record.team_id.id))
-            if self.search(domain):
-                raise ValidationError(_(
-                    'A target with overlapping dates already exists for this user/team and target point.'
-                ))
+            if not record.email_notification or not record.responsible_id:
+                continue
+                
+            template = record.email_template_id
+            if not template:
+                                # Use default template if available
+                template = self.env.ref('sales_target_custom.email_template_sales_target_achievement', raise_if_not_found=False)
+                
+            if template:
+                try:
+                    template.send_mail(record.id, force_send=True)
+                    _logger.info(f"Achievement notification sent for target {record.id}")
+                except Exception as e:
+                    _logger.error(f"Failed to send achievement notification: {e}")
 
     @api.model
     def cron_check_achievements(self):
+        """Cron job to check achievements and send notifications."""
         targets = self.search([
             ('state', '=', 'confirmed'),
             ('email_notification', '=', True),
-            ('date_end', '>=', date.today()),
+            ('date_end', '>=', date.today())
         ])
+        
         for target in targets:
-            if target.percent_achieved >= 1.0 or target.theoretical_status == 'below':
+            # Check if target is achieved or behind schedule
+            if target.percent_achieved >= 100 or target.theoretical_status == 'below':
                 target.send_achievement_notification()

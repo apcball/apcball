@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_crm_team_kanban_target_dashboard" model="ir.ui.view">
+        <field name="name">crm.team.kanban.target.dashboard</field>
+        <field name="model">crm.team</field>
+        <field name="arch" type="xml">
+            <kanban class="o_sales_team_dashboard">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="member_ids"/>
+                <field name="target_amount_total"/>
+                <field name="achieved_amount_total"/>
+                <field name="remaining_amount"/>
+                <field name="target_percent"/>
+                <field name="target_status"/>
+                <field name="active_target_count"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+
+                        <t t-set="target_val" t-value="record.target_amount_total.raw_value or 0"/>
+                        <t t-set="achieved_val" t-value="record.achieved_amount_total.raw_value or 0"/>
+                        <t t-set="percent" t-value="target_val > 0 ? Math.min(Math.round((achieved_val / target_val) * 100), 999) : 0"/>
+                        <t t-set="status" t-value="record.target_status.raw_value or 'no_target'"/>
+
+                        <t t-set="bar_color" t-value="percent >= 100 ? '#059669' : percent >= 75 ? '#2563eb' : percent >= 50 ? '#d97706' : '#dc2626'"/>
+                        <t t-set="badge_cls" t-value="percent >= 100 ? 'o_badge_success' : percent >= 50 ? 'o_badge_warning' : 'o_badge_danger'"/>
+
+                        <div class="o_team_target_card oe_kanban_global_click">
+
+                            <div class="o_team_card_header">
+                                <div class="o_team_card_header_left">
+                                    <h4 class="o_team_name"><field name="name"/></h4>
+                                    <div class="o_team_avatars">
+                                        <t t-if="record.user_id.raw_value">
+                                            <img t-att-src="kanban_image('res.users', 'avatar_128', record.user_id.raw_value)"
+                                                 t-att-title="record.user_id.value"
+                                                 class="o_avatar_item o_avatar_leader rounded-circle"/>
+                                        </t>
+                                        <t t-foreach="record.member_ids.raw_value" t-as="member_id">
+                                            <t t-if="member_id !== record.user_id.raw_value">
+                                                <img t-att-src="kanban_image('res.users', 'avatar_128', member_id)"
+                                                     class="o_avatar_item rounded-circle"/>
+                                            </t>
+                                        </t>
+                                    </div>
+                                </div>
+                                <div t-attf-class="o_status_badge {{badge_cls}}">
+                                    <t t-out="percent"/>%
+                                </div>
+                            </div>
+
+                            <div class="o_team_card_divider"/>
+
+                            <div class="o_team_card_metrics">
+                                <div class="o_metric_col">
+                                    <p class="o_metric_label">Current Sales</p>
+                                    <p class="o_metric_value o_metric_achieved">
+                                        <field name="achieved_amount_total" widget="monetary"/>
+                                    </p>
+                                </div>
+                                <div class="o_metric_divider"/>
+                                <div class="o_metric_col">
+                                    <p class="o_metric_label">Target</p>
+                                    <p class="o_metric_value o_metric_target">
+                                        <field name="target_amount_total" widget="monetary"/>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="o_team_card_progress">
+                                <div class="o_progress_header">
+                                    <span class="o_progress_label">Progress</span>
+                                    <span class="o_progress_value"><t t-out="percent"/>%</span>
+                                </div>
+                                <div class="o_progress_track">
+                                    <div class="o_progress_fill"
+                                         t-att-style="'width:' + Math.min(percent, 100) + '%; background-color:' + bar_color + ';'"/>
+                                </div>
+                            </div>
+
+                            <t t-if="percent >= 100">
+                                <div class="o_team_card_achieved_banner">
+                                    <span class="o_achieved_text">&#127881; Target Achieved! Unstoppable! &#128640;</span>
+                                </div>
+                            </t>
+
+                            <t t-if="status == 'no_target'">
+                                <div class="o_team_card_no_target">
+                                    <i class="fa fa-info-circle" title="Info"/> No active target for current period
+                                </div>
+                            </t>
+
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_sales_team_target_dashboard" model="ir.actions.act_window">
+        <field name="name">Sales Team Targets</field>
+        <field name="res_model">crm.team</field>
+        <field name="view_mode">kanban,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Set up sales targets for your teams!
+            </p>
+            <p>
+                Create sales targets from the Targets menu, then view team
+                performance on this dashboard.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_sales_team_target_dashboard_kanban" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="view_crm_team_kanban_target_dashboard"/>
+        <field name="act_window_id" ref="action_sales_team_target_dashboard"/>
+    </record>
+
+</odoo>

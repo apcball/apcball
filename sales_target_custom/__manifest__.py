@@ -27,13 +27,12 @@
         "security/ir.model.access.csv",
         "data/email_templates.xml",
         "views/sales_target_views.xml",
+        "views/crm_team_dashboard.xml",
         "views/sales_target_menu.xml",
-        "views/sales_target_dashboard_new.xml"
     ],
     "assets": {
         "web.assets_backend": [
-            "sales_target_custom/static/src/css/dashboard.css",
-            "sales_target_custom/static/src/js/gauge_chart.js",
+            "sales_target_custom/static/src/scss/dashboard.scss",
         ],
     },
     "installable": True,

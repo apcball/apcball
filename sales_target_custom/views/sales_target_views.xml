@@ -189,6 +189,75 @@
         </field>
     </record>
 
+    <!-- Kanban View for Dashboard -->
+    <record id="view_sales_target_kanban" model="ir.ui.view">
+        <field name="name">sales.target.kanban</field>
+        <field name="model">sales.target</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_dashboard">
+                <field name="id"/>
+                <field name="display_name"/>
+                <field name="user_id"/>
+                <field name="team_id"/>
+                <field name="target_amount"/>
+                <field name="achieved_amount"/>
+                <field name="percent_achieved"/>
+                <field name="state"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click">
+                            <div class="o_kanban_card_header">
+                                <div class="o_kanban_card_header_title">
+                                    <div class="o_primary"><field name="display_name"/></div>
+                                </div>
+                                <div class="o_kanban_manage_button_section">
+                                    <a class="o_kanban_manage_toggle_button" href="#">More <i class="fa fa-caret-down"/></a>
+                                </div>
+                            </div>
+                            <div class="o_kanban_card_content">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <strong>Target:</strong> <field name="target_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Achieved:</strong> <field name="achieved_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    </div>
+                                </div>
+                                <div class="oe_kanban_progress_bar mt8 mb8">
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             t-attf-style="width: #{record.percent_achieved.raw_value}%;" 
+                                             t-attf-aria-valuenow="#{record.percent_achieved.raw_value}" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            <t t-esc="record.percent_achieved.raw_value"/>%
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt8">
+                                    <div class="col-6">
+                                        <strong>Sales Person:</strong> <field name="user_id"/>
+                                    </div>
+                                    <div class="col-6">
+                                        <span t-attf-class="badge o_tag #{record.state.raw_value == 'draft' ? 'text-bg-info' : record.state.raw_value == 'confirmed' ? 'text-bg-success' : 'text-bg-secondary'}">
+                                            <field name="state"/>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="o_kanban_manage_pane" role="menu">
+                                <div class="o_kanban_card_manage_section o_kanban_manage_view">
+                                    <div role="menuitem"><a name="%(action_sales_target)d" type="action">View Details</a></div>
+                                    <div role="menuitem"><a name="action_recompute_achievement" type="object">Recompute Achievement</a></div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <!-- Dashboard Action -->
     <record id="action_sales_target_analysis" model="ir.actions.act_window">
         <field name="name">Sales Target Dashboard</field>

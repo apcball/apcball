@@ -1,0 +1,228 @@
+$o-card-bg: #ffffff;
+$o-card-radius: 14px;
+$o-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+$o-card-shadow-hover: 0 10px 20px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+$o-text-primary: #0f172a;
+$o-text-muted: #64748b;
+$o-divider: #e2e8f0;
+$o-success-bg: #ecfdf5;
+$o-success-text: #059669;
+$o-warning-bg: #fffbeb;
+$o-warning-text: #d97706;
+$o-danger-bg: #fef2f2;
+$o-danger-text: #dc2626;
+$o-blue: #2563eb;
+$o-progress-track: #f1f5f9;
+
+@keyframes o-pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.o_kanban_view.o_sales_team_dashboard {
+    background-color: #f8fafc;
+
+    .o_kanban_record {
+        padding: 8px;
+    }
+
+    .o_team_target_card {
+        background: $o-card-bg;
+        border-radius: $o-card-radius;
+        box-shadow: $o-card-shadow;
+        padding: 20px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 100%;
+    }
+
+    .o_kanban_record:hover .o_team_target_card {
+        transform: translateY(-4px);
+        box-shadow: $o-card-shadow-hover;
+    }
+
+    .o_team_card_header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .o_team_card_header_left {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .o_team_name {
+        font-size: 16px;
+        font-weight: 700;
+        color: $o-text-primary;
+        margin: 0 0 4px 0;
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .o_team_avatars {
+        display: flex;
+        align-items: center;
+        margin-top: 6px;
+    }
+
+    .o_avatar_item {
+        width: 28px;
+        height: 28px;
+        object-fit: cover;
+        flex-shrink: 0;
+        border: 2px solid $o-card-bg;
+        margin-left: -8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+        &:first-child {
+            margin-left: 0;
+        }
+    }
+
+    .o_avatar_leader {
+        border-color: $o-blue;
+        width: 32px;
+        height: 32px;
+    }
+
+    .o_status_badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+        flex-shrink: 0;
+        margin-left: 8px;
+    }
+
+    .o_badge_success {
+        background-color: $o-success-bg;
+        color: $o-success-text;
+    }
+
+    .o_badge_warning {
+        background-color: $o-warning-bg;
+        color: $o-warning-text;
+    }
+
+    .o_badge_danger {
+        background-color: $o-danger-bg;
+        color: $o-danger-text;
+    }
+
+    .o_team_card_divider {
+        height: 1px;
+        background-color: $o-divider;
+        margin: 12px 0;
+    }
+
+    .o_team_card_metrics {
+        display: flex;
+        align-items: stretch;
+        margin: 12px 0;
+    }
+
+    .o_metric_col {
+        flex: 1;
+        text-align: center;
+        padding: 8px 0;
+    }
+
+    .o_metric_divider {
+        width: 1px;
+        background-color: $o-divider;
+        margin: 4px 0;
+    }
+
+    .o_metric_label {
+        font-size: 12px;
+        color: $o-text-muted;
+        margin: 0 0 4px 0;
+        font-weight: 500;
+    }
+
+    .o_metric_value {
+        font-size: 15px;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.3;
+    }
+
+    .o_metric_achieved {
+        color: $o-blue;
+    }
+
+    .o_metric_target {
+        color: $o-text-primary;
+    }
+
+    .o_team_card_progress {
+        margin: 16px 0 8px 0;
+    }
+
+    .o_progress_header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+
+    .o_progress_label {
+        font-size: 12px;
+        color: $o-text-muted;
+        font-weight: 500;
+    }
+
+    .o_progress_value {
+        font-size: 12px;
+        color: $o-text-primary;
+        font-weight: 700;
+    }
+
+    .o_progress_track {
+        height: 8px;
+        border-radius: 4px;
+        background-color: $o-progress-track;
+        overflow: hidden;
+    }
+
+    .o_progress_fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.6s ease-in-out, background-color 0.3s ease;
+    }
+
+    .o_team_card_achieved_banner {
+        margin-top: 12px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, $o-success-bg 0%, #d1fae5 100%);
+        text-align: center;
+        animation: o-pulse-glow 2s infinite;
+    }
+
+    .o_achieved_text {
+        font-size: 13px;
+        font-weight: 700;
+        color: $o-success-text;
+    }
+
+    .o_team_card_no_target {
+        margin-top: 12px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        background-color: $o-progress-track;
+        text-align: center;
+        font-size: 13px;
+        color: $o-text-muted;
+
+        i { margin-right: 4px; }
+    }
+}

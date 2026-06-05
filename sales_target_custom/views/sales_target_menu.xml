@@ -35,7 +35,7 @@
     <menuitem id="menu_sales_target_dashboard" 
               name="Dashboard" 
               parent="menu_sales_target_root" 
-              action="action_sales_target_analysis"
+              action="action_sales_team_target_dashboard"
               groups="sales_target_custom.group_sales_target_user,sales_target_custom.group_sales_target_lead,sales_target_custom.group_sales_target_manager"
-              sequence="30"/>
+              sequence="5"/>
 </odoo>
