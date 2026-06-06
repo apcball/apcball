@@ -12,17 +12,22 @@ class SalesTarget(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date_start desc'
     _rec_name = 'display_name'
+    _check_company_auto = True
+
+    # Multi-Company
+    company_id = fields.Many2one('res.company', string='Company', required=True, default=lambda self: self.env.company)
 
     # Basic Information
     name = fields.Char(string='Description', required=True)
     display_name = fields.Char(string='Display Name', compute='_compute_display_name', store=True)
-    user_id = fields.Many2one('res.users', string='Salesperson')
-    team_id = fields.Many2one('crm.team', string='Sales Team')
+    user_id = fields.Many2one('res.users', string='Salesperson', check_company=True)
+    team_ids = fields.Many2many('crm.team', string='Sales Teams')
+    team_member_ids = fields.Many2many('res.users', string='Team Members', compute='_compute_team_members')
     responsible_id = fields.Many2one('res.users', string='Responsible', compute='_compute_responsible', store=True)
     
     # Target Configuration
     target_amount = fields.Monetary(string='Target Amount', required=True, currency_field='currency_id')
-    currency_id = fields.Many2one('res.currency', string='Currency', required=True, default=lambda self: self.env.company.currency_id)
+    currency_id = fields.Many2one(related='company_id.currency_id', string='Currency', readonly=True)
     target_point = fields.Selection([
         ('sale_order', 'Sale Order Confirm'),
         ('invoice_validate', 'Invoice Validation'),
@@ -44,14 +49,14 @@ class SalesTarget(models.Model):
     achieved_amount = fields.Monetary(string='Achieved Amount', compute='_compute_achieved_amount', store=True, currency_field='currency_id')
     percent_achieved = fields.Float(string='Achievement %', compute='_compute_percent_achieved', store=True)
     
-    # Theoretical Achievement
-    theoretical_amount = fields.Monetary(string='Theoretical Amount', compute='_compute_theoretical_achievement', store=True, currency_field='currency_id')
-    theoretical_percent = fields.Float(string='Theoretical %', compute='_compute_theoretical_achievement', store=True)
+    # Theoretical Achievement (non-stored because it depends on date.today())
+    theoretical_amount = fields.Monetary(string='Theoretical Amount', compute='_compute_theoretical_achievement', store=False, currency_field='currency_id')
+    theoretical_percent = fields.Float(string='Theoretical %', compute='_compute_theoretical_achievement', store=False)
     theoretical_status = fields.Selection([
         ('above', 'Above Target'),
         ('on_track', 'On Track'),
         ('below', 'Below Target')
-    ], string='Theoretical Status', compute='_compute_theoretical_achievement', store=True)
+    ], string='Theoretical Status', compute='_compute_theoretical_achievement', store=False)
     
     # Notification Settings
     email_notification = fields.Boolean(string='Send Email Notification', default=True)
@@ -66,7 +71,12 @@ class SalesTarget(models.Model):
     # Additional Information
     note = fields.Text(string='Notes', help='Additional notes and comments about this sales target')
 
-    @api.depends('name', 'user_id', 'team_id', 'date_start', 'date_end')
+    _sql_constraints = [
+        ('check_target_amount_positive', 'CHECK(target_amount > 0)', 'Target amount must be positive.'),
+        ('check_dates_consistency', 'CHECK(date_start <= date_end)', 'Start date must be before end date.'),
+    ]
+
+    @api.depends('name', 'user_id', 'team_ids', 'date_start', 'date_end')
     def _compute_display_name(self):
         for record in self:
             parts = []
@@ -74,23 +84,34 @@ class SalesTarget(models.Model):
                 parts.append(record.name)
             if record.user_id:
                 parts.append(f"({record.user_id.name})")
-            elif record.team_id:
-                parts.append(f"({record.team_id.name})")
+            elif record.team_ids:
+                parts.append(f"({', '.join(record.team_ids.mapped('name'))})")
             if record.date_start and record.date_end:
                 parts.append(f"[{record.date_start} - {record.date_end}]")
             record.display_name = ' '.join(parts) if parts else 'Sales Target'
 
-    @api.depends('user_id', 'team_id')
+    @api.depends('user_id', 'team_ids')
     def _compute_responsible(self):
         for record in self:
             if record.user_id:
                 record.responsible_id = record.user_id
-            elif record.team_id and record.team_id.user_id:
-                record.responsible_id = record.team_id.user_id
+            elif record.team_ids:
+                responsible = False
+                for team in record.team_ids:
+                    if team.user_id:
+                        responsible = team.user_id
+                        break
+                record.responsible_id = responsible or self.env.user
             else:
                 record.responsible_id = self.env.user
 
-    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id')
+    @api.depends('team_ids')
+    def _compute_team_members(self):
+        for record in self:
+            members = record.team_ids.mapped('member_ids')
+            record.team_member_ids = members
+
+    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_ids')
     def _compute_achieved_amount(self):
         for record in self:
             if not record.date_start or not record.date_end:
@@ -102,16 +123,14 @@ class SalesTarget(models.Model):
                     # Get sale orders
                     domain = record._get_sale_order_domain()
                     sale_orders = self.env['sale.order'].search(domain)
-                    _logger.info(f"Sales Target {record.name}: Found {len(sale_orders)} sale orders with domain {domain}")
-                    _logger.info(f"Sale order amounts: {sale_orders.mapped('amount_total')}")
+                    _logger.debug(f"Sales Target {record.name}: Found {len(sale_orders)} sale orders")
                     record.achieved_amount = sum(sale_orders.mapped('amount_total'))
                     
                 elif record.target_point in ['invoice_validate', 'invoice_paid']:
                     # Get invoices
                     domain = record._get_invoice_domain()
                     invoices = self.env['account.move'].search(domain)
-                    _logger.info(f"Sales Target {record.name}: Found {len(invoices)} invoices with domain {domain}")
-                    _logger.info(f"Invoice amounts: {invoices.mapped('amount_total')}")
+                    _logger.debug(f"Sales Target {record.name}: Found {len(invoices)} invoices")
                     record.achieved_amount = sum(invoices.mapped('amount_total'))
                     
                 else:
@@ -129,7 +148,7 @@ class SalesTarget(models.Model):
             else:
                 record.percent_achieved = 0.0
 
-    @api.depends('target_amount', 'date_start', 'date_end')
+    @api.depends('target_amount', 'date_start', 'date_end', 'achieved_amount')
     def _compute_theoretical_achievement(self):
         today = date.today()
         for record in self:
@@ -165,7 +184,7 @@ class SalesTarget(models.Model):
                 record.theoretical_percent = 0.0
                 record.theoretical_status = 'below'
 
-    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_id')
+    @api.depends('target_point', 'date_start', 'date_end', 'user_id', 'team_ids')
     def _compute_counters(self):
         for record in self:
             if not record.date_start or not record.date_end:
@@ -220,8 +239,8 @@ class SalesTarget(models.Model):
         
         if self.user_id:
             domain.append(('user_id', '=', self.user_id.id))
-        elif self.team_id:
-            domain.append(('team_id', '=', self.team_id.id))
+        elif self.team_ids:
+            domain.append(('team_id', 'in', self.team_ids.ids))
             
         return domain
 
@@ -248,8 +267,8 @@ class SalesTarget(models.Model):
         
         if self.user_id:
             base_domain.append(('invoice_user_id', '=', self.user_id.id))
-        elif self.team_id:
-            base_domain.append(('team_id', '=', self.team_id.id))
+        elif self.team_ids:
+            base_domain.append(('team_id', 'in', self.team_ids.ids))
             
         return base_domain
 
@@ -265,7 +284,7 @@ class SalesTarget(models.Model):
             'domain': domain,
             'context': {
                 'default_user_id': self.user_id.id if self.user_id else False,
-                'default_team_id': self.team_id.id if self.team_id else False,
+                'default_team_id': self.team_ids[:1].id if self.team_ids else False,
             }
         }
 
@@ -296,7 +315,7 @@ class SalesTarget(models.Model):
             'context': {
                 'default_move_type': 'out_invoice',
                 'default_invoice_user_id': self.user_id.id if self.user_id else False,
-                'default_team_id': self.team_id.id if self.team_id else False,
+                'default_team_id': self.team_ids[:1].id if self.team_ids else False,
             }
         }
 
@@ -383,10 +402,10 @@ class SalesTarget(models.Model):
             if record.target_amount <= 0:
                 raise ValidationError(_('Target amount must be positive.'))
 
-    @api.constrains('user_id', 'team_id')
+    @api.constrains('user_id', 'team_ids')
     def _check_user_or_team(self):
         for record in self:
-            if not record.user_id and not record.team_id:
+            if not record.user_id and not record.team_ids:
                 raise ValidationError(_('Either Salesperson or Sales Team must be specified.'))
 
     # Notification Methods
@@ -399,7 +418,7 @@ class SalesTarget(models.Model):
             template = record.email_template_id
             if not template:
                                 # Use default template if available
-                template = self.env.ref('sales_target_custom.email_template_sales_target_achievement', raise_if_not_found=False)
+                template = self.env.ref('sales_target_custom.email_template_target_manual', raise_if_not_found=False)
                 
             if template:
                 try:

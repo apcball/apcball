@@ -654,30 +654,10 @@ class PosLiteOrder(models.Model):
     # ─── Actions: Return / Exchange ─────────────────────────────
 
     def action_create_return(self):
-        self.ensure_one()
-        if self.state != 'done':
-            raise UserError(_('Only completed orders can be returned.'))
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Create Return'),
-            'res_model': 'pos.lite.return.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {'default_order_id': self.id},
-        }
+        raise UserError(_('Returns are disabled in POS Lite.'))
 
     def action_create_exchange(self):
-        self.ensure_one()
-        if self.state != 'done':
-            raise UserError(_('Only completed orders can be exchanged.'))
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Exchange'),
-            'res_model': 'pos.lite.return.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {'default_order_id': self.id, 'default_is_exchange': True},
-        }
+        raise UserError(_('Exchanges are disabled in POS Lite.'))
 
     def action_view_returns(self):
         self.ensure_one()

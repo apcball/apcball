@@ -6,6 +6,7 @@
         <field name="model">pos.lite.order</field>
         <field name="arch" type="xml">
             <pivot string="Sales Analysis">
+                <field name="employee_id" type="row"/>
                 <field name="channel" type="row"/>
                 <field name="date_order" interval="day" type="col"/>
                 <field name="amount_total" type="measure"/>
@@ -21,6 +22,7 @@
         <field name="model">pos.lite.order</field>
         <field name="arch" type="xml">
             <graph string="Sales by Channel" type="bar">
+                <field name="employee_id" type="row"/>
                 <field name="channel" type="row"/>
                 <field name="amount_total" type="measure"/>
             </graph>
