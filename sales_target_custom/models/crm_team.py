@@ -41,7 +41,7 @@ class CrmTeam(models.Model):
 
     @api.depends()
     def _compute_team_target(self):
-        SalesTarget = self.env['sales.target']
+        SalesTarget = self.env['sales.target'].sudo()
         today = date.today()
         for team in self:
             member_ids = team.member_ids.ids

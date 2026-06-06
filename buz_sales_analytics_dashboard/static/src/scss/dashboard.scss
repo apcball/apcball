@@ -1,0 +1,331 @@
+$o-sa-primary: #6366f1;
+$o-sa-success: #10b981;
+$o-sa-warning: #f59e0b;
+$o-sa-danger: #ef4444;
+$o-sa-info: #06b6d4;
+$o-sa-purple: #8b5cf6;
+$o-sa-border-radius: 8px;
+$o-sa-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+
+.o_action {
+    .o_sales_analytics_dashboard_layout {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+
+        > .o_content {
+            flex: 1 1 0%;
+            overflow-y: auto !important;
+            min-height: 0;
+        }
+    }
+}
+
+.o_sales_analytics_dashboard {
+    padding: 12px 16px 24px;
+    min-height: 100%;
+
+    @media (min-width: 992px) {
+        padding: 16px 24px 32px;
+    }
+}
+
+// FILTER BAR
+.o_sa_filter_bar {
+    background: #fff;
+    border-radius: $o-sa-border-radius;
+    box-shadow: $o-sa-shadow;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+
+    .o_sa_filters_row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .o_sa_date_filters {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        input {
+            width: 140px;
+        }
+
+        .o_sa_date_sep {
+            color: #6c757d;
+            font-weight: 500;
+        }
+    }
+
+    .o_sa_quick_buttons {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .o_sa_filter_selects {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        flex: 1;
+
+        select {
+            min-width: 130px;
+            max-width: 170px;
+        }
+    }
+}
+
+// KPI CARDS
+.o_sa_kpi_card {
+    background: #fff;
+    border-radius: $o-sa-border-radius;
+    box-shadow: $o-sa-shadow;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    border-left: 4px solid transparent;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #fff;
+        flex-shrink: 0;
+    }
+
+    .kpi-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .kpi-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #6b7280;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    .kpi-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f2937;
+        line-height: 1.2;
+    }
+
+    &.kpi-primary {
+        border-left-color: $o-sa-primary;
+
+        .kpi-icon {
+            background: linear-gradient(135deg, $o-sa-primary, #818cf8);
+        }
+    }
+
+    &.kpi-success {
+        border-left-color: $o-sa-success;
+
+        .kpi-icon {
+            background: linear-gradient(135deg, $o-sa-success, #34d399);
+        }
+    }
+
+    &.kpi-warning {
+        border-left-color: $o-sa-warning;
+
+        .kpi-icon {
+            background: linear-gradient(135deg, $o-sa-warning, #fbbf24);
+        }
+    }
+
+    &.kpi-danger {
+        border-left-color: $o-sa-danger;
+
+        .kpi-icon {
+            background: linear-gradient(135deg, $o-sa-danger, #f87171);
+        }
+    }
+
+    &.kpi-info {
+        border-left-color: $o-sa-info;
+
+        .kpi-icon {
+            background: linear-gradient(135deg, $o-sa-info, #22d3ee);
+        }
+    }
+
+    &.kpi-positive {
+        border-left-color: $o-sa-success;
+
+        .kpi-icon {
+            background: linear-gradient(135deg, $o-sa-success, #34d399);
+        }
+
+        .kpi-value {
+            color: $o-sa-success;
+        }
+    }
+
+    &.kpi-negative {
+        border-left-color: $o-sa-danger;
+
+        .kpi-icon {
+            background: linear-gradient(135deg, $o-sa-danger, #f87171);
+        }
+
+        .kpi-value {
+            color: $o-sa-danger;
+        }
+    }
+}
+
+// PANELS
+.o_sa_panel {
+    border: none;
+    border-radius: $o-sa-border-radius;
+    box-shadow: $o-sa-shadow;
+    overflow: hidden;
+
+    .card-header {
+        background: #fff;
+        border-bottom: 1px solid #f3f4f6;
+        font-weight: 600;
+        font-size: 14px;
+        padding: 12px 16px;
+        color: #374151;
+
+        i {
+            color: $o-sa-primary;
+        }
+    }
+
+    .card-body {
+        padding: 12px 16px;
+    }
+}
+
+.o_sa_chart_body {
+    position: relative;
+    height: 280px;
+}
+
+// FUNNEL
+.o_sa_funnel {
+    padding: 8px 0;
+
+    .o_sa_funnel_stage {
+        margin-bottom: 10px;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .o_sa_funnel_bar {
+        margin: 0 auto 4px;
+        padding: 10px 16px;
+        border-radius: 6px;
+        color: #fff;
+        font-weight: 500;
+        font-size: 13px;
+        text-align: center;
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: width 0.4s ease;
+
+        $stages: (
+            1: linear-gradient(135deg, $o-sa-primary, #818cf8),
+            2: linear-gradient(135deg, $o-sa-info, #22d3ee),
+            3: linear-gradient(135deg, $o-sa-success, #34d399),
+            4: linear-gradient(135deg, $o-sa-warning, #fbbf24),
+            5: linear-gradient(135deg, $o-sa-purple, #a78bfa),
+        );
+
+        @each $i, $grad in $stages {
+            .o_sa_funnel_stage:nth-child(#{$i}) & {
+                background: $grad;
+            }
+        }
+    }
+
+    .o_sa_funnel_metrics {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        font-size: 12px;
+        color: #6b7280;
+        flex-wrap: wrap;
+
+        .funnel-count,
+        .funnel-value,
+        .funnel-conversion {
+            white-space: nowrap;
+        }
+
+        .funnel-value {
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .funnel-conversion {
+            color: $o-sa-info;
+            font-weight: 500;
+        }
+    }
+}
+
+// TABLE
+.o_sa_panel {
+    .table {
+        th {
+            background: #f9fafb;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6b7280;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        td {
+            font-size: 13px;
+            vertical-align: middle;
+        }
+    }
+}
+
+// LOADING
+.o_sa_loading {
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    i {
+        font-size: 2em;
+        color: $o-sa-primary;
+    }
+
+    div {
+        margin-top: 12px;
+        color: #6b7280;
+        font-size: 14px;
+    }
+}

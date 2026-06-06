@@ -10,6 +10,7 @@
             <tree decoration-success="state=='confirmed'" decoration-info="state=='draft'" decoration-muted="state=='closed'" multi_edit="1">
                 <field name="name" string="Target"/>
                 <field name="user_id" optional="show"/>
+                <field name="company_id" optional="show"/>
                 <field name="target_point" optional="show"/>
                 <field name="target_amount" widget="monetary"/>
                 <field name="achieved_amount" widget="monetary"/>
@@ -48,6 +49,7 @@
                     <group string="General Information">
                         <group>
                             <field name="user_id" readonly="state != 'draft'"/>
+                            <field name="company_id" readonly="state != 'draft'"/>
                             <field name="responsible_id" readonly="1"/>
                             <field name="target_point" readonly="state != 'draft'"/>
                         </group>
@@ -172,6 +174,7 @@
             <tree decoration-success="state=='confirmed'" decoration-info="state=='draft'" decoration-muted="state=='closed'" multi_edit="1">
                 <field name="name" string="Target"/>
                 <field name="team_ids" widget="many2many_tags" optional="show"/>
+                <field name="company_id" optional="show"/>
                 <field name="target_point" optional="show"/>
                 <field name="target_amount" widget="monetary"/>
                 <field name="achieved_amount" widget="monetary"/>
@@ -210,6 +213,7 @@
                     <group string="General Information">
                         <group>
                             <field name="team_ids" widget="many2many_tags" readonly="state != 'draft'"/>
+                            <field name="company_id" readonly="state != 'draft'"/>
                             <field name="responsible_id" readonly="1"/>
                             <field name="target_point" readonly="state != 'draft'"/>
                         </group>
@@ -331,6 +335,7 @@
         <field name="arch" type="xml">
             <tree decoration-success="state=='confirmed'" decoration-info="state=='draft'" decoration-muted="state=='closed'" multi_edit="1">
                 <field name="display_name"/>
+                <field name="company_id" optional="show"/>
                 <field name="user_id" optional="show"/>
                 <field name="team_ids" widget="many2many_tags" optional="show"/>
                 <field name="target_point" optional="show"/>
@@ -377,6 +382,7 @@
                         <group>
                             <field name="user_id" readonly="state != 'draft'"/>
                             <field name="team_ids" widget="many2many_tags" readonly="state != 'draft'"/>
+                            <field name="company_id" readonly="state != 'draft'"/>
                             <field name="responsible_id" readonly="1"/>
                             <field name="target_point" readonly="state != 'draft'"/>
                         </group>

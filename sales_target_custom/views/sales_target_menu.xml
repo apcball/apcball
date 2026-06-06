@@ -12,7 +12,7 @@
               name="My Target" 
               parent="menu_sales_target_root" 
               action="action_my_target"
-              groups="sales_target_custom.group_sales_target_user"
+              groups="sales_target_custom.group_sales_target_user,sales_target_custom.group_sales_target_manager"
               sequence="10"/>
 
     <!-- Sale Team - Team targets with M2M team selection -->

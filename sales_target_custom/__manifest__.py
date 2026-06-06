@@ -19,13 +19,14 @@
         - Real-time achievement tracking
     """,
     "category": "Sales",
-    "author": "Your Company",
-    "website": "https://yourcompany.com",
+    "author": "Mogen Co., Ltd.",
+    "website": "https://mogen.co.th",
     "depends": ["sale_management", "crm", "account"],
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",
         "data/email_templates.xml",
+        "data/cron_data.xml",
         "views/my_target_dashboard.xml",
         "views/sales_target_views.xml",
         "views/crm_team_dashboard.xml",

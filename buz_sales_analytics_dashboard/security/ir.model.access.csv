@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_sales_analytics_cache_user,buz.sales.analytics.cache user,model_buz_sales_analytics_cache,group_sales_analytics_user,1,0,0,0
+access_buz_sales_analytics_cache_manager,buz.sales.analytics.cache manager,model_buz_sales_analytics_cache,group_sales_analytics_manager,1,1,1,1
+access_buz_sales_analytics_dashboard_user,buz.sales.analytics.dashboard user,model_buz_sales_analytics_dashboard,group_sales_analytics_user,1,1,1,0
+access_buz_sales_analytics_dashboard_manager,buz.sales.analytics.dashboard manager,model_buz_sales_analytics_dashboard,group_sales_analytics_manager,1,1,1,1

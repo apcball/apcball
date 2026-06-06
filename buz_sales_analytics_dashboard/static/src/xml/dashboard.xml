@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="buz_sales_analytics_dashboard.Dashboard">
+        <div class="o_sales_analytics_dashboard" style="height:100%; overflow-y:auto; overflow-x:hidden;">
+
+                <!-- FILTER BAR -->
+                <div class="o_sa_filter_bar">
+                    <div class="o_sa_filters_row">
+                        <div class="o_sa_date_filters">
+                            <input type="date" class="form-control form-control-sm"
+                                   t-model="state.filters.date_from"
+                                   t-on-change="onFilterChange"/>
+                            <span class="o_sa_date_sep">-</span>
+                            <input type="date" class="form-control form-control-sm"
+                                   t-model="state.filters.date_to"
+                                   t-on-change="onFilterChange"/>
+                        </div>
+                        <div class="o_sa_quick_buttons">
+                            <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('week')">This Week</button>
+                            <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('month')">This Month</button>
+                            <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('quarter')">This Quarter</button>
+                            <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('year')">This Year</button>
+                        </div>
+                        <div class="o_sa_filter_selects">
+                            <select class="form-select form-select-sm" t-model="state.filters.salesperson_id" t-on-change="onFilterChange">
+                                <option value="">All Salespersons</option>
+                                <option t-foreach="state.filterOptions.salespersons" t-as="sp" t-key="sp.id" t-att-value="sp.id">
+                                    <t t-esc="sp.name"/>
+                                </option>
+                            </select>
+                            <select class="form-select form-select-sm" t-model="state.filters.team_id" t-on-change="onFilterChange">
+                                <option value="">All Teams</option>
+                                <option t-foreach="state.filterOptions.teams" t-as="tm" t-key="tm.id" t-att-value="tm.id">
+                                    <t t-esc="tm.name"/>
+                                </option>
+                            </select>
+                            <select class="form-select form-select-sm" t-model="state.filters.category_id" t-on-change="onFilterChange">
+                                <option value="">All Categories</option>
+                                <option t-foreach="state.filterOptions.categories" t-as="cat" t-key="cat.id" t-att-value="cat.id">
+                                    <t t-esc="cat.name"/>
+                                </option>
+                            </select>
+                            <select class="form-select form-select-sm" t-model="state.filters.period_type" t-on-change="onFilterChange">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-sm btn-primary" t-on-click="onRefresh">
+                            <i class="fa fa-refresh me-1"/> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- LOADING -->
+                <t t-if="state.loading">
+                    <div class="o_sa_loading text-center py-5">
+                        <i class="fa fa-spinner fa-spin fa-2x text-primary mb-2"/>
+                        <div>Loading analytics data...</div>
+                    </div>
+                </t>
+
+                <!-- DASHBOARD CONTENT -->
+                <t t-else="">
+
+                    <!-- ROW 1: KPI CARDS -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-md-6 col-xl-2">
+                            <div class="o_sa_kpi_card kpi-primary" t-on-click="openOrders">
+                                <div class="kpi-icon"><i class="fa fa-dollar"/></div>
+                                <div class="kpi-content">
+                                    <div class="kpi-title">Total Revenue</div>
+                                    <div class="kpi-value"><t t-esc="formatCurrency(state.data.kpi.total_revenue)"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-xl-2">
+                            <div class="o_sa_kpi_card kpi-success" t-on-click="openOrders">
+                                <div class="kpi-icon"><i class="fa fa-shopping-cart"/></div>
+                                <div class="kpi-content">
+                                    <div class="kpi-title">Total Orders</div>
+                                    <div class="kpi-value"><t t-esc="formatNumber(state.data.kpi.total_orders)"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-xl-2">
+                            <div class="o_sa_kpi_card kpi-info">
+                                <div class="kpi-icon"><i class="fa fa-calculator"/></div>
+                                <div class="kpi-content">
+                                    <div class="kpi-title">Avg Order Value</div>
+                                    <div class="kpi-value"><t t-esc="formatCurrency(state.data.kpi.avg_order_value)"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-xl-2">
+                            <div class="o_sa_kpi_card" t-att-class="kpiGrowthClass">
+                                <div class="kpi-icon"><i t-att-class="'fa ' + kpiGrowthIcon"/></div>
+                                <div class="kpi-content">
+                                    <div class="kpi-title">Growth Rate</div>
+                                    <div class="kpi-value"><t t-esc="formatPercent(state.data.kpi.growth_rate)"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-xl-2">
+                            <div class="o_sa_kpi_card kpi-warning">
+                                <div class="kpi-icon"><i class="fa fa-bullseye"/></div>
+                                <div class="kpi-content">
+                                    <div class="kpi-title">Target Achievement</div>
+                                    <div class="kpi-value"><t t-esc="formatPercent(state.data.kpi.target_achievement)"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-xl-2">
+                            <div class="o_sa_kpi_card kpi-danger" t-on-click="openInvoices">
+                                <div class="kpi-icon"><i class="fa fa-file-invoice-dollar"/></div>
+                                <div class="kpi-content">
+                                    <div class="kpi-title">Outstanding</div>
+                                    <div class="kpi-value"><t t-esc="formatCurrency(state.data.kpi.outstanding_invoices)"/></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ROW 2: REVENUE TREND + CATEGORY -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-xl-8">
+                            <div class="o_sa_panel card h-100">
+                                <div class="card-header"><i class="fa fa-line-chart me-2"/>Revenue Trend</div>
+                                <div class="card-body o_sa_chart_body">
+                                    <canvas t-ref="revenueTrendChart"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-xl-4">
+                            <div class="o_sa_panel card h-100">
+                                <div class="card-header"><i class="fa fa-pie-chart me-2"/>Sales by Category</div>
+                                <div class="card-body o_sa_chart_body">
+                                    <canvas t-ref="salesByCategoryChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ROW 3: TOP CUSTOMERS + TOP PRODUCTS -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-xl-6">
+                            <div class="o_sa_panel card h-100">
+                                <div class="card-header"><i class="fa fa-users me-2"/>Top 10 Customers</div>
+                                <div class="card-body o_sa_chart_body">
+                                    <canvas t-ref="topCustomersChart"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-xl-6">
+                            <div class="o_sa_panel card h-100">
+                                <div class="card-header"><i class="fa fa-star me-2"/>Best-selling Products</div>
+                                <div class="card-body o_sa_chart_body">
+                                    <canvas t-ref="topProductsChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ROW 4: SALESPERSON + ORDER STATUS -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-xl-8">
+                            <div class="o_sa_panel card h-100">
+                                <div class="card-header"><i class="fa fa-user-circle me-2"/>Sales by Salesperson vs Target</div>
+                                <div class="card-body o_sa_chart_body">
+                                    <canvas t-ref="salesByPersonChart"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-xl-4">
+                            <div class="o_sa_panel card h-100">
+                                <div class="card-header"><i class="fa fa-tasks me-2"/>Order Status</div>
+                                <div class="card-body o_sa_chart_body">
+                                    <canvas t-ref="orderStatusChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ROW 5: SALES FUNNEL + FORECAST -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-xl-6">
+                            <div class="o_sa_panel card h-100">
+                                <div class="card-header"><i class="fa fa-filter me-2"/>Sales Funnel</div>
+                                <div class="card-body">
+                                    <div class="o_sa_funnel">
+                                        <t t-foreach="state.data.sales_funnel" t-as="stage" t-key="stage.name">
+                                            <div class="o_sa_funnel_stage">
+                                                <div class="o_sa_funnel_bar"
+                                                     t-att-style="'width:' + funnelWidthPercent(stage.value) + '%'">
+                                                    <span class="funnel-stage-name"><t t-esc="stage.name"/></span>
+                                                </div>
+                                                <div class="o_sa_funnel_metrics">
+                                                    <span class="funnel-count"><t t-esc="formatNumber(stage.count)"/> leads</span>
+                                                    <span class="funnel-value"><t t-esc="formatCurrency(stage.value)"/></span>
+                                                    <t t-if="stage_index > 0">
+                                                        <span class="funnel-conversion"><t t-esc="formatPercent(stage.conversion)"/> conversion</span>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-xl-6">
+                            <div class="o_sa_panel card h-100">
+                                <div class="card-header">
+                                    <i class="fa fa-area-chart me-2"/>Revenue Forecast
+                                    <span class="badge bg-warning ms-2" t-if="state.data.forecast.trend > 0">
+                                        <i class="fa fa-arrow-up"/> Trending Up
+                                    </span>
+                                    <span class="badge bg-danger ms-2" t-elif="state.data.forecast.trend &lt; 0">
+                                        <i class="fa fa-arrow-down"/> Trending Down
+                                    </span>
+                                    <span class="badge bg-secondary ms-2" t-else="">Flat</span>
+                                </div>
+                                <div class="card-body o_sa_chart_body">
+                                    <canvas t-ref="forecastChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ROW 6: MONTHLY COMPARISON TABLE -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <div class="o_sa_panel card">
+                                <div class="card-header"><i class="fa fa-table me-2"/>Monthly Comparison (Last 6 Months)</div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Month</th>
+                                                <th class="text-end">Revenue</th>
+                                                <th class="text-end">Orders</th>
+                                                <th class="text-end">Avg Order</th>
+                                                <th class="text-end">Change</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="state.data.monthly_comparison" t-as="row" t-key="row.month">
+                                                <td class="fw-semibold" t-esc="row.month"/>
+                                                <td class="text-end" t-esc="formatCurrency(row.revenue)"/>
+                                                <td class="text-end" t-esc="formatNumber(row.order_count)"/>
+                                                <td class="text-end" t-esc="formatCurrency(row.avg_order)"/>
+                                                <td class="text-end">
+                                                    <t t-if="row.change_pct > 0">
+                                                        <span class="text-success"><i class="fa fa-arrow-up me-1"/><t t-esc="formatPercent(row.change_pct)"/></span>
+                                                    </t>
+                                                    <t t-elif="row.change_pct &lt; 0">
+                                                        <span class="text-danger"><i class="fa fa-arrow-down me-1"/><t t-esc="formatPercent(Math.abs(row.change_pct))"/></span>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="text-muted">-</span>
+                                                    </t>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </t>
+
+        </div>
+    </t>
+</templates>

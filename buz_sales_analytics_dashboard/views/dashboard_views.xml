@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_sales_analytics_dashboard" model="ir.actions.client">
+        <field name="name">Sales Analytics Dashboard</field>
+        <field name="tag">buz_sales_analytics_dashboard</field>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem
+        id="menu_sales_analytics_dashboard"
+        name="Analytics Dashboard"
+        parent="sales_target_custom.menu_sales_target_root"
+        action="action_sales_analytics_dashboard"
+        sequence="3"
+        groups="buz_sales_analytics_dashboard.group_sales_analytics_user"
+    />
+</odoo>
