@@ -93,13 +93,6 @@
                                 border: none !important;
                             }
 
-                            .page {
-                                page-break-after: always;
-                            }
-                            .page:last-child {
-                                page-break-after: auto;
-                            }
-
                             .page-break {
                                 page-break-after: always;
                               }
@@ -408,7 +401,7 @@
                                 <!-- Footer fixed bottom -->
                                  <div style="
                                    position: absolute;
-                                   bottom: 20px; left: 0; width: 100%;
+                                   bottom: 30px; left: 0; width: 100%;
                                   display: flex; justify-content: space-between;
                                   font-size: 10px;
                                   padding-left: 4mm; padding-right: 4mm;

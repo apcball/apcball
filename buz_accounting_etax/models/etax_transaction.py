@@ -808,10 +808,13 @@ class EtaxTransaction(models.Model):
 
             record.amount_total = (total or 0.0) + (record.amount_tax or 0.0)
 
-    @api.depends('total_after_deposit', 'amount_vat')
+    @api.depends('invoice_id.amount_total', 'total_after_deposit', 'amount_vat')
     def _compute_net_amount_total(self):
         for record in self:
-            record.net_amount_total = round((record.total_after_deposit or 0.0) + (record.amount_vat or 0.0), 2)
+            if record.invoice_id:
+                record.net_amount_total = record.invoice_id.amount_total
+            else:
+                record.net_amount_total = round((record.total_after_deposit or 0.0) + (record.amount_vat or 0.0), 2)
 
     @api.depends('invoice_id.amount_untaxed')
     def _compute_original_amount(self):
