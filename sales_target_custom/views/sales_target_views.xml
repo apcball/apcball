@@ -1,353 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- ================================================================== -->
-    <!-- My Target Views (individual targets, no team field)                -->
-    <!-- ================================================================== -->
-    <record id="view_my_target_tree" model="ir.ui.view">
-        <field name="name">sales.target.my.tree</field>
-        <field name="model">sales.target</field>
-        <field name="arch" type="xml">
-            <tree decoration-success="state=='confirmed'" decoration-info="state=='draft'" decoration-muted="state=='closed'" multi_edit="1">
-                <field name="name" string="Target"/>
-                <field name="user_id" optional="show"/>
-                <field name="company_id" optional="show"/>
-                <field name="target_point" optional="show"/>
-                <field name="target_amount" widget="monetary"/>
-                <field name="achieved_amount" widget="monetary"/>
-                <field name="percent_achieved" widget="progressbar"/>
-                <field name="date_start" optional="show"/>
-                <field name="date_end" optional="show"/>
-                <field name="currency_id" invisible="1"/>
-                <field name="state" widget="badge" decoration-success="state=='confirmed'" decoration-info="state=='draft'" decoration-muted="state=='closed'"/>
-            </tree>
-        </field>
-    </record>
-
-    <record id="view_my_target_form" model="ir.ui.view">
-        <field name="name">sales.target.my.form</field>
-        <field name="model">sales.target</field>
-        <field name="arch" type="xml">
-            <form>
-                <header>
-                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight"
-                            invisible="state != 'draft'"/>
-                    <button name="action_close" type="object" string="Close" class="oe_highlight"
-                            invisible="state != 'confirmed'"/>
-                    <button name="action_send_mail" type="object" string="Send Mail" class="btn-secondary"
-                            invisible="state == 'draft'"/>
-                    <button name="action_recompute_achievement" type="object" string="Recompute" class="btn-secondary"
-                            title="Recalculate all achievement percentages"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,closed"/>
-                </header>
-                <sheet>
-                    <div class="oe_title">
-                        <h1>
-                            <field name="name" placeholder="Target Description"
-                                   readonly="state != 'draft'"/>
-                        </h1>
-                    </div>
-                    <group string="General Information">
-                        <group>
-                            <field name="user_id" readonly="state != 'draft'"/>
-                            <field name="company_id" readonly="state != 'draft'"/>
-                            <field name="responsible_id" readonly="1"/>
-                            <field name="target_point" readonly="state != 'draft'"/>
-                        </group>
-                        <group>
-                            <field name="target_amount" widget="monetary" readonly="state != 'draft'"/>
-                            <field name="date_start" readonly="state != 'draft'"/>
-                            <field name="date_end" readonly="state != 'draft'"/>
-                        </group>
-                    </group>
-
-                    <group string="Achievement Summary">
-                        <group>
-                            <field name="achieved_amount" widget="monetary" readonly="1"/>
-                            <field name="percent_achieved" widget="percentage" readonly="1"/>
-                        </group>
-                        <group>
-                            <field name="theoretical_amount" widget="monetary" readonly="1"/>
-                            <field name="theoretical_percent" widget="percentage" readonly="1"/>
-                            <field name="theoretical_status" readonly="1"/>
-                        </group>
-                    </group>
-
-                    <notebook>
-                        <page string="Related Orders" invisible="target_point != 'sale_order'">
-                            <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
-                                <strong>Target:</strong> Sale Order Confirm |
-                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> - <field name="date_end" readonly="1" class="oe_inline"/>
-                            </div>
-                            <div style="display:flex;gap:8px;">
-                                <button name="action_view_sale_orders" type="object" string="View Sale Orders" class="btn-primary" style="flex:1;"/>
-                                <button name="action_view_sale_order_lines" type="object" string="View Order Lines" class="btn-secondary" style="flex:1;"/>
-                            </div>
-                        </page>
-                        <page string="Related Invoices" invisible="target_point not in ['invoice_validate', 'invoice_paid']">
-                            <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
-                                <strong>Target:</strong> <field name="target_point" readonly="1" class="oe_inline"/> |
-                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> - <field name="date_end" readonly="1" class="oe_inline"/>
-                            </div>
-                            <div style="display:flex;gap:8px;">
-                                <button name="action_view_invoices" type="object" string="View Invoices" class="btn-primary" style="flex:1;"/>
-                                <button name="action_view_invoice_lines" type="object" string="View Invoice Lines" class="btn-secondary" style="flex:1;"/>
-                            </div>
-                        </page>
-                        <page string="Notes">
-                            <field name="note" placeholder="Additional notes..."/>
-                        </page>
-                    </notebook>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
-    <record id="view_my_target_search" model="ir.ui.view">
-        <field name="name">sales.target.my.search</field>
-        <field name="model">sales.target</field>
-        <field name="arch" type="xml">
-            <search>
-                <field name="name" string="Description"/>
-                <field name="user_id"/>
-
-                <filter name="my_targets" string="My Targets"
-                        domain="[('user_id', '=', uid)]"/>
-                <filter name="draft" string="Draft"
-                        domain="[('state', '=', 'draft')]"/>
-                <filter name="confirmed" string="Confirmed"
-                        domain="[('state', '=', 'confirmed')]"/>
-                <filter name="closed" string="Closed"
-                        domain="[('state', '=', 'closed')]"/>
-
-                <separator/>
-                <filter name="this_month" string="This Month"
-                        domain="[('date_start', '&lt;=', context_today().strftime('%Y-%m-%d')),
-                                ('date_end', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
-
-                <group expand="0" string="Group By">
-                    <filter name="group_user" string="Salesperson" context="{'group_by': 'user_id'}"/>
-                    <filter name="group_target_point" string="Target Point" context="{'group_by': 'target_point'}"/>
-                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
-                </group>
-            </search>
-        </field>
-    </record>
-
-    <record id="action_my_target" model="ir.actions.act_window">
-        <field name="name">My Target</field>
-        <field name="res_model">sales.target</field>
-        <field name="view_mode">tree,form</field>
-        <field name="search_view_id" ref="view_my_target_search"/>
-        <field name="context">{'search_default_my_targets': 1, 'default_user_id': uid}</field>
-        <field name="domain">[('user_id', '=', uid)]</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                Create your first personal target!
-            </p>
-            <p>
-                Set sales targets for yourself and track your achievements over time.
-            </p>
-        </field>
-    </record>
-
-    <record id="action_my_target_tree" model="ir.actions.act_window.view">
-        <field name="sequence" eval="1"/>
-        <field name="view_mode">tree</field>
-        <field name="view_id" ref="view_my_target_tree"/>
-        <field name="act_window_id" ref="action_my_target"/>
-    </record>
-
-    <record id="action_my_target_form" model="ir.actions.act_window.view">
-        <field name="sequence" eval="2"/>
-        <field name="view_mode">form</field>
-        <field name="view_id" ref="view_my_target_form"/>
-        <field name="act_window_id" ref="action_my_target"/>
-    </record>
-
-    <!-- ================================================================== -->
-    <!-- Sale Team Views (team targets with M2M team_ids)                   -->
-    <!-- ================================================================== -->
-    <record id="view_sale_team_tree" model="ir.ui.view">
-        <field name="name">sales.target.team.tree</field>
-        <field name="model">sales.target</field>
-        <field name="arch" type="xml">
-            <tree decoration-success="state=='confirmed'" decoration-info="state=='draft'" decoration-muted="state=='closed'" multi_edit="1">
-                <field name="name" string="Target"/>
-                <field name="team_ids" widget="many2many_tags" optional="show"/>
-                <field name="company_id" optional="show"/>
-                <field name="target_point" optional="show"/>
-                <field name="target_amount" widget="monetary"/>
-                <field name="achieved_amount" widget="monetary"/>
-                <field name="percent_achieved" widget="progressbar"/>
-                <field name="date_start" optional="show"/>
-                <field name="date_end" optional="show"/>
-                <field name="currency_id" invisible="1"/>
-                <field name="state" widget="badge" decoration-success="state=='confirmed'" decoration-info="state=='draft'" decoration-muted="state=='closed'"/>
-            </tree>
-        </field>
-    </record>
-
-    <record id="view_sale_team_form" model="ir.ui.view">
-        <field name="name">sales.target.team.form</field>
-        <field name="model">sales.target</field>
-        <field name="arch" type="xml">
-            <form>
-                <header>
-                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight"
-                            invisible="state != 'draft'"/>
-                    <button name="action_close" type="object" string="Close" class="oe_highlight"
-                            invisible="state != 'confirmed'"/>
-                    <button name="action_send_mail" type="object" string="Send Mail" class="btn-secondary"
-                            invisible="state == 'draft'"/>
-                    <button name="action_recompute_achievement" type="object" string="Recompute" class="btn-secondary"
-                            title="Recalculate all achievement percentages"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,closed"/>
-                </header>
-                <sheet>
-                    <div class="oe_title">
-                        <h1>
-                            <field name="name" placeholder="Target Description"
-                                   readonly="state != 'draft'"/>
-                        </h1>
-                    </div>
-                    <group string="General Information">
-                        <group>
-                            <field name="team_ids" widget="many2many_tags" readonly="state != 'draft'"/>
-                            <field name="company_id" readonly="state != 'draft'"/>
-                            <field name="responsible_id" readonly="1"/>
-                            <field name="target_point" readonly="state != 'draft'"/>
-                        </group>
-                        <group>
-                            <field name="target_amount" widget="monetary" readonly="state != 'draft'"/>
-                            <field name="date_start" readonly="state != 'draft'"/>
-                            <field name="date_end" readonly="state != 'draft'"/>
-                        </group>
-                    </group>
-
-                    <group string="Achievement Summary">
-                        <group>
-                            <field name="achieved_amount" widget="monetary" readonly="1"/>
-                            <field name="percent_achieved" widget="percentage" readonly="1"/>
-                        </group>
-                        <group>
-                            <field name="theoretical_amount" widget="monetary" readonly="1"/>
-                            <field name="theoretical_percent" widget="percentage" readonly="1"/>
-                            <field name="theoretical_status" readonly="1"/>
-                        </group>
-                    </group>
-
-                    <notebook>
-                        <page string="Related Orders" invisible="target_point != 'sale_order'">
-                            <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
-                                <strong>Target:</strong> Sale Order Confirm |
-                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> - <field name="date_end" readonly="1" class="oe_inline"/>
-                            </div>
-                            <div style="display:flex;gap:8px;">
-                                <button name="action_view_sale_orders" type="object" string="View Sale Orders" class="btn-primary" style="flex:1;"/>
-                                <button name="action_view_sale_order_lines" type="object" string="View Order Lines" class="btn-secondary" style="flex:1;"/>
-                            </div>
-                        </page>
-                        <page string="Related Invoices" invisible="target_point not in ['invoice_validate', 'invoice_paid']">
-                            <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
-                                <strong>Target:</strong> <field name="target_point" readonly="1" class="oe_inline"/> |
-                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> - <field name="date_end" readonly="1" class="oe_inline"/>
-                            </div>
-                            <div style="display:flex;gap:8px;">
-                                <button name="action_view_invoices" type="object" string="View Invoices" class="btn-primary" style="flex:1;"/>
-                                <button name="action_view_invoice_lines" type="object" string="View Invoice Lines" class="btn-secondary" style="flex:1;"/>
-                            </div>
-                        </page>
-                        <page string="POS Orders" invisible="target_point != 'pos_lite'">
-                            <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
-                                <strong>Target:</strong> POS Lite Sale |
-                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> - <field name="date_end" readonly="1" class="oe_inline"/>
-                            </div>
-                            <div style="display:flex;gap:8px;">
-                                <button name="action_view_pos_lite_orders" type="object" string="View POS Orders" class="btn-primary" style="flex:1;"/>
-                                <button name="action_view_pos_lite_order_lines" type="object" string="View Order Lines" class="btn-secondary" style="flex:1;"/>
-                            </div>
-                        </page>
-                        <page string="Notes">
-                            <field name="note" placeholder="Additional notes..."/>
-                        </page>
-                    </notebook>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
-    <record id="view_sale_team_search" model="ir.ui.view">
-        <field name="name">sales.target.team.search</field>
-        <field name="model">sales.target</field>
-        <field name="arch" type="xml">
-            <search>
-                <field name="name" string="Description"/>
-                <field name="team_ids"/>
-
-                <filter name="draft" string="Draft"
-                        domain="[('state', '=', 'draft')]"/>
-                <filter name="confirmed" string="Confirmed"
-                        domain="[('state', '=', 'confirmed')]"/>
-                <filter name="closed" string="Closed"
-                        domain="[('state', '=', 'closed')]"/>
-
-                <separator/>
-                <filter name="this_month" string="This Month"
-                        domain="[('date_start', '&lt;=', context_today().strftime('%Y-%m-%d')),
-                                ('date_end', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
-
-                <group expand="0" string="Group By">
-                    <filter name="group_team" string="Sales Team" context="{'group_by': 'team_ids'}"/>
-                    <filter name="group_target_point" string="Target Point" context="{'group_by': 'target_point'}"/>
-                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
-                </group>
-            </search>
-        </field>
-    </record>
-
-    <record id="action_sale_team" model="ir.actions.act_window">
-        <field name="name">Sale Team</field>
-        <field name="res_model">sales.target</field>
-        <field name="view_mode">tree,form</field>
-        <field name="search_view_id" ref="view_sale_team_search"/>
-        <field name="context">{}</field>
-        <field name="domain">[('team_ids', '!=', False)]</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                Create your first team target!
-            </p>
-            <p>
-                Set sales targets for teams and track collective achievement over time.
-            </p>
-        </field>
-    </record>
-
-    <record id="action_sale_team_tree" model="ir.actions.act_window.view">
-        <field name="sequence" eval="1"/>
-        <field name="view_mode">tree</field>
-        <field name="view_id" ref="view_sale_team_tree"/>
-        <field name="act_window_id" ref="action_sale_team"/>
-    </record>
-
-    <record id="action_sale_team_form" model="ir.actions.act_window.view">
-        <field name="sequence" eval="2"/>
-        <field name="view_mode">form</field>
-        <field name="view_id" ref="view_sale_team_form"/>
-        <field name="act_window_id" ref="action_sale_team"/>
-    </record>
-
-    <!-- ================================================================== -->
-    <!-- All Targets (manager view, both user and team)                     -->
-    <!-- ================================================================== -->
+    <!-- Tree View -->
     <record id="view_sales_target_tree" model="ir.ui.view">
         <field name="name">sales.target.tree</field>
         <field name="model">sales.target</field>
         <field name="arch" type="xml">
             <tree decoration-success="state=='confirmed'" decoration-info="state=='draft'" decoration-muted="state=='closed'" multi_edit="1">
                 <field name="display_name"/>
-                <field name="company_id" optional="show"/>
                 <field name="user_id" optional="show"/>
-                <field name="team_ids" widget="many2many_tags" optional="show"/>
+                <field name="team_id" optional="show"/>
                 <field name="target_point" optional="show"/>
                 <field name="target_amount"/>
                 <field name="achieved_amount"/>
@@ -365,34 +26,34 @@
         </field>
     </record>
 
+    <!-- Form View -->
     <record id="view_sales_target_form" model="ir.ui.view">
         <field name="name">sales.target.form</field>
         <field name="model">sales.target</field>
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight"
+                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight" 
                             invisible="state != 'draft'"/>
                     <button name="action_close" type="object" string="Close" class="oe_highlight"
                             invisible="state != 'confirmed'"/>
                     <button name="action_send_mail" type="object" string="Send Mail" class="btn-secondary"
                             invisible="state == 'draft'"/>
-                    <button name="action_recompute_achievement" type="object" string="Recompute" class="btn-secondary"
+                    <button name="action_recompute_achievement" type="object" string="🔄 Recompute" class="btn-secondary"
                             title="Recalculate all achievement percentages"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,closed"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
                         <h1>
-                            <field name="name" placeholder="Target Description"
+                            <field name="name" placeholder="Target Description" 
                                    readonly="state != 'draft'"/>
                         </h1>
                     </div>
                     <group>
                         <group>
                             <field name="user_id" readonly="state != 'draft'"/>
-                            <field name="team_ids" widget="many2many_tags" readonly="state != 'draft'"/>
-                            <field name="company_id" readonly="state != 'draft'"/>
+                            <field name="team_id" readonly="state != 'draft'"/>
                             <field name="responsible_id" readonly="1"/>
                             <field name="target_point" readonly="state != 'draft'"/>
                         </group>
@@ -403,7 +64,7 @@
                             <field name="date_end" readonly="state != 'draft'"/>
                         </group>
                     </group>
-
+                    
                     <notebook>
                         <page string="Achievement">
                             <group string="Actual Achievement">
@@ -427,33 +88,25 @@
                             </group>
                         </page>
                         <page string="Related Orders" invisible="target_point != 'sale_order'">
-                            <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
-                                <strong>Target Point:</strong> Sale Order Confirm |
-                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> to <field name="date_end" readonly="1" class="oe_inline"/>
-                            </div>
-                            <div style="display:flex;gap:8px;">
-                                <button name="action_view_sale_orders" type="object" string="View Sale Orders" class="btn-primary" style="flex:1;"/>
-                                <button name="action_view_sale_order_lines" type="object" string="View Order Lines" class="btn-secondary" style="flex:1;"/>
+                            <group string="Sale Orders in Target Period">
+                                <button name="action_view_sale_orders" type="object" string="📋 View Sale Orders" class="btn-primary"/>
+                                <button name="action_view_sale_order_lines" type="object" string="📋 View Order Lines" class="btn-secondary"/>
+                            </group>
+                            <div class="alert alert-info">
+                                <strong>Target Point:</strong> Sale Order Confirm<br/>
+                                <strong>Period:</strong> <field name="date_start" readonly="1"/> to <field name="date_end" readonly="1"/><br/>
+                                <strong>Salesperson/Team:</strong> <field name="user_id" readonly="1"/><field name="team_id" readonly="1"/>
                             </div>
                         </page>
                         <page string="Related Invoices" invisible="target_point not in ['invoice_validate', 'invoice_paid']">
-                            <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
-                                <strong>Target:</strong> <field name="target_point" readonly="1" class="oe_inline"/> |
-                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> - <field name="date_end" readonly="1" class="oe_inline"/>
-                            </div>
-                            <div style="display:flex;gap:8px;">
-                                <button name="action_view_invoices" type="object" string="View Invoices" class="btn-primary" style="flex:1;"/>
-                                <button name="action_view_invoice_lines" type="object" string="View Invoice Lines" class="btn-secondary" style="flex:1;"/>
-                            </div>
-                        </page>
-                        <page string="POS Orders" invisible="target_point != 'pos_lite'">
-                            <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
-                                <strong>Target:</strong> POS Lite Sale |
-                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> - <field name="date_end" readonly="1" class="oe_inline"/>
-                            </div>
-                            <div style="display:flex;gap:8px;">
-                                <button name="action_view_pos_lite_orders" type="object" string="View POS Orders" class="btn-primary" style="flex:1;"/>
-                                <button name="action_view_pos_lite_order_lines" type="object" string="View Order Lines" class="btn-secondary" style="flex:1;"/>
+                            <group string="Invoices in Target Period">
+                                <button name="action_view_invoices" type="object" string="🧾 View Invoices" class="btn-primary"/>
+                                <button name="action_view_invoice_lines" type="object" string="🧾 View Invoice Lines" class="btn-secondary"/>
+                            </group>
+                            <div class="alert alert-info">
+                                <strong>Target Point:</strong> <field name="target_point" readonly="1"/><br/>
+                                <strong>Period:</strong> <field name="date_start" readonly="1"/> to <field name="date_end" readonly="1"/><br/>
+                                <strong>Salesperson/Team:</strong> <field name="user_id" readonly="1"/><field name="team_id" readonly="1"/>
                             </div>
                         </page>
                         <page string="Notes">
@@ -465,6 +118,7 @@
         </field>
     </record>
 
+    <!-- Search View -->
     <record id="view_sales_target_search" model="ir.ui.view">
         <field name="name">sales.target.search</field>
         <field name="model">sales.target</field>
@@ -472,26 +126,26 @@
             <search>
                 <field name="name" string="Description"/>
                 <field name="user_id"/>
-                <field name="team_ids"/>
+                <field name="team_id"/>
                 <field name="responsible_id"/>
-
-                <filter name="my_targets" string="My Targets"
+                
+                <filter name="my_targets" string="My Targets" 
                         domain="[('user_id', '=', uid)]"/>
-                <filter name="draft" string="Draft"
+                <filter name="draft" string="Draft" 
                         domain="[('state', '=', 'draft')]"/>
-                <filter name="confirmed" string="Confirmed"
+                <filter name="confirmed" string="Confirmed" 
                         domain="[('state', '=', 'confirmed')]"/>
-                <filter name="closed" string="Closed"
+                <filter name="closed" string="Closed" 
                         domain="[('state', '=', 'closed')]"/>
-
+                
                 <separator/>
                 <filter name="this_month" string="This Month"
-                        domain="[('date_start', '&lt;=', context_today().strftime('%Y-%m-%d')),
+                        domain="[('date_start', '&lt;=', context_today().strftime('%Y-%m-%d')), 
                                 ('date_end', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
-
+                
                 <group expand="0" string="Group By">
                     <filter name="group_user" string="Salesperson" context="{'group_by': 'user_id'}"/>
-                    <filter name="group_team" string="Sales Team" context="{'group_by': 'team_ids'}"/>
+                    <filter name="group_team" string="Sales Team" context="{'group_by': 'team_id'}"/>
                     <filter name="group_target_point" string="Target Point" context="{'group_by': 'target_point'}"/>
                     <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
                 </group>
@@ -499,7 +153,24 @@
         </field>
     </record>
 
-    <!-- Manager action -->
+    <!-- Actions -->
+    <record id="action_sales_target" model="ir.actions.act_window">
+        <field name="name">Sales Targets</field>
+        <field name="res_model">sales.target</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_sales_target_search"/>
+        <field name="context">{'search_default_my_targets': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first sales target!
+            </p>
+            <p>
+                Set sales targets for individual salespersons or teams with specific target points
+                and track their achievements over time.
+            </p>
+        </field>
+    </record>
+
     <record id="action_sales_target_manager" model="ir.actions.act_window">
         <field name="name">All Sales Targets</field>
         <field name="res_model">sales.target</field>
@@ -512,13 +183,13 @@
                 Manage all sales targets!
             </p>
             <p>
-                As a Sales Manager, you can view and manage all sales targets
+                As a Sales Manager, you can view and manage all sales targets 
                 for your team members.
             </p>
         </field>
     </record>
 
-    <!-- Kanban View -->
+    <!-- Kanban View for Dashboard -->
     <record id="view_sales_target_kanban" model="ir.ui.view">
         <field name="name">sales.target.kanban</field>
         <field name="model">sales.target</field>
@@ -527,7 +198,7 @@
                 <field name="id"/>
                 <field name="display_name"/>
                 <field name="user_id"/>
-                <field name="team_ids"/>
+                <field name="team_id"/>
                 <field name="target_amount"/>
                 <field name="achieved_amount"/>
                 <field name="percent_achieved"/>
@@ -555,9 +226,9 @@
                                 </div>
                                 <div class="oe_kanban_progress_bar mt8 mb8">
                                     <div class="progress" style="height: 20px;">
-                                        <div class="progress-bar" role="progressbar"
-                                             t-attf-style="width: #{record.percent_achieved.raw_value}%;"
-                                             t-attf-aria-valuenow="#{record.percent_achieved.raw_value}"
+                                        <div class="progress-bar" role="progressbar" 
+                                             t-attf-style="width: #{record.percent_achieved.raw_value}%;" 
+                                             t-attf-aria-valuenow="#{record.percent_achieved.raw_value}" 
                                              aria-valuemin="0" aria-valuemax="100">
                                             <t t-esc="record.percent_achieved.raw_value"/>%
                                         </div>
@@ -576,7 +247,7 @@
                             </div>
                             <div class="o_kanban_manage_pane" role="menu">
                                 <div class="o_kanban_card_manage_section o_kanban_manage_view">
-                                    <div role="menuitem"><a name="%(action_sales_target_manager)d" type="action">View Details</a></div>
+                                    <div role="menuitem"><a name="%(action_sales_target)d" type="action">View Details</a></div>
                                     <div role="menuitem"><a name="action_recompute_achievement" type="object">Recompute Achievement</a></div>
                                 </div>
                             </div>
@@ -594,43 +265,16 @@
         <field name="view_mode">kanban,tree,graph,pivot</field>
         <field name="context">{
             'search_default_confirmed': 1,
+            'search_default_my_targets': 1
         }</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Sales Target Dashboard
             </p>
             <p>
-                Monitor your sales target achievement with interactive charts.
+                Monitor your sales target achievement with interactive gauge charts.
                 Track progress in real-time and stay motivated to reach your goals!
             </p>
-        </field>
-    </record>
-
-    <!-- Graph View -->
-    <record id="view_sales_target_graph" model="ir.ui.view">
-        <field name="name">sales.target.graph</field>
-        <field name="model">sales.target</field>
-        <field name="arch" type="xml">
-            <graph string="Sales Target Analysis" type="bar">
-                <field name="user_id" type="row"/>
-                <field name="target_amount" type="measure"/>
-                <field name="achieved_amount" type="measure"/>
-            </graph>
-        </field>
-    </record>
-
-    <!-- Pivot View -->
-    <record id="view_sales_target_pivot" model="ir.ui.view">
-        <field name="name">sales.target.pivot</field>
-        <field name="model">sales.target</field>
-        <field name="arch" type="xml">
-            <pivot string="Sales Target Analysis">
-                <field name="user_id" type="row"/>
-                <field name="team_ids" type="col"/>
-                <field name="target_amount" type="measure"/>
-                <field name="achieved_amount" type="measure"/>
-                <field name="percent_achieved" type="measure"/>
-            </pivot>
         </field>
     </record>
 
