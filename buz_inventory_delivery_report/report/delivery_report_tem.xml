@@ -145,11 +145,9 @@
                                    <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
                                        (Customer Name)
                                    </div>
-                                   <div style="margin-top: 10px; display: flex;">
-                                       <strong t-att-style="'font-size: 20px; white-space: nowrap;'">สถานที่ส่งสินค้า</strong>
-                                       <span style="margin-left: 4px;">
-                                           <t t-if="o.partner_id.street"><span t-field="o.partner_id.street"/></t><t t-if="o.partner_id.street2"> <span t-field="o.partner_id.street2"/></t><t t-if="o.partner_id.city"> <span t-field="o.partner_id.city"/></t><t t-if="o.partner_id.state_id"> <span t-field="o.partner_id.state_id.name"/></t><t t-if="o.partner_id.zip"> <span t-field="o.partner_id.zip"/></t><t t-if="o.partner_id.country_id"> <span t-field="o.partner_id.country_id.name"/></t>
-                                       </span>
+                                   <div style="margin-top: 10px;">
+                                       <strong style="display: inline-block; width: 35%; font-size: 20px;">สถานที่ส่งสินค้า</strong>
+                                       <span t-field="o.partner_id.street" style="font-size: 20px;"/>
                                    </div>
                                    <div class="company-header mb-1" style="font-size: 20px; font-weight: bold;">
                                        (Ship To)
