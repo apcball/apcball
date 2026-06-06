@@ -326,103 +326,100 @@
                                     </div>
                                   </t>
 
-                             </div>
-                       </t>
-                    </div>
-                               <t t-set="page_number" t-value="page_number + 1"/></t>
-
-                                   <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
-                                    <t t-if="page_number == total_pages">
-                                       <!-- ลายเซ็นหรือหมายเหตุ -->
-                                   </t>
-
-                                     <!-- หมายเหตุ -->
-                                  <div style="padding: 15px; font-size: 20px;  margin-top: 10px; line-height: 1.6;">
-                                    <strong>หมายเหตุ: </strong><span>1. การซื้อขายสมบูรณ์ เมื่อมีการส่งมอบสินค้า / บริษัทฯ สงวนสิทธิ์ที่จะปรับปรุงราคาให้เท่ากับราคาซื้อขายในวันรับสินค้า</span><br/>
-                                    
-                                    <div style="display: flex; margin-left: 50px;">
-                                      <div style="width: 2ch;">2.</div>
-                                      <div style="flex: 1;">ได้รับสินค้าตามรายการข้างล่าง ในสภาพที่ดีและจำนวนถูกต้องแล้ว</div>
-                                    </div>
-
-                                    <div t-if="o.note" style="margin-top: 10px; margin-left: 10px;">
-                                        <span t-field="o.note"/>
-                                    </div>
-                                </div>
-                        
-
-                                <!-- ผู้ขอเบิกสินค้า -->
-                               <table class="signature-table" style="width: 100%; table-layout: fixed; text-align: center; min-height: 100px; margin-top: 15px; border: 1px solid #000;">
-                                <tbody>
-                                    <tr>
-                                        <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
-                                        <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
-                                        <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding-top: 10px; font-size: 20px; text-align: center;">
-                                            ผู้ขอเบิกสินค้า<br/>
-                                            <span style="font-size: 16px; font-weight: normal;">[Withdrawed By]</span>
-                                            <div style="margin-top: 5px; font-size: 16px;">
-                                             ........./........../........
-                                         </div>
-                                        </td>
-                                        <td style="padding-top: 10px; font-size: 20px; text-align: center;">
-                                            ผู้อนุมัติจ่ายสินค้า<br/>
-                                            <span style="font-size: 16px; font-weight: normal;">[Approved By]</span>
-                                            <div style="margin-top: 5px; font-size: 16px;">
-                                             ........./........../........
-                                         </div>
-                                        </td>
-                                        <td style="padding-top: 10px; font-size: 20px; text-align: center;">
-                                            ผู้รับสินค้า(ตัวบรรจง)<br/>
-                                            <span style="font-size: 16px; font-weight: normal;">[Received By]</span>
-                                            <div style="margin-top: 5px; font-size: 16px;">
-                                              ........./........../........
-                                         </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-
-                            <!-- ศูนย์บริการ -->
-                            <div class="row justify-content-center">
-                                <div class="company-header text-center" style="font-size: 20px;">
-                                    ศูนย์บริการและรับข้อร้องเรียน โทร(02-5691980)
-                                </div>
-                                <div class="company-info text-center" style="font-size: 20px;">
-                                    Customer Service Tel.(02-5691980)
-                                </div>
-                            </div>
-
-                            <div style="position: relative; min-height: 25mm; padding-bottom: 20mm;">
-                                <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
-
-                                <!-- Footer fixed bottom -->
-                                 <div style="
-                                   position: absolute;
-                                   bottom: 30px; left: 0; width: 100%;
-                                  display: flex; justify-content: space-between;
-                                  font-size: 10px;
-                                  padding-left: 4mm; padding-right: 4mm;
-                                  line-height: 1.2;
-                                  page-break-inside: avoid;
-                                  ">
-                                  <div>
-                                    <p style="margin: 0;">อนุมัติใช้วันที่ 14/09/2563</p>
-                                  </div>
-                                  <div>
-                                    <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
-                                  </div>
-                                </div>
                               </div>
-                    
-                        
-                    </div>
-                </t>        
-             </t>     
-           </t>                 
-      </template>
+                        </t>
+
+                                   <!-- Last page signature content -->
+                                    <t t-if="page_number == total_pages">
+                                      <!-- หมายเหตุ -->
+                                   <div style="padding: 15px; font-size: 20px;  margin-top: 10px; line-height: 1.6;">
+                                     <strong>หมายเหตุ: </strong><span>1. การซื้อขายสมบูรณ์ เมื่อมีการส่งมอบสินค้า / บริษัทฯ สงวนสิทธิ์ที่จะปรับปรุงราคาให้เท่ากับราคาซื้อขายในวันรับสินค้า</span><br/>
+                                     
+                                     <div style="display: flex; margin-left: 50px;">
+                                       <div style="width: 2ch;">2.</div>
+                                       <div style="flex: 1;">ได้รับสินค้าตามรายการข้างล่าง ในสภาพที่ดีและจำนวนถูกต้องแล้ว</div>
+                                     </div>
+
+                                     <div t-if="o.note" style="margin-top: 10px; margin-left: 10px;">
+                                         <span t-field="o.note"/>
+                                     </div>
+                                 </div>
+                         
+
+                                 <!-- ผู้ขอเบิกสินค้า -->
+                                <table class="signature-table" style="width: 100%; table-layout: fixed; text-align: center; min-height: 100px; margin-top: 15px; border: 1px solid #000;">
+                                 <tbody>
+                                     <tr>
+                                         <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
+                                         <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
+                                         <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
+                                     </tr>
+                                     <tr>
+                                         <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                             ผู้ขอเบิกสินค้า<br/>
+                                             <span style="font-size: 16px; font-weight: normal;">[Withdrawed By]</span>
+                                             <div style="margin-top: 5px; font-size: 16px;">
+                                              ........./........../........
+                                          </div>
+                                         </td>
+                                         <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                             ผู้อนุมัติจ่ายสินค้า<br/>
+                                             <span style="font-size: 16px; font-weight: normal;">[Approved By]</span>
+                                             <div style="margin-top: 5px; font-size: 16px;">
+                                              ........./........../........
+                                          </div>
+                                         </td>
+                                         <td style="padding-top: 10px; font-size: 20px; text-align: center;">
+                                             ผู้รับสินค้า(ตัวบรรจง)<br/>
+                                             <span style="font-size: 16px; font-weight: normal;">[Received By]</span>
+                                             <div style="margin-top: 5px; font-size: 16px;">
+                                               ........./........../........
+                                          </div>
+                                         </td>
+                                     </tr>
+                                 </tbody>
+                             </table>
+
+                             <!-- ศูนย์บริการ -->
+                             <div class="row justify-content-center">
+                                 <div class="company-header text-center" style="font-size: 20px;">
+                                     ศูนย์บริการและรับข้อร้องเรียน โทร(02-5691980)
+                                 </div>
+                                 <div class="company-info text-center" style="font-size: 20px;">
+                                     Customer Service Tel.(02-5691980)
+                                 </div>
+                             </div>
+
+                             <div style="position: relative; min-height: 25mm; padding-bottom: 20mm;">
+                                 <!-- เนื้อหาหน้านั้น ๆ เช่น ตาราง หรือข้อความอื่น ๆ -->
+
+                                 <!-- Footer fixed bottom -->
+                                  <div style="
+                                    position: absolute;
+                                    bottom: 30px; left: 0; width: 100%;
+                                   display: flex; justify-content: space-between;
+                                   font-size: 10px;
+                                   padding-left: 4mm; padding-right: 4mm;
+                                   line-height: 1.2;
+                                   page-break-inside: avoid;
+                                   ">
+                                   <div>
+                                     <p style="margin: 0;">อนุมัติใช้วันที่ 14/09/2563</p>
+                                   </div>
+                                   <div>
+                                     <p style="margin: 0; text-align: right;">FM-PUR-08.REV.01</p>
+                                   </div>
+                                 </div>
+                               </div>
+                                    </t>
+
+                     </div>
+                                 <t t-set="page_number" t-value="page_number + 1"/></t>
+                     </div>
+                 </t>        
+              </t>     
+            </t>                 
+       </template>
   
   
       <record id="action_borrow_equipment_form" model="ir.actions.report">
