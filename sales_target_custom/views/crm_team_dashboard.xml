@@ -28,11 +28,13 @@
                         <t t-set="bar_color" t-value="percent >= 100 ? '#059669' : percent >= 75 ? '#2563eb' : percent >= 50 ? '#d97706' : '#dc2626'"/>
                         <t t-set="badge_cls" t-value="percent >= 100 ? 'o_badge_success' : percent >= 50 ? 'o_badge_warning' : 'o_badge_danger'"/>
 
+                        <t t-if="record.team_ids.raw_value and record.team_ids.raw_value.length">
+
                         <div class="o_team_target_card oe_kanban_global_click">
 
                                 <div class="o_team_card_header">
                                 <div class="o_team_card_header_left">
-                                    <t t-if="record.team_ids.raw_value and record.team_ids.raw_value.length">
+                                    <t t-if="record.team_member_ids.raw_value and record.team_member_ids.raw_value.length">
                                         <div class="o_team_avatars">
                                             <t t-foreach="record.team_member_ids.raw_value" t-as="member_id">
                                                 <img t-att-src="kanban_image('res.users', 'avatar_128', member_id)"
@@ -40,10 +42,6 @@
                                                      t-att-title="member_id"/>
                                             </t>
                                         </div>
-                                    </t>
-                                    <t t-elif="record.user_id.raw_value">
-                                        <img t-att-src="kanban_image('res.users', 'avatar_128', record.user_id.raw_value)"
-                                             alt="Avatar" style="width:32px;height:32px;object-fit:cover;border-radius:50%;flex-shrink:0;border:2px solid #2563eb;margin-right:10px;"/>
                                     </t>
                                     <div>
                                         <h4 class="o_team_name"><field name="name"/></h4>
@@ -102,6 +100,70 @@
                             </t>
 
                         </div>
+                        </t>
+
+                        <t t-else="">
+                        <div class="o_individual_target_card oe_kanban_global_click">
+
+                            <div class="o_ind_card_header">
+                                <div class="o_ind_card_header_left">
+                                    <img t-att-src="kanban_image('res.users', 'avatar_128', record.user_id.raw_value)"
+                                         alt="Avatar" class="o_ind_avatar"/>
+                                    <div class="o_ind_card_title">
+                                        <h4 class="o_ind_target_name"><field name="name"/></h4>
+                                        <span class="o_ind_target_type">My Target</span>
+                                    </div>
+                                </div>
+                                <div t-attf-class="o_status_badge {{badge_cls}}">
+                                    <t t-out="percent"/>%
+                                </div>
+                            </div>
+
+                            <div class="o_ind_card_divider"/>
+
+                            <div class="o_ind_percent_section">
+                                <div class="o_ind_percent_display">
+                                    <span class="o_ind_percent_number" t-att-style="'color:' + bar_color + ';'">
+                                        <t t-out="percent"/>
+                                    </span>
+                                    <span class="o_ind_percent_symbol" t-att-style="'color:' + bar_color + ';'">%</span>
+                                </div>
+                                <div class="o_ind_progress_bar">
+                                    <div class="o_ind_progress_track">
+                                        <div class="o_ind_progress_fill"
+                                             t-att-style="'width:' + Math.min(percent, 100) + '%; background-color:' + bar_color + ';'"/>
+                                    </div>
+                                    <div class="o_ind_progress_labels">
+                                        <span class="o_ind_progress_achieved">
+                                            <field name="achieved_amount" widget="monetary"/>
+                                        </span>
+                                        <span class="o_ind_progress_target">
+                                            / <field name="target_amount" widget="monetary"/>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="o_ind_card_divider"/>
+
+                            <div class="o_ind_card_footer">
+                                <span class="o_ind_date_range">
+                                    <i class="fa fa-calendar"/> <field name="date_start"/> - <field name="date_end"/>
+                                </span>
+                                <span t-attf-class="badge o_tag #{record.state.raw_value == 'draft' ? 'text-bg-info' : record.state.raw_value == 'confirmed' ? 'text-bg-success' : 'text-bg-secondary'}">
+                                    <field name="state"/>
+                                </span>
+                            </div>
+
+                            <t t-if="percent >= 100">
+                                <div class="o_team_card_achieved_banner">
+                                    <span class="o_achieved_text">Target Achieved!</span>
+                                </div>
+                            </t>
+
+                        </div>
+                        </t>
+
                     </t>
                 </templates>
             </kanban>
@@ -117,10 +179,10 @@
                 <field name="user_id"/>
                 <field name="team_ids"/>
 
-                <filter name="sale_team" string="Sale Team"
-                        domain="[('team_ids', '!=', False)]"/>
                 <filter name="my_target" string="My Target"
                         domain="[('user_id', '=', uid)]"/>
+                <filter name="sale_team" string="Sale Team"
+                        domain="[('team_ids', '!=', False)]"/>
 
                 <separator/>
                 <filter name="draft" string="Draft"
@@ -149,8 +211,8 @@
         <field name="res_model">sales.target</field>
         <field name="view_mode">kanban,tree,form</field>
         <field name="search_view_id" ref="view_sale_team_dashboard_search"/>
-        <field name="domain">[('state', '!=', 'closed')]</field>
-        <field name="context">{'search_default_sale_team': 1}</field>
+        <field name="domain">['&amp;', ('state', '!=', 'closed'), '|', ('user_id', '=', uid), ('team_ids.member_ids', 'in', [uid])]</field>
+        <field name="context">{}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Sales Target Dashboard!

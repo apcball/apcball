@@ -235,6 +235,27 @@ class SalesAnalyticsDashboard(models.TransientModel):
         return domain
 
     @api.model
+    def _get_delivery_picking_domain(self, filters):
+        domain = [
+            ("picking_type_code", "=", "outgoing"),
+            ("company_id", "=", self.env.company.id),
+        ]
+        if filters.get("date_from"):
+            domain.append(("scheduled_date", ">=", filters["date_from"]))
+        if filters.get("date_to"):
+            end = filters["date_to"]
+            if len(end) == 10:
+                end += " 23:59:59"
+            domain.append(("scheduled_date", "<=", end))
+        if filters.get("salesperson_id"):
+            domain.append(("sale_id.user_id", "=", filters["salesperson_id"]))
+        if filters.get("team_id"):
+            domain.append(("sale_id.team_id", "=", filters["team_id"]))
+        if filters.get("partner_id"):
+            domain.append(("partner_id", "=", filters["partner_id"]))
+        return domain
+
+    @api.model
     def get_kpi_data(self, filters):
         so_domain = self._get_sale_order_domain(filters)
         so_model = self.env["sale.order"].sudo()
@@ -286,6 +307,30 @@ class SalesAnalyticsDashboard(models.TransientModel):
             outstanding_domain, ["amount_residual:sum"], [])[0]
         outstanding_invoices = out_agg.get("amount_residual") or 0.0
 
+        picking_model = self.env["stock.picking"].sudo()
+        done_domain = [
+            ("picking_type_code", "=", "outgoing"),
+            ("state", "=", "done"),
+            ("company_id", "=", self.env.company.id),
+        ]
+        if filters.get("date_from"):
+            done_domain.append(("date_done", ">=", filters["date_from"]))
+        if filters.get("date_to"):
+            end = filters["date_to"]
+            if len(end) == 10:
+                end += " 23:59:59"
+            done_domain.append(("date_done", "<=", end))
+        if filters.get("salesperson_id"):
+            done_domain.append(("sale_id.user_id", "=", filters["salesperson_id"]))
+        if filters.get("team_id"):
+            done_domain.append(("sale_id.team_id", "=", filters["team_id"]))
+        if filters.get("partner_id"):
+            done_domain.append(("partner_id", "=", filters["partner_id"]))
+        done_pickings = picking_model.search(done_domain)
+        total_delivered_qty = sum(
+            done_pickings.move_ids.filtered(lambda m: m.state == "done").mapped("quantity")
+        )
+
         return {
             "total_revenue": float_round(total_revenue, 2),
             "total_orders": total_orders,
@@ -293,6 +338,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
             "growth_rate": float_round(growth_rate, 2),
             "target_achievement": float_round(target_achievement, 2),
             "outstanding_invoices": float_round(outstanding_invoices, 2),
+            "total_delivered_qty": float_round(total_delivered_qty, 2),
         }
 
     @api.model
@@ -629,10 +675,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
 
         pos_states = [
             ("draft", "POS Draft"),
-            ("held", "POS Held"),
-            ("paid", "POS Paid"),
             ("done", "POS Done"),
-            ("cancelled", "POS Cancelled"),
         ]
         for state, label in pos_states:
             state_domain = pos_base + [("state", "=", state)]
@@ -643,6 +686,30 @@ class SalesAnalyticsDashboard(models.TransientModel):
                     "label": label,
                     "count": agg.get("__count") or 0,
                     "total": float_round(agg.get("amount_total") or 0.0, 2),
+                }
+            )
+        return status_data
+
+    @api.model
+    def get_delivery_status(self, filters):
+        picking_model = self.env["stock.picking"].sudo()
+        base_domain = self._get_delivery_picking_domain(filters)
+
+        status_data = []
+        for state, label in [
+            ("draft", "Draft"),
+            ("confirmed", "Waiting"),
+            ("assigned", "Ready"),
+            ("done", "Done"),
+            ("cancel", "Cancelled"),
+        ]:
+            state_domain = base_domain + [("state", "=", state)]
+            agg = picking_model.read_group(state_domain, ["__count"], [])[0]
+            status_data.append(
+                {
+                    "state": "del_" + state,
+                    "label": label,
+                    "count": agg.get("__count") or 0,
                 }
             )
         return status_data
@@ -908,6 +975,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
             "sales_by_category": self.get_sales_by_category(filters),
             "sales_by_salesperson": self.get_sales_by_salesperson(filters),
             "order_status": self.get_order_status(filters),
+            "delivery_status": self.get_delivery_status(filters),
             "sales_funnel": self.get_sales_funnel(filters),
             "forecast": self.get_forecast(filters),
             "monthly_comparison": self.get_monthly_comparison(filters),

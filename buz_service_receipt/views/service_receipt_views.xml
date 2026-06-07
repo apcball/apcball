@@ -45,17 +45,10 @@
                     <!-- Charge Customer: Create SO -->
                     <button name="action_create_sale_order" string="Create SO"
                             type="object" class="btn-warning"
-                            invisible="invoice_status != 'to_invoice' or not charge_customer"/>
+                            invisible="invoice_status != 'to_invoice'"/>
                     <button name="action_view_sale_order" string="View SO"
                             type="object" class="btn-info"
                             invisible="not sale_order_id"/>
-                    <!-- Invoice (legacy) -->
-                    <button name="action_create_customer_invoice" string="Create Invoice"
-                            type="object" class="btn-warning"
-                            invisible="invoice_status != 'to_invoice' or charge_customer"/>
-                    <button name="action_view_invoice" string="View Invoice"
-                            type="object" class="btn-info"
-                            invisible="not invoice_id"/>
                     <!-- Done / Cancel -->
                     <button name="action_done" string="Done" type="object"
                             invisible="state not in ['confirmed', 'waiting_replacement', 'waiting_invoice', 'product_return', 'replacement_delivery']"
@@ -90,13 +83,6 @@
                                 help="View sale order">
                             <field name="sale_order_count" widget="statinfo" string="SO"/>
                         </button>
-                        <!-- Smart Button: Invoice -->
-                        <button class="oe_stat_button" type="object"
-                                name="action_view_invoice" icon="fa-file-text-o"
-                                invisible="not invoice_id"
-                                help="View customer invoice">
-                            <field name="invoice_count" widget="statinfo" string="Invoice"/>
-                        </button>
                     </div>
                     <group string="Display">
                         <field name="form_language" widget="radio" options="{'horizontal': true}"/>
@@ -111,7 +97,6 @@
                                 <field name="calendar_event_id" string="ปฏิทิน" readonly="1"/>
                                 <field name="service_case_type" string="ประเภทเคส"/>
                                 <field name="invoice_status" string="สถานะวางบิล" readonly="1"/>
-                                <field name="invoice_id" string="ใบแจ้งหนี้" readonly="1"/>
                             </group>
                             <group string="ทีมบริการ">
                                 <field name="team_id" string="ทีม" options="{'no_create': True}"/>
@@ -321,7 +306,6 @@
                                 <field name="calendar_event_id" readonly="1"/>
                                 <field name="service_case_type"/>
                                 <field name="invoice_status" readonly="1"/>
-                                <field name="invoice_id" readonly="1"/>
                             </group>
                             <group string="Service Team">
                                 <field name="team_id" options="{'no_create': True}"/>

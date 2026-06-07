@@ -66,7 +66,7 @@
 
                     <!-- ROW 1: KPI CARDS -->
                     <div class="row g-3 mb-4">
-                        <div class="col-12 col-md-6 col-xl-2">
+                        <div class="col-12 col-md-4 col-xl">
                             <div class="o_sa_kpi_card kpi-primary" t-on-click="openOrders">
                                 <div class="kpi-icon"><i class="fa fa-dollar"/></div>
                                 <div class="kpi-content">
@@ -75,7 +75,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 col-xl-2">
+                        <div class="col-12 col-md-4 col-xl">
                             <div class="o_sa_kpi_card kpi-success" t-on-click="openOrders">
                                 <div class="kpi-icon"><i class="fa fa-shopping-cart"/></div>
                                 <div class="kpi-content">
@@ -84,7 +84,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 col-xl-2">
+                        <div class="col-12 col-md-4 col-xl">
                             <div class="o_sa_kpi_card kpi-info">
                                 <div class="kpi-icon"><i class="fa fa-calculator"/></div>
                                 <div class="kpi-content">
@@ -93,7 +93,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 col-xl-2">
+                        <div class="col-12 col-md-4 col-xl">
                             <div class="o_sa_kpi_card" t-att-class="kpiGrowthClass">
                                 <div class="kpi-icon"><i t-att-class="'fa ' + kpiGrowthIcon"/></div>
                                 <div class="kpi-content">
@@ -102,7 +102,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 col-xl-2">
+                        <div class="col-12 col-md-4 col-xl">
                             <div class="o_sa_kpi_card kpi-warning">
                                 <div class="kpi-icon"><i class="fa fa-bullseye"/></div>
                                 <div class="kpi-content">
@@ -111,12 +111,21 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 col-xl-2">
+                        <div class="col-12 col-md-4 col-xl">
                             <div class="o_sa_kpi_card kpi-danger" t-on-click="openInvoices">
                                 <div class="kpi-icon"><i class="fa fa-file-invoice-dollar"/></div>
                                 <div class="kpi-content">
                                     <div class="kpi-title">Outstanding</div>
                                     <div class="kpi-value"><t t-esc="formatCurrency(state.data.kpi.outstanding_invoices)"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4 col-xl">
+                            <div class="o_sa_kpi_card kpi-info">
+                                <div class="kpi-icon"><i class="fa fa-truck"/></div>
+                                <div class="kpi-content">
+                                    <div class="kpi-title">Total Delivered</div>
+                                    <div class="kpi-value"><t t-esc="formatNumber(state.data.kpi.total_delivered_qty)"/></div>
                                 </div>
                             </div>
                         </div>
@@ -162,9 +171,9 @@
                         </div>
                     </div>
 
-                    <!-- ROW 4: SALESPERSON + ORDER STATUS -->
+                    <!-- ROW 4: SALESPERSON + ORDER STATUS + DELIVERY STATUS -->
                     <div class="row g-3 mb-4">
-                        <div class="col-12 col-xl-8">
+                        <div class="col-12 col-xl-6">
                             <div class="o_sa_panel card h-100">
                                 <div class="card-header"><i class="fa fa-user-circle me-2"/>Sales by Salesperson vs Target</div>
                                 <div class="card-body o_sa_chart_body">
@@ -172,11 +181,19 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-xl-4">
+                        <div class="col-12 col-xl-3">
                             <div class="o_sa_panel card h-100">
                                 <div class="card-header"><i class="fa fa-tasks me-2"/>Order Status</div>
                                 <div class="card-body o_sa_chart_body">
                                     <canvas t-ref="orderStatusChart"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-xl-3">
+                            <div class="o_sa_panel card h-100">
+                                <div class="card-header"><i class="fa fa-truck me-2"/>Delivery Status</div>
+                                <div class="card-body o_sa_chart_body">
+                                    <canvas t-ref="deliveryStatusChart"/>
                                 </div>
                             </div>
                         </div>

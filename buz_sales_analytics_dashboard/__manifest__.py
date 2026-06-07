@@ -12,6 +12,7 @@
         "sales_team",
         "sales_target_custom",
         "pos_lite",
+        "stock",
     ],
     "data": [
         "security/security.xml",

@@ -152,14 +152,10 @@ class ServiceReceipt(models.Model):
         string='Sale Order Count',
     )
 
-    invoice_id = fields.Many2one('account.move', string='Customer Invoice', readonly=True, copy=False)
-    invoice_count = fields.Integer(compute='_compute_invoice_count')
     invoice_status = fields.Selection(
         [
             ('no', 'Nothing to Invoice'),
             ('to_invoice', 'To Invoice'),
-            ('invoiced', 'Invoiced'),
-            ('paid', 'Paid'),
         ],
         string='Invoice Status',
         compute='_compute_invoice_status',
@@ -264,17 +260,10 @@ class ServiceReceipt(models.Model):
                 # Only clear if there are no technicians set — avoid data loss
                 pass
 
-    @api.depends('invoice_id')
-    def _compute_invoice_count(self):
-        for record in self:
-            record.invoice_count = 1 if record.invoice_id else 0
-
-    @api.depends('invoice_id', 'line_ids.bill_customer', 'line_ids.price_unit', 'charge_customer')
+    @api.depends('line_ids.bill_customer', 'line_ids.price_unit', 'charge_customer')
     def _compute_invoice_status(self):
         for record in self:
-            if record.invoice_id:
-                record.invoice_status = 'paid' if record.invoice_id.payment_state == 'paid' else 'invoiced'
-            elif record._get_billable_lines() or record.charge_customer:
+            if record._get_billable_lines() or record.charge_customer:
                 record.invoice_status = 'to_invoice'
             else:
                 record.invoice_status = 'no'
@@ -706,54 +695,6 @@ class ServiceReceipt(models.Model):
     def _get_billable_lines(self):
         self.ensure_one()
         return self.line_ids.filtered(lambda l: l.bill_customer and l.price_unit > 0 and (l.replacement_product_id or l.product_id))
-
-    def action_create_customer_invoice(self):
-        self.ensure_one()
-        if not self.partner_id:
-            raise UserError(_('Please select a customer before creating an invoice.'))
-        if self.invoice_id:
-            return self.action_view_invoice()
-
-        billable_lines = self._get_billable_lines()
-        if not billable_lines:
-            raise UserError(_('Please mark at least one line as billable and set a unit price.'))
-
-        invoice_lines = []
-        for line in billable_lines:
-            product = line.replacement_product_id or line.product_id
-            invoice_lines.append(fields.Command.create({
-                'product_id': product.id,
-                'name': line.invoice_description or line.description or product.display_name,
-                'quantity': line.invoice_qty or line.quantity or 1.0,
-                'price_unit': line.price_unit,
-            }))
-
-        invoice = self.env['account.move'].create({
-            'move_type': 'out_invoice',
-            'partner_id': self.partner_id.id,
-            'invoice_origin': self.name,
-            'invoice_user_id': self.technician_id.id or self.env.user.id,
-            'invoice_line_ids': invoice_lines,
-        })
-        self.write({
-            'invoice_id': invoice.id,
-            'state': 'waiting_invoice' if invoice.state == 'draft' else self.state,
-        })
-        self.message_post(body=_('Customer invoice created: %s') % invoice.name)
-        return self.action_view_invoice()
-
-    def action_view_invoice(self):
-        self.ensure_one()
-        if not self.invoice_id:
-            raise UserError(_('No customer invoice has been created yet.'))
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Customer Invoice'),
-            'res_model': 'account.move',
-            'res_id': self.invoice_id.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
 
 
 class ServiceReceiptLine(models.Model):

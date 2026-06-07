@@ -6,22 +6,22 @@
               web_icon="pos_lite,static/description/icon.png"
               groups="pos_lite.group_pos_lite_user"/>
 
+    <menuitem id="menu_pos_lite_session"
+              name="Sessions"
+              parent="menu_pos_lite_root"
+              action="action_pos_lite_session"
+              sequence="10"/>
+
     <menuitem id="menu_pos_lite_orders"
               name="Orders"
               parent="menu_pos_lite_root"
               action="action_pos_lite_orders"
-              sequence="10"/>
+              sequence="12"/>
 
     <menuitem id="menu_pos_lite_held_orders"
               name="Held Orders"
               parent="menu_pos_lite_root"
               action="action_pos_lite_held_orders"
-              sequence="12"/>
-
-    <menuitem id="menu_pos_lite_session"
-              name="Sessions"
-              parent="menu_pos_lite_root"
-              action="action_pos_lite_session"
               sequence="14"/>
 
     <menuitem id="menu_pos_lite_daily_sales"
