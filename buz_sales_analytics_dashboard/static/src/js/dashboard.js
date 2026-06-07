@@ -29,6 +29,7 @@ export class SalesAnalyticsDashboard extends Component {
             salesByCategory: useRef("salesByCategoryChart"),
             salesByPerson: useRef("salesByPersonChart"),
             orderStatus: useRef("orderStatusChart"),
+            deliveryStatus: useRef("deliveryStatusChart"),
             forecast: useRef("forecastChart"),
         };
         this.charts = {};
@@ -61,6 +62,7 @@ export class SalesAnalyticsDashboard extends Component {
                 sales_by_category: [],
                 sales_by_salesperson: [],
                 order_status: [],
+                delivery_status: [],
                 sales_funnel: [],
                 forecast: { historical: [], forecast: [], trend: 0 },
                 monthly_comparison: [],
@@ -199,6 +201,7 @@ export class SalesAnalyticsDashboard extends Component {
         this.renderCategoryChart();
         this.renderSalespersonChart();
         this.renderOrderStatusChart();
+        this.renderDeliveryStatusChart();
         this.renderForecastChart();
     }
 
@@ -394,13 +397,15 @@ export class SalesAnalyticsDashboard extends Component {
     renderOrderStatusChart() {
         const el = this.chartRefs.orderStatus.el;
         if (!el || !window.Chart) return;
-        const d = this.state.data.order_status || [];
+        const d = (this.state.data.order_status || []).filter((r) => r.count > 0);
         const statusColors = {
             draft: "rgba(156, 163, 175, 0.85)",
             sent: "rgba(59, 130, 246, 0.85)",
             sale: "rgba(16, 185, 129, 0.85)",
             done: "rgba(99, 102, 241, 0.85)",
             cancel: "rgba(239, 68, 68, 0.85)",
+            pos_draft: "rgba(245, 158, 11, 0.85)",
+            pos_done: "rgba(20, 184, 166, 0.85)",
         };
         this.charts.orderStatus = new window.Chart(el, {
             type: "pie",
@@ -411,6 +416,39 @@ export class SalesAnalyticsDashboard extends Component {
                         data: d.map((r) => r.count || 0),
                         backgroundColor: d.map(
                             (r) => statusColors[r.state] || "rgba(156, 163, 175, 0.85)"
+                        ),
+                        hoverOffset: 6,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: "right" } },
+            },
+        });
+    }
+
+    renderDeliveryStatusChart() {
+        const el = this.chartRefs.deliveryStatus.el;
+        if (!el || !window.Chart) return;
+        const d = (this.state.data.delivery_status || []).filter((r) => r.count > 0);
+        const deliveryColors = {
+            del_draft: "rgba(156, 163, 175, 0.85)",
+            del_confirmed: "rgba(59, 130, 246, 0.85)",
+            del_assigned: "rgba(245, 158, 11, 0.85)",
+            del_done: "rgba(16, 185, 129, 0.85)",
+            del_cancel: "rgba(239, 68, 68, 0.85)",
+        };
+        this.charts.deliveryStatus = new window.Chart(el, {
+            type: "pie",
+            data: {
+                labels: d.map((r) => r.label || ""),
+                datasets: [
+                    {
+                        data: d.map((r) => r.count || 0),
+                        backgroundColor: d.map(
+                            (r) => deliveryColors[r.state] || "rgba(156, 163, 175, 0.85)"
                         ),
                         hoverOffset: 6,
                     },

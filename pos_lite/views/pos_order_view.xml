@@ -15,9 +15,9 @@
                 <field name="amount_total" sum="Total" widget="monetary"/>
                 <field name="amount_paid" sum="Paid" widget="monetary"/>
                 <field name="amount_residual" sum="Due" widget="monetary" decoration-danger="amount_residual > 0"/>
-                <field name="return_status" invisible="1"/>
-                <field name="exchange_status" invisible="1"/>
-                <field name="return_of_order_id" invisible="1"/>
+                <field name="return_status" widget="badge" decoration-danger="return_status == 'Return'" decoration-success="return_status == 'Sale'" optional="show"/>
+                <field name="exchange_status" widget="badge" decoration-warning="exchange_status == 'Exchange'" decoration-muted="exchange_status == 'Direct'" optional="show"/>
+                <field name="return_of_order_id" optional="hide"/>
                 <field name="return_count" invisible="1"/>
                 <field name="invoice_id" optional="hide"/>
                 <field name="picking_id" optional="hide"/>
@@ -83,7 +83,7 @@
                     <!-- Paid actions -->
                     <button name="action_done" type="object" string="Mark Done" invisible="state != 'paid'"/>
                     <!-- Return/Exchange — only for completed orders -->
-                    <button name="action_create_return" type="object" string="↩ Return" class="btn-secondary" invisible="1"/>
+                    <button name="action_create_return" type="object" string="↩ Return" class="btn-secondary" invisible="state != 'done'"/>
                     <button name="action_create_exchange" type="object" string="⇄ Exchange" class="btn-secondary" invisible="1"/>
                     <!-- General -->
                     <button name="action_reorder" type="object" string="🔄 Re-order" class="btn-secondary" invisible="state == 'draft'"/>
@@ -107,13 +107,13 @@
                                 <span class="o_stat_text">Picking</span>
                             </div>
                         </button>
-                        <button name="action_view_returns" type="object" class="oe_stat_button" icon="fa-undo" invisible="1">
+                        <button name="action_view_returns" type="object" class="oe_stat_button" icon="fa-undo" invisible="is_return or return_count == 0">
                             <div class="o_stat_info">
                                 <span class="o_stat_value"><field name="return_count"/></span>
                                 <span class="o_stat_text">Returns</span>
                             </div>
                         </button>
-                        <button name="action_view_exchanges" type="object" class="oe_stat_button" icon="fa-exchange" invisible="1">
+                        <button name="action_view_exchanges" type="object" class="oe_stat_button" icon="fa-exchange" invisible="is_return or exchange_count == 0">
                             <div class="o_stat_info">
                                 <span class="o_stat_value"><field name="exchange_count"/></span>
                                 <span class="o_stat_text">Exchanges</span>
@@ -165,7 +165,7 @@
                     </group>
 
                     <!-- Return/Exchange info -->
-                    <group invisible="1">
+                    <group invisible="not is_return">
                         <group string="↩ Return Info">
                             <field name="return_of_order_id" readonly="1"/>
                             <field name="return_reason" readonly="1"/>
@@ -176,7 +176,7 @@
                     </group>
 
                     <!-- Exchange info — original order side -->
-                    <group invisible="1">
+                    <group invisible="is_return or exchange_count == 0">
                         <group string="⇄ Exchange Summary" col="2">
                             <field name="exchange_return_total" readonly="1" widget="monetary" string="Return Value"/>
                             <field name="exchange_new_total" readonly="1" widget="monetary" string="New Items Value"/>
@@ -254,7 +254,7 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="🔄 Exchanges" invisible="1">
+                        <page string="🔄 Exchanges" invisible="exchange_count == 0">
                             <group string="Exchange Orders">
                                 <field name="exchange_order_ids" nolabel="1" readonly="1">
                                     <tree>
