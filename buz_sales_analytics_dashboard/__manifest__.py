@@ -9,7 +9,9 @@
         "sale_management",
         "crm",
         "account",
+        "sales_team",
         "sales_target_custom",
+        "pos_lite",
     ],
     "data": [
         "security/security.xml",

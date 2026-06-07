@@ -1,6 +1,6 @@
 {
     "name": "buz Sales Target Management",
-    "version": "17.0.1.1.0",
+    "version": "17.0.1.2.0",
     "summary": "Sales target management for salespersons and teams with advanced features.",
     "description": """
         Sales Target Management
@@ -10,7 +10,7 @@
         
         Features:
         - Set sales targets for individual salespersons or teams
-        - Multiple target points: Sale Order Confirm, Invoice Validation, Invoice Paid
+        - Multiple target points: Sale Order Confirm, Invoice Validation, Invoice Paid, POS Lite Sale
         - Theoretical achievement calculation
         - Email notifications for target confirmation and closure
         - Multi-currency support
@@ -21,14 +21,14 @@
     "category": "Sales",
     "author": "Mogen Co., Ltd.",
     "website": "https://mogen.co.th",
-    "depends": ["sale_management", "crm", "account"],
+    "depends": ["sale_management", "crm", "account", "pos_lite"],
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",
         "data/email_templates.xml",
         "data/cron_data.xml",
-        "views/my_target_dashboard.xml",
         "views/sales_target_views.xml",
+        "views/my_target_dashboard.xml",
         "views/crm_team_dashboard.xml",
         "views/sales_target_menu.xml",
     ],

@@ -144,6 +144,78 @@ class SalesAnalyticsDashboard(models.TransientModel):
         return line_domain
 
     @api.model
+    def _get_pos_order_domain(self, filters):
+        domain = [
+            ("state", "in", ["paid", "done"]),
+            ("company_id", "=", self.env.company.id),
+            ("is_return", "=", False),
+        ]
+        if filters.get("date_from"):
+            domain.append(("date_order", ">=", filters["date_from"]))
+        if filters.get("date_to"):
+            end = filters["date_to"]
+            if len(end) == 10:
+                end += " 23:59:59"
+            domain.append(("date_order", "<=", end))
+        if filters.get("salesperson_id"):
+            domain.append(("employee_id.user_id", "=", filters["salesperson_id"]))
+        if filters.get("partner_id"):
+            domain.append(("partner_id", "=", filters["partner_id"]))
+        return domain
+
+    @api.model
+    def _get_pos_order_line_domain(self, filters):
+        domain = [
+            ("order_id.state", "in", ["paid", "done"]),
+            ("order_id.company_id", "=", self.env.company.id),
+            ("order_id.is_return", "=", False),
+        ]
+        if filters.get("date_from"):
+            domain.append(("order_id.date_order", ">=", filters["date_from"]))
+        if filters.get("date_to"):
+            end = filters["date_to"]
+            if len(end) == 10:
+                end += " 23:59:59"
+            domain.append(("order_id.date_order", "<=", end))
+        if filters.get("salesperson_id"):
+            domain.append(
+                ("order_id.employee_id.user_id", "=", filters["salesperson_id"])
+            )
+        if filters.get("partner_id"):
+            domain.append(("order_id.partner_id", "=", filters["partner_id"]))
+        if filters.get("category_id"):
+            domain.append(("product_id.categ_id", "child_of", filters["category_id"]))
+        return domain
+
+    @api.model
+    def _get_pos_cancelled_domain(self, filters):
+        domain = [
+            ("state", "=", "cancelled"),
+            ("company_id", "=", self.env.company.id),
+        ]
+        if filters.get("date_from"):
+            domain.append(("date_order", ">=", filters["date_from"]))
+        if filters.get("date_to"):
+            end = filters["date_to"]
+            if len(end) == 10:
+                end += " 23:59:59"
+            domain.append(("date_order", "<=", end))
+        if filters.get("salesperson_id"):
+            domain.append(("employee_id.user_id", "=", filters["salesperson_id"]))
+        if filters.get("partner_id"):
+            domain.append(("partner_id", "=", filters["partner_id"]))
+        return domain
+
+    @api.model
+    def _aggregate_pos(self, domain):
+        pos_model = self.env["pos.lite.order"].sudo()
+        agg = pos_model.read_group(domain, ["amount_total:sum"], [])[0]
+        revenue = agg.get("amount_total") or 0.0
+        count_agg = pos_model.read_group(domain, ["__count"], [])[0]
+        count = count_agg.get("__count") or 0
+        return {"revenue": revenue, "count": count}
+
+    @api.model
     def _get_invoice_domain(self, filters):
         domain = [
             ("move_type", "in", ["out_invoice", "out_refund"]),
@@ -170,11 +242,15 @@ class SalesAnalyticsDashboard(models.TransientModel):
         cache_model = self.env["buz.sales.analytics.cache"]
 
         so_agg = so_model.read_group(so_domain, ["amount_total:sum"], [])[0]
-        total_revenue = so_agg.get("amount_total") or 0.0
-
+        so_revenue = so_agg.get("amount_total") or 0.0
         so_count_agg = so_model.read_group(so_domain, ["__count"], [])[0]
-        total_orders = so_count_agg.get("__count") or 0
+        so_orders = so_count_agg.get("__count") or 0
 
+        pos_domain = self._get_pos_order_domain(filters)
+        pos_data = self._aggregate_pos(pos_domain)
+
+        total_revenue = so_revenue + pos_data["revenue"]
+        total_orders = so_orders + pos_data["count"]
         avg_order = total_revenue / total_orders if total_orders else 0.0
 
         prev_filters = dict(filters)
@@ -186,9 +262,14 @@ class SalesAnalyticsDashboard(models.TransientModel):
             prev_filters["date_from"] = str(df - relativedelta(days=span))
             prev_filters["date_to"] = str(df - relativedelta(days=1))
 
-        prev_domain = self._get_sale_order_domain(prev_filters)
-        prev_agg = so_model.read_group(prev_domain, ["amount_total:sum"], [])[0]
-        prev_revenue = prev_agg.get("amount_total") or 0.0
+        prev_so_domain = self._get_sale_order_domain(prev_filters)
+        prev_so_agg = so_model.read_group(prev_so_domain, ["amount_total:sum"], [])[0]
+        prev_so_revenue = prev_so_agg.get("amount_total") or 0.0
+
+        prev_pos_domain = self._get_pos_order_domain(prev_filters)
+        prev_pos_data = self._aggregate_pos(prev_pos_domain)
+
+        prev_revenue = prev_so_revenue + prev_pos_data["revenue"]
         growth_rate = (
             ((total_revenue - prev_revenue) / prev_revenue * 100.0)
             if prev_revenue
@@ -239,7 +320,9 @@ class SalesAnalyticsDashboard(models.TransientModel):
     @api.model
     def get_revenue_trend(self, filters):
         so_model = self.env["sale.order"].sudo()
-        domain = self._get_sale_order_domain(filters)
+        pos_model = self.env["pos.lite.order"].sudo()
+        so_domain = self._get_sale_order_domain(filters)
+        pos_domain = self._get_pos_order_domain(filters)
         period_type = filters.get("period_type", "monthly")
 
         groupby_map = {
@@ -250,121 +333,219 @@ class SalesAnalyticsDashboard(models.TransientModel):
         }
         groupby = groupby_map.get(period_type, "date_order:month")
 
-        groups = so_model.read_group(
-            domain, ["amount_total:sum"], [groupby], lazy=False
+        so_groups = so_model.read_group(
+            so_domain, ["amount_total:sum", "__count"], [groupby], lazy=False
         )
-        return [
-            {
-                "period": g.get(groupby) or "",
-                "revenue": float_round(g.get("amount_total") or 0.0, 2),
-                "order_count": g.get("__count") or 0,
-            }
-            for g in sorted(groups, key=lambda x: x.get(groupby) or "")
-        ]
+        pos_groups = pos_model.read_group(
+            pos_domain, ["amount_total:sum", "__count"], [groupby], lazy=False
+        )
+
+        combined = {}
+        for g in so_groups:
+            key = g.get(groupby) or ""
+            combined.setdefault(key, {"period": key, "revenue": 0.0, "order_count": 0})
+            combined[key]["revenue"] += g.get("amount_total") or 0.0
+            combined[key]["order_count"] += g.get("__count") or 0
+        for g in pos_groups:
+            key = g.get(groupby) or ""
+            combined.setdefault(key, {"period": key, "revenue": 0.0, "order_count": 0})
+            combined[key]["revenue"] += g.get("amount_total") or 0.0
+            combined[key]["order_count"] += g.get("__count") or 0
+
+        result = sorted(combined.values(), key=lambda x: x["period"])
+        for r in result:
+            r["revenue"] = float_round(r["revenue"], 2)
+        return result
 
     @api.model
     def get_top_customers(self, filters, limit=10):
         so_model = self.env["sale.order"].sudo()
-        domain = self._get_sale_order_domain(filters)
+        pos_model = self.env["pos.lite.order"].sudo()
+        so_domain = self._get_sale_order_domain(filters)
+        pos_domain = self._get_pos_order_domain(filters)
 
-        groups = so_model.read_group(
-            domain, ["amount_total:sum", "__count"], ["partner_id"], lazy=False
+        so_groups = so_model.read_group(
+            so_domain, ["amount_total:sum", "__count"], ["partner_id"], lazy=False
         )
-        groups.sort(key=lambda g: g.get("amount_total") or 0.0, reverse=True)
-        result = []
-        for g in groups[:limit]:
-            partner_info = g.get("partner_id")
-            result.append(
-                {
-                    "partner_id": partner_info[0] if partner_info else False,
-                    "partner_name": partner_info[1] if partner_info else "Unknown",
-                    "total_revenue": float_round(g.get("amount_total") or 0.0, 2),
-                    "order_count": g.get("__count") or 0,
-                }
-            )
-        return result
+        pos_groups = pos_model.read_group(
+            pos_domain, ["amount_total:sum", "__count"], ["partner_id"], lazy=False
+        )
+
+        combined = {}
+        for g in so_groups:
+            info = g.get("partner_id")
+            pid = info[0] if info else -1
+            pname = info[1] if info else "Unknown"
+            key = pid if pid else -1
+            combined.setdefault(key, {"partner_id": pid, "partner_name": pname, "total_revenue": 0.0, "order_count": 0})
+            combined[key]["total_revenue"] += g.get("amount_total") or 0.0
+            combined[key]["order_count"] += g.get("__count") or 0
+        for g in pos_groups:
+            info = g.get("partner_id")
+            pid = info[0] if info else -1
+            pname = info[1] if info else "Unknown"
+            key = pid if pid else -1
+            combined.setdefault(key, {"partner_id": pid, "partner_name": pname, "total_revenue": 0.0, "order_count": 0})
+            combined[key]["total_revenue"] += g.get("amount_total") or 0.0
+            combined[key]["order_count"] += g.get("__count") or 0
+
+        result = sorted(combined.values(), key=lambda x: x["total_revenue"], reverse=True)
+        for r in result[:limit]:
+            r["total_revenue"] = float_round(r["total_revenue"], 2)
+        return result[:limit]
 
     @api.model
     def get_top_products(self, filters, limit=10):
         sol_model = self.env["sale.order.line"].sudo()
-        domain = self._get_order_line_domain(filters)
+        pol_model = self.env["pos.lite.order.line"].sudo()
+        so_domain = self._get_order_line_domain(filters)
+        pos_domain = self._get_pos_order_line_domain(filters)
 
-        groups = sol_model.read_group(
-            domain,
+        so_groups = sol_model.read_group(
+            so_domain,
             ["product_uom_qty:sum", "price_subtotal:sum"],
             ["product_id"],
             lazy=False,
         )
-        groups.sort(key=lambda g: g.get("price_subtotal") or 0.0, reverse=True)
-        result = []
-        for g in groups[:limit]:
-            prod_info = g.get("product_id")
-            result.append(
-                {
-                    "product_id": prod_info[0] if prod_info else False,
-                    "product_name": prod_info[1] if prod_info else "Unknown",
-                    "qty_sold": float_round(g.get("product_uom_qty") or 0.0, 2),
-                    "revenue": float_round(g.get("price_subtotal") or 0.0, 2),
-                }
-            )
-        return result
+        pos_groups = pol_model.read_group(
+            pos_domain,
+            ["qty:sum", "price_subtotal:sum"],
+            ["product_id"],
+            lazy=False,
+        )
+
+        combined = {}
+        for g in so_groups:
+            info = g.get("product_id")
+            pid = info[0] if info else -1
+            pname = info[1] if info else "Unknown"
+            combined.setdefault(pid, {"product_id": pid, "product_name": pname, "qty_sold": 0.0, "revenue": 0.0})
+            combined[pid]["qty_sold"] += g.get("product_uom_qty") or 0.0
+            combined[pid]["revenue"] += g.get("price_subtotal") or 0.0
+        for g in pos_groups:
+            info = g.get("product_id")
+            pid = info[0] if info else -1
+            pname = info[1] if info else "Unknown"
+            combined.setdefault(pid, {"product_id": pid, "product_name": pname, "qty_sold": 0.0, "revenue": 0.0})
+            combined[pid]["qty_sold"] += g.get("qty") or 0.0
+            combined[pid]["revenue"] += g.get("price_subtotal") or 0.0
+
+        result = sorted(combined.values(), key=lambda x: x["revenue"], reverse=True)
+        for r in result[:limit]:
+            r["qty_sold"] = float_round(r["qty_sold"], 2)
+            r["revenue"] = float_round(r["revenue"], 2)
+        return result[:limit]
 
     @api.model
     def get_sales_by_category(self, filters):
         sol_model = self.env["sale.order.line"].sudo()
-        domain = self._get_order_line_domain(filters)
+        pol_model = self.env["pos.lite.order.line"].sudo()
+        so_domain = self._get_order_line_domain(filters)
+        pos_domain = self._get_pos_order_line_domain(filters)
 
-        groups = sol_model.read_group(
-            domain,
+        so_groups = sol_model.read_group(
+            so_domain,
             ["price_subtotal:sum"],
             ["product_id"],
             lazy=False,
         )
-        cat_map = {}
-        product_ids = [
-            g["product_id"][0] for g in groups if g.get("product_id")
-        ]
-        if product_ids:
-            products = self.env["product.product"].sudo().browse(product_ids)
-            for p in products:
-                cat = p.categ_id
-                cat_map[p.id] = {
-                    "category_id": cat.id if cat else False,
-                    "category_name": cat.display_name if cat else "Uncategorized",
-                }
-        for g in groups:
-            pid = g["product_id"][0] if g.get("product_id") else False
-            info = cat_map.get(pid, {"category_id": False, "category_name": "Uncategorized"})
-            info["revenue"] = info.get("revenue", 0.0) + (g.get("price_subtotal") or 0.0)
-            cat_map[pid] = info
+        pos_groups = pol_model.read_group(
+            pos_domain,
+            ["price_subtotal:sum"],
+            ["product_id"],
+            lazy=False,
+        )
 
-        result = [
-            {
-                "category_id": v["category_id"],
-                "category_name": v["category_name"],
-                "revenue": float_round(v["revenue"], 2),
-            }
-            for v in cat_map.values()
-        ]
-        result.sort(key=lambda x: x["revenue"], reverse=True)
+        def _build_category_map(groups):
+            cat_map = {}
+            product_ids = [
+                g["product_id"][0] for g in groups if g.get("product_id")
+            ]
+            if product_ids:
+                products = self.env["product.product"].sudo().browse(product_ids)
+                for p in products:
+                    cat = p.categ_id
+                    cat_map[p.id] = {
+                        "category_id": cat.id if cat else False,
+                        "category_name": cat.display_name if cat else "Uncategorized",
+                        "revenue": 0.0,
+                    }
+            for g in groups:
+                pid = g["product_id"][0] if g.get("product_id") else False
+                if pid not in cat_map:
+                    cat_map[pid] = {"category_id": False, "category_name": "Uncategorized", "revenue": 0.0}
+                cat_map[pid]["revenue"] += g.get("price_subtotal") or 0.0
+            return cat_map
+
+        so_cat_map = _build_category_map(so_groups)
+        pos_cat_map = _build_category_map(pos_groups)
+
+        combined = {}
+        for pid, info in so_cat_map.items():
+            combined[info["category_id"]] = combined.get(info["category_id"], {
+                "category_id": info["category_id"],
+                "category_name": info["category_name"],
+                "revenue": 0.0,
+            })
+            combined[info["category_id"]]["revenue"] += info["revenue"]
+        for pid, info in pos_cat_map.items():
+            combined[info["category_id"]] = combined.get(info["category_id"], {
+                "category_id": info["category_id"],
+                "category_name": info["category_name"],
+                "revenue": 0.0,
+            })
+            combined[info["category_id"]]["revenue"] += info["revenue"]
+
+        result = sorted(combined.values(), key=lambda x: x["revenue"], reverse=True)
+        for r in result:
+            r["revenue"] = float_round(r["revenue"], 2)
         return result
 
     @api.model
     def get_sales_by_salesperson(self, filters):
         so_model = self.env["sale.order"].sudo()
-        domain = self._get_sale_order_domain(filters)
+        pos_model = self.env["pos.lite.order"].sudo()
+        so_domain = self._get_sale_order_domain(filters)
+        pos_domain = self._get_pos_order_domain(filters)
 
-        groups = so_model.read_group(
-            domain, ["amount_total:sum", "__count"], ["user_id"], lazy=False
+        so_groups = so_model.read_group(
+            so_domain, ["amount_total:sum", "__count"], ["user_id"], lazy=False
         )
+        pos_groups = pos_model.read_group(
+            pos_domain, ["amount_total:sum", "__count"], ["employee_id"], lazy=False
+        )
+
+        emp_ids = list(set(
+            g["employee_id"][0] for g in pos_groups if g.get("employee_id")
+        ))
+        emp_map = {}
+        if emp_ids:
+            employees = self.env["hr.employee"].sudo().browse(emp_ids)
+            emp_map = {e.id: (e.user_id.id, e.user_id.name) for e in employees}
+
+        combined = {}
+        for g in so_groups:
+            info = g.get("user_id")
+            uid = info[0] if info else False
+            uname = info[1] if info else "Unassigned"
+            key = uid if uid else -1
+            combined.setdefault(key, {"user_id": uid, "user_name": uname, "revenue": 0.0, "order_count": 0})
+            combined[key]["revenue"] += g.get("amount_total") or 0.0
+            combined[key]["order_count"] += g.get("__count") or 0
+        for g in pos_groups:
+            emp_info = g.get("employee_id")
+            eid = emp_info[0] if emp_info else False
+            uid, uname = emp_map.get(eid, (False, "Unassigned"))
+            key = uid if uid else -1
+            combined.setdefault(key, {"user_id": uid, "user_name": uname, "revenue": 0.0, "order_count": 0})
+            combined[key]["revenue"] += g.get("amount_total") or 0.0
+            combined[key]["order_count"] += g.get("__count") or 0
+
         result = []
-        for g in groups:
-            user_info = g.get("user_id")
-            uid = user_info[0] if user_info else False
-            uname = user_info[1] if user_info else "Unassigned"
+        today = fields.Date.context_today(self)
+        for uid, data in combined.items():
             target_amount = 0.0
-            if uid:
-                today = fields.Date.context_today(self)
+            if uid and uid > 0:
                 target_domain = [
                     ("state", "=", "confirmed"),
                     ("date_start", "<=", today),
@@ -374,21 +555,21 @@ class SalesAnalyticsDashboard(models.TransientModel):
                 ]
                 targets = self.env["sales.target"].sudo().search(target_domain)
                 target_amount = sum(targets.mapped("target_amount"))
-            result.append(
-                {
-                    "user_id": uid,
-                    "user_name": uname,
-                    "revenue": float_round(g.get("amount_total") or 0.0, 2),
-                    "order_count": g.get("__count") or 0,
-                    "target_amount": float_round(target_amount, 2),
-                }
-            )
+            result.append({
+                "user_id": data["user_id"],
+                "user_name": data["user_name"],
+                "revenue": float_round(data["revenue"], 2),
+                "order_count": data["order_count"],
+                "target_amount": float_round(target_amount, 2),
+            })
         result.sort(key=lambda x: x["revenue"], reverse=True)
         return result
 
     @api.model
     def get_order_status(self, filters):
         so_model = self.env["sale.order"].sudo()
+        pos_model = self.env["pos.lite.order"].sudo()
+
         base_domain = [
             ("company_id", "=", self.env.company.id),
         ]
@@ -410,6 +591,21 @@ class SalesAnalyticsDashboard(models.TransientModel):
                 ("order_line.product_id.categ_id", "child_of", filters["category_id"])
             )
 
+        pos_base = [
+            ("company_id", "=", self.env.company.id),
+        ]
+        if filters.get("date_from"):
+            pos_base.append(("date_order", ">=", filters["date_from"]))
+        if filters.get("date_to"):
+            end = filters["date_to"]
+            if len(end) == 10:
+                end += " 23:59:59"
+            pos_base.append(("date_order", "<=", end))
+        if filters.get("salesperson_id"):
+            pos_base.append(("employee_id.user_id", "=", filters["salesperson_id"]))
+        if filters.get("partner_id"):
+            pos_base.append(("partner_id", "=", filters["partner_id"]))
+
         status_data = []
         for state, label in [
             ("draft", "Quotation"),
@@ -420,9 +616,30 @@ class SalesAnalyticsDashboard(models.TransientModel):
         ]:
             state_domain = base_domain + [("state", "=", state)]
             agg = so_model.read_group(state_domain, ["amount_total:sum", "__count"], [])[0]
+            so_count = agg.get("__count") or 0
+            so_total = agg.get("amount_total") or 0.0
             status_data.append(
                 {
                     "state": state,
+                    "label": label,
+                    "count": so_count,
+                    "total": float_round(so_total, 2),
+                }
+            )
+
+        pos_states = [
+            ("draft", "POS Draft"),
+            ("held", "POS Held"),
+            ("paid", "POS Paid"),
+            ("done", "POS Done"),
+            ("cancelled", "POS Cancelled"),
+        ]
+        for state, label in pos_states:
+            state_domain = pos_base + [("state", "=", state)]
+            agg = pos_model.read_group(state_domain, ["amount_total:sum", "__count"], [])[0]
+            status_data.append(
+                {
+                    "state": "pos_" + state,
                     "label": label,
                     "count": agg.get("__count") or 0,
                     "total": float_round(agg.get("amount_total") or 0.0, 2),
@@ -466,6 +683,11 @@ class SalesAnalyticsDashboard(models.TransientModel):
         so_count = so_agg.get("__count") or 0
         so_value = so_agg.get("amount_total") or 0.0
 
+        pos_domain = self._get_pos_order_domain(filters)
+        pos_data = self._aggregate_pos(pos_domain)
+        total_order_count = so_count + pos_data["count"]
+        total_order_value = so_value + pos_data["revenue"]
+
         inv_domain = self._get_invoice_domain(filters)
         inv_agg = inv_model.read_group(inv_domain, ["amount_total_signed:sum", "__count"], [])[0]
         inv_count = inv_agg.get("__count") or 0
@@ -491,15 +713,15 @@ class SalesAnalyticsDashboard(models.TransientModel):
                 "count": won_count,
                 "value": float_round(won_value, 2),
                 "conversion": float_round(
-                    (so_count / won_count * 100.0) if won_count else 0.0, 1
+                    (total_order_count / won_count * 100.0) if won_count else 0.0, 1
                 ),
             },
             {
                 "name": "Confirmed Orders",
-                "count": so_count,
-                "value": float_round(so_value, 2),
+                "count": total_order_count,
+                "value": float_round(total_order_value, 2),
                 "conversion": float_round(
-                    (inv_count / so_count * 100.0) if so_count else 0.0, 1
+                    (inv_count / total_order_count * 100.0) if total_order_count else 0.0, 1
                 ),
             },
             {
@@ -522,29 +744,52 @@ class SalesAnalyticsDashboard(models.TransientModel):
     @api.model
     def get_forecast(self, filters):
         so_model = self.env["sale.order"].sudo()
+        pos_model = self.env["pos.lite.order"].sudo()
         today = fields.Date.context_today(self)
         lookback = today - relativedelta(months=12)
-        domain = [
+
+        so_domain = [
             ("state", "in", ["sale", "done"]),
             ("company_id", "=", self.env.company.id),
             ("date_order", ">=", str(lookback)),
             ("date_order", "<=", str(today)),
         ]
         if filters.get("salesperson_id"):
-            domain.append(("user_id", "=", filters["salesperson_id"]))
+            so_domain.append(("user_id", "=", filters["salesperson_id"]))
         if filters.get("team_id"):
-            domain.append(("team_id", "=", filters["team_id"]))
+            so_domain.append(("team_id", "=", filters["team_id"]))
 
-        groups = so_model.read_group(
-            domain, ["amount_total:sum"], ["date_order:month"], lazy=False
+        pos_domain = [
+            ("state", "in", ["paid", "done"]),
+            ("company_id", "=", self.env.company.id),
+            ("is_return", "=", False),
+            ("date_order", ">=", str(lookback)),
+            ("date_order", "<=", str(today)),
+        ]
+        if filters.get("salesperson_id"):
+            pos_domain.append(("employee_id.user_id", "=", filters["salesperson_id"]))
+
+        so_groups = so_model.read_group(
+            so_domain, ["amount_total:sum"], ["date_order:month"], lazy=False
+        )
+        pos_groups = pos_model.read_group(
+            pos_domain, ["amount_total:sum"], ["date_order:month"], lazy=False
         )
 
+        combined = {}
+        for g in so_groups:
+            key = g.get("date_order:month") or ""
+            combined[key] = combined.get(key, 0.0) + (g.get("amount_total") or 0.0)
+        for g in pos_groups:
+            key = g.get("date_order:month") or ""
+            combined[key] = combined.get(key, 0.0) + (g.get("amount_total") or 0.0)
+
         historical = []
-        for g in sorted(groups, key=lambda x: x.get("date_order:month") or ""):
+        for key in sorted(combined.keys()):
             historical.append(
                 {
-                    "period": g.get("date_order:month") or "",
-                    "revenue": float_round(g.get("amount_total") or 0.0, 2),
+                    "period": key,
+                    "revenue": float_round(combined[key], 2),
                 }
             )
 
@@ -596,6 +841,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
     @api.model
     def get_monthly_comparison(self, filters):
         so_model = self.env["sale.order"].sudo()
+        pos_model = self.env["pos.lite.order"].sudo()
         today = fields.Date.context_today(self)
 
         months = []
@@ -604,21 +850,32 @@ class SalesAnalyticsDashboard(models.TransientModel):
             month_start = month_start.replace(day=1)
             month_end = month_start + relativedelta(months=1) - relativedelta(days=1)
 
-            current_domain = [
+            so_domain = [
                 ("state", "in", ["sale", "done"]),
                 ("company_id", "=", self.env.company.id),
                 ("date_order", ">=", str(month_start)),
                 ("date_order", "<=", str(month_end) + " 23:59:59"),
             ]
             if filters.get("salesperson_id"):
-                current_domain.append(("user_id", "=", filters["salesperson_id"]))
+                so_domain.append(("user_id", "=", filters["salesperson_id"]))
             if filters.get("team_id"):
-                current_domain.append(("team_id", "=", filters["team_id"]))
+                so_domain.append(("team_id", "=", filters["team_id"]))
 
-            agg = so_model.read_group(
-                current_domain, ["amount_total:sum", "__count"], [])[0]
-            revenue = agg.get("amount_total") or 0.0
-            count = agg.get("__count") or 0
+            pos_domain = [
+                ("state", "in", ["paid", "done"]),
+                ("company_id", "=", self.env.company.id),
+                ("is_return", "=", False),
+                ("date_order", ">=", str(month_start)),
+                ("date_order", "<=", str(month_end) + " 23:59:59"),
+            ]
+            if filters.get("salesperson_id"):
+                pos_domain.append(("employee_id.user_id", "=", filters["salesperson_id"]))
+
+            so_agg = so_model.read_group(so_domain, ["amount_total:sum", "__count"], [])[0]
+            pos_agg = pos_model.read_group(pos_domain, ["amount_total:sum", "__count"], [])[0]
+
+            revenue = (so_agg.get("amount_total") or 0.0) + (pos_agg.get("amount_total") or 0.0)
+            count = (so_agg.get("__count") or 0) + (pos_agg.get("__count") or 0)
             months.append(
                 {
                     "month": month_start.strftime("%b %Y"),
@@ -657,9 +914,19 @@ class SalesAnalyticsDashboard(models.TransientModel):
         }
 
     @api.model
+    def _sanitize_filters(self, filters):
+        sanitized = dict(filters)
+        for key in ("team_id", "salesperson_id", "partner_id", "category_id"):
+            val = sanitized.get(key)
+            if val and isinstance(val, str) and val.isdigit():
+                sanitized[key] = int(val)
+        return sanitized
+
+    @api.model
     def get_dashboard_data(self, filters=None):
         if filters is None:
             filters = {}
+        filters = self._sanitize_filters(filters)
         cache_model = self.env["buz.sales.analytics.cache"]
         key = cache_model._make_key(filters)
         cached = cache_model.get_cached(key)

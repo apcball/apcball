@@ -257,6 +257,16 @@
                                 <button name="action_view_invoice_lines" type="object" string="View Invoice Lines" class="btn-secondary" style="flex:1;"/>
                             </div>
                         </page>
+                        <page string="POS Orders" invisible="target_point != 'pos_lite'">
+                            <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
+                                <strong>Target:</strong> POS Lite Sale |
+                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> - <field name="date_end" readonly="1" class="oe_inline"/>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button name="action_view_pos_lite_orders" type="object" string="View POS Orders" class="btn-primary" style="flex:1;"/>
+                                <button name="action_view_pos_lite_order_lines" type="object" string="View Order Lines" class="btn-secondary" style="flex:1;"/>
+                            </div>
+                        </page>
                         <page string="Notes">
                             <field name="note" placeholder="Additional notes..."/>
                         </page>
@@ -428,12 +438,22 @@
                         </page>
                         <page string="Related Invoices" invisible="target_point not in ['invoice_validate', 'invoice_paid']">
                             <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
-                                <strong>Target Point:</strong> <field name="target_point" readonly="1" class="oe_inline"/> |
-                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> to <field name="date_end" readonly="1" class="oe_inline"/>
+                                <strong>Target:</strong> <field name="target_point" readonly="1" class="oe_inline"/> |
+                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> - <field name="date_end" readonly="1" class="oe_inline"/>
                             </div>
                             <div style="display:flex;gap:8px;">
                                 <button name="action_view_invoices" type="object" string="View Invoices" class="btn-primary" style="flex:1;"/>
                                 <button name="action_view_invoice_lines" type="object" string="View Invoice Lines" class="btn-secondary" style="flex:1;"/>
+                            </div>
+                        </page>
+                        <page string="POS Orders" invisible="target_point != 'pos_lite'">
+                            <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
+                                <strong>Target:</strong> POS Lite Sale |
+                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> - <field name="date_end" readonly="1" class="oe_inline"/>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button name="action_view_pos_lite_orders" type="object" string="View POS Orders" class="btn-primary" style="flex:1;"/>
+                                <button name="action_view_pos_lite_order_lines" type="object" string="View Order Lines" class="btn-secondary" style="flex:1;"/>
                             </div>
                         </page>
                         <page string="Notes">

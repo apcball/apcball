@@ -1,6 +1,6 @@
 {
     'name': 'Custom Commercial Invoice Report',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.0.1',
     'category': 'Accounting',
     'summary': 'Customize Commercial Invoice Report',
     'description': """

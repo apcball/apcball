@@ -23,11 +23,10 @@ class AccountMove(models.Model):
         string='Shipping Mark',
         tracking=True,
     )
-    shipping_by = fields.Selection([
-        ('air', 'By Air'),
-        ('sea', 'By Sea'),
-        ('land', 'By Land'),
-    ], string='Shipping By', tracking=True)
+    shipping_by = fields.Char(
+        string='Shipping By',
+        tracking=True,
+    )
     bank_info = fields.Text(
         string='Bank Information',
         tracking=True,
