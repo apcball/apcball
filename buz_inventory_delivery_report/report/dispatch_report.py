@@ -78,7 +78,7 @@ class DispatchReportPDF(models.AbstractModel):
                 lines.append({
                     'type': 'bom',
                     'display_no': str(line_no),
-                    'name': clean_product_name(prod),
+                    'name': prod.name,
                     'code': code,
                     'qty': qty_str,
                     'uom': data_dict['uom'] or '',

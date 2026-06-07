@@ -84,7 +84,7 @@
                     <button name="action_done" type="object" string="Mark Done" invisible="state != 'paid'"/>
                     <!-- Return/Exchange — only for completed orders -->
                     <button name="action_create_return" type="object" string="↩ Return" class="btn-secondary" invisible="state != 'done'"/>
-                    <button name="action_create_exchange" type="object" string="⇄ Exchange" class="btn-secondary" invisible="state != 'done'"/>
+                    <button name="action_create_exchange" type="object" string="⇄ Exchange" class="btn-secondary" invisible="1"/>
                     <!-- General -->
                     <button name="action_reorder" type="object" string="🔄 Re-order" class="btn-secondary" invisible="state == 'draft'"/>
                     <button name="action_cancel" type="object" string="✕ Cancel" invisible="state == 'cancelled' or (state == 'done' and not is_return)"/>

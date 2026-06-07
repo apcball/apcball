@@ -241,10 +241,10 @@
                                 <!-- Product Name - ชื่อสินค้า -->
                                 <div t-attf-style="position: absolute; top: {{current_top}}mm; left: {{config.col_name_left * px_to_mm}}mm; max-width: 80mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     <t t-if="item.get('is_component')">
-                                        <span style="padding-left: 10px; color: #000000ff;" t-esc="clean_product_name(line.product_id)"/>
+                                        <span style="padding-left: 10px; color: #000000ff;" t-esc="line.product_id.name"/>
                                     </t>
                                     <t t-else="">
-                                        <span t-esc="clean_product_name(line.product_id)"/>
+                                        <span t-esc="line.product_id.name"/>
                                     </t>
                                 </div>
                                 

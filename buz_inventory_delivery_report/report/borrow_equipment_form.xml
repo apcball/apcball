@@ -165,10 +165,17 @@
                                       <strong style="display: inline-block; width: 15%; font-size: 20px;">ชื่อลูกค้า </strong>
                                       <span t-field="o.partner_id.name" style="font-size: 20px;"/>
                                   </div>
-                                   <div style="margin-bottom: -2px;">
-                                       <strong style="display: inline; font-size: 20px;">สถานที่ส่งสินค้า </strong>
-                                       <span t-esc="o.partner_id.contact_address" style="font-size: 20px; word-wrap: break-word;"/>
-                                   </div>
+                                    <div style="margin-bottom: -2px;">
+                                        <strong style="display: inline; font-size: 20px;">สถานที่ส่งสินค้า </strong>
+                                        <t t-set="delivery_partner" t-value="o.partner_id"/>
+                                        <t t-set="address_parts" t-value="[]"/>
+                                        <t t-if="delivery_partner.street" t-set="address_parts" t-value="address_parts + [delivery_partner.street]"/>
+                                        <t t-if="delivery_partner.street2" t-set="address_parts" t-value="address_parts + [delivery_partner.street2]"/>
+                                        <t t-if="delivery_partner.city" t-set="address_parts" t-value="address_parts + [delivery_partner.city]"/>
+                                        <t t-if="delivery_partner.state_id" t-set="address_parts" t-value="address_parts + [delivery_partner.state_id.name]"/>
+                                        <t t-if="delivery_partner.zip" t-set="address_parts" t-value="address_parts + [delivery_partner.zip]"/>
+                                        <span t-esc="', '.join(address_parts)" style="font-size: 20px; word-wrap: break-word;"/>
+                                    </div>
                                   <div style="margin-bottom: -2px;">
                                       <strong style="display: inline-block; width: 20%; font-size: 20px;">สถานที่จ่ายสินค้า</strong>
                                       <span t-field="o.location_id.complete_name" style="font-size: 20px;"/>
@@ -308,8 +315,8 @@
 
                                       <!-- Footer fixed bottom -->
                                        <div style="
-                                         position: absolute;
-                                         bottom: 10px; left: 0; width: 100%;
+                                          position: absolute;
+                                          bottom: 20px; left: 0; width: 100%;
                                          display: flex; justify-content: space-between;
                                          font-size: 10px;
                                          padding-left: 4mm; padding-right: 4mm;
@@ -347,7 +354,7 @@
                          
 
                                  <!-- ผู้ขอเบิกสินค้า -->
-                                <table class="signature-table" style="width: 100%; table-layout: fixed; text-align: center; min-height: 100px; margin-top: 15px; border: 1px solid #000;">
+                                 <table class="signature-table" style="width: 100%; table-layout: fixed; text-align: center; min-height: 100px; margin-top: -5px; border: 1px solid #000;">
                                  <tbody>
                                      <tr>
                                          <td><div style="height: 3em; border-bottom: 1px solid #000;"></div></td>
@@ -395,8 +402,8 @@
 
                                  <!-- Footer fixed bottom -->
                                   <div style="
-                                    position: absolute;
-                                    bottom: 30px; left: 0; width: 100%;
+                                     position: absolute;
+                                     bottom: 40px; left: 0; width: 100%;
                                    display: flex; justify-content: space-between;
                                    font-size: 10px;
                                    padding-left: 4mm; padding-right: 4mm;
