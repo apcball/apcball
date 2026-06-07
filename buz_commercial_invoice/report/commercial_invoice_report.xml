@@ -132,7 +132,7 @@
                                 </div>
                                 <div class="row mb-1">
                                     <div class="col-4 text-right pr-2"><strong>Shipping By :</strong></div>
-                                    <div class="col-8">JW SHIPPING CO.,LTD.</div>
+                                    <div class="col-8"><span t-field="o.shipping_by"/></div>
                                 </div>
                             </div>
                         </div>

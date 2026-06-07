@@ -20,6 +20,7 @@ export class SalesAnalyticsDashboard extends Component {
         this.orm = useService("orm");
         this.rpc = useService("rpc");
         this.action = useService("action");
+        this.notification = useService("notification");
 
         this.chartRefs = {
             revenueTrend: useRef("revenueTrendChart"),
@@ -114,6 +115,10 @@ export class SalesAnalyticsDashboard extends Component {
             this.state.filterOptions = opts;
         } catch (e) {
             console.error("Failed to load filter options:", e);
+            this.notification.add(
+                "Failed to load filter options",
+                { type: "danger" }
+            );
         }
     }
 
@@ -126,6 +131,10 @@ export class SalesAnalyticsDashboard extends Component {
             this.state.data = data;
         } catch (e) {
             console.error("Failed to load dashboard data:", e);
+            this.notification.add(
+                "Failed to load dashboard data. Check console for details.",
+                { type: "danger", sticky: true }
+            );
         }
         this.state.loading = false;
     }
@@ -162,11 +171,18 @@ export class SalesAnalyticsDashboard extends Component {
     }
 
     async onRefresh() {
-        await this.rpc("/sales/analytics/dashboard/refresh", {
-            filters: this.state.filters,
-        }).then(async (data) => {
+        try {
+            const data = await this.rpc("/sales/analytics/dashboard/refresh", {
+                filters: this.state.filters,
+            });
             this.state.data = data;
-        });
+        } catch (e) {
+            console.error("Failed to refresh dashboard:", e);
+            this.notification.add(
+                "Failed to refresh dashboard data",
+                { type: "danger" }
+            );
+        }
     }
 
     destroyAllCharts() {

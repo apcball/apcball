@@ -31,7 +31,8 @@ class SalesTarget(models.Model):
     target_point = fields.Selection([
         ('sale_order', 'Sale Order Confirm'),
         ('invoice_validate', 'Invoice Validation'),
-        ('invoice_paid', 'Invoice Paid')
+        ('invoice_paid', 'Invoice Paid'),
+        ('pos_lite', 'POS Lite Sale')
     ], string='Target Point', required=True, default='sale_order')
     
     # Date Range
@@ -67,6 +68,8 @@ class SalesTarget(models.Model):
     sale_order_line_count = fields.Integer(string='Sale Order Lines', compute='_compute_counters')
     invoice_count = fields.Integer(string='Invoices', compute='_compute_counters')
     invoice_line_count = fields.Integer(string='Invoice Lines', compute='_compute_counters')
+    pos_lite_order_count = fields.Integer(string='POS Orders', compute='_compute_counters')
+    pos_lite_order_line_count = fields.Integer(string='POS Order Lines', compute='_compute_counters')
     
     # Additional Information
     note = fields.Text(string='Notes', help='Additional notes and comments about this sales target')
@@ -133,6 +136,13 @@ class SalesTarget(models.Model):
                     _logger.debug(f"Sales Target {record.name}: Found {len(invoices)} invoices")
                     record.achieved_amount = sum(invoices.mapped('amount_total'))
                     
+                elif record.target_point == 'pos_lite':
+                    # Get POS Lite orders
+                    domain = record._get_pos_lite_order_domain()
+                    pos_orders = self.env['pos.lite.order'].search(domain)
+                    _logger.debug(f"Sales Target {record.name}: Found {len(pos_orders)} POS orders")
+                    record.achieved_amount = sum(pos_orders.mapped('amount_total'))
+                    
                 else:
                     record.achieved_amount = 0.0
                     
@@ -192,6 +202,8 @@ class SalesTarget(models.Model):
                 record.sale_order_line_count = 0
                 record.invoice_count = 0
                 record.invoice_line_count = 0
+                record.pos_lite_order_count = 0
+                record.pos_lite_order_line_count = 0
                 continue
                 
             try:
@@ -222,12 +234,25 @@ class SalesTarget(models.Model):
                 else:
                     record.invoice_line_count = 0
                     
+                # POS Lite orders
+                pos_domain = record._get_pos_lite_order_domain()
+                pos_orders = self.env['pos.lite.order'].search(pos_domain)
+                record.pos_lite_order_count = len(pos_orders)
+                
+                if pos_orders:
+                    pos_lines = self.env['pos.lite.order.line'].search([('order_id', 'in', pos_orders.ids)])
+                    record.pos_lite_order_line_count = len(pos_lines)
+                else:
+                    record.pos_lite_order_line_count = 0
+                    
             except Exception as e:
                 _logger.error(f"Error computing counters: {e}")
                 record.sale_order_count = 0
                 record.sale_order_line_count = 0
                 record.invoice_count = 0
                 record.invoice_line_count = 0
+                record.pos_lite_order_count = 0
+                record.pos_lite_order_line_count = 0
 
     def _get_sale_order_domain(self):
         """Get domain for sale orders based on target configuration."""
@@ -271,6 +296,22 @@ class SalesTarget(models.Model):
             base_domain.append(('team_id', 'in', self.team_ids.ids))
             
         return base_domain
+
+    def _get_pos_lite_order_domain(self):
+        """Get domain for POS Lite orders based on target configuration."""
+        domain = [
+            ('state', 'in', ['paid', 'done']),
+            ('date_order', '>=', self.date_start),
+            ('date_order', '<=', self.date_end)
+        ]
+        
+        if self.user_id:
+            domain.append(('employee_id.user_id', '=', self.user_id.id))
+        elif self.team_ids:
+            members = self.team_ids.mapped('member_ids')
+            domain.append(('employee_id.user_id', 'in', members.ids))
+            
+        return domain
 
     # Action Methods
     def action_view_sale_orders(self):
@@ -332,6 +373,33 @@ class SalesTarget(models.Model):
             'type': 'ir.actions.act_window',
             'name': _('Invoice Lines'),
             'res_model': 'account.move.line',
+            'view_mode': 'tree,form',
+            'domain': domain,
+            'context': {}
+        }
+
+    def action_view_pos_lite_orders(self):
+        """View related POS Lite orders."""
+        domain = self._get_pos_lite_order_domain()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('POS Orders'),
+            'res_model': 'pos.lite.order',
+            'view_mode': 'tree,form',
+            'domain': domain,
+            'context': {}
+        }
+
+    def action_view_pos_lite_order_lines(self):
+        """View related POS Lite order lines."""
+        pos_domain = self._get_pos_lite_order_domain()
+        pos_orders = self.env['pos.lite.order'].search(pos_domain)
+        
+        domain = [('order_id', 'in', pos_orders.ids)]
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('POS Order Lines'),
+            'res_model': 'pos.lite.order.line',
             'view_mode': 'tree,form',
             'domain': domain,
             'context': {}

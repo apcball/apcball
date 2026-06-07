@@ -151,7 +151,7 @@
                                 </div>
                                 <div class="row mb-1">
                                     <div class="col-4 text-right pr-2"><strong>Shipping By :</strong></div>
-                                    <div class="col-8"><span t-field="o.shipping_by" t-if="o.shipping_by"/><t t-else=''>JW SHIPPING CO.,LTD.</t></div>
+                                    <div class="col-8"><span t-field="o.shipping_by"/></div>
                                 </div>
                             </div>
                         </div>
