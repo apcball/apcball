@@ -284,7 +284,7 @@
                                 </td>
                                 <!-- Amount Paid -->
                                 <td style="border: 1px solid black; text-align: right; vertical-align: middle; padding-right: 4px;">
-                                  <span t-field="line.amount_total_signed" t-options='{"widget": "monetary", "display_currency": line.currency_id}'/>
+                                  <span t-esc="'{:,.2f}'.format(line.amount_total_signed)"/>
                                 </td>
 
                               </tr>
@@ -306,7 +306,7 @@
                                     </div>
                                 </td>
                                 <td style="text-align: right; border-top: 1px solid #000; line-height: 1.5; font-size: 19px; vertical-align: middle; padding: 6px; font-weight: bold;">
-                                    <span t-field="doc.amount_total" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                                    <span t-esc="'{:,.2f}'.format(doc.amount_total)"/>
                                 </td>
                             </tr>
                         </tfoot>
