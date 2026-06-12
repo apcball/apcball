@@ -11,8 +11,6 @@ class AccountMove(models.Model):
     payment_method_id = fields.Many2one(related='payment_id.payment_method_id', store=True)
     check_number = fields.Char(related='payment_id.check_number', store=True)
     partner_bank_id = fields.Many2one(related='payment_id.partner_bank_id', store=True)
-    amount = fields.Monetary(string="ยอดเงินทั้งหมด", currency_field='currency_id')
-
     billing_note_ids = fields.Many2many(
         'billing.note',
         'billing_note_invoice_rel',  # Using the same relation table as in billing.note model

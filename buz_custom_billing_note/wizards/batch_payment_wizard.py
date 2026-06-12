@@ -2,30 +2,28 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_is_zero, float_compare
 
-
 class BatchPaymentWizard(models.TransientModel):
     _name = 'billing.note.batch.payment.wizard'
     _description = 'Batch Payment Processing Wizard'
 
     # Basic Fields
     billing_note_ids = fields.Many2many('billing.note', string='Billing Notes',
-        domain="[('state', '=', 'confirm'), ('payment_state', 'in', ['not_paid', 'partial']), "
-               "('company_id', '=', company_id)]")
+        domain="[('state', '=', 'confirm'), ('payment_state', 'in', ['not_paid', 'partial'])]")
     payment_date = fields.Date(string='Payment Date', required=True, default=fields.Date.context_today)
     journal_id = fields.Many2one('account.journal', string='Payment Journal', required=True,
-        domain="[('type', 'in', ['bank', 'cash']), ('company_id', '=', company_id)]")
+        domain=[('type', 'in', ['bank', 'cash'])])
     payment_method = fields.Selection([
         ('cash', 'Cash'),
         ('bank', 'Bank Transfer'),
         ('check', 'Check'),
     ], string='Payment Method', required=True)
     memo = fields.Char(string='Memo')
-
+    
     # Company and Currency
-    company_id = fields.Many2one('res.company', default=lambda self: self.env.company, required=True)
+    company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
     currency_id = fields.Many2one('res.currency', string='Payment Currency', required=True,
         default=lambda self: self.env.company.currency_id)
-
+    
     # Payment Options
     group_payment = fields.Boolean(string='Group Payments by Partner', default=True,
         help='If enabled, generates a single payment per partner')
@@ -37,7 +35,7 @@ class BatchPaymentWizard(models.TransientModel):
         ('customer', 'Customer'),
         ('supplier', 'Vendor'),
     ], string='Partner Type', required=True, default='customer')
-
+    
     # Amount Fields
     amount = fields.Monetary(string='Payment Amount', required=True)
     total_residual = fields.Monetary(string='Total Residual', compute='_compute_total_residual',
@@ -52,12 +50,12 @@ class BatchPaymentWizard(models.TransientModel):
         help='* Keep Open: Leave remaining amount open\n'
              '* Mark as Fully Paid: Mark invoice as fully paid\n'
              '* Distribute Difference: Distribute the difference across invoices')
-
+    
     # Computed Fields
     available_partner_bank_ids = fields.Many2many('res.partner.bank', compute='_compute_available_partner_bank_accounts')
     partner_bank_id = fields.Many2one('res.partner.bank', string='Recipient Bank Account')
     show_partner_bank = fields.Boolean(compute='_compute_show_partner_bank')
-
+    
     # Payment Lines for detailed view
     payment_line_ids = fields.One2many('billing.note.batch.payment.line.wizard', 'wizard_id', string='Payment Lines')
 
@@ -143,6 +141,7 @@ class BatchPaymentWizard(models.TransientModel):
         """Group billing notes by partner and currency if group_payment is enabled"""
         groups = []
         if self.group_payment:
+            # Group by partner and currency
             partner_currency_groups = {}
             for line in self.payment_line_ids:
                 key = (line.partner_id.id, line.currency_id.id)
@@ -160,6 +159,7 @@ class BatchPaymentWizard(models.TransientModel):
                 group['note_names'].append(line.billing_note_id.name)
             groups.extend(partner_currency_groups.values())
         else:
+            # Create individual payments
             for line in self.payment_line_ids:
                 groups.append({
                     'partner_id': line.partner_id.id,
@@ -170,32 +170,12 @@ class BatchPaymentWizard(models.TransientModel):
                 })
         return groups
 
-    def _create_billing_note_payments(self, payment, allocated_amount):
+    def _create_billing_note_payments(self, payment, notes, allocated_amount):
         """Create billing note payment records"""
-        # Find billing notes related to this payment's invoices
-        reconciled_invoices = payment.reconciled_invoice_ids
-        if not reconciled_invoices:
-            # Use invoices from payment lines if not yet reconciled (before post)
-            note_ids = self.payment_line_ids.mapped('billing_note_id').ids
-            notes = self.env['billing.note'].browse(note_ids)
-        else:
-            notes = self.env['billing.note'].search([
-                ('invoice_ids', 'in', reconciled_invoices.ids),
-                ('company_id', '=', payment.company_id.id),
-            ])
-
         for note in notes:
             line = self.payment_line_ids.filtered(lambda l: l.billing_note_id == note)
             amount = line.amount_to_pay if line else allocated_amount
-
-            # Check duplicate
-            existing = self.env['billing.note.payment'].search([
-                ('billing_note_id', '=', note.id),
-                ('payment_id', '=', payment.id),
-            ], limit=1)
-            if existing:
-                continue
-
+            
             self.env['billing.note.payment'].create({
                 'billing_note_id': note.id,
                 'payment_id': payment.id,
@@ -203,8 +183,10 @@ class BatchPaymentWizard(models.TransientModel):
                 'payment_method': self.payment_method,
                 'amount': amount,
                 'notes': self.memo,
+                'currency_id': note.currency_id.id,
+                'company_id': note.company_id.id,
             })
-
+            
             if float_compare(note.amount_residual, amount, precision_rounding=note.currency_id.rounding) <= 0:
                 note.action_done()
 
@@ -222,16 +204,16 @@ class BatchPaymentWizard(models.TransientModel):
 
         payments = self.env['account.payment']
         for group in self._group_billing_notes():
+            # Create payment
             payment_vals = self._prepare_payment_vals(group)
-            payment = payments.with_context(
-                skip_billing_note_payment_creation=True,
-            ).create(payment_vals)
+            payment = payments.create(payment_vals)
             payments |= payment
-            self._create_billing_note_payments(payment, group['amount'])
 
-        payments.with_context(
-            skip_billing_note_payment_creation=True,
-        ).action_post()
+            # Create billing note payments
+            self._create_billing_note_payments(payment, group['notes'], group['amount'])
+
+        # Post all payments
+        payments.action_post()
 
         return {
             'name': _('Payments'),
@@ -251,7 +233,6 @@ class BatchPaymentWizard(models.TransientModel):
             ratio = line.amount_residual / total_residual
             line.amount_to_pay = line.amount_residual - (self.payment_difference * ratio)
 
-
 class BatchPaymentLineWizard(models.TransientModel):
     _name = 'billing.note.batch.payment.line.wizard'
     _description = 'Batch Payment Line Wizard'
@@ -262,3 +243,14 @@ class BatchPaymentLineWizard(models.TransientModel):
     currency_id = fields.Many2one('res.currency', string='Currency', required=True)
     amount_residual = fields.Monetary(string='Amount Due', currency_field='currency_id')
     amount_to_pay = fields.Monetary(string='Amount to Pay', currency_field='currency_id')
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        if self._context.get('active_model') == 'billing.note' and self._context.get('active_ids'):
+            billing_notes = self.env['billing.note'].browse(self._context['active_ids'])
+            currencies = billing_notes.mapped('currency_id')
+            if len(currencies) > 1:
+                raise UserError(_('Selected billing notes must have the same currency.'))
+            res['billing_note_ids'] = [(6, 0, self._context['active_ids'])]
+        return res

@@ -1,5 +1,4 @@
-from odoo import models, api, _
-
+from odoo import models, fields, api, _
 
 class AccountPayment(models.Model):
     _inherit = 'account.payment'
@@ -11,25 +10,20 @@ class AccountPayment(models.Model):
         return res
 
     def _create_billing_note_payments(self):
-        """Create payment records in billing notes.
-        Skip if called from billing note wizards (they create their own records).
-        """
-        # Wizards set this context flag to avoid double-creation
-        if self.env.context.get('skip_billing_note_payment_creation'):
-            return
-
+        """Create payment records in billing notes"""
         for payment in self:
+            # Skip if payment is not posted
             if payment.state != 'posted':
                 continue
 
+            # Find related billing notes through reconciled invoices
             reconciled_invoices = payment.reconciled_invoice_ids
             if not reconciled_invoices:
                 continue
 
             billing_notes = self.env['billing.note'].search([
                 ('invoice_ids', 'in', reconciled_invoices.ids),
-                ('state', '=', 'confirm'),
-                ('company_id', '=', payment.company_id.id),
+                ('state', '=', 'confirm')
             ])
 
             for note in billing_notes:
@@ -38,28 +32,23 @@ class AccountPayment(models.Model):
                 if not note_total:
                     continue
 
-                total_payment = sum(note_invoices.mapped(
-                    lambda i: i.amount_total - i.amount_residual))
-                payment_ratio = total_payment / note_total
+                total_payment = sum(note_invoices.mapped(lambda i:
+                    i.amount_total - i.amount_residual))
+                payment_ratio = total_payment / note_total if note_total else 0
                 note_amount = payment.amount * payment_ratio
 
                 if note_amount <= 0:
                     continue
 
-                # Check if already recorded for this payment + billing note
-                existing = self.env['billing.note.payment'].search([
-                    ('billing_note_id', '=', note.id),
-                    ('payment_id', '=', payment.id),
-                ], limit=1)
-                if existing:
-                    continue
-
+                # Create payment record in billing note
                 self.env['billing.note.payment'].create({
                     'billing_note_id': note.id,
                     'payment_id': payment.id,
                     'payment_date': payment.date,
                     'amount': note_amount,
                     'payment_method': self._get_billing_note_payment_method(),
+                    'currency_id': payment.currency_id.id,
+                    'company_id': payment.company_id.id,
                     'notes': f'Auto-created from payment {payment.name}'
                 })
 

@@ -1,7 +1,6 @@
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 from odoo.tools import float_is_zero, float_compare
-from dateutil.relativedelta import relativedelta
 from num2words import num2words
 import logging
 
@@ -13,7 +12,6 @@ class BillingNote(models.Model):
     _description = 'Billing Note'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
-    _check_company_auto = True
 
     _sql_constraints = [
         ('name_uniq', 'unique(name, company_id)', 'Billing note number must be unique per company!'),
@@ -25,8 +23,7 @@ class BillingNote(models.Model):
         ('payable', 'Vendor Bill')
     ], string='Type', required=True, default='receivable', tracking=True)
 
-    partner_id = fields.Many2one('res.partner', string='Partner', required=True, tracking=True,
-                                 check_company=True)
+    partner_id = fields.Many2one('res.partner', string='Partner', required=True, tracking=True)
     date = fields.Date(string='Date', required=True, default=fields.Date.context_today, tracking=True)
     due_date = fields.Date(string='Due Date', required=True, default=fields.Date.context_today, tracking=True)
 
@@ -52,11 +49,8 @@ class BillingNote(models.Model):
         ('done', 'Done'),
         ('cancel', 'Cancelled')
     ], string='Status', default='draft', tracking=True)
-    company_id = fields.Many2one('res.company', string='Company',
-                                 default=lambda self: self.env.company,
-                                 index=True, required=True)
-    currency_id = fields.Many2one('res.currency', string='Currency',
-                                  related='company_id.currency_id', store=True, readonly=True)
+    company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
+    currency_id = fields.Many2one('res.currency', string='Currency', default=lambda self: self.env.company.currency_id)
     line_ids = fields.One2many('billing.note.line', 'billing_note_id', string='Lines')
 
     amount_paid = fields.Monetary(string='Amount Paid', compute='_compute_amount_paid', store=True)
@@ -81,15 +75,13 @@ class BillingNote(models.Model):
     expected_payment_date = fields.Date(string='วันที่คาดว่าจะได้รับเงิน', tracking=True)
     note = fields.Text(string='หมายเหตุ', tracking=True)
 
-    # Related fields for partner information
-    partner_vat = fields.Char(string='Tax ID', related='partner_id.vat', store=True, readonly=True)
+    partner_vat = fields.Char(string='Tax ID', related='partner_id.vat', readonly=True)
     partner_address = fields.Char(string='Full Address', compute='_compute_partner_address', store=True, readonly=True)
-    partner_phone = fields.Char(string='Phone', related='partner_id.phone', store=True, readonly=True)
-    partner_mobile = fields.Char(string='Mobile', related='partner_id.mobile', store=True, readonly=True)
+    partner_phone = fields.Char(string='Phone', related='partner_id.phone', readonly=True)
+    partner_mobile = fields.Char(string='Mobile', related='partner_id.mobile', readonly=True)
     partner_contact_name = fields.Char(string='Contact Name', compute='_compute_partner_contact_name', store=True, readonly=True)
     partner_delivery_address = fields.Char(string='Delivery Address', compute='_compute_partner_delivery_address', store=True, readonly=True)
 
-    # Related fields for sale order, salesperson, payment term, due date
     sale_order_number = fields.Char(string='Sale Order Number', compute='_compute_sale_order_number', store=True, readonly=True)
     salesperson_id = fields.Many2one('res.users', string='Salesperson', compute='_compute_salesperson', store=True, readonly=True)
     salesperson_name = fields.Char(
@@ -102,8 +94,11 @@ class BillingNote(models.Model):
     @api.depends('salesperson_id')
     def _compute_salesperson_name(self):
         for rec in self:
-            employee = self.env['hr.employee'].search([('user_id', '=', rec.salesperson_id.id)], limit=1)
-            rec.salesperson_name = employee.name if employee else (rec.salesperson_id.name or '')
+            employee_name = False
+            if 'hr.employee' in self.env:
+                employee = self.env['hr.employee'].search([('user_id', '=', rec.salesperson_id.id)], limit=1)
+                employee_name = employee.name if employee else False
+            rec.salesperson_name = employee_name or (rec.salesperson_id.name or '')
 
     payment_term_id = fields.Many2one('account.payment.term', string='Payment Term', compute='_compute_payment_term', store=True, readonly=True)
     invoice_due_date = fields.Date(string='Invoice Due Date', compute='_compute_invoice_due_date', store=True, readonly=True)
@@ -152,9 +147,9 @@ class BillingNote(models.Model):
             delivery = rec.partner_id.child_ids.filtered(lambda c: c.type == 'delivery')
             rec.partner_delivery_address = delivery[0].contact_address if delivery else ''
 
-    @api.depends('partner_id', 'note_type', 'company_id')
+    @api.depends('partner_id', 'note_type')
     def _compute_available_invoices(self):
-        """Compute available invoices for selection, filtered by company"""
+        """Compute available invoices for selection"""
         for rec in self:
             if not rec.partner_id:
                 rec.available_invoice_ids = self.env['account.move']
@@ -165,7 +160,6 @@ class BillingNote(models.Model):
                 ('state', '=', 'posted'),
                 ('payment_state', 'not in', ['paid', 'in_payment']),
                 ('amount_residual', '>', 0),
-                ('company_id', '=', rec.company_id.id),
             ]
 
             if not rec._origin.id:
@@ -174,15 +168,18 @@ class BillingNote(models.Model):
                 used_invoices = self.env['billing.note'].search([
                     ('id', '!=', rec._origin.id),
                     ('state', 'in', ['confirm', 'done']),
-                    ('company_id', '=', rec.company_id.id),
                 ]).mapped('invoice_ids')
                 if used_invoices:
                     domain.append(('id', 'not in', used_invoices.ids))
 
             if rec.note_type == 'receivable':
-                domain.append(('move_type', '=', 'out_invoice'))
+                domain.extend([
+                    ('move_type', '=', 'out_invoice'),
+                ])
             else:
-                domain.append(('move_type', '=', 'in_invoice'))
+                domain.extend([
+                    ('move_type', '=', 'in_invoice'),
+                ])
 
             rec.available_invoice_ids = self.env['account.move'].search(domain)
 
@@ -191,10 +188,9 @@ class BillingNote(models.Model):
         for rec in self:
             rec.amount_total = sum(rec.invoice_ids.mapped('amount_total'))
 
-    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.amount_residual',
-                 'payment_line_ids', 'payment_line_ids.amount')
+    @api.depends('invoice_ids', 'invoice_ids.payment_state', 'invoice_ids.amount_residual', 'payment_line_ids', 'payment_line_ids.amount')
     def _compute_payment_state(self):
-        precision = self.env['decimal.precision'].precision_get('Payment Terms')
+        precision = self.env['decimal.precision'].precision_get('Account')
         for rec in self:
             if not rec.invoice_ids:
                 rec.payment_state = 'not_paid'
@@ -202,6 +198,7 @@ class BillingNote(models.Model):
                 rec.payment_state = 'paid'
             else:
                 total_residual = sum(rec.invoice_ids.mapped('amount_residual'))
+
                 if float_is_zero(total_residual, precision_digits=precision):
                     rec.payment_state = 'paid'
                 elif float_compare(total_residual, rec.amount_total, precision_digits=precision) == 0:
@@ -211,7 +208,7 @@ class BillingNote(models.Model):
                 else:
                     rec.payment_state = 'partial'
 
-    @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.amount_residual')
+    @api.depends('invoice_ids', 'invoice_ids.amount_total', 'invoice_ids.amount_residual', 'payment_line_ids', 'payment_line_ids.amount')
     def _compute_amount_paid(self):
         for rec in self:
             total_residual = sum(rec.invoice_ids.mapped('amount_residual'))
@@ -226,14 +223,13 @@ class BillingNote(models.Model):
             else:
                 sequence_code = 'vendor.billing.note'
             doc_date = vals.get('date')
-            company = self.env['res.company'].browse(vals.get('company_id')) if vals.get('company_id') else self.env.company
             if doc_date:
                 vals['name'] = self.env['ir.sequence'].with_context(
                     ir_sequence_date=doc_date,
-                ).with_company(company).next_by_code(sequence_code) or '/'
+                ).next_by_code(sequence_code) or '/'
             else:
-                vals['name'] = self.env['ir.sequence'].with_company(company).next_by_code(sequence_code) or '/'
-        return super().create(vals)
+                vals['name'] = self.env['ir.sequence'].next_by_code(sequence_code) or '/'
+        return super(BillingNote, self).create(vals)
 
     @api.onchange('invoice_ids')
     def _onchange_invoice_ids(self):
@@ -335,22 +331,19 @@ class BillingNote(models.Model):
         for rec in self:
             rec.invoice_due_date = rec.invoice_ids and rec.invoice_ids[0].invoice_date_due or False
 
-    def _check_due_date_notification(self):
-        """Cron: send notification for billing notes nearing due date"""
-        today = fields.Date.context_today(self)
-        target_date = today + relativedelta(days=7)
-        notes = self.search([
+    @api.model
+    def _cron_check_due_dates(self):
+        due_today = self.search([
             ('state', '=', 'confirm'),
-            ('due_date', '<=', target_date),
-            ('due_date', '>=', today),
+            ('due_date', '=', fields.Date.today()),
             ('notification_sent', '=', False),
         ])
-        for note in notes:
-            note._send_due_date_notification()
-
-    def _send_due_date_notification(self):
-        self.ensure_one()
-        template = self.env.ref('buz_custom_billing_note.billing_note_due_date_template', raise_if_not_found=False)
-        if template:
-            template.send_mail(self.id, force_send=True)
-            self.notification_sent = True
+        for note in due_today:
+            try:
+                template = self.env.ref('buz_custom_billing_note.billing_note_due_date_template', raise_if_not_found=False)
+                if template:
+                    template.send_mail(note.id, force_send=True)
+                note.write({'notification_sent': True})
+            except Exception as e:
+                _logger.error(f"Failed to send due date notification for {note.name}: {e}")
+        return True

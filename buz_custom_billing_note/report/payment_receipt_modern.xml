@@ -151,10 +151,10 @@
                         <div class="row mb-2" style="padding-top: 0; font-size: 94%;"> <!-- Remove padding from the top -->
                             <div class="col-8">
                                 <div style="font-size: 18.8px;">
-                                    <div class="mb-1"><strong t-esc="doc.company_id.name"/></div>
-                                    <div style="font-size: 16.92px;"><span t-esc="doc.company_id.street or ''"/> <span t-esc="doc.company_id.street2 or ''"/> <span t-esc="doc.company_id.city or ''"/> <span t-esc="doc.company_id.zip or ''"/></div>
-                                    <div t-if="doc.company_id.vat" style="font-size: 16.92px;">เลขที่ประจําตัวผู้เสียภาษี <span t-esc="doc.company_id.vat"/></div>
-                                    <div style="font-size: 16.92px;">โทร <span t-esc="doc.company_id.phone or ''"/> <span t-if="doc.company_id.email" t-esc="'E-mail: ' + doc.company_id.email"/></div>
+                                    <div class="mb-1"><strong t-esc="doc.company_id.name or ''"/></div>
+                                    <div style="font-size: 16.92px;"><span t-field="doc.company_id.street"/> <span t-field="doc.company_id.street2"/></div>
+                                    <div style="font-size: 16.92px;">เลขที่ประจําตัวผู้เสียภาษี <span t-field="doc.company_id.vat"/></div>
+                                    <div style="font-size: 16.92px;">โทร <span t-field="doc.company_id.phone"/> E-mail: <span t-field="doc.company_id.email"/></div>
                                 </div>
                             </div>
                             <div class="col-4 text-end">
@@ -327,7 +327,7 @@
                                       <!-- ฝั่งซ้าย -->
                                       <div style="text-align: left;">
                                         <span style="font-weight: bold; font-size: 18.8px;">ตัวอักษร / Alphabet :</span>
-                                        <span style="font-size: 18.8px; font-weight: bold;" t-esc="doc.amount_total"/>
+                                        <span style="font-size: 18.8px; font-weight: bold;" t-esc="doc.amount_total_words"/>
                                       </div>
                                       <!-- ฝั่งขวา -->
                                       <div style="text-align: right;">
@@ -386,9 +386,9 @@
                                       </div>
                                       <div style="text-align: center; margin-top: -1.88em;">
                                           <br/>
-                                          *กรุณาจ่ายเช็คขีดคร่อมเฉพาะในนาม*
-                                          <br/>
-                                          *<span t-esc="doc.company_id.name"/>* และขีดฆ่าหรือผู้ถือ
+                                            *กรุณาจ่ายเช็คขีดคร่อมเฉพาะในนาม*
+                                            <br/>
+                                            *<span t-esc="doc.company_id.name or ''"/>* และขีดฆ่าหรือผู้ถือ
                                       </div>
                                   </div>
                                   <div class="footer-box" style="text-align: center; font-size: 16.92px;">
@@ -401,10 +401,10 @@
 
                                   </div>
                                   <div class="footer-box" style="text-align: center; font-size: 16.92px;">
-                                      ในนาม
-                                      <br/>
-                                      <span t-esc="doc.company_id.name"/>
-                                      <br/>
+                                    ในนาม
+                                    <br/>
+                                    <span t-esc="doc.company_id.name or ''"/>
+                                    <br/>
                                       ___________________________
                                       <br/>
                                       ผู้มีอำนาจลงนาม

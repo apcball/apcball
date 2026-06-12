@@ -26,19 +26,21 @@ class BillingNotePaymentSummary(models.Model):
             CREATE OR REPLACE VIEW %s AS (
                 SELECT
                     bnp.id,
-                    bnp.date,
+                    COALESCE(bnp.payment_date, bn.date) as date,
                     bn.partner_id,
                     bn.id as billing_note_id,
                     bnp.payment_id,
                     bnp.amount,
-                    bn.currency_id,
+                    COALESCE(bn.currency_id, c.currency_id) as currency_id,
                     bn.company_id,
                     bn.note_type,
-                    ap.payment_method_id,
-                    ap.journal_id
+                    pml.payment_method_id as payment_method_id,
+                    pml.journal_id
                 FROM billing_note_payment bnp
                 JOIN billing_note bn ON bn.id = bnp.billing_note_id
-                LEFT JOIN account_payment ap ON ap.id = bnp.payment_id
+                JOIN res_company c ON c.id = bn.company_id
+                LEFT JOIN account_payment p ON p.id = bnp.payment_id
+                LEFT JOIN account_payment_method_line pml ON pml.id = p.payment_method_line_id
                 WHERE bn.state != 'cancel'
             )
         """ % self._table)
