@@ -45,7 +45,7 @@
         </field>
     </record>
 
-    <!-- Tree View -->
+    <!-- Tree View (Journal Entries) -->
     <record id="view_move_tree_inherit_billing_note" model="ir.ui.view">
         <field name="name">account.move.tree.inherit.billing.note</field>
         <field name="model">account.move</field>
@@ -53,6 +53,28 @@
         <field name="arch" type="xml">
             <field name="state" position="after">
                 <field name="billing_note_ids" widget="many2many_tags" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Tree View (Invoice/Bill) -->
+    <record id="view_invoice_tree_inherit_billing_note" model="ir.ui.view">
+        <field name="name">account.invoice.tree.inherit.billing.note</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <field name="state" position="after">
+                <field name="billing_note_name" optional="show" string="Billing Note"/>
+                <field name="billing_note_state" widget="badge" optional="show" string="BN Status"
+                    decoration-primary="billing_note_state == 'draft'"
+                    decoration-warning="billing_note_state == 'confirm'"
+                    decoration-success="billing_note_state == 'done'"
+                    decoration-danger="billing_note_state == 'cancel'"/>
+                <field name="billing_note_payment_state" widget="badge" optional="show" string="BN Payment"
+                    decoration-danger="billing_note_payment_state == 'not_paid'"
+                    decoration-warning="billing_note_payment_state == 'partial'"
+                    decoration-info="billing_note_payment_state == 'in_payment'"
+                    decoration-success="billing_note_payment_state == 'paid'"/>
             </field>
         </field>
     </record>

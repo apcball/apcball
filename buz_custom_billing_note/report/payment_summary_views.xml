@@ -77,10 +77,4 @@
             </p>
         </field>
     </record>
-
-    <menuitem id="menu_billing_note_payment_summary"
-        name="Payment Summary"
-        parent="menu_billing_note_reporting"
-        action="action_billing_note_payment_summary"
-        sequence="20"/>
 </odoo>

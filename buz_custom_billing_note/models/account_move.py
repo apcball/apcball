@@ -18,6 +18,43 @@ class AccountMove(models.Model):
         'billing_note_id',
         string='Billing Notes'
     )
+    billing_note_name = fields.Char(
+        string='Billing Note',
+        compute='_compute_billing_note_data',
+        store=True,
+    )
+    billing_note_state = fields.Selection(
+        string='Billing Note Status',
+        compute='_compute_billing_note_data',
+        store=True,
+        selection=[
+            ('draft', 'Draft'),
+            ('confirm', 'Confirmed'),
+            ('done', 'Done'),
+            ('cancel', 'Cancelled'),
+        ],
+    )
+    billing_note_payment_state = fields.Selection(
+        string='Billing Note Payment',
+        compute='_compute_billing_note_data',
+        store=True,
+        selection=[
+            ('not_paid', 'Not Paid'),
+            ('in_payment', 'In Payment'),
+            ('partial', 'Partially Paid'),
+            ('paid', 'Paid'),
+            ('reversed', 'Reversed'),
+            ('invoicing_legacy', 'Invoicing App Legacy'),
+        ],
+    )
+
+    @api.depends('billing_note_ids', 'billing_note_ids.name', 'billing_note_ids.state', 'billing_note_ids.payment_state')
+    def _compute_billing_note_data(self):
+        for move in self:
+            first_note = move.billing_note_ids[:1]
+            move.billing_note_name = first_note.name if first_note else False
+            move.billing_note_state = first_note.state if first_note else False
+            move.billing_note_payment_state = first_note.payment_state if first_note else False
 
     def action_create_billing_note(self):
         """Open wizard to create a billing note from this invoice."""

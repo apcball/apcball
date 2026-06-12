@@ -57,12 +57,4 @@
         <field name="res_model">billing.note.payment</field>
         <field name="view_mode">tree,form</field>
     </record>
-
-    <!-- Menu -->
-    <menuitem id="menu_billing_note_payment"
-              name="Payments"
-              parent="menu_billing_note_main"
-              action="action_billing_note_payment"
-              sequence="2"/>
-
 </odoo>

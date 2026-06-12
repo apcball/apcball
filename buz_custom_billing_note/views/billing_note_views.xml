@@ -62,7 +62,6 @@
                         </group>
                     </group>
                     <field name="available_invoice_ids" invisible="1"/>
-                    <field name="company_id" invisible="1"/>
                     <group>
                         <group>
                             <field name="note_type" readonly="state != 'draft'"/>
@@ -176,10 +175,4 @@
         parent="menu_billing_note_main" 
         action="action_billing_note" 
         sequence="1"/>
-
-    <menuitem id="menu_billing_note_reporting" 
-        name="Reporting"
-        parent="menu_billing_note_main" 
-        sequence="99"/>
-
 </odoo>
