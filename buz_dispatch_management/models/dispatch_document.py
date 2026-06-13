@@ -75,7 +75,7 @@ class BuzDispatchDocument(models.Model):
         readonly=True,
     )
 
-    date_deadline = fields.Date(
+    date_deadline = fields.Datetime(
         string='Deadline',
         related='picking_id.date_deadline',
         readonly=True,
