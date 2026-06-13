@@ -16,7 +16,6 @@
                 <field name="origin" optional="show"/>
                 <field name="driver_name"/>
                 <field name="vehicle_no"/>
-                <field name="carrier_id" optional="show"/>
                 <field name="weight" optional="show"/>
                 <field name="number_of_packages" optional="show"/>
                 <field name="state" widget="badge"
@@ -86,7 +85,6 @@
                             <field name="driver_name"/>
                             <field name="vehicle_no"/>
                             <field name="receiver_name"/>
-                            <field name="carrier_id" readonly="1"/>
                         </group>
                     </group>
 
@@ -113,7 +111,6 @@
                                 <field name="picking_id"/>
                                 <field name="sale_id"/>
                                 <field name="origin"/>
-                                <field name="carrier_id" readonly="1"/>
                             </group>
                             <group string="Dates" colspan="2">
                                 <field name="scheduled_date"/>
@@ -154,7 +151,6 @@
                 <field name="partner_id"/>
                 <field name="driver_name"/>
                 <field name="vehicle_no"/>
-                <field name="carrier_id"/>
                 <field name="origin"/>
                 <templates>
                     <t t-name="kanban-box">
@@ -184,9 +180,6 @@
                                     <t t-if="record.vehicle_no.raw_value">
                                         <div>Vehicle: <field name="vehicle_no"/></div>
                                     </t>
-                                    <t t-if="record.carrier_id.raw_value">
-                                        <div>Carrier: <field name="carrier_id"/></div>
-                                    </t>
                                 </div>
                             </div>
                         </div>
@@ -207,7 +200,6 @@
                 <field name="driver_name"/>
                 <field name="vehicle_no"/>
                 <field name="origin"/>
-                <field name="carrier_id"/>
                 <separator/>
                 <filter string="My Dispatches" name="my_dispatches"
                         domain="[('create_uid', '=', uid)]"/>
@@ -239,8 +231,6 @@
                             context="{'group_by': 'driver_name'}"/>
                     <filter string="Customer" name="group_partner"
                             context="{'group_by': 'partner_id'}"/>
-                    <filter string="Delivery Method" name="group_carrier"
-                            context="{'group_by': 'carrier_id'}"/>
                     <filter string="Source Document" name="group_origin"
                             context="{'group_by': 'origin'}"/>
                 </group>
@@ -254,7 +244,6 @@
         <field name="arch" type="xml">
             <pivot string="Dispatch Analysis" disable_linking="True">
                 <field name="state" type="row"/>
-                <field name="carrier_id" type="row"/>
                 <field name="dispatch_date" type="col"/>
                 <field name="id" type="measure" string="Count"/>
             </pivot>

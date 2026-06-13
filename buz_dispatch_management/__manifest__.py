@@ -7,7 +7,6 @@
     'depends': [
         'stock',
         'sale_management',
-        'delivery',
         'mail',
         'web',
     ],

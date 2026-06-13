@@ -81,13 +81,6 @@ class BuzDispatchDocument(models.Model):
         readonly=True,
     )
 
-    carrier_id = fields.Many2one(
-        'delivery.carrier',
-        string='Delivery Method',
-        related='picking_id.carrier_id',
-        readonly=True,
-    )
-
     partner_phone = fields.Char(
         string='Phone',
         related='partner_id.phone',
