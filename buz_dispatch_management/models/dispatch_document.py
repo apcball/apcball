@@ -105,18 +105,6 @@ class BuzDispatchDocument(models.Model):
         readonly=True,
     )
 
-    weight = fields.Float(
-        string='Total Weight',
-        related='picking_id.weight',
-        readonly=True,
-    )
-
-    number_of_packages = fields.Integer(
-        string='Packages',
-        related='picking_id.number_of_packages',
-        readonly=True,
-    )
-
     note = fields.Text(string='Note')
 
     attachment_ids = fields.Many2many(

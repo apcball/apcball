@@ -16,8 +16,6 @@
                 <field name="origin" optional="show"/>
                 <field name="driver_name"/>
                 <field name="vehicle_no"/>
-                <field name="weight" optional="show"/>
-                <field name="number_of_packages" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'posted'"
                        decoration-info="state in ('printed', 'in_transit')"
@@ -119,8 +117,6 @@
                                 <field name="posted_date"/>
                             </group>
                             <group string="Shipping Details">
-                                <field name="weight"/>
-                                <field name="number_of_packages"/>
                             </group>
                         </page>
                         <page string="Notes &amp; Attachments" name="notes">
