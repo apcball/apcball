@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_create_dispatch_wizard" model="ir.actions.act_window">
+        <field name="name">Create Dispatch</field>
+        <field name="res_model">buz.create.dispatch.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">action</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="view_create_dispatch_wizard_form" model="ir.ui.view">
+        <field name="name">buz.create.dispatch.wizard.form</field>
+        <field name="model">buz.create.dispatch.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Dispatch Document">
+                <group>
+                    <group>
+                        <field name="picking_id" readonly="1"/>
+                        <field name="partner_id" readonly="1"/>
+                        <field name="sale_id" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="dispatch_date"/>
+                        <field name="driver_name" placeholder="Driver name"/>
+                        <field name="vehicle_no" placeholder="Vehicle number"/>
+                    </group>
+                </group>
+
+                <field name="line_ids" nolabel="1">
+                    <tree editable="bottom">
+                        <field name="product_id"/>
+                        <field name="product_uom_id"/>
+                        <field name="ordered_qty"/>
+                        <field name="dispatch_qty"/>
+                    </tree>
+                </field>
+
+                <footer>
+                    <button string="Create Dispatch" name="action_create_dispatch"
+                            type="object" class="oe_highlight"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

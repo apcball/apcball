@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_picking_form_dispatch_doc" model="ir.ui.view">
+        <field name="name">stock.picking.form.dispatch.management</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button class="oe_stat_button"
+                        name="%(action_buz_dispatch_document)d"
+                        type="action"
+                        icon="fa-file-text-o"
+                        context="{'default_picking_id': active_id}">
+                    <field name="buz_dispatch_document_count"
+                           widget="statinfo"
+                           string="Dispatch Docs"/>
+                </button>
+            </div>
+
+            <xpath expr="//header" position="inside">
+                <button name="action_create_dispatch"
+                        string="Create Dispatch"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state not in ('confirmed', 'assigned')"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
