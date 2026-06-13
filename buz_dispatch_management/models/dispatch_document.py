@@ -63,6 +63,67 @@ class BuzDispatchDocument(models.Model):
     receiver_name = fields.Char(string='Receiver Name', tracking=True)
     receiver_signature = fields.Binary(string='Receiver Signature')
 
+    origin = fields.Char(
+        string='Source Document',
+        related='picking_id.origin',
+        readonly=True,
+    )
+
+    scheduled_date = fields.Datetime(
+        string='Scheduled Date',
+        related='picking_id.scheduled_date',
+        readonly=True,
+    )
+
+    date_deadline = fields.Date(
+        string='Deadline',
+        related='picking_id.date_deadline',
+        readonly=True,
+    )
+
+    carrier_id = fields.Many2one(
+        'delivery.carrier',
+        string='Delivery Method',
+        related='picking_id.carrier_id',
+        readonly=True,
+    )
+
+    partner_phone = fields.Char(
+        string='Phone',
+        related='partner_id.phone',
+        readonly=True,
+    )
+
+    partner_mobile = fields.Char(
+        string='Mobile',
+        related='partner_id.mobile',
+        readonly=True,
+    )
+
+    partner_email = fields.Char(
+        string='Email',
+        related='partner_id.email',
+        readonly=True,
+    )
+
+    partner_address = fields.Char(
+        string='Address',
+        related='partner_id.contact_address',
+        readonly=True,
+    )
+
+    weight = fields.Float(
+        string='Total Weight',
+        related='picking_id.weight',
+        readonly=True,
+    )
+
+    number_of_packages = fields.Integer(
+        string='Packages',
+        related='picking_id.number_of_packages',
+        readonly=True,
+    )
+
     note = fields.Text(string='Note')
 
     attachment_ids = fields.Many2many(
