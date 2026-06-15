@@ -33,7 +33,7 @@ class CrmTeam(models.Model):
         ('at_risk', 'At Risk'),
         ('behind', 'Behind Target'),
         ('no_target', 'No Target'),
-    ], string='Status', compute='_compute_team_target')
+    ], string='Status', compute='_compute_team_target', store=False, default='no_target')
     active_target_count = fields.Integer(
         string='Active Targets',
         compute='_compute_team_target',
@@ -44,18 +44,11 @@ class CrmTeam(models.Model):
         SalesTarget = self.env['sales.target'].sudo()
         today = date.today()
         for team in self:
-            member_ids = team.member_ids.ids
-            if team.user_id:
-                member_ids.append(team.user_id.id)
-            member_ids = list(set(member_ids))
-
             domain = [
                 ('state', '=', 'confirmed'),
                 ('date_start', '<=', today),
                 ('date_end', '>=', today),
-                '|',
                 ('team_ids', 'in', team.id),
-                ('user_id', 'in', member_ids),
             ]
             targets = SalesTarget.search(domain)
             if not targets:

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- product.product_template_form_view (main product form) -->
+    <record id="view_product_template_form_policy" model="ir.ui.view">
+        <field name="name">product.template.form.policy</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='sale_ok']" position="before">
+                <field name="product_tmpl_id" invisible="1"/>
+                <field name="is_product_policy_readonly" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='sale_ok']" position="attributes">
+                <attribute name="readonly">is_product_policy_readonly</attribute>
+            </xpath>
+            <xpath expr="//field[@name='sale_ok']" position="after">
+                <field name="can_be_expensed" readonly="is_product_policy_readonly"/>
+                <field name="can_be_pos" readonly="is_product_policy_readonly"/>
+            </xpath>
+            <xpath expr="//field[@name='purchase_ok']" position="attributes">
+                <attribute name="readonly">is_product_policy_readonly</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- product.product_template_only_form_view (template-only form) -->
+    <record id="view_product_template_only_form_policy" model="ir.ui.view">
+        <field name="name">product.template.only.form.policy</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='sale_ok']" position="before">
+                <field name="is_product_policy_readonly" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='sale_ok']" position="attributes">
+                <attribute name="readonly">is_product_policy_readonly</attribute>
+            </xpath>
+            <xpath expr="//field[@name='sale_ok']" position="after">
+                <field name="can_be_expensed" readonly="is_product_policy_readonly"/>
+            </xpath>
+            <xpath expr="//field[@name='purchase_ok']" position="attributes">
+                <attribute name="readonly">is_product_policy_readonly</attribute>
+            </xpath>
+            <xpath expr="//field[@name='can_be_pos']" position="attributes">
+                <attribute name="readonly">is_product_policy_readonly</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- product.product_normal_form_view (variant form) -->
+    <record id="view_product_normal_form_policy" model="ir.ui.view">
+        <field name="name">product.normal.form.policy</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='options']" position="inside">
+                <field name="is_product_policy_readonly" invisible="1"/>
+                <field name="can_be_expensed" readonly="is_product_policy_readonly"/>
+            </xpath>
+            <xpath expr="//field[@name='can_be_pos']" position="attributes">
+                <attribute name="readonly">is_product_policy_readonly</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

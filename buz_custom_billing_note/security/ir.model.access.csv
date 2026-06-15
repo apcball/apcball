@@ -6,4 +6,5 @@ access_billing_note_payment_summary_user,billing.note.payment.summary.user,model
 access_create_billing_note_wizard_user,create.billing.note.wizard.user,model_create_billing_note_wizard,account.group_account_user,1,1,1,0
 access_billing_note_batch_payment_wizard_user,billing.note.batch.payment.wizard.user,model_billing_note_batch_payment_wizard,account.group_account_user,1,1,1,0
 access_billing_note_batch_payment_line_wizard_user,billing.note.batch.payment.line.wizard.user,model_billing_note_batch_payment_line_wizard,account.group_account_user,1,1,1,0
+access_billing_note_payment_wizard_user,billing.note.payment.wizard.user,model_billing_note_payment_wizard,account.group_account_user,1,1,1,0
 access_add_bills_wizard_user,add.bills.wizard.user,model_add_bills_wizard,account.group_account_user,1,1,1,0

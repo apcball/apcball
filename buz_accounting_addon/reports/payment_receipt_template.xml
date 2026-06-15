@@ -112,9 +112,14 @@
                                 height: 4cm; 
                                 margin: 2px; 
                             }
-                            .product-table tbody {
-                                height: 15cm; 
-                                overflow-y: auto; 
+                            .product-table tbody tr {
+                                height: 30px;
+                            }
+                            .product-table tbody tr td {
+                                height: 30px;
+                                line-height: 30px;
+                                padding-top: 0;
+                                padding-bottom: 0;
                             }
                         </style>
 
@@ -292,9 +297,9 @@
                             </t>
                      
                             
-                        </tbody>
+                         </tbody>
                         <!-- Totals -->
-                        <tfoot>
+                        <tfoot t-if="page_number == total_pages">
                             <tr>
                                 <td colspan="4" style="border-top: 1px solid #000; line-height: 1.5; vertical-align: middle; padding: 6px;">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -313,6 +318,7 @@
                     </table>
                 </div>
 
+                    <t t-if="page_number == total_pages">
                  <!-- กรอบรายละเอียดการชำระเงิน -->
                 <div style="border: 1px solid #000; padding: 10px; font-size: 20px; line-height: 1.8; width: 100%;">
                     <!-- บรรทัดที่ 1 -->
@@ -344,6 +350,7 @@
                       อื่นๆ...................................................................................................... จำนวนเงิน....................................บาท
                     </div>
                   </div>
+                    </t>
 
 
 

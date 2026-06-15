@@ -182,4 +182,5 @@ class AgedPartnerReport(models.AbstractModel):
             'period_length': period_length,
             'direction_selection': direction_selection,
             'result_selection': result_selection,
+            'company_id': company_id,
         }

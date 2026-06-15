@@ -34,5 +34,6 @@
               name="DP Excel Report"
               parent="sale.menu_sale_report"
               action="action_dp_report_wizard"
-              sequence="90"/>
+              sequence="90"
+              groups="mogen_report_dp_excel.group_dp_report"/>
 </odoo>

@@ -18,7 +18,7 @@
     <record id="group_sales_target_manager" model="res.groups">
         <field name="name">Sales Target Manager</field>
         <field name="category_id" ref="base.module_category_sales_sales"/>
-        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="implied_ids" eval="[(4, ref('group_sales_target_lead'))]"/>
         <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
         <field name="comment">Full access to all sales targets functionality.</field>
     </record>
@@ -29,7 +29,7 @@
         <record id="sales_target_rule_user" model="ir.rule">
             <field name="name">Sales Target: User can see and edit own targets</field>
             <field name="model_id" ref="model_sales_target"/>
-            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="domain_force">['|', ('user_id', '=', user.id), ('team_ids.member_ids', 'in', [user.id])]</field>
             <field name="groups" eval="[(4, ref('group_sales_target_user'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -53,7 +53,7 @@
         <record id="sales_target_rule_lead_edit_own" model="ir.rule">
             <field name="name">Sales Target: Lead can edit own targets</field>
             <field name="model_id" ref="model_sales_target"/>
-            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="domain_force">['|', ('user_id', '=', user.id), ('team_ids.member_ids', 'in', [user.id])]</field>
             <field name="groups" eval="[(4, ref('group_sales_target_lead'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>

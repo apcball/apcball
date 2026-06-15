@@ -34,7 +34,6 @@
     'website': 'https://www.cybrosys.com',
     'depends': ['sale_management', 'purchase', 'stock'],
     'data': [
-        'data/set_default_select_all.xml',
         'views/purchase_order_views.xml',
         'views/sale_order_views.xml',
     ],

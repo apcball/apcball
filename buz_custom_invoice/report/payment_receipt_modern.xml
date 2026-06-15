@@ -235,7 +235,6 @@
                                     </div>
                                     <div>
                                         <strong>โทรศัพท์ / Tel:</strong> <span t-field="doc.partner_id.phone"/>
-                                        <strong style="margin-left: 18.8px;">โทรสาร / Fax:</strong> <span t-field="doc.partner_id.fax"/>
                                     </div>
                                 </div>
                             </div>

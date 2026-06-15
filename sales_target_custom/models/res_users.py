@@ -33,7 +33,7 @@ class ResUsers(models.Model):
         ('at_risk', 'At Risk'),
         ('behind', 'Behind Target'),
         ('no_target', 'No Target'),
-    ], string='Target Status', compute='_compute_my_target')
+    ], string='Target Status', compute='_compute_my_target', store=False, default='no_target')
     active_target_count = fields.Integer(
         string='Active Targets',
         compute='_compute_my_target',
@@ -44,6 +44,10 @@ class ResUsers(models.Model):
     )
     my_invoice_count = fields.Integer(
         string='My Invoices',
+        compute='_compute_my_target',
+    )
+    my_delivery_order_count = fields.Integer(
+        string='Delivery Orders',
         compute='_compute_my_target',
     )
     currency_id = fields.Many2one(
@@ -61,6 +65,7 @@ class ResUsers(models.Model):
                 ('state', '=', 'confirmed'),
                 ('date_start', '<=', today),
                 ('date_end', '>=', today),
+                ('team_ids', '=', False),
             ])
             if not targets:
                 user.update({
@@ -72,6 +77,7 @@ class ResUsers(models.Model):
                     'active_target_count': 0,
                     'my_sale_order_count': 0,
                     'my_invoice_count': 0,
+                    'my_delivery_order_count': 0,
                 })
                 continue
 
@@ -97,4 +103,5 @@ class ResUsers(models.Model):
                 'active_target_count': len(targets),
                 'my_sale_order_count': sum(targets.mapped('sale_order_count')),
                 'my_invoice_count': sum(targets.mapped('invoice_count')),
+                'my_delivery_order_count': sum(targets.mapped('delivery_order_count')),
             })

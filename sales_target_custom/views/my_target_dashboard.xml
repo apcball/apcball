@@ -15,6 +15,7 @@
                 <field name="active_target_count"/>
                 <field name="my_sale_order_count"/>
                 <field name="my_invoice_count"/>
+                <field name="my_delivery_order_count"/>
                 <field name="currency_id"/>
                 <templates>
                     <t t-name="kanban-box">
@@ -23,7 +24,7 @@
                         <t t-set="achieved_val" t-value="record.achieved_amount_total.raw_value or 0"/>
                         <t t-set="percent" t-value="target_val > 0 ? Math.min(Math.round((achieved_val / target_val) * 100), 999) : 0"/>
                         <t t-set="status" t-value="record.target_status.raw_value or 'no_target'"/>
-                        <t t-set="bar_color" t-value="percent >= 100 ? '#059669' : percent >= 75 ? '#2563eb' : percent >= 50 ? '#d97706' : '#dc2626'"/>
+                        <t t-set="bar_color" t-value="percent >= 100 ? '#059669' : percent >= 75 ? '#2563eb' : percent >= 50 ? '#0891b2' : percent >= 25 ? '#d97706' : '#dc2626'"/>
                         <t t-set="status_text" t-value="status == 'achieved' ? 'Achieved!' : status == 'on_track' ? 'On Track' : status == 'at_risk' ? 'At Risk' : status == 'behind' ? 'Behind Target' : 'No Active Target'"/>
 
                         <div class="o_my_target_card oe_kanban_global_click">
@@ -103,6 +104,9 @@
                                 </span>
                                 <span class="o_my_info_item">
                                     <i class="fa fa-file-invoice-dollar"/> <t t-out="record.my_invoice_count.raw_value or 0"/> Invoices
+                                </span>
+                                <span class="o_my_info_item">
+                                    <i class="fa fa-truck"/> <t t-out="record.my_delivery_order_count.raw_value or 0"/> Deliveries
                                 </span>
                             </div>
 

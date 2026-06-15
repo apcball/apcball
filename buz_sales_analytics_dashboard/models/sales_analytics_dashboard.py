@@ -1,10 +1,13 @@
 import json
+import logging
 import math
 
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 from odoo.tools import float_round
+
+_logger = logging.getLogger(__name__)
 
 
 class SalesAnalyticsDashboard(models.TransientModel):
@@ -209,8 +212,8 @@ class SalesAnalyticsDashboard(models.TransientModel):
     @api.model
     def _aggregate_pos(self, domain):
         pos_model = self.env["pos.lite.order"].sudo()
-        agg = pos_model.read_group(domain, ["amount_total:sum"], [])[0]
-        revenue = agg.get("amount_total") or 0.0
+        agg = pos_model.read_group(domain, ["amount_untaxed:sum"], [])[0]
+        revenue = agg.get("amount_untaxed") or 0.0
         count_agg = pos_model.read_group(domain, ["__count"], [])[0]
         count = count_agg.get("__count") or 0
         return {"revenue": revenue, "count": count}
@@ -262,8 +265,8 @@ class SalesAnalyticsDashboard(models.TransientModel):
         inv_model = self.env["account.move"].sudo()
         cache_model = self.env["buz.sales.analytics.cache"]
 
-        so_agg = so_model.read_group(so_domain, ["amount_total:sum"], [])[0]
-        so_revenue = so_agg.get("amount_total") or 0.0
+        so_agg = so_model.read_group(so_domain, ["amount_untaxed:sum"], [])[0]
+        so_revenue = so_agg.get("amount_untaxed") or 0.0
         so_count_agg = so_model.read_group(so_domain, ["__count"], [])[0]
         so_orders = so_count_agg.get("__count") or 0
 
@@ -284,8 +287,8 @@ class SalesAnalyticsDashboard(models.TransientModel):
             prev_filters["date_to"] = str(df - relativedelta(days=1))
 
         prev_so_domain = self._get_sale_order_domain(prev_filters)
-        prev_so_agg = so_model.read_group(prev_so_domain, ["amount_total:sum"], [])[0]
-        prev_so_revenue = prev_so_agg.get("amount_total") or 0.0
+        prev_so_agg = so_model.read_group(prev_so_domain, ["amount_untaxed:sum"], [])[0]
+        prev_so_revenue = prev_so_agg.get("amount_untaxed") or 0.0
 
         prev_pos_domain = self._get_pos_order_domain(prev_filters)
         prev_pos_data = self._aggregate_pos(prev_pos_domain)
@@ -307,29 +310,66 @@ class SalesAnalyticsDashboard(models.TransientModel):
             outstanding_domain, ["amount_residual:sum"], [])[0]
         outstanding_invoices = out_agg.get("amount_residual") or 0.0
 
-        picking_model = self.env["stock.picking"].sudo()
-        done_domain = [
-            ("picking_type_code", "=", "outgoing"),
-            ("state", "=", "done"),
-            ("company_id", "=", self.env.company.id),
-        ]
+        cr = self.env.cr
+        sql_params = [self.env.company.id]
+        sql_conditions = ["m.company_id = %s", "m.state = 'done'", "m.sale_line_id IS NOT NULL", "p.state = 'done'"]
         if filters.get("date_from"):
-            done_domain.append(("date_done", ">=", filters["date_from"]))
+            sql_conditions.append("p.date_done >= %s")
+            sql_params.append(filters["date_from"])
         if filters.get("date_to"):
             end = filters["date_to"]
             if len(end) == 10:
                 end += " 23:59:59"
-            done_domain.append(("date_done", "<=", end))
+            sql_conditions.append("p.date_done <= %s")
+            sql_params.append(end)
+        has_sale_order_join = False
         if filters.get("salesperson_id"):
-            done_domain.append(("sale_id.user_id", "=", filters["salesperson_id"]))
+            has_sale_order_join = True
+            sql_conditions.append("so.user_id = %s")
+            sql_params.append(filters["salesperson_id"])
         if filters.get("team_id"):
-            done_domain.append(("sale_id.team_id", "=", filters["team_id"]))
+            has_sale_order_join = True
+            sql_conditions.append("so.team_id = %s")
+            sql_params.append(filters["team_id"])
         if filters.get("partner_id"):
-            done_domain.append(("partner_id", "=", filters["partner_id"]))
-        done_pickings = picking_model.search(done_domain)
-        total_delivered_qty = sum(
-            done_pickings.move_ids.filtered(lambda m: m.state == "done").mapped("quantity")
+            sql_conditions.append("p.partner_id = %s")
+            sql_params.append(filters["partner_id"])
+
+        sale_order_join = " JOIN sale_order so ON sol.order_id = so.id" if has_sale_order_join else ""
+        uom_join = " LEFT JOIN uom_uom sol_uom ON sol.product_uom = sol_uom.id LEFT JOIN uom_uom move_uom ON m.product_uom = move_uom.id"
+        where_clause = " AND ".join(sql_conditions)
+        # convert move qty from move UOM to sale line UOM via factor ratio
+        value_expr = (
+            "m.quantity * (sol.price_subtotal / NULLIF(sol.product_uom_qty, 0))"
+            " * (COALESCE(move_uom.factor, 1.0) / NULLIF(COALESCE(sol_uom.factor, 1.0), 0))"
         )
+        out_sql = f"""
+            SELECT COALESCE(SUM({value_expr}), 0.0)
+            FROM stock_move m
+            JOIN stock_picking p ON m.picking_id = p.id
+            JOIN stock_picking_type pt ON p.picking_type_id = pt.id
+            JOIN sale_order_line sol ON m.sale_line_id = sol.id{sale_order_join}{uom_join}
+            WHERE {where_clause} AND pt.code = 'outgoing'
+        """
+        cr.execute(out_sql, sql_params)
+        out_amt = cr.fetchone()[0] or 0.0
+
+        in_sql = f"""
+            SELECT COALESCE(SUM({value_expr}), 0.0)
+            FROM stock_move m
+            JOIN stock_picking p ON m.picking_id = p.id
+            JOIN stock_picking_type pt ON p.picking_type_id = pt.id
+            JOIN sale_order_line sol ON m.sale_line_id = sol.id{sale_order_join}{uom_join}
+            WHERE {where_clause} AND pt.code = 'incoming'
+        """
+        cr.execute(in_sql, sql_params)
+        in_amt = cr.fetchone()[0] or 0.0
+        delivered_amount = out_amt - in_amt
+
+        _logger.warning("DELIVERY AMOUNT company=%s date_from=%s date_to=%s out_amt=%s in_amt=%s net=%s sql=%s",
+                        self.env.company.id,
+                        filters.get("date_from"), filters.get("date_to"),
+                        out_amt, in_amt, delivered_amount, out_sql)
 
         return {
             "total_revenue": float_round(total_revenue, 2),
@@ -338,7 +378,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
             "growth_rate": float_round(growth_rate, 2),
             "target_achievement": float_round(target_achievement, 2),
             "outstanding_invoices": float_round(outstanding_invoices, 2),
-            "total_delivered_qty": float_round(total_delivered_qty, 2),
+            "total_delivered_amount": float_round(delivered_amount, 2),
         }
 
     @api.model
@@ -380,22 +420,22 @@ class SalesAnalyticsDashboard(models.TransientModel):
         groupby = groupby_map.get(period_type, "date_order:month")
 
         so_groups = so_model.read_group(
-            so_domain, ["amount_total:sum", "__count"], [groupby], lazy=False
+            so_domain, ["amount_untaxed:sum", "__count"], [groupby], lazy=False
         )
         pos_groups = pos_model.read_group(
-            pos_domain, ["amount_total:sum", "__count"], [groupby], lazy=False
+            pos_domain, ["amount_untaxed:sum", "__count"], [groupby], lazy=False
         )
 
         combined = {}
         for g in so_groups:
             key = g.get(groupby) or ""
             combined.setdefault(key, {"period": key, "revenue": 0.0, "order_count": 0})
-            combined[key]["revenue"] += g.get("amount_total") or 0.0
+            combined[key]["revenue"] += g.get("amount_untaxed") or 0.0
             combined[key]["order_count"] += g.get("__count") or 0
         for g in pos_groups:
             key = g.get(groupby) or ""
             combined.setdefault(key, {"period": key, "revenue": 0.0, "order_count": 0})
-            combined[key]["revenue"] += g.get("amount_total") or 0.0
+            combined[key]["revenue"] += g.get("amount_untaxed") or 0.0
             combined[key]["order_count"] += g.get("__count") or 0
 
         result = sorted(combined.values(), key=lambda x: x["period"])
@@ -411,10 +451,10 @@ class SalesAnalyticsDashboard(models.TransientModel):
         pos_domain = self._get_pos_order_domain(filters)
 
         so_groups = so_model.read_group(
-            so_domain, ["amount_total:sum", "__count"], ["partner_id"], lazy=False
+            so_domain, ["amount_untaxed:sum", "__count"], ["partner_id"], lazy=False
         )
         pos_groups = pos_model.read_group(
-            pos_domain, ["amount_total:sum", "__count"], ["partner_id"], lazy=False
+            pos_domain, ["amount_untaxed:sum", "__count"], ["partner_id"], lazy=False
         )
 
         combined = {}
@@ -424,7 +464,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
             pname = info[1] if info else "Unknown"
             key = pid if pid else -1
             combined.setdefault(key, {"partner_id": pid, "partner_name": pname, "total_revenue": 0.0, "order_count": 0})
-            combined[key]["total_revenue"] += g.get("amount_total") or 0.0
+            combined[key]["total_revenue"] += g.get("amount_untaxed") or 0.0
             combined[key]["order_count"] += g.get("__count") or 0
         for g in pos_groups:
             info = g.get("partner_id")
@@ -432,7 +472,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
             pname = info[1] if info else "Unknown"
             key = pid if pid else -1
             combined.setdefault(key, {"partner_id": pid, "partner_name": pname, "total_revenue": 0.0, "order_count": 0})
-            combined[key]["total_revenue"] += g.get("amount_total") or 0.0
+            combined[key]["total_revenue"] += g.get("amount_untaxed") or 0.0
             combined[key]["order_count"] += g.get("__count") or 0
 
         result = sorted(combined.values(), key=lambda x: x["total_revenue"], reverse=True)
@@ -555,10 +595,10 @@ class SalesAnalyticsDashboard(models.TransientModel):
         pos_domain = self._get_pos_order_domain(filters)
 
         so_groups = so_model.read_group(
-            so_domain, ["amount_total:sum", "__count"], ["user_id"], lazy=False
+            so_domain, ["amount_untaxed:sum", "__count"], ["user_id"], lazy=False
         )
         pos_groups = pos_model.read_group(
-            pos_domain, ["amount_total:sum", "__count"], ["employee_id"], lazy=False
+            pos_domain, ["amount_untaxed:sum", "__count"], ["employee_id"], lazy=False
         )
 
         emp_ids = list(set(
@@ -576,7 +616,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
             uname = info[1] if info else "Unassigned"
             key = uid if uid else -1
             combined.setdefault(key, {"user_id": uid, "user_name": uname, "revenue": 0.0, "order_count": 0})
-            combined[key]["revenue"] += g.get("amount_total") or 0.0
+            combined[key]["revenue"] += g.get("amount_untaxed") or 0.0
             combined[key]["order_count"] += g.get("__count") or 0
         for g in pos_groups:
             emp_info = g.get("employee_id")
@@ -584,7 +624,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
             uid, uname = emp_map.get(eid, (False, "Unassigned"))
             key = uid if uid else -1
             combined.setdefault(key, {"user_id": uid, "user_name": uname, "revenue": 0.0, "order_count": 0})
-            combined[key]["revenue"] += g.get("amount_total") or 0.0
+            combined[key]["revenue"] += g.get("amount_untaxed") or 0.0
             combined[key]["order_count"] += g.get("__count") or 0
 
         result = []
@@ -661,9 +701,9 @@ class SalesAnalyticsDashboard(models.TransientModel):
             ("cancel", "Cancelled"),
         ]:
             state_domain = base_domain + [("state", "=", state)]
-            agg = so_model.read_group(state_domain, ["amount_total:sum", "__count"], [])[0]
+            agg = so_model.read_group(state_domain, ["amount_untaxed:sum", "__count"], [])[0]
             so_count = agg.get("__count") or 0
-            so_total = agg.get("amount_total") or 0.0
+            so_total = agg.get("amount_untaxed") or 0.0
             status_data.append(
                 {
                     "state": state,
@@ -679,13 +719,13 @@ class SalesAnalyticsDashboard(models.TransientModel):
         ]
         for state, label in pos_states:
             state_domain = pos_base + [("state", "=", state)]
-            agg = pos_model.read_group(state_domain, ["amount_total:sum", "__count"], [])[0]
+            agg = pos_model.read_group(state_domain, ["amount_untaxed:sum", "__count"], [])[0]
             status_data.append(
                 {
                     "state": "pos_" + state,
                     "label": label,
                     "count": agg.get("__count") or 0,
-                    "total": float_round(agg.get("amount_total") or 0.0, 2),
+                    "total": float_round(agg.get("amount_untaxed") or 0.0, 2),
                 }
             )
         return status_data
@@ -746,9 +786,9 @@ class SalesAnalyticsDashboard(models.TransientModel):
         won_value = won_agg.get("expected_revenue") or 0.0
 
         so_domain = self._get_sale_order_domain(filters)
-        so_agg = so_model.read_group(so_domain, ["amount_total:sum", "__count"], [])[0]
+        so_agg = so_model.read_group(so_domain, ["amount_untaxed:sum", "__count"], [])[0]
         so_count = so_agg.get("__count") or 0
-        so_value = so_agg.get("amount_total") or 0.0
+        so_value = so_agg.get("amount_untaxed") or 0.0
 
         pos_domain = self._get_pos_order_domain(filters)
         pos_data = self._aggregate_pos(pos_domain)
@@ -837,19 +877,19 @@ class SalesAnalyticsDashboard(models.TransientModel):
             pos_domain.append(("employee_id.user_id", "=", filters["salesperson_id"]))
 
         so_groups = so_model.read_group(
-            so_domain, ["amount_total:sum"], ["date_order:month"], lazy=False
+            so_domain, ["amount_untaxed:sum"], ["date_order:month"], lazy=False
         )
         pos_groups = pos_model.read_group(
-            pos_domain, ["amount_total:sum"], ["date_order:month"], lazy=False
+            pos_domain, ["amount_untaxed:sum"], ["date_order:month"], lazy=False
         )
 
         combined = {}
         for g in so_groups:
             key = g.get("date_order:month") or ""
-            combined[key] = combined.get(key, 0.0) + (g.get("amount_total") or 0.0)
+            combined[key] = combined.get(key, 0.0) + (g.get("amount_untaxed") or 0.0)
         for g in pos_groups:
             key = g.get("date_order:month") or ""
-            combined[key] = combined.get(key, 0.0) + (g.get("amount_total") or 0.0)
+            combined[key] = combined.get(key, 0.0) + (g.get("amount_untaxed") or 0.0)
 
         historical = []
         for key in sorted(combined.keys()):
@@ -938,10 +978,10 @@ class SalesAnalyticsDashboard(models.TransientModel):
             if filters.get("salesperson_id"):
                 pos_domain.append(("employee_id.user_id", "=", filters["salesperson_id"]))
 
-            so_agg = so_model.read_group(so_domain, ["amount_total:sum", "__count"], [])[0]
-            pos_agg = pos_model.read_group(pos_domain, ["amount_total:sum", "__count"], [])[0]
+            so_agg = so_model.read_group(so_domain, ["amount_untaxed:sum", "__count"], [])[0]
+            pos_agg = pos_model.read_group(pos_domain, ["amount_untaxed:sum", "__count"], [])[0]
 
-            revenue = (so_agg.get("amount_total") or 0.0) + (pos_agg.get("amount_total") or 0.0)
+            revenue = (so_agg.get("amount_untaxed") or 0.0) + (pos_agg.get("amount_untaxed") or 0.0)
             count = (so_agg.get("__count") or 0) + (pos_agg.get("__count") or 0)
             months.append(
                 {

@@ -4,7 +4,7 @@
     'summary': 'Document of transfer money abroad and Vendor Payment Generation',
     'category': 'Accounting/Accounting',
     'author': 'Antigravity',
-    'depends': ['account'],
+    'depends': ['account', 'purchase'],
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',

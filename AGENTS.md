@@ -23,7 +23,7 @@ Hosted on Contabo VPS, Dockerized (`odoo:17.0` base). Postgres 16.
 rsync -az --delete "./<module>/" root@217.216.32.33:/srv/docker/odoo/custom-addons/<module>/
 ssh root@217.216.32.33 "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
 
-# Deploy to PROD server
+# Deploy to PROD server 
 rsync -az --delete "./<module>/" mogenit@160.187.249.148:/srv/docker/odoo_mogen/custom-addons/<module>/
 ssh mogenit@160.187.249.148 "docker exec odoo odoo -d MOG_PROD -u <module> --stop-after-init --no-http"
 
@@ -83,8 +83,7 @@ Standard Odoo 17: `models/`, `views/`, `security/`, `data/`, `wizard/`, `report/
 | Server | Host | Docker root |
 |--------|------|-------------|
 | DEV | `root@217.216.32.33` | `/srv/docker/odoo/` |
-| PROD | `mogenit@160.187.249.148` | `/srv/docker/odoo_mogen/` |
-
+| PROD | `mogenit@160.187.249.148` | `/srv/docker/odoo_mogen/custom-addons` |
 Container addons path: `/mnt/custom-addons` (volume mapped from `./custom-addons/`).
 
 Config: `%DOCKER_ROOT%/config/odoo.conf`

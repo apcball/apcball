@@ -15,7 +15,7 @@ class GeneralLedgerXlsx(models.AbstractModel):
         accounts = report_data.get('accounts', [])
         date_from = report_data.get('date_from')
         date_to = report_data.get('date_to')
-        company = self.env.user.company_id
+        company = self.env['res.company'].browse(report_data.get('company_id', self.env.company.id))
 
         sheet = workbook.add_worksheet('General Ledger')
         

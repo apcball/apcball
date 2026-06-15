@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<odoo noupdate="1">
-    <function model="sale.order.line" name="_set_default_product_select"/>
-    <function model="purchase.order.line" name="_set_default_product_select"/>
-</odoo>

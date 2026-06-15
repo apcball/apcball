@@ -32,13 +32,8 @@ class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
     is_product_select = fields.Boolean(string="Select",
-                                       default=True,
                                        help="To Select products from order line",
                                        copy=False)
-
-    def _set_default_product_select(self):
-        """Backfill existing order lines so the module defaults to select all."""
-        self.search([]).write({'is_product_select': True})
 
 
 class SaleOrder(models.Model):

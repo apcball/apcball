@@ -22,7 +22,7 @@ Can use only selected products to invoice as well as bills.
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 ###############################################################################
-from odoo import api, fields, models, _
+from odoo import fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools import float_is_zero, groupby
 
@@ -31,41 +31,7 @@ class PurchaseOrderLine(models.Model):
     """Inherits the purchase order line"""
     _inherit = 'purchase.order.line'
 
-    is_product_select = fields.Boolean(string="Select", default=True,
-                                       help="To select Products from Order lines", copy=False)
-
-    def _set_default_product_select(self):
-        """Backfill existing order lines so the module defaults to select all."""
-        self.search([]).write({'is_product_select': True})
-
-    @staticmethod
-    def _is_invoiceable_qty(line):
-        """Return whether the line currently has quantity ready to bill."""
-        return line.qty_to_invoice > 0 and not line.display_type
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        """Default new invoiceable lines to selected."""
-        records = super().create(vals_list)
-        records.filtered(lambda line: self._is_invoiceable_qty(line)).write(
-            {'is_product_select': True}
-        )
-        return records
-
-    def write(self, vals):
-        """Auto-select lines when they become invoiceable after receipts."""
-        invoiceable_before = {
-            line.id: self._is_invoiceable_qty(line) for line in self
-        }
-        result = super().write(vals)
-        lines_to_select = self.filtered(
-            lambda line: not invoiceable_before.get(line.id)
-            and self._is_invoiceable_qty(line)
-            and not line.is_product_select
-        )
-        if lines_to_select:
-            lines_to_select.write({'is_product_select': True})
-        return result
+    is_product_select = fields.Boolean(string="Select", help="To select Products from Order lines", copy=False)
 
 
 class PurchaseOrder(models.Model):

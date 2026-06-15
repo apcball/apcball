@@ -10,7 +10,7 @@
         
         Features:
         - Set sales targets for individual salespersons or teams
-        - Multiple target points: Sale Order Confirm, Invoice Validation, Invoice Paid, POS Lite Sale
+        - Multiple target points: Sale Order Confirm, Delivery Confirmed, Invoice Validation, Invoice Paid
         - Theoretical achievement calculation
         - Email notifications for target confirmation and closure
         - Multi-currency support
@@ -21,7 +21,7 @@
     "category": "Sales",
     "author": "Mogen Co., Ltd.",
     "website": "https://mogen.co.th",
-    "depends": ["sale_management", "crm", "account", "pos_lite"],
+    "depends": ["sale_management", "sale_stock", "crm", "account"],
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",

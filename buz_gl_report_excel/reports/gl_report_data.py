@@ -5,7 +5,7 @@ class ReportGeneralLedger(models.AbstractModel):
     _name = 'report.buz_gl_report_excel.report_general_ledger'
     _description = 'General Ledger Report'
 
-    def _get_initial_balances(self, accounts, date_from, target_move):
+    def _get_initial_balances(self, accounts, date_from, target_move, company_id):
         cr = self.env.cr
         init_balances = {}
         
@@ -18,7 +18,7 @@ class ReportGeneralLedger(models.AbstractModel):
             return {}
             
         # Build domain for initial balance
-        domain = [('account_id', 'in', accounts.ids), ('date', '<', date_from)]
+        domain = [('account_id', 'in', accounts.ids), ('date', '<', date_from), ('company_id', '=', company_id)]
         if target_move == 'posted':
             domain.append(('parent_state', '=', 'posted'))
         else:
@@ -51,7 +51,7 @@ class ReportGeneralLedger(models.AbstractModel):
             }
         return init_balances
 
-    def _get_account_move_entry(self, accounts, date_from, date_to, target_move, sortby):
+    def _get_account_move_entry(self, accounts, date_from, date_to, target_move, sortby, company_id):
         cr = self.env.cr
         move_lines = {}
         
@@ -59,7 +59,7 @@ class ReportGeneralLedger(models.AbstractModel):
             return {}
 
         # Build Domain based on input
-        domain = [('account_id', 'in', accounts.ids)]
+        domain = [('account_id', 'in', accounts.ids), ('company_id', '=', company_id)]
         if date_from:
             domain.append(('date', '>=', date_from))
         if date_to:
@@ -128,6 +128,12 @@ class ReportGeneralLedger(models.AbstractModel):
         journal_ids = form_data.get('journal_ids')
         account_ids = form_data.get('account_ids')
 
+        company_id = form_data.get('company_id')
+        if company_id:
+            company_id = company_id[0] if isinstance(company_id, (list, tuple)) else company_id
+        else:
+            company_id = self.env.company.id
+
         domain = []
         if account_ids:
             domain.append(('id', 'in', account_ids))
@@ -135,12 +141,12 @@ class ReportGeneralLedger(models.AbstractModel):
         accounts = self.env['account.account'].search(domain)
 
         # Get Moves
-        move_lines = self._get_account_move_entry(accounts, date_from, date_to, target_move, sortby)
+        move_lines = self._get_account_move_entry(accounts, date_from, date_to, target_move, sortby, company_id)
         
         # Get Initial Balances
         init_balances = {}
         if init_balance:
-            init_balances = self._get_initial_balances(accounts, date_from, target_move)
+            init_balances = self._get_initial_balances(accounts, date_from, target_move, company_id)
 
         final_accounts = []
         
@@ -198,4 +204,5 @@ class ReportGeneralLedger(models.AbstractModel):
             'accounts': final_accounts,
             'date_from': date_from,
             'date_to': date_to,
+            'company_id': company_id,
         }

@@ -25,7 +25,7 @@
                         <t t-set="target_val" t-value="record.target_amount.raw_value or 0"/>
                         <t t-set="achieved_val" t-value="record.achieved_amount.raw_value or 0"/>
                         <t t-set="percent" t-value="target_val > 0 ? Math.min(Math.round((achieved_val / target_val) * 100), 999) : 0"/>
-                        <t t-set="bar_color" t-value="percent >= 100 ? '#059669' : percent >= 75 ? '#2563eb' : percent >= 50 ? '#d97706' : '#dc2626'"/>
+                        <t t-set="bar_color" t-value="percent >= 100 ? '#059669' : percent >= 75 ? '#2563eb' : percent >= 50 ? '#0891b2' : percent >= 25 ? '#d97706' : '#dc2626'"/>
                         <t t-set="badge_cls" t-value="percent >= 100 ? 'o_badge_success' : percent >= 50 ? 'o_badge_warning' : 'o_badge_danger'"/>
 
                         <div class="o_team_target_card oe_kanban_global_click">

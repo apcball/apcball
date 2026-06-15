@@ -1,6 +1,5 @@
 from odoo import models, fields, api
 
-
 class AddBillsWizard(models.TransientModel):
     _name = 'add.bills.wizard'
     _description = 'Add Documents Wizard'
@@ -19,8 +18,7 @@ class AddBillsWizard(models.TransientModel):
         domain = [
             ('partner_id', '=', self.partner_id.id),
             ('state', '=', 'posted'),
-            ('payment_state', '!=', 'paid'),
-            ('company_id', '=', self.billing_note_id.company_id.id),
+            ('payment_state', '!=', 'paid')
         ]
 
         if self.note_type == 'receivable':

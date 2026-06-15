@@ -1,5 +1,4 @@
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
 
 class BuzTrBankExport(models.Model):
     _name = 'buz.tr.bank.export'
@@ -65,31 +64,7 @@ class BuzTrBankExport(models.Model):
         for record in self:
             if record.state != 'draft':
                 continue
-            
-            invoices = record.line_ids.mapped('invoice_id')
-            if not invoices:
-                raise UserError(_("Please select at least one invoice in the lines to register payment."))
-            
             record.state = 'confirmed'
-            
-            # Call the standard register payment wizard
-            action = invoices.action_register_payment()
-            
-            # Inject context to link the payment back to this document
-            context = action.get('context', {})
-            if isinstance(context, str):
-                # evaluate string context if necessary, but action_register_payment usually returns a dict context
-                pass
-            
-            action['context'] = dict(
-                self.env.context,
-                active_ids=invoices.ids,
-                active_model='account.move',
-                buz_export_id=record.id,
-                default_amount=record.grand_total_amount, # Pre-fill amount with our grand total
-                default_communication=record.name
-            )
-            return action
 
     def action_cancel(self):
         for record in self:
@@ -101,6 +76,12 @@ class BuzTrBankExport(models.Model):
         for record in self:
             record.state = 'draft'
 
+    def action_done(self):
+        for record in self:
+            if record.state != 'confirmed':
+                continue
+            record.state = 'done'
+
 
 class BuzTrBankExportLine(models.Model):
     _name = 'buz.tr.bank.export.line'
@@ -111,25 +92,15 @@ class BuzTrBankExportLine(models.Model):
     lot_no = fields.Char(string='Lot No.')
     import_date = fields.Date(string='Import date')
     etd_date = fields.Date(string='ETDDATE')
-    invoice_id = fields.Many2one('account.move', string='Invoice No.', domain=[('move_type', 'in', ('in_invoice', 'in_receipt'))])
-    ref_no = fields.Char(string='Ref.No.', related='invoice_id.ref', store=True, readonly=False)
+    purchase_id = fields.Many2one('purchase.order', string='PO No.', domain=[('state', '!=', 'cancel')])
+    po_ref = fields.Char(string='Ref.No.', related='purchase_id.partner_ref', store=True, readonly=False)
+    po_amount = fields.Monetary(string='PO Amount', related='purchase_id.amount_total', store=True, readonly=False)
     currency_id = fields.Many2one(related='export_id.currency_id', depends=['export_id.currency_id'], store=True)
-    amount = fields.Monetary(string='Amount', related='invoice_id.amount_total', store=True, readonly=False)
     transfer_amount = fields.Monetary(string='Transfer Amount')
 
-    @api.onchange('invoice_id')
-    def _onchange_invoice_id(self):
-        if self.invoice_id:
-            self.transfer_amount = self.invoice_id.amount_residual
+    @api.onchange('purchase_id')
+    def _onchange_purchase_id(self):
+        if self.purchase_id:
+            self.transfer_amount = self.purchase_id.amount_total
 
-class AccountPaymentRegister(models.TransientModel):
-    _inherit = 'account.payment.register'
 
-    def _create_payments(self):
-        payments = super()._create_payments()
-        buz_export_id = self.env.context.get('buz_export_id')
-        if buz_export_id:
-            export_doc = self.env['buz.tr.bank.export'].browse(buz_export_id)
-            if export_doc and payments:
-                export_doc.payment_id = payments[0].id
-        return payments

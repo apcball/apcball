@@ -1,5 +1,6 @@
 {
     "python.languageServer": "None",
     "python.analysis.typeCheckingMode": "standard",
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "xml.symbols.enabled": false
 }

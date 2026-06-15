@@ -29,7 +29,8 @@
                 <t t-set="page_num" t-value="0"/>
                 <t t-set="info_line_gap_px" t-value="max(30, int((config.font_size or 14) * 1.8))"/>
                 <t t-set="customer_address_line2_top_px" t-value="max(config.customer_address_line2_top, config.customer_address_top + info_line_gap_px)"/>
-                <t t-set="dispatch_location_top_px" t-value="max(config.dispatch_location_top, customer_address_line2_top_px + info_line_gap_px)"/>
+                <t t-set="customer_phone_top_px" t-value="max(config.customer_phone_top, customer_address_line2_top_px + info_line_gap_px)"/>
+                <t t-set="dispatch_location_top_px" t-value="max(config.dispatch_location_top, customer_phone_top_px + info_line_gap_px)"/>
 
                 <t t-foreach="groups_of_10" t-as="group">
                     <div class="page" t-attf-style="width: 216mm; height: 279mm; position: relative; font-family: 'Sarabun', sans-serif; font-size: {{config.font_size or 14}}px; {{page_num != 0 and 'page-break-before: always;' or ''}} margin: 0; padding: 0; overflow: visible; box-sizing: border-box;">
@@ -166,13 +167,20 @@
                     <div t-attf-style="position: absolute; top: {{customer_address_line2_top_px * px_to_mm}}mm; left: {{config.customer_address_line2_left * px_to_mm}}mm; width: 120mm; max-width: 120mm; white-space: nowrap; overflow: visible;" class="thai-text">
                         <t t-set="delivery_partner" t-value="o.partner_id"/>
                         <t t-set="address_parts" t-value="[]"/>
+                        <t t-if="o.sub_district" t-set="address_parts" t-value="address_parts + [o.sub_district]"/>
                         <t t-if="delivery_partner.city" t-set="address_parts" t-value="address_parts + [delivery_partner.city]"/>
                         <t t-if="delivery_partner.state_id" t-set="address_parts" t-value="address_parts + [delivery_partner.state_id.name]"/>
                         <t t-if="delivery_partner.zip" t-set="address_parts" t-value="address_parts + [delivery_partner.zip]"/>
                         <span t-esc="' '.join(address_parts)"/>
+                        <t t-if="o.partner_id.phone">
+                            <span> เบอร์โทร: </span><span t-field="o.partner_id.phone"/>
+                        </t>
+                        <t t-elif="o.partner_id.mobile">
+                            <span> เบอร์โทร: </span><span t-field="o.partner_id.mobile"/>
+                        </t>
                         <span t-field="o.delivery_note"/>
                     </div>
-                    
+
                     <!-- Vehicle Type - ประเภทรถ -->
                     <div t-attf-style="position: absolute; top: {{config.vehicle_type_top * px_to_mm}}mm; left: {{config.vehicle_type_left * px_to_mm}}mm;" class="thai-text">
                         <span t-field="o.vehicle_type"/>

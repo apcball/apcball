@@ -124,8 +124,8 @@
                             <div class="o_sa_kpi_card kpi-info">
                                 <div class="kpi-icon"><i class="fa fa-truck"/></div>
                                 <div class="kpi-content">
-                                    <div class="kpi-title">Total Delivered</div>
-                                    <div class="kpi-value"><t t-esc="formatNumber(state.data.kpi.total_delivered_qty)"/></div>
+                                    <div class="kpi-title">Delivered Amount</div>
+                                    <div class="kpi-value"><t t-esc="formatCurrency(state.data.kpi.total_delivered_amount)"/></div>
                                 </div>
                             </div>
                         </div>

@@ -27,6 +27,7 @@ class GlReportWizard(models.TransientModel):
     date_from = fields.Date(string='Start Date')
     date_to = fields.Date(string='End Date')
 
+    company_id = fields.Many2one('res.company', string='Company', required=True, default=lambda self: self.env.company)
     journal_ids = fields.Many2many('account.journal', string='Journals', required=True, default=lambda self: self.env['account.journal'].search([]))
     account_ids = fields.Many2many('account.account', string='Accounts')
 
@@ -35,11 +36,11 @@ class GlReportWizard(models.TransientModel):
         data = {}
         data['ids'] = self.env.context.get('active_ids', [])
         data['model'] = self.env.context.get('active_model', 'ir.ui.menu')
-        data['form'] = self.read(['date_from', 'date_to', 'journal_ids', 'target_move', 'sortby', 'display_account', 'initial_balance', 'account_ids'])[0]
+        data['form'] = self.read(['date_from', 'date_to', 'journal_ids', 'target_move', 'sortby', 'display_account', 'initial_balance', 'account_ids', 'company_id'])[0]
         return self._print_report(data)
 
     def _print_report(self, data):
-        data['form'].update(self.read(['date_from', 'date_to', 'journal_ids', 'target_move', 'sortby', 'display_account', 'initial_balance', 'account_ids'])[0])
+        data['form'].update(self.read(['date_from', 'date_to', 'journal_ids', 'target_move', 'sortby', 'display_account', 'initial_balance', 'account_ids', 'company_id'])[0])
         return self.env.ref('buz_gl_report_excel.action_report_general_ledger').report_action(self, data=data)
 
     def check_report_xlsx(self):
@@ -47,5 +48,5 @@ class GlReportWizard(models.TransientModel):
         data = {}
         data['ids'] = self.env.context.get('active_ids', [])
         data['model'] = self.env.context.get('active_model', 'ir.ui.menu')
-        data['form'] = self.read(['date_from', 'date_to', 'journal_ids', 'target_move', 'sortby', 'display_account', 'initial_balance', 'account_ids'])[0]
+        data['form'] = self.read(['date_from', 'date_to', 'journal_ids', 'target_move', 'sortby', 'display_account', 'initial_balance', 'account_ids', 'company_id'])[0]
         return self.env.ref('buz_gl_report_excel.action_report_general_ledger_xlsx').report_action(self, data=data)

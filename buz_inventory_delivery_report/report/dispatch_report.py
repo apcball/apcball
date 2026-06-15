@@ -40,18 +40,16 @@ class DispatchReportPDF(models.AbstractModel):
                     if getattr(move, 'sale_line_id', False) and move.sale_line_id:
                         group_key = f"sale_{move.sale_line_id.id}"
                         kit_product = move.sale_line_id.product_id
-                        kit_qty = move.sale_line_id.product_uom_qty
                         kit_uom = move.sale_line_id.product_uom.name
                     else:
                         group_key = f"bom_{move.bom_line_id.bom_id.id}"
                         kit_product = move.bom_line_id.bom_id.product_tmpl_id
-                        kit_qty = 0
                         kit_uom = kit_product.uom_id.name
 
                     if group_key not in bom_grouped:
                         bom_grouped[group_key] = {
                             'product': kit_product,
-                            'qty': kit_qty,
+                            'qty': 0,
                             'uom': kit_uom,
                             'moves': []
                         }
@@ -73,7 +71,18 @@ class DispatchReportPDF(models.AbstractModel):
             for key, data_dict in bom_grouped.items():
                 prod = data_dict['product']
                 code = prod.default_code or ''
-                qty_str = '{:,.2f}'.format(data_dict['qty']) if data_dict['qty'] else ''
+
+                # Calculate actual kit quantity from component moves
+                kit_qty = 0.0
+                for move in data_dict['moves']:
+                    if move.bom_line_id and move.bom_line_id.product_qty:
+                        bom_line_qty = move.bom_line_id.product_qty
+                        bom_qty = move.bom_line_id.bom_id.product_qty
+                        move_kit_qty = move.product_uom_qty * bom_qty / bom_line_qty
+                        if move_kit_qty > kit_qty:
+                            kit_qty = move_kit_qty
+
+                qty_str = '{:,.2f}'.format(kit_qty) if kit_qty else ''
                 
                 lines.append({
                     'type': 'bom',

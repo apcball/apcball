@@ -210,23 +210,11 @@
                     </t>
                 </td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <t t-if="line.normal_price and line.normal_price > 0 and (line.discount_percent or 0) &gt; 0">
-                        <t t-set="discount_percent" t-value="round((1 - (line.price_unit / line.normal_price)) * 100, 2)"/>
-                        <span t-esc="discount_percent"/>%
-                    </t>
-                    <t t-else="">
-                        <span t-esc="line.discount_percent"/>%
-                    </t>
+                    <span t-esc="line.discount or 0"/>%
                 </td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
-                    <t t-if="line.normal_price and line.normal_price != 0 and (line.discount_percent or 0) &gt; 0">
-                        <span t-field="line.price_unit"
-                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                    </t>
-                    <t t-else="">
-                        <span t-esc="line.price_unit * (1 - (line.discount_percent or 0) / 100.0)"
-                              t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                    </t>
+                    <span t-esc="line.price_unit * (1 - (line.discount or 0) / 100.0)"
+                          t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                 </td>
                 <td style="text-align: center; border: none; border-bottom: 1px solid #e3e3e3; padding: 10px 0;">
                     <span t-field="line.price_subtotal"

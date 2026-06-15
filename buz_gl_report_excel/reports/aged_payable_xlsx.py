@@ -13,7 +13,7 @@ class AgedPayableXlsx(models.AbstractModel):
         period_length = report_data.get('period_length', 30)
         direction_selection = report_data.get('direction_selection', 'past')
         result_selection = report_data.get('result_selection', 'Receivable/Payable')
-        company = self.env.user.company_id
+        company = self.env['res.company'].browse(report_data.get('company_id', self.env.company.id))
 
         sheet = workbook.add_worksheet('Aged Payable')
         

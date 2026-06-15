@@ -56,7 +56,7 @@
                     <!-- Charge Customer: Create SO -->
                     <button name="action_create_sale_order" string="Create SO"
                             type="object" class="btn-warning"
-                            invisible="invoice_status != 'to_invoice' or not charge_customer"/>
+                            invisible="invoice_status != 'to_invoice'"/>
                     <button name="action_view_sale_order" string="View SO"
                             type="object" class="btn-info"
                             invisible="not sale_order_id"/>
@@ -92,13 +92,6 @@
                                 invisible="not sale_order_id"
                                 help="View sale order">
                             <field name="sale_order_count" widget="statinfo" string="SO"/>
-                        </button>
-                        <!-- Smart Button: Invoice -->
-                        <button class="oe_stat_button" type="object"
-                                name="action_view_invoice" icon="fa-file-text-o"
-                                invisible="not invoice_id"
-                                help="View customer invoice">
-                            <field name="invoice_count" widget="statinfo" string="Invoice"/>
                         </button>
                     </div>
                     <div class="oe_title">
@@ -190,7 +183,6 @@
                             </field>
                             <group colspan="2">
                                 <field name="invoice_status" string="Invoice Status" readonly="1"/>
-                                <field name="invoice_id" string="Invoice" readonly="1"/>
                                 <field name="sale_order_id" string="Sale Order" readonly="1"/>
                             </group>
                         </page>

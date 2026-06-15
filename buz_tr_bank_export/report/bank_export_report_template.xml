@@ -102,9 +102,9 @@
                                     <th style="width: 10%;">Lot No.</th>
                                     <th style="width: 12%;">Import date</th>
                                     <th style="width: 12%;">ETDDATE</th>
-                                    <th style="width: 15%;">Invoice No.</th>
+                                    <th style="width: 15%;">PO No.</th>
                                     <th style="width: 16%;">Ref.No.</th>
-                                    <th style="width: 15%; text-align: right;">Amount</th>
+                                    <th style="width: 15%; text-align: right;">PO Amount</th>
                                     <th style="width: 15%; text-align: right;">Transfer Amount</th>
                                 </tr>
                             </thead>
@@ -116,9 +116,9 @@
                                         <td><span t-field="line.lot_no"/></td>
                                         <td><span t-field="line.import_date" t-options='{"widget": "date", "format": "d/M/yyyy"}'/></td>
                                         <td><span t-field="line.etd_date" t-options='{"widget": "date", "format": "d/M/yyyy"}'/></td>
-                                        <td><span t-field="line.invoice_id.name"/></td>
-                                        <td><span t-field="line.ref_no"/></td>
-                                        <td class="text-end"><span t-esc="line.amount" t-options='{"widget": "float", "precision": 2}'/></td>
+                                        <td><span t-field="line.purchase_id.name"/></td>
+                                        <td><span t-field="line.po_ref"/></td>
+                                        <td class="text-end"><span t-esc="line.po_amount" t-options='{"widget": "float", "precision": 2}'/></td>
                                         <td class="text-end"><span t-esc="line.transfer_amount" t-options='{"widget": "float", "precision": 2}'/></td>
                                     </tr>
                                     <t t-set="idx" t-value="idx + 1"/>
