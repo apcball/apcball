@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_invoice_report_wizard_form" model="ir.ui.view">
+        <field name="name">buz.invoice.report.excel.wizard.form</field>
+        <field name="model">buz.invoice.report.excel.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Invoice Excel Report">
+                <group>
+                    <group string="Date Range">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group string="Filters">
+                        <field name="invoice_state"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_export_excel" string="Export Excel" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_invoice_report_wizard" model="ir.actions.act_window">
+        <field name="name">Invoice Excel Report</field>
+        <field name="res_model">buz.invoice.report.excel.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_invoice_report_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_invoice_report_wizard"
+              name="Invoice Excel Report"
+              parent="account.menu_finance_reports"
+              action="action_invoice_report_wizard"
+              sequence="91"
+              groups="buz_report_invoice_excel.group_invoice_report"/>
+</odoo>
