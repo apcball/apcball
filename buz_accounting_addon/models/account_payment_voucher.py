@@ -45,6 +45,11 @@ class AccountPaymentVoucher(models.Model):
         domain="[('payment_type', '=', 'outbound'), ('journal_id', '=', destination_journal_id)]",
         tracking=True
     )
+
+    @api.onchange('destination_journal_id')
+    def _onchange_destination_journal_id(self):
+        self.payment_method_line_id = False
+
     bank_free_dis = fields.Monetary(
         string="Bank Fee",
         currency_field="currency_id",
@@ -94,6 +99,11 @@ class AccountPaymentVoucher(models.Model):
         compute="_compute_payment_total",
         store=True,
     )
+    bank_transfer_ids = fields.One2many(
+        'account.bank.transfer',
+        'buz_payment_voucher_id',
+        string='Bank Transfers',
+    )
 
     @api.depends('payment_ids.amount', 'amount_total_net')
     def _compute_payment_total(self):
@@ -129,28 +139,24 @@ class AccountPaymentVoucher(models.Model):
             voucher.amount_total_bank_fee = voucher.bank_free_dis or 0.0
             voucher.amount_total_other_income = voucher.other_income_dis or 0.0
 
-    @api.depends('amount_total_net', 'line_ids.payment_state')
+    @api.depends('amount_total_net', 'line_ids.payment_state', 'bank_transfer_ids.state')
     def _compute_payment_state(self):
         for voucher in self:
-            # Get the payment states of all lines in the voucher
             line_payment_states = voucher.line_ids.mapped('payment_state')
-            
-            # If all lines are 'paid', set the voucher as 'paid'
-            if all(state == 'paid' for state in line_payment_states if state):
+            bt_posted = all(bt.state == 'posted' for bt in voucher.bank_transfer_ids) if voucher.bank_transfer_ids else False
+
+            if all(state == 'paid' for state in line_payment_states if state) or bt_posted:
                 voucher.payment_state = 'paid'
-            # If all lines are 'not_paid', set the voucher as 'not_paid'  
-            elif all(state == 'not_paid' for state in line_payment_states if state):
+            elif all(state == 'not_paid' for state in line_payment_states if state) and not voucher.bank_transfer_ids.filtered(lambda bt: bt.state == 'posted'):
                 voucher.payment_state = 'not_paid'
-            # If there's a mix of states or some lines are partially paid, set as 'partial'
             elif 'partial' in line_payment_states or any(state not in ['paid', 'not_paid'] for state in line_payment_states):
                 voucher.payment_state = 'partial'
-            # Check if any line is in 'in_payment' state
             elif 'in_payment' in line_payment_states:
                 voucher.payment_state = 'partial'
             else:
-                # Default to not paid
                 voucher.payment_state = 'not_paid'
 
+    @api.depends('line_ids.payment_ids', 'line_ids.payment_ids.state', 'bank_transfer_ids', 'bank_transfer_ids.state')
     def _compute_amount_paid(self):
         for voucher in self:
             total_paid = 0
@@ -158,6 +164,9 @@ class AccountPaymentVoucher(models.Model):
                 for payment in line.payment_ids:
                     if payment.state == 'posted':
                         total_paid += payment.amount
+            for bt in voucher.bank_transfer_ids:
+                if bt.state == 'posted' and bt.payment_id and bt.payment_id.state == 'posted':
+                    total_paid += bt.amount
             voucher.amount_paid = total_paid
 
     def _compute_amount_residual(self):

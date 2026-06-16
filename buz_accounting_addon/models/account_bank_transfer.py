@@ -23,6 +23,7 @@ class AccountBankTransfer(models.Model):
     company_id = fields.Many2one('res.company', string='Company', required=True, default=lambda self: self.env.company)
 
     payment_id = fields.Many2one('account.payment', string='Payment', readonly=True, copy=False)
+    buz_payment_voucher_id = fields.Many2one('account.payment.voucher', string='Payment Voucher', readonly=True, copy=False)
     move_id = fields.Many2one('account.move', string='Journal Entry', related='payment_id.move_id', readonly=True, store=True)
     
     # For report compatibility
@@ -55,6 +56,9 @@ class AccountBankTransfer(models.Model):
             'currency_id': self.currency_id.id or self.company_id.currency_id.id,
         }
         
+        if self.buz_payment_voucher_id:
+            payment_vals['buz_payment_voucher_id'] = self.buz_payment_voucher_id.id
+
         payment = self.env['account.payment'].create(payment_vals)
         payment.action_post()
         

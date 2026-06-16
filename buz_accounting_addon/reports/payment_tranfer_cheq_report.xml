@@ -106,16 +106,16 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <t t-foreach="o.payment_ids" t-as="pay">
+                            <t t-foreach="o.bank_transfer_ids" t-as="bt">
                             <tr>
-                                <td><span t-field="o.partner_id.ref"/></td>
-                                <td><span t-field="o.partner_id.name"/></td>
+                                <td></td>
+                                <td></td>
                                 <td><span t-esc="'ใบเบิกเช็คโอนเงินระหว่างธนาคาร'"/></td>
-                                <td><span t-field="pay.name"/></td>
-                                <td class="text-end"><span t-field="pay.amount" t-options='{"widget": "float", "precision": 2}'/></td>
+                                <td><span t-field="bt.name"/></td>
+                                <td class="text-end"><span t-field="bt.amount" t-options='{"widget": "float", "precision": 2}'/></td>
                             </tr>
                             </t>
-                            <t t-if="not o.payment_ids">
+                            <t t-if="not o.bank_transfer_ids">
                             <tr>
                                 <td></td>
                                 <td></td>
@@ -141,7 +141,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <t t-foreach="o.payment_ids" t-as="pay">
+                            <t t-foreach="o.bank_transfer_ids" t-as="bt">
                             <tr style="vertical-align: top;">
                                 <td class="text-center">
                                     <span t-if="o.payment_type == 'check'">จ่ายเช็ค</span>
@@ -150,26 +150,26 @@
                                     <span t-else="" t-esc="o.payment_type"/>
                                 </td>
                                 <td>
-                                    <span t-field="pay.journal_id.name"/>
+                                    <span t-field="bt.journal_id.name"/>
                                 </td>
                                 <td class="text-center">
                                     <span t-field="o.check_number"/>
                                 </td>
                                 <td class="text-center">
-                                    <span t-field="pay.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                    <span t-field="bt.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
                                 </td>
                                 <td>
-                                    <span t-field="pay.partner_id.name"/>
+                                    <span t-field="o.partner_id.name"/>
                                 </td>
                                 <td>
-                                    <span t-field="pay.journal_id.name"/>
+                                    <span t-field="bt.destination_journal_id.name"/>
                                 </td>
                                 <td class="text-end">
-                                    <span t-field="pay.amount" t-options='{"widget": "float", "precision": 2}'/>
+                                    <span t-field="bt.amount" t-options='{"widget": "float", "precision": 2}'/>
                                 </td>
                             </tr>
                             </t>
-                            <t t-if="not o.payment_ids">
+                            <t t-if="not o.bank_transfer_ids">
                             <tr style="vertical-align: top;">
                                 <td class="text-center">
                                     <span t-if="o.payment_type == 'check'">จ่ายเช็ค</span>
@@ -216,43 +216,44 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <t t-foreach="o.payment_ids" t-as="pay">
+                            <t t-set="bank_transfer_total" t-value="sum(o.bank_transfer_ids.mapped('amount'))"/>
+                            <t t-foreach="o.bank_transfer_ids" t-as="bt">
                             <!-- Outstanding Payments (Credit) -->
                             <tr>
                                 <td>
-                                    <span t-field="pay.journal_id.default_account_id.code"/>
+                                    <span t-field="bt.journal_id.default_account_id.code"/>
                                 </td>
                                 <td>
                                     <span t-esc="'Outstanding Payments'"/>
                                 </td>
-                                <td><span t-field="pay.name"/></td>
-                                <td><span t-field="pay.date"/></td>
+                                <td><span t-field="bt.name"/></td>
+                                <td><span t-field="bt.date"/></td>
                                 <td class="text-end">
                                     <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
                                 </td>
                                 <td class="text-end">
-                                    <span t-field="pay.amount" t-options="{'widget': 'float', 'precision': 2}"/>
+                                    <span t-field="bt.amount" t-options="{'widget': 'float', 'precision': 2}"/>
                                 </td>
                             </tr>
                             <!-- Outstanding Receipts (Debit) -->
                             <tr>
                                 <td>
-                                    <span t-field="pay.partner_id.property_account_payable_id.code"/>
+                                    <span t-field="o.partner_id.property_account_payable_id.code"/>
                                 </td>
                                 <td>
                                     <span t-esc="'Outstanding Receipts'"/>
                                 </td>
-                                <td><span t-field="pay.name"/></td>
-                                <td><span t-field="pay.date"/></td>
+                                <td><span t-field="bt.name"/></td>
+                                <td><span t-field="bt.date"/></td>
                                 <td class="text-end">
-                                    <span t-field="pay.amount" t-options="{'widget': 'float', 'precision': 2}"/>
+                                    <span t-field="bt.amount" t-options="{'widget': 'float', 'precision': 2}"/>
                                 </td>
                                 <td class="text-end">
                                     <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
                                 </td>
                             </tr>
                             </t>
-                            <t t-if="not o.payment_ids">
+                            <t t-if="not o.bank_transfer_ids">
                             <!-- Outstanding Payments (Credit) -->
                             <tr>
                                 <td>
@@ -290,8 +291,8 @@
                             </t>
                             <tr>
                                 <td colspan="4" class="text-end"><strong>Total</strong></td>
-                                <td class="text-end"><strong><span t-field="o.payment_total" t-options="{'widget': 'float', 'precision': 2}"/></strong></td>
-                                <td class="text-end"><strong><span t-field="o.payment_total" t-options="{'widget': 'float', 'precision': 2}"/></strong></td>
+                                <td class="text-end"><strong><span t-esc="bank_transfer_total" t-options="{'widget': 'float', 'precision': 2}"/></strong></td>
+                                <td class="text-end"><strong><span t-esc="bank_transfer_total" t-options="{'widget': 'float', 'precision': 2}"/></strong></td>
                             </tr>
                         </tbody>
                     </table>
