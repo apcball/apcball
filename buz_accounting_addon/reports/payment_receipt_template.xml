@@ -112,14 +112,9 @@
                                 height: 4cm; 
                                 margin: 2px; 
                             }
-                            .product-table tbody tr {
-                                height: 30px;
-                            }
-                            .product-table tbody tr td {
-                                height: 30px;
-                                line-height: 30px;
-                                padding-top: 0;
-                                padding-bottom: 0;
+                            .product-table tbody {
+                                height: 15cm; 
+                                overflow-y: auto; 
                             }
                         </style>
 
@@ -133,6 +128,10 @@
                         <t t-foreach="groups_of_7" t-as="group">
                           <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
     
+                          <div style="float: right; font-size: 18px; font-weight: bold; margin-top: -5px;">
+                            หน้า <span t-esc="page_number"/> / <span t-esc="total_pages"/>
+                          </div>
+                          <div style="clear: right;"></div>
     
                         <t t-call="buz_custom_invoice.report_invoice_document_style"/>
                         <!-- Header Section -->
@@ -161,7 +160,7 @@
                         
 
                           <!-- Right side: Document info -->
-                     <div class="col-6" style="text-align: right; padding-left: 0; padding-right: 0; float: right; margin-top: -20px;">
+                      <div class="col-6" t-attf-style="text-align: right; padding-left: 0; padding-right: 0; float: right; margin-top: #{page_number == 1 and '-20px' or '0'};">
                         <div class="info-box" style="font-size: 20px;">
                             <div class="mb-2">
                                 <strong style="width: 60%; display: inline-block; font-size: 20px;">เลขที่เอกสาร/No:</strong>
@@ -186,14 +185,17 @@
                             <!-- ฝั่งซ้าย: ข้อมูลลูกค้า -->
                             <div style="display: table-cell; width: 50%; vertical-align: top; padding-right: 5px;">
                                 <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; box-sizing: border-box;">
-                                    <div><strong>ชื่อลูกค้า:</strong> <span t-field="doc.partner_id.name"/> <t t-if="doc.partner_id.branch"><t t-if="doc.partner_id.branch == '00000'">(สำนักงานใหญ่)</t><t t-else="">(สาขาที่ <t t-esc="int(doc.partner_id.branch)"/>)</t></t></div>
+                                    <div><strong>ชื่อลูกค้า:</strong> <span t-field="doc.partner_id.name"/> <t t-if="doc.partner_id.branch">
+    <t t-if="doc.partner_id.branch in ('00000', 'สำนักงานใหญ่')">(สำนักงานใหญ่)</t>
+    <t t-elif="doc.partner_id.branch.isdigit()">(สาขาที่ <t t-esc="int(doc.partner_id.branch)"/>)</t>
+    <t t-else="">(สาขาที่ <t t-esc="doc.partner_id.branch"/>)</t>
+</t></div>
                                     <div><strong>เลขประจำตัวผู้เสียภาษีอากร:</strong> <span t-field="doc.partner_id.vat"/></div>
                                     <div>
                                         <strong>ที่อยู่:</strong>
                                         <span t-field="doc.partner_id.street"/>
-                                        <t t-if="doc.partner_id.city"> ตำบล<span t-field="doc.partner_id.city"/></t>
-                                        <t t-if="doc.partner_id.state_id"> อำเภอ<span t-field="doc.partner_id.state_id.name"/></t>
-                                        <t t-if="doc.partner_id.state_id"> จังหวัด<span t-field="doc.partner_id.state_id.name"/></t>
+                                        <t t-if="doc.partner_id.city"><span t-field="doc.partner_id.city"/></t>
+                                        <t t-if="doc.partner_id.state_id"><span t-field="doc.partner_id.state_id.name"/></t>
                                         <span t-field="doc.partner_id.zip"/>
                                     </div>
                                     <div>
@@ -207,12 +209,7 @@
                                 <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; box-sizing: border-box;">
                                     <div>
                                         <strong>สถานที่ส่งของ:</strong>
-                                        <t t-set="delivery_partner" t-value="doc.delivery_partner_id if doc.delivery_partner_id and doc.delivery_partner_id.street else doc.partner_id"/>
-                                        <span t-field="delivery_partner.street"/>
-                                        <t t-if="delivery_partner.city"> ตำบล<span t-field="delivery_partner.city"/></t>
-                                        <t t-if="delivery_partner.state_id"> อำเภอ<span t-field="delivery_partner.state_id.name"/></t>
-                                        <t t-if="delivery_partner.state_id"> จังหวัด<span t-field="delivery_partner.state_id.name"/></t>
-                                        <span t-field="delivery_partner.zip"/>
+                                        <br/>
                                     </div>
                                             <div><strong>ชื่อผู้ติดต่อ:</strong>
                                                 <t t-if="doc.delivery_partner_id and doc.delivery_partner_id.phone">
@@ -273,22 +270,22 @@
                       
                             <t t-foreach="group" t-as="line">
                               <tr style="font-size: 18px; height: 30px;">
-                                <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
+                                <td style="border: 1px solid black; text-align: center; vertical-align: middle; height: 30px;">
                                   <span t-esc="current_line_number"/>
                                 </td>
                                 <!-- Invoice Number -->
-                                <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
+                                <td style="border: 1px solid black; text-align: center; vertical-align: middle; height: 30px;">
                                   <span t-esc="line.move_id.name"/>
                                 </td>
                                 <!-- Invoice Date -->
-                                <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
+                                <td style="border: 1px solid black; text-align: center; vertical-align: middle; height: 30px;">
                                     <span t-field="line.move_id.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
                                 </td>
                                 <!-- Due Date -->
-                                <td style="border: 1px solid black; text-align: center; vertical-align: middle;">
+                                <td style="border: 1px solid black; text-align: center; vertical-align: middle; height: 30px;">
                                 </td>
                                 <!-- Amount Paid -->
-                                <td style="border: 1px solid black; text-align: right; vertical-align: middle; padding-right: 4px;">
+                                <td style="border: 1px solid black; text-align: right; vertical-align: middle; padding-right: 4px; height: 30px;">
                                   <span t-esc="'{:,.2f}'.format(line.amount_total_signed)"/>
                                 </td>
 
@@ -297,9 +294,9 @@
                             </t>
                      
                             
-                         </tbody>
+                        </tbody>
                         <!-- Totals -->
-                        <tfoot t-if="page_number == total_pages">
+                        <tfoot>
                             <tr>
                                 <td colspan="4" style="border-top: 1px solid #000; line-height: 1.5; vertical-align: middle; padding: 6px;">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -318,7 +315,6 @@
                     </table>
                 </div>
 
-                    <t t-if="page_number == total_pages">
                  <!-- กรอบรายละเอียดการชำระเงิน -->
                 <div style="border: 1px solid #000; padding: 10px; font-size: 20px; line-height: 1.8; width: 100%;">
                     <!-- บรรทัดที่ 1 -->
@@ -350,7 +346,6 @@
                       อื่นๆ...................................................................................................... จำนวนเงิน....................................บาท
                     </div>
                   </div>
-                    </t>
 
 
 

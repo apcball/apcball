@@ -18,9 +18,20 @@ class AccountPaymentRegister(models.TransientModel):
                 wizard.amount = self._context.get('force_amount')
 
     def _create_payments(self):
-        """Override to link created payments to voucher line and receipt if context provided"""
+        """Override to link created payments to voucher, voucher line and receipt if context provided"""
         payments = super()._create_payments()
         
+        # Link payments to payment voucher if context provided
+        payment_voucher_id = self._context.get('buz_payment_voucher_id')
+        if payment_voucher_id and payments:
+            payment_voucher = self.env['account.payment.voucher'].browse(payment_voucher_id)
+            if payment_voucher.exists():
+                payments.write({'buz_payment_voucher_id': payment_voucher_id})
+                payment_voucher.message_post(
+                    body=_("Payment(s) %s created and linked to voucher") % ', '.join(payments.mapped('name'))
+                )
+                _logger.info("Linked %d payment(s) to payment voucher %s", len(payments), payment_voucher.name)
+
         # Check if we have voucher line or receipt context
         voucher_line_id = self._context.get('buz_voucher_line_id')
         receipt_id = self._context.get('buz_receipt_id')

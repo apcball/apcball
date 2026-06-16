@@ -57,6 +57,12 @@ class ReportInvoiceExcel(models.AbstractModel):
                     unit_price = line.price_unit
 
                 quantity = line.quantity
+                sum_amount = line.price_subtotal
+                if invoice.move_type == "out_refund":
+                    quantity = quantity * -1 if quantity > 0 else quantity
+                    unit_price = unit_price * -1 if unit_price > 0 else unit_price
+                    sum_amount = sum_amount * -1 if sum_amount > 0 else sum_amount
+
                 uom = line.product_uom_id or (product.uom_id if product else self.env["uom.uom"])
 
                 rows.append({
@@ -65,6 +71,9 @@ class ReportInvoiceExcel(models.AbstractModel):
                     "iv_number": self._safe_text(invoice.name),
                     "sale_order": self._safe_text(sale_order.name) if sale_order else "",
                     "dp_no": ", ".join(filter(None, pickings.mapped("name"))),
+                    "partner_code": self._safe_text(
+                        sale_order.partner_id.partner_code
+                    ) if sale_order else self._safe_text(invoice.partner_id.partner_code),
                     "customer": self._safe_text(
                         sale_order.partner_id.name
                     ) if sale_order else self._safe_text(invoice.partner_id.name),
@@ -82,7 +91,7 @@ class ReportInvoiceExcel(models.AbstractModel):
                     "quantity": quantity,
                     "uom": self._safe_text(uom.name),
                     "unit_price": unit_price,
-                    "sum_amount": unit_price * quantity,
+                    "sum_amount": sum_amount,
                     "note": ", ".join(filter(None, pickings.mapped("delivery_note"))),
                     "trade_channel": self._safe_text(
                         getattr(invoice, "trade_channel", "") or ""
@@ -194,6 +203,7 @@ class ReportInvoiceExcel(models.AbstractModel):
             ("IV number", 18),
             ("SALE ORDER", 16),
             ("DP No.", 18),
+            ("Partner Code", 16),
             ("Customer", 24),
             ("Salesperson", 18),
             ("Sale Team", 18),
@@ -234,20 +244,21 @@ class ReportInvoiceExcel(models.AbstractModel):
             sheet.write(row_idx, 2, row["iv_number"], text_format)
             sheet.write(row_idx, 3, row["sale_order"], text_format)
             sheet.write(row_idx, 4, row["dp_no"], text_format)
-            sheet.write(row_idx, 5, row["customer"], text_format)
-            sheet.write(row_idx, 6, row["salesperson"], text_format)
-            sheet.write(row_idx, 7, row["sale_team"], text_format)
-            sheet.write(row_idx, 8, row["so_ref"], text_format)
-            sheet.write(row_idx, 9, row["shipping_address"], text_format)
-            sheet.write(row_idx, 10, row["parent_bom"], text_format)
-            sheet.write(row_idx, 11, row["product_code"], text_format)
-            sheet.write(row_idx, 12, row["description"], text_format)
-            sheet.write_number(row_idx, 13, row["quantity"] or 0.0, number_format)
-            sheet.write(row_idx, 14, row["uom"], center_format)
-            sheet.write_number(row_idx, 15, row["unit_price"] or 0.0, number_format)
-            sheet.write_number(row_idx, 16, row["sum_amount"] or 0.0, number_format)
-            sheet.write(row_idx, 17, row["note"], text_format)
-            sheet.write(row_idx, 18, row["trade_channel"], text_format)
+            sheet.write(row_idx, 5, row["partner_code"], text_format)
+            sheet.write(row_idx, 6, row["customer"], text_format)
+            sheet.write(row_idx, 7, row["salesperson"], text_format)
+            sheet.write(row_idx, 8, row["sale_team"], text_format)
+            sheet.write(row_idx, 9, row["so_ref"], text_format)
+            sheet.write(row_idx, 10, row["shipping_address"], text_format)
+            sheet.write(row_idx, 11, row["parent_bom"], text_format)
+            sheet.write(row_idx, 12, row["product_code"], text_format)
+            sheet.write(row_idx, 13, row["description"], text_format)
+            sheet.write_number(row_idx, 14, row["quantity"] or 0.0, number_format)
+            sheet.write(row_idx, 15, row["uom"], center_format)
+            sheet.write_number(row_idx, 16, row["unit_price"] or 0.0, number_format)
+            sheet.write_number(row_idx, 17, row["sum_amount"] or 0.0, number_format)
+            sheet.write(row_idx, 18, row["note"], text_format)
+            sheet.write(row_idx, 19, row["trade_channel"], text_format)
             row_idx += 1
 
         if not rows:

@@ -178,11 +178,7 @@
                     <div class="info-box" style="height: 200px;">
                         <div class="mb-2">
                             <strong style="width: 20%; display: inline-block;">วันที่ Effective Date:</strong>
-                            <span t-field="doc.date" t-options='{"widget": "date"}'/>
-                            <span class="ml-4">
-                                <strong style="width: 20%; display: inline-block;">วันที่จัดส่ง:</strong>
-                                <span t-field="doc.scheduled_date" t-options='{"widget": "date"}'/>
-                            </span>
+                            <span t-field="doc.date_done" t-options='{"widget": "date"}'/>
                         </div>
                         <div class="mb-2">
                             <strong style="width: 20%; display: inline-block;">เลขที่เอกสาร:</strong>
@@ -243,7 +239,7 @@
                             </td>
                             <td class="text-center">
                                 <t t-set="line_amount"
-                                   t-value="0.0 if not move.purchase_line_id else delivered_qty * move.purchase_line_id.price_unit"/>
+                                   t-value="0.0 if not move.purchase_line_id else delivered_qty * move._get_discounted_unit_price()"/>
                                 <span t-esc="line_amount"
                                       t-options='{"widget": "monetary", "display_currency": doc.company_id.currency_id}'/>
                             </td>
@@ -257,7 +253,7 @@
 
             <!-- Total Section -->
             <t t-set="subtotal" t-value="sum(
-                sum(ml.quantity for ml in move.move_line_ids) * (move.purchase_line_id.price_unit or 0.0)
+                sum(ml.quantity for ml in move.move_line_ids) * move._get_discounted_unit_price()
                 for move in doc.move_ids_without_package
             )"/>
             <t t-set="has_vat" t-value="doc.purchase_id and any(

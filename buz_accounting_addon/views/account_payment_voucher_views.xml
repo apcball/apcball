@@ -53,6 +53,10 @@
                     <button name="%(action_report_print_cheque)d" type="action" string="Print Cheque" 
                             class="btn-secondary" 
                             invisible="payment_type != 'check'"/>
+                    <!-- Payment Transfer Cheque Report Button -->
+                    <button name="%(action_report_payment_tranfer_cheq)d" type="action" string="Payment Transfer Cheque" 
+                            class="btn-secondary" 
+                            invisible="payment_type != 'check'"/>
 
 
                     <!-- Reset to Draft button removed to prevent accidental payment cancellation -->
@@ -126,6 +130,31 @@
                                             <button name="action_register_payment_line" type="object" string="Register Payment" icon="fa-credit-card" invisible="1"/>
                                         </tree>
                                     </field>
+                        </page>
+                        <page string="Payments" name="payments">
+                            <field name="payment_ids"
+                                   context="{
+                                        'default_partner_id': partner_id,
+                                        'default_payment_type': 'outbound',
+                                        'default_partner_type': 'supplier',
+                                        'default_journal_id': destination_journal_id,
+                                        'default_amount': amount_total_net,
+                                        'default_date': date,
+                                        'default_buz_payment_voucher_id': id,
+                                        'default_payment_method_line_id': payment_method_line_id,
+                                        'default_check_number': check_number,
+                                        'default_communication': 'PV ' + name,
+                                   }">
+                                <tree>
+                                    <field name="date"/>
+                                    <field name="journal_id"/>
+                                    <field name="destination_journal_id" invisible="parent.payment_type != 'check'"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="check_number" invisible="parent.payment_type != 'check'"/>
+                                    <field name="payment_method_line_id" optional="show"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
                         </page>
                         <page string="Notes">
                             <field name="note"/>

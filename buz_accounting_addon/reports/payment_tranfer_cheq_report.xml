@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Paper Format for Payment Transfer Cheque -->
+        <record id="paperformat_payment_tranfer_cheq" model="report.paperformat">
+            <field name="name">Payment Transfer Cheque A4</field>
+            <field name="default" eval="True"/>
+            <field name="format">A4</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">10</field>
+            <field name="margin_bottom">10</field>
+            <field name="margin_left">4</field>
+            <field name="margin_right">4</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">90</field>
+        </record>
+
+        <record id="action_report_payment_tranfer_cheq" model="ir.actions.report">
+            <field name="name">Payment Transfer Cheque</field>
+            <field name="model">account.payment.voucher</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">buz_accounting_addon.report_payment_tranfer_cheq</field>
+            <field name="report_file">buz_accounting_addon.report_payment_tranfer_cheq</field>
+            <field name="print_report_name">'Payment Transfer Cheque - %s' % (object.name)</field>
+            <field name="binding_model_id" ref="model_account_payment_voucher"/>
+            <field name="binding_type">report</field>
+            <field name="paperformat_id" ref="paperformat_payment_tranfer_cheq"/>
+        </record>
+
+        <template id="report_payment_tranfer_cheq_document">
+            <t t-call="web.basic_layout">
+                <style>
+                    @font-face {
+                        font-family: 'Sarabun';
+                        src: url('/buz_custom_quotation/static/fonts/Sarabun-Regular.ttf') format('truetype');
+                        font-weight: normal;
+                        font-style: normal;
+                    }
+                    @font-face {
+                        font-family: 'Sarabun';
+                        src: url('/buz_custom_quotation/static/fonts/Sarabun-Bold.ttf') format('truetype');
+                        font-weight: bold;
+                        font-style: normal;
+                    }
+                    .table-bordered {
+                        border: 1px solid black;
+                    }
+                    .table-bordered th, .table-bordered td {
+                        border: 1px solid black;
+                        vertical-align: middle;
+                    }
+                    .box-border {
+                        border: 1px solid black;
+                    }
+                    .header-box {
+                        border: 1px solid black;
+                        margin-bottom: 2px;
+                    }
+                    .info-cell {
+                        border-bottom: 1px solid #ddd;
+                    }
+                    .page, .page table, .page th, .page td, .page div, .page span, .page strong {
+                        color: black !important;
+                    }
+                </style>
+                <div class="page" style="font-family: Sarabun, sans-serif; font-size: 24px; color: black;">
+                    <!-- Pre-calculate Account Numbers for Lines -->
+                     <t t-set="col1_acc_number" t-value="o.destination_journal_id and o.destination_journal_id.bank_account_id and o.destination_journal_id.bank_account_id.acc_number or False"/>
+                     <t t-set="col2_acc_number" t-value="o.partner_id.bank_ids and o.partner_id.bank_ids[:1].acc_number or False"/>
+                    <!-- Header -->
+                    <div class="row mb-4">
+                        <div class="col-4">
+                            <img src="/buz_accounting_addon/static/img/LOGO MOGEN.png" style="max-height: 80px; max-width: 80%;" alt="Logo"/>
+                        </div>
+                        <div class="col-4 text-center">
+                            <h4 style="margin-bottom: 0; font-size: 30px;"><strong>ใบสำคัญจ่ายเงิน</strong></h4>
+                            <h5 style="margin-top: 0; font-size: 27px;"><strong>PAYMENT VOUCHER</strong></h5>
+                        </div>
+                        <div class="col-4 text-end">
+                            <div class="box-border" style="width: 100%; float: right; text-align: left;">
+                                <div class="text-center" style="border-bottom: 1px solid black; padding: 2px;">
+                                    <strong>VOUCHER NO.</strong>
+                                </div>
+                                <div class="row g-0 p-1">
+                                    <div class="col-3">No.</div>
+                                    <div class="col-9"><span t-field="o.name"/></div>
+                                </div>
+                                <div class="row g-0 p-1">
+                                    <div class="col-3">Date.</div>
+                                    <div class="col-9"><span t-field="o.date"/></div>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Lines Table (from Payments notebook tab) -->
+                    <table class="table table-bordered table-sm mt-3">
+                        <thead>
+                            <tr class="text-center">
+                                <th>รหัสเจ้าหนี้</th>
+                                <th>ชื่อเจ้าหนี้</th>
+                                <th>เอกสาร</th>
+                                <th>เลขที่เอกสาร</th>
+                                <th>จำนวนเงิน</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="o.payment_ids" t-as="pay">
+                            <tr>
+                                <td><span t-field="pay.partner_id.ref"/></td>
+                                <td><span t-field="pay.partner_id.name"/></td>
+                                <td><span t-esc="'ใบเบิกเช็คโอนเงินระหว่างธนาคาร'"/></td>
+                                <td><span t-field="pay.name"/></td>
+                                <td class="text-end"><span t-field="pay.amount" t-options='{"widget": "float", "precision": 2}'/></td>
+                            </tr>
+                            </t>
+                            <t t-if="not o.payment_ids">
+                            <tr>
+                                <td><span t-field="o.partner_id.ref"/></td>
+                                <td><span t-field="o.partner_id.name"/></td>
+                                <td><span t-esc="'Payment'"/></td>
+                                <td><span t-field="o.name"/></td>
+                                <td class="text-end"><span t-field="o.amount_total_net" t-options='{"widget": "float", "precision": 2}'/></td>
+                            </tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <!-- Payment Method Table (per payment from Payments tab) -->
+                    <table class="table table-bordered table-sm mt-3">
+                        <thead>
+                            <tr class="text-center">
+                                <th style="width: 10%;">ชำระ</th>
+                                <th style="width: 20%;">ชื่อ</th>
+                                <th style="width: 10%;">เลขที่เช็ค</th>
+                                <th style="width: 10%;">วันที่เช็ค</th>
+                                <th style="width: 20%;">สั่งจ่ายในนาม</th>
+                                <th style="width: 20%;">ตัดบัญชีธนาคาร</th>
+                                <th style="width: 10%;">จำนวนเงิน</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="o.payment_ids" t-as="pay">
+                            <tr style="vertical-align: top;">
+                                <td class="text-center">
+                                    <span t-if="o.payment_type == 'check'">จ่ายเช็ค</span>
+                                    <span t-elif="o.payment_type == 'transfer'">โอนเงิน</span>
+                                    <span t-elif="o.payment_type == 'cash'">เงินสด</span>
+                                    <span t-else="" t-esc="o.payment_type"/>
+                                </td>
+                                <td>
+                                    <span t-field="pay.journal_id.name"/>
+                                </td>
+                                <td class="text-center">
+                                    <span t-field="o.check_number"/>
+                                </td>
+                                <td class="text-center">
+                                    <span t-field="pay.date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                </td>
+                                <td>
+                                    <span t-field="pay.partner_id.name"/>
+                                </td>
+                                <td>
+                                    <span t-field="pay.journal_id.name"/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-field="pay.amount" t-options='{"widget": "float", "precision": 2}'/>
+                                </td>
+                            </tr>
+                            </t>
+                            <t t-if="not o.payment_ids">
+                            <tr style="vertical-align: top;">
+                                <td class="text-center">
+                                    <span t-if="o.payment_type == 'check'">จ่ายเช็ค</span>
+                                    <span t-elif="o.payment_type == 'transfer'">โอนเงิน</span>
+                                    <span t-elif="o.payment_type == 'cash'">เงินสด</span>
+                                    <span t-else="" t-esc="o.payment_type"/>
+                                </td>
+                                <td>
+                                    <span t-field="o.destination_journal_id.name"/>
+                                </td>
+                                <td class="text-center">
+                                    <span t-field="o.check_number"/>
+                                </td>
+                                <td class="text-center">
+                                    <span t-field="o.check_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                                </td>
+                                <td>
+                                    <span t-field="o.check_pay_to"/>
+                                </td>
+                                <td>
+                                    <span t-field="o.destination_journal_id.name"/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-field="o.amount_total_net" t-options='{"widget": "float", "precision": 2}'/>
+                                </td>
+                            </tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                     <!-- Journal Items Table (per payment from Payments tab) -->
+                    <table class="table table-bordered table-sm mt-3">
+                        <thead>
+                            <tr class="text-center">
+                                <th rowspan="2" style="vertical-align: middle;">เลขที่บัญชี<br/>(Account Code)</th>
+                                <th rowspan="2" style="vertical-align: middle;">ชื่อบัญชี<br/>(Account Name)</th>
+                                <th rowspan="2" style="vertical-align: middle;">เลขที่เอกสาร<br/>(Doc No)</th>
+                                <th rowspan="2" style="vertical-align: middle;">วันที่เอกสาร<br/>(Date)</th>
+                                <th colspan="2">Amount</th>
+                            </tr>
+                            <tr class="text-center">
+                                <th>Dr.</th>
+                                <th>Cr.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="o.payment_ids" t-as="pay">
+                            <!-- Outstanding Payments (Credit) -->
+                            <tr>
+                                <td>
+                                    <span t-field="pay.journal_id.default_account_id.code"/>
+                                </td>
+                                <td>
+                                    <span t-esc="'Outstanding Payments'"/>
+                                </td>
+                                <td><span t-field="pay.name"/></td>
+                                <td><span t-field="pay.date"/></td>
+                                <td class="text-end">
+                                    <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-field="pay.amount" t-options="{'widget': 'float', 'precision': 2}"/>
+                                </td>
+                            </tr>
+                            <!-- Outstanding Receipts (Debit) -->
+                            <tr>
+                                <td>
+                                    <span t-field="pay.partner_id.property_account_payable_id.code"/>
+                                </td>
+                                <td>
+                                    <span t-esc="'Outstanding Receipts'"/>
+                                </td>
+                                <td><span t-field="pay.name"/></td>
+                                <td><span t-field="pay.date"/></td>
+                                <td class="text-end">
+                                    <span t-field="pay.amount" t-options="{'widget': 'float', 'precision': 2}"/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
+                                </td>
+                            </tr>
+                            </t>
+                            <t t-if="not o.payment_ids">
+                            <!-- Outstanding Payments (Credit) -->
+                            <tr>
+                                <td>
+                                    <span t-field="o.destination_journal_id.default_account_id.code"/>
+                                </td>
+                                <td>
+                                    <span t-esc="'Outstanding Payments'"/>
+                                </td>
+                                <td><span t-field="o.name"/></td>
+                                <td><span t-field="o.date"/></td>
+                                <td class="text-end">
+                                    <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-field="o.amount_total_net" t-options="{'widget': 'float', 'precision': 2}"/>
+                                </td>
+                            </tr>
+                            <!-- Outstanding Receipts (Debit) -->
+                            <tr>
+                                <td>
+                                    <span t-field="o.partner_id.property_account_payable_id.code"/>
+                                </td>
+                                <td>
+                                    <span t-esc="'Outstanding Receipts'"/>
+                                </td>
+                                <td><span t-field="o.name"/></td>
+                                <td><span t-field="o.date"/></td>
+                                <td class="text-end">
+                                    <span t-field="o.amount_total_net" t-options="{'widget': 'float', 'precision': 2}"/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
+                                </td>
+                            </tr>
+                            </t>
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>Total</strong></td>
+                                <td class="text-end"><strong><span t-field="o.payment_total" t-options="{'widget': 'float', 'precision': 2}"/></strong></td>
+                                <td class="text-end"><strong><span t-field="o.payment_total" t-options="{'widget': 'float', 'precision': 2}"/></strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="row mt-2">
+                        <div class="col-12" style="font-size: 18px;">
+                            <strong>หมายเหตุ</strong> <span style="margin-left: 10px;" t-if="o.note" t-field="o.note"/>
+                        </div>
+                    </div>
+
+                    <!-- Signatures -->
+                    <div class="row mt-4" style="border: 1px solid black; margin-left: 0; margin-right: 0;">
+                        <div class="col-2 p-2" style="border-right: 1px solid black; height: 120px; position: relative; font-size: 18px;">
+                            <span>Prepare By:</span>
+                            <br/>
+                            <span t-field="o.create_uid.name"/>
+                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%; font-size: 18px;">
+                                <div style="border-bottom: 1px dotted black; margin-bottom: 5px;"></div>
+                                <span>Date <span style="margin-left: 5px;">.........../.........../...........</span></span>
+                            </div>
+                        </div>
+                        <div class="col-3 p-2" style="border-right: 1px solid black; height: 120px; position: relative; font-size: 18px;">
+                            <span>Checked (1) By:</span>
+                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%; font-size: 18px;">
+                                <div style="border-bottom: 1px dotted black; margin-bottom: 5px;"></div>
+                                <span>Date <span style="margin-left: 5px;">.........../.........../...........</span></span>
+                            </div>
+                        </div>
+                        <div class="col-3 p-2" style="border-right: 1px solid black; height: 120px; position: relative; font-size: 18px;">
+                            <span>Checked (2) By:</span>
+                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%; font-size: 18px;">
+                                <div style="border-bottom: 1px dotted black; margin-bottom: 5px;"></div>
+                                <span>Date <span style="margin-left: 5px;">.........../.........../...........</span></span>
+                            </div>
+                        </div>
+                        <div class="col-2 p-2" style="border-right: 1px solid black; height: 120px; position: relative; font-size: 18px;">
+                            <span>Approved By:</span>
+                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%; font-size: 18px;">
+                                <div style="border-bottom: 1px dotted black; margin-bottom: 5px;"></div>
+                                <span>Date <span style="margin-left: 5px;">.........../.........../...........</span></span>
+                            </div>
+                        </div>
+                         <div class="col-2 p-2" style="height: 120px; position: relative; font-size: 18px;">
+                            <span>Received By:</span>
+                            <div style="position: absolute; bottom: 5px; left: 5px; width: 90%; font-size: 18px;">
+                                <div style="border-bottom: 1px dotted black; margin-bottom: 5px;"></div>
+                                <span>Date <span style="margin-left: 5px;">.........../.........../...........</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+                 <div class="footer">
+                     <div class="row" style="border: 1px solid black; background-color: white; color: black; font-size: 18px;">
+                        <div class="col-4 p-2" style="border-right: 1px solid black; font-size: 18px;">
+                            <span>Issued By:</span>
+                            <div style="margin-top: 20px; font-size: 18px;">
+                                <span>Date</span>
+                            </div>
+                        </div>
+                         <div class="col-4 p-2" style="border-right: 1px solid black; font-size: 18px;">
+                            <span>Check By:</span>
+                             <div style="margin-top: 20px; font-size: 18px;">
+                                <span>Date</span>
+                            </div>
+                        </div>
+                         <div class="col-4 p-2" style="font-size: 18px;">
+                            <span>Approve By:</span>
+                             <div style="margin-top: 20px; font-size: 18px;">
+                                <span>Date</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+
+        <template id="report_payment_tranfer_cheq">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="buz_accounting_addon.report_payment_tranfer_cheq_document" t-lang="o.company_id.partner_id.lang"/>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>

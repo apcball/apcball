@@ -24,6 +24,16 @@ class InvoiceReportWizard(models.TransientModel):
         ],
         string="Invoice State",
     )
+    invoice_type = fields.Selection(
+        [
+            ("all", "All"),
+            ("invoice", "Invoice"),
+            ("credit_note", "Credit Note"),
+        ],
+        string="Invoice Type",
+        default="all",
+        required=True,
+    )
     report_filename = fields.Char(
         string="Report Filename",
         compute="_compute_report_filename",
@@ -48,8 +58,13 @@ class InvoiceReportWizard(models.TransientModel):
 
     def _get_invoices(self):
         self.ensure_one()
+        move_type_mapping = {
+            "all": ("out_invoice", "out_refund"),
+            "invoice": ("out_invoice",),
+            "credit_note": ("out_refund",),
+        }
         domain = [
-            ("move_type", "in", ("out_invoice", "out_refund")),
+            ("move_type", "in", move_type_mapping[self.invoice_type]),
             ("invoice_date", ">=", self.date_from),
             ("invoice_date", "<=", self.date_to),
             ("state", "!=", "cancel"),
@@ -70,6 +85,7 @@ class InvoiceReportWizard(models.TransientModel):
             "date_from": fields.Date.to_string(self.date_from),
             "date_to": fields.Date.to_string(self.date_to),
             "invoice_state": self.invoice_state,
+            "invoice_type": self.invoice_type,
             "invoice_ids": invoices.ids,
         }
         return self.env.ref(

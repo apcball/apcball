@@ -83,6 +83,23 @@ class AccountPaymentVoucher(models.Model):
         compute="_compute_payment_count",
         string="Payments"
     )
+    payment_ids = fields.One2many(
+        'account.payment',
+        'buz_payment_voucher_id',
+        string='Payments',
+    )
+    payment_total = fields.Monetary(
+        string="Payment Total",
+        currency_field="currency_id",
+        compute="_compute_payment_total",
+        store=True,
+    )
+
+    @api.depends('payment_ids.amount', 'amount_total_net')
+    def _compute_payment_total(self):
+        for voucher in self:
+            total = sum(voucher.payment_ids.mapped('amount'))
+            voucher.payment_total = total or voucher.amount_total_net
 
     @api.constrains('line_ids', 'partner_id')
     def _check_partner_consistency(self):
@@ -228,6 +245,7 @@ class AccountPaymentVoucher(models.Model):
             'active_model': 'account.move',
             'active_ids': moves.ids,
             'default_group_payment': True,
+            'buz_payment_voucher_id': self.id,
         }
         
         # Set default journal from voucher

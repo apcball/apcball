@@ -12,6 +12,7 @@
                     </group>
                     <group string="Filters">
                         <field name="invoice_state"/>
+                        <field name="invoice_type"/>
                     </group>
                 </group>
                 <footer>

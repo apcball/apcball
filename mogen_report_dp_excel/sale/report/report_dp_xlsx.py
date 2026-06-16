@@ -126,6 +126,7 @@ class ReportDPExcel(models.AbstractModel):
                             "invoice_no": invoice_data["invoice_no"],
                             "do_no": self._safe_text(picking.name) if picking else "",
                             "customer": self._safe_text(sale_order.partner_id.name),
+                            "saleperson": self._safe_text(sale_order.user_id.name),
                             "sale_team": self._safe_text(sale_order.team_id.name),
                             "so_ref": self._safe_text(sale_order.client_order_ref),
                             "shipping_address": self._safe_text(
@@ -256,6 +257,7 @@ class ReportDPExcel(models.AbstractModel):
             ("SO No.", 16),
             ("Invoice No", 18),
             ("Customer", 24),
+            ("Saleperson", 18),
             ("Sale Team", 18),
             ("SO.ref No.", 18),
             ("Shipping Address", 30),
@@ -294,17 +296,18 @@ class ReportDPExcel(models.AbstractModel):
             sheet.write(row_idx, 3, row["so_no"], text_format)
             sheet.write(row_idx, 4, row["invoice_no"], text_format)
             sheet.write(row_idx, 5, row["customer"], text_format)
-            sheet.write(row_idx, 6, row["sale_team"], text_format)
-            sheet.write(row_idx, 7, row["so_ref"], text_format)
-            sheet.write(row_idx, 8, row["shipping_address"], text_format)
-            sheet.write(row_idx, 9, row["parent_bom"], text_format)
-            sheet.write(row_idx, 10, row["product_code"], text_format)
-            sheet.write(row_idx, 11, row["description"], text_format)
-            sheet.write_number(row_idx, 12, row["quantity"] or 0.0, number_format)
-            sheet.write(row_idx, 13, row["uom"], center_format)
-            sheet.write_number(row_idx, 14, row["unit_price"] or 0.0, number_format)
-            sheet.write_number(row_idx, 15, row["sum_amount"] or 0.0, number_format)
-            sheet.write(row_idx, 16, row["note"], text_format)
+            sheet.write(row_idx, 6, row["saleperson"], text_format)
+            sheet.write(row_idx, 7, row["sale_team"], text_format)
+            sheet.write(row_idx, 8, row["so_ref"], text_format)
+            sheet.write(row_idx, 9, row["shipping_address"], text_format)
+            sheet.write(row_idx, 10, row["parent_bom"], text_format)
+            sheet.write(row_idx, 11, row["product_code"], text_format)
+            sheet.write(row_idx, 12, row["description"], text_format)
+            sheet.write_number(row_idx, 13, row["quantity"] or 0.0, number_format)
+            sheet.write(row_idx, 14, row["uom"], center_format)
+            sheet.write_number(row_idx, 15, row["unit_price"] or 0.0, number_format)
+            sheet.write_number(row_idx, 16, row["sum_amount"] or 0.0, number_format)
+            sheet.write(row_idx, 17, row["note"], text_format)
             row_idx += 1
 
         if not rows:
