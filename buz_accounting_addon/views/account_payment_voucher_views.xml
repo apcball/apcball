@@ -146,7 +146,6 @@
                                         'default_communication': 'PV ' + name,
                                    }">
                                  <tree>
-                                    <field name="partner_id" invisible="1"/>
                                     <field name="date"/>
                                     <field name="journal_id"/>
                                     <field name="destination_journal_id" invisible="parent.payment_type != 'check'"/>

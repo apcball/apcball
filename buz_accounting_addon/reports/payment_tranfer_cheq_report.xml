@@ -108,8 +108,8 @@
                         <tbody>
                             <t t-foreach="o.payment_ids" t-as="pay">
                             <tr>
-                                <td><span t-field="pay.partner_id.ref"/></td>
-                                <td><span t-field="pay.partner_id.name"/></td>
+                                <td><span t-field="o.partner_id.ref"/></td>
+                                <td><span t-field="o.partner_id.name"/></td>
                                 <td><span t-esc="'ใบเบิกเช็คโอนเงินระหว่างธนาคาร'"/></td>
                                 <td><span t-field="pay.name"/></td>
                                 <td class="text-end"><span t-field="pay.amount" t-options='{"widget": "float", "precision": 2}'/></td>
@@ -117,8 +117,8 @@
                             </t>
                             <t t-if="not o.payment_ids">
                             <tr>
-                                <td><span t-field="o.partner_id.ref"/></td>
-                                <td><span t-field="o.partner_id.name"/></td>
+                                <td></td>
+                                <td></td>
                                 <td><span t-esc="'Payment'"/></td>
                                 <td><span t-field="o.name"/></td>
                                 <td class="text-end"><span t-field="o.amount_total_net" t-options='{"widget": "float", "precision": 2}'/></td>
