@@ -17,7 +17,7 @@
         </record>
 
         <record id="action_report_payment_tranfer_cheq" model="ir.actions.report">
-            <field name="name">Payment Transfer Cheque</field>
+            <field name="name">Payment Voucher Cheque</field>
             <field name="model">account.payment.voucher</field>
             <field name="report_type">qweb-pdf</field>
             <field name="report_name">buz_accounting_addon.report_payment_tranfer_cheq</field>
