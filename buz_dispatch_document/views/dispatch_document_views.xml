@@ -13,6 +13,8 @@
                 <field name="document_date"/>
                 <field name="partner_id"/>
                 <field name="origin"/>
+                <field name="amount_untaxed" sum="Total" widget="monetary"/>
+                <field name="currency_id" column_invisible="1"/>
                 <field name="state"/>
             </tree>
         </field>
@@ -28,12 +30,15 @@
                     <button name="action_confirm" string="Confirm"
                             type="object" class="oe_highlight"
                             invisible="state != 'draft'"/>
-                    <button name="action_validate" string="Validate"
+                    <button name="action_validate" string="Validate DO"
                             type="object" class="oe_highlight"
                             invisible="state != 'confirmed'"/>
                     <button name="action_set_draft" string="Set to Draft"
                             type="object"
                             invisible="state != 'confirmed'"/>
+                    <button name="action_print_dispatch" string="Print"
+                            type="object" class="oe_highlight"
+                            invisible="state == 'draft'"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirmed,done"
                            clickable="False"/>
@@ -57,14 +62,93 @@
                     </group>
 
                     <notebook>
-                        <page string="Delivery Order" name="delivery_order">
-                            <group>
-                                <field name="stock_picking_id"
-                                       context="{'default_state': 'assigned'}"/>
-                                <field name="partner_id"/>
-                                <field name="sale_id"/>
-                                <field name="origin"/>
+                        <page string="Delivery Information" name="delivery_information">
+                            <!-- Order Reference -->
+                            <group string="Order Reference">
+                                <group>
+                                    <field name="stock_picking_id"
+                                           context="{'default_state': 'assigned'}"/>
+                                    <field name="partner_id"/>
+                                </group>
+                                <group>
+                                    <field name="sale_id"/>
+                                    <field name="origin"/>
+                                    <field name="amount_untaxed" widget="monetary"/>
+                                    <field name="currency_id" invisible="1"/>
+                                </group>
                             </group>
+
+                            <!-- Two-column card layout -->
+                            <div class="row">
+                                <!-- LEFT: Delivery Address Card -->
+                                <div class="col-6">
+                                    <div class="dd-card">
+                                        <div class="dd-card-header">
+                                            <i class="fa fa-map-marker"/> Delivery Address
+                                        </div>
+                                        <div class="dd-card-body">
+                                            <group>
+                                                <field name="partner_street"/>
+                                                <field name="partner_street2"/>
+                                                <div class="o_row">
+                                                    <field name="sub_district" class="oe_inline"/>
+                                                    <field name="partner_city" class="oe_inline"/>
+                                                </div>
+                                                <div class="o_row">
+                                                    <field name="partner_state_id" class="oe_inline"/>
+                                                    <field name="partner_zip" class="oe_inline"/>
+                                                </div>
+                                                <field name="partner_phone" widget="phone"/>
+                                                <field name="partner_mobile" widget="phone"/>
+                                            </group>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- RIGHT: Vehicle & Driver Card -->
+                                <div class="col-6">
+                                    <div class="dd-card">
+                                        <div class="dd-card-header">
+                                            <i class="fa fa-truck"/> Vehicle &amp; Driver
+                                        </div>
+                                        <div class="dd-card-body">
+                                            <group>
+                                                <field name="scheduled_date"/>
+                                                <field name="vehicle_type"/>
+                                                <field name="vehicle_plate"/>
+                                                <field name="driver"/>
+                                                <field name="dispatch_location"/>
+                                            </group>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Auto-Validation Banner -->
+                            <div class="dd-banner">
+                                <i class="fa fa-clock-o"/>
+                                <strong>Auto-Validation:</strong>
+                                Stock picking will be validated on
+                                <field name="document_date" nolabel="1" class="oe_inline" readonly="1"/>
+                                by cron (05:00 daily).
+                            </div>
+
+                            <!-- Delivery Note -->
+                            <group string="Delivery Note">
+                                <field name="delivery_note" nolabel="1" placeholder="Enter delivery notes or special instructions..."/>
+                            </group>
+
+                            <!-- Products -->
+                            <separator string="Product Sets (BOM)"/>
+                            <field name="bom_product_html" nolabel="1" widget="html" readonly="1"/>
+                            <separator string="Components (Detail)"/>
+                            <field name="move_ids_without_package" nolabel="1">
+                                <tree decoration-info="product_uom_qty &gt; 0">
+                                    <field name="product_id" string="Product"/>
+                                    <field name="name" string="Description" optional="show"/>
+                                    <field name="product_uom_qty" string="Demand" sum="Total"/>
+                                    <field name="product_uom" string="UoM"/>
+                                </tree>
+                            </field>
                         </page>
                     </notebook>
                 </sheet>
@@ -116,11 +200,22 @@
         <field name="res_model">buz.dispatch.document</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_dispatch_document_search"/>
-        <field name="context">{}</field>
+        <field name="context">{'search_default_today': 1}</field>
         <field name="domain">[]</field>
     </record>
 
-    <!-- 5. Menu Items -->
+    <!-- 5. Server Action: Bulk Validate DO -->
+    <record id="action_buz_dispatch_validate_multi" model="ir.actions.server">
+        <field name="name">Validate DO</field>
+        <field name="model_id" ref="model_buz_dispatch_document"/>
+        <field name="binding_model_id" ref="model_buz_dispatch_document"/>
+        <field name="binding_type">action</field>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">records.action_validate()</field>
+    </record>
+
+    <!-- 6. Menu Items -->
     <menuitem id="menu_buz_dispatch_document_root"
               name="Dispatch"
               parent="stock.menu_stock_warehouse_mgmt"

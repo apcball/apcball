@@ -7,8 +7,7 @@
         โมดูลสำหรับสร้างเอกสาร Dispatch Document เพื่อควบคุมเลขที่เอกสาร Delivery Order
         - สร้าง Dispatch Document จาก stock picking
         - รันเลขที่เอกสารอัตโนมัติเมื่อกด Confirm
-        - Validate เอกสารต้นทางจากหน้า Dispatch
-        - Auto-validate ผ่าน Cron Job เวลา 05:00 น.
+        - Validate เอกสารต้นทางจากหน้า Dispatch (Validate DO)
     """,
     'author': 'Ball',
     'website': '',
@@ -16,11 +15,17 @@
         'stock',
         'sale_stock',
         'mail',
+        'buz_inventory_delivery_report',
+        'buz_delivery_report',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'buz_dispatch_document/static/src/css/dispatch_document.css',
+        ],
+    },
     'data': [
         'security/ir.model.access.csv',
         'data/sequence.xml',
-        'data/cron.xml',
         'views/dispatch_document_views.xml',
         'views/stock_picking_views.xml',
     ],

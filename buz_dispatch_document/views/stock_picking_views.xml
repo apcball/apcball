@@ -19,4 +19,18 @@
             </div>
         </field>
     </record>
+
+    <!-- Add Dispatch Document column to Deliveries tree -->
+    <record id="view_stock_picking_tree_dispatch_doc" model="ir.ui.view">
+        <field name="name">stock.picking.tree.dispatch.documents</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="buz_dispatch_document_name"
+                       string="Dispatch Document"
+                       optional="show"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>
