@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_it_request_root"
+              name="IT Request"
+              sequence="10"
+              groups="buz_it_request.group_it_request_user"/>
+
+    <menuitem id="menu_it_request_my"
+              name="My Requests"
+              parent="menu_it_request_root"
+              sequence="10"
+              action="action_my_it_requests"/>
+
+    <menuitem id="menu_it_request_all"
+              name="All Requests"
+              parent="menu_it_request_root"
+              sequence="20"
+              action="action_it_request"
+              groups="buz_it_request.group_it_request_officer"/>
+
+    <menuitem id="menu_it_request_my_assignments"
+              name="My Assignments"
+              parent="menu_it_request_root"
+              sequence="30"
+              action="action_my_assignments"
+              groups="buz_it_request.group_it_request_officer"/>
+
+</odoo>

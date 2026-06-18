@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tree -->
+    <record id="view_it_request_tree" model="ir.ui.view">
+        <field name="name">it.request.tree</field>
+        <field name="model">it.request</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="subject"/>
+                <field name="request_type"/>
+                <field name="priority" widget="priority"/>
+                <field name="requester_id"/>
+                <field name="assigned_to_id"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form -->
+    <record id="view_it_request_form" model="ir.ui.view">
+        <field name="name">it.request.form</field>
+        <field name="model">it.request</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_submit" type="object" string="Submit" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_assign_to_me" type="object" string="Assign to Me" invisible="state not in ['submitted','in_progress']" groups="buz_it_request.group_it_request_officer"/>
+                    <button name="action_in_progress" type="object" string="In Progress" invisible="state not in ['submitted','waiting']" groups="buz_it_request.group_it_request_officer"/>
+                    <button name="action_waiting" type="object" string="Waiting" invisible="state != 'in_progress'" groups="buz_it_request.group_it_request_officer"/>
+                    <button name="action_done" type="object" string="Done" class="btn-primary" invisible="state not in ['in_progress','waiting']" groups="buz_it_request.group_it_request_officer"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state not in ['draft','submitted','in_progress','waiting']"/>
+                    <button name="action_draft" type="object" string="Set to Draft" invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,in_progress,waiting,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Request Number"/>
+                        <h1><field name="name" placeholder="e.g. IT-REQ/00001"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="subject" placeholder="Describe the request subject"/>
+                            <field name="request_type"/>
+                            <field name="priority" widget="priority"/>
+                        </group>
+                        <group>
+                            <field name="requester_id"/>
+                            <field name="assigned_to_id"/>
+                            <field name="department_id"/>
+                            <field name="close_date"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Description">
+                            <field name="description" placeholder="Describe the request..."/>
+                        </page>
+                        <page string="Dev / Feature" invisible="request_type != 'dev_feature'">
+                            <group>
+                                <field name="target_module" placeholder="e.g. buz_accounting_addon"/>
+                                <field name="requested_feature"/>
+                            </group>
+                        </page>
+                        <page string="Error / Bug" invisible="request_type != 'error'">
+                            <group>
+                                <field name="affected_system" placeholder="e.g. Odoo / Mgtx"/>
+                                <field name="error_message"/>
+                                <field name="repro_steps"/>
+                            </group>
+                        </page>
+                        <page string="Equipment Repair" invisible="request_type != 'equipment_repair'">
+                            <group>
+                                <field name="asset_tag"/>
+                                <field name="serial_no"/>
+                                <field name="location"/>
+                                <field name="reported_symptom"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Kanban -->
+    <record id="view_it_request_kanban" model="ir.ui.view">
+        <field name="name">it.request.kanban</field>
+        <field name="model">it.request</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state">
+                <progressbar field="activity_state" colors='{"planned": "success", "today": "warning", "overdue": "danger"}'/>
+                <field name="name"/>
+                <field name="subject"/>
+                <field name="request_type"/>
+                <field name="priority"/>
+                <field name="requester_id"/>
+                <field name="assigned_to_id"/>
+                <field name="state"/>
+                <field name="activity_state"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click #{record.priority.raw_value == 'critical' ? 'oe_kanban_color_4' : record.priority.raw_value == 'high' ? 'oe_kanban_color_2' : ''}">
+                            <div class="o_kanban_record_top">
+                                <div class="o_kanban_record_head">
+                                    <field name="priority" widget="priority"/>
+                                </div>
+                                <div class="o_kanban_record_title">
+                                    <strong><field name="name"/></strong>
+                                </div>
+                            </div>
+                            <div>
+                                <field name="subject"/>
+                            </div>
+                            <div>
+                                <field name="request_type" widget="badge"/>
+                                <field name="state" widget="badge"/>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="oe_kanban_bottom_right">
+                                    <field name="activity_ids" widget="kanban_activity"/>
+                                    <field name="assigned_to_id" widget="many2one_avatar_user"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Search -->
+    <record id="view_it_request_search" model="ir.ui.view">
+        <field name="name">it.request.search</field>
+        <field name="model">it.request</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="subject"/>
+                <field name="requester_id"/>
+                <field name="assigned_to_id"/>
+                <separator/>
+                <filter name="my_requests" string="My Requests" domain="[('requester_id','=',uid)]"/>
+                <filter name="my_assignments" string="My Assignments" domain="[('assigned_to_id','=',uid)]"/>
+                <separator/>
+                <filter name="f_dev_feature" string="Dev / Feature" domain="[('request_type','=','dev_feature')]"/>
+                <filter name="f_error" string="Error / Bug" domain="[('request_type','=','error')]"/>
+                <filter name="f_equipment_repair" string="Equipment Repair" domain="[('request_type','=','equipment_repair')]"/>
+                <separator/>
+                <filter name="f_draft" string="Draft" domain="[('state','=','draft')]"/>
+                <filter name="f_submitted" string="Submitted" domain="[('state','=','submitted')]"/>
+                <filter name="f_in_progress" string="In Progress" domain="[('state','=','in_progress')]"/>
+                <filter name="f_waiting" string="Waiting" domain="[('state','=','waiting')]"/>
+                <filter name="f_done" string="Done" domain="[('state','=','done')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="State" context="{'group_by':'state'}"/>
+                    <filter name="group_type" string="Request Type" context="{'group_by':'request_type'}"/>
+                    <filter name="group_priority" string="Priority" context="{'group_by':'priority'}"/>
+                    <filter name="group_requester" string="Requester" context="{'group_by':'requester_id'}"/>
+                    <filter name="group_assigned" string="Assigned To" context="{'group_by':'assigned_to_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Actions -->
+    <record id="action_it_request" model="ir.actions.act_window">
+        <field name="name">IT Requests</field>
+        <field name="res_model">it.request</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="search_view_id" ref="view_it_request_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create a new IT request</p>
+        </field>
+    </record>
+
+    <record id="action_my_it_requests" model="ir.actions.act_window">
+        <field name="name">My Requests</field>
+        <field name="res_model">it.request</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('requester_id','=',uid)]</field>
+        <field name="context">{'default_requester_id': uid}</field>
+        <field name="search_view_id" ref="view_it_request_search"/>
+    </record>
+
+    <record id="action_my_assignments" model="ir.actions.act_window">
+        <field name="name">My Assignments</field>
+        <field name="res_model">it.request</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('assigned_to_id','=',uid),('state','not in',['done','cancel'])]</field>
+        <field name="search_view_id" ref="view_it_request_search"/>
+    </record>
+
+</odoo>
