@@ -36,7 +36,7 @@
                     <button name="action_set_draft" string="Set to Draft"
                             type="object"
                             invisible="state != 'confirmed'"/>
-                    <button name="action_print_dispatch" string="Print"
+                    <button name="action_print_dispatch" string="Print Dispatch"
                             type="object" class="oe_highlight"
                             invisible="state == 'draft'"/>
                     <field name="state" widget="statusbar"
@@ -122,16 +122,6 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Auto-Validation Banner -->
-                            <div class="dd-banner">
-                                <i class="fa fa-clock-o"/>
-                                <strong>Auto-Validation:</strong>
-                                Stock picking will be validated on
-                                <field name="document_date" nolabel="1" class="oe_inline" readonly="1"/>
-                                by cron (05:00 daily).
-                            </div>
-
                             <!-- Delivery Note -->
                             <group string="Delivery Note">
                                 <field name="delivery_note" nolabel="1" placeholder="Enter delivery notes or special instructions..."/>
