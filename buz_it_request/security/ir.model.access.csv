@@ -1,4 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_it_request_user,it.request.user,model_it_request,group_it_request_user,1,1,1,0
 access_it_request_officer,it.request.officer,model_it_request,group_it_request_officer,1,1,1,1
-access_it_request_manager,it.request.manager,model_it_request,group_it_request_manager,1,1,1,1
+access_it_request_image_user,it.request.image.user,model_it_request_image,group_it_request_user,1,0,1,0
+access_it_request_image_officer,it.request.image.officer,model_it_request_image,group_it_request_officer,1,1,1,1
+access_it_request_image_manager,it.request.image.manager,model_it_request_image,group_it_request_manager,1,1,1,1

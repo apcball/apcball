@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- Main root -->
     <menuitem id="menu_it_request_root"
               name="IT Request"
               sequence="10"
               groups="buz_it_request.group_it_request_user"/>
 
+    <!-- User: my requests -->
     <menuitem id="menu_it_request_my"
               name="My Requests"
               parent="menu_it_request_root"
               sequence="10"
               action="action_my_it_requests"/>
 
+    <!-- Officer: all requests + assignments -->
     <menuitem id="menu_it_request_all"
               name="All Requests"
               parent="menu_it_request_root"
@@ -25,5 +28,19 @@
               sequence="30"
               action="action_my_assignments"
               groups="buz_it_request.group_it_request_officer"/>
+
+    <!-- Manager: reporting views -->
+    <menuitem id="menu_it_request_reporting"
+              name="Reporting"
+              parent="menu_it_request_root"
+              sequence="40"
+              groups="buz_it_request.group_it_request_manager"/>
+
+    <menuitem id="menu_it_request_pivot"
+              name="Request Summary"
+              parent="menu_it_request_reporting"
+              sequence="10"
+              action="action_it_request"
+              groups="buz_it_request.group_it_request_manager"/>
 
 </odoo>

@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 
 
 class ITRequest(models.Model):
     _name = 'it.request'
     _description = 'IT Request'
-    _order = 'create_date desc'
+    _order = 'priority desc, create_date desc'
     _rec_name = 'name'
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
@@ -56,6 +55,18 @@ class ITRequest(models.Model):
         default='draft',
         tracking=True,
     )
+    kanban_state = fields.Selection(
+        selection=[
+            ('normal', 'In Progress'),
+            ('done', 'Ready for Review'),
+            ('blocked', 'Blocked'),
+        ],
+        string='Kanban State',
+        default='normal',
+        tracking=True,
+    )
+    color = fields.Integer(string='Color Index')
+    active = fields.Boolean(string='Active', default=True)
 
     # Parties / Assignment
     requester_id = fields.Many2one(
@@ -76,9 +87,16 @@ class ITRequest(models.Model):
         tracking=True,
     )
 
-    # Resolution
-    close_date = fields.Datetime(string='Close Date', readonly=True)
+    # Dates
+    close_date = fields.Datetime(string='Close Date', readonly=True, tracking=True)
+    create_date = fields.Datetime(string='Created On', readonly=True)
 
+    # Images
+    image_ids = fields.One2many(
+        comodel_name='it.request.image',
+        inverse_name='it_request_id',
+        string='Images',
+    )
     # Type-specific: equipment_repair
     asset_tag = fields.Char(string='Asset Tag', tracking=True)
     serial_no = fields.Char(string='Serial No.', tracking=True)
@@ -94,7 +112,7 @@ class ITRequest(models.Model):
     target_module = fields.Char(string='Target Module', tracking=True)
     requested_feature = fields.Text(string='Requested Feature', tracking=True)
 
-    # ---- CRUD ----
+    # ---- CRUD overrides ----
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -105,6 +123,8 @@ class ITRequest(models.Model):
     def write(self, vals):
         if vals.get('state') == 'done' and not vals.get('close_date'):
             vals['close_date'] = fields.Datetime.now()
+        if vals.get('state') in ('draft', 'submitted') and vals.get('close_date'):
+            vals['close_date'] = False
         return super().write(vals)
 
     # ---- Onchange ----
@@ -112,31 +132,35 @@ class ITRequest(models.Model):
     def _onchange_requester_id(self):
         if self.requester_id and self.requester_id.employee_id:
             self.department_id = self.requester_id.employee_id.department_id.id
+        elif self.requester_id and not self.requester_id.employee_id:
+            self.department_id = False
 
     # ---- Workflow actions ----
     def action_submit(self):
-        self.write({'state': 'submitted'})
+        self.state = 'submitted'
         for rec in self:
             rec.message_post(body=_('Request %s has been submitted.') % rec.name)
 
     def action_assign_to_me(self):
         self.write({'assigned_to_id': self.env.user.id, 'state': 'in_progress'})
         for rec in self:
-            rec.message_post(body=_('Request %s assigned to %s.') % (rec.name, self.env.user.name))
+            rec.message_post(
+                body=_('Request %s assigned to %s.') % (rec.name, self.env.user.name)
+            )
 
     def action_in_progress(self):
-        self.write({'state': 'in_progress'})
+        self.state = 'in_progress'
 
     def action_waiting(self):
-        self.write({'state': 'waiting'})
+        self.state = 'waiting'
 
     def action_done(self):
-        self.write({'state': 'done'})
+        self.state = 'done'
         for rec in self:
             rec.message_post(body=_('Request %s has been completed.') % rec.name)
 
     def action_cancel(self):
-        self.write({'state': 'cancel'})
+        self.state = 'cancel'
         for rec in self:
             rec.message_post(body=_('Request %s has been cancelled.') % rec.name)
 

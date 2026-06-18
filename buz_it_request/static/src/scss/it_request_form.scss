@@ -1,0 +1,50 @@
+// ── IT Request form view ───────────────────────────────
+.o_form_view {
+    // Document header band: name + meta badges + subject
+    .o_it_request_form_title {
+        padding-bottom: 14px;
+        margin-bottom: 10px;
+
+        .o_it_form_meta {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 6px;
+
+            .o_priority {
+                margin-left: -2px;
+            }
+        }
+
+        .o_it_form_subject {
+            margin: 16px 0 0;
+            color: #1e293b;
+            font-size: 1.2rem;
+            font-weight: 600;
+            line-height: 1.4;
+
+            input {
+                color: #1e293b;
+                font-weight: 600;
+            }
+        }
+    }
+
+    // Larger priority stars
+    .o_priority_star {
+        font-size: 22px;
+    }
+
+    // Remove double border from notebook tab content
+    .o_notebook .tab-content {
+        border: none;
+    }
+
+    // blocked / cancelled alert
+    .o_it_form_alert {
+        margin: 0 0 14px;
+        border-radius: 8px;
+        border: 0;
+    }
+}
