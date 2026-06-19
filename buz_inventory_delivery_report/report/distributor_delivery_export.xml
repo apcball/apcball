@@ -302,7 +302,7 @@
         
     </template>
 
-    <record id="action_distributor_delivery_export" model="ir.actions.report">
+    <record id="action_distributor_delivery_export_return" model="ir.actions.report">
         <field name="name">ใบแจ้งคืนสินค้าผู้จัดจำหน่าย [ ต่างประเทศ ]</field>
         <field name="model">stock.picking</field>
         <field name="report_type">qweb-pdf</field>

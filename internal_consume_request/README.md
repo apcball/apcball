@@ -1,44 +1,63 @@
-# Internal Consumable Request Module (`internal_consume_request`)
+# Internal Consumable Request
 
 ## Overview
-This module (`internal_consume_request`) provides an internal material requisition system (ขอเบิกอุปกรณ์สิ้นเปลืองภายในบริษัท) for Odoo 17. It allows employees to request consumable or stockable products from the company's internal warehouses.
+Odoo 17 module for internal consumable request system - ขอเบิกอุปกรณ์สิ้นเปลืองภายในบริษัท
 
-## Core Features
-*   **Employee Requisition**: Employees can create request documents to consume items.
-*   **Approval Workflow**: Manager (Head of Department) approval is required before processing.
-*   **Stock Validation**: Automatically checks stock availability and prevents requests for items with insufficient stock.
-*   **Automated Stock Operations**: Automatically creates a Delivery Order or Internal Transfer (`stock.picking`) upon manager approval.
-*   **Cost Tracking**: Enforces the entry of analytic accounts/distribution for all requested items.
+## Features
+- Employee can create internal consumable requests
+- Approval workflow with mail activities
+- Automatic delivery/internal transfer creation
+- Stock level checking
+- Multi-level security (User, Manager, Stock)
 
-## Workflow & State Machine
-The request document transitions through the following states:
+## Workflow
+1. Employee creates request (Draft)
+2. Submit for approval → sends mail activity to manager
+3. Manager approves → creates Internal Transfer (Picking)
+4. Stock validates picking
+5. Request marked as Done
 
-1.  **Draft (`draft`)**:
-    *   An employee creates a new request document.
-    *   They select the warehouse, source/destination locations, and add items (`internal.consume.request.line`).
-    *   Employees must fill in the **Analytic Distribution** for each item line.
-2.  **To Approve (`to_approve`)**:
-    *   The user clicks **Submit**.
-    *   **Validation**: The system checks two conditions:
-        1.  *Analytic Distribution*: All lines must have an analytic distribution set.
-        2.  *Stock Availability*: The requested quantity must not exceed the available unreserved stock.
-    *   If stock is insufficient, the system **auto-rejects** the document.
-    *   If valid, a notification (mail activity) is sent to the Head of Department (Manager).
-3.  **Approved (`approved`)**:
-    *   The manager clicks **Approve**.
-    *   The system performs a secondary stock availability check.
-    *   If successful, it automatically triggers `action_create_picking()` to generate a Delivery Order (`stock.picking`) from the source warehouse to the destination location (typically the `Customers` virtual location for consumption).
-    *   Notifies the assigned Warehouse Responsible user.
-4.  **Done (`done`)**:
-    *   The state automatically changes to `Done` when the warehouse staff validates (completes) the generated `stock.picking`. (Implemented via a `button_validate` override on `stock.picking`).
-5.  **Rejected (`rejected`)**:
-    *   A document can be rejected manually by the manager (via a wizard to input a rejection reason) or automatically by the system due to insufficient stock at the time of submission or approval.
+## Models
+- `internal.consume.request` - Main request document
+- `internal.consume.request.line` - Request line items
 
-## Technical Implementation Details
-*   **Models**:
-    *   `internal.consume.request`: The main document header. Tracks employee, manager, warehouse, locations, and overall state.
-    *   `internal.consume.request.line`: The items being requested. Tracks product, requested quantity, available quantity, and analytic distribution.
-    *   `stock.picking` (inherited): Overrides `button_validate` to back-reference the request and mark it as done.
-*   **Stock Calculation**: `available_qty` on the line is computed directly from `stock.quant` in the source location (and its children) by calculating `quantity - reserved_quantity`. It ensures the requested items are genuinely available on hand.
-*   **Analytic Integration**: Uses Odoo's standard `analytic_distribution` JSON field to distribute costs across analytic accounts. This ensures costs are properly allocated when the stock is consumed.
-*   **Auto-Rejection Logic**: To prevent stock bottlenecks or phantom reservations, any discrepancy between the requested quantity and available quantity instantly forces the document into a rejected state with a detailed reason, preventing the creation of backorders or negative stock situations.
+## Security Groups
+- **User**: Create and view own requests
+- **Manager**: Approve team requests
+- **Stock User**: Process transfers and view all requests
+
+## Configuration
+Default warehouse: ST02
+Default picking type: Internal Transfer
+Sequence: ICR/00001
+
+## Installation
+1. Copy module to addons folder
+2. Update apps list
+3. Install "Internal Consumable Request" module
+4. Assign security groups to users
+
+## Usage
+**Menu**: Inventory → Internal Consume → Requests
+
+### For Employees:
+1. Create new request
+2. Add product lines
+3. Submit for approval
+
+### For Managers:
+1. Review pending approvals
+2. Approve or reject with reason
+
+### For Stock Users:
+1. View approved requests
+2. Validate transfers
+3. Mark requests as done
+
+## Technical
+- Odoo Version: 17.0
+- License: LGPL-3
+- Dependencies: base, hr, stock, mail
+
+## Author
+Your Company

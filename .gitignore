@@ -10,3 +10,5 @@ uploads/
 .thclaws/
 .codewhale/
 .deepseek/
+.playwright-mcp/
+internal_consume_request/*.md

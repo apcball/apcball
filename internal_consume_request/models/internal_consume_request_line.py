@@ -59,26 +59,6 @@ class InternalConsumeRequestLine(models.Model):
         digits='Product Unit of Measure'
     )
     
-    issued_qty = fields.Float(
-        string='Issued Quantity',
-        digits='Product Unit of Measure',
-        default=0.0
-    )
-    
-    remaining_qty = fields.Float(
-        string='Remaining Quantity',
-        compute='_compute_remaining_qty',
-        store=True,
-        digits='Product Unit of Measure'
-    )
-    
-    is_issued = fields.Boolean(
-        string='Is Issued',
-        compute='_compute_is_issued',
-        store=True
-    )
-
-    
     qty_done = fields.Float(
         string='Quantity Done',
         compute='_compute_qty_done',
@@ -147,20 +127,9 @@ class InternalConsumeRequestLine(models.Model):
             qty_done = 0.0
             if line.request_id.picking_id:
                 for move in line.request_id.picking_id.move_ids:
-                    if move.product_id == line.product_id and move.state == 'done':
+                    if move.product_id == line.product_id:
                         qty_done += move.quantity
             line.qty_done = qty_done
-
-    @api.depends('qty_requested', 'issued_qty')
-    def _compute_remaining_qty(self):
-        for line in self:
-            line.remaining_qty = max(0.0, line.qty_requested - line.issued_qty)
-
-    @api.depends('issued_qty')
-    def _compute_is_issued(self):
-        for line in self:
-            line.is_issued = line.issued_qty > 0
-
 
     @api.depends('product_id', 'location_id', 'product_uom_id', 'request_id.warehouse_id')
     def _compute_available_qty(self):
@@ -202,15 +171,6 @@ class InternalConsumeRequestLine(models.Model):
         for line in self:
             if line.qty_requested <= 0:
                 raise ValidationError(_('Quantity requested must be greater than zero.'))
-
-    @api.constrains('issued_qty', 'qty_requested')
-    def _check_issued_qty(self):
-        for line in self:
-            if line.issued_qty < 0:
-                raise ValidationError(_('Issued quantity cannot be negative.'))
-            if line.issued_qty > line.qty_requested:
-                raise ValidationError(_('Issued quantity cannot exceed requested quantity.'))
-
 
     @api.constrains('product_id')
     def _check_product_type(self):

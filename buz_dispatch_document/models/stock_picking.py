@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 
 
 class StockPicking(models.Model):
@@ -34,3 +35,21 @@ class StockPicking(models.Model):
 
     def _search_buz_dispatch_document_name(self, operator, value):
         return [('buz_dispatch_document_ids.name', operator, value)]
+
+    def action_create_dispatch_document(self):
+        self.ensure_one()
+        if self.state not in ('confirmed', 'assigned'):
+            raise UserError(
+                _('Delivery order must be Available or Waiting before '
+                  'creating a Dispatch Document.')
+            )
+        dispatch = self.env['buz.dispatch.document'].create({
+            'stock_picking_id': self.id,
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'buz.dispatch.document',
+            'res_id': dispatch.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }

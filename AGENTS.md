@@ -4,7 +4,7 @@
 
 ~230 Odoo 17 addons for Mogen Co., Thailand. Flat in repo root — each subdirectory is one addon.
 
-Hosted on Contabo VPS, Dockerized (`odoo:17.0` base). Postgres 16.
+Hosted on Contabo VPS. DEV: Dockerized (`odoo:17.0` base). PROD: systemd service (`instance1.service`, user `odoo`, venv `/opt/instance1/odoo17-venv`). Postgres 16.
 
 ## Key architecture
 
@@ -24,10 +24,10 @@ rsync -az --delete "./<module>/" root@217.216.32.33:/srv/docker/odoo/custom-addo
 ssh root@217.216.32.33 "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
 
 # Deploy to PROD server 
-rsync -az --delete "./<module>/" mogenit@160.187.249.148:/srv/docker/odoo_mogen/custom-addons/<module>/
-ssh mogenit@160.187.249.148 "docker exec odoo odoo -d MOG_PROD -u <module> --stop-after-init --no-http"
+rsync -az --delete "./<module>/" mogenit@160.187.249.148:/opt/instance1/odoo17/custom-addons/<module>/
+ssh mogenit@160.187.249.148 "sudo systemctl restart instance1"
 
-# Test on live DB — IRREVERSIBLE SIDE EFFECTS. Use isolated test below instead.
+# Test on live DB (DEV only) — IRREVERSIBLE SIDE EFFECTS. Use isolated test below instead.
 ssh root@217.216.32.33 "docker exec odoo odoo -d MOG_DEV -u <module> --test-enable --stop-after-init --no-http"
 
 # Isolated test (local docker-compose with fresh Postgres)
@@ -43,14 +43,16 @@ pylint --load-plugins=pylint_odoo <module>/
 `detect → lint → test → deploy`
 
 Module detection (`detect` job):
+
 ```bash
 git diff --name-only HEAD~1 HEAD | grep -oP '^[a-z][a-z0-9_]+(?=/)' | sort -u
 ```
+
 For PRs: diff against base branch instead of `HEAD~1`.
 
 - Lint uses `pylint-odoo` with `allow_failure: true`
-- Tests run via `--test-enable` against the LIVE production DB container. Each module copy + update is one `docker exec` call.
-- Deploy only on `main` / `Docker_Ball` branches, push events. rsync then `-u` update.
+- Tests run via `--test-enable` against the DEV Docker DB container. Each module copy + update is one `docker exec` call.
+- Deploy only on `main` / `Docker_Ball` branches, push events. rsync then `sudo systemctl restart instance1`.
 - GitLab CI deploy step is `manual` + `Docker_Ball` only.
 
 ## Module layout
@@ -80,10 +82,7 @@ Standard Odoo 17: `models/`, `views/`, `security/`, `data/`, `wizard/`, `report/
 
 ## Server paths
 
-| Server | Host | Docker root |
-|--------|------|-------------|
-| DEV | `root@217.216.32.33` | `/srv/docker/odoo/` |
-| PROD | `mogenit@160.187.249.148` | `/srv/docker/odoo_mogen/custom-addons` |
-Container addons path: `/mnt/custom-addons` (volume mapped from `./custom-addons/`).
-
-Config: `%DOCKER_ROOT%/config/odoo.conf`
+| Server | Host | Addons root | Config | Service |
+| ------ | ---- | ----------- | ------ | ------- |
+| DEV | `root@217.216.32.33` | `(Docker)/srv/docker/odoo/custom-addons/` | `%DOCKER_ROOT%/config/odoo.conf` | Docker (`odoo:17.0`) |
+| PROD | `mogenit@160.187.249.148` | `/opt/instance1/odoo17/custom-addons/` | `/etc/instance1.conf` | systemd (`instance1.service`, user `odoo`, venv `/opt/instance1/odoo17-venv`) |

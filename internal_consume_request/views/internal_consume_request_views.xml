@@ -11,8 +11,7 @@
                       decoration-info="state == 'draft'"
                       decoration-warning="state == 'to_approve'"
                       decoration-success="state == 'done'"
-                      decoration-danger="state == 'rejected'"
-                      decoration-muted="state == 'cancelled'">
+                      decoration-danger="state == 'rejected'">
                     <field name="name"/>
                     <field name="request_date"/>
                     <field name="employee_id"/>
@@ -23,9 +22,8 @@
                            decoration-info="state == 'draft'"
                            decoration-warning="state == 'to_approve'"
                            decoration-primary="state == 'approved'"
-                           decoration-muted="state == 'partial_pick'"
                            decoration-success="state == 'done'"
-                           decoration-danger="state in ('rejected', 'cancelled')"/>
+                           decoration-danger="state == 'rejected'"/>
                     <button name="action_duplicate_request"
                             type="object"
                             icon="fa-copy"
@@ -46,20 +44,13 @@
                                 string="Duplicate"
                                 type="object"
                                 icon="fa-copy"
-                                invisible="state in ('to_approve', 'approved', 'partial_pick')"/>
+                                invisible="state in ('to_approve', 'approved')"/>
                         <button name="action_submit"
                                 string="Submit for Approval"
                                 type="object"
                                 class="oe_highlight"
-                                invisible="state != 'draft'"
-                                groups="internal_consume_request.group_internal_consume_user"/>
-                        <button name="action_cancel"
-                                string="Cancel Request"
-                                type="object"
-                                class="btn-danger"
-                                invisible="state not in ['draft', 'to_approve']"
-                                groups="internal_consume_request.group_internal_consume_user"/>
-                        <button name="action_approve_leader"
+                                invisible="state != 'draft' or not allow_submit"/>
+                        <button name="action_approve"
                                 string="Approve"
                                 type="object"
                                 class="oe_highlight"
@@ -68,31 +59,18 @@
                         <button name="action_reject"
                                 string="Reject"
                                 type="object"
-                                class="btn-danger"
                                 invisible="state != 'to_approve'"
                                 groups="internal_consume_request.group_internal_consume_manager"/>
-                        <button name="action_start_issue"
-                                string="เริ่มจ่ายของ"
-                                type="object"
-                                class="oe_highlight"
-                                invisible="state != 'approved'"
-                                groups="internal_consume_request.group_internal_consume_stock"/>
-                        <button name="action_confirm_issue"
-                                string="ยืนยันการจ่ายของ"
-                                type="object"
-                                class="oe_highlight"
-                                invisible="state != 'partial_pick'"
-                                groups="internal_consume_request.group_internal_consume_stock"/>
                         <button name="action_create_picking"
                                 string="Create Transfer"
                                 type="object"
-                                invisible="1"
+                                invisible="state != 'approved' or picking_id"
                                 groups="internal_consume_request.group_internal_consume_stock"/>
                         <button name="action_done"
                                 string="Done"
                                 type="object"
                                 class="oe_highlight"
-                                invisible="1"
+                                invisible="state != 'approved'"
                                 groups="internal_consume_request.group_internal_consume_stock"/>
                         <button name="action_set_to_draft"
                                 string="Set to Draft"
@@ -100,7 +78,7 @@
                                 invisible="state != 'rejected'"
                                 groups="internal_consume_request.group_internal_consume_manager"/>
                         <field name="state" widget="statusbar"
-                               statusbar_visible="draft,to_approve,approved,partial_pick,done,rejected,cancelled"/>
+                               statusbar_visible="draft,to_approve,approved,done"/>
                     </header>
                     <!-- Stock Warning Banner -->
                     <div class="alert alert-danger" role="alert" 
@@ -117,24 +95,13 @@
                                     class="oe_stat_button" 
                                     icon="fa-truck"
                                     invisible="picking_count == 0">
-                                <field name="picking_count" widget="statinfo" string="Transfers"/>
+                                <field name="picking_count" widget="statinfo" string="Transfer"/>
                             </button>
-                            <button name="%(internal_consume_request.action_report_consume_slip)d" 
-                                    type="action" 
-                                    class="oe_stat_button" 
-                                    icon="fa-print"
-                                    string="ใบจ่ายของ"
-                                    invisible="state not in ('partial_pick', 'done')"/>
                         </div>
-                        <div class="oe_title w-100">
-                            <div class="d-flex justify-content-between align-items-center w-100">
-                                <h1 class="mb-0">
-                                    <field name="name" readonly="1"/>
-                                </h1>
-                                <div>
-                                    <field name="barcode_display" nolabel="1" readonly="1" invisible="not barcode_display"/>
-                                </div>
-                            </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
                         </div>
                         <group>
                             <group name="request_info">
@@ -157,7 +124,7 @@
                         <notebook>
                             <page string="Products" name="products">
                                 <field name="line_ids" 
-                                       readonly="state in ('approved', 'partial_pick', 'done', 'rejected', 'cancelled')">
+                                       readonly="state in ('to_approve', 'approved', 'done', 'rejected')">
                                     <tree string="Request Lines" 
                                           editable="bottom"
                                           decoration-danger="qty_requested &gt; available_qty">
@@ -173,9 +140,7 @@
                                         <field name="available_qty" string="Available" 
                                                decoration-danger="qty_requested &gt; available_qty"
                                                decoration-success="qty_requested &lt;= available_qty"/>
-                                        <field name="issued_qty" readonly="state != 'partial_pick'"/>
-                                        <field name="remaining_qty" optional="show"/>
-                                        <field name="qty_done" string="Qty Done" optional="hide"/>
+                                        <field name="qty_done" string="Qty Done" optional="show"/>
                                         <button name="action_duplicate_line" 
                                                 type="object" 
                                                 icon="fa-copy" 
@@ -191,25 +156,6 @@
                                     <field name="reason_for_requisition" placeholder="กรุณาระบุเหตุผลในการขอเบิกวัสดุ/อุปกรณ์..."/>
                                 </group>
                             </page>
-                            <page string="รายละเอียดการจ่ายของ" name="issue_details" invisible="state not in ('partial_pick', 'done')">
-                                <group>
-                                    <group>
-                                        <field name="issued_by"/>
-                                        <field name="issued_datetime"/>
-                                    </group>
-                                    <group>
-                                        <field name="received_by"/>
-                                    </group>
-                                </group>
-                                <group>
-                                    <group string="ลายเซ็นผู้จ่าย">
-                                        <field name="issuer_signature" widget="signature" readonly="state in ('partial_pick', 'done')"/>
-                                    </group>
-                                    <group string="ลายเซ็นผู้รับ">
-                                        <field name="receiver_signature" widget="signature" readonly="state in ('partial_pick', 'done')"/>
-                                    </group>
-                                </group>
-                            </page>
                             <page string="Other Info" name="other_info">
                                 <group>
                                     <group>
@@ -220,22 +166,6 @@
                                                readonly="1"
                                                invisible="state != 'rejected'"
                                                widget="text"/>
-                                        <field name="cancelled_by"
-                                               readonly="1"
-                                               invisible="state != 'cancelled'"/>
-                                    </group>
-                                </group>
-                                <group>
-                                    <group>
-                                        <field name="cancelled_date"
-                                               readonly="1"
-                                               invisible="state != 'cancelled'"/>
-                                        <field name="cancel_reason"
-                                               readonly="1"
-                                               invisible="state != 'cancelled'"
-                                               widget="text"/>
-                                    </group>
-                                    <group>
                                         <field name="reason"
                                                readonly="1"
                                                invisible="not reason"
@@ -246,26 +176,6 @@
                                 <group>
                                     <field name="notes" placeholder="Additional notes..."/>
                                 </group>
-                            </page>
-                            <page string="จ่ายของ (QR Scan)" name="qr_scan" invisible="state not in ('approved', 'partial_pick')">
-                                <div class="oe_title">
-                                    <h2>QR Code Scanner</h2>
-                                    <p>สแกน QR Code เพื่อตรวจสอบและจ่ายของ</p>
-                                </div>
-                                <div class="o_barcode_scanner">
-                                    <div id="internal-qr-reader" style="width: 100%; max-width: 600px; margin: 0 auto; min-height: 300px; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
-                                        <p class="text-muted">QR Scanner will appear here when started</p>
-                                    </div>
-                                    <div class="text-center mt-3">
-                                        <a href="#" class="btn btn-primary" onclick="startInternalQRScanner(); return false;">
-                                            <i class="fa fa-camera"/> เริ่มสแกน QR Code
-                                        </a>
-                                        <a href="#" class="btn btn-secondary ms-2" onclick="stopInternalQRScanner(); return false;">
-                                            <i class="fa fa-stop"/> หยุดสแกน
-                                        </a>
-                                    </div>
-                                    <div id="internal-qr-result" style="text-align: center; margin-top: 20px;"></div>
-                                </div>
                             </page>
                         </notebook>
                     </sheet>
