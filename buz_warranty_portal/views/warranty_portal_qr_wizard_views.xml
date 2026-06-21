@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- QR Wizard Form -->
+    <record id="view_warranty_portal_qr_wizard_form" model="ir.ui.view">
+        <field name="name">warranty.qr.wizard.form</field>
+        <field name="model">warranty.qr.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Customer Registration QR">
+                <div class="oe_title">
+                    <h2>Warranty Registration URL</h2>
+                    <p class="text-muted">
+                        Customers scan this QR code to reach the registration form.
+                    </p>
+                </div>
+                <group>
+                    <field name="registration_url" readonly="1"/>
+                    <field name="qr_code" widget="image" class="mx-auto d-block"
+                           style="max-width:500px; max-height:500px;"
+                           nolabel="1"/>
+                </group>
+                <footer>
+                    <button string="Done" class="btn-primary" type="object" name="action_done"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_warranty_portal_qr_wizard" model="ir.actions.act_window">
+        <field name="name">Customer Registration QR</field>
+        <field name="res_model">warranty.qr.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Menu under Warranty → Configuration -->
+    <menuitem id="menu_warranty_portal_qr"
+              name="Customer Registration QR"
+              parent="buz_warranty_management.menu_warranty_configuration"
+              action="action_warranty_portal_qr_wizard"
+              sequence="50"/>
+
+</odoo>

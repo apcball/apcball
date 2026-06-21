@@ -4,3 +4,9 @@ access_it_request_officer,it.request.officer,model_it_request,group_it_request_o
 access_it_request_image_user,it.request.image.user,model_it_request_image,group_it_request_user,1,0,1,0
 access_it_request_image_officer,it.request.image.officer,model_it_request_image,group_it_request_officer,1,1,1,1
 access_it_request_image_manager,it.request.image.manager,model_it_request_image,group_it_request_manager,1,1,1,1
+access_it_request_category_user,it.request.category.user,model_it_request_category,group_it_request_user,1,0,0,0
+access_it_request_category_manager,it.request.category.manager,model_it_request_category,group_it_request_manager,1,1,1,1
+access_it_request_sub_category_user,it.request.sub.category.user,model_it_request_sub_category,group_it_request_user,1,0,0,0
+access_it_request_sub_category_manager,it.request.sub.category.manager,model_it_request_sub_category,group_it_request_manager,1,1,1,1
+access_it_request_team_user,it.request.team.user,model_it_request_team,group_it_request_user,1,0,0,0
+access_it_request_team_manager,it.request.team.manager,model_it_request_team,group_it_request_manager,1,1,1,1

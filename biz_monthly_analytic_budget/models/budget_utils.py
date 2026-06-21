@@ -8,7 +8,7 @@ to avoid code duplication (DRY principle).
 import json
 import logging
 from decimal import Decimal
-from odoo import _
+from odoo import _, fields
 
 _logger = logging.getLogger(__name__)
 
@@ -126,6 +126,58 @@ def find_plan_for_analytics(env, target_date, company_id, analytic_account_ids):
     return result
 
 
+def _get_line_currency_context(line):
+    """Return (from_currency, to_currency, company, rate_date) for a document
+    line, or (None, None, None, None) when the line carries no foreign currency
+    (e.g. requisition.order PR lines, which are always company currency).
+
+    Supports purchase.order.line, account.move.line, and (as a no-op pass-through)
+    requisition.order lines.
+    """
+    today = fields.Date.today
+    # purchase.order.line  → order_id.company_id
+    order = getattr(line, 'order_id', None)
+    if order is not None and getattr(order, 'company_id', None):
+        from_currency = getattr(line, 'currency_id', None) or order.currency_id
+        company = order.company_id
+        rate_date = (order.date_order.date() if order.date_order else None) or today()
+        return from_currency, company.currency_id, company, rate_date
+    # account.move.line (bill) → move_id.company_id
+    move = getattr(line, 'move_id', None)
+    if move is not None and getattr(move, 'company_id', None):
+        from_currency = getattr(line, 'currency_id', None) or move.currency_id
+        company = move.company_id
+        rate_date = move.invoice_date or move.date or today()
+        return from_currency, company.currency_id, company, rate_date
+    # requisition.order / unknown → company currency already, no conversion
+    return None, None, None, None
+
+
+def _convert_subtotal_to_company_currency(line, amount):
+    """Convert a document-line subtotal to company currency. No-op (returns the
+    amount unchanged) when the line is already in company currency, has no
+    foreign currency (PR lines), or when no exchange rate is available.
+
+    Missing-rate is logged and degrades to the raw amount rather than raising,
+    because this runs inside stored compute fields (_compute_monthly_budget_check)
+    that must not crash the PO/bill form view. Rates are normally maintained
+    automatically by currency_rate_update_TH_BOT, so this branch is a safety net.
+    """
+    from_currency, to_currency, company, rate_date = _get_line_currency_context(line)
+    if not from_currency or not to_currency or from_currency == to_currency:
+        return amount
+    try:
+        return from_currency._convert(amount, to_currency, company, rate_date)
+    except Exception as exc:
+        _logger.warning(
+            'budget_utils: currency conversion failed for %s id=%s '
+            '(from %s to %s on %s): %s — using raw amount %s',
+            line._name, getattr(line, 'id', None),
+            from_currency.name, to_currency.name, rate_date, exc, amount,
+        )
+        return amount
+
+
 def extract_analytic_amounts(line, budget_line_model=None):
     """
     Extract analytic account allocations from a line record.
@@ -154,6 +206,7 @@ def extract_analytic_amounts(line, budget_line_model=None):
         return []
 
     subtotal = line.price_subtotal or 0.0
+    subtotal = _convert_subtotal_to_company_currency(line, subtotal)
 
     # Normalize using Decimal for precision (via budget line helper if available)
     if budget_line_model:

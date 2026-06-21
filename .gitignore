@@ -12,3 +12,7 @@ uploads/
 .deepseek/
 .playwright-mcp/
 internal_consume_request/*.md
+.omp/
+.wystack.json
+.vscode/
+.rpiv/

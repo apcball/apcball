@@ -64,7 +64,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
     @api.model
     def _get_sale_order_domain(self, filters):
         domain = [
-            ("state", "in", ["sale", "done"]),
+            ("state", "=", "sale"),
             ("company_id", "=", self.env.company.id),
         ]
         if filters.get("date_from"):
@@ -127,10 +127,10 @@ class SalesAnalyticsDashboard(models.TransientModel):
     @api.model
     def _get_order_line_domain(self, filters):
         so_domain = self._get_sale_order_domain(filters)
-        so_domain[0] = ("order_id.state", "in", ["sale", "done"])
+        so_domain[0] = ("order_id.state", "=", "sale")
         if filters.get("category_id"):
             so_domain.append(("product_id.categ_id", "child_of", filters["category_id"]))
-        line_domain = [("order_id.state", "in", ["sale", "done"])]
+        line_domain = [("order_id.state", "=", "sale")]
         for cond in so_domain[1:]:
             if isinstance(cond, (list, tuple)) and len(cond) >= 2:
                 field = cond[0]
@@ -282,20 +282,38 @@ class SalesAnalyticsDashboard(models.TransientModel):
         if filters.get("date_from") and filters.get("date_to"):
             df = fields.Date.from_string(filters["date_from"])
             dt = fields.Date.from_string(filters["date_to"])
-            span = (dt - df).days + 1
-            prev_filters["date_from"] = str(df - relativedelta(days=span))
-            prev_filters["date_to"] = str(df - relativedelta(days=1))
+            period_type = filters.get("period_type", "monthly")
+            if period_type == "weekly":
+                prev_filters["date_from"] = str(df - relativedelta(weeks=1))
+                prev_filters["date_to"] = str(dt - relativedelta(weeks=1))
+            elif period_type == "quarterly":
+                prev_filters["date_from"] = str(df - relativedelta(months=3))
+                prev_filters["date_to"] = str(dt - relativedelta(months=3))
+            elif period_type == "yearly":
+                prev_filters["date_from"] = str(df - relativedelta(years=1))
+                prev_filters["date_to"] = str(dt - relativedelta(years=1))
+            else:
+                prev_filters["date_from"] = str(df - relativedelta(months=1))
+                prev_filters["date_to"] = str(dt - relativedelta(months=1))
+
+        # Growth rate uses all closed orders (sale+done) for fair period-over-period comparison
+        growth_curr_domain = self._get_sale_order_domain(filters)
+        growth_curr_domain[0] = ("state", "in", ["sale", "done"])
+        growth_curr_agg = so_model.read_group(growth_curr_domain, ["amount_untaxed:sum"], [])[0]
+        growth_curr_revenue = growth_curr_agg.get("amount_untaxed") or 0.0
 
         prev_so_domain = self._get_sale_order_domain(prev_filters)
+        prev_so_domain[0] = ("state", "in", ["sale", "done"])
         prev_so_agg = so_model.read_group(prev_so_domain, ["amount_untaxed:sum"], [])[0]
         prev_so_revenue = prev_so_agg.get("amount_untaxed") or 0.0
 
         prev_pos_domain = self._get_pos_order_domain(prev_filters)
         prev_pos_data = self._aggregate_pos(prev_pos_domain)
 
+        growth_curr_total = growth_curr_revenue + pos_data["revenue"]
         prev_revenue = prev_so_revenue + prev_pos_data["revenue"]
         growth_rate = (
-            ((total_revenue - prev_revenue) / prev_revenue * 100.0)
+            ((growth_curr_total - prev_revenue) / prev_revenue * 100.0)
             if prev_revenue
             else 0.0
         )
@@ -384,23 +402,64 @@ class SalesAnalyticsDashboard(models.TransientModel):
     @api.model
     def _get_target_achievement(self, filters):
         target_model = self.env["sales.target"].sudo()
-        today = fields.Date.context_today(self)
-        target_domain = [
-            ("state", "=", "confirmed"),
-            ("date_start", "<=", today),
-            ("date_end", ">=", today),
+        date_from = filters.get("date_from")
+        date_to = filters.get("date_to")
+        if not date_from or not date_to:
+            return 0.0
+
+        # Prioritize company-wide target when no specific person/team filter
+        if filters.get("salesperson_id"):
+            target_domain = [
+                ("state", "=", "confirmed"),
+                ("target_type", "=", "person"),
+                ("user_id", "=", filters["salesperson_id"]),
+                ("date_start", "<=", date_to),
+                ("date_end", ">=", date_from),
+                ("company_id", "=", self.env.company.id),
+            ]
+        elif filters.get("team_id"):
+            target_domain = [
+                ("state", "=", "confirmed"),
+                ("target_type", "=", "team"),
+                ("team_ids", "=", filters["team_id"]),
+                ("date_start", "<=", date_to),
+                ("date_end", ">=", date_from),
+                ("company_id", "=", self.env.company.id),
+            ]
+        else:
+            # Default: look for company-wide target
+            target_domain = [
+                ("state", "=", "confirmed"),
+                ("target_type", "=", "company"),
+                ("date_start", "<=", date_to),
+                ("date_end", ">=", date_from),
+                ("company_id", "=", self.env.company.id),
+            ]
+
+        target = target_model.search(target_domain, limit=1)
+        if not target:
+            return 0.0
+
+        total_target = target.target_amount
+
+        # Compute achieved from posted invoices within dashboard date range
+        inv_domain = [
+            ("move_type", "in", ["out_invoice", "out_refund"]),
+            ("state", "=", "posted"),
+            ("invoice_date", ">=", date_from),
+            ("invoice_date", "<=", date_to),
             ("company_id", "=", self.env.company.id),
         ]
-        if filters.get("salesperson_id"):
-            target_domain.append(("user_id", "=", filters["salesperson_id"]))
-        if filters.get("team_id"):
-            target_domain.append(("team_ids", "=", filters["team_id"]))
+        if target.target_type == 'person' and target.user_id:
+            inv_domain.append(("invoice_user_id", "=", target.user_id.id))
+        elif target.target_type == 'team' and target.team_ids:
+            inv_domain.append(("team_id", "in", target.team_ids.ids))
+        elif target.team_ids:
+            inv_domain.append(("team_id", "in", target.team_ids.ids))
 
-        targets = target_model.search(target_domain, limit=1)
-        if not targets:
-            return 0.0
-        total_target = sum(targets.mapped("target_amount"))
-        total_achieved = sum(targets.mapped("achieved_amount"))
+        invoices = self.env["account.move"].sudo().search(inv_domain)
+        total_achieved = sum(invoices.mapped("amount_untaxed_signed"))
+
         return (total_achieved / total_target * 100.0) if total_target else 0.0
 
     @api.model
@@ -447,7 +506,9 @@ class SalesAnalyticsDashboard(models.TransientModel):
     def get_top_customers(self, filters, limit=10):
         so_model = self.env["sale.order"].sudo()
         pos_model = self.env["pos.lite.order"].sudo()
+        # Use all closed orders (sale+done) for customer ranking charts
         so_domain = self._get_sale_order_domain(filters)
+        so_domain[0] = ("state", "in", ["sale", "done"])
         pos_domain = self._get_pos_order_domain(filters)
 
         so_groups = so_model.read_group(
@@ -485,6 +546,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
         sol_model = self.env["sale.order.line"].sudo()
         pol_model = self.env["pos.lite.order.line"].sudo()
         so_domain = self._get_order_line_domain(filters)
+        so_domain = [d if d[0] != "order_id.state" else ("order_id.state", "in", ["sale", "done"]) for d in so_domain]
         pos_domain = self._get_pos_order_line_domain(filters)
 
         so_groups = sol_model.read_group(
@@ -516,10 +578,18 @@ class SalesAnalyticsDashboard(models.TransientModel):
             combined[pid]["qty_sold"] += g.get("qty") or 0.0
             combined[pid]["revenue"] += g.get("price_subtotal") or 0.0
 
+        # Fetch SKU for each product
+        pids = [r["product_id"] for r in combined.values() if r["product_id"] > 0]
+        sku_map = {}
+        if pids:
+            products = self.env["product.product"].sudo().browse(pids)
+            sku_map = {p.id: p.sku or "" for p in products}
+
         result = sorted(combined.values(), key=lambda x: x["revenue"], reverse=True)
         for r in result[:limit]:
             r["qty_sold"] = float_round(r["qty_sold"], 2)
             r["revenue"] = float_round(r["revenue"], 2)
+            r["product_code"] = sku_map.get(r["product_id"], "")
         return result[:limit]
 
     @api.model
@@ -527,6 +597,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
         sol_model = self.env["sale.order.line"].sudo()
         pol_model = self.env["pos.lite.order.line"].sudo()
         so_domain = self._get_order_line_domain(filters)
+        so_domain = [d if d[0] != "order_id.state" else ("order_id.state", "in", ["sale", "done"]) for d in so_domain]
         pos_domain = self._get_pos_order_line_domain(filters)
 
         so_groups = sol_model.read_group(
@@ -856,7 +927,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
         lookback = today - relativedelta(months=12)
 
         so_domain = [
-            ("state", "in", ["sale", "done"]),
+            ("state", "=", "sale"),
             ("company_id", "=", self.env.company.id),
             ("date_order", ">=", str(lookback)),
             ("date_order", "<=", str(today)),
@@ -958,7 +1029,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
             month_end = month_start + relativedelta(months=1) - relativedelta(days=1)
 
             so_domain = [
-                ("state", "in", ["sale", "done"]),
+                ("state", "=", "sale"),
                 ("company_id", "=", self.env.company.id),
                 ("date_order", ">=", str(month_start)),
                 ("date_order", "<=", str(month_end) + " 23:59:59"),

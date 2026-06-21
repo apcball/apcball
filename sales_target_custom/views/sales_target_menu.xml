@@ -15,6 +15,14 @@
               groups="sales_target_custom.group_sales_target_user,sales_target_custom.group_sales_target_manager"
               sequence="10"/>
 
+    <!-- Company Target - whole company target, no user/team -->
+    <menuitem id="menu_company_target" 
+              name="Company Target" 
+              parent="menu_sales_target_root" 
+              action="action_company_target"
+              groups="sales_target_custom.group_sales_target_manager,sales_target_custom.group_sales_target_lead"
+              sequence="15"/>
+
     <!-- Sale Team - Team targets with M2M team selection -->
     <menuitem id="menu_sale_team" 
               name="Sale Team" 

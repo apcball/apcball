@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="registration_form" name="Warranty Registration Form">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-3">
+                <div class="row">
+                    <div class="col-12 col-lg-8 offset-lg-2">
+
+                        <t t-if="not errors">
+                            <div class="alert alert-info text-center">
+                                <h4 class="alert-heading">Register Your Warranty</h4>
+                                <p class="mb-0">Scan one QR code, register your product for warranty coverage.</p>
+                            </div>
+                        </t>
+
+                        <form method="post" action="/warranty/register/submit"
+                              enctype="multipart/form-data" class="mt-3 mb-5">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                            <!-- Personal Information -->
+                            <div class="card mb-3">
+                                <div class="card-header"><strong>Contact Information</strong></div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Name *</label>
+                                        <t t-if="errors.get('partner_name')">
+                                            <div class="text-danger small"><t t-esc="errors['partner_name']"/></div>
+                                        </t>
+                                        <input type="text" name="partner_name" class="form-control"
+                                               t-att-value="defaults.get('partner_name')" required="required"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Phone *</label>
+                                        <t t-if="errors.get('phone')">
+                                            <div class="text-danger small"><t t-esc="errors['phone']"/></div>
+                                        </t>
+                                        <input type="tel" name="phone" class="form-control"
+                                               t-att-value="defaults.get('phone')" required="required"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Email</label>
+                                        <input type="email" name="email" class="form-control"
+                                               t-att-value="defaults.get('email')"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Address</label>
+                                        <textarea name="street" class="form-control" rows="2"
+                                                  t-att-value="defaults.get('street')"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Product Information -->
+                            <div class="card mb-3">
+                                <div class="card-header"><strong>Product Information</strong></div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Product *</label>
+                                        <t t-if="errors.get('product_id')">
+                                            <div class="text-danger small"><t t-esc="errors['product_id']"/></div>
+                                        </t>
+                                        <select name="product_id" class="form-control" required="required">
+                                            <option value="">-- Select Product --</option>
+                                            <t t-foreach="products" t-as="p">
+                                                <option t-att-value="p.id"
+                                                        t-att-selected="defaults.get('product_id') and str(p.id) == defaults.get('product_id')">
+                                                    <t t-esc="p.display_name"/>
+                                                </option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Serial Number</label>
+                                        <input type="text" name="serial_number" class="form-control"
+                                               t-att-value="defaults.get('serial_number')"
+                                               placeholder="Enter serial number if available"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Purchase Information -->
+                            <div class="card mb-3">
+                                <div class="card-header"><strong>Purchase Details</strong></div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Purchase Date *</label>
+                                        <t t-if="errors.get('start_date')">
+                                            <div class="text-danger small"><t t-esc="errors['start_date']"/></div>
+                                        </t>
+                                        <input type="date" name="start_date" class="form-control"
+                                               t-att-value="defaults.get('start_date')" required="required"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Dealer / Shop</label>
+                                        <input type="text" name="dealer_name" class="form-control"
+                                               t-att-value="defaults.get('dealer_name')"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Invoice No.</label>
+                                        <input type="text" name="invoice_number" class="form-control"
+                                               t-att-value="defaults.get('invoice_number')"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Proof of Purchase (receipt)</label>
+                                        <input type="file" name="proof" class="form-control" multiple="multiple"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">Submit Warranty Registration</button>
+                            </div>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="registration_success" name="Warranty Registration Success">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-3">
+                <div class="row">
+                    <div class="col-12 col-lg-8 offset-lg-2 text-center mt-4">
+                        <div class="mb-4">
+                            <i class="fa fa-check-circle text-success" style="font-size: 4rem;"/>
+                        </div>
+                        <h3>Registration Submitted</h3>
+                        <p class="text-muted">Your warranty information has been received and is pending review.</p>
+                        <div class="card mt-4">
+                            <div class="card-body">
+                                <table class="table table-borderless text-start mb-0">
+                                    <tr>
+                                        <td class="fw-semibold">Reference</td>
+                                        <td><t t-esc="card.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-semibold">Product</td>
+                                        <td><t t-esc="card.product_id.display_name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-semibold">Customer</td>
+                                        <td><t t-esc="card.partner_id.name"/></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-4">
+                            <i class="fa fa-info-circle me-2"/>Our team will review your registration and activate
+                            your warranty within 1–2 business days.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="registration_error" name="Warranty Registration Error">
+        <t t-call="website.layout">
+            <div class="container mt-5 text-center">
+                <div class="mb-4">
+                    <i class="fa fa-exclamation-triangle text-danger" style="font-size: 4rem;"/>
+                </div>
+                <h3>Registration Error</h3>
+                <p class="text-muted">Sorry, something went wrong while saving your registration.</p>
+                <div class="alert alert-danger mt-3">
+                    <t t-esc="message"/>
+                </div>
+                <a href="/warranty/register" class="btn btn-primary mt-3">Try Again</a>
+            </div>
+        </t>
+    </template>
+
+</odoo>

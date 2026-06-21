@@ -1,0 +1,334 @@
+// ─── Form View (Odoo 19 Style) ─────────────────────────────────────────
+// Card-style sections, more whitespace, cleaner layout.
+
+.o_form_view.o_form_view_o19 {
+    // Sheet background — cleaner padding
+    .o_form_sheet_bg {
+        padding: 16px 24px;
+        max-width: 100%;
+
+        @include media-breakpoint-up(lg) {
+            padding: 20px 32px;
+        }
+    }
+
+    // Sheet itself — card with shadow
+    .o_form_sheet {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+        padding: 24px 24px;
+        margin: 0;
+        transition: box-shadow 0.15s;
+
+        &:hover {
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.03);
+        }
+
+        @include media-breakpoint-up(md) {
+            border-radius: 10px;
+            border-width: 1px;
+            margin: 0;
+        }
+
+        @include media-breakpoint-up(lg) {
+            padding: 28px 32px;
+        }
+    }
+
+    // No-sheet variant
+    &.o_form_nosheet, .o_form_nosheet {
+        padding: 20px 24px;
+    }
+
+    // Title
+    .oe_title {
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0F172A;
+            min-height: 44px;
+            line-height: 1.3;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #0F172A;
+            min-height: 36px;
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #334155;
+        }
+    }
+
+    // Status bar
+    .o_form_statusbar {
+        background: #F8FAFC;
+        border-radius: 8px;
+        padding: 2px 12px;
+        margin-bottom: 16px;
+        border: 1px solid #E2E8F0;
+
+        .o_statusbar_status {
+            .o_arrow_button {
+                padding: 6px 16px;
+                font-size: 0.8125rem;
+                font-weight: 600;
+                color: #64748B;
+                background: transparent;
+                border: none;
+                border-radius: 6px;
+                position: relative;
+
+                &.btn-primary {
+                    background: #1A6F8C;
+                    color: #FFFFFF;
+                }
+
+                &::before {
+                    display: none; // Remove Odoo arrow pseudo-elements
+                }
+
+                &:first-of-type {
+                    padding-right: 16px;
+                }
+            }
+        }
+    }
+
+    // Horizontal separator
+    .o_horizontal_separator {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #0F172A;
+        margin: 20px 0 12px;
+
+        &:not(:empty) {
+            box-shadow: 0 1px 0 #E2E8F0;
+            padding-bottom: 8px;
+        }
+    }
+
+    // Group labels
+    .o_group .o_form_label,
+    .o_inner_group .o_form_label {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 4px;
+    }
+
+    // Field widgets
+    .o_field_widget {
+        margin-bottom: 8px;
+
+        &.o_field_many2one .o_existing_button {
+            border-radius: 6px;
+        }
+    }
+
+    // Labels on form
+    .o_form_label {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #475569;
+        line-height: 1.4;
+    }
+
+    // Input styling
+    .o_input {
+        border: 1px solid #E2E8F0;
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 0.875rem;
+        color: #334155;
+        background: #FFFFFF;
+        transition: border-color 0.15s, box-shadow 0.15s;
+
+        &:hover {
+            border-color: #94A3B8;
+        }
+
+        &:focus {
+            border-color: #1A6F8C;
+            box-shadow: 0 0 0 3px rgba(#1A6F8C, 0.1);
+            outline: none;
+        }
+    }
+
+    // Notebook/Tabs
+    .o_notebook {
+        margin-top: 16px;
+
+        > .nav-tabs {
+            border-bottom: 1px solid #E2E8F0;
+            padding: 0;
+            gap: 0;
+
+            .nav-link {
+                border: none;
+                border-bottom: 2px solid transparent;
+                color: #64748B;
+                font-size: 0.875rem;
+                font-weight: 500;
+                padding: 10px 16px;
+                margin-bottom: -1px;
+                background: transparent;
+                transition: all 0.15s;
+
+                &:hover {
+                    color: #0F172A;
+                    border-bottom-color: #CBD5E1;
+                }
+
+                &.active {
+                    color: #1A6F8C;
+                    border-bottom-color: #1A6F8C;
+                    font-weight: 600;
+                }
+            }
+        }
+
+        > .tab-content {
+            border: none;
+            padding-top: 16px;
+
+            > .tab-pane {
+                padding: 0;
+            }
+        }
+    }
+
+    // Button box (stat buttons area)
+    .oe_button_box {
+        background: #F8FAFC;
+        border-radius: 8px;
+        border: 1px solid #E2E8F0;
+        padding: 8px 12px;
+        margin-bottom: 16px;
+
+        .o_stat_button {
+            border-radius: 6px;
+            padding: 6px 12px;
+            transition: background 0.15s;
+
+            &:hover {
+                background: #F1F5F9;
+            }
+        }
+    }
+
+    // Chat/Chatter area
+    .o_chatter {
+        border-top: 1px solid #E2E8F0;
+        margin-top: 16px;
+        padding-top: 16px;
+    }
+
+    // Avatar
+    .oe_avatar .img {
+        border-radius: 8px;
+        border-color: #E2E8F0;
+    }
+}
+
+// Dark mode
+body.o_webclient_dark .o_form_view.o_form_view_o19 {
+    .o_form_sheet {
+        background: #242830;
+        border-color: #334155;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .oe_title h1,
+    .oe_title h2,
+    .oe_title h3 {
+        color: #F1F5F9;
+    }
+
+    .o_form_statusbar {
+        background: #1E293B;
+        border-color: #334155;
+
+        .o_statusbar_status .o_arrow_button {
+            color: #94A3B8;
+
+            &.btn-primary {
+                background: #1A6F8C;
+                color: #FFFFFF;
+            }
+        }
+    }
+
+    .o_horizontal_separator {
+        color: #F1F5F9;
+
+        &:not(:empty) {
+            box-shadow: 0 1px 0 #334155;
+        }
+    }
+
+    .o_group .o_form_label,
+    .o_inner_group .o_form_label {
+        color: #94A3B8;
+    }
+
+    .o_form_label {
+        color: #94A3B8;
+    }
+
+    .o_input {
+        border-color: #334155;
+        color: #CBD5E1;
+        background: #1E293B;
+
+        &:hover {
+            border-color: #475569;
+        }
+
+        &:focus {
+            border-color: #38BDF8;
+            box-shadow: 0 0 0 3px rgba(#38BDF8, 0.12);
+        }
+    }
+
+    .o_notebook > .nav-tabs {
+        border-bottom-color: #334155;
+
+        .nav-link {
+            color: #94A3B8;
+
+            &:hover {
+                color: #F1F5F9;
+                border-bottom-color: #475569;
+            }
+
+            &.active {
+                color: #38BDF8;
+                border-bottom-color: #38BDF8;
+            }
+        }
+    }
+
+    .oe_button_box {
+        background: #1E293B;
+        border-color: #334155;
+
+        .o_stat_button:hover {
+            background: #334155;
+        }
+    }
+
+    .o_chatter {
+        border-top-color: #334155;
+    }
+
+    .oe_avatar .img {
+        border-color: #334155;
+    }
+}

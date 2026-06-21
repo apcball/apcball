@@ -1,26 +1,28 @@
 {
     'name': 'IT Request',
-    'version': '17.0.2.1.0',
+    'version': '17.0.4.0.0',
     'category': 'Helpdesk',
-    'summary': 'IT Request Management (dev feature, error, equipment repair)',
+    'summary': 'IT Request Management (report problem, feature request)',
     'description': """
 IT Request Management
 =====================
 
-This module lets users open IT requests of three kinds:
-- Dev / Feature requests (ask the dev team to develop/enhance a module)
-- Error / Bug reports
-- Equipment repair requests
+For reporting system problems or requesting new features/enhancements.
+Employees select category, enter subject, then describe request/problem.
 
 Features:
-* Unified it.request model with request_type discriminator
-* Lightweight single-flow lifecycle (draft → submitted → in_progress → waiting → done / cancel)
-* Assignment to IT/dev officers
-* Kanban with color-coded priorities and kanban state (normal / ready / blocked)
-* mail.thread chatter and mail.activity.mixin activities
-* Pivot and graph reporting for managers
+* Employee-based requester (hr.employee) with auto-fill department, location, contact
+* Category and sub-category classification
+* IT Team assignment
+* Impact / Urgency / Priority tracking
+* SLA deadline with auto-compute (based on priority)
+* SLA state tracking (On Track / At Risk / Breached)
+* Resolution notes
+* Request types: Report Problem / Feature Request / IT Equipment Purchase / IT Equipment Repair
+* Simple lifecycle (draft → submitted → in_progress → waiting → done / cancel)
+* Kanban with color-coded priorities
+* mail.thread chatter
 * Three-tier security groups (user / officer / manager)
-* Smart search filters (by type, state, date, overdue, department)
     """,
     'author': 'BUZ',
     'website': 'https://www.buz.co.th',

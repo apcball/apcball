@@ -1,0 +1,239 @@
+// ─── List View (Odoo 19 Style) ─────────────────────────────────────────
+// Clean rows with spacing, rounded cells, subtle header.
+
+.o_list_renderer {
+    --ListRenderer-table-padding-x: 16px;
+    --ListRenderer-thead-padding-y: 10px;
+    --ListRenderer-thead-bg-color: #F8FAFC;
+    --ListRenderer-thead-border-end-color: #E2E8F0;
+
+    .o_list_table {
+        border-collapse: separate;
+        border-spacing: 0 2px;
+        background: transparent;
+
+        // Remove default border-collapse borders
+        > :not(:first-child) {
+            border-top: 0;
+        }
+
+        // Header styling
+        thead {
+            background: #F8FAFC;
+
+            th {
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: #64748B;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                padding-top: 10px;
+                padding-bottom: 10px;
+                background: transparent;
+                border-bottom: 1px solid #E2E8F0;
+
+                &.o_list_number_th {
+                    text-align: right;
+                }
+            }
+
+            // Sticky header
+            @include media-breakpoint-up(md) {
+                position: sticky;
+                top: 0;
+                z-index: 1;
+            }
+        }
+
+        // Data rows
+        tbody {
+            tr.o_data_row {
+                background: #FFFFFF;
+                border-radius: 6px;
+                box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+                transition: box-shadow 0.15s, background 0.15s;
+                border-bottom: none;
+
+                td {
+                    padding: 8px 6px;
+                    font-size: 0.875rem;
+                    color: #334155;
+                    border-bottom: none;
+                    background: #FFFFFF;
+
+                    &:first-child {
+                        padding-left: 16px;
+                        border-top-left-radius: 6px;
+                        border-bottom-left-radius: 6px;
+                    }
+
+                    &:last-child {
+                        padding-right: 16px;
+                        border-top-right-radius: 6px;
+                        border-bottom-right-radius: 6px;
+                    }
+                }
+
+                &:hover {
+                    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+                    background: #FAFBFC;
+
+                    td {
+                        background: #FAFBFC;
+                    }
+                }
+
+                &.o_selected_row {
+                    background: rgba(#1A6F8C, 0.04);
+
+                    td {
+                        background: transparent;
+                        box-shadow: inset 0 0 0 1px rgba(#1A6F8C, 0.15);
+                    }
+
+                    &:first-child td:first-child {
+                        border-top-left-radius: 6px;
+                        border-bottom-left-radius: 6px;
+                    }
+
+                    &:last-child td:last-child {
+                        border-top-right-radius: 6px;
+                        border-bottom-right-radius: 6px;
+                    }
+                }
+
+                &:focus-within > * {
+                    --table-accent-bg: transparent;
+                }
+            }
+        }
+
+        // Group headers
+        tbody > tr.o_group_header {
+            background: transparent;
+
+            > th,
+            > td {
+                padding: 6px 8px;
+                color: #0F172A;
+                font-weight: 600;
+                background: transparent;
+            }
+        }
+
+        // Checkbox column
+        .o_list_record_selector {
+            width: 40px;
+            vertical-align: middle;
+
+            .form-check-input {
+                border-radius: 4px;
+                border-color: #CBD5E1;
+
+                &:checked {
+                    background-color: #1A6F8C;
+                    border-color: #1A6F8C;
+                }
+            }
+        }
+
+        // Footer
+        tfoot {
+            > tr > td {
+                color: #64748B;
+                font-weight: 600;
+                font-size: 0.875rem;
+                padding: 8px 6px;
+                border-top: 1px solid #E2E8F0;
+            }
+        }
+    }
+
+    // Editable list in form view — more compact
+    .o_form_view & .o_list_table {
+        tbody tr.o_data_row td {
+            padding: 4px 6px;
+        }
+    }
+}
+
+// Striped variant
+.o_list_view.table-striped .o_list_renderer .o_list_table {
+    tbody tr.o_data_row:nth-of-type(even) {
+        td {
+            background: #F8FAFC;
+        }
+
+        &:hover td {
+            background: #FAFBFC;
+        }
+    }
+}
+
+// Dark mode
+body.o_webclient_dark .o_list_renderer {
+    --ListRenderer-thead-bg-color: #1E293B;
+    --ListRenderer-thead-border-end-color: #334155;
+
+    .o_list_table {
+        thead {
+            background: #1E293B;
+
+            th {
+                color: #94A3B8;
+                border-bottom-color: #334155;
+            }
+        }
+
+        tbody tr.o_data_row {
+            background: #242830;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+
+            td {
+                color: #CBD5E1;
+                background: #242830;
+            }
+
+            &:hover {
+                background: #2A2E38;
+
+                td {
+                    background: #2A2E38;
+                }
+            }
+
+            &.o_selected_row {
+                background: rgba(#1A6F8C, 0.12);
+
+                td {
+                    box-shadow: inset 0 0 0 1px rgba(#38BDF8, 0.2);
+                }
+            }
+        }
+
+        tbody > tr.o_group_header > th,
+        tbody > tr.o_group_header > td {
+            color: #F1F5F9;
+        }
+
+        .o_list_record_selector .form-check-input {
+            border-color: #475569;
+
+            &:checked {
+                background-color: #38BDF8;
+                border-color: #38BDF8;
+            }
+        }
+
+        tfoot > tr > td {
+            color: #94A3B8;
+            border-top-color: #334155;
+        }
+    }
+}
+
+body.o_webclient_dark .o_list_view.table-striped .o_list_renderer .o_list_table {
+    tbody tr.o_data_row:nth-of-type(even) td {
+        background: #1E293B;
+    }
+}

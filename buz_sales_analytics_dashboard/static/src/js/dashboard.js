@@ -307,19 +307,21 @@ export class SalesAnalyticsDashboard extends Component {
         this.charts.topProducts = new window.Chart(el, {
             type: "bar",
             data: {
-                labels: d.map((r) => r.product_name || ""),
+                labels: d.map((r) => r.product_code || r.product_name || ""),
                 datasets: [
                     {
                         label: "Revenue",
                         data: d.map((r) => r.revenue || 0),
                         backgroundColor: c.primary,
                         borderRadius: 6,
+                        yAxisID: "y",
                     },
                     {
                         label: "Qty Sold",
                         data: d.map((r) => r.qty_sold || 0),
                         backgroundColor: c.success,
                         borderRadius: 6,
+                        yAxisID: "y1",
                     },
                 ],
             },
@@ -327,7 +329,10 @@ export class SalesAnalyticsDashboard extends Component {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { position: "top" } },
-                scales: { y: { beginAtZero: true } },
+                scales: {
+                    y: { type: "linear", display: true, position: "left", beginAtZero: true },
+                    y1: { type: "linear", display: true, position: "right", beginAtZero: true, grid: { drawOnChartArea: false } },
+                },
             },
         });
     }
@@ -583,10 +588,20 @@ export class SalesAnalyticsDashboard extends Component {
     }
 
     async openOrders() {
-        await this.action.doAction("sale.action_orders", {
-            additionalContext: {
-                search_default_my_sale_orders: false,
-            },
+        const domain = [["state", "=", "sale"]];
+        if (this.state.filters.date_from) {
+            domain.push(["date_order", ">=", this.state.filters.date_from]);
+        }
+        if (this.state.filters.date_to) {
+            domain.push(["date_order", "<=", this.state.filters.date_to + " 23:59:59"]);
+        }
+        await this.action.doAction({
+            type: "ir.actions.act_window",
+            name: "Sale Orders",
+            res_model: "sale.order",
+            views: [[false, "list"], [false, "form"]],
+            domain: domain,
+            context: {},
         });
     }
 

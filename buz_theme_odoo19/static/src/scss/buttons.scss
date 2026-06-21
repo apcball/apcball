@@ -1,0 +1,204 @@
+// ─── Buttons (Odoo 19 Style) ───────────────────────────────────────────
+// Flat, rounded, clean hover states.
+
+.btn {
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    line-height: 1.4;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+
+    // Focus ring
+    &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(#1A6F8C, 0.2);
+    }
+
+    // Primary
+    &.btn-primary {
+        background: #1A6F8C;
+        border-color: #1A6F8C;
+        color: #FFFFFF;
+
+        &:hover {
+            background: #155E77;
+            border-color: #155E77;
+        }
+
+        &:active, &.active {
+            background: #114E64;
+            border-color: #114E64;
+        }
+
+        &:disabled, &.disabled {
+            background: #94A3B8;
+            border-color: #94A3B8;
+        }
+    }
+
+    // Secondary
+    &.btn-secondary {
+        background: #F1F5F9;
+        border-color: #E2E8F0;
+        color: #334155;
+
+        &:hover {
+            background: #E2E8F0;
+            border-color: #CBD5E1;
+            color: #0F172A;
+        }
+
+        &:active, &.active {
+            background: #CBD5E1;
+            border-color: #94A3B8;
+        }
+    }
+
+    // Default (no class / btn-default equivalent)
+    &:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-info):not(.btn-warning):not(.btn-danger):not(.btn-link):not(.btn-outline-primary):not(.btn-outline-secondary):not(.btn-sm):not(.btn-lg) {
+        background: #FFFFFF;
+        border-color: #E2E8F0;
+        color: #334155;
+
+        &:hover {
+            background: #F8FAFC;
+            border-color: #CBD5E1;
+            color: #0F172A;
+        }
+    }
+
+    // Success
+    &.btn-success {
+        background: #10B981;
+        border-color: #10B981;
+        color: #FFFFFF;
+
+        &:hover {
+            background: #059669;
+            border-color: #059669;
+        }
+    }
+
+    // Danger
+    &.btn-danger {
+        background: #EF4444;
+        border-color: #EF4444;
+        color: #FFFFFF;
+
+        &:hover {
+            background: #DC2626;
+            border-color: #DC2626;
+        }
+    }
+
+    // Link
+    &.btn-link {
+        color: #1A6F8C;
+        text-decoration: none;
+
+        &:hover {
+            color: #114E64;
+            text-decoration: underline;
+        }
+    }
+
+    // Outline
+    &.btn-outline-primary {
+        border-color: #1A6F8C;
+        color: #1A6F8C;
+
+        &:hover {
+            background: #1A6F8C;
+            color: #FFFFFF;
+        }
+    }
+
+    &.btn-outline-secondary {
+        border-color: #E2E8F0;
+        color: #475569;
+
+        &:hover {
+            background: #F1F5F9;
+            border-color: #CBD5E1;
+            color: #0F172A;
+        }
+    }
+
+    // Small
+    &.btn-sm {
+        padding: 3px 8px;
+        font-size: 0.75rem;
+        border-radius: 4px;
+    }
+
+    // Large
+    &.btn-lg {
+        padding: 10px 20px;
+        font-size: 0.9375rem;
+        border-radius: 8px;
+    }
+
+    // Icon only
+    &.btn-icon {
+        padding: 6px;
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+    }
+}
+
+// Dark mode
+body.o_webclient_dark {
+    .btn-secondary {
+        background: #334155;
+        border-color: #475569;
+        color: #CBD5E1;
+
+        &:hover {
+            background: #475569;
+            border-color: #64748B;
+            color: #F1F5F9;
+        }
+
+        &:active, &.active {
+            background: #475569;
+            border-color: #64748B;
+        }
+    }
+
+    .btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-info):not(.btn-warning):not(.btn-danger):not(.btn-link):not(.btn-outline-primary):not(.btn-outline-secondary):not(.btn-sm):not(.btn-lg) {
+        background: #1E293B;
+        border-color: #334155;
+        color: #CBD5E1;
+
+        &:hover {
+            background: #334155;
+            border-color: #475569;
+            color: #F1F5F9;
+        }
+    }
+
+    .btn-outline-secondary {
+        border-color: #475569;
+        color: #94A3B8;
+
+        &:hover {
+            background: #334155;
+            border-color: #64748B;
+            color: #F1F5F9;
+        }
+    }
+
+    &.btn-link {
+        color: #38BDF8;
+
+        &:hover {
+            color: #7DD3FC;
+        }
+    }
+}

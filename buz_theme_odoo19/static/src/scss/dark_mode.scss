@@ -1,0 +1,217 @@
+// ─── Comprehensive Dark Mode (Odoo 19 Style) ────────────────────────────
+// Applied when body has .o_webclient_dark class.
+// Uses cooler dark grays instead of pure black — Odoo 19 approach.
+
+// === Base ===
+body.o_webclient_dark {
+    // Main backgrounds
+    --o-webclient-background-color: #1A1D23;
+    --o-view-background-color: #1A1D23;
+    --border-color: #334155;
+
+    // Text
+    --o-main-text-color: #E2E8F0;
+    --o-main-headings-color: #F1F5F9;
+    --o-main-link-color: #38BDF8;
+
+    // ================================================================
+    // Webclient shell
+    // ================================================================
+    .o_web_client {
+        background: #1A1D23;
+    }
+
+    // ================================================================
+    // Left sidebar / menu
+    // ================================================================
+    .o_menu_sections .dropdown-menu {
+        background: #1E293B;
+    }
+
+    // ================================================================
+    // Search Panel
+    // ================================================================
+    .o_search_panel {
+        background: #1E293B;
+        border-color: #334155;
+
+        .o_search_panel_category {
+            .o_search_panel_section_header {
+                color: #94A3B8;
+            }
+
+            .o_search_panel_label {
+                color: #CBD5E1;
+
+                &:hover {
+                    background: #334155;
+                }
+            }
+        }
+    }
+
+    // ================================================================
+    // Kanban view
+    // ================================================================
+    .o_kanban_view {
+        .o_kanban_record {
+            background: #242830;
+            border: 1px solid #334155;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+
+            &:hover {
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            }
+        }
+    }
+
+    // ================================================================
+    // Pivot / Graph views
+    // ================================================================
+    .o_pivot, .o_graph, .o_cohort {
+        .o_pivot_table {
+            th, td {
+                border-color: #334155;
+            }
+        }
+    }
+
+    // ================================================================
+    // Calendar view
+    // ================================================================
+    .o_calendar_view {
+        .fc-toolbar-title {
+            color: #F1F5F9;
+        }
+
+        .fc-col-header-cell {
+            background: #1E293B;
+            border-color: #334155;
+        }
+
+        .fc-daygrid-day {
+            border-color: #334155;
+        }
+
+        .fc-day-today {
+            background: rgba(#1A6F8C, 0.08);
+        }
+    }
+
+    // ================================================================
+    // Select/Input/Textarea generic
+    // ================================================================
+    select, .o_input, input, textarea {
+        background: #1E293B;
+        color: #CBD5E1;
+        border-color: #334155;
+
+        &:hover {
+            border-color: #475569;
+        }
+
+        &:focus {
+            border-color: #38BDF8;
+            box-shadow: 0 0 0 3px rgba(#38BDF8, 0.12);
+        }
+    }
+
+    // ================================================================
+    // Table general
+    // ================================================================
+    .table {
+        --table-bg: transparent;
+        --table-border-color: #334155;
+        --table-striped-bg: rgba(255, 255, 255, 0.02);
+        --table-hover-bg: rgba(255, 255, 255, 0.04);
+        color: #CBD5E1;
+    }
+
+    // ================================================================
+    // Badge
+    // ================================================================
+    .badge {
+        &.bg-light {
+            background: #334155 !important;
+            color: #CBD5E1;
+        }
+
+        &.bg-secondary {
+            background: #475569 !important;
+        }
+    }
+
+    // ================================================================
+    // Card
+    // ================================================================
+    .card {
+        background: #242830;
+        border-color: #334155;
+    }
+
+    // ================================================================
+    // Settings
+    // ================================================================
+    .o_settings_container {
+        .o_setting_box {
+            .o_setting_right_pane {
+                .o_form_label {
+                    color: #CBD5E1;
+                }
+            }
+        }
+    }
+
+    // ================================================================
+    // Color picker / misc
+    // ================================================================
+    .o_color_picker {
+        background: #242830;
+        border-color: #334155;
+    }
+
+    // ================================================================
+    // Progress bar
+    // ================================================================
+    .progress {
+        background: #334155;
+    }
+
+    // ================================================================
+    // Alerts
+    // ================================================================
+    .alert {
+        border-radius: 8px;
+
+        &.alert-info {
+            background: rgba(#06B6D4, 0.1);
+            border-color: rgba(#06B6D4, 0.2);
+            color: #7DD3FC;
+        }
+
+        &.alert-warning {
+            background: rgba(#F59E0B, 0.1);
+            border-color: rgba(#F59E0B, 0.2);
+            color: #FDE68A;
+        }
+
+        &.alert-danger {
+            background: rgba(#EF4444, 0.1);
+            border-color: rgba(#EF4444, 0.2);
+            color: #FCA5A5;
+        }
+
+        &.alert-success {
+            background: rgba(#10B981, 0.1);
+            border-color: rgba(#10B981, 0.2);
+            color: #6EE7B7;
+        }
+    }
+
+    // ================================================================
+    // Tags / Badges field
+    // ================================================================
+    .o_tag {
+        border-radius: 4px;
+    }
+}

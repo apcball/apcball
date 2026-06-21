@@ -10,3 +10,4 @@ from . import test_monthly_budget_report
 from . import test_plan_lifecycle
 from . import test_budget_line_constraints
 from . import test_fixed_cost
+from . import test_purchase_order_foreign_currency

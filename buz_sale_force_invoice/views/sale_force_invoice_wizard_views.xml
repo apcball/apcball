@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sale_force_invoice_wizard_form" model="ir.ui.view">
+        <field name="name">sale.force.invoice.wizard.form</field>
+        <field name="model">sale.force.invoice.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Force Invoice">
+                <sheet>
+                    <group>
+                        <p>
+                            This will create a Customer Invoice for this Sales Order
+                            even if products have not been delivered.
+                        </p>
+                    </group>
+                    <group>
+                        <field name="company_id" invisible="1"/>
+                        <field name="sale_order_id" invisible="1"/>
+                        <field name="reason"/>
+                        <field name="note"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirm" string="Confirm" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -70,7 +70,7 @@
                             <div class="o_sa_kpi_card kpi-primary" t-on-click="openOrders">
                                 <div class="kpi-icon"><i class="fa fa-dollar"/></div>
                                 <div class="kpi-content">
-                                    <div class="kpi-title">Total Revenue</div>
+                                    <div class="kpi-title">Sale Order Confirm</div>
                                     <div class="kpi-value"><t t-esc="formatCurrency(state.data.kpi.total_revenue)"/></div>
                                 </div>
                             </div>

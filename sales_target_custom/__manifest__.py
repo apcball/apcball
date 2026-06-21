@@ -1,6 +1,6 @@
 {
     "name": "buz Sales Target Management",
-    "version": "17.0.1.2.0",
+    "version": "17.0.1.3.0",
     "summary": "Sales target management for salespersons and teams with advanced features.",
     "description": """
         Sales Target Management

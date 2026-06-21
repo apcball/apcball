@@ -1,0 +1,49 @@
+/* ===== Dispatch Document — Delivery Details ===== */
+
+/* Card container */
+.dd-card {
+    border: 1px solid #e2e6ea;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+/* Card header */
+.dd-card-header {
+    background-color: #f7f7f9;
+    border-bottom: 1px solid #e2e6ea;
+    padding: 10px 16px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #4a4a4a;
+}
+
+.dd-card-header .fa {
+    color: #714B67;
+    margin-right: 8px;
+}
+
+/* Card body */
+.dd-card-body {
+    padding: 12px 16px;
+}
+
+/* Info banner */
+.dd-banner {
+    border-left: 4px solid #00a1d6;
+    background-color: #eaf6ff;
+    padding: 10px 16px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+.dd-banner .fa {
+    color: #00a1d6;
+    margin-right: 8px;
+}
+
+/* Address block — stacked fields look like real address */
+.dd-address-block {
+    line-height: 1.7;
+}

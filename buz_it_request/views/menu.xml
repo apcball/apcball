@@ -43,4 +43,25 @@
               action="action_it_request"
               groups="buz_it_request.group_it_request_manager"/>
 
+    <!-- Configuration -->
+    <menuitem id="menu_it_request_config"
+              name="Configuration"
+              parent="menu_it_request_root"
+              sequence="50"
+              groups="buz_it_request.group_it_request_manager"/>
+
+    <menuitem id="menu_it_request_category"
+              name="Categories"
+              parent="menu_it_request_config"
+              sequence="10"
+              action="action_it_request_category"
+              groups="buz_it_request.group_it_request_manager"/>
+
+    <menuitem id="menu_it_request_team"
+              name="IT Teams"
+              parent="menu_it_request_config"
+              sequence="20"
+              action="action_it_request_team"
+              groups="buz_it_request.group_it_request_manager"/>
+
 </odoo>

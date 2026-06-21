@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_force_invoice" model="ir.ui.view">
+        <field name="name">sale.order.form.force.invoice</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_open_force_invoice_wizard"
+                        type="object"
+                        string="Force Invoice"
+                        class="btn-primary"
+                        invisible="force_invoice or state not in ('sale',)"
+                        groups="buz_sale_force_invoice.group_force_invoice_manager"/>
+                <field name="force_invoice" invisible="1"/>
+            </xpath>
+
+            <xpath expr="//sheet" position="inside">
+                <div class="oe_ribbon" role="banner" invisible="not force_invoice">
+                    <span>FORCE INVOICED</span>
+                </div>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Force Invoice" name="force_invoice"
+                      invisible="not force_invoice">
+                    <group>
+                        <group>
+                            <field name="force_invoice_reason"/>
+                            <field name="force_invoice_date"/>
+                        </group>
+                        <group>
+                            <field name="force_invoice_user_id"/>
+                            <field name="force_invoice_note"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_order_tree_force_invoice" model="ir.ui.view">
+        <field name="name">sale.order.tree.force.invoice</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="force_invoice" invisible="1"/>
+            </xpath>
+            <xpath expr="//tree" position="attributes">
+                <attribute name="decoration-warning">force_invoice</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

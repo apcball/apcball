@@ -25,6 +25,11 @@ class SalesTarget(models.Model):
     responsible_id = fields.Many2one('res.users', string='Responsible', compute='_compute_responsible', store=True)
     
     # Target Configuration
+    target_type = fields.Selection([
+        ('company', 'Company Target'),
+        ('person', 'Individual Target'),
+        ('team', 'Team Target'),
+    ], string='Target Type', required=True, default='person')
     target_amount = fields.Monetary(string='Target Amount', required=True, currency_field='currency_id')
     currency_id = fields.Many2one(related='company_id.currency_id', string='Currency', readonly=True)
     target_point = fields.Selection([
@@ -153,7 +158,7 @@ class SalesTarget(models.Model):
                     domain = record._get_invoice_domain()
                     invoices = self.env['account.move'].search(domain)
                     _logger.debug(f"Sales Target {record.name}: Found {len(invoices)} invoices")
-                    record.achieved_amount = sum(invoices.mapped('amount_total_signed'))
+                    record.achieved_amount = sum(invoices.mapped('amount_untaxed_signed'))
                     
                 else:
                     record.achieved_amount = 0.0
@@ -291,10 +296,11 @@ class SalesTarget(models.Model):
             ('company_id', '=', self.company_id.id),
         ]
         
-        if self.user_id:
+        if self.target_type == 'person' and self.user_id:
             domain.append(('user_id', '=', self.user_id.id))
-        elif self.team_ids:
+        elif self.target_type == 'team' and self.team_ids:
             domain.append(('team_id', 'in', self.team_ids.ids))
+        # company target: no user/team filter — all company orders
             
         return domain
 
@@ -320,10 +326,11 @@ class SalesTarget(models.Model):
                 ('invoice_date', '<=', self.date_end)
             ])
         
-        if self.user_id:
+        if self.target_type == 'person' and self.user_id:
             base_domain.append(('invoice_user_id', '=', self.user_id.id))
-        elif self.team_ids:
+        elif self.target_type == 'team' and self.team_ids:
             base_domain.append(('team_id', 'in', self.team_ids.ids))
+        # company target: no user/team filter — all company invoices
             
         return base_domain
 
@@ -475,13 +482,19 @@ class SalesTarget(models.Model):
             if record.target_amount <= 0:
                 raise ValidationError(_('Target amount must be positive.'))
 
-    @api.constrains('user_id', 'team_ids')
+    @api.constrains('target_type', 'user_id', 'team_ids')
     def _check_user_or_team(self):
         for record in self:
-            if record.user_id and record.team_ids:
-                raise ValidationError(_('Cannot set both Salesperson and Sales Team. Choose one.'))
-            if not record.user_id and not record.team_ids:
-                raise ValidationError(_('Either Salesperson or Sales Team must be specified.'))
+            if record.target_type == 'person':
+                if not record.user_id:
+                    raise ValidationError(_('Individual target requires a Salesperson.'))
+                if record.team_ids:
+                    raise ValidationError(_('Individual target cannot have Sales Teams.'))
+            elif record.target_type == 'team':
+                if not record.team_ids:
+                    raise ValidationError(_('Team target requires at least one Sales Team.'))
+                if record.user_id:
+                    raise ValidationError(_('Team target cannot have a Salesperson.'))
 
     # Notification Methods
     def send_achievement_notification(self):

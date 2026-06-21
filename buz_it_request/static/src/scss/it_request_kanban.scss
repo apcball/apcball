@@ -31,17 +31,22 @@
             transform: translateY(-2px);
         }
 
-        &.o_it_request_card_type_dev_feature {
-            --it-type: #6366f1;
-            --it-type-soft: #eef2ff;
-            --it-type-line: #c7d2fe;
-        }
-        &.o_it_request_card_type_error {
+        &.o_it_request_card_type_problem {
             --it-type: #ef4444;
             --it-type-soft: #fef2f2;
             --it-type-line: #fecaca;
         }
-        &.o_it_request_card_type_equipment_repair {
+        &.o_it_request_card_type_feature_request {
+            --it-type: #6366f1;
+            --it-type-soft: #eef2ff;
+            --it-type-line: #c7d2fe;
+        }
+        &.o_it_request_card_type_it_equipment_purchase {
+            --it-type: #10b981;
+            --it-type-soft: #ecfdf5;
+            --it-type-line: #a7f3d0;
+        }
+        &.o_it_request_card_type_it_equipment_repair {
             --it-type: #f59e0b;
             --it-type-soft: #fffbeb;
             --it-type-line: #fde68a;
@@ -148,6 +153,25 @@
 
     .o_it_request_desc .o_field_text {
         white-space: pre-line;
+    }
+
+    // ── Module name ──────────────────────────────────────
+    .o_it_request_module {
+        margin: 8px 0 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: 6px;
+        background: #f1f5f9;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 600;
+
+        i {
+            font-size: 11px;
+            color: #94a3b8;
+        }
     }
 
     // ── Meta: type pill + date ───────────────────────────

@@ -675,4 +675,127 @@
         </field>
     </record>
 
+    <!-- ================================================================== -->
+    <!-- Company Target Views (no user/team — whole company)                -->
+    <!-- ================================================================== -->
+    <record id="view_company_target_tree" model="ir.ui.view">
+        <field name="name">sales.target.company.tree</field>
+        <field name="model">sales.target</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state=='confirmed'" decoration-info="state=='draft'" decoration-muted="state=='closed'">
+                <field name="name" string="Target"/>
+                <field name="target_point" optional="show"/>
+                <field name="target_amount" widget="monetary"/>
+                <field name="achieved_amount" widget="monetary"/>
+                <field name="percent_achieved" widget="percentage"/>
+                <field name="date_start" optional="show"/>
+                <field name="date_end" optional="show"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_company_target_form" model="ir.ui.view">
+        <field name="name">sales.target.company.form</field>
+        <field name="model">sales.target</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm" class="oe_highlight"
+                            invisible="state != 'draft'"/>
+                    <button name="action_reset_to_draft" type="object" string="Reset to Draft" class="btn-secondary"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_close" type="object" string="Close" class="oe_highlight"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_recompute_achievement" type="object" string="Recompute" class="btn-secondary"
+                            title="Recalculate achievement"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Company Target Description"
+                                   readonly="state != 'draft'"/>
+                        </h1>
+                    </div>
+                    <group string="General Information">
+                        <group>
+                            <field name="target_type" invisible="1"/>
+                            <field name="company_id" readonly="state != 'draft'"/>
+                            <field name="target_point" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="target_amount" widget="monetary" readonly="state != 'draft'"/>
+                            <field name="date_start" readonly="state != 'draft'"/>
+                            <field name="date_end" readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+
+                    <group string="Achievement Summary">
+                        <group>
+                            <field name="achieved_amount" widget="monetary" readonly="1"/>
+                            <field name="percent_achieved" widget="percentage" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="theoretical_amount" widget="monetary" readonly="1"/>
+                            <field name="theoretical_percent" widget="percentage" readonly="1"/>
+                            <field name="theoretical_status" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Related Invoices">
+                            <div class="alert alert-info" role="alert" style="margin-bottom:16px;">
+                                <strong>Target Point:</strong> <field name="target_point" readonly="1" class="oe_inline"/> |
+                                <strong>Period:</strong> <field name="date_start" readonly="1" class="oe_inline"/> - <field name="date_end" readonly="1" class="oe_inline"/>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button name="action_view_invoices" type="object" string="View Invoices" class="btn-primary" style="flex:1;"/>
+                                <button name="action_view_invoice_lines" type="object" string="View Invoice Lines" class="btn-secondary" style="flex:1;"/>
+                            </div>
+                        </page>
+                        <page string="Notes">
+                            <field name="note" placeholder="Additional notes..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_company_target" model="ir.actions.act_window">
+        <field name="name">Company Target</field>
+        <field name="res_model">sales.target</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('target_type', '=', 'company')]</field>
+        <field name="context">{'default_target_type': 'company'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Set your first company-wide sales target!
+            </p>
+            <p>
+                Company targets track overall sales performance across the entire organization.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_company_target_tree" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_company_target_tree"/>
+        <field name="act_window_id" ref="action_company_target"/>
+    </record>
+
+    <record id="action_company_target_form" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_company_target_form"/>
+        <field name="act_window_id" ref="action_company_target"/>
+    </record>
+
 </odoo>

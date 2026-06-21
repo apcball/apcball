@@ -1,0 +1,218 @@
+// ─── NavBar (Odoo 19 Style) ────────────────────────────────────────────
+// White navbar, slim pills, icon-only apps menu, clean systray.
+
+header.o_navbar .o_main_navbar {
+    // White navbar with subtle border
+    background: #FFFFFF;
+    border-bottom: 1px solid #E2E8F0;
+    height: 52px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+
+    // Apps menu toggle — rounded icon button
+    .o_navbar_apps_menu {
+        .dropdown-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            margin: 0 4px;
+            border-radius: 8px;
+            background: transparent;
+            color: #475569;
+            font-size: 1.25rem;
+            transition: all 0.15s ease;
+
+            &:hover {
+                background: #F1F5F9;
+                color: #0F172A;
+            }
+
+            .oi-apps::before {
+                content: "\f0c9"; // hamburger-like grid
+            }
+        }
+    }
+
+    // Brand name
+    .o_menu_brand {
+        color: #0F172A;
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding-left: 8px;
+        margin-right: 4px;
+        letter-spacing: -0.01em;
+
+        &:hover {
+            background: transparent;
+        }
+    }
+
+    // Section menu items — pill-style
+    .o_menu_sections {
+        gap: 2px;
+
+        .o_nav_entry, .dropdown-toggle {
+            color: #475569;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 6px 12px;
+            margin: 0 1px;
+            border-radius: 6px;
+            background: transparent;
+            transition: all 0.15s ease;
+            height: 36px;
+            line-height: 36px;
+
+            &:hover {
+                background: #F1F5F9;
+                color: #0F172A;
+            }
+
+            &:focus {
+                background: #F1F5F9;
+            }
+        }
+
+        .dropdown.show > .dropdown-toggle {
+            background: rgba(#1A6F8C, 0.08);
+            color: #1A6F8C;
+            border-color: transparent;
+        }
+    }
+
+    // More menu (+) button
+    .o_menu_sections_more {
+        .o_nav_entry, .dropdown-toggle {
+            padding: 6px 10px;
+        }
+    }
+
+    // Systray
+    .o_menu_systray {
+        gap: 2px;
+
+        > div, .dropdown-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            transition: all 0.15s ease;
+
+            &:hover {
+                background: #F1F5F9;
+            }
+        }
+
+        // Badge in systray
+        .badge {
+            background-color: #EF4444;
+            color: #FFFFFF;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 5px;
+            border-radius: 4px;
+            border: 2px solid #FFFFFF;
+            transform: translate(-0.4em, -25%);
+            text-shadow: none;
+        }
+    }
+
+    // Dropdown menus from navbar
+    .dropdown-menu {
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        padding: 4px;
+
+        .dropdown-item {
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 0.875rem;
+            color: #334155;
+
+            &:hover {
+                background: #F1F5F9;
+                color: #0F172A;
+            }
+
+            &.o_dropdown_menu_group_entry {
+                padding-left: 28px;
+            }
+        }
+
+        .dropdown-header {
+            color: #94A3B8;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 12px;
+        }
+    }
+
+    // Superuser indicator
+    .o_menu_systray:has(body.o_is_superuser) {
+        border-image: none;
+    }
+}
+
+// Dark mode overrides for navbar
+body.o_webclient_dark header.o_navbar .o_main_navbar {
+    background: #1E293B;
+    border-bottom-color: #334155;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+
+    .o_menu_systray > div:hover,
+    .o_menu_systray .dropdown-toggle:hover,
+    .o_navbar_apps_menu .dropdown-toggle:hover,
+    .o_menu_sections .o_nav_entry:hover,
+    .o_menu_sections .dropdown-toggle:hover {
+        background: #334155;
+    }
+
+    .o_menu_brand,
+    .o_menu_sections .o_nav_entry,
+    .o_menu_sections .dropdown-toggle {
+        color: #CBD5E1;
+
+        &:hover {
+            color: #F1F5F9;
+        }
+    }
+
+    .o_menu_sections .dropdown.show > .dropdown-toggle {
+        background: rgba(#1A6F8C, 0.15);
+        color: #38BDF8;
+    }
+
+    .o_navbar_apps_menu .dropdown-toggle {
+        color: #CBD5E1;
+
+        &:hover {
+            color: #F1F5F9;
+        }
+    }
+
+    .dropdown-menu {
+        background: #1E293B;
+        border-color: #334155;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+        .dropdown-item {
+            color: #CBD5E1;
+
+            &:hover {
+                background: #334155;
+                color: #F1F5F9;
+            }
+        }
+
+        .dropdown-header {
+            color: #64748B;
+        }
+    }
+}

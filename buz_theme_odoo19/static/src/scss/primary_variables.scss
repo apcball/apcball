@@ -1,0 +1,125 @@
+// ─── Odoo 19 Primary Variable Overrides ───────────────────────────────
+// Override Odoo 17 SCSS variables before Bootstrap compilation to
+// achieve Odoo 19's modern visual language.
+
+// === Brand Colors (Odoo 19 Inspired) ===
+$o-community-color: #1A6F8C !default;  // Modern teal-blue (was #71639e purple)
+$o-enterprise-color: #1A6F8C !default; // Same for enterprise
+$o-enterprise-action-color: #148B91 !default;
+
+$o-brand-odoo: $o-community-color !default;
+$o-brand-primary: $o-community-color !default;
+$o-brand-secondary: #475569 !default;   // Slate gray (was #8f8f8f)
+
+// === Semantic Colors ===
+$o-action: $o-brand-primary !default;
+$o-success: #10B981 !default;  // Emerald (was #28a745)
+$o-info: #06B6D4 !default;     // Cyan (was #17a2b8)
+$o-warning: #F59E0B !default;  // Amber (was #ffac00)
+$o-danger: #EF4444 !default;   // Red (was #dc3545)
+
+// === Text Colors ===
+$o-main-text-color: #334155 !default;      // Slate-700 (was #495057)
+$o-main-bg-color: #F1F5F9 !default;       // Slate-100 (was #f0eeee)
+$o-main-color-muted: #94A3B8 !default;     // Slate-400
+$o-main-headings-color: #0F172A !default;  // Slate-900 (was #212529)
+$o-main-link-color: darken(#1A6F8C, 5%) !default;
+
+// === View Background ===
+$o-view-background-color: #FFFFFF !default;
+$o-webclient-background-color: #F8FAFC !default;
+
+// === Gray Palette (Odoo 19: cooler/grayer) ===
+$o-gray-100: #F1F5F9 !default;  // (was #f8f9fa)
+$o-gray-200: #E2E8F0 !default;  // (was #e9ecef)
+$o-gray-300: #CBD5E1 !default;  // (was #dee2e6)
+$o-gray-400: #94A3B8 !default;  // (was #ced4da)
+$o-gray-500: #64748B !default;  // (was #adb5bd)
+$o-gray-600: #475569 !default;  // (was #6c757d)
+$o-gray-700: #334155 !default;  // (was #495057)
+$o-gray-800: #1E293B !default;  // (was #343a40)
+$o-gray-900: #0F172A !default;  // (was #212529)
+
+// === Border Radius (Odoo 19: more rounded) ===
+$o-border-radius: 6px !default;     // (was 4px)
+$o-border-radius-sm: 4px !default;  // (was 3px)
+$o-border-radius-lg: 10px !default; // (was 6px)
+
+// === Spacing ===
+$o-spacer: 16px !default;
+$o-horizontal-padding: 20px !default; // (was 16px)
+$o-form-spacing-unit: 6px !default;   // (was 5px)
+
+// === Font ===
+$o-font-size-base: 14px !default;
+$o-line-height-base: 1.5 !default;
+$o-label-font-size-factor: 0.85 !default;
+
+// === Shadow (Odoo 19: softer, larger) ===
+$o-shadow-color: #1E293B !default;
+// Bootstrap-level shadows are defined per-component in component SCSS files
+
+// === Navbar ===
+$o-navbar-height: 52px !default;  // (was 46px)
+$o-navbar-padding-v: 0 !default;
+$o-navbar-font-size: 14px !default;
+$o-navbar-background: #FFFFFF !default;
+$o-navbar-border-bottom: 1px solid #E2E8F0 !default;
+$o-navbar-entry-color: #475569 !default;
+$o-navbar-entry-color--hover: #0F172A !default;
+$o-navbar-entry-color--active: #1A6F8C !default;
+$o-navbar-entry-bg--hover: #F1F5F9 !default;
+$o-navbar-entry-bg--active: rgba(#1A6F8C, 0.08) !default;
+$o-navbar-entry-border-radius: 6px !default;
+$o-navbar-entry-padding-h: 0.5em !default;
+$o-navbar-entry-margin-h: 2px !default;
+$o-navbar-dropdown-menu-border-top: 0 !default;
+$o-navbar-dropdown-menu-border-radius: 8px !default;
+$o-navbar-brand-color: #0F172A !default;
+$o-navbar-brand-font-size: 1.1em !default;
+$o-navbar-badge-bg: #EF4444 !default;
+
+// === Status Bar ===
+$o-statusbar-height: 34px !default;
+
+// === Buttons ===
+$o-input-padding-y: 4px !default;  // (was 2px)
+$o-input-padding-x: 8px !default;  // (was 4px)
+$o-input-hover-border-color: #94A3B8 !default;
+$o-input-border-required: #1A6F8C !default;
+
+// === Control Panel ===
+$o-control-panel-background-color: #FFFFFF !default;
+
+// === Breadcrumbs ===
+$o-cp-breadcrumb-height: 32px !default;
+
+// === Form ===
+$o-sheet-vpadding: 24px !default;
+$o-form-renderer-max-width: 2600px !default;
+$o-form-view-sheet-max-width: 1534px !default;
+
+// === Statusbar ===
+$o-statusbar-arrow-width: 1em !default;
+
+// === Form light secondary ===
+$o-form-lightsecondary: #94A3B8 !default;
+
+// === List view ===
+$o-list-footer-bg-color: transparent !default;
+$o-list-footer-font-weight: 600 !default;
+
+// === Modal ===
+$o-modal-lg: 980px !default;
+$o-modal-md: 650px !default;
+
+// === Stat Buttons ===
+$o-statbutton-height: 46px !default;
+$o-statbutton-vpadding: 0 !default;
+$o-statbutton-spacing: 8px !default;
+
+// === Tabs ===
+$o-base-settings-mobile-tabs-height: 42px !default;
+
+// === Touch ===
+$o-touch-btn-padding: 8px 16px !default;

@@ -1,0 +1,132 @@
+// ─── Base Layout (Odoo 19 Style) ───────────────────────────────────────
+// Global background, scrollbar, page-level overrides.
+
+// Page background — light slate
+.o_web_client {
+    background: #F8FAFC;
+}
+
+// Content area background
+.o_content {
+    background: transparent;
+}
+
+// View backgrounds
+.o_form_view,
+.o_list_view,
+.o_kanban_view,
+.o_calendar_view,
+.o_pivot,
+.o_graph,
+.o_cohort,
+.o_activity_view {
+    background: transparent;
+}
+
+// Scrollbar styling (Webkit)
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 3px;
+
+    &:hover {
+        background: #94A3B8;
+    }
+}
+
+// Selection highlight
+::selection {
+    background: rgba(#1A6F8C, 0.15);
+    color: inherit;
+}
+
+// Loading indicator
+.o_spinner {
+    .o_spinner_icon {
+        border: 3px solid #E2E8F0;
+        border-top-color: #1A6F8C;
+        border-radius: 50%;
+    }
+}
+
+// Notification area
+.o_notification_manager {
+    .o_notification {
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+
+        &.o_notification_success {
+            background: #10B981;
+            color: #FFFFFF;
+        }
+
+        &.o_notification_danger {
+            background: #EF4444;
+            color: #FFFFFF;
+        }
+
+        &.o_notification_warning {
+            background: #F59E0B;
+            color: #FFFFFF;
+        }
+
+        &.o_notification_info {
+            background: #06B6D4;
+            color: #FFFFFF;
+        }
+    }
+}
+
+// Dark mode base
+body.o_webclient_dark {
+    .o_web_client {
+        background: #1A1D23;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #475569;
+
+        &:hover {
+            background: #64748B;
+        }
+    }
+
+    ::selection {
+        background: rgba(#38BDF8, 0.2);
+    }
+
+    .o_spinner .o_spinner_icon {
+        border-color: #334155;
+        border-top-color: #38BDF8;
+    }
+
+    // Status bar colored areas
+    .o_statusbar_status .o_arrow_button {
+        color: #94A3B8;
+    }
+
+    // Notebook active tab
+    .nav-tabs .nav-link {
+        color: #94A3B8;
+    }
+
+    // Checkbox
+    .form-check-input {
+        background-color: #1E293B;
+        border-color: #475569;
+
+        &:checked {
+            background-color: #38BDF8;
+            border-color: #38BDF8;
+        }
+    }
+}

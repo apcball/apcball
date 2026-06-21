@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">Odoo 19 Theme Settings</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='general_settings']" position="inside">
+                <div id="theme_o19">
+                    <block title="Odoo 19 Theme" name="theme_o19_settings">
+                        <setting id="theme_o19_dark_mode_setting" help="Choose how dark mode behaves.">
+                            <field name="theme_o19_dark_mode"/>
+                        </setting>
+                        <setting id="theme_o19_color_variant_setting" help="Choose the accent color scheme.">
+                            <field name="theme_o19_color_variant"/>
+                        </setting>
+                    </block>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

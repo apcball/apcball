@@ -1,0 +1,169 @@
+// ─── Dialogs & Modals (Odoo 19 Style) ──────────────────────────────────
+// Cleaner modals, rounded, with shadow.
+
+.modal {
+    .modal-dialog {
+        .modal-content {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            border-bottom: 1px solid #E2E8F0;
+            padding: 16px 24px;
+
+            .modal-title {
+                font-size: 1rem;
+                font-weight: 700;
+                color: #0F172A;
+            }
+
+            .btn-close {
+                opacity: 0.5;
+                transition: opacity 0.15s;
+                border-radius: 4px;
+
+                &:hover {
+                    opacity: 0.8;
+                }
+            }
+        }
+
+        .modal-body {
+            padding: 20px 24px;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #E2E8F0;
+            padding: 12px 24px;
+            gap: 8px;
+
+            .btn {
+                min-width: 80px;
+            }
+        }
+    }
+}
+
+// Dialog (Odoo native dialog popup)
+.o_dialog {
+    .modal-content {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+    }
+
+    .modal-header {
+        border-bottom: 1px solid #E2E8F0;
+        padding: 16px 24px;
+    }
+
+    .modal-body {
+        padding: 20px 24px;
+    }
+
+    .modal-footer {
+        border-top: 1px solid #E2E8F0;
+        padding: 12px 24px;
+    }
+}
+
+// Dropdown menus
+.dropdown-menu {
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    padding: 4px;
+
+    .dropdown-item {
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 0.875rem;
+        color: #334155;
+        transition: background 0.1s;
+
+        &:hover {
+            background: #F1F5F9;
+            color: #0F172A;
+        }
+
+        &.active, &:active {
+            background: rgba(#1A6F8C, 0.08);
+            color: #1A6F8C;
+        }
+    }
+
+    .dropdown-header {
+        color: #94A3B8;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 4px 12px;
+    }
+
+    .dropdown-divider {
+        border-color: #E2E8F0;
+        margin: 4px 0;
+    }
+}
+
+// Dark mode
+body.o_webclient_dark {
+    .modal .modal-dialog .modal-content {
+        background: #242830;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal .modal-dialog {
+        .modal-header {
+            border-bottom-color: #334155;
+
+            .modal-title {
+                color: #F1F5F9;
+            }
+
+            .btn-close {
+                filter: invert(0.7);
+            }
+        }
+
+        .modal-body {
+            color: #CBD5E1;
+        }
+
+        .modal-footer {
+            border-top-color: #334155;
+        }
+    }
+
+    .dropdown-menu {
+        background: #242830;
+        border-color: #334155;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+        .dropdown-item {
+            color: #CBD5E1;
+
+            &:hover {
+                background: #334155;
+                color: #F1F5F9;
+            }
+
+            &.active, &:active {
+                background: rgba(#38BDF8, 0.1);
+                color: #38BDF8;
+            }
+        }
+
+        .dropdown-header {
+            color: #64748B;
+        }
+
+        .dropdown-divider {
+            border-color: #334155;
+        }
+    }
+}

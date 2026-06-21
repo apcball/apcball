@@ -37,6 +37,8 @@ class MCPController(http.Controller):
         'account_move_search': 'read',
         'purchase_order_search': 'read',
         'purchase_order_read': 'read',
+        'budget_report': 'read',
+        'refresh_budget_mv': 'read',
     }
 
     POLICY_LEVELS = {'read': 0, 'write': 1}
@@ -541,6 +543,47 @@ class MCPController(http.Controller):
                             'description': 'Max records (default 80)'
                         }
                     }
+                }
+            },
+            {
+                'name': 'budget_report',
+                'description': 'Search budget report by department, plan, or period',
+                'inputSchema': {
+                    'type': 'object',
+                    'properties': {
+                        'department_id': {
+                            'type': 'integer',
+                            'description': 'Filter by department ID'
+                        },
+                        'plan_id': {
+                            'type': 'integer',
+                            'description': 'Filter by budget plan ID'
+                        },
+                        'analytic_account_id': {
+                            'type': 'integer',
+                            'description': 'Filter by analytic account ID'
+                        },
+                        'year': {
+                            'type': 'string',
+                            'description': 'Filter by year e.g. "2026"'
+                        },
+                        'month': {
+                            'type': 'string',
+                            'description': 'Filter by month number e.g. "06"'
+                        },
+                        'limit': {
+                            'type': 'integer',
+                            'description': 'Max records (default 80)'
+                        }
+                    }
+                }
+            },
+            {
+                'name': 'refresh_budget_mv',
+                'description': 'Recreate and refresh the budget report materialized view',
+                'inputSchema': {
+                    'type': 'object',
+                    'properties': {}
                 }
             },
         ]
@@ -2091,6 +2134,79 @@ class MCPController(http.Controller):
                 'error': str(e)
             }, status=400)
 
+    @http.route('/mcp/call/budget_report', type='http', auth='public', methods=['POST'], csrf=False)
+    def budget_report(self, **kwargs):
+        """Search budget report by department, plan, or period"""
+        try:
+            key_record = self._verify_api_key()
+            self._check_policy(key_record, 'budget_report')
+            data = json.loads(request.httprequest.data)
+            department_id = data.get('department_id')
+            plan_id = data.get('plan_id')
+            analytic_account_id = data.get('analytic_account_id')
+            year = data.get('year')
+            month = data.get('month')
+            limit = data.get('limit', 80)
+
+            domain = []
+            if department_id:
+                domain.append(('department_id', '=', department_id))
+            if plan_id:
+                domain.append(('plan_id', '=', plan_id))
+            if analytic_account_id:
+                domain.append(('analytic_account_id', '=', analytic_account_id))
+            if year:
+                domain.append(('date', '>=', '%s-01-01' % year))
+                domain.append(('date', '<=', '%s-12-31' % year))
+            if month:
+                domain.append(('date', 'like', '-%s-' % month))
+
+            field_list = data.get('fields', [
+                'budget_line_id', 'plan_id', 'analytic_account_id',
+                'department_id', 'project_id', 'category', 'entry_type',
+                'name', 'amount', 'date', 'budget_amt', 'actual_amt',
+                'remaining_amt', 'utilization',
+            ])
+
+            records = request.env['monthly.budget.report'].sudo().search(domain, limit=limit)
+            result = records.read(field_list)
+
+            return request.make_json_response({
+                'success': True,
+                'data': result
+            })
+        except AccessDenied as e:
+            return request.make_json_response({
+                'success': False,
+                'error': str(e)
+            }, status=401)
+        except Exception as e:
+            return request.make_json_response({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+    @http.route('/mcp/call/refresh_budget_mv', type='http', auth='public', methods=['POST'], csrf=False)
+    def refresh_budget_mv(self, **kwargs):
+        """Recreate and refresh the budget report materialized view"""
+        try:
+            key_record = self._verify_api_key()
+            self._check_policy(key_record, 'refresh_budget_mv')
+            BudgetReport = request.env['monthly.budget.report'].sudo()
+            BudgetReport.init()
+            return request.make_json_response({
+                'success': True,
+                'data': {'message': 'Budget report materialized view recreated and refreshed'}
+            })
+        except AccessDenied as e:
+            return request.make_json_response({
+                'success': False,
+                'error': str(e)
+            }, status=401)
+        except Exception as e:
+            return request.make_json_response({
+                'success': False,
+                'error': str(e)
+            }, status=400)
     # ─── Company endpoints ──────────────────────────────────────
 
     @http.route('/mcp/call/company_list', type='http', auth='public', methods=['POST'], csrf=False)

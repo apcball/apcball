@@ -1,0 +1,245 @@
+// ─── Control Panel (Odoo 19 Style) ─────────────────────────────────────
+// Cleaner, more whitespace, subtle borders.
+
+.o_control_panel {
+    background: #FFFFFF;
+    border-bottom: 1px solid #E2E8F0;
+    padding: 12px 20px 10px 20px;
+    min-height: 48px;
+
+    // Breadcrumb area
+    .o_control_panel_breadcrumbs {
+        min-width: 180px;
+    }
+
+    // Main buttons (create, layout, etc.)
+    .o_control_panel_main_buttons {
+        .btn {
+            padding: 4px 12px;
+            font-size: 0.8125rem;
+        }
+    }
+
+    // Breadcrumb styling
+    .o_breadcrumb {
+        .breadcrumb {
+            font-size: 0.8125rem;
+
+            .breadcrumb-item {
+                a {
+                    color: #64748B;
+                    font-weight: 500;
+
+                    &:hover {
+                        color: #1A6F8C;
+                    }
+                }
+
+                &.active {
+                    color: #0F172A;
+                }
+            }
+        }
+
+        .o_last_breadcrumb_item {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0F172A;
+            line-height: 1.3;
+        }
+    }
+
+    // Action buttons area
+    .o_control_panel_actions {
+        gap: 6px;
+
+        .btn {
+            border-radius: 6px;
+        }
+    }
+
+    // Navigation area (pager, view switcher)
+    .o_control_panel_navigation {
+        gap: 10px;
+
+        .o_cp_pager {
+            .o_pager {
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                overflow: hidden;
+                height: 32px;
+
+                .o_pager_value {
+                    font-size: 0.8125rem;
+                    font-weight: 600;
+                    color: #334155;
+                    padding: 0 8px;
+                }
+
+                .o_pager_previous,
+                .o_pager_next {
+                    padding: 0 8px;
+                    color: #64748B;
+                    background: #F8FAFC;
+                    border: none;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+
+                    &:hover {
+                        background: #F1F5F9;
+                        color: #0F172A;
+                    }
+                }
+            }
+        }
+
+        // View switcher buttons
+        .o_cp_switch_buttons {
+            .btn {
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                padding: 4px 10px;
+                color: #64748B;
+                background: #FFFFFF;
+
+                &:hover {
+                    background: #F1F5F9;
+                    border-color: #CBD5E1;
+                }
+
+                &.active {
+                    background: #1A6F8C;
+                    border-color: #1A6F8C;
+                    color: #FFFFFF;
+                }
+            }
+        }
+    }
+
+    // Search bar
+    .o_searchbar {
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        background: #FFFFFF;
+        transition: border-color 0.15s, box-shadow 0.15s;
+
+        &:focus-within {
+            border-color: #1A6F8C;
+            box-shadow: 0 0 0 3px rgba(#1A6F8C, 0.1);
+        }
+
+        .o_searchview {
+            .o_searchview_facet {
+                background: #F1F5F9;
+                border: 1px solid #E2E8F0;
+                border-radius: 4px;
+
+                .o_searchview_facet_label {
+                    background: #E2E8F0;
+                    color: #475569;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                }
+            }
+
+            .o_searchview_input {
+                font-size: 0.875rem;
+                color: #334155;
+            }
+
+            .o_searchview_more {
+                color: #64748B;
+                font-size: 0.75rem;
+            }
+        }
+    }
+}
+
+// Dark mode
+body.o_webclient_dark .o_control_panel {
+    background: #1E293B;
+    border-bottom-color: #334155;
+
+    .o_breadcrumb {
+        .breadcrumb .breadcrumb-item a {
+            color: #94A3B8;
+
+            &:hover {
+                color: #38BDF8;
+            }
+        }
+
+        .o_last_breadcrumb_item {
+            color: #F1F5F9;
+        }
+    }
+
+    .o_control_panel_navigation {
+        .o_cp_pager .o_pager {
+            border-color: #334155;
+
+            .o_pager_value {
+                color: #CBD5E1;
+            }
+
+            .o_pager_previous,
+            .o_pager_next {
+                color: #94A3B8;
+                background: #1E293B;
+
+                &:hover {
+                    background: #334155;
+                    color: #F1F5F9;
+                }
+            }
+        }
+
+        .o_cp_switch_buttons .btn {
+            border-color: #334155;
+            color: #94A3B8;
+            background: #1E293B;
+
+            &:hover {
+                background: #334155;
+                border-color: #475569;
+            }
+
+            &.active {
+                background: #1A6F8C;
+                border-color: #1A6F8C;
+                color: #FFFFFF;
+            }
+        }
+    }
+
+    .o_searchbar {
+        border-color: #334155;
+        background: #1E293B;
+
+        &:focus-within {
+            border-color: #38BDF8;
+            box-shadow: 0 0 0 3px rgba(#38BDF8, 0.15);
+        }
+
+        .o_searchview {
+            .o_searchview_facet {
+                background: #334155;
+                border-color: #475569;
+
+                .o_searchview_facet_label {
+                    background: #475569;
+                    color: #CBD5E1;
+                }
+            }
+
+            .o_searchview_input {
+                color: #CBD5E1;
+            }
+
+            .o_searchview_more {
+                color: #64748B;
+            }
+        }
+    }
+}

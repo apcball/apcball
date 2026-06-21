@@ -66,10 +66,10 @@ class MonthlyBudgetReport(models.Model):
                 SELECT
                     'budget' as entry_type,
                     wbl.id::text as name,
-                    wbl.budget_amount as amount,
-                    wbl.budget_amount as budget_amt,
+                    wbl.budget_amount + COALESCE(wbl.carried_amount, 0.0) as amount,
+                    wbl.budget_amount + COALESCE(wbl.carried_amount, 0.0) as budget_amt,
                     0.0 as actual_amt,
-                    wbl.budget_amount as remaining_amt,
+                    wbl.budget_amount + COALESCE(wbl.carried_amount, 0.0) as remaining_amt,
                     0.0 as utilization,
                     wbp.date_from as date,
                     wbl.company_id as company_id,

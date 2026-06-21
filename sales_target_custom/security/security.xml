@@ -25,11 +25,11 @@
 
     <data noupdate="1">
         <!-- Record Rules for Sales Target -->
-        <!-- Sales Target User: Can see and edit own targets only -->
+        <!-- Sales Target User: Can see own targets and company targets -->
         <record id="sales_target_rule_user" model="ir.rule">
-            <field name="name">Sales Target: User can see and edit own targets</field>
+            <field name="name">Sales Target: User can see own targets and company targets</field>
             <field name="model_id" ref="model_sales_target"/>
-            <field name="domain_force">['|', ('user_id', '=', user.id), ('team_ids.member_ids', 'in', [user.id])]</field>
+            <field name="domain_force">['|', ('target_type', '=', 'company'), '|', ('user_id', '=', user.id), ('team_ids.member_ids', 'in', [user.id])]</field>
             <field name="groups" eval="[(4, ref('group_sales_target_user'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -49,11 +49,11 @@
             <field name="perm_unlink" eval="False"/>
         </record>
         
-        <!-- Sales Target Lead: Can edit their own targets -->
+        <!-- Sales Target Lead: Can edit their own targets and company targets -->
         <record id="sales_target_rule_lead_edit_own" model="ir.rule">
-            <field name="name">Sales Target: Lead can edit own targets</field>
+            <field name="name">Sales Target: Lead can edit own targets and company targets</field>
             <field name="model_id" ref="model_sales_target"/>
-            <field name="domain_force">['|', ('user_id', '=', user.id), ('team_ids.member_ids', 'in', [user.id])]</field>
+            <field name="domain_force">['|', ('target_type', '=', 'company'), '|', ('user_id', '=', user.id), ('team_ids.member_ids', 'in', [user.id])]</field>
             <field name="groups" eval="[(4, ref('group_sales_target_lead'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>

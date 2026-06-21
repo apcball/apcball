@@ -80,6 +80,28 @@ Standard Odoo 17: `models/`, `views/`, `security/`, `data/`, `wizard/`, `report/
 
 `__pycache__/`, `*.pyc`, `uploads/`, `*.tar.gz`, `.env`, `.venv/`, lockfiles from other tools (`.thclaws/`, `.codewhale/`, `.deepseek/`). Module `README.*` files are Odoo app store descriptions only.
 
+## MCP Tools (Odoo Query)
+
+Connect to live Odoo DB via MCP. Available tools:
+
+| Tool | Use | Example |
+|------|-----|---------|
+| `odoo_search(model, domain, fields?, limit?)` | ค้นหาหลาย record | `odoo_search('sale_order', [['state','=','sale']], ['name','amount_total'], 20)` |
+| `odoo_read(model, id, fields?)` | อ่าน record เดียว | `odoo_read('sale_order', 16375)` |
+| `odoo_create(model, values)` | สร้าง record ใหม่ | `odoo_create('partner', {name:'New Co', is_company:true})` |
+| `odoo_query(endpoint, payload?)` | เรียก endpoint ใดๆ | `odoo_query('account_move_search', {domain:[['id','=',40322]]})` |
+| `odoo_report(type, filters)` | รายงานยอดขาย/บัญชี | `odoo_report('sale_report', {date_from:'2026-06-01'})` |
+| `odoo_company_list(fields?)` | รายชื่อบริษัททั้งหมด | `odoo_company_list()` |
+
+### Models ที่รองรับ
+
+`partner`, `product`, `sale_order`, `account_move`, `purchase_order`, `company`
+
+### Tip
+
+- ใช้ `odoo_query('sale_order_search', ...)` ตอนต้องการ fields ที่ `odoo_search` ไม่มี (เช่น `delivery_status`, `invoice_status`)
+- ใช้ `odoo_query('account_move_search', ...)` เช็คสถานะการชำเงินของ invoice (`payment_state`, `amount_residual`)
+
 ## Server paths
 
 | Server | Host | Addons root | Config | Service |

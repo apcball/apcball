@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_force_invoice_wizard_user,sale.force.invoice.wizard user,model_sale_force_invoice_wizard,buz_sale_force_invoice.group_force_invoice_manager,1,1,1,1

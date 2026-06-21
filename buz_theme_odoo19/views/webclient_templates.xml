@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Client-side Owl template overrides are handled via SCSS selectors.
+        No server-side QWeb inheritance needed.
+    -->
+</odoo>
