@@ -4,8 +4,6 @@ from datetime import timedelta
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
-    purchase_price = fields.Float(string='Purchase Price', digits='Product Price')
-
     discount_percent = fields.Float(string='Discount Percent', compute='_compute_discount_percent', store=True)
     net_price = fields.Float(string='Net Price', compute='_compute_net_price', store=True)
 
@@ -24,11 +22,6 @@ class SaleOrderLine(models.Model):
                 line.net_price = line.normal_price - (line.normal_price * line.discount_percent / 100)
             else:
                 line.net_price = 0.0
-
-    @api.onchange('product_id')
-    def _onchange_product_id_set_purchase_price(self):
-        if self.product_id:
-            self.purchase_price = self.product_id.standard_price
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'

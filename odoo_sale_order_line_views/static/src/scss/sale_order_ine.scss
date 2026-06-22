@@ -1,8 +1,11 @@
-.order_line_img{
-    height: var(--Avatar-size, 5.5em);
-    aspect-ratio: 1;
-    object-fit: cover;
-    }
+/* Widen columns in order line tree on sale order/quotation form */
+.o_field_widget[name="order_line"] td[data-name="name"] {
+    min-width: 500px;
+}
+.o_field_widget[name="order_line"] td[data-name="product_id"] {
+    min-width: 400px;
+}
+
 .o_list_renderer .o_list_table .o_list_record_selector{
     vertical-align: baseline;
 }

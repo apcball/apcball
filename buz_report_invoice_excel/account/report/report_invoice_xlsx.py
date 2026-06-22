@@ -65,6 +65,12 @@ class ReportInvoiceExcel(models.AbstractModel):
 
                 uom = line.product_uom_id or (product.uom_id if product else self.env["uom.uom"])
 
+                # Extract purchase price / margin from first linked sale order line
+                sale_line = sale_lines[:1] if sale_lines else self.env["sale.order.line"]
+                purchase_price = sale_line.purchase_price if sale_line else 0.0
+                margin_percent = sale_line.margin_percent if sale_line else 0.0
+                margin = sale_line.margin if sale_line else 0.0
+
                 rows.append({
                     "sequence": sequence,
                     "date": self._format_date(invoice.invoice_date),
@@ -91,6 +97,9 @@ class ReportInvoiceExcel(models.AbstractModel):
                     "quantity": quantity,
                     "uom": self._safe_text(uom.name),
                     "unit_price": unit_price,
+                    "purchase_price": purchase_price,
+                    "margin_percent": margin_percent,
+                    "margin": margin,
                     "sum_amount": sum_amount,
                     "note": ", ".join(filter(None, pickings.mapped("delivery_note"))),
                     "trade_channel": self._safe_text(
@@ -196,6 +205,16 @@ class ReportInvoiceExcel(models.AbstractModel):
                 "border": 1,
             }
         )
+        percent_format = workbook.add_format(
+            {
+                "font_name": "TH Sarabun New",
+                "font_size": 12,
+                "valign": "top",
+                "align": "right",
+                "num_format": "0.00%",
+                "border": 1,
+            }
+        )
 
         columns = [
             ("No.", 8),
@@ -215,6 +234,9 @@ class ReportInvoiceExcel(models.AbstractModel):
             ("Quantity", 12),
             ("UoM", 10),
             ("Unit Price", 14),
+            ("Cost", 14),
+            ("Margin %", 12),
+            ("Margin", 14),
             ("SUM", 14),
             ("Note", 24),
             ("Trade Channel", 16),
@@ -256,9 +278,12 @@ class ReportInvoiceExcel(models.AbstractModel):
             sheet.write_number(row_idx, 14, row["quantity"] or 0.0, number_format)
             sheet.write(row_idx, 15, row["uom"], center_format)
             sheet.write_number(row_idx, 16, row["unit_price"] or 0.0, number_format)
-            sheet.write_number(row_idx, 17, row["sum_amount"] or 0.0, number_format)
-            sheet.write(row_idx, 18, row["note"], text_format)
-            sheet.write(row_idx, 19, row["trade_channel"], text_format)
+            sheet.write_number(row_idx, 17, row["purchase_price"] or 0.0, number_format)
+            sheet.write_number(row_idx, 18, row["margin_percent"] or 0.0, percent_format)
+            sheet.write_number(row_idx, 19, row["margin"] or 0.0, number_format)
+            sheet.write_number(row_idx, 20, row["sum_amount"] or 0.0, number_format)
+            sheet.write(row_idx, 21, row["note"], text_format)
+            sheet.write(row_idx, 22, row["trade_channel"], text_format)
             row_idx += 1
 
         if not rows:
