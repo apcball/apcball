@@ -19,7 +19,7 @@
 
         <!-- Report Action -->
         <record id="report_stock_request" model="ir.actions.report">
-            <field name="name">ใบเบิกสินค้าเข้า JOB</field>
+            <field name="name">ใบขอเบิกสินค้าเข้า JOB</field>
             <field name="model">mrp.stock.request</field>
             <field name="report_type">qweb-pdf</field>
             <field name="report_name">buz_mrp_stock_request.report_stock_request_template</field>
@@ -141,7 +141,7 @@
                                 </t>
 
                                 <!-- Title -->
-                                <div class="sr-title">ใบเบิกสินค้าเข้า JOB</div>
+                                <div class="sr-title">ใบขอเบิกสินค้าเข้า JOB</div>
 
                                 <!-- Info Section (every page) -->
                                 <table class="sr-info-table">

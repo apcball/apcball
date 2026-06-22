@@ -198,6 +198,14 @@
                                 </table>
                             </t>
 
+                            <!-- Notes Section -->
+                            <t t-if="mo.job_close_note">
+                                <div class="mc-section-title">หมายเหตุ</div>
+                                <div style="border: 1px solid #000; padding: 10px; min-height: 40px; margin-bottom: 15px; font-size: 20px;">
+                                    <t t-esc="mo.job_close_note"/>
+                                </div>
+                            </t>
+
                             <!-- Signature Section -->
                             <table class="mc-sign-table">
                                 <tr>

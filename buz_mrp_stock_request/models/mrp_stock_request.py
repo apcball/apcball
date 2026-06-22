@@ -22,6 +22,10 @@ class MrpProduction(models.Model):
         compute="_compute_pending_stock_request_count",
         help="Number of stock requests in 'requested' state with un-issued materials",
     )
+    job_close_note = fields.Text(
+        string="Job Close Note",
+        help="Note displayed on the Job Close report (ใบปิด Job)",
+    )
 
     def _compute_mrp_stock_request_count(self):
         for mo in self:

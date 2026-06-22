@@ -35,6 +35,14 @@
                         invisible="state not in ['progress', 'to_close', 'done']"/>
             </button>
 
+            <!-- Add Note tab after Miscellaneous page -->
+            <xpath expr="//page[@name='miscellaneous']" position="after">
+                <page string="Note" name="job_close_note">
+                    <field name="job_close_note" nolabel="1" placeholder="Write notes for the Job Close report (ใบปิด Job) ..."
+                           style="width: 100%%; min-height: 150px;" colspan="2"/>
+                </page>
+            </xpath>
+
             <!-- Add smart button for existing stock requests -->
             <div name="button_box" position="inside">
                 <button class="oe_stat_button" type="object"
