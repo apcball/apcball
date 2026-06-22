@@ -11,7 +11,7 @@
     <menuitem id="menu_warranty_dashboard"
               name="Dashboard"
               parent="menu_warranty_root"
-              action="action_warranty_dashboard"
+              action="action_warranty_dashboard_client"
               sequence="5"/>
 
     <!-- Warranty Cards Menu -->

@@ -1,3 +1,4 @@
+import json
 import logging
 
 from odoo import models, fields, api
@@ -405,3 +406,362 @@ class WarrantyDashboard(models.Model):
     def action_view_all_warranties(self):
         self.ensure_one()
         return self.env.ref('buz_warranty_management.action_warranty_card').read()[0]
+
+    # -------------------------------------------------------
+    # RPC endpoints (for new client-action OWL dashboard)
+    # -------------------------------------------------------
+
+    @api.model
+    def _ensure_cache_valid(self):
+        """Ensure cache is valid, refresh if not."""
+        cache = self.env['warranty.dashboard.cache']
+        record = cache.search([], limit=1) or cache.create({})
+        if record.cache_status != 'valid':
+            record._update_all_metrics()
+        elif record.cache_valid_until and record.cache_valid_until < fields.Datetime.now():
+            record._update_all_metrics()
+        return record
+
+    @api.model
+    def _build_warranty_domain(self, filters):
+        """Build search domain for warranty.card from filters."""
+        domain = []
+        if filters.get('date_from'):
+            domain.append(('create_date', '>=', filters['date_from']))
+        if filters.get('date_to'):
+            domain.append(('create_date', '<=', filters['date_to'] + ' 23:59:59'))
+        if filters.get('product_id'):
+            domain.append(('product_id', '=', int(filters['product_id'])))
+        if filters.get('customer_id'):
+            domain.append(('partner_id', '=', int(filters['customer_id'])))
+        return domain
+
+    @api.model
+    def _build_claim_domain(self, filters):
+        """Build search domain for warranty.claim from filters."""
+        domain = []
+        if filters.get('date_from'):
+            domain.append(('claim_date', '>=', filters['date_from']))
+        if filters.get('date_to'):
+            domain.append(('claim_date', '<=', filters['date_to'] + ' 23:59:59'))
+        if filters.get('product_id'):
+            domain.append(('warranty_card_id.product_id', '=', int(filters['product_id'])))
+        if filters.get('customer_id'):
+            domain.append(('warranty_card_id.partner_id', '=', int(filters['customer_id'])))
+        return domain
+
+    @api.model
+    def _has_active_filters(self, filters):
+        """Check if any non-default filter is set."""
+        return bool(filters.get('date_from') or filters.get('date_to')
+                    or filters.get('product_id') or filters.get('customer_id'))
+
+    @api.model
+    def _compute_filtered_kpis(self, filters):
+        """Compute KPIs directly from models with filter domain."""
+        w_domain = self._build_warranty_domain(filters)
+        c_domain = self._build_claim_domain(filters)
+        today = fields.Date.today()
+        near_expiry = today + timedelta(days=30)
+
+        card = self.env['warranty.card']
+        claim = self.env['warranty.claim']
+
+        all_ids = card.search(w_domain)
+        total = len(all_ids)
+        active = len(all_ids.filtered(lambda r: r.state == 'active'))
+        expired = len(all_ids.filtered(
+            lambda r: r.state == 'expired' or (r.end_date and r.end_date < today)
+        ))
+        near_exp = len(all_ids.filtered(
+            lambda r: r.state == 'active' and r.end_date and today <= r.end_date <= near_expiry
+        ))
+        claimed = len(all_ids.filtered(lambda r: r.claim_count > 0))
+
+        active_pct = (active / total * 100) if total else 0
+        expired_pct = (expired / total * 100) if total else 0
+        claimed_pct = (claimed / total * 100) if total else 0
+
+        first_this = today.replace(day=1)
+        c_domain_this = c_domain + [('claim_date', '>=', first_this)]
+        claims_this = claim.search_count(c_domain_this)
+
+        if today.month == 1:
+            first_last = today.replace(year=today.year - 1, month=12, day=1)
+        else:
+            first_last = today.replace(month=today.month - 1, day=1)
+        last_day_last = today.replace(day=1) - timedelta(days=1)
+        c_domain_last = c_domain + [('claim_date', '>=', first_last), ('claim_date', '<=', last_day_last)]
+        claims_last = claim.search_count(c_domain_last)
+
+        return {
+            'total_warranties': total,
+            'active_warranties': active,
+            'expired_warranties': expired,
+            'near_expiry_warranties': near_exp,
+            'claimed_warranties': claimed,
+            'active_percentage': active_pct,
+            'expired_percentage': expired_pct,
+            'claimed_percentage': claimed_pct,
+            'claims_this_month': claims_this,
+            'claims_last_month': claims_last,
+        }
+
+    @api.model
+    def _compute_filtered_status_chart(self, filters):
+        """Compute warranty status pie chart data with filters."""
+        domain = self._build_warranty_domain(filters)
+        card = self.env['warranty.card']
+        all_ids = card.search(domain)
+        states = {}
+        for r in all_ids:
+            st = r.state
+            states[st] = states.get(st, 0) + 1
+        color_map = {'draft': '#6b7280', 'active': '#10b981', 'expired': '#ef4444', 'cancelled': '#f59e0b'}
+        return [{'label': k.title(), 'value': v, 'color': color_map.get(k, '#6366f1')}
+                for k, v in sorted(states.items(), key=lambda x: -x[1])]
+
+    @api.model
+    def _compute_filtered_trend(self, filters, months=12):
+        """Compute claims trend data with filters."""
+        domain = self._build_claim_domain(filters)
+        claim = self.env['warranty.claim']
+        today = fields.Date.today()
+        cutoff = today - timedelta(days=months * 30)
+        domain.append(('claim_date', '>=', cutoff))
+
+        results = claim.search(domain, order='claim_date')
+        monthly = {}
+        for r in results:
+            key = r.claim_date.strftime('%b %Y') if r.claim_date else 'Unknown'
+            if key not in monthly:
+                monthly[key] = {'period': key, 'under_warranty': 0, 'out_of_warranty': 0}
+            if r.is_under_warranty:
+                monthly[key]['under_warranty'] += 1
+            else:
+                monthly[key]['out_of_warranty'] += 1
+        return sorted(monthly.values(), key=lambda x: x['period'])
+
+    @api.model
+    def _compute_filtered_monthly_comparison(self, filters, months=12):
+        """Compute monthly comparison with filters."""
+        w_domain = self._build_warranty_domain(filters)
+        c_domain = self._build_claim_domain(filters)
+        card = self.env['warranty.card']
+        claim = self.env['warranty.claim']
+        today = fields.Date.today()
+        monthly = {}
+        for i in range(months - 1, -1, -1):
+            m_start = today - timedelta(days=30 * i)
+            key = m_start.strftime('%b %Y')
+            monthly[key] = {'period': key, 'warranties': 0, 'claims': 0}
+
+        for r in card.search(w_domain + [('create_date', '>=', today - timedelta(days=months * 30))]):
+            key = r.create_date.strftime('%b %Y') if r.create_date else 'Unknown'
+            if key in monthly:
+                monthly[key]['warranties'] += 1
+
+        for r in claim.search(c_domain + [('claim_date', '>=', today - timedelta(days=months * 30))]):
+            key = r.claim_date.strftime('%b %Y') if r.claim_date else 'Unknown'
+            if key in monthly:
+                monthly[key]['claims'] += 1
+
+        return sorted(monthly.values(), key=lambda x: x['period'])
+
+    @api.model
+    def get_dashboard_data(self, filters=None):
+        """Return complete dashboard data as structured dict (for JSON RPC).
+
+        When filters are active, computes data directly from models.
+        With default filters, returns the global cached data (fast path).
+        """
+        if filters is None:
+            filters = {}
+
+        if self._has_active_filters(filters):
+            # Filtered path: compute directly from models
+            return {
+                'kpi': self._compute_filtered_kpis(filters),
+                'warranty_status': self._compute_filtered_status_chart(filters),
+                'claims_trend': self._compute_filtered_trend(filters),
+                'monthly_comparison': self._compute_filtered_monthly_comparison(filters),
+                'top_products': [],
+                'top_customers': [],
+                'claim_types': [],
+                'warranty_expiry': [],
+                'recent_warranties': [],
+            }
+
+        # Default path: use global cache
+        cache = self._ensure_cache_valid()
+
+        def _parse_json_blob(field_val):
+            if not field_val:
+                return None
+            try:
+                return json.loads(field_val) if isinstance(field_val, str) else field_val
+            except (json.JSONDecodeError, TypeError):
+                return None
+
+        def _extract_status_chart(blob):
+            cfg = _parse_json_blob(blob)
+            if not cfg or 'data' not in cfg:
+                return []
+            labels = cfg['data'].get('labels', [])
+            datasets = cfg['data'].get('datasets', [{}])
+            colors = (datasets[0] or {}).get('backgroundColor', [])
+            values = (datasets[0] or {}).get('data', [])
+            return [
+                {'label': labels[i], 'value': values[i], 'color': colors[i] if i < len(colors) else '#6c757d'}
+                for i in range(min(len(labels), len(values)))
+            ]
+
+        def _extract_trend_chart(blob, field_map):
+            cfg = _parse_json_blob(blob)
+            if not cfg or 'data' not in cfg:
+                return []
+            labels = cfg['data'].get('labels', [])
+            datasets = cfg['data'].get('datasets', [])
+            result = []
+            for i, lbl in enumerate(labels):
+                row = {'period': lbl}
+                for ds in datasets:
+                    ds_label = ds.get('label', '')
+                    data = ds.get('data', [])
+                    target_field = field_map.get(ds_label, ds_label.lower().replace(' ', '_'))
+                    row[target_field] = data[i] if i < len(data) else 0
+                result.append(row)
+            return result
+
+        def _extract_top_chart(blob, name_field='name'):
+            cfg = _parse_json_blob(blob)
+            if not cfg or 'data' not in cfg:
+                return []
+            labels = cfg['data'].get('labels', [])
+            datasets = cfg['data'].get('datasets', [])
+            result = []
+            for i, lbl in enumerate(labels):
+                row = {name_field: lbl}
+                for ds in datasets:
+                    ds_label = ds.get('label', '')
+                    data = ds.get('data', [])
+                    target_field = ds_label.lower().replace(' ', '_')
+                    row[target_field] = data[i] if i < len(data) else 0
+                result.append(row)
+            return result
+
+        def _extract_claim_types_chart(blob):
+            cfg = _parse_json_blob(blob)
+            if not cfg or 'data' not in cfg:
+                return []
+            labels = cfg['data'].get('labels', [])
+            datasets = cfg['data'].get('datasets', [])
+            result = []
+            for i, lbl in enumerate(labels):
+                row = {'period': lbl}
+                for ds in datasets:
+                    ds_label = ds.get('label', '').lower()
+                    data = ds.get('data', [])
+                    row[ds_label] = data[i] if i < len(data) else 0
+                result.append(row)
+            return result
+
+        def _extract_expiry_chart(blob):
+            cfg = _parse_json_blob(blob)
+            if not cfg or 'data' not in cfg:
+                return []
+            labels = cfg['data'].get('labels', [])
+            datasets = cfg['data'].get('datasets', [{}])
+            data_values = (datasets[0] or {}).get('data', [])
+            return [
+                {'period': labels[i], 'count': data_values[i] if i < len(data_values) else 0}
+                for i in range(len(labels))
+            ]
+
+        # Recent warranties
+        recent_warranties = []
+        try:
+            warranty_model = self.env['warranty.card']
+            whiny = warranty_model.search([], order='create_date desc', limit=10)
+            for w in whiny:
+                recent_warranties.append({
+                    'id': w.id,
+                    'name': w.name,
+                    'partner_name': w.partner_id.name if w.partner_id else '',
+                    'product_name': w.product_id.display_name if w.product_id else '',
+                    'start_date': str(w.start_date) if w.start_date else '',
+                    'end_date': str(w.end_date) if w.end_date else '',
+                    'state': w.state,
+                    'days_remaining': w.days_remaining,
+                    'claim_count': w.claim_count,
+                })
+        except Exception:
+            pass
+
+        return {
+            'kpi': {
+                'total_warranties': cache.total_warranties,
+                'active_warranties': cache.active_warranties,
+                'expired_warranties': cache.expired_warranties,
+                'near_expiry_warranties': cache.near_expiry_warranties,
+                'claimed_warranties': cache.claimed_warranties,
+                'active_percentage': cache.active_percentage,
+                'expired_percentage': cache.expired_percentage,
+                'claimed_percentage': cache.claimed_percentage,
+                'claims_this_month': cache.claims_this_month,
+                'claims_last_month': cache.claims_last_month,
+            },
+            'warranty_status': _extract_status_chart(cache.warranty_status_chart),
+            'claims_trend': _extract_trend_chart(cache.claims_trend_chart, {'Under Warranty': 'under_warranty', 'Out of Warranty': 'out_of_warranty'}),
+            'monthly_comparison': _extract_trend_chart(cache.monthly_comparison_chart, {'New Warranties': 'warranties', 'Claims': 'claims'}),
+            'top_products': _extract_top_chart(cache.top_products_chart),
+            'top_customers': _extract_top_chart(cache.top_customers_chart),
+            'claim_types': _extract_claim_types_chart(cache.claim_types_chart),
+            'warranty_expiry': _extract_expiry_chart(cache.warranty_expiry_chart),
+            'recent_warranties': recent_warranties,
+        }
+
+    @api.model
+    def get_filter_options(self):
+        """Return filter dropdown options for dashboard.
+
+        Safe approach: derive partner list from warranty.card records
+        instead of searching non-stored computed fields.
+        """
+        # Products with warranty config (stored field -> safe to search)
+        tmpl_ids = self.env['product.template'].sudo().search([
+            ('warranty_type', '!=', False)
+        ]).ids
+        products = self.env['product.product'].sudo().search([
+            ('product_tmpl_id', 'in', tmpl_ids)
+        ], order='name')
+
+        # Partners with warranty cards (via read_group, not computed field)
+        card_model = self.env['warranty.card'].sudo()
+        partner_data = card_model.read_group([], ['partner_id'], ['partner_id'])
+        partner_ids = [p['partner_id'][0] for p in partner_data if p.get('partner_id')]
+        customers = self.env['res.partner'].sudo().browse(partner_ids)
+
+        return {
+            'products': [{'id': p.id, 'name': p.display_name} for p in products],
+            'customers': [{'id': c.id, 'name': c.name} for c in customers],
+        }
+
+    @api.model
+    def refresh_dashboard_data(self, filters=None):
+        """Force refresh cache then return data."""
+        if filters is None:
+            filters = {}
+        cache = self.env['warranty.dashboard.cache'].search([], limit=1)
+        if cache:
+            cache.write({'cache_status': 'expired'})
+        return self.get_dashboard_data(filters)
+
+    @api.model
+    def rebuild_cache(self):
+        """Completely rebuild cache from scratch."""
+        cache_model = self.env['warranty.dashboard.cache']
+        cache_model.search([]).unlink()
+        cache = cache_model.create({})
+        cache._update_all_metrics()
+        return {'status': 'ok', 'message': 'Cache rebuilt'}

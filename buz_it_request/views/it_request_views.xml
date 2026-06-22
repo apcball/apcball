@@ -28,7 +28,7 @@
                        decoration-warning="sla_state == 'at_risk'"
                        decoration-danger="sla_state == 'breached'"
                        optional="show"/>
-                <field name="sla_deadline" optional="show"/>
+                <field name="sla_deadline" optional="show" readonly="state in ('done', 'cancel')"/>
                 <field name="requester_id" optional="show"/>
                 <field name="assigned_to_id" widget="many2one_avatar_user" optional="show"/>
                 <field name="department_id" optional="hide"/>
@@ -141,7 +141,7 @@
                         <group string="Dates &amp; SLA">
                             <field name="create_date" readonly="1"/>
                             <field name="response_date" readonly="1"/>
-                            <field name="sla_deadline" readonly="1"/>
+                            <field name="sla_deadline" readonly="state in ('done', 'cancel')"/>
                             <field name="sla_state" widget="badge"
                                    decoration-success="sla_state == 'on_track'"
                                    decoration-warning="sla_state == 'at_risk'"
@@ -199,100 +199,105 @@
         <field name="name">it.request.kanban</field>
         <field name="model">it.request</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="state"
-                    class="o_kanban_mobile o_it_request_kanban_view">
+            <kanban default_group_by="state" class="o_kanban_mobile o_it_request_kanban_view">
                 <field name="color"/>
                 <field name="name"/>
                 <field name="subject"/>
-                <field name="module_name"/>
-                <field name="category_id"/>
                 <field name="request_type"/>
                 <field name="priority"/>
-                <field name="impact"/>
                 <field name="urgency"/>
+                <field name="impact"/>
                 <field name="sla_state"/>
-                <field name="sla_deadline"/>
                 <field name="kanban_state"/>
                 <field name="assigned_to_id"/>
-                <field name="requester_id"/>
                 <field name="create_date"/>
                 <field name="description"/>
                 <templates>
                     <t t-name="kanban-box">
                         <div t-attf-class="o_it_request_card oe_kanban_global_click oe_kanban_card
-                                #{record.priority.raw_value ? 'o_it_request_priority_' + record.priority.raw_value : ''}
-                                o_it_request_state_#{record.kanban_state.raw_value}
-                                o_it_request_card_type_#{record.request_type.raw_value}"
+                                o_it_request_card_type_#{record.request_type.raw_value}
+                                o_it_request_state_#{record.kanban_state.raw_value}"
                              t-att-data-priority="record.priority.raw_value">
+
+                            <!-- 1 · Header: type tag (L) + kanban state (R) -->
                             <div class="o_it_request_card_top">
-                                <div class="o_it_request_card_identity">
-                                    <span class="o_it_request_type_dot"/>
-                                    <span class="o_it_request_number"><field name="name"/></span>
-                                </div>
+                                <span class="o_it_request_type">
+                                    <t t-if="record.request_type.raw_value === 'problem'">
+                                        <i class="fa fa-exclamation-triangle"/>
+                                    </t>
+                                    <t t-elif="record.request_type.raw_value === 'feature_request'">
+                                        <i class="fa fa-plus-circle"/>
+                                    </t>
+                                    <t t-elif="record.request_type.raw_value === 'it_equipment_purchase'">
+                                        <i class="fa fa-shopping-cart"/>
+                                    </t>
+                                    <t t-elif="record.request_type.raw_value === 'it_equipment_repair'">
+                                        <i class="fa fa-wrench"/>
+                                    </t>
+                                    <span class="o_it_request_type_label"><field name="request_type"/></span>
+                                </span>
                                 <div class="o_it_request_card_tools">
                                     <field name="kanban_state" widget="kanban_state_selection"/>
                                 </div>
                             </div>
 
+                            <!-- 2 · Subject (hero) -->
                             <div class="o_it_request_subject">
                                 <field name="subject"/>
                             </div>
 
-                            <div class="o_it_request_desc"
-                                 t-if="record.description.raw_value">
+                            <!-- 3 · Description (optional) -->
+                            <div class="o_it_request_desc" t-if="record.description.raw_value">
                                 <field name="description"/>
                             </div>
 
-                            <div class="o_it_request_module"
-                                 t-if="record.module_name.raw_value">
-                                <i class="fa fa-puzzle-piece" aria-label="Module"/>
-                                <field name="module_name"/>
-                            </div>
-
+                            <!-- 4 · Meta: ref + date + urgency/impact (L), SLA badge (R) -->
                             <div class="o_it_request_meta">
-                                <span class="o_it_request_type">
-                                    <t t-if="record.request_type.raw_value === 'problem'">
-                                        <i class="fa fa-exclamation-triangle" aria-label="Report Problem"/>
-                                    </t>
-                                    <t t-elif="record.request_type.raw_value === 'feature_request'">
-                                        <i class="fa fa-plus-circle" aria-label="Feature Request"/>
-                                    </t>
-                                    <span class="o_it_request_type_label"><field name="request_type"/></span>
+                                <span class="o_it_request_meta_ref">
+                                    <field name="name"/>
+                                    <span class="o_it_request_meta_dot">·</span>
+                                    <i class="fa fa-calendar-o"/>
+                                    <field name="create_date" widget="date"/>
+                                    <span class="o_it_request_meta_dot">·</span>
+                                    <span t-attf-class="o_it_request_urgency o_it_request_urgency_#{record.urgency.raw_value}"
+                                          t-att-title="record.urgency.raw_value">
+                                        <span class="o_it_request_dim">U:</span>
+                                        <t t-if="record.urgency.raw_value === 'low'">L</t>
+                                        <t t-elif="record.urgency.raw_value === 'medium'">M</t>
+                                        <t t-elif="record.urgency.raw_value === 'high'">H</t>
+                                        <t t-elif="record.urgency.raw_value === 'urgent'">U</t>
+                                    </span>
+                                    <span t-attf-class="o_it_request_impact o_it_request_impact_#{record.impact.raw_value}"
+                                          t-att-title="record.impact.raw_value">
+                                        <span class="o_it_request_dim">I:</span>
+                                        <t t-if="record.impact.raw_value === 'low'">L</t>
+                                        <t t-elif="record.impact.raw_value === 'medium'">M</t>
+                                        <t t-elif="record.impact.raw_value === 'high'">H</t>
+                                        <t t-elif="record.impact.raw_value === 'urgent'">U</t>
+                                    </span>
                                 </span>
-                                <t t-if="record.category_id.raw_value">
-                                    <span class="o_it_request_meta_sep">·</span>
-                                    <span><field name="category_id"/></span>
-                                </t>
-                                <t t-if="record.create_date.raw_value">
-                                    <span class="o_it_request_meta_sep">·</span>
-                                    <span class="o_it_request_date">
-                                        <field name="create_date" widget="date"/>
+                                <t t-if="record.sla_state.raw_value === 'at_risk' or record.sla_state.raw_value === 'breached'">
+                                    <span t-attf-class="o_it_request_sla o_it_request_sla_#{record.sla_state.raw_value}">
+                                        <i class="fa fa-clock-o"/>
+                                        <t t-if="record.sla_state.raw_value === 'breached'">Breached</t>
+                                        <t t-elif="record.sla_state.raw_value === 'at_risk'">At Risk</t>
                                     </span>
                                 </t>
                             </div>
-
+                            <!-- 5 · Footer: priority (L) + assignee + activity (R) -->
                             <div class="o_it_request_card_foot">
                                 <span class="o_it_request_priority">
                                     <field name="priority" widget="priority"/>
                                 </span>
                                 <div class="o_it_request_people">
-                                    <span class="o_it_request_party" title="Requester">
-                                        <span class="o_it_request_party_label">Req</span>
-                                        <field name="requester_id"
-                                               widget="many2one_avatar_employee"
+                                    <t t-if="record.assigned_to_id.raw_value">
+                                        <field name="assigned_to_id"
+                                               widget="many2one_avatar_user"
                                                options="{'no_open': True}"/>
-                                    </span>
-                                    <span class="o_it_request_party" title="Assignee">
-                                        <span class="o_it_request_party_label">Owner</span>
-                                        <t t-if="record.assigned_to_id.raw_value">
-                                            <field name="assigned_to_id"
-                                                   widget="many2one_avatar_user"
-                                                   options="{'no_open': True}"/>
-                                        </t>
-                                        <t t-else="">
-                                            <span class="o_it_request_unassigned">Unassigned</span>
-                                        </t>
-                                    </span>
+                                    </t>
+                                    <t t-else="">
+                                        <span class="o_it_request_unassigned">—</span>
+                                    </t>
                                     <field name="activity_ids" widget="kanban_activity"/>
                                 </div>
                             </div>

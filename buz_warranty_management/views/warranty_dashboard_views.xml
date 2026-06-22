@@ -467,15 +467,20 @@
         </field>
     </record>
     
-    <!-- Warranty Dashboard Action - Opens singleton record -->
-        <!-- Warranty Dashboard Action -->
+    <!-- Warranty Dashboard Server Action (kept for backward compatibility) -->
     <record id="action_warranty_dashboard" model="ir.actions.server">
         <field name="name">Warranty Dashboard</field>
         <field name="model_id" ref="model_warranty_dashboard"/>
         <field name="state">code</field>
         <field name="code">action = model.action_open_dashboard()</field>
     </record>
-    
+
+    <!-- Warranty Dashboard Client Action (OWL Component - new design) -->
+    <record id="action_warranty_dashboard_client" model="ir.actions.client">
+        <field name="name">Warranty Dashboard</field>
+        <field name="tag">buz_warranty_dashboard</field>
+        <field name="target">current</field>
+    </record>
     <!-- Active Warranties Tree View -->
     <record id="view_warranty_card_active_tree" model="ir.ui.view">
         <field name="name">warranty.card.active.tree</field>

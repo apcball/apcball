@@ -1,36 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- Inherit form: show portal fields when source == 'portal' -->
-    <record id="view_warranty_card_form_portal" model="ir.ui.view">
-        <field name="name">warranty.card.form.portal</field>
-        <field name="model">warranty.card</field>
-        <field name="inherit_id" ref="buz_warranty_management.view_warranty_card_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//sheet/notebook" position="before">
-                <div class="row mt-2" invisible="source != 'portal'">
-                    <div class="col-12">
-                        <div class="card border-info">
-                            <div class="card-header bg-info text-white">
-                                <h5 class="mb-0">Customer Portal Registration</h5>
-                            </div>
-                            <div class="card-body">
-                                <group>
-                                    <field name="source" invisible="1"/>
-                                    <field name="registration_date"/>
-                                    <field name="dealer_name"/>
-                                    <field name="invoice_number"/>
-                                    <field name="serial_number_input"/>
-                                    <field name="proof_attachment_ids" widget="many2many_binary"/>
-                                </group>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </xpath>
-        </field>
-    </record>
-
     <!-- Inherit tree: add source column -->
     <record id="view_warranty_card_tree_portal" model="ir.ui.view">
         <field name="name">warranty.card.tree.portal</field>

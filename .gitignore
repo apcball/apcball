@@ -16,3 +16,4 @@ internal_consume_request/*.md
 .wystack.json
 .vscode/
 .rpiv/
+mcp-odoo/claude_desktop_config.json

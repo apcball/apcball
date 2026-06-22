@@ -8,9 +8,13 @@
                     <div class="col-12 col-lg-8 offset-lg-2">
 
                         <t t-if="not errors">
-                            <div class="alert alert-info text-center">
-                                <h4 class="alert-heading">Register Your Warranty</h4>
-                                <p class="mb-0">Scan one QR code, register your product for warranty coverage.</p>
+                            <div class="mb-4 text-center py-4 px-3 rounded-3"
+                                 style="background: linear-gradient(135deg, #e8f4fd 0%, #f0f7ff 100%); border: 1px solid #d0e3f0;">
+                                <div class="mb-2">
+                                    <i class="fa fa-shield-alt text-primary" style="font-size: 3rem;"></i>
+                                </div>
+                                <h3 class="fw-bold text-primary mb-2">ลงทะเบียนรับประกันสินค้า</h3>
+                                <p class="text-muted mb-0">สแกน QR Code เพื่อลงทะเบียนสินค้าของคุณ รับสิทธิ์การรับประกัน</p>
                             </div>
                         </t>
 
@@ -19,11 +23,11 @@
                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
                             <!-- Personal Information -->
-                            <div class="card mb-3">
-                                <div class="card-header"><strong>Contact Information</strong></div>
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header bg-white"><strong><i class="fa fa-user me-2"/>ข้อมูลผู้ติดต่อ</strong></div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label class="form-label fw-semibold">Name *</label>
+                                        <label class="form-label fw-semibold">ชื่อ-นามสกุล *</label>
                                         <t t-if="errors.get('partner_name')">
                                             <div class="text-danger small"><t t-esc="errors['partner_name']"/></div>
                                         </t>
@@ -31,7 +35,7 @@
                                                t-att-value="defaults.get('partner_name')" required="required"/>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label fw-semibold">Phone *</label>
+                                        <label class="form-label fw-semibold">เบอร์โทรศัพท์ *</label>
                                         <t t-if="errors.get('phone')">
                                             <div class="text-danger small"><t t-esc="errors['phone']"/></div>
                                         </t>
@@ -39,12 +43,12 @@
                                                t-att-value="defaults.get('phone')" required="required"/>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Email</label>
+                                        <label class="form-label">อีเมล</label>
                                         <input type="email" name="email" class="form-control"
                                                t-att-value="defaults.get('email')"/>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Address</label>
+                                        <label class="form-label">ที่อยู่</label>
                                         <textarea name="street" class="form-control" rows="2"
                                                   t-att-value="defaults.get('street')"/>
                                     </div>
@@ -52,39 +56,30 @@
                             </div>
 
                             <!-- Product Information -->
-                            <div class="card mb-3">
-                                <div class="card-header"><strong>Product Information</strong></div>
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header bg-white"><strong><i class="fa fa-cube me-2"/>ข้อมูลสินค้า</strong></div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label class="form-label fw-semibold">Product *</label>
-                                        <t t-if="errors.get('product_id')">
-                                            <div class="text-danger small"><t t-esc="errors['product_id']"/></div>
-                                        </t>
-                                        <select name="product_id" class="form-control" required="required">
-                                            <option value="">-- Select Product --</option>
-                                            <t t-foreach="products" t-as="p">
-                                                <option t-att-value="p.id"
-                                                        t-att-selected="defaults.get('product_id') and str(p.id) == defaults.get('product_id')">
-                                                    <t t-esc="p.display_name"/>
-                                                </option>
-                                            </t>
-                                        </select>
+                                        <label class="form-label fw-semibold">สินค้า</label>
+                                        <input type="text" name="product_description" class="form-control"
+                                               t-att-value="defaults.get('product_description')"
+                                               placeholder="กรุณาระบุชื่อสินค้า รุ่น หรือรายละเอียด"/>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Serial Number</label>
+                                        <label class="form-label">หมายเลขเครื่อง (Serial Number)</label>
                                         <input type="text" name="serial_number" class="form-control"
                                                t-att-value="defaults.get('serial_number')"
-                                               placeholder="Enter serial number if available"/>
+                                               placeholder="กรอกหมายเลขเครื่อง (ถ้ามี)"/>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Purchase Information -->
-                            <div class="card mb-3">
-                                <div class="card-header"><strong>Purchase Details</strong></div>
+                            <div class="card shadow-sm mb-3">
+                                <div class="card-header bg-white"><strong><i class="fa fa-receipt me-2"/>ข้อมูลการซื้อ</strong></div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label class="form-label fw-semibold">Purchase Date *</label>
+                                        <label class="form-label fw-semibold">วันที่ซื้อ *</label>
                                         <t t-if="errors.get('start_date')">
                                             <div class="text-danger small"><t t-esc="errors['start_date']"/></div>
                                         </t>
@@ -92,24 +87,25 @@
                                                t-att-value="defaults.get('start_date')" required="required"/>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Dealer / Shop</label>
+                                        <label class="form-label">ร้านค้าที่ซื้อ</label>
                                         <input type="text" name="dealer_name" class="form-control"
                                                t-att-value="defaults.get('dealer_name')"/>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Invoice No.</label>
+                                        <label class="form-label">เลขที่ใบเสร็จ / ใบกำกับภาษี</label>
                                         <input type="text" name="invoice_number" class="form-control"
                                                t-att-value="defaults.get('invoice_number')"/>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Proof of Purchase (receipt)</label>
+                                        <label class="form-label">อัปโหลดใบเสร็จ (ถ้ามี)</label>
                                         <input type="file" name="proof" class="form-control" multiple="multiple"/>
+                                        <small class="text-muted d-block mt-1">รองรับไฟล์ JPG, PNG, PDF สูงสุด 5 ไฟล์</small>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg">Submit Warranty Registration</button>
+                                <button type="submit" class="btn btn-primary btn-lg">ส่งคำขอลงทะเบียน</button>
                             </div>
                         </form>
 
@@ -125,31 +121,45 @@
                 <div class="row">
                     <div class="col-12 col-lg-8 offset-lg-2 text-center mt-4">
                         <div class="mb-4">
-                            <i class="fa fa-check-circle text-success" style="font-size: 4rem;"/>
+                            <i class="fa fa-check-circle text-success" style="font-size: 4.5rem; filter: drop-shadow(0 4px 6px rgba(40,167,69,0.3));"/>
                         </div>
-                        <h3>Registration Submitted</h3>
-                        <p class="text-muted">Your warranty information has been received and is pending review.</p>
+                        <h3 class="fw-bold text-success">ลงทะเบียนสำเร็จ</h3>
+                        <p class="text-muted">ข้อมูลการรับประกันของคุณถูกส่งเรียบร้อยแล้ว กำลังรอการตรวจสอบจากทีมงาน</p>
                         <div class="card mt-4">
                             <div class="card-body">
                                 <table class="table table-borderless text-start mb-0">
                                     <tr>
-                                        <td class="fw-semibold">Reference</td>
-                                        <td><t t-esc="card.name"/></td>
+                                        <td class="fw-semibold text-secondary" style="width: 40%;">เลขที่อ้างอิง</td>
+                                        <td class="fw-bold"><t t-esc="card.name"/></td>
                                     </tr>
                                     <tr>
-                                        <td class="fw-semibold">Product</td>
-                                        <td><t t-esc="card.product_id.display_name"/></td>
+                                        <td class="fw-semibold text-secondary">สินค้า</td>
+                                        <td>
+                                            <t t-if="card.product_description">
+                                                <t t-esc="card.product_description"/>
+                                            </t>
+                                            <t t-else="">
+                                                <t t-esc="card.product_id.display_name"/>
+                                            </t>
+                                        </td>
                                     </tr>
                                     <tr>
-                                        <td class="fw-semibold">Customer</td>
+                                        <td class="fw-semibold text-secondary">ลูกค้า</td>
                                         <td><t t-esc="card.partner_id.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-semibold text-secondary">วันที่เริ่มคุ้มครอง</td>
+                                        <td><t t-esc="card.start_date"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-semibold text-secondary">วันที่หมดอายุ</td>
+                                        <td><t t-esc="card.end_date"/></td>
                                     </tr>
                                 </table>
                             </div>
                         </div>
-                        <div class="alert alert-info mt-4">
-                            <i class="fa fa-info-circle me-2"/>Our team will review your registration and activate
-                            your warranty within 1–2 business days.
+                        <div class="alert alert-success mt-4 border-0 bg-success-subtle text-success-emphasis">
+                            <i class="fa fa-info-circle me-2"/>ทีมงานของเราจะตรวจสอบข้อมูลและดำเนินการเปิดใช้งานการรับประกันภายใน 1–2 วันทำการ ท่านจะได้รับการแจ้งเตือนเมื่อดำเนินการเสร็จสิ้น
                         </div>
                     </div>
                 </div>
@@ -159,16 +169,26 @@
 
     <template id="registration_error" name="Warranty Registration Error">
         <t t-call="website.layout">
-            <div class="container mt-5 text-center">
-                <div class="mb-4">
-                    <i class="fa fa-exclamation-triangle text-danger" style="font-size: 4rem;"/>
+            <div class="container mt-5">
+                <div class="row justify-content-center">
+                    <div class="col-12 col-md-8 col-lg-6">
+                        <div class="text-center mb-4">
+                            <div class="mb-3">
+                                <i class="fa fa-exclamation-triangle text-danger" style="font-size: 4rem;"></i>
+                            </div>
+                            <h3 class="fw-bold text-danger">เกิดข้อผิดพลาด</h3>
+                            <p class="text-muted">ไม่สามารถบันทึกข้อมูลการลงทะเบียนได้ กรุณาลองอีกครั้ง</p>
+                        </div>
+                        <div class="alert alert-danger border-0 bg-danger-subtle text-danger-emphasis" role="alert">
+                            <i class="fa fa-exclamation-circle me-2"/><t t-esc="message"/>
+                        </div>
+                        <div class="text-center">
+                            <a href="/warranty/register" class="btn btn-primary btn-lg px-5 mt-2">
+                                <i class="fa fa-redo me-2"/>ลองอีกครั้ง
+                            </a>
+                        </div>
+                    </div>
                 </div>
-                <h3>Registration Error</h3>
-                <p class="text-muted">Sorry, something went wrong while saving your registration.</p>
-                <div class="alert alert-danger mt-3">
-                    <t t-esc="message"/>
-                </div>
-                <a href="/warranty/register" class="btn btn-primary mt-3">Try Again</a>
             </div>
         </t>
     </template>

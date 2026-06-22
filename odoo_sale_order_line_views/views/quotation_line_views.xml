@@ -27,6 +27,7 @@
                             <field name="product_id"/>
                             <field name="price_unit"/>
                             <field name="product_uom_qty" string="Quantity"/>
+                            <field name="reserve_qty"/>
                             <field name="price_subtotal" sum="Total"
                                    widget="monetary"/>
                             <field name="state" string="Order Status"/>
@@ -55,10 +56,14 @@
                 <field name="order_line_image" widget="image" class="order_line_img"/>
                 <field name="product_uom_qty" string="Qty"/>
                 <field name="qty_delivered"/>
+                <field name="reserve_qty"/>
                 <field name="qty_invoiced"/>
                 <field name="qty_to_invoice"/>
                 <field name="product_uom" string="Unit of Measure"
                        groups="uom.group_uom"/>
+                <field name="project_name" optional="show"/>
+                <field name="partner_shipping_id" optional="show"/>
+                <field name="date_done" optional="show"/>
                 <field name="price_subtotal" sum="Total" widget="monetary"/>
                 <field name="state" string="Status"
                        decoration-success="state == 'sale' or state == 'done'"

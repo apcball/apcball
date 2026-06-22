@@ -12,13 +12,8 @@ class WarrantyRegistrationPortal(http.Controller):
 
     @http.route('/warranty/register', type='http', auth='public', website=True)
     def registration_form(self, **kwargs):
-        products = request.env['product.product'].sudo().search([
-            ('product_tmpl_id.warranty_duration', '>', 0),
-            ('sale_ok', '=', True),
-            ('active', '=', True),
-        ], order='name')
+        # No product query needed - user types product name
         return request.render('buz_warranty_portal.registration_form', {
-            'products': products,
             'defaults': kwargs,
             'errors': {},
         })
@@ -29,15 +24,11 @@ class WarrantyRegistrationPortal(http.Controller):
         errors = {}
 
         # required validation
-        for key, label in [('partner_name', 'Name'), ('phone', 'Phone'),
-                           ('product_id', 'Product'), ('start_date', 'Purchase Date')]:
+        for key, label in [('partner_name', 'ชื่อ-นามสกุล'), ('phone', 'เบอร์โทรศัพท์'),
+                           ('start_date', 'วันที่ซื้อ')]:
             if not (post.get(key) or '').strip():
-                errors[key] = _('%s is required') % label
+                errors[key] = _('กรุณากรอก %s') % label
 
-        # product must exist & be eligible
-        product = request.env['product.product'].sudo().browse(int(post.get('product_id') or 0)).exists()
-        if not product or product.product_tmpl_id.warranty_duration <= 0:
-            errors['product_id'] = _('Please choose a valid product')
 
         # date parse
         start_date = False
@@ -45,14 +36,11 @@ class WarrantyRegistrationPortal(http.Controller):
             try:
                 start_date = fields.Date.from_string(post['start_date'])
             except Exception:
-                errors['start_date'] = _('Invalid date (YYYY-MM-DD)')
+                errors['start_date'] = _('รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)')
 
         if errors:
-            products = request.env['product.product'].sudo().search([
-                ('product_tmpl_id.warranty_duration', '>', 0),
-                ('sale_ok', '=', True), ('active', '=', True)], order='name')
             return request.render('buz_warranty_portal.registration_form', {
-                'products': products, 'defaults': post, 'errors': errors})
+                'defaults': post, 'errors': errors})
 
         # find-or-create partner (email exact, else phone exact, else create)
         Partner = request.env['res.partner'].sudo()
@@ -84,10 +72,8 @@ class WarrantyRegistrationPortal(http.Controller):
             if vals:
                 partner.write(vals)
 
-        # serial → match stock.lot, else store typed value
+        # serial → store typed value directly (no lot matching without product reference)
         serial = (post.get('serial_number') or '').strip()
-        lot = request.env['stock.lot'].sudo().search(
-            [('name', '=', serial), ('product_id', '=', product.id)], limit=1) if serial else False
 
         # proof attachments (files)
         att_ids = []
@@ -104,16 +90,17 @@ class WarrantyRegistrationPortal(http.Controller):
             att_ids.append(att.id)
 
         # create card in draft
+        product_description = (post.get('product_description') or '').strip()
         card_vals = {
             'partner_id': partner.id,
-            'product_id': product.id,
-            'lot_id': lot.id if lot else False,
+            'lot_id': False,
             'start_date': start_date or fields.Date.today(),
             'state': 'draft',
             'source': 'portal',
             'dealer_name': (post.get('dealer_name') or '').strip(),
             'invoice_number': (post.get('invoice_number') or '').strip(),
-            'serial_number_input': serial or (lot.name if lot else ''),
+            'serial_number_input': serial,
+            'product_description': product_description,
             'registration_date': fields.Datetime.now(),
         }
         if att_ids:

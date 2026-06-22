@@ -6,11 +6,11 @@
         <field name="name">warranty.qr.wizard.form</field>
         <field name="model">warranty.qr.wizard</field>
         <field name="arch" type="xml">
-            <form string="Customer Registration QR">
+            <form string="QR สำหรับลงทะเบียนลูกค้า">
                 <div class="oe_title">
-                    <h2>Warranty Registration URL</h2>
+                    <h2>URL สำหรับลงทะเบียนรับประกัน</h2>
                     <p class="text-muted">
-                        Customers scan this QR code to reach the registration form.
+                        ลูกค้าสแกน QR Code นี้เพื่อไปยังแบบฟอร์มลงทะเบียน
                     </p>
                 </div>
                 <group>
@@ -20,7 +20,7 @@
                            nolabel="1"/>
                 </group>
                 <footer>
-                    <button string="Done" class="btn-primary" type="object" name="action_done"/>
+                    <button string="เสร็จสิ้น" class="btn-primary" type="object" name="action_done"/>
                 </footer>
             </form>
         </field>
@@ -28,7 +28,7 @@
 
     <!-- Action -->
     <record id="action_warranty_portal_qr_wizard" model="ir.actions.act_window">
-        <field name="name">Customer Registration QR</field>
+        <field name="name">QR สำหรับลงทะเบียนลูกค้า</field>
         <field name="res_model">warranty.qr.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
@@ -36,7 +36,7 @@
 
     <!-- Menu under Warranty → Configuration -->
     <menuitem id="menu_warranty_portal_qr"
-              name="Customer Registration QR"
+              name="QR สำหรับลงทะเบียนลูกค้า"
               parent="buz_warranty_management.menu_warranty_configuration"
               action="action_warranty_portal_qr_wizard"
               sequence="50"/>

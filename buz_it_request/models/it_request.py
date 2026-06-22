@@ -157,7 +157,7 @@ class ITRequest(models.Model):
     response_date = fields.Datetime(string='Response Date', readonly=True, tracking=True)
     close_date = fields.Datetime(string='Close Date', readonly=True, tracking=True)
     resolution_date = fields.Datetime(string='Resolution Date', readonly=True, tracking=True)
-    sla_deadline = fields.Datetime(string='SLA Deadline', readonly=True, tracking=True)
+    sla_deadline = fields.Datetime(string='SLA Deadline', tracking=True)
     sla_state = fields.Selection(
         selection=[
             ('on_track', 'On Track'),

@@ -26,7 +26,7 @@ class WarrantyCard(models.Model):
     product_id = fields.Many2one(
         'product.product',
         string='Product',
-        required=True,
+        required=False,
         tracking=True
     )
     lot_id = fields.Many2one(
@@ -113,6 +113,26 @@ class WarrantyCard(models.Model):
         compute='_compute_last_claim_date',
         search='_search_last_claim_date'
     )
+    product_description = fields.Char(
+        string='Product Description',
+        help='Free-text product name entered by customer via portal',
+    )
+
+    # === Fields collected via portal (also usable for manual cards) ===
+    source = fields.Selection(
+        [('manual', 'Manual / Office'),
+         ('portal', 'Customer Portal')],
+        string='Source', default='manual', tracking=True)
+    dealer_name = fields.Char(string='Dealer / Shop')
+    invoice_number = fields.Char(string='Invoice No.')
+    serial_number_input = fields.Char(
+        string='Serial (customer-entered)',
+        help='Typed by customer on the portal; used when no matching stock.lot is found')
+    proof_attachment_ids = fields.Many2many(
+        'ir.attachment', 'warranty_card_proof_rel', 'card_id', 'attachment_id',
+        string='Proof of Purchase')
+    registration_date = fields.Datetime(
+        string='Submitted On', readonly=True, copy=False)
 
     @api.depends('start_date', 'product_id.product_tmpl_id.warranty_duration', 'product_id.product_tmpl_id.warranty_period_unit')
     def _compute_end_date(self):
