@@ -161,27 +161,26 @@
                             <!-- กล่องที่ 1: 35% -->
                             <div style="width: 35%; border-right: 1px solid black; padding: 8px;">
                                 <div><strong>รายละเอียดลูกค้า</strong></div>
-                                <hr style="margin: 4px 0; border: 1px solid black;">
+                                <hr style="margin: 4px 0; border: 1px solid black;"/>
                                 <div>ชื่อลูกค้า: <t t-esc="o.partner_id.name or o.requester_name or ''"/></div>
                                 <div style="margin: 0;">
                                     <strong>ที่อยู่:</strong>
-                                    <span t-esc="o.service_address or ''"/>
+                                    <span t-esc="(o.partner_id and o.partner_id.contact_address) or o.service_address or ''"/>
                                 </div>
-                                <div>โทร: <t t-esc="o.requester_phone or ''"/></div>
-                                </hr>
+                                <div>โทร: <t t-esc="(o.partner_id and (o.partner_id.phone or o.partner_id.mobile)) or o.requester_phone or ''"/></div>
                             </div>
 
                             <!-- กล่องที่ 2: 30% -->
                             <div style="width: 30%; border-right: 1px solid black; padding: 8px; text-align: center;">
                             <div><strong>ประเภทลูกค้า</strong></div>
-                            <hr style="margin: 1px 0; border: 1px solid black;">
+                            <hr style="margin: 1px 0; border: 1px solid black;"/>
 
                             <!-- Retail / Project -->
                             <div style="display: flex; margin-bottom: 1px;">
                                 <div style="width: 50%; border-right: 1px solid black; font-size: 15px;">Retail</div>
                                 <div style="width: 50%; font-size: 15px;">Project</div>
                             </div>
-                            <hr style="margin: 1px 0; border: 1px solid black;">
+                            <hr style="margin: 1px 0; border: 1px solid black;"/>
 
                             <!-- Dealer / Project / Dealer / Project -->
                             <div style="display: flex; margin-bottom: 1px;">
@@ -190,7 +189,7 @@
                                 <div style="width: 25%; border-right: 1px solid black; font-size: 15px;">Dealer</div>
                                 <div style="width: 25%; font-size: 15px;">Project</div>
                             </div>
-                            <hr style="margin: 1px 0; border: 1px solid black;">
+                            <hr style="margin: 1px 0; border: 1px solid black;"/>
 
                                 <!-- พื้นที่ว่าง 50% ล่าง พร้อมช่องแบ่ง -->
                                 <div style="margin-top: 10px; height: 55px; 
@@ -200,9 +199,6 @@
                                     <div style="width: 25%; border-right: 1px solid black;"></div>
                                     <div style="width: 25%;"></div>
                                 </div>
-                                </hr>
-                                </hr>
-                                </hr>
                             </div>
 
                             <!-- กล่องที่ 3: 35% ขวาสุด -->
