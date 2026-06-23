@@ -40,4 +40,21 @@
             </xpath>
         </field>
     </record>
+
+    <!-- Add Create DP button to Deliveries tree header -->
+    <record id="view_stock_picking_tree_dp_button" model="ir.ui.view">
+        <field name="name">stock.picking.tree.dispatch.button</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <header>
+                    <button name="action_create_dispatch_document"
+                            string="Create DP"
+                            type="object"
+                            class="btn-primary"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
 </odoo>

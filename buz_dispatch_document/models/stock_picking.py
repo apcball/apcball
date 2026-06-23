@@ -37,19 +37,31 @@ class StockPicking(models.Model):
         return [('buz_dispatch_document_ids.name', operator, value)]
 
     def action_create_dispatch_document(self):
-        self.ensure_one()
-        if self.state not in ('confirmed', 'assigned'):
+        wrong_state = self.filtered(lambda p: p.state not in ('confirmed', 'assigned'))
+        if wrong_state:
             raise UserError(
-                _('Delivery order must be Available or Waiting before '
-                  'creating a Dispatch Document.')
+                _('Delivery orders must be Available or Waiting before '
+                  'creating a Dispatch Document.\nInvalid: %s')
+                % ', '.join(wrong_state.mapped('name'))
             )
-        dispatch = self.env['buz.dispatch.document'].create({
-            'stock_picking_id': self.id,
-        })
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'buz.dispatch.document',
-            'res_id': dispatch.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
+        eligible = self.filtered(lambda p: not p.buz_dispatch_document_ids)
+        if not eligible:
+            raise UserError(
+                _('All selected deliveries already have dispatch documents.')
+            )
+        dispatches = self.env['buz.dispatch.document'].create([
+            {'stock_picking_id': picking.id}
+            for picking in eligible
+        ])
+        if len(dispatches) == 1:
+            return {
+                'type': 'ir.actions.act_window',
+                'res_model': 'buz.dispatch.document',
+                'res_id': dispatches.id,
+                'view_mode': 'form',
+                'target': 'current',
+            }
+        action = self.env.ref('buz_dispatch_document.action_buz_dispatch_document').read()[0]
+        action['domain'] = [('id', 'in', dispatches.ids)]
+        action['target'] = 'current'
+        return action
