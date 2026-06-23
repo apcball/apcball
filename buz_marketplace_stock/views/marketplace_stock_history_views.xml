@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketplace_stock_history_tree" model="ir.ui.view">
+        <field name="name">buz.marketplace.stock.history.tree</field>
+        <field name="model">buz.marketplace.stock.history</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="create_date"/>
+                <field name="product_id"/>
+                <field name="account_id"/>
+                <field name="change_type"/>
+                <field name="old_qty"/>
+                <field name="new_qty"/>
+                <field name="difference" decoration-danger="difference &lt; 0" decoration-success="difference &gt; 0"/>
+                <field name="marketplace_qty"/>
+                <field name="user_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_marketplace_stock_history_form" model="ir.ui.view">
+        <field name="name">buz.marketplace.stock.history.form</field>
+        <field name="model">buz.marketplace.stock.history</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="product_id"/>
+                            <field name="account_id"/>
+                            <field name="change_type"/>
+                            <field name="create_date"/>
+                            <field name="user_id"/>
+                        </group>
+                        <group>
+                            <field name="old_qty"/>
+                            <field name="new_qty"/>
+                            <field name="difference"/>
+                            <field name="marketplace_qty"/>
+                            <field name="stock_move_id"/>
+                        </group>
+                    </group>
+                    <field name="notes" nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_marketplace_stock_history_search" model="ir.ui.view">
+        <field name="name">buz.marketplace.stock.history.search</field>
+        <field name="model">buz.marketplace.stock.history</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="account_id"/>
+                <field name="change_type"/>
+                <field name="user_id"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_marketplace_stock_history" model="ir.actions.act_window">
+        <field name="name">Stock History</field>
+        <field name="res_model">buz.marketplace.stock.history</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_marketplace_stock_history_search"/>
+    </record>
+</odoo>

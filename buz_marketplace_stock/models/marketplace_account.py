@@ -30,8 +30,7 @@ class MarketplaceAccount(models.Model):
         'res.company',
         string='Company',
         required=True,
-        default=lambda self: self.env.company,
-        check_company=True
+        default=lambda self: self.env.company
     )
     buffer_location_id = fields.Many2one(
         'stock.location',
@@ -124,14 +123,12 @@ class MarketplaceAccount(models.Model):
         compute='_compute_order_count'
     )
 
-    @api.depends('id')
     def _compute_product_count(self):
         for account in self:
             account.product_count = self.env['buz.marketplace.product'].search_count([
                 ('account_id', '=', account.id)
             ])
 
-    @api.depends('id')
     def _compute_order_count(self):
         for account in self:
             account.order_count = self.env['buz.marketplace.order'].search_count([
@@ -200,7 +197,9 @@ class MarketplaceAccount(models.Model):
     def action_fetch_products(self):
         """Fetch products from marketplace and create/update binding records"""
         self.ensure_one()
-        
+
+        created = 0
+        updated = 0
         try:
             if self.platform == 'shopee':
                 from ..services.shopee_api import ShopeeAPI
@@ -412,7 +411,9 @@ class MarketplaceAccount(models.Model):
     def action_fetch_orders(self):
         """Fetch orders from marketplace and create marketplace.order records"""
         self.ensure_one()
-        
+
+        created = 0
+        updated = 0
         try:
             from datetime import datetime, timedelta
             
@@ -597,3 +598,25 @@ class MarketplaceAccount(models.Model):
             'domain': [('account_id', '=', self.id)],
             'context': {'default_account_id': self.id},
         }
+
+    @api.model
+    def _cron_fetch_orders(self):
+        accounts = self.search([('active', '=', True)])
+        for account in accounts:
+            try:
+                account.action_fetch_orders()
+            except Exception as e:
+                _logger.error('Cron fetch orders failed for %s: %s', account.name, str(e))
+
+    @api.model
+    def _cron_refresh_tokens(self):
+        accounts = self.search([
+            ('active', '=', True),
+            ('platform', '=', 'shopee'),
+        ])
+        for account in accounts:
+            try:
+                if account.shopee_refresh_token:
+                    account.action_refresh_token()
+            except Exception as e:
+                _logger.error('Cron refresh token failed for %s: %s', account.name, str(e))

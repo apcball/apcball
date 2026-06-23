@@ -154,7 +154,8 @@ class MarketplaceOrder(models.Model):
                 
                 # Set quantities
                 for move_line in picking[0].move_line_ids:
-                    move_line.quantity = move_line.reserved_quantity
+                    move_line.quantity = move_line.move_id.product_uom_qty
+                    move_line.picked = True
                 
                 picking[0].button_validate()
                 order.state = 'delivery_validated'

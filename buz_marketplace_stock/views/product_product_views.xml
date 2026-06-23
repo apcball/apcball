@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_product_form_inherit_marketplace" model="ir.ui.view">
+        <field name="name">product.product.form.inherit.marketplace</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Marketplace" name="marketplace" groups="buz_marketplace_stock.group_marketplace_user">
+                    <group>
+                        <field name="marketplace_sku"/>
+                        <field name="marketplace_product_ids">
+                            <tree>
+                                <field name="account_id"/>
+                                <field name="marketplace_name"/>
+                                <field name="marketplace_sku"/>
+                                <field name="marketplace_stock"/>
+                                <field name="odoo_buffer_stock"/>
+                                <field name="last_sync_date"/>
+                            </tree>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

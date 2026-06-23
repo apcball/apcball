@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketplace_order_tree" model="ir.ui.view">
+        <field name="name">buz.marketplace.order.tree</field>
+        <field name="model">buz.marketplace.order</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="order_date"/>
+                <field name="buyer_name"/>
+                <field name="order_status"/>
+                <field name="state"/>
+                <field name="total_amount" widget="monetary"/>
+                <field name="sale_order_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_marketplace_order_form" model="ir.ui.view">
+        <field name="name">buz.marketplace.order.form</field>
+        <field name="model">buz.marketplace.order</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_create_sale_order" string="Create Sale Order" type="object"
+                        invisible="state != 'imported' or sale_order_id != False"/>
+                    <button name="action_view_sale_order" string="View Sale Order" type="object"
+                        invisible="sale_order_id == False"/>
+                    <button name="action_view_delivery" string="View Delivery" type="object"
+                        invisible="picking_id == False"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,imported,so_created,delivery_validated"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="account_id"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="order_date"/>
+                            <field name="order_status"/>
+                            <field name="total_amount" widget="monetary"/>
+                        </group>
+                        <group>
+                            <field name="buyer_name"/>
+                            <field name="buyer_phone"/>
+                            <field name="buyer_partner_id"/>
+                            <field name="sale_order_id"/>
+                            <field name="picking_id"/>
+                        </group>
+                    </group>
+                    <field name="buyer_address" nolabel="1"/>
+                    <field name="notes" nolabel="1"/>
+                    <notebook>
+                        <page name="lines" string="Order Lines">
+                            <field name="line_ids">
+                                <tree>
+                                    <field name="product_id"/>
+                                    <field name="product_name"/>
+                                    <field name="quantity"/>
+                                    <field name="price_unit" widget="monetary"/>
+                                    <field name="marketplace_product_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_marketplace_order_search" model="ir.ui.view">
+        <field name="name">buz.marketplace.order.search</field>
+        <field name="model">buz.marketplace.order</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="buyer_name"/>
+                <field name="order_status"/>
+                <field name="state"/>
+                <separator/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="imported" string="Imported" domain="[('state', '=', 'imported')]"/>
+                <filter name="so_created" string="SO Created" domain="[('state', '=', 'so_created')]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter name="group_account" string="Account" context="{'group_by': 'account_id'}"/>
+                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_marketplace_order" model="ir.actions.act_window">
+        <field name="name">Marketplace Orders</field>
+        <field name="res_model">buz.marketplace.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_marketplace_order_search"/>
+    </record>
+</odoo>

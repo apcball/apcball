@@ -56,6 +56,7 @@
                 <field name="order_id"/>
                 <field name="order_partner_id"/>
                 <field name="name"/>
+                <field name="sku"/>
                 <field name="product_id"/>
                 <field name="order_line_image" widget="image" class="order_line_img"/>
                 <field name="product_uom_qty" string="Qty"/>

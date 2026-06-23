@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketplace_account_tree" model="ir.ui.view">
+        <field name="name">buz.marketplace.account.tree</field>
+        <field name="model">buz.marketplace.account</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="platform"/>
+                            <field name="company_id"/>
+                <field name="warehouse_id"/>
+                <field name="buffer_location_id"/>
+                <field name="product_count"/>
+                <field name="order_count"/>
+                <field name="active" decoration-muted="not active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_marketplace_account_form" model="ir.ui.view">
+        <field name="name">buz.marketplace.account.form</field>
+        <field name="model">buz.marketplace.account</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_test_connection" string="Test Connection" type="object"/>
+                    <button name="action_fetch_products" string="Fetch Products" type="object"/>
+                    <button name="action_fetch_orders" string="Fetch Orders" type="object"/>
+                    <button name="action_refresh_token" string="Refresh Token" type="object"
+                        invisible="platform != 'shopee'"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="platform"/>
+                            <field name="active"/>
+                <field name="company_id"/>
+                            <field name="warehouse_id"/>
+                            <field name="buffer_location_id"/>
+                            <field name="product_category_id"/>
+                        </group>
+                        <group>
+                            <field name="product_count" widget="statinfo"/>
+                            <field name="order_count" widget="statinfo"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="shopee" string="Shopee" invisible="platform != 'shopee'">
+                            <group>
+                                <field name="shopee_partner_id"/>
+                                <field name="shopee_partner_key" password="True"/>
+                                <field name="shopee_redirect_uri"/>
+                                <field name="shopee_shop_id"/>
+                                <field name="shopee_access_token" password="True"/>
+                                <field name="shopee_refresh_token" password="True"/>
+                                <field name="shopee_token_expiry"/>
+                            </group>
+                        </page>
+                        <page name="lazada" string="Lazada" invisible="platform != 'lazada'">
+                            <group>
+                                <field name="lazada_app_key"/>
+                                <field name="lazada_app_secret" password="True"/>
+                                <field name="lazada_access_token" password="True"/>
+                                <field name="lazada_token_expiry"/>
+                                <field name="lazada_country_code"/>
+                            </group>
+                        </page>
+                        <page name="api_settings" string="API Settings">
+                            <group>
+                                <field name="api_call_delay"/>
+                                <field name="api_max_retries"/>
+                                <field name="order_lookback_minutes"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_marketplace_account_search" model="ir.ui.view">
+        <field name="name">buz.marketplace.account.search</field>
+        <field name="model">buz.marketplace.account</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="platform"/>
+                <separator/>
+                <filter name="active" string="Active" domain="[('active', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_platform" string="Platform" context="{'group_by': 'platform'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_marketplace_account" model="ir.actions.act_window">
+        <field name="name">Marketplace Accounts</field>
+        <field name="res_model">buz.marketplace.account</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_marketplace_account_search"/>
+    </record>
+</odoo>

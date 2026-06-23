@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_marketplace_root"
+              name="Marketplace"
+              sequence="40"
+              web_icon="buz_marketplace_stock,static/description/icon.png"
+              groups="buz_marketplace_stock.group_marketplace_user"/>
+
+    <menuitem id="menu_marketplace_operations"
+              name="Operations"
+              parent="menu_marketplace_root"
+              sequence="10">
+        <menuitem id="menu_marketplace_accounts"
+                  name="Marketplace Accounts"
+                  sequence="10"
+                  action="action_marketplace_account"/>
+        <menuitem id="menu_marketplace_products"
+                  name="Marketplace Products"
+                  sequence="20"
+                  action="action_marketplace_product"/>
+        <menuitem id="menu_marketplace_products_shopee"
+                  name="Shopee Products"
+                  sequence="21"
+                  action="action_marketplace_product_shopee"/>
+        <menuitem id="menu_marketplace_products_lazada"
+                  name="Lazada Products"
+                  sequence="22"
+                  action="action_marketplace_product_lazada"/>
+        <menuitem id="menu_marketplace_orders"
+                  name="Marketplace Orders"
+                  sequence="30"
+                  action="action_marketplace_order"/>
+    </menuitem>
+
+    <menuitem id="menu_marketplace_monitoring"
+              name="Monitoring"
+              parent="menu_marketplace_root"
+              sequence="20">
+        <menuitem id="menu_marketplace_stock_history"
+                  name="Stock History"
+                  sequence="10"
+                  action="action_marketplace_stock_history"/>
+        <menuitem id="menu_marketplace_api_logs"
+                  name="API Logs"
+                  sequence="20"
+                  action="action_marketplace_api_log"/>
+    </menuitem>
+</odoo>

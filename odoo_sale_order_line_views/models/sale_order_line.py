@@ -49,7 +49,13 @@ class SaleOrderLine(models.Model):
         related="order_id.partner_shipping_id",
         string="Delivery Address",
     )
-    date_done = fields.Datetime(
+    sku = fields.Char(
+        string="Default code",
+        related="product_id.default_code",
+        help='Default code/Internal Reference of the product',
+    )
+
+    date_done = fields.Date(
         string="Delivery Date",
         compute='_compute_date_done',
         store=True,
@@ -60,7 +66,7 @@ class SaleOrderLine(models.Model):
         for line in self:
             dates = line.move_ids.picking_id.mapped('date_done')
             dates = [d for d in dates if d]
-            line.date_done = max(dates) if dates else False
+            line.date_done = max(dates).date() if dates else False
 
     @api.depends('move_ids.state', 'move_ids.quantity', 'move_ids.product_uom')
     def _compute_reserve_qty(self):

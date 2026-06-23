@@ -10,6 +10,11 @@ class ProductTemplate(models.Model):
         string='Marketplace SKU',
         help='SKU used on marketplace platforms (Shopee, Lazada)'
     )
+    marketplace_product_ids = fields.One2many(
+        'buz.marketplace.product',
+        'product_tmpl_id',
+        string='Marketplace Products'
+    )
     marketplace_product_count = fields.Integer(
         string='Marketplace Products',
         compute='_compute_marketplace_product_count'

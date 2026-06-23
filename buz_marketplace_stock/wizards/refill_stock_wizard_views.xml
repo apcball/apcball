@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_refill_stock_wizard_form" model="ir.ui.view">
+        <field name="name">buz.marketplace.refill.stock.wizard.form</field>
+        <field name="model">buz.marketplace.refill.stock.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Refill Buffer Stock">
+                <group>
+                    <field name="marketplace_product_ids" invisible="1"/>
+                    <field name="product_count"/>
+                </group>
+                <p>Refill buffer stock from main warehouse for <field name="product_count"/> product(s).</p>
+                <footer>
+                    <button name="action_refill" string="Refill" type="object"
+                        class="oe_highlight"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_refill_stock_wizard" model="ir.actions.act_window">
+        <field name="name">Refill Buffer Stock</field>
+        <field name="res_model">buz.marketplace.refill.stock.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_buz_marketplace_product"/>
+        <field name="binding_view_types">tree</field>
+    </record>
+</odoo>

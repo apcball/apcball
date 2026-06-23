@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_fetch_orders_wizard_form" model="ir.ui.view">
+        <field name="name">buz.marketplace.fetch.orders.wizard.form</field>
+        <field name="model">buz.marketplace.fetch.orders.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Fetch Marketplace Orders">
+                <group>
+                    <field name="account_id"/>
+                    <field name="lookback_minutes"/>
+                    <field name="auto_create_so"/>
+                </group>
+                <footer>
+                    <button name="action_fetch_orders" string="Fetch Orders" type="object"
+                        class="oe_highlight"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_fetch_orders_wizard" model="ir.actions.act_window">
+        <field name="name">Fetch Marketplace Orders</field>
+        <field name="res_model">buz.marketplace.fetch.orders.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_buz_marketplace_account"/>
+        <field name="binding_view_types">form</field>
+    </record>
+</odoo>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="stock_location_marketplace_buf" model="stock.location">
+        <field name="name">Marketplace Buffer</field>
+        <field name="usage">internal</field>
+        <field name="location_id" ref="stock.stock_location_stock"/>
+        <field name="scrap_location" eval="False"/>
+        <field name="return_location" eval="False"/>
+        <field name="comment">Buffer stock for marketplace fulfillment (Shopee / Lazada)</field>
+    </record>
+</odoo>

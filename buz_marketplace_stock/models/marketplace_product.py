@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -62,7 +62,6 @@ class MarketplaceProduct(models.Model):
     odoo_buffer_stock = fields.Float(
         string='Odoo Buffer Stock',
         compute='_compute_odoo_buffer_stock',
-        store=True,
         digits='Product Unit of Measure'
     )
     initial_stock_qty = fields.Float(
@@ -90,6 +89,21 @@ class MarketplaceProduct(models.Model):
          'UNIQUE(account_id, marketplace_item_id, marketplace_variation_id)',
          'This marketplace product already exists for this account!')
     ]
+
+    @api.constrains('account_id', 'marketplace_item_id', 'marketplace_variation_id')
+    def _check_unique_marketplace_product(self):
+        for rec in self:
+            domain = [
+                ('account_id', '=', rec.account_id.id),
+                ('marketplace_item_id', '=', rec.marketplace_item_id),
+            ]
+            if rec.marketplace_variation_id:
+                domain.append(('marketplace_variation_id', '=', rec.marketplace_variation_id))
+            else:
+                domain.append(('marketplace_variation_id', '=', False))
+            if self.search_count(domain) > 1:
+                raise ValidationError(
+                    _('This marketplace product already exists for this account!'))
 
     @api.depends('product_id', 'account_id.buffer_location_id')
     def _compute_odoo_buffer_stock(self):
@@ -310,7 +324,8 @@ class MarketplaceProduct(models.Model):
             
             # Set move quantities
             for move_line in picking.move_line_ids:
-                move_line.quantity = move_line.reserved_quantity
+                move_line.quantity = move_line.move_id.product_uom_qty
+                move_line.picked = True
             
             picking.button_validate()
             
@@ -344,3 +359,17 @@ class MarketplaceProduct(models.Model):
                 'marketplace_product_id': self.id,
             },
         }
+
+    @api.model
+    def _cron_push_stock(self):
+        products = self.search([
+            ('active', '=', True),
+            ('product_id', '!=', False),
+            ('account_id.active', '=', True),
+        ])
+        for product in products:
+            try:
+                product.action_push_stock()
+            except Exception as e:
+                _logger.error('Cron push stock failed for %s: %s',
+                    product.marketplace_name, str(e))

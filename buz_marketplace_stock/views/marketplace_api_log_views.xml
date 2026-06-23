@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketplace_api_log_tree" model="ir.ui.view">
+        <field name="name">buz.marketplace.api.log.tree</field>
+        <field name="model">buz.marketplace.api.log</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="create_date"/>
+                <field name="account_id"/>
+                <field name="method"/>
+                <field name="endpoint"/>
+                <field name="response_status" decoration-danger="response_status >= 400"/>
+                <field name="duration_ms"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_marketplace_api_log_form" model="ir.ui.view">
+        <field name="name">buz.marketplace.api.log.form</field>
+        <field name="model">buz.marketplace.api.log</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="create_date"/>
+                            <field name="account_id"/>
+                            <field name="method"/>
+                            <field name="endpoint"/>
+                            <field name="response_status" decoration-danger="response_status >= 400"/>
+                            <field name="duration_ms"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="request" string="Request">
+                            <field name="request_headers" nolabel="1"/>
+                            <field name="request_body" nolabel="1"/>
+                        </page>
+                        <page name="response" string="Response">
+                            <field name="response_body" nolabel="1"/>
+                        </page>
+                        <page name="error" string="Error" invisible="not error_message">
+                            <field name="error_message" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_marketplace_api_log_search" model="ir.ui.view">
+        <field name="name">buz.marketplace.api.log.search</field>
+        <field name="model">buz.marketplace.api.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="account_id"/>
+                <field name="endpoint"/>
+                <field name="response_status"/>
+                <separator/>
+                <filter name="errors" string="Errors" domain="[('response_status', '>=', 400)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_marketplace_api_log" model="ir.actions.act_window">
+        <field name="name">API Logs</field>
+        <field name="res_model">buz.marketplace.api.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_marketplace_api_log_search"/>
+    </record>
+</odoo>

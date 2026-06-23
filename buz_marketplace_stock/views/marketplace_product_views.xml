@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_marketplace_product_tree" model="ir.ui.view">
+        <field name="name">buz.marketplace.product.tree</field>
+        <field name="model">buz.marketplace.product</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="marketplace_name"/>
+                <field name="account_id"/>
+                <field name="product_id"/>
+                <field name="marketplace_sku"/>
+                <field name="marketplace_price" widget="monetary"/>
+                <field name="marketplace_stock"/>
+                <field name="odoo_buffer_stock"/>
+                <field name="initial_stock_qty"/>
+                <field name="last_sync_date"/>
+                <field name="active" decoration-muted="not active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_marketplace_product_form" model="ir.ui.view">
+        <field name="name">buz.marketplace.product.form</field>
+        <field name="model">buz.marketplace.product</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_fetch_stock" string="Fetch Stock" type="object"/>
+                    <button name="action_fetch_price" string="Fetch Price" type="object"/>
+                    <button name="action_push_stock" string="Push Stock to Marketplace" type="object"/>
+                    <button name="action_refill" string="Refill Buffer Stock" type="object"/>
+                    <button name="action_link_product" string="Link Odoo Product" type="object"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="marketplace_name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="account_id"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="marketplace_item_id"/>
+                            <field name="marketplace_variation_id"/>
+                            <field name="marketplace_sku"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="product_id"/>
+                            <field name="product_tmpl_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="Stock">
+                        <group>
+                            <field name="marketplace_stock"/>
+                            <field name="marketplace_price" widget="monetary"/>
+                        </group>
+                        <group>
+                            <field name="odoo_buffer_stock"/>
+                            <field name="initial_stock_qty"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="last_sync_date"/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_marketplace_product_search" model="ir.ui.view">
+        <field name="name">buz.marketplace.product.search</field>
+        <field name="model">buz.marketplace.product</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="marketplace_name"/>
+                <field name="marketplace_sku"/>
+                <field name="account_id"/>
+                <field name="product_id"/>
+                <separator/>
+                <filter name="linked" string="Linked" domain="[('product_id', '!=', False)]"/>
+                <filter name="unlinked" string="Unlinked" domain="[('product_id', '=', False)]"/>
+                <filter name="active" string="Active"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_account" string="Account" context="{'group_by': 'account_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_marketplace_product" model="ir.actions.act_window">
+        <field name="name">Marketplace Products</field>
+        <field name="res_model">buz.marketplace.product</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_marketplace_product_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+    <record id="action_marketplace_product_shopee" model="ir.actions.act_window">
+        <field name="name">Shopee Products</field>
+        <field name="res_model">buz.marketplace.product</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_marketplace_product_search"/>
+        <field name="domain">[('account_id.platform', '=', 'shopee')]</field>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+    <record id="action_marketplace_product_lazada" model="ir.actions.act_window">
+        <field name="name">Lazada Products</field>
+        <field name="res_model">buz.marketplace.product</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_marketplace_product_search"/>
+        <field name="domain">[('account_id.platform', '=', 'lazada')]</field>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+</odoo>

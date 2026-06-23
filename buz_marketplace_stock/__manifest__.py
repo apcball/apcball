@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Marketplace Stock Management',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.0.1',
     'category': 'Inventory/Warehouse',
     'summary': 'Manage Shopee and Lazada marketplace stock synchronization',
     'description': """
