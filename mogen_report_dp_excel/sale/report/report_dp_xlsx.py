@@ -123,6 +123,7 @@ class ReportDPExcel(models.AbstractModel):
                             "sequence": sequence,
                             "scheduled_date": self._format_date(picking.scheduled_date) if picking else "",
                             "dispatch_doc_name": self._safe_text(picking.buz_dispatch_document_name) if picking else "",
+                            "source_document": self._safe_text(picking.origin) if picking else "",
                             "so_no": self._safe_text(sale_order.name),
                             "invoice_no": invoice_data["invoice_no"],
                             "do_no": self._safe_text(picking.name) if picking else "",
@@ -145,6 +146,60 @@ class ReportDPExcel(models.AbstractModel):
                             "note": self._safe_text(picking.delivery_note) if picking else "",
                         }
                     )
+                    sequence += 1
+
+        # === Process pickings WITHOUT sale_id (e.g. from buz_service_receipt) ===
+        data = self.env.context.get("xlsx_export_data") or {}
+        sr_picking_ids = data.get("service_receipt_picking_ids", [])
+        if sr_picking_ids:
+            pickings = self.env["stock.picking"].browse(sr_picking_ids)
+            date_from = data.get("date_from")
+            date_to = data.get("date_to")
+            do_status = data.get("do_status")
+
+            for picking in pickings:
+                # Apply date range filter (same logic as _get_pickings_by_range)
+                if date_from and date_to:
+                    if not picking.scheduled_date:
+                        continue
+                    from_dt = fields.Datetime.to_datetime(f"{date_from} 00:00:00")
+                    to_dt = fields.Datetime.to_datetime(f"{date_to} 23:59:59")
+                    p_date = fields.Datetime.to_datetime(picking.scheduled_date)
+                    if not (from_dt <= p_date <= to_dt):
+                        continue
+
+                moves = picking.move_ids.filtered(lambda m: m.state != "cancel")
+                if not moves:
+                    continue
+
+                for move in moves:
+                    quantity = (
+                        move.quantity or move.quantity_done or move.product_uom_qty
+                    ) or 0.0
+                    unit_price = move.product_id.lst_price or 0.0
+
+                    rows.append({
+                        "sequence": sequence,
+                        "scheduled_date": self._format_date(picking.scheduled_date),
+                        "dispatch_doc_name": self._safe_text(picking.buz_dispatch_document_name),
+                        "source_document": self._safe_text(picking.origin),
+                        "so_no": "",
+                        "invoice_no": "",
+                        "do_no": self._safe_text(picking.name),
+                        "customer": self._safe_text(picking.partner_id.name),
+                        "saleperson": "",
+                        "sale_team": "",
+                        "so_ref": "",
+                        "shipping_address": self._safe_text(picking.partner_id.contact_address),
+                        "parent_bom": "",
+                        "product_code": self._safe_text(move.product_id.default_code),
+                        "description": self._safe_text(move.product_id.name),
+                        "quantity": quantity,
+                        "uom": self._safe_text(move.product_uom.name),
+                        "unit_price": unit_price,
+                        "sum_amount": unit_price * quantity,
+                        "note": "",
+                    })
                     sequence += 1
 
         return rows
@@ -255,7 +310,8 @@ class ReportDPExcel(models.AbstractModel):
             ("No.", 8),
             ("Date", 14),
             ("Dispatch Doc", 18),
-            ("DP No.", 18),
+            ("Picking No.", 18),
+            ("Source Document", 24),
             ("SO No.", 16),
             ("Invoice No", 18),
             ("Customer", 24),
@@ -296,21 +352,22 @@ class ReportDPExcel(models.AbstractModel):
             sheet.write(row_idx, 1, row["scheduled_date"], center_format)
             sheet.write(row_idx, 2, row["dispatch_doc_name"], text_format)
             sheet.write(row_idx, 3, row["do_no"], text_format)
-            sheet.write(row_idx, 4, row["so_no"], text_format)
-            sheet.write(row_idx, 5, row["invoice_no"], text_format)
-            sheet.write(row_idx, 6, row["customer"], text_format)
-            sheet.write(row_idx, 7, row["saleperson"], text_format)
-            sheet.write(row_idx, 8, row["sale_team"], text_format)
-            sheet.write(row_idx, 9, row["so_ref"], text_format)
-            sheet.write(row_idx, 10, row["shipping_address"], text_format)
-            sheet.write(row_idx, 11, row["parent_bom"], text_format)
-            sheet.write(row_idx, 12, row["product_code"], text_format)
-            sheet.write(row_idx, 13, row["description"], text_format)
-            sheet.write_number(row_idx, 14, row["quantity"] or 0.0, number_format)
-            sheet.write(row_idx, 15, row["uom"], center_format)
-            sheet.write_number(row_idx, 16, row["unit_price"] or 0.0, number_format)
-            sheet.write_number(row_idx, 17, row["sum_amount"] or 0.0, number_format)
-            sheet.write(row_idx, 18, row["note"], text_format)
+            sheet.write(row_idx, 4, row["source_document"], text_format)
+            sheet.write(row_idx, 5, row["so_no"], text_format)
+            sheet.write(row_idx, 6, row["invoice_no"], text_format)
+            sheet.write(row_idx, 7, row["customer"], text_format)
+            sheet.write(row_idx, 8, row["saleperson"], text_format)
+            sheet.write(row_idx, 9, row["sale_team"], text_format)
+            sheet.write(row_idx, 10, row["so_ref"], text_format)
+            sheet.write(row_idx, 11, row["shipping_address"], text_format)
+            sheet.write(row_idx, 12, row["parent_bom"], text_format)
+            sheet.write(row_idx, 13, row["product_code"], text_format)
+            sheet.write(row_idx, 14, row["description"], text_format)
+            sheet.write_number(row_idx, 15, row["quantity"] or 0.0, number_format)
+            sheet.write(row_idx, 16, row["uom"], center_format)
+            sheet.write_number(row_idx, 17, row["unit_price"] or 0.0, number_format)
+            sheet.write_number(row_idx, 18, row["sum_amount"] or 0.0, number_format)
+            sheet.write(row_idx, 19, row["note"], text_format)
             row_idx += 1
 
         if not rows:

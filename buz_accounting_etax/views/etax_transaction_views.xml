@@ -177,6 +177,7 @@
         <field name="arch" type="xml">
             <search>
                 <!-- <field name="document_id"/> -->
+                <field name="invoice_id"/>
                 <field name="partner_id"/>
                 <field name="transaction_code"/>
                 <separator/>

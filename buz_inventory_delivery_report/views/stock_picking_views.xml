@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Add Print DP button to Stock Picking Form -->
+    <record id="view_stock_picking_form_dispatch_button" model="ir.ui.view">
+        <field name="name">stock.picking.form.dispatch.button</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Print DP button after Print button -->
+            <xpath expr="//button[@name='do_print_picking']" position="after">
+                <button name="%(buz_inventory_delivery_report.action_distributor_delivery_export)d" 
+                        string="Print DP" 
+                        type="action" 
+                        class="btn-primary"
+                        icon="fa-print"
+                        invisible="picking_type_code != 'outgoing'"
+                        help="พิมพ์ใบจ่ายสินค้า (Dispatch Report)"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -101,15 +101,14 @@
                         }
                     </style>
                     
-                    <!-- Document Number - เลขที่เอกสาร (ดึงจาก buz_dispatch_document) -->
+                    <!-- Document Number - เลขที่เอกสาร -->
                     <div t-attf-style="position: absolute; top: {{config.doc_number_top * px_to_mm}}mm; left: {{config.doc_number_left * px_to_mm}}mm; white-space: nowrap; word-break: keep-all;" class="thai-text">
-                        <span t-esc="', '.join(n for n in o.buz_dispatch_document_ids.mapped('name') if n)"/>
+                        <span t-field="o.name"/>
                     </div>
                     
-                    <!-- Document Date - วันที่ (ดึงจาก buz_dispatch_document) -->
-                    <t t-set="dispatch_doc" t-value="o.buz_dispatch_document_ids[:1]"/>
+                    <!-- Document Date - วันที่ -->
                     <div t-attf-style="position: absolute; top: {{config.doc_date_top * px_to_mm}}mm; left: {{config.doc_date_left * px_to_mm}}mm;" class="thai-text">
-                        <span t-field="dispatch_doc.document_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
+                        <span t-field="o.scheduled_date" t-options='{"widget": "date", "format": "dd/MM/yyyy"}'/>
                     </div>
                     
                     <!-- SO Number - เลขที่ SO -->

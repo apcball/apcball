@@ -155,6 +155,17 @@ class AccountMoveInherit(models.Model):
                 if related_invoice:
                     selected_invoice_id = related_invoice.id
 
+        # Fallback: credit note ที่ไม่มี reversal (ป้อน original_invoice_number จาก buz_custom_invoice)
+        if not selected_invoice_id and move.move_type == 'out_refund':
+            if hasattr(move, 'original_invoice_number') and move.original_invoice_number:
+                related_invoice = self.env['account.move'].sudo().search([
+                    ('name', '=', move.original_invoice_number),
+                    ('move_type', 'in', ['out_invoice', 'out_refund']),
+                    ('state', '=', 'posted')
+                ], limit=1)
+                if related_invoice:
+                    selected_invoice_id = related_invoice.id
+
         # สร้าง record ใน etax.transaction จากข้อมูล invoice หลัก
         etax_transaction = self.env['etax.transaction'].create({
             'invoice_id': move.id,

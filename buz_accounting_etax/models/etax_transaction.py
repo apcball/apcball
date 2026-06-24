@@ -49,16 +49,16 @@ class EtaxTransaction(models.Model):
     )
 
     selected_delivery_id = fields.Many2one(
-        'stock.picking',
-        string='เลขที่อ้างอิง (Delivery)',
+        'buz.dispatch.document',
+        string='เลขที่อ้างอิง (Dispatch Document)',
         domain="[('id', 'in', delivery_ids)]",
         ondelete='set null'
     )
     
     # ฟิลด์เก็บรายการ Delivery Order IDs ทั้งหมด (ใช้สำหรับ domain)
     delivery_ids = fields.Many2many(
-        'stock.picking',
-        string='Related Delivery Orders',
+        'buz.dispatch.document',
+        string='Related Dispatch Documents',
         compute='_compute_delivery_ids'
     )
 
@@ -210,34 +210,31 @@ class EtaxTransaction(models.Model):
             
     @api.depends('sale_order_ref', 'partner_id')
     def _compute_delivery_ids(self):
-        """คำนวณรายการ Delivery Orders ที่เกี่ยวข้อง"""
+        """คำนวณรายการ Dispatch Documents ที่เกี่ยวข้อง"""
+        DispatchDoc = self.env['buz.dispatch.document']
         for record in self:
-            pickings = self.env['stock.picking']
-            
+            docs = DispatchDoc
+
             if record.sale_order_ref:
-                # กรณีมี sale order reference - ดึง Delivery Orders ทั้งหมดจาก sale order
-                # ค้นหาจาก picking_ids ของ sale order (รวมทุก type: incoming, outgoing, internal)
-                all_pickings = record.sale_order_ref.picking_ids
-                
-                # ถ้าไม่พบจาก picking_ids ให้ค้นหาจาก origin
-                if not all_pickings:
-                    all_pickings = self.env['stock.picking'].search([
+                # กรณีมี sale order reference - หา dispatch document ผ่าน stock_picking_id
+                pickings = record.sale_order_ref.picking_ids
+                if not pickings:
+                    pickings = self.env['stock.picking'].search([
                         ('origin', '=', record.sale_order_ref.name)
                     ])
-                
-                # กรองเฉพาะรายการที่ไม่ใช่ draft หรือ cancelled (แสดงทั้ง incoming และ outgoing)
-                pickings = all_pickings.filtered(
-                    lambda p: p.state not in ('draft', 'cancel')
-                )
-                
-            elif record.partner_id:
-                # กรณีมีแค่ customer แต่ไม่มี sale order - แสดงทุก type
-                pickings = self.env['stock.picking'].search([
-                    ('partner_id', '=', record.partner_id.id),
-                    ('state', 'not in', ('draft', 'cancel'))
+                docs = DispatchDoc.search([
+                    ('stock_picking_id', 'in', pickings.ids),
+                    ('state', 'not in', ('draft',))  # อย่างน้อย confirmed
                 ])
-            
-            record.delivery_ids = pickings
+
+            elif record.partner_id:
+                # กรณีมีแค่ customer แต่ไม่มี sale order
+                docs = DispatchDoc.search([
+                    ('stock_picking_id.partner_id', '=', record.partner_id.id),
+                    ('state', 'not in', ('draft',))
+                ])
+
+            record.delivery_ids = docs
 
     @api.model
     def create_from_invoice(self, invoice_id):
@@ -416,8 +413,20 @@ class EtaxTransaction(models.Model):
                     else ''
                 ), # เหตุผลในการเพิ่ม/ลดหนี้
 
-                "H07-ADDITIONAL_REF_ASSIGN_ID": (self.selected_invoice_id.name if self.selected_invoice_id.name else self.invoice_id.name) if self.document_type in ('80', '81') else "", # อ้างอิงใบกำกับภาษีเดิม [CN, DN]
-                "H08-ADDITIONAL_REF_ISSUE_DTM": (self.selected_invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00") if self.selected_invoice_id.name else self.invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")) if self.document_type in ('80', '81') else "", # วันที่ใบกำกับภาษีเดิม [CN, DN]
+                "H07-ADDITIONAL_REF_ASSIGN_ID": (
+                    self.selected_invoice_id.name
+                    if self.selected_invoice_id
+                    else self.invoice_id.original_invoice_number
+                    if hasattr(self.invoice_id, 'original_invoice_number') and self.invoice_id.original_invoice_number
+                    else self.invoice_id.name
+                ) if self.document_type in ('80', '81') else "", # อ้างอิงใบกำกับภาษีเดิม [CN, DN]
+                "H08-ADDITIONAL_REF_ISSUE_DTM": (
+                    self.selected_invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")
+                    if self.selected_invoice_id
+                    else self.invoice_id.original_invoice_date.strftime("%Y-%m-%dT00:00:00")
+                    if hasattr(self.invoice_id, 'original_invoice_date') and self.invoice_id.original_invoice_date
+                    else self.invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")
+                ) if self.document_type in ('80', '81') else "", # วันที่ใบกำกับภาษีเดิม [CN, DN]
                 "H09-ADDITIONAL_REF_TYPE_CODE": self.document_type if self.document_type in ('80', '81') else "", # T03 = ว่าง
                 "H10-ADDITIONAL_REF_DOCUMENT_NAME": "",
                 "H11-DELIVERY_TYPE_CODE": "",
@@ -750,51 +759,27 @@ class EtaxTransaction(models.Model):
         for record in self:
             record.amount_cur = sum(line.price_subtotal for line in record.line_ids)
 
-    @api.depends('line_ids.price_subtotal', 'original_amount', 'amount_untaxed')
+    @api.depends('line_ids.price_subtotal', 'original_amount', 'amount_untaxed', 'invoice_id')
     def _compute_amount_tax(self):
         for record in self:
-            total_tax = sum(line.price_tax for line in record.line_ids)
+            if record.invoice_id and record.document_type in ('80', '81'):
+                record.amount_tax = record.invoice_id.amount_tax
+            else:
+                total_tax = sum(line.price_tax for line in record.line_ids)
+                if total_tax:
+                    total_tax = abs(record.difference_amount or 0.0) * 7 / 100
+                record.amount_tax = total_tax
 
-            if total_tax > 0: # ตรวจสอบว่ามีภาษีหรือไม่
-                total_tax = abs(record.difference_amount or 0.0) * 7 / 100  # สมมติอัตราภาษี 7%
-            else :
-                total_tax = 0
-
-            record.amount_tax = total_tax
-
-            # invoice = self.env['account.move'].search([('name', '=', record.journal_entry_memo)], limit=1)
-            # record.amount_tax = invoice.amount_tax if invoice.amount_tax else 0.0
-
-            # if record.document_type in ['T03']:
-            #     total = abs((record.original_amount or 0.0) - (record.amount_untaxed or 0.0))
-            # elif record.document_type in ['81', '80']:
-            #     total = sum(line.price_subtotal for line in record.line_ids)
-            # else:
-            #     total = 0.0
-
-            # record.amount_tax = (total or 0.0) * 7 / 100
-    
-    @api.depends('line_ids.price_subtotal', 'original_amount', 'amount_untaxed')
+    @api.depends('line_ids.price_subtotal', 'original_amount', 'amount_untaxed', 'invoice_id')
     def _compute_net_amount_tax(self):
         for record in self:
-            # คำนวณภาษีจากรายการสินค้าโดยตรง (ใช้ค่าจาก tax_ids ที่เลือกจริง)
-            total_tax = sum(line.price_tax for line in record.line_ids) 
-
-            if total_tax > 0: # ตรวจสอบว่ามีภาษีหรือไม่
-                total_tax = abs(record.total_after_deposit or 0.0) * 7 / 100  # สมมติอัตราภาษี 7%
-            else :
-                total_tax = 0
-
-            record.amount_vat = total_tax
-
-            # if record.document_type in ['T03']:
-            #     total = abs((record.original_amount or 0.0) - (record.amount_untaxed or 0.0))
-            # elif record.document_type in ['81', '80']:
-            #     total = sum(line.price_subtotal for line in record.line_ids)
-            # else:
-            #     total = 0.0
-
-            # record.amount_vat = (total or 0.0) * 7 / 100
+            if record.invoice_id and record.document_type == 'T03':
+                record.amount_vat = record.invoice_id.amount_tax
+            else:
+                total_tax = sum(line.price_tax for line in record.line_ids)
+                if total_tax:
+                    total_tax = abs(record.total_after_deposit or 0.0) * 7 / 100
+                record.amount_vat = total_tax
 
     @api.depends('line_ids.price_subtotal', 'original_amount', 'amount_untaxed', 'amount_tax')
     def _compute_amount_total(self):
@@ -816,11 +801,16 @@ class EtaxTransaction(models.Model):
             else:
                 record.net_amount_total = round((record.total_after_deposit or 0.0) + (record.amount_vat or 0.0), 2)
 
-    @api.depends('invoice_id.amount_untaxed')
+    @api.depends('invoice_id.amount_untaxed', 'invoice_id.original_tax_invoice_amount')
     def _compute_original_amount(self):
         for record in self:
             invoice = record.selected_invoice_id if record.selected_invoice_id else False
-            record.original_amount = invoice.amount_untaxed if invoice and invoice.amount_untaxed else 0.0
+            if invoice and invoice.amount_untaxed:
+                record.original_amount = invoice.amount_untaxed
+            elif hasattr(record.invoice_id, 'original_tax_invoice_amount') and record.invoice_id.original_tax_invoice_amount:
+                record.original_amount = record.invoice_id.original_tax_invoice_amount
+            else:
+                record.original_amount = 0.0
 
     @api.depends('line_ids.price_unit', 'line_ids.quantity', 'line_ids.discount')
     def _compute_amount_disc(self):

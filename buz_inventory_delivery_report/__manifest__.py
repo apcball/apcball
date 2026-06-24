@@ -19,7 +19,7 @@
     'data': [
         'views/dispatch_report_config_views.xml',
         'views/dispatch_report_coordinate_helper.xml',
-        'report/dispatch_report.xml',
+        'views/stock_picking_views.xml',
         'wizard/dispatch_report_quick_setup_views.xml',
         'data/dispatch_report_config_data.xml',
         'security/ir.model.access.csv',
@@ -28,6 +28,7 @@
         'report/distributor_delivery_note.xml',
         'report/distributor_delivery_export.xml',
         'report/delivery_note_report.xml',
+        'report/dispatch_report.xml',
         'report/dispatch_report_preview.xml',
         'report/borrow_equipment_form.xml',
         'report/request_borrow_equipment_form.xml',
@@ -35,6 +36,7 @@
         'report/request_change_products_ex.xml',
         'report/request_job_order.xml',
         'report/delivery_report_tem.xml',
+        'report/request_change_products_claim.xml',
 
     ],
     'installable': True,

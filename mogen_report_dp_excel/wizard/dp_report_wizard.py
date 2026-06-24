@@ -86,11 +86,33 @@ class DPReportWizard(models.TransientModel):
     def action_export_excel(self):
         self.ensure_one()
         sale_orders = self._get_sale_orders()
+        
+        # Also find pickings WITHOUT sale_id (e.g. from buz_service_receipt)
+        date_from_dt = datetime.combine(self.date_from, time.min)
+        date_to_dt = datetime.combine(self.date_to, time.max)
+        non_so_domain = [
+            ("scheduled_date", ">=", fields.Datetime.to_string(date_from_dt)),
+            ("scheduled_date", "<=", fields.Datetime.to_string(date_to_dt)),
+            ("sale_id", "=", False),
+        ]
+        if self.do_status:
+            if self.do_status == 'return':
+                non_so_domain.append(('picking_type_id.code', '=', 'incoming'))
+            else:
+                non_so_domain.append(('state', '=', self.do_status))
+                non_so_domain.append(('picking_type_id.code', '=', 'outgoing'))
+        else:
+            non_so_domain.append(("state", "!=", "cancel"))
+        non_so_pickings = self.env["stock.picking"].search(
+            non_so_domain, order="scheduled_date, name"
+        )
+        
         data = {
             "date_from": fields.Date.to_string(self.date_from),
             "date_to": fields.Date.to_string(self.date_to),
             "do_status": self.do_status,
             "sale_order_ids": sale_orders.ids,
+            "service_receipt_picking_ids": non_so_pickings.ids,
         }
         return self.env.ref(
             "mogen_report_dp_excel.action_report_dp_excel_wizard"
