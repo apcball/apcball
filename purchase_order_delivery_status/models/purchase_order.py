@@ -19,7 +19,8 @@
 #    If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class PurchaseOrder(models.Model):
@@ -33,10 +34,20 @@ class PurchaseOrder(models.Model):
         compute='_compute_delivery_status', store=True,
         help="Status of delivery of purchase order.")
 
-    @api.depends('state', 'order_line.qty_received')
+    is_receipt_manually_confirmed = fields.Boolean(
+        string='Receipt Manually Confirmed',
+        copy=False,
+        default=False,
+        help="Technical field to track manual receipt confirmation for service POs.",
+    )
+
+    @api.depends('state', 'order_line.qty_received', 'is_receipt_manually_confirmed')
     def _compute_delivery_status(self):
         """ Compute the delivery status for a record. """
         for rec in self:
+            if rec.is_receipt_manually_confirmed:
+                rec.delivery_status = 'received'
+                continue
             pickings = self.env['stock.picking'].search([
                 ('purchase_id', '=', rec.id)])
             orderlines = rec.mapped('order_line')
@@ -49,3 +60,12 @@ class PurchaseOrder(models.Model):
                 rec.delivery_status = 'partial'
             elif all(o.qty_received == o.product_qty for o in orderlines):
                 rec.delivery_status = 'received'
+
+    def action_manual_receipt_confirm(self):
+        self.ensure_one()
+        pickings = self.env['stock.picking'].search([
+            ('purchase_id', '=', self.id)])
+        if pickings:
+            raise UserError(
+                _("This purchase order already has receipts. Use the regular receiving process instead."))
+        self.is_receipt_manually_confirmed = True

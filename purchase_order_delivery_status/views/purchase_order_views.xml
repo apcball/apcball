@@ -6,6 +6,15 @@
         <field name="model">purchase.order</field>
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="picking_ids" invisible="1"/>
+                <field name="invoice_count" invisible="1"/>
+                <button name="action_manual_receipt_confirm"
+                        string="Receipt"
+                        type="object"
+                        class="btn-primary"
+                        invisible="delivery_status == 'received' or picking_ids or invoice_count == 0 or state not in ('purchase', 'done')"/>
+            </xpath>
             <xpath expr="//field[@name='fiscal_position_id']" position="after">
                 <field name="delivery_status"/>
             </xpath>
