@@ -187,7 +187,7 @@
                                 <div style="border: 1px solid black; padding: 10px; border-radius: 4px; min-height: 192px; box-sizing: border-box;">
                                     <div><strong>ชื่อลูกค้า:</strong> <span t-field="doc.partner_id.name"/> <t t-if="doc.partner_id.branch">
     <t t-if="doc.partner_id.branch in ('00000', 'สำนักงานใหญ่')">(สำนักงานใหญ่)</t>
-    <t t-elif="doc.partner_id.branch.isdigit()">(สาขาที่ <t t-esc="int(doc.partner_id.branch)"/>)</t>
+    <t t-elif="doc.partner_id.branch.isdigit()">(สาขาที่ <t t-esc="'{:05d}'.format(int(doc.partner_id.branch))"/>)</t>
     <t t-else="">(สาขาที่ <t t-esc="doc.partner_id.branch"/>)</t>
 </t></div>
                                     <div><strong>เลขประจำตัวผู้เสียภาษีอากร:</strong> <span t-field="doc.partner_id.vat"/></div>
