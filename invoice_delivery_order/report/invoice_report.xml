@@ -7,7 +7,7 @@
                 <div class="col-auto col-3 mw-100 mb-2">
                     <strong>Delivery Order:</strong><br/>
                     <span t-foreach="o.picking_ids" t-as="picking">
-                        <span t-esc="picking.name"/><t t-if="not picking_last">, </t>
+                        <span t-esc="picking.picking_display_name"/><t t-if="not picking_last">, </t>
                     </span>
                 </div>
             </div>

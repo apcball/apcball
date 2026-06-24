@@ -103,7 +103,7 @@
                     
                     <!-- Document Number - เลขที่เอกสาร -->
                     <div t-attf-style="position: absolute; top: {{config.doc_number_top * px_to_mm}}mm; left: {{config.doc_number_left * px_to_mm}}mm; white-space: nowrap; word-break: keep-all;" class="thai-text">
-                        <span t-field="o.name"/>
+                        <span t-field="o.buz_dispatch_document_name"/>
                     </div>
                     
                     <!-- Document Date - วันที่ -->

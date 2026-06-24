@@ -49,16 +49,16 @@ class EtaxTransaction(models.Model):
     )
 
     selected_delivery_id = fields.Many2one(
-        'buz.dispatch.document',
-        string='เลขที่อ้างอิง (Dispatch Document)',
+        'stock.picking',
+        string='เลขที่อ้างอิง (Delivery)',
         domain="[('id', 'in', delivery_ids)]",
         ondelete='set null'
     )
     
     # ฟิลด์เก็บรายการ Delivery Order IDs ทั้งหมด (ใช้สำหรับ domain)
     delivery_ids = fields.Many2many(
-        'buz.dispatch.document',
-        string='Related Dispatch Documents',
+        'stock.picking',
+        string='Related Delivery Orders',
         compute='_compute_delivery_ids'
     )
 
@@ -210,31 +210,27 @@ class EtaxTransaction(models.Model):
             
     @api.depends('sale_order_ref', 'partner_id')
     def _compute_delivery_ids(self):
-        """คำนวณรายการ Dispatch Documents ที่เกี่ยวข้อง"""
-        DispatchDoc = self.env['buz.dispatch.document']
+        """คำนวณรายการ Delivery Orders ที่เกี่ยวข้อง"""
         for record in self:
-            docs = DispatchDoc
-
+            pickings = self.env['stock.picking']
+            
             if record.sale_order_ref:
-                # กรณีมี sale order reference - หา dispatch document ผ่าน stock_picking_id
-                pickings = record.sale_order_ref.picking_ids
-                if not pickings:
-                    pickings = self.env['stock.picking'].search([
+                all_pickings = record.sale_order_ref.picking_ids
+                if not all_pickings:
+                    all_pickings = self.env['stock.picking'].search([
                         ('origin', '=', record.sale_order_ref.name)
                     ])
-                docs = DispatchDoc.search([
-                    ('stock_picking_id', 'in', pickings.ids),
-                    ('state', 'not in', ('draft',))  # อย่างน้อย confirmed
-                ])
-
+                pickings = all_pickings.filtered(
+                    lambda p: p.state not in ('draft', 'cancel')
+                )
+                
             elif record.partner_id:
-                # กรณีมีแค่ customer แต่ไม่มี sale order
-                docs = DispatchDoc.search([
-                    ('stock_picking_id.partner_id', '=', record.partner_id.id),
-                    ('state', 'not in', ('draft',))
+                pickings = self.env['stock.picking'].search([
+                    ('partner_id', '=', record.partner_id.id),
+                    ('state', 'not in', ('draft', 'cancel'))
                 ])
-
-            record.delivery_ids = docs
+            
+            record.delivery_ids = pickings
 
     @api.model
     def create_from_invoice(self, invoice_id):
@@ -434,7 +430,7 @@ class EtaxTransaction(models.Model):
                 # "H13-BUYER_ORDER_ISSUE_DTM": self.selected_delivery_id.name or "", # วันที่ใบสั่งซื้อ [T03]
                 "H13-BUYER_ORDER_ISSUE_DTM": "",
                 "H14-BUYER_ORDER_REF_TYPE_CODE": "",
-                "H15-DOCUMENT_REMARK": self.selected_delivery_id.name or "", #self.notes, # หมายเหตุ [T03, CN, DN]
+                "H15-DOCUMENT_REMARK": self.selected_delivery_id.buz_dispatch_document_name or self.selected_delivery_id.name or "", #self.notes, # หมายเหตุ [T03, CN, DN]
                 "H16-VOUCHER_NO": "",
                 "H17-SELLER_CONTACT_PERSON_NAME": "",
                 "H18-SELLER_CONTACT_DEPARTMENT_NAME": "",
