@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Product Product Form: Add reservation fields -->
+    <record id="stock_reservation_product_form_view" model="ir.ui.view">
+        <field name="name">stock.reservation.product.product.form</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <!-- Smart button in button box -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_reservations"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-tasks"
+                        context="{'search_default_state_reserved': 1}">
+                    <div class="o_stat_info">
+                        <field name="reservation_count" widget="statinfo"/>
+                        <span class="o_stat_text">Reservations</span>
+                    </div>
+                </button>
+            </xpath>
+
+            <!-- Inventory quantities section: Add reservation info -->
+            <xpath expr="//field[@name='qty_available']/.." position="after">
+                <div class="row" name="reservation_qty_info"
+                     groups="stock_reservation_management.group_reservation_user">
+                    <div class="col-4 text-center border-end">
+                        <span class="d-block text-muted small">On Hand</span>
+                        <span class="d-block h5">
+                            <field name="qty_available" widget="statinfo"/>
+                        </span>
+                    </div>
+                    <div class="col-4 text-center border-end">
+                        <span class="d-block text-muted small">Reserved</span>
+                        <span class="d-block h5 text-warning">
+                            <field name="reserved_qty" widget="statinfo"/>
+                        </span>
+                    </div>
+                    <div class="col-4 text-center">
+                        <span class="d-block text-muted small">Available</span>
+                        <span class="d-block h5"
+                              t-attf-class="{{ 'text-success' if record.available_after_reserve.raw_value > 0 else 'text-danger' }}">
+                            <field name="available_after_reserve" widget="statinfo"/>
+                        </span>
+                    </div>
+                </div>
+            </xpath>
+
+            <!-- VIP Reserved in additional info -->
+            <xpath expr="//field[@name='sale_delay']/.." position="after"
+                   groups="stock_reservation_management.group_reservation_manager">
+                <group col="2" name="reservation_config"
+                       groups="stock_reservation_management.group_reservation_manager"
+                       string="Reservation Configuration">
+                    <field name="vip_reserved_qty"/>
+                    <field name="reserved_qty"/>
+                    <field name="available_after_reserve"/>
+                    <field name="reservation_count"/>
+                </group>
+            </xpath>
+
+            <!-- Add product category safety reserve -->
+            <xpath expr="//field[@name='categ_id']" position="after"
+                   groups="stock_reservation_management.group_reservation_admin">
+                <field name="categ_id" context="{}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Product Tree View: Add reservation columns -->
+    <record id="stock_reservation_product_tree_view" model="ir.ui.view">
+        <field name="name">stock.reservation.product.product.tree</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_product_tree_view"/>
+        <field name="arch" type="xml">
+            <field name="qty_available" position="after">
+                <field name="reserved_qty" optional="show"
+                       groups="stock_reservation_management.group_reservation_user"/>
+                <field name="available_after_reserve" optional="show"
+                       groups="stock_reservation_management.group_reservation_user"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Product Category Form: Add safety reserve -->
+    <record id="stock_reservation_product_category_form_view" model="ir.ui.view">
+        <field name="name">stock.reservation.product.category.form</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Reservation Configuration"
+                       groups="stock_reservation_management.group_reservation_admin">
+                    <field name="safety_reserve_qty"
+                           help="This quantity is excluded from Available to Promise calculations."/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

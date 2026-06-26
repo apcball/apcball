@@ -49,13 +49,12 @@ class EtaxTransaction(models.Model):
     )
 
     selected_delivery_id = fields.Many2one(
-        'stock.picking',
+        'buz.dispatch.document',
         string='เลขที่อ้างอิง (Delivery)',
         domain="[('id', 'in', delivery_ids)]",
         ondelete='set null'
     )
-    
-    # ฟิลด์เก็บรายการ Delivery Order IDs ทั้งหมด (ใช้สำหรับ domain)
+
     delivery_ids = fields.Many2many(
         'stock.picking',
         string='Related Delivery Orders',
@@ -210,27 +209,19 @@ class EtaxTransaction(models.Model):
             
     @api.depends('sale_order_ref', 'partner_id')
     def _compute_delivery_ids(self):
-        """คำนวณรายการ Delivery Orders ที่เกี่ยวข้อง"""
         for record in self:
-            pickings = self.env['stock.picking']
-            
+            dispatches = self.env['buz.dispatch.document']
+
             if record.sale_order_ref:
-                all_pickings = record.sale_order_ref.picking_ids
-                if not all_pickings:
-                    all_pickings = self.env['stock.picking'].search([
-                        ('origin', '=', record.sale_order_ref.name)
-                    ])
-                pickings = all_pickings.filtered(
-                    lambda p: p.state not in ('draft', 'cancel')
-                )
-                
+                dispatches = self.env['buz.dispatch.document'].search([
+                    ('stock_picking_id.sale_id', '=', record.sale_order_ref.id),
+                ]).filtered(lambda d: d.state in ('confirmed', 'done'))
             elif record.partner_id:
-                pickings = self.env['stock.picking'].search([
+                dispatches = self.env['buz.dispatch.document'].search([
                     ('partner_id', '=', record.partner_id.id),
-                    ('state', 'not in', ('draft', 'cancel'))
-                ])
-            
-            record.delivery_ids = pickings
+                ]).filtered(lambda d: d.state in ('confirmed', 'done'))
+
+            record.delivery_ids = dispatches
 
     @api.model
     def create_from_invoice(self, invoice_id):

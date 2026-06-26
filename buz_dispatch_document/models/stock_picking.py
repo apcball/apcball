@@ -37,6 +37,14 @@ class StockPicking(models.Model):
         return [('buz_dispatch_document_ids.name', operator, value)]
 
     def action_create_dispatch_document(self):
+        # Allow only deliveries originating from a Sales Order
+        no_sale = self.filtered(lambda p: not p.sale_id)
+        if no_sale:
+            raise UserError(
+                _('Dispatch documents can only be created from deliveries '
+                  'that originate from a Sales Order.\nInvalid: %s')
+                % ', '.join(no_sale.mapped('name'))
+            )
         wrong_state = self.filtered(lambda p: p.state not in ('confirmed', 'assigned'))
         if wrong_state:
             raise UserError(

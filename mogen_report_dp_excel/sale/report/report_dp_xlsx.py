@@ -43,8 +43,6 @@ class ReportDPExcel(models.AbstractModel):
                 pickings = pickings.filtered(lambda p: p.picking_type_code == 'incoming')
             else:
                 pickings = pickings.filtered(lambda p: p.state == do_status and p.picking_type_code == 'outgoing')
-        else:
-            pickings = pickings.filtered(lambda p: p.state != "cancel")
         return {
             "do_no": ", ".join(filter(None, pickings.mapped("name"))),
             "scheduled_date": ", ".join(
@@ -68,8 +66,6 @@ class ReportDPExcel(models.AbstractModel):
                 pickings = pickings.filtered(lambda p: p.picking_type_code == 'incoming')
             else:
                 pickings = pickings.filtered(lambda p: p.state == do_status and p.picking_type_code == 'outgoing')
-        else:
-            pickings = pickings.filtered(lambda p: p.state != "cancel")
 
         if not (date_from and date_to):
             return pickings
@@ -107,9 +103,7 @@ class ReportDPExcel(models.AbstractModel):
                 for move in iter_moves:
                     sale_line = move.sale_line_id if move else self.env["sale.order.line"]
                     quantity = (
-                        getattr(move, "quantity", 0.0)
-                        or getattr(move, "quantity_done", 0.0)
-                        or move.product_uom_qty
+                        move.quantity or move.product_uom_qty
                     ) if move else 0.0
                     if move and move.bom_line_id:
                         unit_price = move.product_id.lst_price
@@ -171,7 +165,7 @@ class ReportDPExcel(models.AbstractModel):
 
                 for move in moves:
                     quantity = (
-                        move.quantity or move.quantity_done or move.product_uom_qty
+                        move.quantity or move.product_uom_qty
                     ) or 0.0
                     unit_price = move.product_id.lst_price or 0.0
 

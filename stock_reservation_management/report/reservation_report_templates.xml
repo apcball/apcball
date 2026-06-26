@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ── Main Reservation Report Template ─────────────────────── -->
+    <template id="report_reservation_document">
+        <t t-foreach="docs" t-as="doc">
+            <div class="page" style="font-family: Arial, sans-serif; padding: 20px;">
+                <div class="header" style="border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
+                    <table style="width: 100%;">
+                        <tr>
+                            <td>
+                                <h2 style="margin: 0; color: #333;">Reservation Report</h2>
+                            </td>
+                            <td style="text-align: right;">
+                                <h3 style="margin: 0;"><span t-esc="doc.name"/></h3>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <table class="table table-bordered" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; width: 20%;">Customer</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; width: 30%;"><span t-esc="doc.customer_id.name"/></td>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; width: 20%;">Status</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; width: 30%;">
+                            <span t-esc="doc.state"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Type</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="doc.reservation_type"/></td>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Priority</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="doc.priority"/></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Reserve Date</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="doc.reserve_date"/></td>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Expire Date</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="doc.expire_date"/></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Warehouse</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="doc.warehouse_id.name"/></td>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Responsible</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="doc.user_id.name"/></td>
+                    </tr>
+                </table>
+
+                <h4 style="margin-top: 20px;">Reservation Lines</h4>
+                <table class="table table-striped" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f5f5f5;">
+                            <th style="padding: 8px; border: 1px solid #ddd;">Product</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">UoM</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Reserved</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Allocated</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Released</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Available</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="doc.line_ids" t-as="line">
+                            <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="line.product_id.display_name"/></td>
+                            <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="line.product_uom_id.name"/></td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                <span t-esc="'%g' % line.reserve_qty"/>
+                            </td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                <span t-esc="'%g' % line.allocated_qty"/>
+                            </td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                <span t-esc="'%g' % line.released_qty"/>
+                            </td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                <span t-esc="'%g' % line.available_qty"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <t t-set="totals" t-value="compute_totals(doc.line_ids)"/>
+                    <tfoot>
+                        <tr style="font-weight: bold; background: #f9f9f9;">
+                            <td colspan="2" style="padding: 8px; border: 1px solid #ddd; text-align: right;">Total</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                <span t-esc="'%g' % totals['reserve_qty']"/>
+                            </td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                <span t-esc="'%g' % totals['allocated_qty']"/>
+                            </td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                <span t-esc="'%g' % totals['released_qty']"/>
+                            </td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">-</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div t-if="doc.note" style="margin-top: 20px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
+                    <strong>Notes:</strong>
+                    <p t-esc="doc.note" t-raw="0"/>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ── Aging Report ────────────────────────────────────────── -->
+    <template id="report_reservation_aging_document">
+        <div class="page" style="font-family: Arial, sans-serif; padding: 20px;">
+            <div class="header" style="border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: #333;">Reservation Aging Report</h2>
+                <p style="margin: 5px 0 0; color: #666;">
+                    Generated: <span t-esc="datetime.datetime.now().strftime('%Y-%m-%d %H:%M')"/>
+                </p>
+            </div>
+
+            <t t-foreach="aging_data" t-as="bucket">
+                <div style="margin-bottom: 20px;">
+                    <h4>
+                        <span t-esc="bucket['label']"/>
+                        (<span t-esc="bucket['count']"/> reservations,
+                        <span t-esc="'%g' % bucket['total_qty']"/> units)
+                    </h4>
+                    <table class="table table-striped" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f5f5f5;">
+                                <th style="padding: 8px; border: 1px solid #ddd;">Reference</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Customer</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Type</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">State</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Reserve Date</th>
+                                <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="bucket['reservations']" t-as="res">
+                                <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="res.name"/></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="res.customer_id.name"/></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="res.reservation_type"/></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="res.state"/></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="res.reserve_date"/></td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                    <span t-esc="'%g' % res.total_reserve_qty"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+            <t t-if="not aging_data">
+                <p>No active reservations to display.</p>
+            </t>
+        </div>
+    </template>
+
+    <!-- ── VIP Allocation Report ───────────────────────────────── -->
+    <template id="report_vip_allocation_document">
+        <div class="page" style="font-family: Arial, sans-serif; padding: 20px;">
+            <div class="header" style="border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: #333;">VIP Allocation Report</h2>
+                <p style="margin: 5px 0 0; color: #666;">
+                    Generated: <span t-esc="datetime.datetime.now().strftime('%Y-%m-%d %H:%M')"/>
+                </p>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; text-align: center;">
+                            <h3 style="margin: 0; color: #2e7d32;" t-esc="'%g' % total_vip_reserved"/>
+                            <div style="color: #666;">Total VIP Reserved</div>
+                        </td>
+                        <td style="padding: 10px; background: #e3f2fd; border: 1px solid #bbdefb; text-align: center;">
+                            <h3 style="margin: 0; color: #1565c0;" t-esc="'%g' % total_vip_allocated"/>
+                            <div style="color: #666;">Total VIP Allocated</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <h4>VIP Reservations</h4>
+            <table class="table table-striped" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f5f5f5;">
+                        <th style="padding: 8px; border: 1px solid #ddd;">Reference</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Customer</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Priority</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Quantity</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Allocated</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">State</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Expires</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="docs" t-as="doc">
+                        <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="doc.name"/></td>
+                        <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="doc.customer_id.name"/></td>
+                        <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="doc.priority"/></td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                            <span t-esc="'%g' % doc.total_reserve_qty"/>
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                            <span t-esc="'%g' % doc.total_allocated_qty"/>
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="doc.state"/></td>
+                        <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="doc.expire_date"/></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- ── Customer Reservation Report ─────────────────────────── -->
+    <template id="report_customer_reservation_document">
+        <div class="page" style="font-family: Arial, sans-serif; padding: 20px;">
+            <div class="header" style="border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: #333;">Customer Reservation Report</h2>
+                <p style="margin: 5px 0 0; color: #666;">
+                    Generated: <span t-esc="datetime.datetime.now().strftime('%Y-%m-%d %H:%M')"/>
+                </p>
+            </div>
+
+            <t t-foreach="group_by_customer" t-as="group">
+                <div style="margin-bottom: 25px;">
+                    <h4>
+                        <span t-esc="group['customer'].name"/>
+                        - <span t-esc="group['active_count']"/> reservation(s)
+                    </h4>
+
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
+                        <tr>
+                            <td style="padding: 5px; font-weight: bold;">Total Reserved:</td>
+                            <td style="padding: 5px;"><span t-esc="'%g' % group['total_reserved']"/></td>
+                            <td style="padding: 5px; font-weight: bold;">Total Allocated:</td>
+                            <td style="padding: 5px;"><span t-esc="'%g' % group['total_allocated']"/></td>
+                        </tr>
+                    </table>
+
+                    <table class="table table-striped" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f5f5f5;">
+                                <th style="padding: 8px; border: 1px solid #ddd;">Reference</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Type</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">State</th>
+                                <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Qty</th>
+                                <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Allocated</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Reserve Date</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Expiry</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="group['reservations']" t-as="res">
+                                <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="res.name"/></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="res.reservation_type"/></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="res.state"/></td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                    <span t-esc="'%g' % res.total_reserve_qty"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                                    <span t-esc="'%g' % res.total_allocated_qty"/>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="res.reserve_date"/></td>
+                                <td style="padding: 8px; border: 1px solid #ddd;"><span t-esc="res.expire_date"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+            <t t-if="not group_by_customer">
+                <p>No reservations found.</p>
+            </t>
+        </div>
+    </template>
+</odoo>

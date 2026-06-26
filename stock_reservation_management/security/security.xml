@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Reservation User -->
+        <record id="group_reservation_user" model="res.groups">
+            <field name="name">User</field>
+            <field name="category_id" ref="base.module_category_inventory_inventory"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">Can create and manage own reservations.</field>
+        </record>
+
+        <!-- Reservation Manager -->
+        <record id="group_reservation_manager" model="res.groups">
+            <field name="name">Manager</field>
+            <field name="category_id" ref="base.module_category_inventory_inventory"/>
+            <field name="implied_ids" eval="[(4, ref('stock_reservation_management.group_reservation_user'))]"/>
+            <field name="comment">Can approve, release, and manage all reservations.</field>
+        </record>
+
+        <!-- Reservation Admin -->
+        <record id="group_reservation_admin" model="res.groups">
+            <field name="name">Administrator</field>
+            <field name="category_id" ref="base.module_category_inventory_inventory"/>
+            <field name="implied_ids" eval="[(4, ref('stock_reservation_management.group_reservation_manager'))]"/>
+            <field name="comment">Full access to all reservation features including configuration.</field>
+        </record>
+    </data>
+
+    <data noupdate="1">
+        <!-- Stock Reservation: Multi-Company -->
+        <record id="stock_reservation_comp_rule" model="ir.rule">
+            <field name="name">Stock Reservation: Multi-Company</field>
+            <field name="model_id" ref="model_stock_reservation"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="stock_reservation_user_rule" model="ir.rule">
+            <field name="name">Stock Reservation: User sees own</field>
+            <field name="model_id" ref="model_stock_reservation"/>
+            <field name="groups" eval="[(4, ref('stock_reservation_management.group_reservation_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+        </record>
+
+        <record id="stock_reservation_manager_rule" model="ir.rule">
+            <field name="name">Stock Reservation: Manager sees all</field>
+            <field name="model_id" ref="model_stock_reservation"/>
+            <field name="groups" eval="[(4, ref('stock_reservation_management.group_reservation_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <!-- Stock Reservation Line: Multi-Company -->
+        <record id="stock_reservation_line_comp_rule" model="ir.rule">
+            <field name="name">Stock Reservation Line: Multi-Company</field>
+            <field name="model_id" ref="model_stock_reservation_line"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+    </data>
+</odoo>

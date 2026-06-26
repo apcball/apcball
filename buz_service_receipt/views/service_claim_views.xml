@@ -138,6 +138,11 @@
 
                         <page string="Pickings">
                             <group>
+                                <group string="Operation Types">
+                                    <field name="return_picking_type_id" options="{'no_create': True}"/>
+                                    <field name="replacement_picking_type_id" options="{'no_create': True}"/>
+                                </group>
+                                <separator/>
                                 <group string="Return from Customer">
                                     <field name="return_picking_id" readonly="1"/>
                                     <button name="action_view_return_picking" string="View Return"

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Expiration Notification Template -->
+        <record id="mail_template_reservation_expired" model="mail.template">
+            <field name="name">Reservation Expired Notification</field>
+            <field name="model_id" ref="model_stock_reservation"/>
+            <field name="subject">Reservation {{ object.name }} has expired</field>
+            <field name="email_from">${(object.company_id.email or '')|safe}</field>
+            <field name="partner_to">${object.user_id.partner_id.id}</field>
+            <field name="body_html"><![CDATA[
+% set company = object.company_id
+% set customer = object.customer_id
+<div style="font-family: Arial, sans-serif; margin: 0; padding: 0;">
+    <div style="background: #f8f9fa; padding: 20px; border-bottom: 3px solid #dc3545;">
+        <h2 style="color: #dc3545; margin: 0;">Reservation Expired</h2>
+    </div>
+    <div style="padding: 20px;">
+        <p>Dear ${object.user_id.name or ''},</p>
+        <p>The following stock reservation has <strong>expired</strong>:</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; width: 150px;">Reference</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${object.name}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Customer</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${customer.name or ''}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Type</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${object.reservation_type}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Reserved Date</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${object.reserve_date}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Expired Date</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${object.expire_date}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Total Qty</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${object.total_reserve_qty}</td>
+            </tr>
+        </table>
+
+        <p>The reserved quantities have been <strong>released</strong> back to available stock.</p>
+
+        % if object.note:
+            <div style="background: #f1f1f1; padding: 10px; border-radius: 4px; margin: 10px 0;">
+                <strong>Notes:</strong><br/>
+                ${object.note|safe}
+            </div>
+        % endif
+
+        <p style="margin-top: 20px;">
+            Best regards,<br/>
+            Inventory Management
+        </p>
+    </div>
+</div>
+]]></field>
+        </record>
+
+        <!-- Approval Request Template -->
+        <record id="mail_template_reservation_approval" model="mail.template">
+            <field name="name">Reservation Approval Request</field>
+            <field name="model_id" ref="model_stock_reservation"/>
+            <field name="subject">Approval Required: Reservation {{ object.name }}</field>
+            <field name="email_from">${(object.company_id.email or '')|safe}</field>
+            <field name="body_html"><![CDATA[
+% set company = object.company_id
+% set customer = object.customer_id
+<div style="font-family: Arial, sans-serif; margin: 0; padding: 0;">
+    <div style="background: #f8f9fa; padding: 20px; border-bottom: 3px solid #ffc107;">
+        <h2 style="color: #856404; margin: 0;">Reservation Approval Required</h2>
+    </div>
+    <div style="padding: 20px;">
+        <p>Hello,</p>
+        <p>A stock reservation requires <strong>approval</strong> due to stock constraints:</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; width: 150px;">Reference</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${object.name}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Customer</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${customer.name or ''}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Priority</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${object.priority}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Warehouse</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${object.warehouse_id.name or ''}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Total Qty</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${object.total_reserve_qty}</td>
+            </tr>
+        </table>
+
+        <p>Please review and approve or reject this reservation.</p>
+
+        <div style="margin-top: 20px;">
+            <a href="/web#id=${object.id}&amp;model=stock.reservation"
+               style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin-right: 10px;">
+                Review Reservation
+            </a>
+        </div>
+    </div>
+</div>
+]]></field>
+        </record>
+    </data>
+</odoo>

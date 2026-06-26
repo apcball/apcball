@@ -7,11 +7,13 @@
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header/button[1]" position="before">
+                <field name="state" invisible="1"/>
+                <field name="sale_id" invisible="1"/>
                 <button name="action_create_dispatch_document"
                         string="Create DP"
                         type="object"
                         class="oe_highlight"
-                        invisible="state not in ('confirmed', 'assigned')"/>
+                        invisible="state not in ('confirmed', 'assigned') or not sale_id"/>
             </xpath>
             <div name="button_box" position="inside">
                 <button class="oe_stat_button"

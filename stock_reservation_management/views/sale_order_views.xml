@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Sale Order Form: Add reservation buttons and info -->
+    <record id="stock_reservation_sale_order_form_view" model="ir.ui.view">
+        <field name="name">stock.reservation.sale.order.form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Reservation smart button in button box -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_reservations"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-tasks"
+                        context="{'search_default_state_reserved': 1}"
+                        groups="stock_reservation_management.group_reservation_user">
+                    <div class="o_stat_info">
+                        <field name="reservation_count" widget="statinfo"/>
+                        <span class="o_stat_text">Reservations</span>
+                    </div>
+                </button>
+            </xpath>
+
+            <!-- Reservation status badge next to order state -->
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="reservation_state" widget="badge"
+                       decoration-success="reservation_state in ('reserved','allocated','delivered')"
+                       decoration-warning="reservation_state == 'partial'"
+                       decoration-info="reservation_state == 'draft'"
+                       decoration-muted="reservation_state == 'no'"
+                       groups="stock_reservation_management.group_reservation_user"/>
+            </xpath>
+
+            <!-- Reservation buttons in header -->
+            <xpath expr="//header" position="inside"
+                   groups="stock_reservation_management.group_reservation_user">
+                <button name="action_create_reservation"
+                        type="object"
+                        string="Reserve Stock"
+                        class="btn-primary"/>
+                <button name="action_release_reservation"
+                        type="object"
+                        string="Release Reservation"
+                        class="btn-secondary"
+                        confirm="Release all active reservations for this order? Reserved quantities will be released back to stock."
+                        groups="stock_reservation_management.group_reservation_manager"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- Sale Order Tree: Add reservation columns -->
+    <record id="stock_reservation_sale_order_tree_view" model="ir.ui.view">
+        <field name="name">stock.reservation.sale.order.tree</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.sale_order_tree"/>
+        <field name="arch" type="xml">
+            <field name="state" position="after"
+                   groups="stock_reservation_management.group_reservation_user">
+                <field name="reservation_count" optional="show"/>
+                <field name="reservation_state" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Partner Form: Add reservation smart button and VIP field -->
+    <record id="stock_reservation_partner_form_view" model="ir.ui.view">
+        <field name="name">stock.reservation.partner.form</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_partner_reservations"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-tasks"
+                        groups="stock_reservation_management.group_reservation_user">
+                    <div class="o_stat_info">
+                        <field name="reservation_count" widget="statinfo"/>
+                        <span class="o_stat_text">Reservations</span>
+                    </div>
+                </button>
+            </xpath>
+
+            <xpath expr="//page[@name='sales_purchases']//group[@name='sale']" position="inside">
+                <field name="is_vip_customer"
+                       groups="stock_reservation_management.group_reservation_manager"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

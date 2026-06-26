@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Search View ──────────────────────────────────────────── -->
+    <record id="stock_reservation_search_view" model="ir.ui.view">
+        <field name="name">stock.reservation.search</field>
+        <field name="model">stock.reservation</field>
+        <field name="arch" type="xml">
+            <search string="Search Reservations">
+                <field name="name" string="Reference" filter_domain="[('name','ilike',self)]"/>
+                <field name="customer_id"/>
+                <field name="user_id"/>
+                <field name="warehouse_id"/>
+                <separator/>
+                <filter string="Draft" name="state_draft" domain="[('state','=','draft')]"/>
+                <filter string="Reserved" name="state_reserved" domain="[('state','=','reserved')]"/>
+                <filter string="Allocated" name="state_allocated" domain="[('state','=','allocated')]"/>
+                <filter string="Expired" name="state_expired" domain="[('state','=','expired')]"/>
+                <filter string="Released" name="state_released" domain="[('state','=','released')]"/>
+                <separator/>
+                <filter string="VIP" name="type_vip" domain="[('reservation_type','=','vip')]"/>
+                <filter string="Sale" name="type_sale" domain="[('reservation_type','=','sale')]"/>
+                <filter string="Campaign" name="type_campaign" domain="[('reservation_type','=','campaign')]"/>
+                <separator/>
+                <filter string="Expiring Today" name="expiring_today"
+                        domain="[('expire_date','=',context_today)]"/>
+                <filter string="Overdue" name="overdue"
+                        domain="[('expire_date','&lt;',context_today), ('state','not in',('expired','released','cancel','delivered'))]"/>
+                <separator/>
+                <filter string="This Month" name="this_month"
+                        date="reserve_date"/>
+                <group expand="0" string="Group By">
+                    <filter string="State" name="group_state" context="{'group_by':'state'}"/>
+                    <filter string="Type" name="group_type" context="{'group_by':'reservation_type'}"/>
+                    <filter string="Priority" name="group_priority" context="{'group_by':'priority'}"/>
+                    <filter string="Customer" name="group_customer" context="{'group_by':'customer_id'}"/>
+                    <filter string="Warehouse" name="group_warehouse" context="{'group_by':'warehouse_id'}"/>
+                    <filter string="User" name="group_user" context="{'group_by':'user_id'}"/>
+                    <filter string="Expiration Date" name="group_expire"
+                            context="{'group_by':'expire_date'}"/>
+                    <filter string="Creation Date" name="group_create_date"
+                            context="{'group_by':'create_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ── Actions ──────────────────────────────────────────────── -->
+    <record id="action_stock_reservation" model="ir.actions.act_window">
+        <field name="name">Stock Reservations</field>
+        <field name="res_model">stock.reservation</field>
+        <field name="view_mode">tree,form,kanban,calendar,pivot,graph</field>
+        <field name="search_view_id" ref="stock_reservation_search_view"/>
+        <field name="help" type="html">
+            <p><strong>Stock Reservations</strong></p>
+            <p>Create and manage product reservations for customers.</p>
+            <ul>
+                <li>Reserve stock for important customers</li>
+                <li>Allocate VIP inventory</li>
+                <li>Track reservation expiration</li>
+                <li>Release reservations back to stock</li>
+            </ul>
+        </field>
+    </record>
+
+    <record id="action_stock_reservation_vip" model="ir.actions.act_window">
+        <field name="name">VIP Reservations</field>
+        <field name="res_model">stock.reservation</field>
+        <field name="view_mode">tree,form,kanban,pivot,graph</field>
+        <field name="domain">[('reservation_type', '=', 'vip')]</field>
+        <field name="search_view_id" ref="stock_reservation_search_view"/>
+        <field name="help" type="html">
+            <p><strong>VIP Reservations</strong></p>
+            <p>Manage VIP customer stock allocations with highest priority.</p>
+        </field>
+    </record>
+
+    <record id="action_stock_reservation_release_queue" model="ir.actions.act_window">
+        <field name="name">Release Queue</field>
+        <field name="res_model">stock.reservation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', 'in', ('expired', 'reserved', 'allocated')), ('expire_date', '&lt;=', context_today)]</field>
+        <field name="search_view_id" ref="stock_reservation_search_view"/>
+        <field name="help" type="html">
+            <p><strong>Release Queue</strong></p>
+            <p>Reservations pending release. Release expired or completed reservations to free stock.</p>
+        </field>
+    </record>
+
+    <record id="action_stock_reservation_approval" model="ir.actions.act_window">
+        <field name="name">Pending Approvals</field>
+        <field name="res_model">stock.reservation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '=', 'waiting_approval')]</field>
+        <field name="search_view_id" ref="stock_reservation_search_view"/>
+    </record>
+
+    <!-- ── Tree View ──────────────────────────────────────────── -->
+    <record id="stock_reservation_tree_view" model="ir.ui.view">
+        <field name="name">stock.reservation.tree</field>
+        <field name="model">stock.reservation</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="state in ('expired','cancel')"
+                  decoration-success="state == 'delivered'"
+                  decoration-warning="state == 'waiting_approval'"
+                  decoration-info="state == 'reserved'"
+                  decoration-muted="state == 'released'">
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="reservation_type"/>
+                <field name="state" widget="badge"
+                       decoration-danger="state in ('expired','cancel','waiting_approval')"
+                       decoration-success="state in ('delivered','allocated')"
+                       decoration-info="state == 'reserved'"/>
+                <field name="priority" widget="badge"
+                       decoration-danger="priority == 'critical'"
+                       decoration-warning="priority == 'vip'"
+                       decoration-info="priority == 'normal'"
+                       decoration-muted="priority == 'low'"/>
+                <field name="total_reserve_qty" sum="Total Reserved"/>
+                <field name="total_allocated_qty" sum="Total Allocated"/>
+                <field name="warehouse_id"/>
+                <field name="reserve_date"/>
+                <field name="expire_date"
+                       decoration-danger="expire_date and expire_date &lt; context_today and state in ('draft','reserved','allocated')"/>
+                <field name="user_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ── Form View ──────────────────────────────────────────── -->
+    <record id="stock_reservation_form_view" model="ir.ui.view">
+        <field name="name">stock.reservation.form</field>
+        <field name="model">stock.reservation</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_reserve" type="object"
+                            string="Reserve"
+                            class="btn-primary"
+                            groups="stock_reservation_management.group_reservation_user"/>
+                    <button name="action_request_approval" type="object"
+                            string="Request Approval"
+                            class="btn-warning"
+                            groups="stock_reservation_management.group_reservation_user"/>
+                    <button name="action_approve" type="object"
+                            string="Approve"
+                            class="btn-success"
+                            groups="stock_reservation_management.group_reservation_manager"/>
+                    <button name="action_approve_and_allocate" type="object"
+                            string="Approve &amp; Allocate"
+                            class="btn-success"
+                            groups="stock_reservation_management.group_reservation_manager"/>
+                    <button name="action_allocate" type="object"
+                            string="Allocate"
+                            class="btn-primary"
+                            groups="stock_reservation_management.group_reservation_manager"/>
+                    <button name="action_deliver" type="object"
+                            string="Deliver"
+                            class="btn-success"/>
+                    <button name="action_expire" type="object"
+                            string="Expire"
+                            class="btn-danger"
+                            confirm="Are you sure you want to expire this reservation? Reserved quantities will be released."/>
+                    <button name="action_release" type="object"
+                            string="Release"
+                            class="btn-secondary"
+                            confirm="Releasing will return reserved quantities to available stock. Continue?"
+                            groups="stock_reservation_management.group_reservation_manager"/>
+                    <button name="action_cancel" type="object"
+                            string="Cancel"
+                            class="btn-link"
+                            confirm="Are you sure? All reserved quantities will be released."/>
+                    <button name="action_draft" type="object"
+                            string="Reset to Draft"
+                            class="btn-link"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,reserved,allocated,delivered"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="%(action_stock_reservation)d"
+                                type="action"
+                                class="oe_stat_button"
+                                icon="fa-list">
+                            <div class="o_stat_info">
+                                <field name="line_count"/>
+                                <span class="o_stat_text">Lines</span>
+                            </div>
+                        </button>
+                        <button name="%(base.action_partner_form)d"
+                                type="action"
+                                class="oe_stat_button"
+                                icon="fa-user">
+                            <div class="o_stat_info">
+                                <field name="customer_id"/>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                        <field name="company_id" invisible="1"/>
+                        <group>
+                            <group>
+                                <field name="customer_id"
+                                      
+                                       options="{'search_more': True}"/>
+                                <field name="sale_order_id"
+                                       options="{'search_more': True}"
+                                       context="{'default_partner_id': customer_id}"/>
+                                <field name="reservation_type"/>
+                                <field name="priority" widget="badge"
+                                       decoration-danger="priority == 'critical'"
+                                       decoration-warning="priority == 'vip'"
+                                       decoration-info="priority == 'normal'"
+                                       decoration-muted="priority == 'low'"/>
+                            </group>
+                            <group>
+                                <field name="warehouse_id"/>
+                                <field name="user_id" groups="stock_reservation_management.group_reservation_manager"/>
+                                <field name="reserve_date"/>
+                                <field name="expire_date"
+                                       required="state != 'draft'"/>
+                            </group>
+                        </group>
+                    </div>
+
+                    <notebook>
+                        <page string="Lines" name="lines">
+                            <field name="line_ids">
+                                <tree editable="bottom"
+                                      decoration-danger="reserve_qty &gt; available_qty"
+                                      decoration-success="allocated_qty &gt;= reserve_qty">
+                                    <field name="reservation_id" invisible="1"/>
+                                    <field name="company_id" invisible="1"/>
+                                    <field name="product_id"
+                                           options="{'search_more': True}"
+                                          />
+                                    <field name="product_uom_category_id" invisible="1"/>
+                                    <field name="product_uom_id"
+                                           groups="uom.group_uom"/>
+                                    <field name="reserve_qty"
+                                           readonly="reservation_id.state != 'draft'"/>
+                                    <field name="allocated_qty"
+                                           readonly="reservation_id.state not in ('reserved', 'allocated')"/>
+                                    <field name="released_qty"/>
+                                    <field name="product_qty_available"/>
+                                    <field name="available_qty"/>
+                                    <field name="note"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="History" name="history">
+                            <field name="message_ids">
+                                <tree>
+                                    <field name="message_type"/>
+                                    <field name="author_id"/>
+                                    <field name="date"/>
+                                    <field name="subject"/>
+                                    <field name="body" optional="show"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Notes" name="notes">
+                            <field name="note" widget="html"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Kanban View ─────────────────────────────────────────── -->
+    <record id="stock_reservation_kanban_view" model="ir.ui.view">
+        <field name="name">stock.reservation.kanban</field>
+        <field name="model">stock.reservation</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile">
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="priority"/>
+                <field name="reservation_type"/>
+                <field name="state"/>
+                <field name="total_reserve_qty"/>
+                <field name="total_allocated_qty"/>
+                <field name="expire_date"/>
+                <field name="user_id"/>
+                <field name="warehouse_id"/>
+                <field name="state" invisible="1"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click" t-attf-class="oe_kanban_card oe_kanban_global_click
+                            #{kanban_color == 0 ? '' : 'o_kanban_color_'+kanban_color}">
+                            <div class="o_dropdown_kanban dropdown">
+                                <a role="button" class="dropdown-toggle o-no-caret btn"
+                                   data-bs-toggle="dropdown" aria-expanded="false" href="#">
+                                    <span class="fa fa-ellipsis-v"/>
+                                </a>
+                                <div class="dropdown-menu" role="menu">
+                                    <a role="menuitem" class="dropdown-item" type="object" name="action_reserve"
+                                       t-if="record.state.raw_value in ('draft', 'waiting_approval')">Reserve</a>
+                                    <a role="menuitem" class="dropdown-item" type="object" name="action_allocate"
+                                       t-if="record.state.raw_value == 'reserved'">Allocate</a>
+                                    <a role="menuitem" class="dropdown-item" type="object" name="action_expire"
+                                       t-if="record.state.raw_value not in ('expired','released','cancel','delivered')">Expire</a>
+                                    <a role="menuitem" class="dropdown-item" type="object" name="action_release"
+                                       t-if="record.state.raw_value not in ('released','cancel','delivered')">Release</a>
+                                    <div class="dropdown-divider"/>
+                                    <a role="menuitem" class="dropdown-item" type="object" name="action_cancel">Cancel</a>
+                                </div>
+                            </div>
+                            <div class="oe_kanban_details">
+                                <div class="o_kanban_record_top">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="name"/>
+                                    </strong>
+                                    <field name="state" widget="badge"
+                                           decoration-danger="state in ('expired','cancel','waiting_approval')"
+                                           decoration-success="state in ('delivered','allocated')"
+                                           decoration-info="state == 'reserved'"/>
+                                </div>
+                                <div class="o_kanban_record_body">
+                                    <div>
+                                        <field name="customer_id"/>
+                                    </div>
+                                    <div>
+                                        <field name="priority" widget="badge"
+                                               decoration-danger="priority == 'critical'"
+                                               decoration-warning="priority == 'vip'"
+                                               decoration-info="priority == 'normal'"
+                                               decoration-muted="priority == 'low'"/>
+                                        <field name="reservation_type"/>
+                                    </div>
+                                    <div>
+                                        Qty: <field name="total_reserve_qty"/> /
+                                        <field name="total_allocated_qty"/>
+                                    </div>
+                                    <div t-if="record.expire_date.raw_value">
+                                        Expires: <field name="expire_date"/>
+                                    </div>
+                                    <div t-if="record.warehouse_id.raw_value">
+                                        WH: <field name="warehouse_id"/>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_record_bottom">
+                                    <field name="user_id" widget="many2one_avatar_user"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ── Calendar View ───────────────────────────────────────── -->
+    <record id="stock_reservation_calendar_view" model="ir.ui.view">
+        <field name="name">stock.reservation.calendar</field>
+        <field name="model">stock.reservation</field>
+        <field name="arch" type="xml">
+            <calendar date_start="reserve_date" date_delay="expire_date"
+                      color="reservation_type" mode="month">
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="reservation_type"/>
+                <field name="state"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- ── Pivot View ───────────────────────────────────────────── -->
+    <record id="stock_reservation_pivot_view" model="ir.ui.view">
+        <field name="name">stock.reservation.pivot</field>
+        <field name="model">stock.reservation</field>
+        <field name="arch" type="xml">
+            <pivot string="Reservation Analysis">
+                <field name="total_reserve_qty" type="measure" string="Reserved"/>
+                <field name="total_allocated_qty" type="measure" string="Allocated"/>
+                <field name="total_released_qty" type="measure" string="Released"/>
+                <field name="line_count" type="measure" string="Line Count"/>
+                <field name="state" type="row"/>
+                <field name="reservation_type" type="col"/>
+                <field name="warehouse_id" type="row"/>
+                <field name="priority" type="col"/>
+                <field name="customer_id" type="row"/>
+                <field name="reserve_date" type="row"/>
+                <field name="user_id" type="row"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- ── Graph View ───────────────────────────────────────────── -->
+    <record id="stock_reservation_graph_view" model="ir.ui.view">
+        <field name="name">stock.reservation.graph</field>
+        <field name="model">stock.reservation</field>
+        <field name="arch" type="xml">
+            <graph string="Reservation Overview" type="bar">
+                <field name="total_reserve_qty" type="measure" string="Reserved"/>
+                <field name="total_allocated_qty" type="measure" string="Allocated"/>
+                <field name="state" type="row"/>
+                <field name="reserve_date" type="row" interval="year"/>
+            </graph>
+        </field>
+    </record>
+
+</odoo>

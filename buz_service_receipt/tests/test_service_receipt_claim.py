@@ -370,3 +370,85 @@ class TestServiceReceiptPickingTypeConfig(TransactionCase):
             self.env.company.service_receipt_replacement_picking_type_id,
             self.custom_replacement_type,
         )
+
+    def test_05_config_set_after_receipt_creation(self):
+        """Config set after receipt creation still applies via fallback in _get_claim_picking_type."""
+        # Ensure no pre-existing config for clean test
+        self.env.company.service_receipt_return_picking_type_id = False
+        self.env.company.service_receipt_replacement_picking_type_id = False
+
+        # Create receipt BEFORE config is set
+        receipt = self._create_receipt()
+        self.assertFalse(receipt.return_picking_type_id)
+        self.assertFalse(receipt.replacement_picking_type_id)
+
+        # Set config AFTER receipt creation
+        self.env.company.service_receipt_return_picking_type_id = self.custom_return_type
+        self.env.company.service_receipt_replacement_picking_type_id = self.custom_replacement_type
+
+        # _get_claim_picking_type should fallback to company config
+        return_type = receipt._get_claim_picking_type('incoming')
+        self.assertEqual(return_type, self.custom_return_type)
+
+        replacement_type = receipt._get_claim_picking_type('outgoing')
+        self.assertEqual(replacement_type, self.custom_replacement_type)
+
+    def test_06_picking_uses_company_config_when_receipt_field_empty(self):
+        """Creating picking uses company config when receipt-level field is empty."""
+        # Ensure no pre-existing config for clean test
+        self.env.company.service_receipt_return_picking_type_id = False
+        self.env.company.service_receipt_replacement_picking_type_id = False
+
+        receipt = self._create_receipt()
+        self.assertFalse(receipt.return_picking_type_id)
+
+        # Set config
+        self.env.company.service_receipt_return_picking_type_id = self.custom_return_type
+
+        receipt.action_confirm()
+        receipt.action_waiting_replacement()
+        receipt.action_create_return_picking()
+
+        self.assertEqual(
+            receipt.return_picking_id.picking_type_id,
+            self.custom_return_type,
+        )
+
+    def test_07_picking_location_uses_op_type_default(self):
+        """Return picking location_dest uses operation type's default_location_dest_id."""
+        # Set custom op type with specific default location
+        self.custom_return_type.default_location_dest_id = self.warehouse.lot_stock_id
+        self.env.company.service_receipt_return_picking_type_id = self.custom_return_type
+
+        receipt = self._create_receipt()
+        receipt.action_confirm()
+        receipt.action_waiting_replacement()
+        receipt.action_create_return_picking()
+
+        self.assertEqual(
+            receipt.return_picking_id.location_dest_id,
+            self.warehouse.lot_stock_id,
+        )
+
+    def test_08_replacement_location_uses_op_type_default(self):
+        """Replacement picking location_src uses operation type's default_location_src_id."""
+        # Set custom op type with specific default source location
+        self.custom_replacement_type.default_location_src_id = self.warehouse.lot_stock_id
+        self.env.company.service_receipt_replacement_picking_type_id = self.custom_replacement_type
+
+        receipt = self._create_receipt()
+        receipt.action_confirm()
+        receipt.action_waiting_replacement()
+        receipt.action_create_return_picking()
+
+        # Validate return first
+        move = receipt.return_picking_id.move_ids
+        move._set_quantity_done(move.product_uom_qty)
+        receipt.return_picking_id.button_validate()
+
+        receipt.action_create_replacement_picking()
+
+        self.assertEqual(
+            receipt.replacement_picking_id.location_id,
+            self.warehouse.lot_stock_id,
+        )

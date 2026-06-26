@@ -42,7 +42,7 @@
                             <!-- ฟิลด์ Dropdown สำหรับเลือก Invoice -->
                             <field name="selected_delivery_id" 
                                 options="{'no_create': True, 'no_open': True}"
-                                placeholder="Select a delivery..."
+                                placeholder="Select a dispatch document..."
                                 domain="[('id', 'in', delivery_ids)]"
                                 readonly="state == 'sent'"/>
 

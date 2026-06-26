@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+        <!-- Demo Customers -->
+        <record id="res_partner_demo_vip" model="res.partner">
+            <field name="name">VIP Electronics Co., Ltd.</field>
+            <field name="is_vip_customer" eval="True"/>
+            <field name="email">vip@electronics-example.com</field>
+            <field name="phone">+66 2-123-4567</field>
+            <field name="street">123 Sukhumvit Road</field>
+            <field name="city">Bangkok</field>
+            <field name="country_id" ref="base.th"/>
+            <field name="company_type">company</field>
+        </record>
+
+        <record id="res_partner_demo_regular" model="res.partner">
+            <field name="name">Regular Trading Co.</field>
+            <field name="email">info@regular-example.com</field>
+            <field name="phone">+66 2-765-4321</field>
+            <field name="street">456 Silom Road</field>
+            <field name="city">Bangkok</field>
+            <field name="country_id" ref="base.th"/>
+            <field name="company_type">company</field>
+        </record>
+
+        <!-- Demo Products -->
+        <record id="product_product_demo_laptop" model="product.product">
+            <field name="name">Business Laptop Pro 15"</field>
+            <field name="type">product</field>
+            <field name="categ_id" ref="product.product_category_all"/>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="list_price">45000.0</field>
+            <field name="standard_price">35000.0</field>
+            <field name="default_code">LAP-PRO-15</field>
+        </record>
+
+        <record id="product_product_demo_monitor" model="product.product">
+            <field name="name">27" 4K Monitor</field>
+            <field name="type">product</field>
+            <field name="categ_id" ref="product.product_category_all"/>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="list_price">15000.0</field>
+            <field name="standard_price">11000.0</field>
+            <field name="default_code">MON-4K-27</field>
+        </record>
+
+        <record id="product_product_demo_keyboard" model="product.product">
+            <field name="name">Mechanical Keyboard</field>
+            <field name="type">product</field>
+            <field name="categ_id" ref="product.product_category_all"/>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="list_price">3500.0</field>
+            <field name="standard_price">2200.0</field>
+            <field name="default_code">KB-MECH-RGB</field>
+        </record>
+
+        <!-- Demo Reservation 1: VIP (reserved) -->
+        <record id="stock_reservation_demo_vip" model="stock.reservation">
+            <field name="name">RES/2026/00001</field>
+            <field name="customer_id" ref="res_partner_demo_vip"/>
+            <field name="reservation_type">vip</field>
+            <field name="priority">vip</field>
+            <field name="warehouse_id" ref="stock.warehouse0"/>
+            <field name="user_id" ref="base.user_admin"/>
+            <field name="state">reserved</field>
+            <field name="note">VIP priority reservation - allocate from premium stock.</field>
+        </record>
+
+        <record id="stock_reservation_demo_line_1" model="stock.reservation.line">
+            <field name="reservation_id" ref="stock_reservation_demo_vip"/>
+            <field name="product_id" ref="product_product_demo_laptop"/>
+            <field name="product_uom_id" ref="uom.product_uom_unit"/>
+            <field name="reserve_qty">10.0</field>
+            <field name="allocated_qty">5.0</field>
+        </record>
+
+        <record id="stock_reservation_demo_line_2" model="stock.reservation.line">
+            <field name="reservation_id" ref="stock_reservation_demo_vip"/>
+            <field name="product_id" ref="product_product_demo_monitor"/>
+            <field name="product_uom_id" ref="uom.product_uom_unit"/>
+            <field name="reserve_qty">10.0</field>
+            <field name="allocated_qty">3.0</field>
+        </record>
+
+        <!-- Demo Reservation 2: Regular (draft) -->
+        <record id="stock_reservation_demo_draft" model="stock.reservation">
+            <field name="name">RES/2026/00002</field>
+            <field name="customer_id" ref="res_partner_demo_regular"/>
+            <field name="reservation_type">sale</field>
+            <field name="priority">normal</field>
+            <field name="warehouse_id" ref="stock.warehouse0"/>
+            <field name="user_id" ref="base.user_admin"/>
+            <field name="state">draft</field>
+        </record>
+
+        <record id="stock_reservation_demo_draft_line" model="stock.reservation.line">
+            <field name="reservation_id" ref="stock_reservation_demo_draft"/>
+            <field name="product_id" ref="product_product_demo_keyboard"/>
+            <field name="product_uom_id" ref="uom.product_uom_unit"/>
+            <field name="reserve_qty">50.0</field>
+        </record>
+
+        <!-- Demo Reservation 3: Expired -->
+        <record id="stock_reservation_demo_expired" model="stock.reservation">
+            <field name="name">RES/2026/00003</field>
+            <field name="customer_id" ref="res_partner_demo_regular"/>
+            <field name="reservation_type">sale</field>
+            <field name="priority">low</field>
+            <field name="warehouse_id" ref="stock.warehouse0"/>
+            <field name="user_id" ref="base.user_admin"/>
+            <field name="state">expired</field>
+        </record>
+
+        <record id="stock_reservation_demo_expired_line" model="stock.reservation.line">
+            <field name="reservation_id" ref="stock_reservation_demo_expired"/>
+            <field name="product_id" ref="product_product_demo_monitor"/>
+            <field name="product_uom_id" ref="uom.product_uom_unit"/>
+            <field name="reserve_qty">5.0</field>
+        </record>
+</odoo>

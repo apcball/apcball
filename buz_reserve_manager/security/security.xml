@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Security Category -->
+        <record id="module_category_buz_reserve_manager" model="ir.module.category">
+            <field name="name">Inventory / Reserve Manager</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- Manager Group -->
+        <record id="group_reserve_manager" model="res.groups">
+            <field name="name">Reserve Manager</field>
+            <field name="category_id" ref="module_category_buz_reserve_manager"/>
+            <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+            <field name="comment">
+                Users in this group can use the Reserve Manager dashboard to view,
+                reserve, and unreserve stock linked to Sale Orders.
+            </field>
+        </record>
+
+    </data>
+</odoo>

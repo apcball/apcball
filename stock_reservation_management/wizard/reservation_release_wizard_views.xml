@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="reservation_release_wizard_form_view" model="ir.ui.view">
+        <field name="name">reservation.release.wizard.form</field>
+        <field name="model">reservation.release.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Release Reservations">
+                <group invisible="confirmed">
+                    <p class="alert alert-warning" role="alert">
+                        <strong>Review!</strong>
+                        Please confirm the release details below.
+                        This action will release reserved quantities back to available stock.
+                    </p>
+                </group>
+
+                <group invisible="not confirmed">
+                    <p class="alert alert-danger" role="alert">
+                        <strong>Final Confirmation Required!</strong>
+                        This action will release <field name="total_to_release"/> units across
+                        <field name="reservation_count"/> reservation(s).
+                        This action cannot be automatically reversed.
+                    </p>
+                </group>
+
+                <group>
+                    <group>
+                        <field name="release_date"/>
+                        <field name="reason"/>
+                    </group>
+                    <group>
+                        <field name="notify_customer"/>
+                        <field name="auto_create_credit_note"
+                               groups="stock_reservation_management.group_reservation_admin"/>
+                    </group>
+                </group>
+
+                <field name="reason_note" placeholder="Additional notes about this release..."/>
+
+                <field name="confirmed" invisible="1"/>
+                <field name="reservation_ids" invisible="1"/>
+                <field name="reservation_count" invisible="1"/>
+                <field name="total_to_release" invisible="1"/>
+
+                <field name="line_ids" invisible="confirmed">
+                    <tree editable="bottom" multi_edit="1">
+                        <field name="reservation_id"/>
+                        <field name="product_id"/>
+                        <field name="reserve_qty"/>
+                        <field name="allocated_qty"/>
+                        <field name="released_qty"/>
+                        <field name="to_release" widget="boolean_toggle"/>
+                    </tree>
+                </field>
+
+                <footer>
+                    <button name="action_release" string="Release"
+                            type="object" class="btn-danger"
+                            invisible="not confirmed"/>
+                    <button name="action_release" string="Confirm &amp; Release"
+                            type="object" class="btn-danger"
+                            invisible="not confirmed"/>
+                    <button special="cancel" string="Cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action: Launch from tree view -->
+    <record id="action_reservation_release_wizard" model="ir.actions.act_window">
+        <field name="name">Release Reservations</field>
+        <field name="res_model">reservation.release.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_stock_reservation"/>
+        <field name="binding_view_types">tree,kanban</field>
+        <field name="groups_id" eval="[(4, ref('stock_reservation_management.group_reservation_manager'))]"/>
+        <field name="context">
+            {
+                'default_reservation_ids': active_ids
+            }
+        </field>
+    </record>
+</odoo>

@@ -141,6 +141,22 @@ class ServiceReceipt(models.Model):
         string='Total Pickings',
     )
 
+    # === Operation Type Fields (per-receipt override of company defaults) ===
+    return_picking_type_id = fields.Many2one(
+        'stock.picking.type',
+        string='Return Picking Type',
+        domain="[('code', '=', 'incoming')]",
+        help='Operation type for receiving returned products. '
+             'Defaults from company config; override here for this receipt.',
+    )
+    replacement_picking_type_id = fields.Many2one(
+        'stock.picking.type',
+        string='Replacement Picking Type',
+        domain="[('code', '=', 'outgoing')]",
+        help='Operation type for delivering replacement products. '
+             'Defaults from company config; override here for this receipt.',
+    )
+
     # === Sale Order Field (Out-of-Warranty / Charge Customer) ===
     sale_order_id = fields.Many2one(
         'sale.order', string='Sale Order',
@@ -337,6 +353,12 @@ class ServiceReceipt(models.Model):
         else:
             if vals.get('name', 'New') == 'New':
                 vals['name'] = self.env['ir.sequence'].next_by_code('service.receipt') or 'New'
+        # Default picking types from company config if not explicitly set
+        company = self.env['res.company'].browse(vals.get('company_id', self.env.company.id))
+        if not vals.get('return_picking_type_id'):
+            vals['return_picking_type_id'] = company.service_receipt_return_picking_type_id.id or False
+        if not vals.get('replacement_picking_type_id'):
+            vals['replacement_picking_type_id'] = company.service_receipt_replacement_picking_type_id.id or False
         record = super().create(vals)
         record._sync_calendar_event()
         return record
@@ -469,14 +491,14 @@ class ServiceReceipt(models.Model):
         return location
 
     def _get_claim_picking_type(self, picking_type_code='incoming'):
-        """Get the claim picking type from company config, fallback to warehouse default."""
-        company = self.company_id
+        """Get the claim picking type from receipt-level field, fallback to company config, then warehouse default."""
+        self.ensure_one()
         if picking_type_code == 'incoming':
-            picking_type = company.service_receipt_return_picking_type_id
+            picking_type = self.return_picking_type_id or self.company_id.service_receipt_return_picking_type_id
             if picking_type:
                 return picking_type
         else:
-            picking_type = company.service_receipt_replacement_picking_type_id
+            picking_type = self.replacement_picking_type_id or self.company_id.service_receipt_replacement_picking_type_id
             if picking_type:
                 return picking_type
         warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
@@ -496,7 +518,8 @@ class ServiceReceipt(models.Model):
         if not product:
             raise UserError(_('Please specify a product on line %s.') % line.sequence)
         location_src = self.partner_id.property_stock_customer if self.partner_id else self.env.ref('stock.stock_location_customers')
-        location_dest = self._get_claim_return_location()
+        picking_type = self._get_claim_picking_type('incoming')
+        location_dest = picking_type.default_location_dest_id or self._get_claim_return_location()
         return {
             'name': _('Claim Return: %s') % self.name,
             'product_id': product.id,
@@ -511,8 +534,11 @@ class ServiceReceipt(models.Model):
         product = line.replacement_product_id
         if not product:
             raise UserError(_('Please specify a replacement product on line %s.') % line.sequence)
-        warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
-        location_src = warehouse.lot_stock_id if warehouse else self.env.ref('stock.stock_location_stock')
+        picking_type = self._get_claim_picking_type('outgoing')
+        location_src = picking_type.default_location_src_id
+        if not location_src:
+            warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
+            location_src = warehouse.lot_stock_id if warehouse else self.env.ref('stock.stock_location_stock')
         location_dest = self.partner_id.property_stock_customer if self.partner_id else self.env.ref('stock.stock_location_customers')
         return {
             'name': _('Replacement Delivery: %s') % self.name,
@@ -535,11 +561,13 @@ class ServiceReceipt(models.Model):
             raise UserError(_('No products specified on lines.'))
 
         move_vals_list = [self._prepare_return_move_vals(line) for line in replacement_lines]
+        picking_type = self._get_claim_picking_type('incoming')
+        location_dest = picking_type.default_location_dest_id or self._get_claim_return_location()
         picking = self.env['stock.picking'].create({
             'partner_id': self.partner_id.id,
             'location_id': self.partner_id.property_stock_customer.id,
-            'location_dest_id': self._get_claim_return_location().id,
-            'picking_type_id': self._get_claim_picking_type('incoming').id,
+            'location_dest_id': location_dest.id,
+            'picking_type_id': picking_type.id,
             'move_ids_without_package': [fields.Command.create(vals) for vals in move_vals_list],
             'origin': self.name,
         })
@@ -581,11 +609,16 @@ class ServiceReceipt(models.Model):
             raise UserError(_('No lines with a replacement product specified.'))
 
         move_vals_list = [self._prepare_replacement_move_vals(line) for line in replacement_lines]
+        picking_type = self._get_claim_picking_type('outgoing')
+        location_src = picking_type.default_location_src_id
+        if not location_src:
+            warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
+            location_src = warehouse.lot_stock_id if warehouse else self.env.ref('stock.stock_location_stock')
         picking = self.env['stock.picking'].create({
             'partner_id': self.partner_id.id,
-            'location_id': self._get_claim_return_location().id,
+            'location_id': location_src.id,
             'location_dest_id': self.partner_id.property_stock_customer.id,
-            'picking_type_id': self._get_claim_picking_type('outgoing').id,
+            'picking_type_id': picking_type.id,
             'move_ids_without_package': [fields.Command.create(vals) for vals in move_vals_list],
             'origin': self.name,
         })

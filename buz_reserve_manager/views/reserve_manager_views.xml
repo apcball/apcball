@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================
+         Reserve Manager – Form View (Main Dashboard)
+    ================================================================ -->
+    <record id="view_buz_reserve_manager_form" model="ir.ui.view">
+        <field name="name">buz.reserve.manager.form</field>
+        <field name="model">buz.reserve.manager</field>
+        <field name="arch" type="xml">
+            <form string="Reserve Manager">
+                <header>
+                    <button name="action_load_lines"
+                            string="Load Reservation Lines"
+                            type="object"
+                            class="btn-primary"
+                            icon="fa-search"
+                            data-hotkey="l"/>
+                    <button name="action_reload"
+                            string="Reload"
+                            type="object"
+                            class="btn-secondary"
+                            icon="fa-refresh"
+                            invisible="state != 'loaded'"/>
+                    <button name="action_clear_lines"
+                            string="Clear"
+                            type="object"
+                            class="btn-secondary"
+                            icon="fa-eraser"
+                            invisible="state != 'loaded'"/>
+                    <button name="action_unreserve_all"
+                            string="Unreserve All"
+                            type="object"
+                            class="btn-warning"
+                            icon="fa-undo"
+                            invisible="state != 'loaded'"
+                            confirm="This will unreserve ALL lines shown. Continue?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,loaded"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Reserve Manager</h1>
+                    </div>
+                    <group>
+                        <group string="Filters">
+                            <group>
+                                <field name="warehouse_id"
+                                       options="{'no_create': True}"
+                                       placeholder="All Warehouses"/>
+                            </group>
+                            <group string="Date Range">
+                                <field name="date_from" placeholder="Start Date"/>
+                                <field name="date_to" placeholder="End Date"/>
+                            </group>
+                            <group string="Products">
+                                <field name="product_ids"
+                                       widget="many2many_tags"
+                                       placeholder="Select Products (optional)"/>
+                            </group>
+                            <group string="Sale Orders (Optional)"
+                                   groups="base.group_user">
+                                <field name="sale_order_ids"
+                                       widget="many2many_tags"
+                                       placeholder="Leave empty to search all Sale Orders"/>
+                            </group>
+                        </group>
+                    </group>
+
+                    <div class="alert alert-info" role="alert"
+                         invisible="state != 'draft'">
+                        <i class="fa fa-info-circle me-2"/>
+                        Set your filter criteria above, then click
+                        <strong>"Load Reservation Lines"</strong> to display data.
+                    </div>
+
+                    <!-- Summary Bar -->
+                    <group string="Summary" col="4"
+                           invisible="state != 'loaded'">
+                        <field name="line_count" string="Lines" widget="statinfo"/>
+                        <field name="summary_demand_qty" string="Total Demand" widget="statinfo"/>
+                        <field name="summary_reserved_qty" string="Total Reserved" widget="statinfo"/>
+                        <field name="summary_available_qty" string="Total Available" widget="statinfo"/>
+                    </group>
+
+                    <!-- Reservation Lines Tree -->
+                    <field name="line_ids"
+                           invisible="state != 'loaded'"
+                           nolabel="1">
+                        <tree string="Reservation Lines"
+                              editable="false"
+                              multi_edit="1"
+                              default_order="scheduled_date asc">
+                            <field name="sale_order_id" string="Sale Order"
+                                   optional="show"/>
+                            <field name="product_id" string="Product"/>
+                            <field name="origin" string="Origin" optional="show"/>
+                            <field name="demand_qty" string="Demand"
+                                   sum="Total Demand" digits="[16,2]"/>
+                            <field name="reserved_qty" string="Reserved"
+                                   sum="Total Reserved" digits="[16,2]"/>
+                            <field name="available_qty" string="Available"
+                                   sum="Total Available" digits="[16,2]"/>
+                            <field name="scheduled_date" string="Scheduled"
+                                   optional="show"/>
+                            <field name="reserve_state" string="Status"
+                                   widget="badge" decoration-success="reserve_state == 'full'"
+                                   decoration-warning="reserve_state == 'partial'"
+                                   decoration-danger="reserve_state == 'none'"/>
+                            <!-- Action Buttons -->
+                            <button name="action_reserve"
+                                    string="Reserve"
+                                    type="object"
+                                    class="btn-success"
+                                    icon="fa-check"
+                                    invisible="reserve_state == 'full'"/>
+                            <button name="action_unreserve"
+                                    string="Unreserve"
+                                    type="object"
+                                    class="btn-secondary"
+                                    icon="fa-undo"
+                                    invisible="reserve_state == 'none'"
+                                    confirm="Unreserve this line? Stock will be released."/>
+                            <button name="action_unreserve_by_so"
+                                    string="Unreserve (SO)"
+                                    type="object"
+                                    class="btn-warning"
+                                    icon="fa-undo"
+                                    invisible="reserve_state == 'none'"
+                                    confirm="Unreserve ALL lines for this Sale Order? Stock will be released."/>
+                        </tree>
+                    </field>
+                </sheet>
+                <footer>
+                    <div class="text-muted small">
+                        <i class="fa fa-lightbulb-o me-1"/>
+                        Select lines and use inline buttons to Reserve / Unreserve.
+                    </div>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         Reserve Manager – Tree View
+    ================================================================ -->
+    <record id="view_buz_reserve_manager_tree" model="ir.ui.view">
+        <field name="name">buz.reserve.manager.tree</field>
+        <field name="model">buz.reserve.manager</field>
+        <field name="arch" type="xml">
+            <tree string="Reserve Managers" default_order="create_date desc">
+                <field name="name"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'loaded'"/>
+                <field name="line_count" string="Lines"/>
+                <field name="create_date" string="Created"/>
+                <field name="create_uid" string="Created By"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         Reserve Manager – Search View
+    ================================================================ -->
+    <record id="view_buz_reserve_manager_search" model="ir.ui.view">
+        <field name="name">buz.reserve.manager.search</field>
+        <field name="model">buz.reserve.manager</field>
+        <field name="arch" type="xml">
+            <search string="Search Reserve Manager">
+                <field name="name"/>
+                <field name="sale_order_ids"/>
+                <field name="product_ids"/>
+                <filter name="filter_draft" string="Draft" domain="[('state','=','draft')]"/>
+                <filter name="filter_loaded" string="Loaded" domain="[('state','=','loaded')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+                    <filter name="group_user" string="Created By" context="{'group_by': 'create_uid'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         Window Action
+    ================================================================ -->
+    <record id="action_buz_reserve_manager" model="ir.actions.act_window">
+        <field name="name">Reserve Manager</field>
+        <field name="res_model">buz.reserve.manager</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_buz_reserve_manager_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new Reserve Manager session to manage stock reservations.
+            </p>
+            <p>
+                <strong>How it works:</strong>
+            </p>
+            <ul>
+                <li>Click <strong>Create</strong> to start a new session</li>
+                <li>Select Sale Orders, date range, and/or products</li>
+                <li>Click <strong>Load Reservation Lines</strong></li>
+                <li>Use the inline <strong>Reserve</strong> / <strong>Unreserve</strong> buttons</li>
+                <li>Use <strong>Unreserve (SO)</strong> to release all reservation for an SO</li>
+            </ul>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         Manual Reserve Wizard – Form View
+    ================================================================ -->
+    <record id="view_manual_reserve_wizard_form" model="ir.ui.view">
+        <field name="name">buz.reserve.manual.wizard.form</field>
+        <field name="model">buz.reserve.manual.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Manual Reserve">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Manual Reserve</h1>
+                    </div>
+                    <group>
+                        <group string="Product">
+                            <field name="product_id"/>
+                            <field name="demand_qty" string="Demand"/>
+                            <field name="reserved_qty" string="Already Reserved"/>
+                            <field name="available_qty" string="Available Stock"/>
+                        </group>
+                        <group string="Reserve">
+                            <field name="max_reserve_qty" string="Max to Reserve"/>
+                            <field name="reserve_qty" string="Qty to Reserve"
+                                   class="oe_inline"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirm"
+                            string="Confirm Reserve"
+                            type="object"
+                            class="btn-primary"
+                            icon="fa-check"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

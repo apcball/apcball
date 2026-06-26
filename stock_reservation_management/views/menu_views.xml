@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ── Top Menu ─────────────────────────────────────────────── -->
+    <menuitem id="menu_stock_reservation_root"
+              name="Reservations"
+              parent="stock.menu_stock_root"
+              sequence="10"
+              groups="stock_reservation_management.group_reservation_user"/>
+
+    <!-- ── Reservation Operation Menus ──────────────────────────── -->
+    <menuitem id="menu_stock_reservation_operations"
+              name="Operations"
+              parent="menu_stock_reservation_root"
+              sequence="10"/>
+
+    <menuitem id="menu_stock_reservation_all"
+              name="Reservations"
+              parent="menu_stock_reservation_operations"
+              action="action_stock_reservation"
+              sequence="10"/>
+
+    <menuitem id="menu_stock_reservation_vip"
+              name="VIP Allocation"
+              parent="menu_stock_reservation_operations"
+              action="action_stock_reservation_vip"
+              sequence="20"
+              groups="stock_reservation_management.group_reservation_manager"/>
+
+    <menuitem id="menu_stock_reservation_approvals"
+              name="Pending Approvals"
+              parent="menu_stock_reservation_operations"
+              action="action_stock_reservation_approval"
+              sequence="30"
+              groups="stock_reservation_management.group_reservation_manager"/>
+
+    <menuitem id="menu_stock_reservation_release_queue"
+              name="Release Queue"
+              parent="menu_stock_reservation_operations"
+              action="action_stock_reservation_release_queue"
+              sequence="40"
+              groups="stock_reservation_management.group_reservation_manager"/>
+
+    <!-- ── Reporting Menus ───────────────────────────────────────── -->
+    <menuitem id="menu_stock_reservation_reporting"
+              name="Reporting"
+              parent="menu_stock_reservation_root"
+              sequence="40"
+              groups="stock_reservation_management.group_reservation_user"/>
+
+    <menuitem id="menu_stock_reservation_report_aging"
+              name="Reservation Aging"
+              parent="menu_stock_reservation_reporting"
+              action="action_report_reservation_aging"
+              sequence="10"/>
+
+    <menuitem id="menu_stock_reservation_report_vip"
+              name="VIP Allocation Report"
+              parent="menu_stock_reservation_reporting"
+              action="action_report_vip_allocation"
+              sequence="20"
+              groups="stock_reservation_management.group_reservation_manager"/>
+
+    <menuitem id="menu_stock_reservation_report_customer"
+              name="Customer Reservation Report"
+              parent="menu_stock_reservation_reporting"
+              action="action_report_customer_reservation"
+              sequence="30"/>
+
+    <!-- ── Configuration Menus ──────────────────────────────────── -->
+    <menuitem id="menu_stock_reservation_config"
+              name="Configuration"
+              parent="menu_stock_reservation_root"
+              sequence="99"
+              groups="stock_reservation_management.group_reservation_admin"/>
+
+    <!-- ── Calendar Menu (direct calendar view) ──────────────────── -->
+    <record id="action_stock_reservation_calendar" model="ir.actions.act_window">
+        <field name="name">Reservation Calendar</field>
+        <field name="res_model">stock.reservation</field>
+        <field name="view_mode">calendar</field>
+        <field name="view_id" ref="stock_reservation_calendar_view"/>
+        <field name="search_view_id" ref="stock_reservation_search_view"/>
+    </record>
+
+    <menuitem id="menu_stock_reservation_calendar"
+              name="Calendar"
+              parent="menu_stock_reservation_operations"
+              action="action_stock_reservation_calendar"
+              sequence="15"/>
+</odoo>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================
+         Top-level menu: Inventory > Reserve Manager
+    ================================================================ -->
+    <menuitem
+        id="menu_buz_reserve_manager_root"
+        name="Reserve Manager"
+        parent="stock.menu_stock_warehouse_mgmt"
+        sequence="85"
+        groups="stock.group_stock_user"
+    />
+
+    <menuitem
+        id="menu_buz_reserve_manager_dashboard"
+        name="Reservation Dashboard"
+        parent="menu_buz_reserve_manager_root"
+        action="action_buz_reserve_manager"
+        sequence="10"
+        groups="stock.group_stock_user"
+    />
+
+</odoo>

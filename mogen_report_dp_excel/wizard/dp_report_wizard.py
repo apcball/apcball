@@ -64,8 +64,6 @@ class DPReportWizard(models.TransientModel):
             else:
                 picking_domain.append(('state', '=', self.do_status))
                 picking_domain.append(('picking_type_id.code', '=', 'outgoing'))
-        else:
-            picking_domain.append(("state", "!=", "cancel"))
         pickings = self.env["stock.picking"].search(
             picking_domain, order="scheduled_date, name"
         )
@@ -101,8 +99,6 @@ class DPReportWizard(models.TransientModel):
             else:
                 non_so_domain.append(('state', '=', self.do_status))
                 non_so_domain.append(('picking_type_id.code', '=', 'outgoing'))
-        else:
-            non_so_domain.append(("state", "!=", "cancel"))
         non_so_pickings = self.env["stock.picking"].search(
             non_so_domain, order="scheduled_date, name"
         )

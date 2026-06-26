@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ── Report Actions ───────────────────────────────────────── -->
+
+    <!-- Main Reservation Report -->
+    <record id="action_report_reservation" model="ir.actions.report">
+        <field name="name">Reservation Report</field>
+        <field name="model">stock.reservation</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">stock_reservation_management.report_reservation</field>
+        <field name="report_file">stock_reservation_management.report_reservation</field>
+        <field name="binding_model_id" ref="model_stock_reservation"/>
+        <field name="binding_view_types">tree,form</field>
+        <field name="print_report_name">'Reservation - %s' % (object.name)</field>
+        <field name="groups_id" eval="[(4, ref('stock_reservation_management.group_reservation_user'))]"/>
+        <field name="multi" eval="True"/>
+    </record>
+
+    <!-- Reservation Aging Report -->
+    <record id="action_report_reservation_aging" model="ir.actions.report">
+        <field name="name">Reservation Aging Report</field>
+        <field name="model">stock.reservation</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">stock_reservation_management.report_reservation_aging</field>
+        <field name="report_file">stock_reservation_management.report_reservation_aging</field>
+        <field name="print_report_name">'Aging Report - %s' % (datetime.now().strftime('%%Y-%%m-%%d'))</field>
+        <field name="groups_id" eval="[(4, ref('stock_reservation_management.group_reservation_user'))]"/>
+    </record>
+
+    <!-- VIP Allocation Report -->
+    <record id="action_report_vip_allocation" model="ir.actions.report">
+        <field name="name">VIP Allocation Report</field>
+        <field name="model">stock.reservation</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">stock_reservation_management.report_vip_allocation</field>
+        <field name="report_file">stock_reservation_management.report_vip_allocation</field>
+        <field name="print_report_name">'VIP Allocation - %s' % (datetime.now().strftime('%%Y-%%m-%%d'))</field>
+        <field name="groups_id" eval="[(4, ref('stock_reservation_management.group_reservation_manager'))]"/>
+    </record>
+
+    <!-- Customer Reservation Report -->
+    <record id="action_report_customer_reservation" model="ir.actions.report">
+        <field name="name">Customer Reservation Report</field>
+        <field name="model">stock.reservation</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">stock_reservation_management.report_customer_reservation</field>
+        <field name="report_file">stock_reservation_management.report_customer_reservation</field>
+        <field name="print_report_name">'Customer Report - %s' % (datetime.now().strftime('%%Y-%%m-%%d'))</field>
+        <field name="groups_id" eval="[(4, ref('stock_reservation_management.group_reservation_user'))]"/>
+    </record>
+</odoo>

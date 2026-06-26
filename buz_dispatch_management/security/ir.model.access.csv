@@ -1,9 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_buz_dispatch_document_user,buz.dispatch.document user,model_buz_dispatch_document,group_dispatch_user,1,1,1,0
-access_buz_dispatch_document_manager,buz.dispatch.document manager,model_buz_dispatch_document,group_dispatch_manager,1,1,1,1
-access_buz_dispatch_document_line_user,buz.dispatch.document.line user,model_buz_dispatch_document_line,group_dispatch_user,1,1,1,0
-access_buz_dispatch_document_line_manager,buz.dispatch.document.line manager,model_buz_dispatch_document_line,group_dispatch_manager,1,1,1,1
-access_buz_create_dispatch_wizard_user,buz.create.dispatch.wizard user,model_buz_create_dispatch_wizard,group_dispatch_user,1,1,1,1
-access_buz_create_dispatch_wizard_manager,buz.create.dispatch.wizard manager,model_buz_create_dispatch_wizard,group_dispatch_manager,1,1,1,1
-access_buz_create_dispatch_wizard_line_user,buz.create.dispatch.wizard.line user,model_buz_create_dispatch_wizard_line,group_dispatch_user,1,1,1,1
-access_buz_create_dispatch_wizard_line_manager,buz.create.dispatch.wizard.line manager,model_buz_create_dispatch_wizard_line,group_dispatch_manager,1,1,1,1
