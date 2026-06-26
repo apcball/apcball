@@ -36,7 +36,7 @@
     'company': 'Cybrosys Techno Solutions',
     'maintainer': 'Cybrosys Techno Solutions',
     'website': "https://www.cybrosys.com",
-    'depends': ['sale_management', 'buz_custom_quotation'],
+    'depends': ['sale_management', 'buz_custom_quotation', 'buzcustom_product_sku', 'sale_stock'],
     'data': [
         'views/quotation_line_views.xml',
         'views/sale_order_line_views.xml'

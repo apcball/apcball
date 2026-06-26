@@ -56,8 +56,8 @@
                 <field name="order_id"/>
                 <field name="order_partner_id"/>
                 <field name="name"/>
-                <field name="sku"/>
                 <field name="product_id"/>
+                <field name="sku"/>
                 <field name="order_line_image" widget="image" class="order_line_img"/>
                 <field name="product_uom_qty" string="Qty"/>
                 <field name="qty_delivered"/>
@@ -76,6 +76,8 @@
                        widget="badge" optional="show"/>
 
                 <field name="currency_id" invisible="1"/>
+                <field name="create_date_only" optional="hide"/>
+                <field name="forecast_expected_date_only" optional="hide"/>
             </tree>
         </field>
     </record>

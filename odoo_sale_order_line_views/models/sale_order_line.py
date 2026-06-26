@@ -50,9 +50,21 @@ class SaleOrderLine(models.Model):
         string="Delivery Address",
     )
     sku = fields.Char(
-        string="Default code",
-        related="product_id.default_code",
-        help='Default code/Internal Reference of the product',
+        string="SKU",
+        related="product_id.sku",
+        help='Stock Keeping Unit',
+    )
+
+    create_date_only = fields.Date(
+        string="Create Date",
+        compute='_compute_create_date_only',
+        store=True,
+    )
+
+    forecast_expected_date_only = fields.Date(
+        string="Forecast Expected Date",
+        compute='_compute_forecast_expected_date_only',
+        store=True,
     )
 
     date_done = fields.Date(
@@ -60,6 +72,16 @@ class SaleOrderLine(models.Model):
         compute='_compute_date_done',
         store=True,
     )
+
+    @api.depends('create_date')
+    def _compute_create_date_only(self):
+        for line in self:
+            line.create_date_only = line.create_date.date() if line.create_date else False
+
+    @api.depends('forecast_expected_date')
+    def _compute_forecast_expected_date_only(self):
+        for line in self:
+            line.forecast_expected_date_only = line.forecast_expected_date.date() if line.forecast_expected_date else False
 
     @api.depends('move_ids.picking_id.date_done')
     def _compute_date_done(self):
