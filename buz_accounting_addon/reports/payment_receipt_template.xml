@@ -194,6 +194,7 @@
                                     <div>
                                         <strong>ที่อยู่:</strong>
                                         <span t-field="doc.partner_id.street"/>
+                                        <t t-if="doc.partner_id.street2"><br/><span t-field="doc.partner_id.street2"/></t>
                                         <t t-if="doc.partner_id.city"><span t-field="doc.partner_id.city"/></t>
                                         <t t-if="doc.partner_id.state_id"><span t-field="doc.partner_id.state_id.name"/></t>
                                         <span t-field="doc.partner_id.zip"/>

@@ -16,7 +16,7 @@
     'version': '17.0.1.4.0',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'stock', 'stock_account', 'product'],
+    'depends': ['base', 'stock', 'stock_account', 'product', 'buz_dispatch_document'],
 
     # always loaded
     'data': [

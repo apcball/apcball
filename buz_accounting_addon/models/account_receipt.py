@@ -1,7 +1,11 @@
 
+import logging
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.addons.base.models.res_config import ResConfigSettings
+
+_logger = logging.getLogger(__name__)
 
 
 class BuzAccountReceiptSettings(ResConfigSettings):
@@ -53,82 +57,53 @@ class AccountPayment(models.Model):
         # Store receipt reference before posting
         receipts = self.receipt_ids
         res = super(AccountPayment, self).action_post()
-        
-        # Update receipt's related invoices' amount_residuals to trigger recompute
-        for receipt in receipts:
-            # Update receipt amount by recomputing its lines
-            receipt.line_ids._compute_paid()
-            # Trigger recompute of receipt's total amount
-            receipt._compute_amount_total()
-            receipt._compute_amount_invoice_total()
-            
-            # Force a write to trigger all computed fields
-            receipt.write({
-                'amount_total': receipt.amount_total,
-                'amount_invoice_total': receipt.amount_invoice_total
-            })
-            
-        # After posting the payment, we need to ensure the related invoices are reconciled
-        # and the receipt lines are updated accordingly
-        if receipts and self.state == 'posted':
-            for receipt in receipts:
-                # Update the receipt line values based on current invoice state
-                for line in receipt.line_ids:
-                    if line.move_id:
-                        # Refresh the amounts based on the current state of the invoice
-                        total = line.move_id.amount_total_signed if line.move_id.move_type == "out_refund" else line.move_id.amount_total
-                        residual = line.move_id.amount_residual_signed if line.move_id.move_type == "out_refund" else line.move_id.amount_residual
-                        line.write({
-                            'amount_total': total,
-                            'amount_residual': residual,
-                        })
-        
+
+        # Invalidate stored computed fields so ORM recomputes them from
+        # the now-updated invoice amounts (amount_total, amount_residual, etc.)
+        if receipts:
+            receipts.line_ids.invalidate_recordset([
+                'amount_total', 'amount_residual',
+                'amount_paid', 'amount_paid_to_date',
+                'amount_total_signed', 'amount_residual_signed',
+            ])
+            receipts.invalidate_recordset([
+                'amount_total', 'amount_invoice_total', 'payment_count',
+            ])
+
         # Check if payment was created from a receipt voucher line or payment voucher line
         voucher_line_id = self.env.context.get('buz_voucher_line_id')
         if voucher_line_id:
             # First try account.receipt.voucher.line (AR)
-            try:
-                voucher_line = self.env['account.receipt.voucher.line'].browse(voucher_line_id)
-                if voucher_line.exists():
-                    # Link the payment to the voucher line
-                    voucher_line.write({
-                        'payment_ids': [(4, self.id, 0)]  # Add the payment to the many2many field
-                    })
-            except Exception:
-                # If there's an error with the first model, try the second one
+            voucher_line = self.env['account.receipt.voucher.line'].browse(voucher_line_id)
+            if not voucher_line.exists():
+                # Try account.payment.voucher.line (AP)
+                voucher_line = self.env['account.payment.voucher.line'].browse(voucher_line_id)
+            if voucher_line.exists():
                 try:
-                    # Try account.payment.voucher.line (AP)
-                    voucher_line = self.env['account.payment.voucher.line'].browse(voucher_line_id)
-                    if voucher_line.exists():
-                        # Link the payment to the voucher line
-                        voucher_line.write({
-                            'payment_ids': [(4, self.id, 0)]  # Add the payment to the many2many field
-                        })
-                except Exception:
-                    # If there's an error, just continue (don't break the payment process)
-                    pass
+                    voucher_line.write({'payment_ids': [(4, self.id, 0)]})
+                except Exception as e:
+                    _logger.warning("Failed to link voucher line %s to payment %s: %s",
+                                    voucher_line_id, self.id, e)
 
         # Also check if payment should be linked to a receipt directly (from context)
         receipt_id = self.env.context.get('buz_receipt_id')
         if receipt_id:
-            try:
-                receipt = self.env['account.receipt'].browse(receipt_id)
-                if receipt.exists():
-                    # Link the payment to the receipt using M2M
-                    receipt.write({
-                        'payment_ids': [(4, self.id)]
-                    })
-                    # Update receipt's related invoices' amount_residuals to trigger recompute
-                    receipt.line_ids._compute_paid()
-                    # Trigger recompute of receipt's total amount
-                    receipt._compute_amount_total()
-                    receipt._compute_amount_invoice_total()
-                    # Also update the payment count
-                    receipt._compute_payment_count()
-            except Exception:
-                # If there's an error, just continue (don't break the payment process)
-                pass
-            
+            receipt = self.env['account.receipt'].browse(receipt_id)
+            if receipt.exists():
+                try:
+                    receipt.write({'payment_ids': [(4, self.id)]})
+                    receipt.line_ids.invalidate_recordset([
+                        'amount_total', 'amount_residual',
+                        'amount_paid', 'amount_paid_to_date',
+                        'amount_total_signed', 'amount_residual_signed',
+                    ])
+                    receipt.invalidate_recordset([
+                        'amount_total', 'amount_invoice_total', 'payment_count',
+                    ])
+                except Exception as e:
+                    _logger.warning("Failed to link receipt %s to payment %s: %s",
+                                    receipt_id, self.id, e)
+
         return res
 
 
@@ -656,10 +631,12 @@ class AccountReceipt(models.Model):
         """Compute account.move records that are already referenced by any receipt line.
         This lets the view filter out invoices that were already selected.
         """
-        # collect all move_ids used in any receipt line
-        all_line_moves = self.env['account.receipt.line'].search([]).mapped('move_id')
+        self.env.cr.execute(
+            "SELECT DISTINCT move_id FROM account_receipt_line WHERE move_id IS NOT NULL"
+        )
+        move_ids = [row[0] for row in self.env.cr.fetchall()]
         for rec in self:
-            rec.used_move_ids = all_line_moves
+            rec.used_move_ids = [(6, 0, move_ids)]
 
     def action_view_payments(self):
         """
@@ -943,9 +920,12 @@ class AccountReceipt(models.Model):
     @api.depends()
     def _compute_used_in_voucher(self):
         """Compute whether a receipt has been used in any receipt voucher"""
+        existing = self.env['account.receipt.voucher.line'].search([
+            ('receipt_id', 'in', self.ids)
+        ])
+        used_ids = set(existing.mapped('receipt_id').ids)
         for receipt in self:
-            existing_line = self.env['account.receipt.voucher.line'].search([('receipt_id', '=', receipt.id)], limit=1)
-            receipt.used_in_voucher = bool(existing_line)
+            receipt.used_in_voucher = receipt.id in used_ids
 
     used_in_voucher = fields.Boolean(
         string="Used in Voucher",

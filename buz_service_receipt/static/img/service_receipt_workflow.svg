@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" font-family="'Segoe UI', 'Sarabun', sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#e53935"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="620" fill="#f8f9fa" rx="8"/>
+
+  <!-- Title -->
+  <text x="450" y="36" text-anchor="middle" font-size="18" font-weight="700" fill="#1a1a2e">buz_service_receipt — Workflow</text>
+
+  <!-- Section headers -->
+  <text x="20" y="70" font-size="13" font-weight="700" fill="#1565c0">📋 ขั้นตอนเริ่มต้น (ทุกกรณี)</text>
+  <text x="20" y="310" font-size="13" font-weight="700" fill="#e65100">💰 เส้นทางคิดค่าบริการ / นอกประกัน</text>
+  <text x="20" y="560" font-size="13" font-weight="700" fill="#888">❌ Cancel</text>
+
+  <!-- ===== COMMON: Draft → Confirmed ===== -->
+  <!-- Draft box -->
+  <rect x="50" y="85" width="140" height="50" rx="8" fill="#eceff1" stroke="#b0bec5" stroke-width="1.5"/>
+  <text x="120" y="107" text-anchor="middle" font-size="13" font-weight="700" fill="#546e7a">Draft</text>
+  <text x="120" y="123" text-anchor="middle" font-size="10" fill="#78909c">ฉบับร่าง</text>
+
+  <!-- Arrow -->
+  <line x1="190" y1="110" x2="230" y2="110" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Confirmed box -->
+  <rect x="235" y="85" width="140" height="50" rx="8" fill="#e3f2fd" stroke="#64b5f6" stroke-width="1.5"/>
+  <text x="305" y="107" text-anchor="middle" font-size="13" font-weight="700" fill="#1565c0">Confirmed</text>
+  <text x="305" y="123" text-anchor="middle" font-size="10" fill="#42a5f5">ยืนยันแล้ว</text>
+
+  <!-- Action label under Confirmed -->
+  <text x="305" y="155" text-anchor="middle" font-size="10" fill="#999" font-style="italic">กด Confirm</text>
+
+  <!-- ===== MAIN BRANCH: from Confirmed ===== -->
+  <!-- Branch lines from Confirmed -->
+  <line x1="305" y1="135" x2="305" y2="185" stroke="#666" stroke-width="1.5"/>
+  <line x1="170" y1="185" x2="440" y2="185" stroke="#666" stroke-width="1.5"/>
+  <line x1="170" y1="185" x2="170" y2="215" stroke="#666" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="440" y1="185" x2="440" y2="215" stroke="#666" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Branch labels -->
+  <text x="170" y="178" text-anchor="middle" font-size="10" fill="#888" font-style="italic">Claim Flow</text>
+  <text x="440" y="178" text-anchor="middle" font-size="10" fill="#888" font-style="italic">Charge Flow</text>
+
+  <!-- ===== CLAIM FLOW ===== -->
+  <!-- Claim flow section visual divider -->
+  <text x="20" y="240" font-size="13" font-weight="700" fill="#1565c0">🔄 เส้นทางเคลมสินค้า / เปลี่ยนสินค้า</text>
+
+  <!-- Product Return -->
+  <rect x="50" y="255" width="160" height="50" rx="8" fill="#fff3e0" stroke="#ffb74d" stroke-width="1.5"/>
+  <text x="130" y="277" text-anchor="middle" font-size="12" font-weight="700" fill="#e65100">Product Return</text>
+  <text x="130" y="293" text-anchor="middle" font-size="10" fill="#fb8c00">รับสินค้าคืน</text>
+  <text x="130" y="318" text-anchor="middle" font-size="9" fill="#999">กด Start Claim</text>
+  <text x="130" y="330" text-anchor="middle" font-size="9" fill="#999">→ สร้าง Return Picking</text>
+  <text x="130" y="342" text-anchor="middle" font-size="9" fill="#999">→ Validate Return</text>
+
+  <!-- Arrow -->
+  <line x1="210" y1="280" x2="255" y2="280" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Replacement Delivery -->
+  <rect x="260" y="255" width="170" height="50" rx="8" fill="#fce4ec" stroke="#f48fb1" stroke-width="1.5"/>
+  <text x="345" y="277" text-anchor="middle" font-size="12" font-weight="700" fill="#c62828">Replacement Delivery</text>
+  <text x="345" y="293" text-anchor="middle" font-size="10" fill="#e91e63">ส่งสินค้าเปลี่ยน</text>
+  <text x="345" y="318" text-anchor="middle" font-size="9" fill="#999">→ สร้าง Replacement Picking</text>
+  <text x="345" y="330" text-anchor="middle" font-size="9" fill="#999">→ Validate Replacement</text>
+
+  <!-- Arrow -->
+  <line x1="430" y1="280" x2="475" y2="280" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Done (Claim) -->
+  <rect x="480" y="255" width="140" height="50" rx="8" fill="#e8f5e9" stroke="#81c784" stroke-width="1.5"/>
+  <text x="550" y="277" text-anchor="middle" font-size="13" font-weight="700" fill="#2e7d32">Done</text>
+  <text x="550" y="293" text-anchor="middle" font-size="10" fill="#43a047">เสร็จสิ้น</text>
+  <text x="550" y="318" text-anchor="middle" font-size="9" fill="#999">กด Done</text>
+
+  <!-- ===== CHARGE FLOW ===== -->
+  <!-- Waiting Invoice -->
+  <rect x="260" y="325" width="170" height="50" rx="8" fill="#f3e5f5" stroke="#ce93d8" stroke-width="1.5"/>
+  <text x="345" y="347" text-anchor="middle" font-size="12" font-weight="700" fill="#6a1b9a">Waiting Invoice</text>
+  <text x="345" y="363" text-anchor="middle" font-size="10" fill="#8e24aa">รอคิดค่าบริการ</text>
+  <text x="345" y="388" text-anchor="middle" font-size="9" fill="#999">กด Out Warranty Flow</text>
+
+  <!-- Arrow -->
+  <line x1="430" y1="350" x2="475" y2="350" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Sale Order step -->
+  <rect x="480" y="325" width="140" height="50" rx="8" fill="#fff8e1" stroke="#ffe082" stroke-width="1.5"/>
+  <text x="550" y="347" text-anchor="middle" font-size="12" font-weight="700" fill="#f57f17">Create SO</text>
+  <text x="550" y="363" text-anchor="middle" font-size="10" fill="#f9a825">สร้าง Sale Order</text>
+  <text x="550" y="388" text-anchor="middle" font-size="9" fill="#999">จาก billable lines</text>
+
+  <!-- Arrow -->
+  <line x1="620" y1="350" x2="650" y2="350" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Done (Charge) -->
+  <rect x="655" y="325" width="140" height="50" rx="8" fill="#e8f5e9" stroke="#81c784" stroke-width="1.5"/>
+  <text x="725" y="347" text-anchor="middle" font-size="13" font-weight="700" fill="#2e7d32">Done</text>
+  <text x="725" y="363" text-anchor="middle" font-size="10" fill="#43a047">เสร็จสิ้น</text>
+  <text x="725" y="388" text-anchor="middle" font-size="9" fill="#999">กด Done</text>
+
+  <!-- ===== CANCEL FLOW ===== -->
+  <!-- Cancel line from Claim flow states -->
+  <line x1="130" y1="305" x2="130" y2="410" stroke="#e53935" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <line x1="345" y1="305" x2="345" y2="410" stroke="#e53935" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <line x1="550" y1="305" x2="550" y2="410" stroke="#e53935" stroke-width="1.5" stroke-dasharray="5,3"/>
+
+  <!-- Cancel line from Charge flow -->
+  <line x1="550" y1="375" x2="550" y2="410" stroke="#e53935" stroke-width="1.5" stroke-dasharray="5,3"/>
+
+  <!-- Horizontal collect line -->
+  <line x1="130" y1="410" x2="550" y2="410" stroke="#e53935" stroke-width="1.5"/>
+
+  <!-- Arrow down to Cancel -->
+  <line x1="340" y1="410" x2="340" y2="435" stroke="#e53935" stroke-width="1.5" marker-end="url(#arrow-red)"/>
+
+  <text x="340" y="425" text-anchor="middle" font-size="9" fill="#e53935">กด Cancel</text>
+
+  <!-- Cancel box -->
+  <rect x="260" y="440" width="160" height="50" rx="8" fill="#ffebee" stroke="#ef9a9a" stroke-width="1.5"/>
+  <text x="340" y="462" text-anchor="middle" font-size="13" font-weight="700" fill="#b71c1c">Cancelled</text>
+  <text x="340" y="478" text-anchor="middle" font-size="10" fill="#e53935">ยกเลิก</text>
+
+  <!-- Arrow down to Reset -->
+  <line x1="340" y1="490" x2="340" y2="510" stroke="#666" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <text x="340" y="507" text-anchor="middle" font-size="9" fill="#999">กด Reset to Draft</text>
+
+  <!-- Draft (return) -->
+  <rect x="260" y="515" width="160" height="45" rx="8" fill="#eceff1" stroke="#b0bec5" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <text x="340" y="535" text-anchor="middle" font-size="12" font-weight="700" fill="#546e7a">Draft</text>
+  <text x="340" y="550" text-anchor="middle" font-size="10" fill="#78909c">กลับไปแก้ไข</text>
+
+  <!-- ===== LEGEND ===== -->
+  <rect x="20" y="580" width="860" height="30" rx="6" fill="#f0f2f5"/>
+  <rect x="30" y="589" width="12" height="12" rx="3" fill="#e3f2fd" stroke="#64b5f6" stroke-width="1"/>
+  <text x="46" y="599" font-size="10" fill="#666">Confirmed</text>
+
+  <rect x="120" y="589" width="12" height="12" rx="3" fill="#fff3e0" stroke="#ffb74d" stroke-width="1"/>
+  <text x="136" y="599" font-size="10" fill="#666">Product Return</text>
+
+  <rect x="230" y="589" width="12" height="12" rx="3" fill="#fce4ec" stroke="#f48fb1" stroke-width="1"/>
+  <text x="246" y="599" font-size="10" fill="#666">Replacement Delivery</text>
+
+  <rect x="370" y="589" width="12" height="12" rx="3" fill="#f3e5f5" stroke="#ce93d8" stroke-width="1"/>
+  <text x="386" y="599" font-size="10" fill="#666">Waiting Invoice</text>
+
+  <rect x="485" y="589" width="12" height="12" rx="3" fill="#e8f5e9" stroke="#81c784" stroke-width="1"/>
+  <text x="501" y="599" font-size="10" fill="#666">Done</text>
+
+  <rect x="550" y="589" width="12" height="12" rx="3" fill="#ffebee" stroke="#ef9a9a" stroke-width="1"/>
+  <text x="566" y="599" font-size="10" fill="#666">Cancel</text>
+
+  <rect x="620" y="589" width="12" height="12" rx="3" fill="#eceff1" stroke="#b0bec5" stroke-width="1"/>
+  <text x="636" y="599" font-size="10" fill="#666">Draft</text>
+
+  <rect x="685" y="589" width="12" height="12" rx="3" fill="#fff8e1" stroke="#ffe082" stroke-width="1"/>
+  <text x="701" y="599" font-size="10" fill="#666">Sale Order</text>
+</svg>

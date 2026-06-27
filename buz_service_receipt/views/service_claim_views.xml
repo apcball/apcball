@@ -9,7 +9,7 @@
         <field name="arch" type="xml">
             <tree string="Claims"
                   decoration-info="state == 'draft'"
-                  decoration-warning="state in ('waiting_replacement','product_return','replacement_delivery')"
+                  decoration-warning="state in ('product_return','replacement_delivery')"
                   decoration-success="state == 'done'"
                   decoration-muted="state == 'cancel'">
                 <field name="claim_number"/>
@@ -61,7 +61,7 @@
                             type="object" class="btn-info"
                             invisible="not sale_order_id"/>
                     <button name="action_done" string="Done" type="object"
-                            invisible="state not in ['confirmed','waiting_replacement','product_return','replacement_delivery']"
+                            invisible="state not in ['confirmed','product_return','replacement_delivery']"
                             class="btn-success"/>
                     <button name="action_cancel" string="Cancel" type="object"
                             invisible="state == 'cancel'"/>
@@ -98,6 +98,11 @@
                         <h1>
                             <field name="claim_number" readonly="state != 'draft'"/>
                         </h1>
+                        <div class="row">
+                            <div class="col-6">
+                                <field name="name" string="Service Receipt" readonly="1"/>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Customer & Info — compact 2-col -->
@@ -138,11 +143,6 @@
 
                         <page string="Pickings">
                             <group>
-                                <group string="Operation Types">
-                                    <field name="return_picking_type_id" options="{'no_create': True}"/>
-                                    <field name="replacement_picking_type_id" options="{'no_create': True}"/>
-                                </group>
-                                <separator/>
                                 <group string="Return from Customer">
                                     <field name="return_picking_id" readonly="1"/>
                                     <button name="action_view_return_picking" string="View Return"
@@ -232,8 +232,6 @@
                 <field name="claim_number"/>
                 <field name="partner_id"/>
                 <field name="requester_name"/>
-                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
-                <filter string="Waiting Replacement" name="waiting_replacement" domain="[('state', '=', 'waiting_replacement')]"/>
                 <filter string="Product Return" name="product_return" domain="[('state', '=', 'product_return')]"/>
                 <filter string="Replacement Delivery" name="replacement_delivery" domain="[('state', '=', 'replacement_delivery')]"/>
                 <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>

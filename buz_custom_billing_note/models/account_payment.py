@@ -6,16 +6,14 @@ class AccountPayment(models.Model):
     def _post(self, soft=True):
         """Override to handle billing note payments"""
         res = super()._post(soft=soft)
-        self._create_billing_note_payments()
+        posted = self.filtered(lambda p: p.state == 'posted' and p.reconciled_invoice_ids)
+        if posted:
+            posted._create_billing_note_payments()
         return res
 
     def _create_billing_note_payments(self):
         """Create payment records in billing notes"""
         for payment in self:
-            # Skip if payment is not posted
-            if payment.state != 'posted':
-                continue
-
             # Find related billing notes through reconciled invoices
             reconciled_invoices = payment.reconciled_invoice_ids
             if not reconciled_invoices:

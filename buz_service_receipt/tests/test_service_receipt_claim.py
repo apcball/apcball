@@ -245,6 +245,58 @@ class TestServiceReceiptClaim(TransactionCase):
         receipt.action_draft()
         self.assertEqual(receipt.state, 'draft')
 
+    def test_08_create_uses_receipt_sequence(self):
+        """Service.receipt sequence always used for name, never claim_number."""
+        receipt = self._create_receipt('replacement')
+        # name should start with SRV/ (service.receipt sequence prefix)
+        self.assertTrue(
+            receipt.name.startswith('SRV/'),
+            f"Name should use service.receipt sequence, got: {receipt.name}"
+        )
+        # claim_number should still be 'New' (default) — not auto-generated
+        self.assertEqual(receipt.claim_number, 'New',
+                         "claim_number should not be auto-generated on create")
+
+    def test_09_default_get_generates_claim_number(self):
+        """default_get pre-generates claim_number when context has default_service_case_type='replacement'."""
+        vals = self.env['service.receipt'].with_context(
+            default_service_case_type='replacement'
+        ).default_get(['claim_number', 'service_case_type'])
+        self.assertTrue(vals.get('claim_number'), "claim_number should be pre-generated")
+        self.assertNotEqual(vals.get('claim_number'), 'New')
+        self.assertTrue(
+            vals['claim_number'].startswith('MCP'),
+            f"Claim number should start with MCP, got: {vals.get('claim_number')}"
+        )
+
+    def test_10_action_create_claim_generates_number(self):
+        """action_create_claim generates claim_number and returns claim form action."""
+        receipt = self._create_receipt('service')
+        self.assertEqual(receipt.claim_number, 'New',
+                         "Claim number should still be default 'New'")
+
+        result = receipt.action_create_claim()
+        # claim_number should now be generated
+        self.assertNotEqual(receipt.claim_number, 'New')
+        self.assertTrue(
+            receipt.claim_number.startswith('MCP'),
+            f"Claim number should start with MCP, got: {receipt.claim_number}"
+        )
+        # service_case_type should be 'replacement'
+        self.assertEqual(receipt.service_case_type, 'replacement')
+        # action should open claim form
+        self.assertEqual(result['res_model'], 'service.receipt')
+        self.assertEqual(result['res_id'], receipt.id)
+        self.assertEqual(result['view_mode'], 'form')
+        self.assertEqual(result['target'], 'current')
+
+    def test_11_no_auto_claim_on_create_replacement(self):
+        """Creating a receipt with replacement type does NOT auto-generate claim_number."""
+        receipt = self._create_receipt('replacement')
+        # claim_number should NOT be set by create (only by action_create_claim)
+        self.assertEqual(receipt.claim_number, 'New',
+                         "claim_number should not be auto-set by create()")
+
 
 @tagged('-at_install', 'post_install')
 class TestServiceReceiptPickingTypeConfig(TransactionCase):
@@ -369,86 +421,4 @@ class TestServiceReceiptPickingTypeConfig(TransactionCase):
         self.assertEqual(
             self.env.company.service_receipt_replacement_picking_type_id,
             self.custom_replacement_type,
-        )
-
-    def test_05_config_set_after_receipt_creation(self):
-        """Config set after receipt creation still applies via fallback in _get_claim_picking_type."""
-        # Ensure no pre-existing config for clean test
-        self.env.company.service_receipt_return_picking_type_id = False
-        self.env.company.service_receipt_replacement_picking_type_id = False
-
-        # Create receipt BEFORE config is set
-        receipt = self._create_receipt()
-        self.assertFalse(receipt.return_picking_type_id)
-        self.assertFalse(receipt.replacement_picking_type_id)
-
-        # Set config AFTER receipt creation
-        self.env.company.service_receipt_return_picking_type_id = self.custom_return_type
-        self.env.company.service_receipt_replacement_picking_type_id = self.custom_replacement_type
-
-        # _get_claim_picking_type should fallback to company config
-        return_type = receipt._get_claim_picking_type('incoming')
-        self.assertEqual(return_type, self.custom_return_type)
-
-        replacement_type = receipt._get_claim_picking_type('outgoing')
-        self.assertEqual(replacement_type, self.custom_replacement_type)
-
-    def test_06_picking_uses_company_config_when_receipt_field_empty(self):
-        """Creating picking uses company config when receipt-level field is empty."""
-        # Ensure no pre-existing config for clean test
-        self.env.company.service_receipt_return_picking_type_id = False
-        self.env.company.service_receipt_replacement_picking_type_id = False
-
-        receipt = self._create_receipt()
-        self.assertFalse(receipt.return_picking_type_id)
-
-        # Set config
-        self.env.company.service_receipt_return_picking_type_id = self.custom_return_type
-
-        receipt.action_confirm()
-        receipt.action_waiting_replacement()
-        receipt.action_create_return_picking()
-
-        self.assertEqual(
-            receipt.return_picking_id.picking_type_id,
-            self.custom_return_type,
-        )
-
-    def test_07_picking_location_uses_op_type_default(self):
-        """Return picking location_dest uses operation type's default_location_dest_id."""
-        # Set custom op type with specific default location
-        self.custom_return_type.default_location_dest_id = self.warehouse.lot_stock_id
-        self.env.company.service_receipt_return_picking_type_id = self.custom_return_type
-
-        receipt = self._create_receipt()
-        receipt.action_confirm()
-        receipt.action_waiting_replacement()
-        receipt.action_create_return_picking()
-
-        self.assertEqual(
-            receipt.return_picking_id.location_dest_id,
-            self.warehouse.lot_stock_id,
-        )
-
-    def test_08_replacement_location_uses_op_type_default(self):
-        """Replacement picking location_src uses operation type's default_location_src_id."""
-        # Set custom op type with specific default source location
-        self.custom_replacement_type.default_location_src_id = self.warehouse.lot_stock_id
-        self.env.company.service_receipt_replacement_picking_type_id = self.custom_replacement_type
-
-        receipt = self._create_receipt()
-        receipt.action_confirm()
-        receipt.action_waiting_replacement()
-        receipt.action_create_return_picking()
-
-        # Validate return first
-        move = receipt.return_picking_id.move_ids
-        move._set_quantity_done(move.product_uom_qty)
-        receipt.return_picking_id.button_validate()
-
-        receipt.action_create_replacement_picking()
-
-        self.assertEqual(
-            receipt.replacement_picking_id.location_id,
-            self.warehouse.lot_stock_id,
         )

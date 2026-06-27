@@ -33,7 +33,6 @@ class ServiceReceipt(models.Model):
             ('confirmed', 'Confirmed'),
             ('product_return', 'Product Return'),
             ('replacement_delivery', 'Replacement Delivery'),
-            ('waiting_replacement', 'Waiting Replacement'),
             ('waiting_invoice', 'Waiting Invoice'),
             ('done', 'Done'),
             ('cancel', 'Cancelled'),
@@ -141,22 +140,6 @@ class ServiceReceipt(models.Model):
         string='Total Pickings',
     )
 
-    # === Operation Type Fields (per-receipt override of company defaults) ===
-    return_picking_type_id = fields.Many2one(
-        'stock.picking.type',
-        string='Return Picking Type',
-        domain="[('code', '=', 'incoming')]",
-        help='Operation type for receiving returned products. '
-             'Defaults from company config; override here for this receipt.',
-    )
-    replacement_picking_type_id = fields.Many2one(
-        'stock.picking.type',
-        string='Replacement Picking Type',
-        domain="[('code', '=', 'outgoing')]",
-        help='Operation type for delivering replacement products. '
-             'Defaults from company config; override here for this receipt.',
-    )
-
     # === Sale Order Field (Out-of-Warranty / Charge Customer) ===
     sale_order_id = fields.Many2one(
         'sale.order', string='Sale Order',
@@ -166,6 +149,10 @@ class ServiceReceipt(models.Model):
     sale_order_count = fields.Integer(
         compute='_compute_sale_order_count',
         string='Sale Order Count',
+    )
+    claim_count = fields.Integer(
+        compute='_compute_claim_count',
+        string='Claim Count',
     )
 
     invoice_status = fields.Selection(
@@ -257,6 +244,11 @@ class ServiceReceipt(models.Model):
         for record in self:
             record.sale_order_count = 1 if record.sale_order_id else 0
 
+    @api.depends('claim_number')
+    def _compute_claim_count(self):
+        for record in self:
+            record.claim_count = 1 if record.claim_number and record.claim_number != 'New' else 0
+
     @api.depends('technician_ids')
     def _compute_primary_technician_id(self):
         for record in self:
@@ -344,36 +336,23 @@ class ServiceReceipt(models.Model):
 
     @api.model
     def create(self, vals):
-        is_claim = vals.get('service_case_type') == 'replacement'
-        if is_claim:
-            if not vals.get('claim_number') or vals.get('claim_number') == 'New':
-                vals['claim_number'] = self.env['ir.sequence'].next_by_code('service.claim') or 'New'
-            if not vals.get('name') or vals.get('name') == 'New':
-                vals['name'] = vals.get('claim_number', 'New')
-        else:
-            if vals.get('name', 'New') == 'New':
-                vals['name'] = self.env['ir.sequence'].next_by_code('service.receipt') or 'New'
-        # Default picking types from company config if not explicitly set
-        company = self.env['res.company'].browse(vals.get('company_id', self.env.company.id))
-        if not vals.get('return_picking_type_id'):
-            vals['return_picking_type_id'] = company.service_receipt_return_picking_type_id.id or False
-        if not vals.get('replacement_picking_type_id'):
-            vals['replacement_picking_type_id'] = company.service_receipt_replacement_picking_type_id.id or False
+        # Service receipts always use the service.receipt sequence for name
+        if vals.get('name', 'New') == 'New':
+            vals['name'] = self.env['ir.sequence'].next_by_code('service.receipt') or 'New'
         record = super().create(vals)
         record._sync_calendar_event()
         return record
 
+    @api.model
+    def default_get(self, fields_list):
+        """Pre-generate claim_number when creating from claim menu."""
+        res = super().default_get(fields_list)
+        if self._context.get('default_service_case_type') == 'replacement':
+            if not res.get('claim_number') or res.get('claim_number') == 'New':
+                res['claim_number'] = self.env['ir.sequence'].next_by_code('service.claim') or 'New'
+        return res
+
     def write(self, vals):
-        # Handle claim number generation before super().write() to avoid nested write
-        if vals.get('service_case_type') == 'replacement':
-            records_needing_claim = self.filtered(
-                lambda r: not r.claim_number or r.claim_number == 'New'
-            )
-            if records_needing_claim:
-                claim_number = self.env['ir.sequence'].next_by_code('service.claim') or 'New'
-                # If batch-writing multiple records needing claim, only first gets sequence
-                # — subsequent records will get new numbers in their own write
-                vals['claim_number'] = claim_number
         result = super().write(vals)
         tracked_fields = {
             'name', 'requester_name', 'partner_id', 'service_address', 'schedule_start',
@@ -460,8 +439,37 @@ class ServiceReceipt(models.Model):
                 record.claim_number = self.env['ir.sequence'].next_by_code('service.claim') or 'New'
 
     def action_waiting_replacement(self):
+        """Generate claim number and enter product return stage."""
         self._generate_claim_number()
         self.write({'state': 'product_return', 'service_case_type': 'replacement'})
+
+
+    def action_create_claim(self):
+        """Generate claim number and open the claim form view for this receipt."""
+        self.ensure_one()
+        self._generate_claim_number()
+        self.write({'service_case_type': 'replacement'})
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Claim'),
+            'res_model': 'service.receipt',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'view_id': self.env.ref('buz_service_receipt.view_service_claim_form').id,
+            'target': 'current',
+        }
+
+    def action_view_claim(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Claim'),
+            'res_model': 'service.receipt',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'view_id': self.env.ref('buz_service_receipt.view_service_claim_form').id,
+            'target': 'current',
+        }
 
     def action_waiting_invoice(self):
         self.write({'state': 'waiting_invoice', 'service_case_type': 'out_warranty', 'charge_customer': True})
@@ -491,14 +499,14 @@ class ServiceReceipt(models.Model):
         return location
 
     def _get_claim_picking_type(self, picking_type_code='incoming'):
-        """Get the claim picking type from receipt-level field, fallback to company config, then warehouse default."""
-        self.ensure_one()
+        """Get the claim picking type from company config, fallback to warehouse default."""
+        company = self.company_id
         if picking_type_code == 'incoming':
-            picking_type = self.return_picking_type_id or self.company_id.service_receipt_return_picking_type_id
+            picking_type = company.service_receipt_return_picking_type_id
             if picking_type:
                 return picking_type
         else:
-            picking_type = self.replacement_picking_type_id or self.company_id.service_receipt_replacement_picking_type_id
+            picking_type = company.service_receipt_replacement_picking_type_id
             if picking_type:
                 return picking_type
         warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
@@ -512,14 +520,29 @@ class ServiceReceipt(models.Model):
         else:
             return warehouse.out_type_id
 
+    def _get_claim_picking_locations(self, picking_type_code='incoming'):
+        """Get source/destination locations from picking type defaults,
+        with per-location fallback when picking type has no default."""
+        picking_type = self._get_claim_picking_type(picking_type_code)
+        location_src = picking_type.default_location_src_id
+        location_dest = picking_type.default_location_dest_id
+
+        if not location_src or not location_dest:
+            if picking_type_code == 'incoming':
+                location_src = location_src or (self.partner_id.property_stock_customer if self.partner_id else self.env.ref('stock.stock_location_customers'))
+                location_dest = location_dest or self._get_claim_return_location()
+            else:
+                warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
+                location_src = location_src or (warehouse.lot_stock_id if warehouse else self.env.ref('stock.stock_location_stock'))
+                location_dest = location_dest or (self.partner_id.property_stock_customer if self.partner_id else self.env.ref('stock.stock_location_customers'))
+        return location_src, location_dest
+
     def _prepare_return_move_vals(self, line):
         """Prepare stock move values for a return line."""
         product = line.product_id
         if not product:
             raise UserError(_('Please specify a product on line %s.') % line.sequence)
-        location_src = self.partner_id.property_stock_customer if self.partner_id else self.env.ref('stock.stock_location_customers')
-        picking_type = self._get_claim_picking_type('incoming')
-        location_dest = picking_type.default_location_dest_id or self._get_claim_return_location()
+        location_src, location_dest = self._get_claim_picking_locations('incoming')
         return {
             'name': _('Claim Return: %s') % self.name,
             'product_id': product.id,
@@ -534,12 +557,7 @@ class ServiceReceipt(models.Model):
         product = line.replacement_product_id
         if not product:
             raise UserError(_('Please specify a replacement product on line %s.') % line.sequence)
-        picking_type = self._get_claim_picking_type('outgoing')
-        location_src = picking_type.default_location_src_id
-        if not location_src:
-            warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
-            location_src = warehouse.lot_stock_id if warehouse else self.env.ref('stock.stock_location_stock')
-        location_dest = self.partner_id.property_stock_customer if self.partner_id else self.env.ref('stock.stock_location_customers')
+        location_src, location_dest = self._get_claim_picking_locations('outgoing')
         return {
             'name': _('Replacement Delivery: %s') % self.name,
             'product_id': product.id,
@@ -561,13 +579,12 @@ class ServiceReceipt(models.Model):
             raise UserError(_('No products specified on lines.'))
 
         move_vals_list = [self._prepare_return_move_vals(line) for line in replacement_lines]
-        picking_type = self._get_claim_picking_type('incoming')
-        location_dest = picking_type.default_location_dest_id or self._get_claim_return_location()
+        loc_src, loc_dest = self._get_claim_picking_locations('incoming')
         picking = self.env['stock.picking'].create({
             'partner_id': self.partner_id.id,
-            'location_id': self.partner_id.property_stock_customer.id,
-            'location_dest_id': location_dest.id,
-            'picking_type_id': picking_type.id,
+            'location_id': loc_src.id,
+            'location_dest_id': loc_dest.id,
+            'picking_type_id': self._get_claim_picking_type('incoming').id,
             'move_ids_without_package': [fields.Command.create(vals) for vals in move_vals_list],
             'origin': self.name,
         })
@@ -608,17 +625,13 @@ class ServiceReceipt(models.Model):
         if not replacement_lines:
             raise UserError(_('No lines with a replacement product specified.'))
 
+        loc_src, loc_dest = self._get_claim_picking_locations('outgoing')
         move_vals_list = [self._prepare_replacement_move_vals(line) for line in replacement_lines]
-        picking_type = self._get_claim_picking_type('outgoing')
-        location_src = picking_type.default_location_src_id
-        if not location_src:
-            warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
-            location_src = warehouse.lot_stock_id if warehouse else self.env.ref('stock.stock_location_stock')
         picking = self.env['stock.picking'].create({
             'partner_id': self.partner_id.id,
-            'location_id': location_src.id,
-            'location_dest_id': self.partner_id.property_stock_customer.id,
-            'picking_type_id': picking_type.id,
+            'location_id': loc_src.id,
+            'location_dest_id': loc_dest.id,
+            'picking_type_id': self._get_claim_picking_type('outgoing').id,
             'move_ids_without_package': [fields.Command.create(vals) for vals in move_vals_list],
             'origin': self.name,
         })

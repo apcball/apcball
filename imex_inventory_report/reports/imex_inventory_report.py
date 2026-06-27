@@ -191,7 +191,7 @@ class ImexInventoryReport(models.Model):
                             svl.unit_cost
                         FROM stock_move move
                             LEFT JOIN stock_valuation_layer svl 
-                                on move.id = svl.stock_move_id
+                                on move.id = svl.stock_move_id AND svl.quantity < 0
                             LEFT JOIN stock_location location_src 
                                 on move.location_id = location_src.id
                             LEFT JOIN product_product product 
@@ -217,7 +217,7 @@ class ImexInventoryReport(models.Model):
                             svl.unit_cost
                         FROM stock_move move
                             LEFT JOIN stock_valuation_layer svl 
-                                on move.id = svl.stock_move_id
+                                on move.id = svl.stock_move_id AND svl.quantity > 0
                             LEFT JOIN stock_location location_dest 
                                 on move.location_dest_id = location_dest.id
                             LEFT JOIN product_product product 

@@ -110,7 +110,14 @@ class ImexInventoryDetailsReport(models.Model):
                     null AS product_out, 
                     null AS picking_id
                 FROM stock_move move
-                    LEFT JOIN stock_valuation_layer svl on move.id = svl.stock_move_id
+                    LEFT JOIN (
+                        SELECT stock_move_id,
+                               CASE WHEN SUM(ABS(quantity)) > 0
+                                    THEN SUM(ABS(value)) / SUM(ABS(quantity))
+                                    ELSE 0 END as unit_cost
+                        FROM stock_valuation_layer
+                        GROUP BY stock_move_id
+                    ) svl on move.id = svl.stock_move_id
                 WHERE 
                     (move.location_id in %s or move.location_dest_id in %s)
                     and move.state = 'done'
@@ -136,7 +143,14 @@ class ImexInventoryDetailsReport(models.Model):
                         then move.product_qty end as product_out,
                     move.picking_id
                 FROM stock_move move
-                    LEFT JOIN stock_valuation_layer svl on move.id = svl.stock_move_id
+                    LEFT JOIN (
+                        SELECT stock_move_id,
+                               CASE WHEN SUM(ABS(quantity)) > 0
+                                    THEN SUM(ABS(value)) / SUM(ABS(quantity))
+                                    ELSE 0 END as unit_cost
+                        FROM stock_valuation_layer
+                        GROUP BY stock_move_id
+                    ) svl on move.id = svl.stock_move_id
                     LEFT JOIN product_product product on move.product_id = product.id
                         LEFT JOIN product_template template on product.product_tmpl_id = template.id
                 WHERE 

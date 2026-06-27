@@ -107,6 +107,7 @@
             <div class="act_as_row labels">
                 <div class="act_as_cell">Date</div>
                 <div class="act_as_cell">Reference</div>
+                <div class="act_as_cell">Dispatch Doc</div>
                 <div class="act_as_cell">Partner</div>
                 <div class="act_as_cell">Source Location</div>
                 <div class="act_as_cell">Dest Location</div>
@@ -126,6 +127,9 @@
             </div>
             <div class="act_as_cell left">
                 <t t-out="product_line.display_name" />
+            </div>
+            <div class="act_as_cell left">
+                <t t-out="product_line.picking_id.buz_dispatch_document_name" />
             </div>
             <div class="act_as_cell left">
                 <t t-out="product_line.picking_id.partner_id.name" />

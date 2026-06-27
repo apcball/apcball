@@ -25,23 +25,10 @@
                 <header>
                     <button name="action_print_pdf" string="Print PDF" type="object" class="btn-primary"/>
                     <button name="action_confirm" string="Confirm" type="object" invisible="state != 'draft'" class="btn-primary"/>
-                    <button name="action_waiting_replacement" string="Replacement Flow" type="object" invisible="state not in ['draft', 'confirmed']"/>
                     <button name="action_waiting_invoice" string="Out Warranty Flow" type="object" invisible="state not in ['draft', 'confirmed']"/>
+                    <button name="action_create_claim" string="Create Claim" type="object" class="btn-info"
+                            invisible="service_case_type == 'replacement' or state in ('done', 'cancel')"/>
 
-                    <!-- Claim: Return Picking -->
-                    <button name="action_create_return_picking" string="Receive Return"
-                            type="object" class="btn-warning"
-                            invisible="state not in ('confirmed', 'product_return') or service_case_type != 'replacement'"/>
-                    <button name="action_view_return_picking" string="View Return"
-                            type="object" class="btn-info"
-                            invisible="not return_picking_id"/>
-                    <!-- Claim: Replacement Delivery -->
-                    <button name="action_create_replacement_picking" string="Send Replacement"
-                            type="object" class="btn-warning"
-                            invisible="state not in ('product_return', 'replacement_delivery') or service_case_type != 'replacement'"/>
-                    <button name="action_view_replacement_picking" string="View Replacement"
-                            type="object" class="btn-info"
-                            invisible="not replacement_picking_id"/>
                     <!-- Charge Customer: Create SO -->
                     <button name="action_create_sale_order" string="Create SO"
                             type="object" class="btn-warning"
@@ -51,7 +38,7 @@
                             invisible="not sale_order_id"/>
                     <!-- Done / Cancel -->
                     <button name="action_done" string="Done" type="object"
-                            invisible="state not in ['confirmed', 'waiting_replacement', 'waiting_invoice', 'product_return', 'replacement_delivery']"
+                            invisible="state not in ['confirmed', 'waiting_invoice', 'product_return', 'replacement_delivery']"
                             class="btn-success"/>
                     <button name="action_cancel" string="Cancel" type="object"
                             invisible="state == 'cancel'"/>
@@ -62,19 +49,12 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
-                        <!-- Smart Button: Return Picking -->
+                        <!-- Smart Button: Claim -->
                         <button class="oe_stat_button" type="object"
-                                name="action_view_return_picking" icon="fa-truck"
-                                invisible="not return_picking_id"
-                                help="View return picking">
-                            <field name="return_picking_count" widget="statinfo" string="Return"/>
-                        </button>
-                        <!-- Smart Button: Replacement Picking -->
-                        <button class="oe_stat_button" type="object"
-                                name="action_view_replacement_picking" icon="fa-truck"
-                                invisible="not replacement_picking_id"
-                                help="View replacement delivery">
-                            <field name="replacement_picking_count" widget="statinfo" string="Replacement"/>
+                                name="action_view_claim" icon="fa-file-text-o"
+                                invisible="not claim_count"
+                                help="View claim document">
+                            <field name="claim_count" widget="statinfo" string="Claim"/>
                         </button>
                         <!-- Smart Button: Sale Order -->
                         <button class="oe_stat_button" type="object"
@@ -235,27 +215,6 @@
                                 </group>
                             </page>
 
-                            <page string="Pickings" invisible="service_case_type != 'replacement'">
-                                <group>
-                                    <group string="ประเภทการดำเนินการ">
-                                        <field name="return_picking_type_id" string="ขาเข้า (รับสินค้าคืน)" options="{'no_create': True}"/>
-                                        <field name="replacement_picking_type_id" string="ขาออก (ส่งสินค้าเปลี่ยน)" options="{'no_create': True}"/>
-                                    </group>
-                                    <separator/>
-                                    <group string="สินค้าคืนจากลูกค้า">
-                                        <field name="return_picking_id" string="Return Picking" readonly="1"/>
-                                        <button name="action_view_return_picking" string="ดู Return Picking"
-                                                type="object" class="btn-primary"
-                                                invisible="not return_picking_id"/>
-                                    </group>
-                                    <group string="สินค้าส่งเปลี่ยน">
-                                        <field name="replacement_picking_id" string="Replacement Delivery" readonly="1"/>
-                                        <button name="action_view_replacement_picking" string="ดู Replacement Delivery"
-                                                type="object" class="btn-primary"
-                                                invisible="not replacement_picking_id"/>
-                                    </group>
-                                </group>
-                            </page>
 
                             <!-- Sale Order Tab (TH) -->
                             <page string="Sale Order" invisible="not sale_order_id">
@@ -449,27 +408,6 @@
                                 </group>
                             </page>
 
-                            <page string="Pickings" invisible="service_case_type != 'replacement'">
-                                <group>
-                                    <group string="Operation Types">
-                                        <field name="return_picking_type_id" options="{'no_create': True}"/>
-                                        <field name="replacement_picking_type_id" options="{'no_create': True}"/>
-                                    </group>
-                                    <separator/>
-                                    <group string="Return from Customer">
-                                        <field name="return_picking_id" readonly="1"/>
-                                        <button name="action_view_return_picking" string="View Return"
-                                                type="object" class="btn-primary"
-                                                invisible="not return_picking_id"/>
-                                    </group>
-                                    <group string="Replacement Delivery">
-                                        <field name="replacement_picking_id" readonly="1"/>
-                                        <button name="action_view_replacement_picking" string="View Replacement"
-                                                type="object" class="btn-primary"
-                                                invisible="not replacement_picking_id"/>
-                                    </group>
-                                </group>
-                            </page>
 
                             <!-- Sale Order Tab (EN) -->
                             <page string="Sale Order" invisible="not sale_order_id">

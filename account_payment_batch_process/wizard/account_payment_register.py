@@ -293,7 +293,7 @@ class AccountPaymentRegister(models.TransientModel):
                     }
                 )
 
-        _logger.info(
+        _logger.debug(
             "Batch Payment - get_payment_values: partner=%s, amount=%s, "
             "write_off_count=%s, destination_account=%s",
             group_data.get("partner_id"),
@@ -486,34 +486,24 @@ class AccountPaymentRegister(models.TransientModel):
         memo = self.communication or " "
         context.update({"is_customer": self.is_customer})
 
-        # === CRITICAL DEBUG: write directly to file ===
-        try:
-            with open("/tmp/batch_payment_debug.log", "a") as f:
-                f.write("=" * 60 + "\n")
-                f.write(f"Batch Payment - make_payments CALLED. total_amount={self.total_amount}, cheque_amount={self.cheque_amount}\n")
-                for pl in self.invoice_payments:
-                    f.write(f"  LINE: invoice={pl.invoice_id.name}, balance={pl.balance}, amount={pl.amount}, diff={pl.payment_difference}, handling={pl.payment_difference_handling}\n")
-        except Exception as e:
-            pass
-
         self._check_amounts()
         for invoice_payment_line in self.invoice_payments:
             if invoice_payment_line.amount > 0:
                 self.get_amount(memo, group_data, invoice_payment_line)
 
-        _logger.info(
+        _logger.debug(
             "Batch Payment - make_payments: %d partners, group_data_keys=%s",
             len(group_data),
             list(group_data.keys()),
         )
         for pid, gd in group_data.items():
-            _logger.info(
+            _logger.debug(
                 "  Partner %s: total=%s, inv_val_keys=%s",
                 pid, gd.get("total"),
                 {k: v.get("amount") for k, v in gd.get("inv_val", {}).items()},
             )
             for inv_id, inv_data in gd.get("inv_val", {}).items():
-                _logger.info(
+                _logger.debug(
                     "    Invoice %s: amount=%s, diff=%s, handling=%s",
                     inv_id,
                     inv_data.get("amount"),
@@ -536,7 +526,7 @@ class AccountPaymentRegister(models.TransientModel):
             payment_vals = self.get_payment_values(
                 group_data=group_data[partner]
             )
-            _logger.info(
+            _logger.debug(
                 "Batch Payment - creating payment: amount=%s, partner=%s",
                 payment_vals.get("amount"),
                 payment_vals.get("partner_id"),
@@ -549,7 +539,7 @@ class AccountPaymentRegister(models.TransientModel):
                 .with_context(**payment_context, skip_invoice_sync=True)
                 .create(payment_vals)
             )
-            _logger.info(
+            _logger.debug(
                 "Batch Payment - payment created: id=%s, amount=%s, move=%s",
                 payment.id,
                 payment.amount,
@@ -576,7 +566,7 @@ class AccountPaymentRegister(models.TransientModel):
             invoices = self.env["account.move"].browse(partner_invoice_ids)
             lines = invoices.line_ids.filtered(_get_line_filter)
 
-            _logger.info(
+            _logger.debug(
                 "Batch Payment - reconciling: payment_lines=%s (amount=%s), "
                 "invoice_lines=%s (residual=%s)",
                 payment_lines.ids,
