@@ -156,7 +156,8 @@ class FifoRecalculationBackupLine(models.Model):
     layer_id = fields.Many2one(
         'stock.valuation.layer',
         string='Original Layer',
-        required=True
+        required=False,
+        ondelete='set null',
     )
     product_id = fields.Many2one(
         'product.product',
