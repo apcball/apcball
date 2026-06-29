@@ -159,7 +159,7 @@
         <field name="model">sale.order.line</field>
         <field name="arch" type="xml">
             <calendar string="Sales Orders" mode="month"
-                      date_start="create_date"
+                      date_start="picking_scheduled_date"
                       color="order_partner_id" hide_time="true"
                       event_limit="5">
                 <field name="currency_id" invisible="1"/>

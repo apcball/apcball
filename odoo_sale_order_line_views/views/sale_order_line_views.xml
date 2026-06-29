@@ -161,7 +161,7 @@
         <field name="model">sale.order.line</field>
         <field name="arch" type="xml">
             <calendar string="Sales Orders" mode="month"
-                      date_start="create_date"
+                      date_start="picking_scheduled_date"
                       color="order_partner_id" hide_time="true"
                       event_limit="5">
                 <field name="currency_id" invisible="1"/>
@@ -238,4 +238,59 @@
               parent="sale.sale_order_menu"
               groups="sales_team.group_sale_salesman"
               sequence="42"/>
+
+    <record id="pending_delivery_tree_view" model="ir.ui.view">
+        <field name="name">sale.order.line.pending.delivery.tree</field>
+        <field name="model">sale.order.line</field>
+        <field name="arch" type="xml">
+            <tree string="Pending Delivery Lines" create="false" edit="false"
+                  delete="false">
+                <field name="order_id"/>
+                <field name="order_partner_id"/>
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="sku"/>
+                <field name="order_line_image" widget="image" class="order_line_img"/>
+                <field name="product_uom_qty" string="Qty"/>
+                <field name="qty_delivered"/>
+                <field name="qty_to_deliver"/>
+                <field name="reserve_qty"/>
+                <field name="product_uom" string="Unit of Measure"
+                       groups="uom.group_uom"/>
+                <field name="project_name" optional="show"/>
+                <field name="partner_shipping_id" optional="show"/>
+                <field name="picking_scheduled_date" string="Scheduled Date" optional="show"/>
+                <field name="price_subtotal" sum="Total" widget="monetary"/>
+                <field name="state" string="Status"
+                       decoration-success="state == 'sale' or state == 'done'"
+                       decoration-info="state == 'draft' or state == 'sent'"
+                       widget="badge" optional="show"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="create_date_only" optional="hide"/>
+                <field name="forecast_expected_date_only" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+    <record id="action_pending_delivery_lines" model="ir.actions.act_window">
+        <field name="name">Pending Delivery Lines</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">sale.order.line</field>
+        <field name="view_mode">tree,kanban,form,pivot,graph,calendar</field>
+        <field name="domain">[('is_pending_delivery', '=', True), ('product_id.detailed_type', '!=', 'service')]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+                            (0, 0, {'view_mode': 'tree', 'view_id': ref('pending_delivery_tree_view')}),
+                            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sale_order_line_kanban_view')}),
+                            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sale_order_line_view_pivot')}),
+                            (0, 0, {'view_mode': 'graph', 'view_id': ref('sale_order_line_view_graph_view')}),
+                            (0, 0, {'view_mode': 'calendar', 'view_id': ref('sale_order_line_calender_view')}),
+                            ]"/>
+        <field name="search_view_id"
+               ref="view_sales_order_line_search_filter"/>
+    </record>
+    <menuitem id="menu_pending_delivery_lines"
+              name="Pending Delivery Lines"
+              action="action_pending_delivery_lines"
+              parent="sale.sale_order_menu"
+              groups="sales_team.group_sale_salesman"
+              sequence="43"/>
 </odoo>

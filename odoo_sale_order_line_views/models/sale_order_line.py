@@ -73,6 +73,18 @@ class SaleOrderLine(models.Model):
         store=True,
     )
 
+    is_pending_delivery = fields.Boolean(
+        string="Pending Delivery",
+        compute='_compute_is_pending_delivery',
+        store=True,
+    )
+
+    picking_scheduled_date = fields.Date(
+        string="Scheduled Date",
+        compute='_compute_picking_scheduled_date',
+        store=True,
+    )
+
     @api.depends('create_date')
     def _compute_create_date_only(self):
         for line in self:
@@ -90,14 +102,32 @@ class SaleOrderLine(models.Model):
             dates = [d for d in dates if d]
             line.date_done = max(dates).date() if dates else False
 
-    @api.depends('move_ids.state', 'move_ids.quantity', 'move_ids.product_uom')
+    @api.depends('move_ids.picking_id.scheduled_date')
+    def _compute_picking_scheduled_date(self):
+        for line in self:
+            dates = line.move_ids.picking_id.mapped('scheduled_date')
+            dates = [d for d in dates if d]
+            line.picking_scheduled_date = max(dates).date() if dates else False
+
+    @api.depends('move_ids.state', 'move_ids.quantity', 'move_ids.product_uom',
+                 'move_ids.location_dest_id')
     def _compute_reserve_qty(self):
         for line in self:
             reserved = 0.0
             for move in line.move_ids.filtered(
                 lambda m: m.state in ('assigned', 'partially_available')
+                and m.location_dest_id.usage == 'customer'
+                and (not m.origin_returned_move_id or m.to_refund)
             ):
                 reserved += move.product_uom._compute_quantity(
                     move.quantity, line.product_uom
                 )
             line.reserve_qty = reserved
+
+    @api.depends('state', 'product_uom_qty', 'qty_delivered')
+    def _compute_is_pending_delivery(self):
+        for line in self:
+            line.is_pending_delivery = (
+                line.state == 'sale'
+                and line.product_uom_qty > line.qty_delivered
+            )
