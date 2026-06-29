@@ -9,6 +9,9 @@ class ImexInventoryReport(models.Model):
     _auto = False
 
     product_id = fields.Many2one(comodel_name="product.product", readonly=True)
+    default_code = fields.Char(
+        related="product_id.default_code", string="Internal Reference",
+        readonly=True, store=False)
     product_uom = fields.Many2one(comodel_name="uom.uom", readonly=True)
     product_category = fields.Many2one(
         comodel_name="product.category", readonly=True)

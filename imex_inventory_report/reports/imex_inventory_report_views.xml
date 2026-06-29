@@ -4,6 +4,7 @@
         <field name="model">imex.inventory.report</field>
         <field name="arch" type="xml">
             <search string="Imex Inventory Report Search">
+                <field name="default_code" string="Default Code"/>
                 <field name="product_id" string="Product"/>
                 <field name="product_category" string="Category"/>
                 <field name="location" string="Location"/>
@@ -26,6 +27,7 @@
         <field name="model">imex.inventory.report</field>
         <field name="arch" type="xml">
             <tree create="false" string="Imex Inventory Report">
+                <field name="default_code" string="Default Code" optional="show"/>
                 <field name="product_id" string="Product"/>
                 <field name="product_uom" string="UoM" optional="show"/>
                 <field name="product_category" string="Category" optional="show"/>
