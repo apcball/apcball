@@ -196,7 +196,7 @@ class AccountMoveInherit(models.Model):
                         'product_id': line.product_id.id if line.product_id else False,
                         'name': line.name or (line.product_id.name if line.product_id else ''),
                         'quantity': line.quantity,
-                        'price_unit': line.price_unit,
+                        'price_unit': line.price_unit * (1 - line.discount / 100.0) if line.discount else line.price_unit,
                         'discount': line.discount,
                         'price_subtotal': line.price_subtotal,
                         'tax_ids': [(6, 0, line.tax_ids.ids)]

@@ -56,8 +56,8 @@ class EtaxTransaction(models.Model):
     )
 
     delivery_ids = fields.Many2many(
-        'stock.picking',
-        string='Related Delivery Orders',
+        'buz.dispatch.document',
+        string='Related Dispatch Documents',
         compute='_compute_delivery_ids'
     )
 
@@ -274,7 +274,7 @@ class EtaxTransaction(models.Model):
                 'product_id': line.product_id.id,
                 'name': line.name,
                 'quantity': line.quantity,
-                'price_unit': line.price_unit,
+                'price_unit': line.price_unit * (1 - line.discount / 100.0) if line.discount else line.price_unit,
                 'price_subtotal': line.price_subtotal,
                 'tax_ids': [(6, 0, line.tax_ids.ids)],
             })
@@ -421,7 +421,7 @@ class EtaxTransaction(models.Model):
                 # "H13-BUYER_ORDER_ISSUE_DTM": self.selected_delivery_id.name or "", # วันที่ใบสั่งซื้อ [T03]
                 "H13-BUYER_ORDER_ISSUE_DTM": "",
                 "H14-BUYER_ORDER_REF_TYPE_CODE": "",
-                "H15-DOCUMENT_REMARK": self.selected_delivery_id.buz_dispatch_document_name or self.selected_delivery_id.name or "", #self.notes, # หมายเหตุ [T03, CN, DN]
+                "H15-DOCUMENT_REMARK": self.selected_delivery_id.name or "", #self.notes, # หมายเหตุ [T03, CN, DN]
                 "H16-VOUCHER_NO": "",
                 "H17-SELLER_CONTACT_PERSON_NAME": "",
                 "H18-SELLER_CONTACT_DEPARTMENT_NAME": "",
@@ -802,25 +802,23 @@ class EtaxTransaction(models.Model):
     @api.depends('line_ids.price_unit', 'line_ids.quantity', 'line_ids.discount')
     def _compute_amount_disc(self):
         for record in self:
-            # total_disc = 0.0
-            # for line in record.line_ids:
-            #     # discount เป็นเปอร์เซ็นต์ เช่น 10 หมายถึง 10%
-            #     line_disc = (line.price_unit * line.quantity) * (line.discount / 100.0)
-            #     total_disc += line_disc
-            # record.amount_disc = total_disc
-            record.amount_disc = 0 #WK#1.n 20260624
+            total_disc = 0.0
+            for line in record.line_ids:
+                if line.discount:
+                    # price_unit is already after discount, so:
+                    # discount_amount = qty * price_unit * discount / (100 - discount)
+                    total_disc += line.quantity * line.price_unit * line.discount / (100.0 - line.discount)
+            record.amount_disc = total_disc
 
-    @api.depends('amount_untaxed', 'amount_disc')
+    @api.depends('amount_untaxed')
     def _compute_net_amount(self):
         for record in self:
-            record.net_amount = record.amount_untaxed - (record.amount_disc or 0.0)
-            # ผลลัพธ์คือ มูลค่าที่ถูกต้อง (amount_untaxed) - ส่วนลด (amount_disc)
+            record.net_amount = record.amount_untaxed
 
     @api.depends('net_amount', 'deposit')
     def _compute_total_after_deposit(self):
         for record in self:
-            record.total_after_deposit = (record.amount_untaxed or 0.0) - (record.amount_disc or 0.0)
-            # record.total_after_deposit = (record.net_amount or 0.0) - (record.deposit or 0.0)
+            record.total_after_deposit = (record.net_amount or 0.0) - (record.deposit or 0.0)
 
     @api.depends('document_type', 'amount_total', 'net_amount_total')
     def _compute_invoice_total(self):
@@ -871,7 +869,7 @@ class EtaxTransactionLine(models.Model):
     discount = fields.Float('ส่วนลด (%)', default=0.0)
     uom_id = fields.Many2one('uom.uom', 'หน่วย')
     product_name = fields.Char('ชื่อสินค้า', related='product_id.name', readonly=True)
-    price_unit = fields.Float('ราคาต่อหน่วย')
+    price_unit = fields.Float('ราคาต่อหน่วย (หลังหักส่วนลด)')
     price_subtotal = fields.Float('ราคารวม', compute='_compute_price_subtotal')
 
     price_tax = fields.Float('ภาษี', compute='_compute_price_tax')
@@ -879,13 +877,10 @@ class EtaxTransactionLine(models.Model):
     
     tax_ids = fields.Many2many('account.tax', 'etax_line_tax_rel', 'line_id', 'tax_id', 'ภาษี')
 
-    @api.depends('quantity', 'price_unit', 'discount')
+    @api.depends('quantity', 'price_unit')
     def _compute_price_subtotal(self):
         for line in self:
-            subtotal = line.quantity * line.price_unit
-            if line.discount:
-                subtotal = subtotal * (1 - line.discount / 100.0)
-            line.price_subtotal = subtotal
+            line.price_subtotal = line.quantity * line.price_unit
     
     @api.depends('price_subtotal', 'tax_ids')
     def _compute_price_tax(self):
