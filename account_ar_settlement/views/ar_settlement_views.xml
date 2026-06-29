@@ -162,7 +162,7 @@
                                 <tree string="Credit Notes" editable="bottom">
                                     <field name="selected" widget="boolean_toggle"/>
                                     <field name="credit_move_id" string="Credit Note"
-                                           domain="[('state','=','posted'),('move_type','=','out_refund'),('payment_state','in',['not_paid','partial']),('commercial_partner_id.vat','=',parent.vat_group)]"
+                                           domain="[('state','=','posted'),('move_type','=','out_refund'),('payment_state','in',['not_paid','partial'])]"
                                            options="{'no_create': True, 'no_quick_create': True, 'no_create_edit': True}"
                                            context="{'default_move_type': 'out_refund'}"/>
                                     <field name="partner_id" string="Branch" readonly="1"/>

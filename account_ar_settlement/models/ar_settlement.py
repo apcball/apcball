@@ -335,20 +335,31 @@ class ArSettlement(models.Model):
         self._load_credit_notes()
 
     def _load_credit_notes(self):
-        """Load open credit notes matching VAT group."""
+        """Load open credit notes matching trade channel or VAT group."""
         domain = [
             ('state', '=', 'posted'),
             ('move_type', '=', 'out_refund'),
             ('payment_state', 'in', ['not_paid', 'partial']),
             ('amount_residual', '>', 0),
         ]
-        if self.vat_group:
-            partners = self.env['res.partner'].search([
-                ('vat', '=', self.vat_group),
-            ])
-            domain.append(('partner_id', 'in', partners.ids))
+
+        if self.filter_date_from:
+            domain.append(('invoice_date', '>=', self.filter_date_from))
+        if self.filter_date_to:
+            domain.append(('invoice_date', '<=', self.filter_date_to))
+
+        if self.trade_channel:
+            invoice_model = self.env['account.move']
+            if 'trade_channel' in invoice_model._fields:
+                domain.append(('trade_channel', '=', self.trade_channel))
         else:
-            domain.append(('partner_id', '=', self.partner_id.id))
+            if self.vat_group:
+                partners = self.env['res.partner'].search([
+                    ('vat', '=', self.vat_group),
+                ])
+                domain.append(('partner_id', 'in', partners.ids))
+            else:
+                domain.append(('partner_id', '=', self.partner_id.id))
 
         credit_notes = self.env['account.move'].search(
             domain, order='invoice_date asc'
