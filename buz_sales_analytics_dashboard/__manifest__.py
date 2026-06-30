@@ -1,6 +1,6 @@
 {
     "name": "Sales Analytics Dashboard",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.1.0",
     "summary": "Advanced sales analytics dashboard with KPIs, charts, funnel, and forecast",
     "category": "Sales",
     "author": "Mogen Co., Ltd.",
@@ -10,7 +10,6 @@
         "crm",
         "account",
         "sales_team",
-        "sales_target_custom",
         "pos_lite",
         "stock",
     ],

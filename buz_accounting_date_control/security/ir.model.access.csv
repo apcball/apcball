@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_date_policy_admin,buz.accounting.date.company.policy.admin,model_buz_accounting_date_company_policy,group_date_admin,1,1,1,1
+access_buz_date_policy_auditor,buz.accounting.date.company.policy.auditor,model_buz_accounting_date_company_policy,group_date_auditor,1,0,0,0
+access_buz_date_audit_admin,buz.accounting.date.audit.log.admin,model_buz_accounting_date_audit_log,group_date_admin,1,0,1,0
+access_buz_date_audit_auditor,buz.accounting.date.audit.log.auditor,model_buz_accounting_date_audit_log,group_date_auditor,1,0,0,0
+access_buz_date_change_wizard_admin,buz.accounting.date.change.wizard.admin,model_buz_accounting_date_change_wizard,group_date_admin,1,1,1,1

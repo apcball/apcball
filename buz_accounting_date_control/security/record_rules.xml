@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Multi-company isolation: a user only sees governance records of
+             their own companies. -->
+        <record id="company_policy_company_rule" model="ir.rule">
+            <field name="name">Accounting Date Policy: multi-company</field>
+            <field name="model_id" ref="model_buz_accounting_date_company_policy"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
+
+        <record id="audit_log_company_rule" model="ir.rule">
+            <field name="name">Accounting Date Audit Log: multi-company</field>
+            <field name="model_id" ref="model_buz_accounting_date_audit_log"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
+    </data>
+</odoo>

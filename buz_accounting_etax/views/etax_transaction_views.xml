@@ -45,6 +45,9 @@
                                 placeholder="Select a dispatch document..."
                                 domain="[('id', 'in', delivery_ids)]"
                                 readonly="state == 'sent'"/>
+                            <field name="manual_delivery_ref"
+                                placeholder="ระบุเลขที่อ้างอิงเอง (override ด้านบน)..."
+                                readonly="state == 'sent'"/>
 
                             <!-- <field name="journal_entry_memo" readonly="state == 'sent'"/> -->
                             <field name="document_date" readonly="state == 'sent'"/>

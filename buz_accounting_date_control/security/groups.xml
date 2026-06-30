@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Application category -->
+        <record id="module_category_accounting_date_control" model="ir.module.category">
+            <field name="name">Accounting Date Control</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- Administrator: configures policies, manages retention -->
+        <record id="group_date_admin" model="res.groups">
+            <field name="name">Administrator</field>
+            <field name="category_id" ref="module_category_accounting_date_control"/>
+        </record>
+
+        <!-- Auditor: read-only access to policy + audit log -->
+        <record id="group_date_auditor" model="res.groups">
+            <field name="name">Auditor (Read Only)</field>
+            <field name="category_id" ref="module_category_accounting_date_control"/>
+        </record>
+    </data>
+</odoo>

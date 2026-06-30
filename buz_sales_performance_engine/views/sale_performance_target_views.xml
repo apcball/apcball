@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===================== FORM ===================== -->
+    <record id="view_spe_target_form" model="ir.ui.view">
+        <field name="name">buz.sales.performance.target.form</field>
+        <field name="model">buz.sales.performance.target</field>
+        <field name="arch" type="xml">
+            <form string="Sales Performance Target">
+                <header>
+                    <button name="action_confirm" string="Confirm" type="object"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_close" string="Close" type="object"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_reset_to_draft" string="Reset to Draft"
+                            type="object" invisible="state not in ('confirmed','closed')"/>
+                    <button name="action_view_results" string="View Results" type="object"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_view_results"
+                                icon="fa-line-chart">
+                            <field name="result_line_count" widget="statinfo"
+                                   string="Recognized Lines"/>
+                        </button>
+                        <button class="oe_stat_button" type="object" name="action_view_results"
+                                icon="fa-shopping-cart">
+                            <field name="sale_order_count" widget="statinfo" string="Sale Orders"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group string="Identification">
+                            <field name="name" placeholder="e.g. Q3 Team Sales"/>
+                            <field name="company_id" groups="base.group_multi_company"
+                                   options="{'no_create': True}"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Status">
+                            <field name="achievement_pct" widget="percentage"/>
+                            <field name="theoretical_status" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Target">
+                            <field name="target_type" widget="radio" options="{'horizontal': true}"/>
+                            <field name="user_id"
+                                   invisible="target_type != 'person'"
+                                   options="{'no_create': True}"/>
+                            <field name="team_id"
+                                   invisible="target_type != 'team'"
+                                   options="{'no_create': True}"/>
+                            <field name="responsible_id" invisible="1"/>
+                        </group>
+                        <group string="Amount">
+                            <field name="target_amount"/>
+                            <field name="period" widget="selection"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Period">
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                        </group>
+                        <group string="Achievement">
+                            <field name="achieved_amount"/>
+                            <field name="remaining_amount"/>
+                            <field name="forecast_amount"/>
+                            <field name="avg_daily_sales"/>
+                        </group>
+                    </group>
+                    <group string="Detail">
+                        <group>
+                            <field name="invoice_amount"/>
+                            <field name="refund_amount"/>
+                            <field name="theoretical_amount"/>
+                            <field name="theoretical_pct" widget="percentage"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes">
+                            <field name="note" placeholder="Additional notes..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ===================== LIST ===================== -->
+    <record id="view_spe_target_tree" model="ir.ui.view">
+        <field name="name">buz.sales.performance.target.tree</field>
+        <field name="model">buz.sales.performance.target</field>
+        <field name="arch" type="xml">
+            <tree string="Sales Targets"
+                  decoration-success="achievement_pct &gt;= 1"
+                  decoration-danger="theoretical_status == 'below'"
+                  decoration-muted="state == 'closed'">
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="name"/>
+                <field name="target_type"/>
+                <field name="user_id"/>
+                <field name="team_id"/>
+                <field name="period"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="target_amount" sum="Total Target"/>
+                <field name="achieved_amount" sum="Total Achieved"/>
+                <field name="achievement_pct" widget="percentage"/>
+                <field name="theoretical_status"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'confirmed'"
+                       decoration-muted="state == 'closed'"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ===================== KANBAN ===================== -->
+    <record id="view_spe_target_kanban" model="ir.ui.view">
+        <field name="name">buz.sales.performance.target.kanban</field>
+        <field name="model">buz.sales.performance.target</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="state"/>
+                <field name="currency_id"/>
+                <field name="target_amount"/>
+                <field name="achieved_amount"/>
+                <field name="achievement_pct"/>
+                <field name="target_type"/>
+                <field name="user_id"/>
+                <field name="team_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_card oe_kanban_global_click">
+                            <div class="o_kanban_record_title">
+                                <strong><field name="name"/></strong>
+                            </div>
+                            <div>
+                                <field name="target_type"/>
+                                <t t-if="record.target_type.raw_value == 'person'">
+                                    - <field name="user_id"/>
+                                </t>
+                                <t t-elif="record.target_type.raw_value == 'team'">
+                                    - <field name="team_id"/>
+                                </t>
+                            </div>
+                            <div>
+                                <field name="achieved_amount"/> /
+                                <field name="target_amount"/>
+                                <field name="currency_id"/>
+                            </div>
+                            <div class="progress mt-2" style="height: 6px;">
+                                <div class="progress-bar"
+                                     t-attf-style="width: {{ Math.min(record.achievement_pct.raw_value, 1) * 100 }}%;
+                                                   background-color: {{ record.achievement_pct.raw_value &gt;= 1 ? '#28a745' : '#017e84' }};"/>
+                            </div>
+                            <div>
+                                <field name="achievement_pct" widget="percentage"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ===================== CALENDAR ===================== -->
+    <record id="view_spe_target_calendar" model="ir.ui.view">
+        <field name="name">buz.sales.performance.target.calendar</field>
+        <field name="model">buz.sales.performance.target</field>
+        <field name="arch" type="xml">
+            <calendar string="Targets" date_start="date_start" date_stop="date_end"
+                      color="target_type">
+                <field name="name"/>
+                <field name="target_amount"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- ===================== SEARCH ===================== -->
+    <record id="view_spe_target_search" model="ir.ui.view">
+        <field name="name">buz.sales.performance.target.search</field>
+        <field name="model">buz.sales.performance.target</field>
+        <field name="arch" type="xml">
+            <search string="Sales Targets">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="team_id"/>
+                <filter string="My Targets" name="filter_my"
+                        domain="[('user_id','=',uid)]"/>
+                <filter string="Active" name="filter_active"
+                        domain="[('state','=','confirmed')]"/>
+                <separator/>
+                <filter string="By Type" name="groupby_type"
+                        context="{'group_by':'target_type'}"/>
+                <filter string="By Period" name="groupby_period"
+                        context="{'group_by':'period'}"/>
+                <filter string="By Salesperson" name="groupby_user"
+                        context="{'group_by':'user_id'}"/>
+                <filter string="By Team" name="groupby_team"
+                        context="{'group_by':'team_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- ===================== ACTION ===================== -->
+    <record id="action_spe_target" model="ir.actions.act_window">
+        <field name="name">Sales Targets</field>
+        <field name="res_model">buz.sales.performance.target</field>
+        <field name="view_mode">tree,kanban,form,calendar</field>
+        <field name="search_view_id" ref="view_spe_target_search"/>
+        <field name="context">{'search_default_groupby_type': 1, 'default_target_type': 'person'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create your first sales target</p>
+            <p>Targets are measured against recognized net sales (delivered + invoiced).</p>
+        </field>
+    </record>
+</odoo>

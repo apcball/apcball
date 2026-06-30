@@ -55,6 +55,11 @@ class EtaxTransaction(models.Model):
         ondelete='set null'
     )
 
+    manual_delivery_ref = fields.Char(
+        string='เลขที่อ้างอิง (Manual)',
+        help='หากกรอกค่านี้ จะถูกใช้แทนค่าจาก เลขที่อ้างอิง (Delivery) ด้านบน'
+    )
+
     delivery_ids = fields.Many2many(
         'buz.dispatch.document',
         string='Related Dispatch Documents',
@@ -421,7 +426,11 @@ class EtaxTransaction(models.Model):
                 # "H13-BUYER_ORDER_ISSUE_DTM": self.selected_delivery_id.name or "", # วันที่ใบสั่งซื้อ [T03]
                 "H13-BUYER_ORDER_ISSUE_DTM": "",
                 "H14-BUYER_ORDER_REF_TYPE_CODE": "",
-                "H15-DOCUMENT_REMARK": self.selected_delivery_id.name or "", #self.notes, # หมายเหตุ [T03, CN, DN]
+                "H15-DOCUMENT_REMARK": (
+                    self.manual_delivery_ref
+                    or (self.selected_delivery_id.name if self.selected_delivery_id else "")
+                    or ""
+                ), #self.notes, # หมายเหตุ [T03, CN, DN]
                 "H16-VOUCHER_NO": "",
                 "H17-SELLER_CONTACT_PERSON_NAME": "",
                 "H18-SELLER_CONTACT_DEPARTMENT_NAME": "",
@@ -801,14 +810,9 @@ class EtaxTransaction(models.Model):
 
     @api.depends('line_ids.price_unit', 'line_ids.quantity', 'line_ids.discount')
     def _compute_amount_disc(self):
+        # ponytail: ส่วนลดไม่ส่ง E-Tax แสดง 0 เสมอ
         for record in self:
-            total_disc = 0.0
-            for line in record.line_ids:
-                if line.discount:
-                    # price_unit is already after discount, so:
-                    # discount_amount = qty * price_unit * discount / (100 - discount)
-                    total_disc += line.quantity * line.price_unit * line.discount / (100.0 - line.discount)
-            record.amount_disc = total_disc
+            record.amount_disc = 0.0
 
     @api.depends('amount_untaxed')
     def _compute_net_amount(self):

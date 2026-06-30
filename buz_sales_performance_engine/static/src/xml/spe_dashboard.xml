@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_sales_performance_engine.Dashboard" owl="1">
+        <div class="spe-dashboard o_dashboard_container">
+            <!-- Filter bar -->
+            <div class="spe-filter-bar">
+                <div class="spe-filters">
+                    <div class="spe-field">
+                        <label>From</label>
+                        <input type="date" name="date_from"
+                               t-att-value="state.filters.date_from"
+                               t-on-change="onFilter"/>
+                    </div>
+                    <div class="spe-field">
+                        <label>To</label>
+                        <input type="date" name="date_to"
+                               t-att-value="state.filters.date_to"
+                               t-on-change="onFilter"/>
+                    </div>
+                    <div class="spe-field">
+                        <label>Company</label>
+                        <select name="company_id" t-on-change="onFilter">
+                            <option value="">All</option>
+                            <option t-foreach="state.options.companies" t-as="c"
+                                    t-key="c.id" t-att-value="c.id">
+                                <t t-esc="c.name"/>
+                            </option>
+                        </select>
+                    </div>
+                    <div class="spe-field">
+                        <label>Team</label>
+                        <select name="team_id" t-on-change="onFilter">
+                            <option value="">All</option>
+                            <option t-foreach="state.options.teams" t-as="t"
+                                    t-key="t.id" t-att-value="t.id">
+                                <t t-esc="t.name"/>
+                            </option>
+                        </select>
+                    </div>
+                    <div class="spe-field">
+                        <label>Salesperson</label>
+                        <select name="salesperson_id" t-on-change="onFilter">
+                            <option value="">All</option>
+                            <option t-foreach="state.options.salespersons" t-as="s"
+                                    t-key="s.id" t-att-value="s.id">
+                                <t t-esc="s.name"/>
+                            </option>
+                        </select>
+                    </div>
+                    <div class="spe-field">
+                        <label>Customer</label>
+                        <select name="partner_id" t-on-change="onFilter">
+                            <option value="">All</option>
+                            <option t-foreach="state.options.partners" t-as="p"
+                                    t-key="p.id" t-att-value="p.id">
+                                <t t-esc="p.name"/>
+                            </option>
+                        </select>
+                    </div>
+                    <div class="spe-field">
+                        <label>Category</label>
+                        <select name="categ_id" t-on-change="onFilter">
+                            <option value="">All</option>
+                            <option t-foreach="state.options.categories" t-as="c"
+                                    t-key="c.id" t-att-value="c.id">
+                                <t t-esc="c.name"/>
+                            </option>
+                        </select>
+                    </div>
+                    <div class="spe-field spe-apply">
+                        <button class="btn btn-primary" t-on-click="applyFilters">Apply</button>
+                    </div>
+                </div>
+            </div>
+
+            <div t-if="state.loading" class="spe-loading">Loading…</div>
+
+            <div t-else="">
+                <!-- KPI cards -->
+                <div class="spe-kpi-row">
+                    <div class="spe-kpi-card" t-on-click="() =&gt; drill('orders')">
+                        <div class="spe-kpi-label">Target</div>
+                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.target)"/>
+                    </div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() =&gt; drill('results')">
+                        <div class="spe-kpi-label">Actual</div>
+                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.actual)"/>
+                    </div>
+                    <div class="spe-kpi-card">
+                        <div class="spe-kpi-label">Achievement</div>
+                        <div class="spe-kpi-value" t-esc="fmtPct(state.kpi.achievement)"/>
+                    </div>
+                    <div class="spe-kpi-card">
+                        <div class="spe-kpi-label">Forecast</div>
+                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.forecast)"/>
+                    </div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() =&gt; drill('invoices')">
+                        <div class="spe-kpi-label">Invoice</div>
+                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.invoice_amount)"/>
+                    </div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() =&gt; drill('credit_notes')">
+                        <div class="spe-kpi-label">Refund</div>
+                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.refund_amount)"/>
+                    </div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() =&gt; drill('deliveries')">
+                        <div class="spe-kpi-label">Delivery %</div>
+                        <div class="spe-kpi-value" t-esc="fmtPct(state.kpi.delivery_pct)"/>
+                    </div>
+                    <div class="spe-kpi-card">
+                        <div class="spe-kpi-label">Remaining</div>
+                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.remaining)"/>
+                    </div>
+                    <div class="spe-kpi-card">
+                        <div class="spe-kpi-label">Avg Daily</div>
+                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.avg_daily)"/>
+                    </div>
+                </div>
+
+                <!-- Sales vs Target -->
+                <div class="spe-chart-block">
+                    <div class="spe-chart-title">Sales vs Target</div>
+                    <div class="spe-chart-box">
+                        <canvas t-ref="salesVsTargetChart"/>
+                    </div>
+                </div>
+
+                <!-- Two columns -->
+                <div class="spe-grid-2">
+                    <div class="spe-chart-block">
+                        <div class="spe-chart-title">Daily Sales</div>
+                        <div class="spe-chart-box">
+                            <canvas t-ref="dailyChart"/>
+                        </div>
+                    </div>
+                    <div class="spe-chart-block">
+                        <div class="spe-chart-title">Monthly Sales</div>
+                        <div class="spe-chart-box">
+                            <canvas t-ref="monthlyChart"/>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="spe-grid-2">
+                    <div class="spe-chart-block">
+                        <div class="spe-chart-title">Delivery Trend</div>
+                        <div class="spe-chart-box">
+                            <canvas t-ref="deliveryChart"/>
+                        </div>
+                    </div>
+                    <div class="spe-chart-block">
+                        <div class="spe-chart-title">Invoice / Credit Note</div>
+                        <div class="spe-chart-box">
+                            <canvas t-ref="invoiceRefundChart"/>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="spe-grid-2">
+                    <div class="spe-chart-block">
+                        <div class="spe-chart-title">Top Customers</div>
+                        <div class="spe-chart-box">
+                            <canvas t-ref="topCustomersChart"/>
+                        </div>
+                    </div>
+                    <div class="spe-chart-block">
+                        <div class="spe-chart-title">Top Products</div>
+                        <div class="spe-chart-box">
+                            <canvas t-ref="topProductsChart"/>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="spe-grid-2">
+                    <div class="spe-chart-block">
+                        <div class="spe-chart-title">Top Salespersons</div>
+                        <div class="spe-chart-box">
+                            <canvas t-ref="topSalespersonsChart"/>
+                        </div>
+                    </div>
+                    <div class="spe-chart-block">
+                        <div class="spe-chart-title">Top Teams</div>
+                        <div class="spe-chart-box">
+                            <canvas t-ref="topTeamsChart"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaderboards -->
+                <div class="spe-grid-2">
+                    <div class="spe-leaderboard">
+                        <div class="spe-chart-title">Salesperson Ranking</div>
+                        <table class="spe-table">
+                            <thead>
+                                <tr><th>#</th><th>Salesperson</th>
+                                    <th class="spe-num">Net</th>
+                                    <th class="spe-num">Refund</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="state.leaderboardSalespersons" t-as="row"
+                                    t-key="row.id">
+                                    <td t-esc="row_index + 1"/>
+                                    <td t-esc="row.name"/>
+                                    <td class="spe-num" t-esc="fmtMoney(row.net)"/>
+                                    <td class="spe-num" t-esc="fmtMoney(row.refund)"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="spe-leaderboard">
+                        <div class="spe-chart-title">Team Ranking</div>
+                        <table class="spe-table">
+                            <thead>
+                                <tr><th>#</th><th>Team</th>
+                                    <th class="spe-num">Net</th>
+                                    <th class="spe-num">Refund</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="state.leaderboardTeams" t-as="row"
+                                    t-key="row.id">
+                                    <td t-esc="row_index + 1"/>
+                                    <td t-esc="row.name"/>
+                                    <td class="spe-num" t-esc="fmtMoney(row.net)"/>
+                                    <td class="spe-num" t-esc="fmtMoney(row.refund)"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

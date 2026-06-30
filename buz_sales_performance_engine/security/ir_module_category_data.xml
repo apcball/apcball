@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_sales_performance" model="ir.module.category">
+        <field name="name">Sales Performance</field>
+        <field name="sequence">20</field>
+    </record>
+</odoo>

@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_buz_spe_result_user,buz.sales.performance.result user,model_buz_sales_performance_result,group_spe_user,1,0,0,0
+access_buz_spe_result_team_lead,buz.sales.performance.result team lead,model_buz_sales_performance_result,group_spe_team_lead,1,0,0,0
+access_buz_spe_result_manager,buz.sales.performance.result manager,model_buz_sales_performance_result,group_spe_manager,1,1,1,1
+access_buz_spe_target_user,buz.sales.performance.target user,model_buz_sales_performance_target,group_spe_user,1,1,1,0
+access_buz_spe_target_team_lead,buz.sales.performance.target team lead,model_buz_sales_performance_target,group_spe_team_lead,1,1,1,0
+access_buz_spe_target_manager,buz.sales.performance.target manager,model_buz_sales_performance_target,group_spe_manager,1,1,1,1
+access_buz_spe_recompute_wizard_user,buz.spe.recompute.wizard user,model_buz_spe_recompute_wizard,group_spe_manager,1,1,1,1

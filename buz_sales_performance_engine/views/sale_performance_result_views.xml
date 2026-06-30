@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===================== LIST ===================== -->
+    <record id="view_spe_result_tree" model="ir.ui.view">
+        <field name="name">buz.sales.performance.result.tree</field>
+        <field name="model">buz.sales.performance.result</field>
+        <field name="arch" type="xml">
+            <tree string="Performance Results" decoration-info="refund_amount &gt; 0">
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="date_invoiced"/>
+                <field name="sale_order_id"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="salesperson_id"/>
+                <field name="team_id"/>
+                <field name="invoice_amount" sum="Total Invoice"/>
+                <field name="refund_amount" sum="Total Refund"/>
+                <field name="net_sales" sum="Total Net"/>
+                <field name="delivered_qty"/>
+                <field name="invoiced_qty"/>
+                <field name="delivery_ratio"/>
+                <field name="currency_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ===================== FORM ===================== -->
+    <record id="view_spe_result_form" model="ir.ui.view">
+        <field name="name">buz.sales.performance.result.form</field>
+        <field name="model">buz.sales.performance.result</field>
+        <field name="arch" type="xml">
+            <form string="Performance Result">
+                <header>
+                    <button name="action_open_invoices" string="Invoices" type="object" class="btn-primary"/>
+                    <button name="action_open_credit_notes" string="Credit Notes" type="object"/>
+                    <button name="action_open_deliveries" string="Deliveries" type="object"/>
+                    <button name="action_open_sale_order" string="Sale Order" type="object"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Source">
+                            <field name="sale_order_id"/>
+                            <field name="sale_order_line_id"/>
+                            <field name="date_order"/>
+                            <field name="date_delivered"/>
+                            <field name="date_invoiced"/>
+                        </group>
+                        <group string="Scope">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="partner_id"/>
+                            <field name="product_id"/>
+                            <field name="categ_id"/>
+                            <field name="salesperson_id"/>
+                            <field name="team_id"/>
+                        </group>
+                    </group>
+                    <group string="Measures">
+                        <group>
+                            <field name="invoice_amount"/>
+                            <field name="refund_amount"/>
+                            <field name="net_sales"/>
+                        </group>
+                        <group>
+                            <field name="ordered_qty"/>
+                            <field name="delivered_qty"/>
+                            <field name="invoiced_qty"/>
+                            <field name="delivery_ratio" widget="percentage"/>
+                            <field name="invoice_ratio" widget="percentage"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ===================== SEARCH ===================== -->
+    <record id="view_spe_result_search" model="ir.ui.view">
+        <field name="name">buz.sales.performance.result.search</field>
+        <field name="model">buz.sales.performance.result</field>
+        <field name="arch" type="xml">
+            <search string="Performance Results">
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="salesperson_id"/>
+                <field name="team_id"/>
+                <field name="sale_order_id"/>
+                <filter string="This Month" name="filter_this_month"
+                        domain="[('date_invoiced','&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d 00:00:00')),
+                                 ('date_invoiced','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                <filter string="Has Refund" name="filter_has_refund"
+                        domain="[('refund_amount','&gt;', 0)]"/>
+                <separator/>
+                <filter string="By Salesperson" name="groupby_salesperson_id"
+                        context="{'group_by': 'salesperson_id'}"/>
+                <filter string="By Team" name="groupby_team_id"
+                        context="{'group_by': 'team_id'}"/>
+                <filter string="By Customer" name="groupby_partner_id"
+                        context="{'group_by': 'partner_id'}"/>
+                <filter string="By Product" name="groupby_product_id"
+                        context="{'group_by': 'product_id'}"/>
+                <filter string="By Category" name="groupby_categ_id"
+                        context="{'group_by': 'categ_id'}"/>
+                <filter string="Invoice Month" name="groupby_month"
+                        context="{'group_by': 'date_invoiced:month'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- ===================== PIVOT ===================== -->
+    <record id="view_spe_result_pivot" model="ir.ui.view">
+        <field name="name">buz.sales.performance.result.pivot</field>
+        <field name="model">buz.sales.performance.result</field>
+        <field name="arch" type="xml">
+            <pivot string="Performance Pivot" display_quantity="1">
+                <field name="team_id" type="row"/>
+                <field name="salesperson_id" type="row"/>
+                <field name="date_invoiced" type="col" interval="month"/>
+                <field name="net_sales" type="measure"/>
+                <field name="invoice_amount" type="measure"/>
+                <field name="refund_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- ===================== GRAPH ===================== -->
+    <record id="view_spe_result_graph" model="ir.ui.view">
+        <field name="name">buz.sales.performance.result.graph</field>
+        <field name="model">buz.sales.performance.result</field>
+        <field name="arch" type="xml">
+            <graph string="Performance Graph" type="bar">
+                <field name="date_invoiced" interval="month" type="row"/>
+                <field name="net_sales" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ===================== ACTION ===================== -->
+    <record id="action_spe_result" model="ir.actions.act_window">
+        <field name="name">Performance Results</field>
+        <field name="res_model">buz.sales.performance.result</field>
+        <field name="view_mode">tree,pivot,graph,form</field>
+        <field name="search_view_id" ref="view_spe_result_search"/>
+        <field name="context">{'search_default_groupby_salesperson_id': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No recognized sales yet</p>
+            <p>Sales are recognized automatically when an order line is both delivered and invoiced (posted).</p>
+        </field>
+    </record>
+</odoo>

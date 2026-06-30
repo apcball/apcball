@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Fail-safe seed: one permissive policy per existing company so the
+         module is fail-closed yet non-disruptive on a live database.
+         noupdate=1 so it runs once at install; idempotent in code. -->
+    <data noupdate="1">
+        <function model="buz.accounting.date.company.policy"
+                   name="_seed_default_policies"
+                   eval="[]"/>
+    </data>
+</odoo>

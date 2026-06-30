@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="email_template_target_notification" model="mail.template">
+        <field name="name">SPE: Target Achievement Notification</field>
+        <field name="model_id" ref="model_buz_sales_performance_target"/>
+        <field name="subject">{{ object.display_name }} - {{ '%.0f'|format(object.achievement_pct) }}% achieved</field>
+        <field name="email_to">{{ object.responsible_id.email_formatted }}</field>
+        <field name="body_html" type="html">
+<div style="margin:0px; padding:0px; font-family:Arial,Helvetica,sans-serif;">
+    <h2>Sales Performance Target Update</h2>
+    <p>Target <strong>{{ object.display_name }}</strong> is at
+       <strong>{{ '%.0f'|format(object.achievement_pct) }}%</strong> of its goal.</p>
+    <table cellpadding="6" style="border-collapse:collapse;">
+        <tr><td>Target</td><td>{{ object.target_amount }}</td></tr>
+        <tr><td>Actual Sales</td><td>{{ object.achieved_amount }}</td></tr>
+        <tr><td>Remaining</td><td>{{ object.remaining_amount }}</td></tr>
+        <tr><td>Forecast</td><td>{{ object.forecast_amount }}</td></tr>
+        <tr><td>Status</td><td>{{ object.theoretical_status }}</td></tr>
+    </table>
+</div>
+        </field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+</odoo>

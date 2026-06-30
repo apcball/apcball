@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="seq_buz_spe_target" model="ir.sequence">
+        <field name="name">SPE Target</field>
+        <field name="code">buz.sales.performance.target</field>
+        <field name="prefix">SPE/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

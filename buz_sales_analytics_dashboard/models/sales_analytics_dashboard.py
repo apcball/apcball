@@ -401,7 +401,11 @@ class SalesAnalyticsDashboard(models.TransientModel):
 
     @api.model
     def _get_target_achievement(self, filters):
-        target_model = self.env["sales.target"].sudo()
+        # Optional: only available when sales_target_custom is installed.
+        target_model = self.env.get("sales.target")
+        if not target_model:
+            return 0.0
+        target_model = target_model.sudo()
         date_from = filters.get("date_from")
         date_to = filters.get("date_to")
         if not date_from or not date_to:
@@ -703,15 +707,17 @@ class SalesAnalyticsDashboard(models.TransientModel):
         for uid, data in combined.items():
             target_amount = 0.0
             if uid and uid > 0:
-                target_domain = [
-                    ("state", "=", "confirmed"),
-                    ("date_start", "<=", today),
-                    ("date_end", ">=", today),
-                    ("user_id", "=", uid),
-                    ("company_id", "=", self.env.company.id),
-                ]
-                targets = self.env["sales.target"].sudo().search(target_domain)
-                target_amount = sum(targets.mapped("target_amount"))
+                target_model = self.env.get("sales.target")
+                if target_model:
+                    target_domain = [
+                        ("state", "=", "confirmed"),
+                        ("date_start", "<=", today),
+                        ("date_end", ">=", today),
+                        ("user_id", "=", uid),
+                        ("company_id", "=", self.env.company.id),
+                    ]
+                    targets = target_model.sudo().search(target_domain)
+                    target_amount = sum(targets.mapped("target_amount"))
             result.append({
                 "user_id": data["user_id"],
                 "user_name": data["user_name"],

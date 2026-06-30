@@ -7,9 +7,16 @@
     </record>
 
     <menuitem
+        id="menu_sales_analytics_root"
+        name="Analytics Dashboard"
+        sequence="14"
+        groups="buz_sales_analytics_dashboard.group_sales_analytics_user"
+    />
+
+    <menuitem
         id="menu_sales_analytics_dashboard"
         name="Analytics Dashboard"
-        parent="sales_target_custom.menu_sales_target_root"
+        parent="menu_sales_analytics_root"
         action="action_sales_analytics_dashboard"
         sequence="3"
         groups="buz_sales_analytics_dashboard.group_sales_analytics_user"

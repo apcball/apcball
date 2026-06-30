@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_date_change_wizard_form" model="ir.ui.view">
+        <field name="name">buz.accounting.date.change.wizard.form</field>
+        <field name="model">buz.accounting.date.change.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Change Accounting Date (Admin Override)">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="move_count" readonly="1"/>
+                            <field name="new_date"/>
+                            <field name="new_invoice_date"/>
+                        </group>
+                    </group>
+                    <group string="Selected Journal Entries">
+                        <field name="move_ids" nolabel="1">
+                            <tree>
+                                <field name="name"/>
+                                <field name="date"/>
+                                <field name="partner_id"/>
+                                <field name="amount_total"/>
+                                <field name="state"/>
+                            </tree>
+                        </field>
+                    </group>
+                    <group string="Reason (mandatory)">
+                        <field name="reason" nolabel="1"
+                               placeholder="Explain why the policy window is being overridden..."/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_apply" string="Apply Override"
+                            type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_buz_date_change_wizard" model="ir.actions.act_window">
+        <field name="name">Change Accounting Date (Override)</field>
+        <field name="res_model">buz.accounting.date.change.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id"
+               eval="[(4, ref('buz_accounting_date_control.group_date_admin'))]"/>
+    </record>
+</odoo>

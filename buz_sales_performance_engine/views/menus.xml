@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_spe_root" name="Sales Performance"
+              web_icon="buz_sales_performance_engine,static/description/icon.png"
+              sequence="15"/>
+
+    <!-- Dashboard -->
+    <menuitem id="menu_spe_dashboard" name="Dashboard"
+              parent="menu_spe_root" sequence="1"
+              action="action_spe_dashboard"/>
+
+    <!-- Targets -->
+    <menuitem id="menu_spe_targets" name="Targets"
+              parent="menu_spe_root" sequence="5"
+              action="action_spe_target"/>
+
+    <!-- Performance Results -->
+    <menuitem id="menu_spe_results" name="Results"
+              parent="menu_spe_root" sequence="10"
+              action="action_spe_result"/>
+
+    <!-- Configuration -->
+    <menuitem id="menu_spe_config" name="Configuration"
+              parent="menu_spe_root" sequence="90"
+              groups="buz_sales_performance_engine.group_spe_manager"/>
+
+    <menuitem id="menu_spe_recompute" name="Recompute Performance"
+              parent="menu_spe_config" sequence="5"
+              action="action_spe_recompute_wizard"/>
+
+    <menuitem id="menu_spe_targets_config" name="All Targets"
+              parent="menu_spe_config" sequence="10"
+              action="action_spe_target"/>
+</odoo>
