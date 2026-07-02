@@ -36,6 +36,12 @@ class StockPicking(models.Model):
     def _search_buz_dispatch_document_name(self, operator, value):
         return [('buz_dispatch_document_ids.name', operator, value)]
 
+    def action_view_dispatch_documents(self):
+        self.ensure_one()
+        action = self.env.ref('buz_dispatch_document.action_buz_dispatch_document').read()[0]
+        action['domain'] = [('stock_picking_id', '=', self.id)]
+        return action
+
     def action_create_dispatch_document(self):
         # Allow only deliveries originating from a Sales Order
         no_sale = self.filtered(lambda p: not p.sale_id)
@@ -45,10 +51,10 @@ class StockPicking(models.Model):
                   'that originate from a Sales Order.\nInvalid: %s')
                 % ', '.join(no_sale.mapped('name'))
             )
-        wrong_state = self.filtered(lambda p: p.state not in ('confirmed', 'assigned'))
+        wrong_state = self.filtered(lambda p: p.state not in ('confirmed', 'assigned', 'done'))
         if wrong_state:
             raise UserError(
-                _('Delivery orders must be Available or Waiting before '
+                _('Delivery orders must be Available, Waiting, or Done before '
                   'creating a Dispatch Document.\nInvalid: %s')
                 % ', '.join(wrong_state.mapped('name'))
             )

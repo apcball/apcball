@@ -19,6 +19,7 @@ class BuzDispatchDocument(models.Model):
         ('draft', 'Draft'),
         ('confirmed', 'Confirmed'),
         ('done', 'Done'),
+        ('cancel', 'Cancelled'),
     ], string='Status', default='draft', tracking=True)
 
     document_date = fields.Date(
@@ -34,7 +35,7 @@ class BuzDispatchDocument(models.Model):
         string='Delivery Order',
         required=True,
         ondelete='restrict',
-        domain=[('state', 'in', ('confirmed', 'assigned'))],
+        domain=[('state', 'in', ('confirmed', 'assigned', 'done'))],
         tracking=True,
     )
 
@@ -334,42 +335,43 @@ class BuzDispatchDocument(models.Model):
                 vals['document_date'] = fields.Date.today() + timedelta(days=1)
         return super().create(vals_list)
 
+    def unlink(self):
+        if not self.env.user.has_group('base.group_system'):
+            raise UserError(_('Only administrators can delete dispatch documents.'))
+        return super().unlink()
+
     # === Action Methods ===
     def action_confirm(self):
-        """Run sequence number and set state to confirmed"""
+        """Backdate stock picking and set dispatch document to done."""
         for record in self:
             if record.state != 'draft':
                 raise UserError(_('Only draft documents can be confirmed.'))
             if not record.name:
                 record.name = self.env['ir.sequence'].next_by_code('buz.dispatch.document')
-            record.state = 'confirmed'
-
-    def action_validate(self):
-        """Validate stock picking (DO) and mark dispatch as done.
-
-        Single record: returns wizard action if picking needs backorder/lots.
-        Bulk: skips wizard return so loop completes for all records.
-        """
-        is_bulk = len(self) > 1
-        for record in self:
-            if record.state != 'confirmed':
-                raise UserError(_('Only confirmed documents can be validated.'))
-            record.state = 'done'
             picking = record.stock_picking_id
-            if picking.state == 'draft':
-                picking.action_confirm()
-            if picking.state in ('confirmed', 'assigned'):
-                res = picking.button_validate()
-                if isinstance(res, dict) and not is_bulk:
-                    return res  # wizard (backorder/lots) → UI (single only)
-            record.message_post(body=_('Stock picking validated.'))
-        return True
+            if picking and picking.state == 'done':
+                date_dt = fields.Datetime.to_datetime(record.document_date)
+                wiz = self.env['stock.picking.backdate.wiz'].sudo().create({
+                    'date': date_dt,
+                    'picking_ids': [(6, 0, picking.ids)],
+                })
+                wiz.change_to_backdate()
+            record.state = 'done'
+            record.message_post(body=_('Dispatch confirmed. Delivery backdated to %s.') % record.document_date)
+
+    def action_cancel(self):
+        """Cancel dispatch document."""
+        for record in self:
+            if record.state == 'cancel':
+                raise UserError(_('Document is already cancelled.'))
+            record.state = 'cancel'
+            record.message_post(body=_('Dispatch document cancelled.'))
 
     def action_set_draft(self):
-        """Reset to draft"""
+        """Reset cancelled document to draft."""
         for record in self:
-            if record.state != 'confirmed':
-                raise UserError(_('Only confirmed documents can be reset to draft.'))
+            if record.state != 'cancel':
+                raise UserError(_('Only cancelled documents can be reset to draft.'))
             record.state = 'draft'
 
     def action_print_dispatch(self):

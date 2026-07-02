@@ -1,13 +1,13 @@
 {
     'name': 'Buz Dispatch Document',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.0.2',
     'category': 'Inventory/Delivery',
     'summary': 'จัดการเอกสาร Dispatch สำหรับควบคุมเลขที่เอกสาร DO',
     'description': """
         โมดูลสำหรับสร้างเอกสาร Dispatch Document เพื่อควบคุมเลขที่เอกสาร Delivery Order
         - สร้าง Dispatch Document จาก stock picking
         - รันเลขที่เอกสารอัตโนมัติเมื่อกด Confirm
-        - Validate เอกสารต้นทางจากหน้า Dispatch (Validate DO)
+        - Backdate เอกสาร Delivery ตามวันที่เอกสาร Dispatch
     """,
     'author': 'Ball',
     'website': '',
@@ -17,6 +17,7 @@
         'mail',
         'buz_inventory_delivery_report',
         'buz_delivery_report',
+        'stock_picking_backdate_all',
     ],
     'assets': {
         'web.assets_backend': [
