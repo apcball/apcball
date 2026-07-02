@@ -75,21 +75,21 @@
             <form string="POS Lite Order">
                 <header>
                     <!-- Draft/Held actions -->
-                    <button name="action_quick_pay_and_process" type="object" string="⚡ Pay &amp; Process" class="oe_highlight" invisible="state not in ('draft', 'held')" groups="pos_lite.group_pos_lite_user"/>
-                    <button name="action_register_payment" type="object" string="💳 Payment" class="btn-secondary" invisible="state not in ('draft', 'held')"/>
-                    <button name="action_process_order" type="object" string="✓ Process" invisible="state != 'draft'" groups="pos_lite.group_pos_lite_user"/>
-                    <button name="action_hold" type="object" string="⏸ Hold" invisible="state != 'draft'"/>
-                    <button name="action_resume" type="object" string="▶ Resume" class="oe_highlight" invisible="state != 'held'"/>
+                    <button name="action_quick_pay_and_process" type="object" string="Pay &amp; Process" class="oe_highlight" invisible="state not in ('draft', 'held')" groups="pos_lite.group_pos_lite_user"/>
+                    <button name="action_register_payment" type="object" string="Payment" class="btn-secondary" invisible="state not in ('draft', 'held')"/>
+                    <button name="action_process_order" type="object" string="Process" invisible="state != 'draft'" groups="pos_lite.group_pos_lite_user"/>
+                    <button name="action_hold" type="object" string="Hold" invisible="state != 'draft'"/>
+                    <button name="action_resume" type="object" string="Resume" class="oe_highlight" invisible="state != 'held'"/>
                     <!-- Paid actions -->
                     <button name="action_done" type="object" string="Mark Done" invisible="state != 'paid'"/>
                     <!-- Return/Exchange — only for completed orders -->
-                    <button name="action_create_return" type="object" string="↩ Return" class="btn-secondary" invisible="state != 'done'"/>
-                    <button name="action_create_exchange" type="object" string="⇄ Exchange" class="btn-secondary" invisible="1"/>
+                    <button name="action_create_return" type="object" string="Return" class="btn-secondary" invisible="state != 'done'"/>
+                    <button name="action_create_exchange" type="object" string="Exchange" class="btn-secondary" invisible="1"/>
                     <!-- General -->
-                    <button name="action_reorder" type="object" string="🔄 Re-order" class="btn-secondary" invisible="state == 'draft'"/>
-                    <button name="action_cancel" type="object" string="✕ Cancel" invisible="state == 'cancelled' or (state == 'done' and not is_return)"/>
+                    <button name="action_reorder" type="object" string="Re-order" class="btn-secondary" invisible="state == 'draft'"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state == 'cancelled' or (state == 'done' and not is_return)"/>
                     <!-- Print -->
-                    <button name="action_print_invoice" type="object" string="📄 Invoice" class="oe_highlight" invisible="state == 'draft'" groups="pos_lite.group_pos_lite_user"/>
+                    <button name="action_print_invoice" type="object" string="Invoice" class="oe_highlight" invisible="state == 'draft'" groups="pos_lite.group_pos_lite_user"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,paid,done,cancelled"/>
                 </header>
                 <sheet>
@@ -134,29 +134,29 @@
                     <!-- ═══ Main Info: 3 columns ═══ -->
                     <group col="3" colspan="2">
                         <!-- Col 1: Customer -->
-                        <group string="👤 Customer">
+                        <group string="Customer">
                             <field name="partner_id" context="{'pos_lite_partner_search': 1}" options="{'no_create_edit': False}" placeholder="Search or create customer..."/>
                             <field name="customer_name" placeholder="Customer Name" readonly="1"/>
                         </group>
                         <!-- Col 2: Invoice Address -->
-                        <group string="📍 Invoice Address">
+                        <group string="Invoice Address">
                             <field name="partner_invoice_id" options="{'no_create_edit': False}" placeholder="Auto-filled from customer"/>
                         </group>
                         <!-- Col 3: Delivery Address -->
-                        <group string="🚚 Delivery Address">
+                        <group string="Delivery Address">
                             <field name="partner_shipping_id" options="{'no_create_edit': False}" placeholder="Auto-filled from customer"/>
                         </group>
                     </group>
 
                     <!-- ═══ Order Details: 2 columns ═══ -->
                     <group col="2" colspan="2">
-                        <group string="📋 Order Info">
+                        <group string="Order Info">
                             <field name="channel"/>
                             <field name="date_order" readonly="state != 'draft'"/>
                             <field name="warehouse_id" options="{'no_create': True}"/>
                             <field name="pricelist_id"/>
                         </group>
-                        <group string="⚙ Session">
+                        <group string="Session">
                             <field name="session_id" options="{'no_create': True}"/>
                             <field name="employee_id" readonly="state not in ('draft', 'held')"/>
                             <field name="company_id" invisible="1"/>
@@ -166,7 +166,7 @@
 
                     <!-- Return/Exchange info -->
                     <group invisible="not is_return">
-                        <group string="↩ Return Info">
+                        <group string="Return Info">
                             <field name="return_of_order_id" readonly="1"/>
                             <field name="return_reason" readonly="1"/>
                             <field name="is_exchange" invisible="1"/>
@@ -177,7 +177,7 @@
 
                     <!-- Exchange info — original order side -->
                     <group invisible="is_return or exchange_count == 0">
-                        <group string="⇄ Exchange Summary" col="2">
+                        <group string="Exchange Summary" col="2">
                             <field name="exchange_return_total" readonly="1" widget="monetary" string="Return Value"/>
                             <field name="exchange_new_total" readonly="1" widget="monetary" string="New Items Value"/>
                             <field name="exchange_difference" readonly="1" widget="monetary"
@@ -188,11 +188,11 @@
                             <field name="exchange_customer_gets_refund" invisible="1"/>
                             <div class="alert alert-info" colspan="2" role="alert"
                                  invisible="not exchange_customer_pays">
-                                <span>💡 Customer pays extra <field name="exchange_difference" widget="monetary"/> for the new items.</span>
+                                <span>Customer pays extra <field name="exchange_difference" widget="monetary"/> for the new items.</span>
                             </div>
                             <div class="alert alert-success" colspan="2" role="alert"
                                  invisible="not exchange_customer_gets_refund">
-                                <span>💡 Customer gets refunded <field name="exchange_difference" widget="monetary" decoration-success="True"/> (new items cost less).</span>
+                                <span>Customer gets refunded <field name="exchange_difference" widget="monetary" decoration-success="True"/> (new items cost less).</span>
                             </div>
                         </group>
                     </group>
@@ -218,7 +218,7 @@
 
                     <!-- ═══ Notebook ═══ -->
                     <notebook>
-                        <page string="🛒 Order Lines">
+                        <page string="Order Lines">
                             <field name="line_ids" mode="tree" nolabel="1">
                                 <tree editable="bottom" decoration-danger="is_low_stock" decoration-warning="qty_available &gt; 0 and qty_available &lt; qty">
                                     <field name="company_id" invisible="1"/>
@@ -239,7 +239,7 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="💳 Payments" invisible="state == 'draft' and not payment_ids">
+                        <page string="Payments" invisible="state == 'draft' and not payment_ids">
                             <field name="payment_ids" nolabel="1">
                                 <tree editable="bottom" readonly="state not in ('draft', 'held')">
                                     <field name="state" invisible="1"/>
@@ -254,7 +254,7 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="🔄 Exchanges" invisible="exchange_count == 0">
+                        <page string="Exchanges" invisible="exchange_count == 0">
                             <group string="Exchange Orders">
                                 <field name="exchange_order_ids" nolabel="1" readonly="1">
                                     <tree>
@@ -269,7 +269,7 @@
                                 </field>
                             </group>
                         </page>
-                        <page string="📝 Notes">
+                        <page string="Notes">
                             <field name="note" placeholder="Add notes, delivery instructions, LINE message details..."/>
                         </page>
                     </notebook>

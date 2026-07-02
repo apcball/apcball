@@ -51,24 +51,3 @@ class PosLitePayment(models.Model):
                     raise ValidationError(_('Refund payment amount must be less than or equal to zero.'))
             elif payment.amount < 0:
                 raise ValidationError(_('Payment amount must not be negative.'))
-
-    def _prepare_account_payment_vals(self):
-        """Return dict to create account.payment from this pos.lite.payment."""
-        self.ensure_one()
-        order = self.order_id
-        partner = order.partner_id or order._get_or_create_customer_partner()
-        payment_type = 'outbound' if order.is_return else 'inbound'
-        partner_type = 'customer'
-        journal = self.journal_id or order._get_default_payment_journal()
-        if not journal:
-            raise ValidationError(_('No payment journal found for order %s.') % order.name)
-        return {
-            'payment_type': payment_type,
-            'partner_type': partner_type,
-            'partner_id': partner.id,
-            'amount': abs(self.amount),
-            'currency_id': order.currency_id.id,
-            'journal_id': journal.id,
-            'ref': '%s - %s' % (order.name, self.payment_method),
-            'date': self.payment_date or fields.Date.context_today(self),
-        }

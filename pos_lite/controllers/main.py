@@ -1,7 +1,36 @@
 # -*- coding: utf-8 -*-
-from odoo import http
+from odoo import http, fields
 from odoo.http import request
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError, ValidationError, MissingError, AccessError
+
+# Exception types safe to surface to the API client as a normal error response.
+# Anything else is a programming error and should propagate as HTTP 500.
+_HANDLED_EXCEPTIONS = (UserError, ValidationError, MissingError, AccessError)
+
+# Field whitelists for controller-built O2M commands — defend against field
+# injection from the terminal client (no state/company_id/is_return/etc.).
+_ORDER_LINE_FIELDS = ('product_id', 'description', 'qty', 'price_unit', 'discount', 'discount_type')
+_PAYMENT_FIELDS = ('payment_method', 'amount', 'journal_id', 'reference', 'note', 'payment_date')
+
+
+def _sanitize_o2m_payload(raw, allowed_fields):
+    """Convert a list of dicts (or [0,0,{...}] commands) into whitelist-only
+    create commands. Drops any key not in allowed_fields."""
+    commands = []
+    if not isinstance(raw, list):
+        return commands
+    for item in raw:
+        vals = None
+        if isinstance(item, dict):
+            vals = item
+        elif isinstance(item, (list, tuple)) and len(item) == 3 and item[0] == 0 and isinstance(item[2], dict):
+            vals = item[2]
+        if not vals:
+            continue
+        clean = {k: v for k, v in vals.items() if k in allowed_fields}
+        if clean.get('product_id') or clean.get('payment_method'):
+            commands.append(fields.Command.create(clean))
+    return commands
 
 
 class PosLiteController(http.Controller):
@@ -18,12 +47,14 @@ class PosLiteController(http.Controller):
         return request.env.company.id
 
     def _check_order_access(self, order_id):
-        """Browse order with sudo but verify company match."""
-        order = request.env['pos.lite.order'].sudo().browse(int(order_id))
+        """Browse order as the current user so record rules (employee/session
+        restriction in security.xml) apply. Missing or inaccessible → 404-style."""
+        try:
+            order = request.env['pos.lite.order'].browse(int(order_id))
+        except (ValueError, TypeError):
+            raise ValidationError('Order not found')
         if not order.exists():
             raise ValidationError('Order not found')
-        if order.company_id.id not in request.env.companies.ids:
-            raise ValidationError('Access denied: order belongs to a different company')
         return order
 
     # ─── Terminal UI Page ───────────────────────────────────────
@@ -70,7 +101,7 @@ class PosLiteController(http.Controller):
                         result['default_pricelist_name'] = p.name
             # No session_id → no employees (terminal requires a session to start)
             return {'success': True, **result}
-        except Exception as e:
+        except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 
     # ─── Warehouses ─────────────────────────────────────────────
@@ -84,7 +115,7 @@ class PosLiteController(http.Controller):
                 order='name',
             )
             return {'success': True, 'warehouses': warehouses}
-        except Exception as e:
+        except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 
     # ─── Products ───────────────────────────────────────────────
@@ -167,7 +198,7 @@ class PosLiteController(http.Controller):
                 products = []
 
             return {'success': True, 'products': products}
-        except Exception as e:
+        except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 
     # ─── Create Order (whitelisted fields only) ─────────────────
@@ -214,14 +245,14 @@ class PosLiteController(http.Controller):
                 'pricelist_id': pricelist_id,
                 'session_id': session_id or False,
                 'employee_id': int(employee_id) if employee_id else False,
-                'line_ids': data.get('line_ids', []),
-                'payment_ids': data.get('payment_ids', []),
+                'line_ids': _sanitize_o2m_payload(data.get('line_ids'), _ORDER_LINE_FIELDS),
+                'payment_ids': _sanitize_o2m_payload(data.get('payment_ids'), _PAYMENT_FIELDS),
             }
 
             order = request.env['pos.lite.order'].create(order_vals)
             order.action_quick_pay_and_process()
             return {'success': True, 'order_id': order.id, 'name': order.name}
-        except Exception as e:
+        except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 
     # ─── Order Detail ───────────────────────────────────────────
@@ -277,7 +308,7 @@ class PosLiteController(http.Controller):
                     'reference': pay.reference or '',
                 })
             return {'success': True, 'order': order_data}
-        except Exception as e:
+        except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 
     # ─── Orders For Return ──────────────────────────────────────
@@ -287,7 +318,7 @@ class PosLiteController(http.Controller):
         try:
             data = self._get_json_data()
             limit = data.get('limit', 50)
-            orders = request.env['pos.lite.order'].sudo().search([
+            orders = request.env['pos.lite.order'].search([
                 ('state', '=', 'done'),
                 ('is_return', '=', False),
                 ('company_id', '=', self._get_company_id()),
@@ -303,7 +334,7 @@ class PosLiteController(http.Controller):
                     'employee_name': o.employee_id.name if o.employee_id else '',
                 })
             return {'success': True, 'orders': result}
-        except Exception as e:
+        except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 
     # ─── Create Return (with qty validation) ────────────────────
@@ -383,7 +414,7 @@ class PosLiteController(http.Controller):
             order = request.env['pos.lite.order'].create(return_vals)
             order.action_quick_pay_and_process()
             return {'success': True, 'order_id': order.id, 'name': order.name}
-        except Exception as e:
+        except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 
     # ─── Product Search ─────────────────────────────────────────
@@ -402,6 +433,20 @@ class PosLiteController(http.Controller):
                 ('can_be_pos', '=', True),
                 '|', ('company_id', '=', False), ('company_id', '=', self._get_company_id()),
             ], limit=20)
+            # Batch qty_available via read_group on stock.quant instead of
+            # touching p.qty_available per product (N+1 on big catalogs).
+            qty_map = {}
+            if products:
+                quants = request.env['stock.quant'].read_group(
+                    domain=[('product_id', 'in', products.ids),
+                            ('location_id.usage', '=', 'internal')],
+                    fields=['product_id', 'quantity:sum'],
+                    groupby=['product_id'],
+                    lazy=False,
+                )
+                for q in quants:
+                    pid = q['product_id'][0] if isinstance(q['product_id'], (list, tuple)) else q['product_id']
+                    qty_map[pid] = qty_map.get(pid, 0.0) + q['quantity']
             result = []
             for p in products:
                 result.append({
@@ -409,8 +454,8 @@ class PosLiteController(http.Controller):
                     'name': p.display_name,
                     'default_code': p.default_code or '',
                     'list_price': p.list_price,
-                    'qty_available': p.qty_available,
+                    'qty_available': qty_map.get(p.id, 0.0),
                 })
             return {'success': True, 'products': result}
-        except Exception as e:
+        except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}

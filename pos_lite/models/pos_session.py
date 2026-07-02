@@ -131,7 +131,27 @@ class PosLiteSession(models.Model):
                 vals['name'] = self.env['ir.sequence']._safe_next_by_code(
                     'pos.lite.session', 'pos.lite.session', prefix='SESS',
                 )
-        return super().create(vals_list)
+        sessions = super().create(vals_list)
+        sessions._check_single_open_session()
+        return sessions
+
+    def _check_single_open_session(self):
+        """At most one opened session per (company, config) — prevents ambiguous
+        sales attribution when two shifts run simultaneously on the same config."""
+        for session in self:
+            if session.state != 'opened':
+                continue
+            existing = self.search([
+                ('id', '!=', session.id),
+                ('company_id', '=', session.company_id.id),
+                ('config_id', '=', session.config_id.id),
+                ('state', '=', 'opened'),
+            ], limit=1)
+            if existing:
+                raise UserError(_(
+                    'Session %s is already open for this company/config. '
+                    'Close it before opening a new one.'
+                ) % existing.name)
 
     def action_close_session(self):
         for session in self:
