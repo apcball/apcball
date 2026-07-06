@@ -107,7 +107,7 @@
                             }
                             .mc-sign-table td {
                                 text-align: center;
-                                width: 50%;
+                                width: 33.33%;
                                 vertical-align: top;
                                 padding: 0 10px;
                             }
@@ -129,24 +129,51 @@
                             <!-- Title -->
                             <div class="mc-title">ใบปิด Job (MO)</div>
 
-                            <!-- Info Section -->
-                            <table class="mc-info-table">
-                                <tr>
-                                    <td class="mc-label">เลขที่ Job (MO):</td>
-                                    <td><t t-esc="mo.name"/></td>
-                                </tr>
-                                <tr>
-                                    <td class="mc-label">วันที่เอกสาร:</td>
-                                    <td><t t-esc="mo.date_start" t-options="{'widget': 'date'}" t-if="mo.date_start"/><t t-if="not mo.date_start">&#160;</t></td>
-                                </tr>
-                                <tr>
-                                    <td class="mc-label">คลังปลายทาง:</td>
-                                    <td><t t-esc="mo.location_dest_id.complete_name"/></td>
-                                </tr>
+                            <t t-set="doc" t-value="mo"/>
+                            <t t-set="finished_moves"
+                               t-value="mo.move_finished_ids.filtered(lambda m: m.product_id.id == mo.product_id.id and m.state != 'cancel')"/>
+                            <t t-set="finished_qty" t-value="sum(finished_moves.mapped('quantity'))"/>
+                            <t t-set="bom_ref"
+                               t-value="doc.bom_id and (doc.bom_id.code or doc.bom_id.display_name) or '-'"/>
+
+                            <!-- Header Info Table -->
+                            <table class="table table-sm table-bordered">
+                                <tbody>
+                                    <tr>
+                                        <td style="width:20%; background-color:#f0f0f0; font-weight:bold;">เลขที่ Job</td>
+                                        <td style="width:30%;"><t t-esc="doc.name or ''"/></td>
+                                        <td style="width:20%; background-color:#f0f0f0; font-weight:bold;">วันที่</td>
+                                        <td style="width:30%;"><t t-esc="doc.create_date.strftime('%d/%m/%Y') if doc.create_date else ''"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="background-color:#f0f0f0; font-weight:bold;">สถานะ</td>
+                                        <td>
+                                            <t t-if="doc.state == 'draft'">Draft</t>
+                                            <t t-elif="doc.state == 'confirmed'">Confirmed</t>
+                                            <t t-elif="doc.state == 'progress'">In Progress</t>
+                                            <t t-elif="doc.state == 'to_close'">To Close</t>
+                                            <t t-elif="doc.state == 'done'">Done</t>
+                                            <t t-elif="doc.state == 'cancel'">Cancelled</t>
+                                            <t t-else=""><t t-esc="doc.state or ''"/></t>
+                                        </td>
+                                        <td style="background-color:#f0f0f0; font-weight:bold;">ผู้สร้าง</td>
+                                        <td><t t-esc="doc.create_uid.display_name if doc.create_uid else ''"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="background-color:#f0f0f0; font-weight:bold;">สินค้าที่ผลิต</td>
+                                        <td><t t-esc="doc.product_id.display_name if doc.product_id else ''"/></td>
+                                        <td style="background-color:#f0f0f0; font-weight:bold;">จำนวน</td>
+                                        <td><t t-esc="'%.2f' % finished_qty"/> <t t-esc="doc.product_uom_id.name if doc.product_uom_id else ''"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="background-color:#f0f0f0; font-weight:bold;">BOM Code</td>
+                                        <td colspan="3"><t t-esc="bom_ref or '-'"/></td>
+                                    </tr>
+                                </tbody>
                             </table>
 
                             <!-- 1. Finished Product -->
-                            <div class="mc-section-title">สินค้าที่ผลิตได้</div>
+                            <div class="mc-section-title">สินค้าที่ผลิตได้จริง</div>
                             <table class="mc-line-table">
                                 <thead>
                                     <tr>
@@ -162,16 +189,16 @@
                                         <td class="mc-num">1</td>
                                         <td><t t-esc="mo.product_id.default_code or ''"/></td>
                                         <td><t t-esc="mo.product_id.display_name"/></td>
-                                        <td class="mc-qty"><t t-esc="'%.2f' % mo.product_qty"/></td>
+                                        <td class="mc-qty"><t t-esc="'%.2f' % finished_qty"/></td>
                                         <td><t t-esc="mo.product_uom_id.name"/></td>
                                     </tr>
                                 </tbody>
                             </table>
 
                             <!-- 2. By-Products -->
-                            <t t-set="by_products" t-value="mo.move_finished_ids.filtered(lambda m: m.product_id.id != mo.product_id.id and m.state != 'cancel')"/>
+                            <t t-set="by_products" t-value="mo.move_finished_ids.filtered(lambda m: m.product_id.id != mo.product_id.id and m.state != 'cancel' and m.quantity > 0)"/>
                             <t t-if="by_products">
-                                <div class="mc-section-title">By-Product</div>
+                                <div class="mc-section-title">By-Product ที่ผลิตได้จริง</div>
                                 <table class="mc-line-table">
                                     <thead>
                                         <tr>
@@ -190,7 +217,7 @@
                                                 <td class="mc-num"><t t-esc="bp_num"/></td>
                                                 <td><t t-esc="bp.product_id.default_code or ''"/></td>
                                                 <td><t t-esc="bp.product_id.display_name"/></td>
-                                                <td class="mc-qty"><t t-esc="'%.2f' % bp.product_uom_qty"/></td>
+                                                <td class="mc-qty"><t t-esc="'%.2f' % bp.quantity"/></td>
                                                 <td><t t-esc="bp.product_uom.name"/></td>
                                             </tr>
                                         </t>
@@ -211,6 +238,16 @@
                                 <tr>
                                     <td>
                                         <div style="font-weight:bold;">ผู้ผลิต</div>
+                                        <div class="mc-sign-line"></div>
+                                        <div>(
+                                            <span style="display:inline-block; width:120px;">&#160;</span>
+                                            <span style="display:inline-block; width:80px;">&#160;</span>
+                                            <span>)</span>
+                                        </div>
+                                        <div>วันที่: ......./......./...........</div>
+                                    </td>
+                                    <td>
+                                        <div style="font-weight:bold;">ผู้ตรวจสอบ</div>
                                         <div class="mc-sign-line"></div>
                                         <div>(
                                             <span style="display:inline-block; width:120px;">&#160;</span>

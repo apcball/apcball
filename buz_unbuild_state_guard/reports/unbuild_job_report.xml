@@ -122,7 +122,33 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <t t-if="doc.bom_id and doc.bom_id.bom_line_ids">
+                                        <!-- ใบปิด Job: แสดงตาม stock move จริงที่เกิดจากการแตก unbuild
+                                             อิงตาม produce_line_ids แทน bom_line_ids เพราะการแตก BOM
+                                             อาจได้ส่วนประกอบต่างจากใน BOM (phantom/sub-assembly/substitute) -->
+                                        <t t-if="doc.produce_line_ids">
+                                            <!-- แสดงเฉพาะตัวลูกที่แยกออกมา ไม่แสดงตัวแม่ (สินค้าที่ถูกแยก = doc.product_id) -->
+                                            <t t-set="line_num" t-value="0"/>
+                                            <t t-foreach="doc.produce_line_ids" t-as="move">
+                                                <t t-if="move.product_id != doc.product_id">
+                                                    <t t-set="line_num" t-value="line_num + 1"/>
+                                                    <tr>
+                                                        <td class="text-center"><t t-esc="line_num"/></td>
+                                                        <td><span t-field="move.product_id"/></td>
+                                                        <td class="text-center"><span t-field="move.quantity"/></td>
+                                                        <td class="text-center"><span t-field="move.product_uom"/></td>
+                                                        <td><span t-field="move.location_dest_id"/></td>
+                                                        <td><span t-esc="', '.join(move.move_line_ids.mapped('lot_id').mapped('name'))"/></td>
+                                                    </tr>
+                                                </t>
+                                            </t>
+                                            <t t-if="not line_num">
+                                                <tr>
+                                                    <td colspan="6" class="text-center text-muted">ไม่มีข้อมูลส่วนประกอบที่แยกได้</td>
+                                                </tr>
+                                            </t>
+                                        </t>
+                                        <!-- ใบเปิด Job (ยังไม่ done): ยังไม่มี stock move จริง จึงประมาณการจาก BOM -->
+                                        <t t-elif="doc.bom_id and doc.bom_id.bom_line_ids">
                                             <t t-set="line_num" t-value="0"/>
                                             <tr t-foreach="doc.bom_id.bom_line_ids" t-as="line">
                                                 <t t-set="line_num" t-value="line_num + 1"/>
@@ -136,7 +162,7 @@
                                         </t>
                                         <t t-else="">
                                             <tr>
-                                                <td colspan="6" class="text-center text-muted">ไม่มีข้อมูล BOM</td>
+                                                <td colspan="6" class="text-center text-muted">ไม่มีข้อมูลส่วนประกอบ</td>
                                             </tr>
                                         </t>
                                     </tbody>
