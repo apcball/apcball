@@ -389,7 +389,24 @@ class PurchaseRequisition(models.Model):
                 if 'payment_date' in PO._fields:
                     po_vals['payment_date'] = expected_payment
 
-            self.env['purchase.order'].create(po_vals)
+            po = self.env['purchase.order'].create(po_vals)
+
+            # Ponytail: copy PR attachments to RFQ chatter as link refs.
+            pr_attachments = self.env['ir.attachment'].search([
+                ('res_model', '=', self._name),
+                ('res_id', '=', self.id),
+            ])
+            if pr_attachments:
+                po_attachments = self.env['ir.attachment']
+                for att in pr_attachments:
+                    po_attachments |= att.copy({
+                        'res_model': 'purchase.order',
+                        'res_id': po.id,
+                    })
+                po.message_post(
+                    body=f'<p>Attached from PR <b>{self.name}</b></p>',
+                    attachment_ids=po_attachments.ids,
+                )
 
         if purchase_orders:
             self.write({'state': 'purchase_order_created'})
