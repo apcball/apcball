@@ -48,10 +48,11 @@
                             <div class="act_as_cell" />
                             <div class="act_as_cell" />
                             <div class="act_as_cell" />
-                            <div class="act_as_cell" />
                             <div class="act_as_cell right">
                                 <t t-out="'{0:,.2f}'.format(line_initial[0].initial)"/>
                             </div>
+                            <div class="act_as_cell" />
+                            <div class="act_as_cell" />
                             <div class="act_as_cell right">
                                 <t t-out="'{0:,.2f}'.format(line_initial[0].initial_amount)"/>
                             </div>

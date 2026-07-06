@@ -121,11 +121,11 @@
                         <t t-set="line_list" t-value="doc.line_ids"/>
                         <!-- total of invoice amounts (show even if not paid) -->
                         <t t-set="total_invoice_amount" t-value="doc.amount_invoice_total"/>
-                        <t t-set="groups_of_7" t-value="[line_list[i:i+7] for i in range(0, len(line_list), 7)]"/>
+                        <t t-set="groups_of_10" t-value="[line_list[i:i+10] for i in range(0, len(line_list), 10)]"/>
                         <t t-set="page_number" t-value="1"/>
-                        <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
+                        <t t-set="total_pages" t-value="groups_of_10 and len(groups_of_10) or 0"/>
         
-                        <t t-foreach="groups_of_7" t-as="group">
+                        <t t-foreach="groups_of_10" t-as="group">
                           <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
     
                           <div style="float: right; font-size: 18px; font-weight: bold; margin-top: -5px;">
@@ -168,7 +168,7 @@
                             </div>
                             <div class="mb-2">
                                 <strong style="width: 60%; display: inline-block; font-size: 20px;">วันที่:</strong>
-                                <span t-field="doc.create_date" t-options='{"widget": "date"}' style="font-size: 20px;"/>
+                                <span t-field="doc.date" t-options='{"widget": "date"}' style="font-size: 20px;"/>
                             </div>
                         </div>
                     </div>
@@ -265,7 +265,7 @@
                             </tr>
                           </thead>
                           <tbody>
-                            <t t-set="max_lines" t-value="7"/>
+                            <t t-set="max_lines" t-value="10"/>
                             <t t-set="line_number" t-value="((page_number - 1) * max_lines) + 1"/>
                             <t t-set="current_line_number" t-value="line_number"/>
                       
@@ -354,7 +354,7 @@
                 </div></t>
 
                  <!-- เงื่อนไขแสดงลายเซ็นเฉพาะหน้าสุดท้าย -->
-                 <t t-if="page_number == len(groups_of_7)">
+                 <t t-if="page_number == len(groups_of_10)">
                      <!-- ลายเซ็นหรือหมายเหตุ -->
                  </t>
 

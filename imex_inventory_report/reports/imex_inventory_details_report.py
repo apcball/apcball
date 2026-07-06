@@ -116,6 +116,7 @@ class ImexInventoryDetailsReport(models.Model):
                                     THEN SUM(ABS(value)) / SUM(ABS(quantity))
                                     ELSE 0 END as unit_cost
                         FROM stock_valuation_layer
+                        WHERE quantity != 0
                         GROUP BY stock_move_id
                     ) svl on move.id = svl.stock_move_id
                 WHERE 
@@ -149,6 +150,7 @@ class ImexInventoryDetailsReport(models.Model):
                                     THEN SUM(ABS(value)) / SUM(ABS(quantity))
                                     ELSE 0 END as unit_cost
                         FROM stock_valuation_layer
+                        WHERE quantity != 0
                         GROUP BY stock_move_id
                     ) svl on move.id = svl.stock_move_id
                     LEFT JOIN product_product product on move.product_id = product.id

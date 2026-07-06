@@ -49,6 +49,12 @@ class SaleOrderLine(models.Model):
         related="order_id.partner_shipping_id",
         string="Delivery Address",
     )
+    team_id = fields.Many2one(
+        related="order_id.team_id",
+        string="Sales Team",
+        store=True,
+        readonly=True,
+    )
     sku = fields.Char(
         string="SKU",
         related="product_id.sku",

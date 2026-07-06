@@ -10,6 +10,7 @@
         "account",
         "stock",
         "report_xlsx",
+        "buz_dispatch_document",
     ],
     "data": [
         "security/security.xml",

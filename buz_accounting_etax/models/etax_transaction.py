@@ -24,6 +24,7 @@ class EtaxTransaction(models.Model):
     state = fields.Selection([
         ('draft', 'ร่าง'),
         ('sending', 'กำลังส่ง'),
+        ('pending', 'กำลังประมวลผล'),
         ('sent', 'ส่งสำเร็จ'),
         ('error', 'ข้อผิดพลาด'),
     ], 'สถานะ', default='draft')
@@ -657,6 +658,26 @@ class EtaxTransaction(models.Model):
                                 'type': 'ir.actions.client',
                                 'tag': 'reload',
                             }
+                        }
+                    }
+                elif result.get('status') == 'PC':
+                    # e-Tax รับเอกสารแล้ว และกำลังประมวลผลแบบ async (PC001 = Processing Code)
+                    # ไม่ใช่ error — ผู้ใช้สามารถใช้ transaction_code track ผลลัพธ์ภายหลังได้
+                    self.write({
+                        'state': 'pending',
+                        'transaction_code': result.get('transactionCode'),
+                        'error_message': '',
+                    })
+                    return {
+                        'type': 'ir.actions.client',
+                        'tag': 'display_notification',
+                        'params': {
+                            'title': 'กำลังประมวลผล',
+                            'message': (f'E-Tax รับเอกสารแล้ว และกำลังประมวลผล\n'
+                                        f'รหัสธุรกรรม: {result.get("transactionCode")}'),
+                            'type': 'warning',
+                            'sticky': True,
+                            'next': {'type': 'ir.actions.client', 'tag': 'reload'},
                         }
                     }
                 else:

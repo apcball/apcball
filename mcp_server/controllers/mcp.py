@@ -39,6 +39,9 @@ class MCPController(http.Controller):
         'purchase_order_read': 'read',
         'budget_report': 'read',
         'refresh_budget_mv': 'read',
+        'stock_move_search': 'read',
+        'stock_valuation_layer_search': 'read',
+        'stock_valuation_layer_read': 'read',
     }
 
     POLICY_LEVELS = {'read': 0, 'write': 1}
@@ -2208,6 +2211,103 @@ class MCPController(http.Controller):
                 'error': str(e)
             }, status=400)
     # ─── Company endpoints ──────────────────────────────────────
+
+    @http.route('/mcp/call/stock_valuation_layer_search', type='http', auth='public', methods=['POST'], csrf=False)
+    def stock_valuation_layer_search(self, **kwargs):
+        """Search for stock valuation layers with optional filters"""
+        try:
+            key_record = self._verify_api_key()
+            self._check_policy(key_record, 'stock_valuation_layer_search')
+            data = json.loads(request.httprequest.data)
+            domain = data.get('domain', [])
+            field_list = data.get('fields', ['id', 'stock_move_id', 'product_id', 'quantity', 'unit_cost', 'value', 'remaining_qty', 'remaining_value', 'warehouse_id', 'company_id', 'create_date'])
+            limit = data.get('limit', 80)
+
+            layers = request.env['stock.valuation.layer'].sudo().search(domain, limit=limit)
+            result = layers.read(field_list)
+
+            return request.make_json_response({
+                'success': True,
+                'data': result
+            })
+        except AccessDenied as e:
+            return request.make_json_response({
+                'success': False,
+                'error': str(e)
+            }, status=401)
+        except Exception as e:
+            return request.make_json_response({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+
+    @http.route('/mcp/call/stock_valuation_layer_read', type='http', auth='public', methods=['POST'], csrf=False)
+    def stock_valuation_layer_read(self, **kwargs):
+        """Read a specific stock valuation layer by ID"""
+        try:
+            key_record = self._verify_api_key()
+            self._check_policy(key_record, 'stock_valuation_layer_read')
+            data = json.loads(request.httprequest.data)
+            layer_id = data.get('id')
+            field_list = data.get('fields', ['id', 'stock_move_id', 'product_id', 'quantity', 'unit_cost', 'value', 'remaining_qty', 'remaining_value', 'warehouse_id', 'company_id', 'create_date'])
+
+            if not layer_id:
+                return request.make_json_response({
+                    'success': False,
+                    'error': 'id is required'
+                }, status=400)
+
+            layer = request.env['stock.valuation.layer'].sudo().browse(layer_id)
+            if not layer.exists():
+                return request.make_json_response({
+                    'success': False,
+                    'error': 'Stock valuation layer not found'
+                }, status=404)
+
+            result = layer.read(field_list)
+            return request.make_json_response({
+                'success': True,
+                'data': result
+            })
+        except AccessDenied as e:
+            return request.make_json_response({
+                'success': False,
+                'error': str(e)
+            }, status=401)
+        except Exception as e:
+            return request.make_json_response({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+
+    @http.route('/mcp/call/stock_move_search', type='http', auth='public', methods=['POST'], csrf=False)
+    def stock_move_search(self, **kwargs):
+        """Search for stock moves with optional filters"""
+        try:
+            key_record = self._verify_api_key()
+            self._check_policy(key_record, 'stock_move_search')
+            data = json.loads(request.httprequest.data)
+            domain = data.get('domain', [])
+            field_list = data.get('fields', ['id', 'name', 'product_id', 'product_qty', 'product_uom', 'date', 'state', 'location_id', 'location_dest_id', 'picking_type_id', 'reference', 'partner_id', 'origin', 'company_id'])
+            limit = data.get('limit', 80)
+
+            moves = request.env['stock.move'].sudo().search(domain, limit=limit)
+            result = moves.read(field_list)
+
+            return request.make_json_response({
+                'success': True,
+                'data': result
+            })
+        except AccessDenied as e:
+            return request.make_json_response({
+                'success': False,
+                'error': str(e)
+            }, status=401)
+        except Exception as e:
+            return request.make_json_response({
+                'success': False,
+                'error': str(e)
+            }, status=400)
 
     @http.route('/mcp/call/company_list', type='http', auth='public', methods=['POST'], csrf=False)
     def company_list(self, **kwargs):

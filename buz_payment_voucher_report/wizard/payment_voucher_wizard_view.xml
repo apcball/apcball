@@ -1,0 +1,80 @@
+<odoo>
+
+    <!-- Wizard Form View -->
+    <record id="payment_voucher_wizard_form" model="ir.ui.view">
+        <field name="name">payment.voucher.wizard.form</field>
+        <field name="model">buz.payment.voucher.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Payment Voucher Report">
+                <sheet>
+                    <group name="filters">
+                        <group string="Date Range">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group string="Entity Filters">
+                            <field name="partner_id" options="{'no_open': True, 'no_create': True}"/>
+                            <field name="journal_id" options="{'no_open': True, 'no_create': True}"/>
+                            <field name="company_id" options="{'no_open': True, 'no_create': True}"/>
+                        </group>
+                    </group>
+                    <group name="attributes">
+                        <group string="Payment Attributes">
+                            <field name="payment_type"/>
+                            <field name="state"/>
+                        </group>
+                        <group string="Report Options">
+                            <field name="sort_by"/>
+                            <field name="group_by"/>
+                            <field name="output_format"/>
+                        </group>
+                    </group>
+                    <group name="display_options" string="Display Options">
+                        <group>
+                            <field name="show_account_code"/>
+                            <field name="show_account_name"/>
+                            <field name="show_line_partner"/>
+                            <field name="show_label"/>
+                            <field name="show_ref"/>
+                        </group>
+                        <group>
+                            <field name="show_memo"/>
+                            <field name="show_analytic"/>
+                            <field name="show_currency"/>
+                            <field name="show_amount_currency"/>
+                            <field name="show_reconciled"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_generate"
+                            string="View Report"
+                            type="object"
+                            class="oe_highlight"/>
+                    <button name="action_print_pdf"
+                            string="Print PDF"
+                            type="object"
+                            class="oe_highlight"/>
+                    <button name="action_print_xlsx"
+                            string="Print Excel"
+                            type="object"
+                            class="oe_highlight"/>
+                    <button string="Cancel"
+                            type="object"
+                            class="oe_link"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_payment_voucher_wizard" model="ir.actions.act_window">
+        <field name="name">Payment Voucher Report</field>
+        <field name="res_model">buz.payment.voucher.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{}</field>
+    </record>
+
+</odoo>

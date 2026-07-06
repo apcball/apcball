@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Payment Voucher Tree View (for wizard result) -->
+    <record id="view_payment_voucher_tree" model="ir.ui.view">
+        <field name="name">buz.payment.voucher.tree</field>
+        <field name="model">buz.payment.voucher</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false"
+                  default_order="payment_date desc, payment_name">
+                <field name="payment_name" string="Payment Number"/>
+                <field name="payment_date" string="Payment Date"/>
+                <field name="partner_id" string="Partner"/>
+                <field name="journal_id" string="Journal"/>
+                <field name="payment_type" string="Payment Type"/>
+                <field name="account_code" string="Account Code"
+                       optional="show"/>
+                <field name="account_name" string="Chart of Account"
+                       optional="show"/>
+                <field name="label" string="Label" optional="show"/>
+                <field name="debit" string="Debit" sum="Total Debit"
+                       optional="show"/>
+                <field name="credit" string="Credit" sum="Total Credit"
+                       optional="show"/>
+                <field name="currency_id" string="Currency" optional="show"/>
+                <field name="amount_currency" string="Amount Currency"
+                       optional="show"/>
+                <field name="move_name" string="Move Number" optional="show"/>
+                <field name="company_id" string="Company" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Payment Voucher Search View -->
+    <record id="view_payment_voucher_search" model="ir.ui.view">
+        <field name="name">buz.payment.voucher.search</field>
+        <field name="model">buz.payment.voucher</field>
+        <field name="arch" type="xml">
+            <search string="Payment Voucher Search">
+                <field name="payment_name" string="Payment Number"/>
+                <field name="payment_date" string="Payment Date"/>
+                <field name="partner_id" string="Partner"/>
+                <field name="journal_id" string="Journal"/>
+                <field name="payment_type" string="Payment Type"/>
+                <field name="account_code" string="Account Code"/>
+                <field name="move_name" string="Move Number"/>
+                <separator/>
+                <filter name="posted" string="Posted"
+                        domain="[('payment_id.state', '=', 'posted')]"/>
+                <filter name="draft" string="Draft"
+                        domain="[('payment_id.state', '=', 'draft')]"/>
+                <filter name="customer" string="Customer Payments"
+                        domain="[('payment_type', '=', 'inbound')]"/>
+                <filter name="vendor" string="Vendor Payments"
+                        domain="[('payment_type', '=', 'outbound')]"/>
+                <filter name="transfer" string="Internal Transfers"
+                        domain="[('payment_type', '=', 'transfer')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Payment" name="payment_id"
+                            domain="[]" context="{'group_by': 'payment_id'}"/>
+                    <filter string="Partner" name="partner_id"
+                            domain="[]" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Journal" name="journal_id"
+                            domain="[]" context="{'group_by': 'journal_id'}"/>
+                    <filter string="Payment Type" name="payment_type"
+                            domain="[]" context="{'group_by': 'payment_type'}"/>
+                    <filter string="Payment Method" name="payment_method_id"
+                            domain="[]" context="{'group_by': 'payment_method_id'}"/>
+                    <filter string="Company" name="company_id"
+                            domain="[]" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Window Action for Payment Voucher Tree View -->
+    <record id="action_payment_voucher_tree_view" model="ir.actions.act_window">
+        <field name="name">Payment Voucher Report</field>
+        <field name="res_model">buz.payment.voucher</field>
+        <field name="search_view_id" ref="view_payment_voucher_search"/>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{}</field>
+        <field name="domain">[]</field>
+    </record>
+
+</odoo>

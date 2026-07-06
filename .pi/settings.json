@@ -1,7 +1,3 @@
 {
-  "enableSkillCommands": true,
-  "skills": [
-    ".pi/skills/odoo-scaffold",
-    ".pi/skills/odoo-deploy"
-  ]
+  "enableSkillCommands": true
 }

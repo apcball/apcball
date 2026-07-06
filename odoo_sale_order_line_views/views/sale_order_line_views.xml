@@ -137,6 +137,7 @@
         <field name="arch" type="xml">
             <pivot string="Pivot View Analysis" sample="1">
                 <field name="order_id" type="row"/>
+                <field name="team_id" type="row"/>
                 <field name="product_id" type="row"/>
                 <field name="price_unit" type="measure"/>
                 <field name="product_uom_qty" type="measure"/>
@@ -177,6 +178,7 @@
             <search string="Search Sale Order Lines">
                 <field name="order_id" string="Sale Orders"/>
                 <field name="order_partner_id" operator="child_of"/>
+                <field name="team_id"/>
                 <field name="product_id"/>
                 <field name="salesman_id"/>
 
@@ -207,6 +209,8 @@
                             context="{'group_by':'order_id'}"/>
                     <filter string="Salesperson" name="salesperson" domain="[]"
                             context="{'group_by':'salesman_id'}"/>
+                    <filter string="Sales Team" name="team" domain="[]"
+                            context="{'group_by':'team_id'}"/>
                     <filter name="customer" string="Customer" domain="[]"
                             context="{'group_by':'order_partner_id'}"/>
                     <separator/>
@@ -246,6 +250,7 @@
             <tree string="Pending Delivery Lines" create="false" edit="false"
                   delete="false">
                 <field name="order_id"/>
+                <field name="team_id"/>
                 <field name="order_partner_id"/>
                 <field name="name"/>
                 <field name="product_id"/>
@@ -253,7 +258,7 @@
                 <field name="order_line_image" widget="image" class="order_line_img"/>
                 <field name="product_uom_qty" string="Qty"/>
                 <field name="qty_delivered"/>
-                <field name="qty_to_deliver"/>
+                <field name="qty_to_deliver" string="Pending Qty"/>
                 <field name="reserve_qty"/>
                 <field name="product_uom" string="Unit of Measure"
                        groups="uom.group_uom"/>

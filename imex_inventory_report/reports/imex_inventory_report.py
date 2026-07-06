@@ -193,8 +193,15 @@ class ImexInventoryReport(models.Model):
                             move.product_qty,
                             svl.unit_cost
                         FROM stock_move move
-                            LEFT JOIN stock_valuation_layer svl 
-                                on move.id = svl.stock_move_id AND svl.quantity < 0
+                            LEFT JOIN (
+                                SELECT stock_move_id,
+                                       CASE WHEN SUM(ABS(quantity)) > 0
+                                            THEN SUM(ABS(value)) / SUM(ABS(quantity))
+                                            ELSE 0 END as unit_cost
+                                FROM stock_valuation_layer
+                                WHERE quantity != 0
+                                GROUP BY stock_move_id
+                            ) svl on move.id = svl.stock_move_id
                             LEFT JOIN stock_location location_src 
                                 on move.location_id = location_src.id
                             LEFT JOIN product_product product 
@@ -219,8 +226,15 @@ class ImexInventoryReport(models.Model):
                             move.product_qty,
                             svl.unit_cost
                         FROM stock_move move
-                            LEFT JOIN stock_valuation_layer svl 
-                                on move.id = svl.stock_move_id AND svl.quantity > 0
+                            LEFT JOIN (
+                                SELECT stock_move_id,
+                                       CASE WHEN SUM(ABS(quantity)) > 0
+                                            THEN SUM(ABS(value)) / SUM(ABS(quantity))
+                                            ELSE 0 END as unit_cost
+                                FROM stock_valuation_layer
+                                WHERE quantity != 0
+                                GROUP BY stock_move_id
+                            ) svl on move.id = svl.stock_move_id
                             LEFT JOIN stock_location location_dest 
                                 on move.location_dest_id = location_dest.id
                             LEFT JOIN product_product product 
@@ -315,8 +329,15 @@ class ImexInventoryReport(models.Model):
                             THEN move.product_qty*svl.unit_cost 
                             ELSE 0 END) as product_out_amount
                     FROM stock_move move
-                        LEFT JOIN stock_valuation_layer svl 
-                            on move.id = svl.stock_move_id
+                        LEFT JOIN (
+                            SELECT stock_move_id,
+                                   CASE WHEN SUM(ABS(quantity)) > 0
+                                        THEN SUM(ABS(value)) / SUM(ABS(quantity))
+                                        ELSE 0 END as unit_cost
+                            FROM stock_valuation_layer
+                            WHERE quantity != 0
+                            GROUP BY stock_move_id
+                        ) svl on move.id = svl.stock_move_id
                         LEFT JOIN stock_location location 
                             on move.location_id = location.id
                         LEFT JOIN stock_location location_dest 

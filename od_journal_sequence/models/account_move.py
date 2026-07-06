@@ -31,6 +31,11 @@ class AccountMove(models.Model):
             move.name = name
             move._compute_payment_reference()
 
+    def _compute_name(self):
+        """Override to prevent standard _compute_name from assigning
+        sequence to draft entries when journal changes in write()."""
+        self._compute_name_by_sequence()
+
     def _constrains_date_sequence(self):
         return True
 
