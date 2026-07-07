@@ -73,16 +73,17 @@ class PaymentVoucherXlsx(models.AbstractModel):
         date_format = workbook.add_format({'num_format': 'dd/mm/yyyy'})
 
         widths = [
-            18, 12, 26, 20, 16, 18, 30, 14, 28, 14, 16, 24, 10, 14, 30,
+            18, 12, 18, 26, 20, 16, 18, 30, 14, 28, 14, 16, 24, 10, 14, 30,
         ]
         for col, width in enumerate(widths):
             sheet.set_column(col, col, width)
 
         headers = [
-            'Payment Number', 'Payment Date', 'Partner', 'Journal',
-            'Payment Type', 'Payment Method', 'Label', 'Account Code',
-            'Account Name', 'Debit', 'Credit', 'Amount Currency',
-            'Reference', 'Currency', 'Reconciled Documents',
+            'Payment Number', 'Payment Date', 'Partner Code', 'Partner',
+            'Journal', 'Payment Type', 'Payment Method', 'Label',
+            'Account Code', 'Account Name', 'Debit', 'Credit',
+            'Amount Currency', 'Reference', 'Currency',
+            'Reconciled Documents',
         ]
 
         row = 0
@@ -111,20 +112,21 @@ class PaymentVoucherXlsx(models.AbstractModel):
             for line in payment.move_id.line_ids:
                 sheet.write(row, 0, payment.name or '')
                 sheet.write(row, 1, payment.date or '', date_format)
-                sheet.write(row, 2, payment.partner_id.name if payment.partner_id else '')
-                sheet.write(row, 3, payment.journal_id.name if payment.journal_id else '')
-                sheet.write(row, 4, payment_type_label)
+                sheet.write(row, 2, payment.partner_id.partner_code if payment.partner_id else '')
+                sheet.write(row, 3, payment.partner_id.name if payment.partner_id else '')
+                sheet.write(row, 4, payment.journal_id.name if payment.journal_id else '')
+                sheet.write(row, 5, payment_type_label)
                 payment_method = payment.payment_method_id.name if payment.payment_method_id else ''
-                sheet.write(row, 5, payment_method)
-                sheet.write(row, 6, line.name or '')
-                sheet.write(row, 7, line.account_id.code or '')
-                sheet.write(row, 8, line.account_id.name or '')
-                sheet.write(row, 9, line.debit or 0.0, number)
-                sheet.write(row, 10, line.credit or 0.0, number)
-                sheet.write(row, 11, line.amount_currency or 0.0, number)
-                sheet.write(row, 12, payment.payment_reference or '')
-                sheet.write(row, 13, line.currency_id.name or payment.currency_id.name or '')
-                sheet.write(row, 14, reconciled_names)
+                sheet.write(row, 6, payment_method)
+                sheet.write(row, 7, line.name or '')
+                sheet.write(row, 8, line.account_id.code or '')
+                sheet.write(row, 9, line.account_id.name or '')
+                sheet.write(row, 10, line.debit or 0.0, number)
+                sheet.write(row, 11, line.credit or 0.0, number)
+                sheet.write(row, 12, line.amount_currency or 0.0, number)
+                sheet.write(row, 13, payment.payment_reference or '')
+                sheet.write(row, 14, line.currency_id.name or payment.currency_id.name or '')
+                sheet.write(row, 15, reconciled_names)
 
                 payment_debit += line.debit or 0.0
                 payment_credit += line.credit or 0.0
@@ -132,25 +134,25 @@ class PaymentVoucherXlsx(models.AbstractModel):
 
             sheet.write(row, 0, 'Subtotal', subtotal)
             sheet.write(row, 1, payment.name or '', subtotal)
-            sheet.write(row, 9, payment_debit, subtotal)
-            sheet.write(row, 10, payment_credit, subtotal)
+            sheet.write(row, 10, payment_debit, subtotal)
+            sheet.write(row, 11, payment_credit, subtotal)
             difference = payment_debit - payment_credit
             balance_status = (
                 'UNBALANCED %.2f' % difference
                 if abs(difference) > 0.01 else 'Balanced'
             )
-            sheet.write(row, 12, balance_status, subtotal)
+            sheet.write(row, 13, balance_status, subtotal)
             row += 1
 
             grand_debit += payment_debit
             grand_credit += payment_credit
 
         sheet.write(row, 0, 'Grand Total', grand_total)
-        sheet.write(row, 9, grand_debit, grand_total)
-        sheet.write(row, 10, grand_credit, grand_total)
+        sheet.write(row, 10, grand_debit, grand_total)
+        sheet.write(row, 11, grand_credit, grand_total)
         difference = grand_debit - grand_credit
         balance_status = (
             'UNBALANCED %.2f' % difference
             if abs(difference) > 0.01 else 'Balanced'
         )
-        sheet.write(row, 12, balance_status, grand_total)
+        sheet.write(row, 13, balance_status, grand_total)

@@ -11,6 +11,7 @@ Professional Accounting Payment Voucher Report for Odoo 17 Community.
 - Smart button on `account.payment` form for direct XLSX export
 - Filter by: Partner, Journal, Company, Payment Type, State
 - Sort by: Payment Date, Number, Partner, Journal
+- Partner code column from `buz_custom_partner`
 - Reconciled documents section (invoices/bills)
 - Multi-company support
 - Multi-currency support
@@ -86,7 +87,7 @@ Export using `xlsxwriter` (requires `report_xlsx` module).
 
 ### Columns
 
-Payment Number, Payment Date, Partner, Journal, Payment Type, Payment Method, Label, Account Code, Chart of Account, Debit, Credit, Amount Currency, Reference, Currency, Reconciled Documents
+Payment Number, Payment Date, Partner Code, Partner, Journal, Payment Type, Payment Method, Label, Account Code, Chart of Account, Debit, Credit, Amount Currency, Reference, Currency, Reconciled Documents
 
 ## Security
 

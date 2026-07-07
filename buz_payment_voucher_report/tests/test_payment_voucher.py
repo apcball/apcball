@@ -16,6 +16,7 @@ class TestPaymentVoucherReport(tests.TransactionCase):
         cls.partner = cls.env['res.partner'].create({
             'name': 'Test Partner (PVR)',
             'is_company': True,
+            'partner_code': 'PVR001',
         })
 
         cls.account_receivable = cls.env['account.account'].search([
@@ -173,6 +174,10 @@ class TestPaymentVoucherReport(tests.TransactionCase):
 
         workbook.add_worksheet.assert_called_once_with('Payment Voucher')
         self.assertTrue(sheet.write.called, "XLSX report should write rows")
+        self.assertTrue(
+            any(call.args[1] == 2 and call.args[2] == 'PVR001' for call in sheet.write.call_args_list),
+            "XLSX report should write partner code column",
+        )
 
     def test_wizard_filter(self):
         payment1 = self._create_payment('inbound', 1000.0, self.partner)

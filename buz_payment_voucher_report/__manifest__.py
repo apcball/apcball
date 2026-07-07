@@ -11,6 +11,7 @@
         - Export professional Accounting Payment Voucher to XLSX
         - Shows complete journal entries from account.payment
         - Supports Customer Payment, Vendor Payment, Internal Transfer
+        - Show partner code from buz_custom_partner
         - Filter by partner, journal, company, payment type, state
         - Sort by payment date, number, partner, journal
         - Multi-company and multi-currency support
@@ -22,6 +23,7 @@
         'account',
         'mail',
         'report_xlsx',
+        'buz_custom_partner',
     ],
     'data': [
         'security/ir.model.access.csv',
