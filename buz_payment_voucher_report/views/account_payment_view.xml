@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Smart Button: Print Payment Voucher on account.payment form -->
+    <!-- Smart Button: Export Payment Voucher on account.payment form -->
     <record id="view_account_payment_form_inherit_payment_voucher"
            model="ir.ui.view">
         <field name="name">account.payment.form.inherit.payment.voucher</field>
         <field name="model">account.payment</field>
         <field name="inherit_id" ref="account.view_account_payment_form"/>
         <field name="arch" type="xml">
-            <!-- Add Print Payment Voucher button in header -->
+            <!-- Add Export Payment Voucher button in header -->
             <xpath expr="//header" position="inside">
                 <button name="action_print_payment_voucher"
-                        string="Print Payment Voucher"
+                        string="Export Payment Voucher"
                         type="object"
                         class="oe_highlight"
                         invisible="state not in ('posted', 'sent', 'reconciled')"
-                        help="Print Payment Voucher PDF for this payment"/>
+                        help="Export Payment Voucher XLSX for this payment"/>
             </xpath>
         </field>
     </record>

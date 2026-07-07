@@ -5,7 +5,7 @@
         <field name="name">payment.voucher.wizard.form</field>
         <field name="model">buz.payment.voucher.wizard</field>
         <field name="arch" type="xml">
-            <form string="Payment Voucher Report">
+            <form string="Payment Voucher Export">
                 <sheet>
                     <group name="filters">
                         <group string="Date Range">
@@ -23,40 +23,14 @@
                             <field name="payment_type"/>
                             <field name="state"/>
                         </group>
-                        <group string="Report Options">
+                        <group string="Sort Options">
                             <field name="sort_by"/>
-                            <field name="group_by"/>
-                            <field name="output_format"/>
-                        </group>
-                    </group>
-                    <group name="display_options" string="Display Options">
-                        <group>
-                            <field name="show_account_code"/>
-                            <field name="show_account_name"/>
-                            <field name="show_line_partner"/>
-                            <field name="show_label"/>
-                            <field name="show_ref"/>
-                        </group>
-                        <group>
-                            <field name="show_memo"/>
-                            <field name="show_analytic"/>
-                            <field name="show_currency"/>
-                            <field name="show_amount_currency"/>
-                            <field name="show_reconciled"/>
                         </group>
                     </group>
                 </sheet>
                 <footer>
-                    <button name="action_generate"
-                            string="View Report"
-                            type="object"
-                            class="oe_highlight"/>
-                    <button name="action_print_pdf"
-                            string="Print PDF"
-                            type="object"
-                            class="oe_highlight"/>
                     <button name="action_print_xlsx"
-                            string="Print Excel"
+                            string="Export Excel"
                             type="object"
                             class="oe_highlight"/>
                     <button string="Cancel"
@@ -70,7 +44,7 @@
 
     <!-- Wizard Action -->
     <record id="action_payment_voucher_wizard" model="ir.actions.act_window">
-        <field name="name">Payment Voucher Report</field>
+        <field name="name">Payment Voucher Export</field>
         <field name="res_model">buz.payment.voucher.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>

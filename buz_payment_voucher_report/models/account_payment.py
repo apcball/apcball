@@ -2,32 +2,30 @@
 """
 Account Payment Extension
 
-Adds smart button to print Payment Voucher directly from account.payment form view.
+Adds smart button to export Payment Voucher Excel directly from account.payment form view.
 """
-from odoo import models, _
+from odoo import models
 
 
 class AccountPayment(models.Model):
     """
-    Extend account.payment with print Payment Voucher functionality.
+    Extend account.payment with Payment Voucher XLSX export functionality.
 
     The smart button on the form view calls this method to generate
-    a PDF Payment Voucher for the current payment.
+    an Excel Payment Voucher for the current payment.
     """
     _inherit = 'account.payment'
 
     def action_print_payment_voucher(self):
         """
-        Print Payment Voucher PDF for the current payment.
+        Export Payment Voucher XLSX for the current payment.
 
-        Uses report_action to generate the PDF using the QWeb template.
-
-        :return: Report action for PDF download
+        :return: Report action for XLSX download
         :rtype: dict
         """
         self.ensure_one()
         return self.env.ref(
-            'buz_payment_voucher_report.action_report_payment_voucher'
+            'buz_payment_voucher_report.action_report_payment_voucher_xlsx'
         ).report_action(self)
 
     def _get_reconciled_invoices(self):
@@ -50,3 +48,15 @@ class AccountPayment(models.Model):
             for matched in line.matched_credit_ids:
                 matched_moves |= matched.debit_move_id.move_id
         return matched_moves
+
+    def _get_reconciled_invoice_names(self):
+        """
+        Get reconciled invoice/bill names as comma-separated text.
+
+        :return: reconciled document names
+        :rtype: str
+        """
+        self.ensure_one()
+        return ', '.join(
+            self._get_reconciled_invoices().filtered('name').mapped('name')
+        )

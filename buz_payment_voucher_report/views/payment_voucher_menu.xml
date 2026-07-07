@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
-    <!-- Top Menu: Accounting > Reports > Payment Voucher Report -->
+    <!-- Top Menu: Accounting > Reports > Payment Voucher Export -->
     <menuitem id="menu_payment_voucher_report_root"
-               name="Payment Voucher Report"
+               name="Payment Voucher Export"
                parent="account.menu_finance_reports"
                sequence="50"/>
 
-    <!-- Menu Item: Payment Voucher Report (opens wizard) -->
+    <!-- Menu Item: Payment Voucher Export (opens wizard) -->
     <menuitem id="menu_payment_voucher_report_wizard"
-               name="Payment Voucher Report"
+               name="Payment Voucher Export"
                parent="menu_payment_voucher_report_root"
                action="action_payment_voucher_wizard"
                sequence="10"/>
-
 </odoo>
