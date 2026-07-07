@@ -1,11 +1,17 @@
-/* Widen columns in order line tree on sale order/quotation form */
-.o_field_widget[name="order_line"] td[data-name="name"] {
-    min-width: 500px;
-}
-.o_field_widget[name="order_line"] td[data-name="product_id"] {
-    min-width: 400px;
+/*
+    Column tweaks scoped ONLY to this module's standalone list views
+    (Sale Order Lines / Quotation Lines / Pending Delivery Lines).
+
+    Each <tree> carries class="o_sol_list", so these rules never affect the
+    main sale.order form order_line list (หน้าหลัก).
+    The rules below only make sure long text wraps cleanly instead of
+    overflowing into adjacent columns.
+*/
+.o_sol_list td[data-name="name"],
+.o_sol_list td[data-name="product_id"] {
+    word-break: break-word;
 }
 
-.o_list_renderer .o_list_table .o_list_record_selector{
+.o_sol_list .o_list_table .o_list_record_selector {
     vertical-align: baseline;
 }

@@ -20,6 +20,7 @@
         'security/ir.model.access.csv',
         'reports/delivery_report.xml',
         'reports/receipt_report.xml',
+        'reports/reciept_request_report.xml',
         'views/report_menu.xml',
     ],
     'images': ['static/description/icon.png'],

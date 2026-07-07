@@ -11,6 +11,10 @@
                         type="action" string="พิมพ์ใบรับสินค้า"
                         class="btn-primary"
                         invisible="picking_type_code != 'incoming' or state == 'draft'"/>
+                <button name="%(buz_delivery_report.action_report_receipt_request_custom)d"
+                        type="action" string="พิมพ์ใบขอยืมอนุมัติสินค้า"
+                        class="btn-secondary"
+                        invisible="picking_type_code != 'internal' or state == 'draft'"/>
             </header>
             <notebook position="inside">
                 <page string="Delivery Details" name="delivery_details">

@@ -42,6 +42,58 @@ class ProductPricelist(models.Model):
                   raise ValidationError(_("Only Pricing Admin can modify Standard Cost Pricelists."))
         return super().write(vals)
 
+    def _get_non_zero_standard_cost_fallback_rule(self, product, quantity=1.0, date=False):
+        """Return the best non-zero template/category/global fixed rule for product."""
+        self.ensure_one()
+        date = fields.Date.to_date(date or fields.Date.today())
+        category_ids = []
+        category = product.categ_id
+        while category:
+            category_ids.append(category.id)
+            category = category.parent_id
+
+        domain = [
+            ('pricelist_id', '=', self.id),
+            ('compute_price', '=', 'fixed'),
+            ('fixed_price', '>', 0),
+            ('min_quantity', '<=', quantity or 0.0),
+            '|', ('date_start', '=', False), ('date_start', '<=', date),
+            '|', ('date_end', '=', False), ('date_end', '>=', date),
+            '|',
+                '&', ('applied_on', '=', '1_product'), ('product_tmpl_id', '=', product.product_tmpl_id.id),
+                '|',
+                    '&', ('applied_on', '=', '2_product_category'), ('categ_id', 'in', category_ids),
+                    ('applied_on', '=', '3_global'),
+        ]
+        rules = self.env['product.pricelist.item'].search(domain)
+        if not rules:
+            return self.env['product.pricelist.item']
+
+        category_rank = {category_id: index for index, category_id in enumerate(category_ids)}
+        applied_rank = {
+            '1_product': 0,
+            '2_product_category': 1,
+            '3_global': 2,
+        }
+
+        def rule_key(rule):
+            category_specificity = 0
+            if rule.applied_on == '2_product_category' and rule.categ_id:
+                category_specificity = category_rank.get(rule.categ_id.id, len(category_ids))
+            return (
+                applied_rank.get(rule.applied_on, 99),
+                -rule.min_quantity,
+                category_specificity,
+                -rule.id,
+            )
+
+        return rules.sorted(rule_key)[:1]
+
+    def _get_non_zero_standard_cost_fallback_price(self, product, quantity=1.0, date=False):
+        """Return a provable fallback cost, or 0.0 when no fallback rule exists."""
+        fallback_rule = self._get_non_zero_standard_cost_fallback_rule(product, quantity=quantity, date=date)
+        return fallback_rule.fixed_price if fallback_rule else 0.0
+
     def _compute_price_rule(self, products, quantity, currency=None, uom=None, date=False, **kwargs):
         """ Override to support 'standard_cost_pricelist' base. """
         results = super()._compute_price_rule(products, quantity, currency=currency, uom=uom, date=date, **kwargs)
@@ -64,35 +116,19 @@ class ProductPricelist(models.Model):
                 continue
             
             rule = rules_map.get(rule_id)
-            if rule and rule.compute_price == 'formula' and rule.base == 'standard_cost_pricelist' and rule.base_pricelist_id:
-                # Get price from source pricelist with qty=1
-                src_pricelist = rule.base_pricelist_id
-                
-                # Use _get_product_price to resolve the source price
-                # Ensure we handle currency conversion if needed, but _get_product_price handles it if pricelists have different currencies.
-                # However, if src_pricelist has different currency, _get_product_price returns value in THAT currency.
-                # We need it in THIS pricelist's currency.
-                
-                base_price = src_pricelist._get_product_price(product, 1.0, date=date, uom=uom or product.uom_id)
-                
-                # Convert currency if necessary
-                if src_pricelist.currency_id != self.currency_id:
-                     base_price = src_pricelist.currency_id._convert(
-                        base_price, self.currency_id, self.env.company, date or fields.Date.today()
-                     )
+            if (
+                self.is_standard_cost_pricelist
+                and rule
+                and rule.compute_price == 'fixed'
+                and rule.applied_on == '0_product_variant'
+                and rule.product_id == product
+                and tools.float_is_zero(price, precision_rounding=self.currency_id.rounding)
+            ):
+                fallback_price = self._get_non_zero_standard_cost_fallback_price(
+                    product, quantity=quantity, date=date
+                )
+                if fallback_price > 0:
+                    results[product.id] = (fallback_price, rule_id)
+                    price = fallback_price
 
-                # Now apply formula
-                price_limit = base_price
-                price = (base_price - (base_price * (rule.price_discount / 100))) or 0.0
-                if rule.price_round:
-                     price = tools.float_round(price, precision_rounding=rule.price_round)
-                if rule.price_surcharge:
-                     price += rule.price_surcharge
-                if rule.price_min_margin:
-                     price = max(price, price_limit + rule.price_min_margin)
-                if rule.price_max_margin:
-                     price = min(price, price_limit + rule.price_max_margin)
-                
-                results[product.id] = (price, rule_id)
-        
         return results

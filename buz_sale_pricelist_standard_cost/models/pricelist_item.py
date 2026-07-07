@@ -28,3 +28,19 @@ class ProductPricelistItem(models.Model):
     def _onchange_base_standard_cost(self):
         if self.base != 'standard_cost_pricelist':
             self.base_pricelist_id = False
+
+    def _compute_base_price(self, product, quantity, uom, date, target_currency):
+        if len(self) == 1 and self.base == 'standard_cost_pricelist' and self.base_pricelist_id:
+            source_pricelist = self.base_pricelist_id
+            base_price = source_pricelist._get_product_price(
+                product, 1.0, date=date, uom=uom or product.uom_id
+            )
+            if target_currency and source_pricelist.currency_id != target_currency:
+                base_price = source_pricelist.currency_id._convert(
+                    base_price,
+                    target_currency,
+                    self.pricelist_id.company_id or self.env.company,
+                    fields.Date.to_date(date or fields.Date.today()),
+                )
+            return base_price
+        return super()._compute_base_price(product, quantity, uom, date, target_currency)

@@ -3,17 +3,12 @@ from odoo import api, fields, models, _
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
-    exclude_from_margin = fields.Boolean(
-        related='product_id.exclude_from_margin',
-        store=True,
-        string="ไม่คำนวณ Margin",
-    )
-
     standard_cost_price = fields.Float(
         string="Standard Cost (Sales)",
         compute='_compute_standard_cost_purchase_price',
         store=True,
-        digits='Product Price'
+        digits='Product Price',
+        precompute=True
     )
     
     # Override purchase_price to use standard cost from pricelist
@@ -25,19 +20,13 @@ class SaleOrderLine(models.Model):
         digits='Product Price'
     )
 
-    @api.depends('product_id', 'exclude_from_margin', 'company_id', 'currency_id', 'product_uom', 'order_id.date_order', 'order_id.company_id', 'order_id.pricelist_id')
+    @api.depends('product_id', 'company_id', 'currency_id', 'product_uom', 'order_id.date_order', 'order_id.company_id', 'order_id.pricelist_id')
     def _compute_standard_cost_purchase_price(self):
         # Cache pricelists by company
         pricelists = {}
         
         for line in self:
             if not line.product_id or not line.order_id:
-                line.standard_cost_price = 0.0
-                line.purchase_price = 0.0
-                continue
-
-            # Skip products marked to exclude from margin
-            if line.product_id.exclude_from_margin:
                 line.standard_cost_price = 0.0
                 line.purchase_price = 0.0
                 continue

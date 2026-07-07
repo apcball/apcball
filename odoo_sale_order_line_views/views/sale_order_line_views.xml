@@ -52,11 +52,11 @@
         <field name="model">sale.order.line</field>
         <field name="arch" type="xml">
             <tree string="Sale Order Lines" create="false" edit="false"
-                  delete="false">
+                  delete="false" class="o_sol_list">
                 <field name="order_id"/>
                 <field name="order_partner_id"/>
-                <field name="name"/>
                 <field name="product_id"/>
+                <field name="name" string="Description"/>
                 <field name="sku"/>
                 <field name="order_line_image" widget="image" class="order_line_img"/>
                 <field name="product_uom_qty" string="Qty"/>
@@ -248,12 +248,12 @@
         <field name="model">sale.order.line</field>
         <field name="arch" type="xml">
             <tree string="Pending Delivery Lines" create="false" edit="false"
-                  delete="false">
+                  delete="false" class="o_sol_list">
                 <field name="order_id"/>
                 <field name="team_id"/>
                 <field name="order_partner_id"/>
-                <field name="name"/>
                 <field name="product_id"/>
+                <field name="name" string="Description"/>
                 <field name="sku"/>
                 <field name="order_line_image" widget="image" class="order_line_img"/>
                 <field name="product_uom_qty" string="Qty"/>
