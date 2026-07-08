@@ -86,15 +86,15 @@ class ImexInventoryDetailsReport(models.Model):
             SELECT row_number() OVER () AS id,* FROM(
                 SELECT 
                     (SUM(CASE WHEN move.location_dest_id IN %s
-                        THEN move.product_qty ELSE 0 END)
+                        THEN move.quantity ELSE 0 END)
                     -
                     SUM(CASE WHEN move.location_id IN %s
-                        THEN move.product_qty ELSE 0 END)) AS initial,
+                        THEN move.quantity ELSE 0 END)) AS initial,
                     (SUM(CASE WHEN move.location_dest_id IN %s
-                        THEN move.product_qty*svl.unit_cost ELSE 0 END)
+                        THEN move.quantity*svl.unit_cost ELSE 0 END)
                     -
                     SUM(CASE WHEN move.location_id IN %s
-                        THEN move.product_qty*svl.unit_cost ELSE 0 END)) AS initial_amount,
+                        THEN move.quantity*svl.unit_cost ELSE 0 END)) AS initial_amount,
                     null AS date, 
                     null AS product_id, 
                     null AS product_qty, 
@@ -129,7 +129,7 @@ class ImexInventoryDetailsReport(models.Model):
                     null as initial, null as initial_amount,
                     move.date, 
                     move.product_id, 
-                    move.product_qty,
+                    move.quantity,
                     move.product_uom, 
                     template.categ_id as product_category,
                     svl.unit_cost,
@@ -139,9 +139,9 @@ class ImexInventoryDetailsReport(models.Model):
                     move.location_id, 
                     move.location_dest_id,
                     case when move.location_dest_id in %s
-                        then move.product_qty end as product_in,
+                        then move.quantity end as product_in,
                     case when move.location_id in %s
-                        then move.product_qty end as product_out,
+                        then move.quantity end as product_out,
                     move.picking_id
                 FROM stock_move move
                     LEFT JOIN (

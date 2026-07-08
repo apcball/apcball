@@ -143,44 +143,44 @@ class ImexInventoryReport(models.Model):
                         (sum(CASE WHEN 
                                 CAST(move_group_location.date AS date) < %s 
                                 and move_group_location.location = move_group_location.location_dest_id
-                            THEN move_group_location.product_qty 
+                            THEN move_group_location.quantity
                             ELSE 0 END)
                         -
                         sum(CASE WHEN 
                                 CAST(move_group_location.date AS date) < %s 
                                 and move_group_location.location = move_group_location.location_id
-                            THEN move_group_location.product_qty 
+                            THEN move_group_location.quantity
                             ELSE 0 END)) as initial,
                         (sum(CASE WHEN 
                                 CAST(move_group_location.date AS date) < %s 
                                 and move_group_location.location = move_group_location.location_dest_id
-                            THEN move_group_location.product_qty*move_group_location.unit_cost
+                            THEN move_group_location.quantity*move_group_location.unit_cost
                             ELSE 0 END)
                         -
                         sum(CASE WHEN 
                                 CAST(move_group_location.date AS date) < %s 
                                 and move_group_location.location = move_group_location.location_id
-                            THEN move_group_location.product_qty*move_group_location.unit_cost
+                            THEN move_group_location.quantity*move_group_location.unit_cost
                             ELSE 0 END)) as initial_amount,
                         sum(CASE WHEN 
                                 CAST(move_group_location.date AS date) >= %s 
                                 and move_group_location.location = move_group_location.location_dest_id
-                            THEN move_group_location.product_qty 
+                            THEN move_group_location.quantity
                             ELSE 0 END) as product_in,
                         sum(CASE WHEN 
                                 CAST(move_group_location.date AS date) >= %s 
                                 and move_group_location.location = move_group_location.location_dest_id
-                            THEN move_group_location.product_qty*move_group_location.unit_cost
+                            THEN move_group_location.quantity*move_group_location.unit_cost
                             ELSE 0 END) as product_in_amount,
                         sum(CASE WHEN 
                                 CAST(move_group_location.date AS date) >= %s 
                                 and move_group_location.location = move_group_location.location_id
-                            THEN move_group_location.product_qty 
+                            THEN move_group_location.quantity
                             ELSE 0 END) as product_out,
                         sum(CASE WHEN 
                                 CAST(move_group_location.date AS date) >= %s 
                                 and move_group_location.location = move_group_location.location_id
-                            THEN move_group_location.product_qty*move_group_location.unit_cost
+                            THEN move_group_location.quantity*move_group_location.unit_cost
                             ELSE 0 END) as product_out_amount
                     FROM(
                         SELECT 
@@ -190,7 +190,7 @@ class ImexInventoryReport(models.Model):
                             move.location_id, 
                             move.location_dest_id,                        
                             template.categ_id as product_category,
-                            move.product_qty,
+                            move.quantity,
                             svl.unit_cost
                         FROM stock_move move
                             LEFT JOIN (
@@ -223,7 +223,7 @@ class ImexInventoryReport(models.Model):
                             move.location_id, 
                             move.location_dest_id,
                             template.categ_id as product_category,
-                            move.product_qty,
+                            move.quantity,
                             svl.unit_cost
                         FROM stock_move move
                             LEFT JOIN (
@@ -289,44 +289,44 @@ class ImexInventoryReport(models.Model):
                         (sum(CASE WHEN 
                                 CAST(move.date AS date) < %s 
                                 and location_dest.usage = 'internal'
-                            THEN move.product_qty 
+                            THEN move.quantity
                             ELSE 0 END)
                         -
                         sum(CASE WHEN 
                                 CAST(move.date AS date) < %s  
                                 and location.usage = 'internal'
-                            THEN move.product_qty 
+                            THEN move.quantity
                             ELSE 0 END)) as initial,
                         (sum(CASE WHEN 
                                 CAST(move.date AS date) < %s 
                                 and location_dest.usage = 'internal'
-                            THEN move.product_qty*svl.unit_cost
+                            THEN move.quantity*svl.unit_cost
                             ELSE 0 END)
                         -
                         sum(CASE WHEN 
                                 CAST(move.date AS date) < %s  
                                 and location.usage = 'internal'
-                            THEN move.product_qty*svl.unit_cost 
+                            THEN move.quantity*svl.unit_cost
                             ELSE 0 END)) as initial_amount,
                         sum(CASE WHEN 
                                 CAST(move.date AS date) >= %s  
                                 and location_dest.usage = 'internal'
-                            THEN move.product_qty 
+                            THEN move.quantity
                             ELSE 0 END) as product_in,
                         sum(CASE WHEN 
                                 CAST(move.date AS date) >= %s  
                                 and location_dest.usage = 'internal'
-                            THEN move.product_qty*svl.unit_cost 
+                            THEN move.quantity*svl.unit_cost
                             ELSE 0 END) as product_in_amount,
                         sum(CASE WHEN 
                                 CAST(move.date AS date) >= %s  
                                 and location.usage = 'internal'
-                            THEN move.product_qty 
+                            THEN move.quantity
                             ELSE 0 END) as product_out,
                         sum(CASE WHEN 
                                 CAST(move.date AS date) >= %s  
                                 and location.usage = 'internal'
-                            THEN move.product_qty*svl.unit_cost 
+                            THEN move.quantity*svl.unit_cost
                             ELSE 0 END) as product_out_amount
                     FROM stock_move move
                         LEFT JOIN (
