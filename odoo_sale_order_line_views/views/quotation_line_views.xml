@@ -48,7 +48,7 @@
         <field name="model">sale.order.line</field>
         <field name="arch" type="xml">
             <tree string="Quotation Lines" create="false" edit="false"
-                  delete="false" class="o_sol_list">
+                  delete="false">
                 <field name="order_id"/>
                 <field name="order_partner_id"/>
                 <field name="product_id"/>

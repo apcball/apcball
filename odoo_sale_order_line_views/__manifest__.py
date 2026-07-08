@@ -41,11 +41,6 @@
         'views/quotation_line_views.xml',
         'views/sale_order_line_views.xml'
     ],
-    'assets': {
-        'web.assets_backend': [
-            'odoo_sale_order_line_views/static/src/scss/sale_order_ine.scss',
-        ],
-    },
     'images': ['static/description/banner.jpg'],
     'licence': 'LGPL-3',
     'installable': True,

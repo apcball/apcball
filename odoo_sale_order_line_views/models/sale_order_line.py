@@ -85,6 +85,14 @@ class SaleOrderLine(models.Model):
         store=True,
     )
 
+    pending_amount = fields.Monetary(
+        string="Pending Amount",
+        currency_field="currency_id",
+        compute='_compute_pending_amount',
+        store=True,
+        help='Sales amount for the quantity that is still waiting to be delivered.',
+    )
+
     picking_scheduled_date = fields.Date(
         string="Scheduled Date",
         compute='_compute_picking_scheduled_date',
@@ -137,3 +145,13 @@ class SaleOrderLine(models.Model):
                 line.state == 'sale'
                 and line.product_uom_qty > line.qty_delivered
             )
+
+    @api.depends('qty_to_deliver', 'product_uom_qty', 'price_subtotal')
+    def _compute_pending_amount(self):
+        for line in self:
+            ordered_qty = line.product_uom_qty or 0.0
+            pending_qty = max(line.qty_to_deliver or 0.0, 0.0)
+            if ordered_qty:
+                line.pending_amount = line.price_subtotal * pending_qty / ordered_qty
+            else:
+                line.pending_amount = 0.0

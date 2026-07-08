@@ -22,47 +22,33 @@ class SaleOrderLine(models.Model):
 
     @api.depends('product_id', 'company_id', 'currency_id', 'product_uom', 'order_id.date_order', 'order_id.company_id', 'order_id.pricelist_id')
     def _compute_standard_cost_purchase_price(self):
-        # Cache pricelists by company
+        # Cache pricelists by company so a batch of lines reuses one search,
+        # and so POS Lite / SO share the exact same cost-fetching helper.
         pricelists = {}
-        
+        Pricelist = self.env['product.pricelist']
+
         for line in self:
             if not line.product_id or not line.order_id:
                 line.standard_cost_price = 0.0
                 line.purchase_price = 0.0
                 continue
 
-            cid = line.company_id.id or line.order_id.company_id.id
+            company = line.company_id or line.order_id.company_id
+            cid = company.id
             if cid not in pricelists:
-                pricelists[cid] = self.env['product.pricelist'].search([
-                    ('is_standard_cost_pricelist', '=', True),
-                    ('company_id', '=', cid)
-                ], limit=1)
-            
+                pricelists[cid] = Pricelist._get_standard_cost_pricelist(company)
             pricelist = pricelists[cid]
-            
+
             if not pricelist:
                 line.standard_cost_price = 0.0
                 line.purchase_price = 0.0
                 continue
-            
-            # Get standard cost from pricelist
-            # Use qty=1 as per requirement
-            date_order = line.order_id.date_order or fields.Date.today()
-            cost_price = pricelist._get_product_price(
-                line.product_id, 1.0, date=date_order, uom=line.product_uom
-            )
-            
-            # Convert to SO currency if needed
-            if pricelist.currency_id != line.currency_id:
-                 cost_price = pricelist.currency_id._convert(
-                    cost_price, line.currency_id, line.company_id or line.order_id.company_id, date_order
-                 )
 
-            # If product has no price in standard cost pricelist, set cost to 0
-            if not cost_price or cost_price <= 0:
-                line.standard_cost_price = 0.0
-                line.purchase_price = 0.0
-                continue
+            date_order = line.order_id.date_order or fields.Date.today()
+            cost_price = pricelist._get_product_standard_cost_price(
+                line.product_id, line.currency_id,
+                company=company, date=date_order, uom=line.product_uom,
+            )
 
             line.standard_cost_price = cost_price
             line.purchase_price = cost_price

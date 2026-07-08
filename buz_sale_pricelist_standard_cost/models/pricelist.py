@@ -94,6 +94,43 @@ class ProductPricelist(models.Model):
         fallback_rule = self._get_non_zero_standard_cost_fallback_rule(product, quantity=quantity, date=date)
         return fallback_rule.fixed_price if fallback_rule else 0.0
 
+    # ─── Shared standard-cost access (sale.order.line + pos.lite.order.line) ──
+
+    @api.model
+    def _get_standard_cost_pricelist(self, company):
+        """Return the (single) Standard Cost Pricelist configured for ``company``.
+
+        Shared by ``sale.order.line`` and ``pos.lite.order.line`` so that POS
+        Lite pulls the standard cost from exactly the same source as Sales
+        Orders (margin on POS Lite == margin on the equivalent SO).
+        """
+        return self.search([
+            ('is_standard_cost_pricelist', '=', True),
+            ('company_id', '=', company.id),
+        ], limit=1)
+
+    def _get_product_standard_cost_price(self, product, target_currency, company=None, date=False, uom=False):
+        """Per-unit standard cost of ``product`` taken from THIS standard-cost
+        pricelist, converted into ``target_currency``.
+
+        Returns 0.0 when the product has no (or non-positive) price on the
+        pricelist — matching ``sale.order.line`` behaviour exactly. Shared with
+        ``pos.lite.order.line`` so POS Lite margin is computed like a SO.
+        """
+        self.ensure_one()
+        date = date or fields.Date.context_today(self)
+        company = company or self.company_id or self.env.company
+        cost_price = self._get_product_price(
+            product, 1.0, date=date, uom=uom or product.uom_id,
+        )
+        if not cost_price or cost_price <= 0:
+            return 0.0
+        if self.currency_id != target_currency:
+            cost_price = self.currency_id._convert(
+                cost_price, target_currency, company, date,
+            )
+        return cost_price
+
     def _compute_price_rule(self, products, quantity, currency=None, uom=None, date=False, **kwargs):
         """ Override to support 'standard_cost_pricelist' base. """
         results = super()._compute_price_rule(products, quantity, currency=currency, uom=uom, date=date, **kwargs)

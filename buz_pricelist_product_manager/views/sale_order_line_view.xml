@@ -9,8 +9,8 @@
                <attribute name="readonly">include_installation</attribute>
             </xpath>
             <xpath expr="//field[@name='order_line']/tree//field[@name='price_unit']" position="before">
-                <field name="include_installation" optional="show"/>
-                <field name="installation_price" optional="show" readonly="1"/>
+                <field name="include_installation" column_invisible="1"/>
+                <field name="installation_price" column_invisible="1" readonly="1"/>
             </xpath>
             <xpath expr="//field[@name='order_line']/form//field[@name='price_unit']" position="attributes">
                <attribute name="readonly">include_installation</attribute>

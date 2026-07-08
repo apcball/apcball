@@ -24,7 +24,7 @@
                 <field name="name"/>
                 <field name="date"/>
                 <field name="partner_id"/>
-                <field name="amount_total_net" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="amount_total_net_display" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                 <field name="payment_state" widget="badge" decoration-info="payment_state=='not_paid'" decoration-warning="payment_state=='partial'" decoration-success="payment_state=='paid'" decoration-danger="payment_state=='overpaid'"/>
                 <field name="state"/>
                 <field name="company_id" groups="base.group_multi_company"/>
@@ -70,7 +70,7 @@
                             <field name="payment_count" string="Payments" widget="statinfo"/>
                         </button>
                         <button name="action_view_payments" type="object" class="oe_stat_button" icon="fa-pencil-square-o">
-                            <field name="amount_total_net" string="Net Amount" widget="statinfo"/>
+                            <field name="amount_total_net_display" string="Net Amount" widget="statinfo"/>
                         </button>
                     </div>
                     <div class="oe_title">
@@ -136,7 +136,7 @@
                                     context="{
                                          'default_journal_id': destination_journal_id,
                                          'default_date': date,
-                                         'default_amount': amount_total_net,
+                                         'default_amount': amount_total_net_display,
                                          'default_buz_payment_voucher_id': id,
                                     }">
                                   <tree editable="bottom">

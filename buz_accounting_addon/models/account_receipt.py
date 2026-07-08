@@ -1075,8 +1075,16 @@ class AccountReceiptLine(models.Model):
 
     @api.constrains('amount_to_collect', 'amount_residual_signed')
     def _check_amount_to_collect_not_greater_than_residual(self):
-        """Prevent amount_to_collect > amount_residual_signed per line (with small tolerance)"""
+        """Prevent over-collection while a receipt is still being prepared.
+
+        Once a receipt is posted, invoice residuals can legitimately decrease
+        when a later payment or settlement reconciles the invoice. Rechecking
+        the original receipt amount against the new residual would block the
+        payment transaction itself.
+        """
         for line in self:
+            if line.receipt_id.state != 'draft':
+                continue
             if line.move_id and line.amount_residual_signed != 0:
                 # Use signed residual amount for correct handling of both invoices and refunds
                 residual = abs(line.amount_residual_signed)

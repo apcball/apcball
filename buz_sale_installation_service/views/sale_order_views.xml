@@ -10,7 +10,8 @@
             <xpath expr="//field[@name='order_line']/tree/field[@name='product_uom_qty']" position="after">
                 <field name="include_installation" 
                        readonly="is_installation_line" 
-                       invisible="is_installation_line"/>
+                       invisible="is_installation_line"
+                       optional="hide"/>
                 <field name="is_installation_line" column_invisible="1"/>
                 <field name="installation_parent_line_id" column_invisible="1"/>
                 <field name="installation_child_line_id" column_invisible="1"/>

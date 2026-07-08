@@ -68,6 +68,7 @@ class AccountPaymentVoucher(models.Model):
     amount_total_gross = fields.Monetary(string="Total Gross", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_wht = fields.Monetary(string="Total WHT", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_net = fields.Monetary(string="Total Net", currency_field="currency_id", compute="_compute_amount_totals", store=True)
+    amount_total_net_display = fields.Monetary(string="Total Net Display", currency_field="currency_id", compute="_compute_amount_totals")
     amount_total_bank_fee = fields.Monetary(string="Total Bank Fee", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     amount_total_other_income = fields.Monetary(string="Total Other Income", currency_field="currency_id", compute="_compute_amount_totals", store=True)
     
@@ -130,12 +131,24 @@ class AccountPaymentVoucher(models.Model):
             vals['name'] = self.env['ir.sequence'].next_by_code('buz.account.payment.voucher') or '/'
         return super().write(vals)
 
-    @api.depends("line_ids.amount_to_pay_gross", "line_ids.wht_amount", "bank_free_dis", "other_income_dis")
+    @api.depends(
+        "line_ids.amount_to_pay_gross",
+        "line_ids.wht_amount",
+        "bank_free_dis",
+        "other_income_dis",
+        "bank_transfer_ids.amount",
+    )
     def _compute_amount_totals(self):
         for voucher in self:
-            voucher.amount_total_gross = sum(line.amount_to_pay_gross for line in voucher.line_ids)
-            voucher.amount_total_wht = sum(line.wht_amount for line in voucher.line_ids)
-            voucher.amount_total_net = sum(line.amount_to_pay_net for line in voucher.line_ids)
+            line_total_gross = sum(line.amount_to_pay_gross for line in voucher.line_ids)
+            line_total_wht = sum(line.wht_amount for line in voucher.line_ids)
+            line_total_net = sum(line.amount_to_pay_net for line in voucher.line_ids)
+            bank_transfer_total = sum(voucher.bank_transfer_ids.mapped("amount"))
+
+            voucher.amount_total_gross = line_total_gross or bank_transfer_total
+            voucher.amount_total_wht = line_total_wht
+            voucher.amount_total_net = line_total_net or bank_transfer_total
+            voucher.amount_total_net_display = line_total_net or bank_transfer_total
             voucher.amount_total_bank_fee = voucher.bank_free_dis or 0.0
             voucher.amount_total_other_income = voucher.other_income_dis or 0.0
 

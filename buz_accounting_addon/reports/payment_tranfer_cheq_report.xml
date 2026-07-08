@@ -216,15 +216,15 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <t t-set="bank_transfer_total" t-value="sum(o.bank_transfer_ids.mapped('amount'))"/>
+                            <t t-set="bank_transfer_total" t-value="sum(o.bank_transfer_ids.mapped('amount')) or o.amount_total_net"/>
                             <t t-foreach="o.bank_transfer_ids" t-as="bt">
                             <!-- Outstanding Payments (Credit) -->
                             <tr>
                                 <td>
-                                    <span t-field="bt.journal_id.default_account_id.code"/>
+                                    <span t-esc="'211100'"/>
                                 </td>
                                 <td>
-                                    <span t-esc="'Outstanding Payments'"/>
+                                    <span t-esc="'ตั๋วเงินจ่าย'"/>
                                 </td>
                                 <td><span t-field="bt.name"/></td>
                                 <td><span t-field="bt.date"/></td>
@@ -232,21 +232,21 @@
                                     <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
                                 </td>
                                 <td class="text-end">
-                                    <span t-field="bt.amount" t-options="{'widget': 'float', 'precision': 2}"/>
+                                    <span t-esc="bt.amount or o.amount_total_net" t-options="{'widget': 'float', 'precision': 2}"/>
                                 </td>
                             </tr>
                             <!-- Outstanding Receipts (Debit) -->
                             <tr>
                                 <td>
-                                    <span t-field="o.partner_id.property_account_payable_id.code"/>
+                                    <span t-esc="'114100'"/>
                                 </td>
                                 <td>
-                                    <span t-esc="'Outstanding Receipts'"/>
+                                    <span t-esc="'ตั๋วเงินรับรอเรียกเก็บ'"/>
                                 </td>
                                 <td><span t-field="bt.name"/></td>
                                 <td><span t-field="bt.date"/></td>
                                 <td class="text-end">
-                                    <span t-field="bt.amount" t-options="{'widget': 'float', 'precision': 2}"/>
+                                    <span t-esc="bt.amount or o.amount_total_net" t-options="{'widget': 'float', 'precision': 2}"/>
                                 </td>
                                 <td class="text-end">
                                     <span t-esc="0.00" t-options="{'widget': 'float', 'precision': 2}"/>
@@ -257,10 +257,10 @@
                             <!-- Outstanding Payments (Credit) -->
                             <tr>
                                 <td>
-                                    <span t-field="o.destination_journal_id.default_account_id.code"/>
+                                    <span t-esc="'211100'"/>
                                 </td>
                                 <td>
-                                    <span t-esc="'Outstanding Payments'"/>
+                                    <span t-esc="'ตั๋วเงินจ่าย'"/>
                                 </td>
                                 <td><span t-field="o.name"/></td>
                                 <td><span t-field="o.date"/></td>
@@ -274,10 +274,10 @@
                             <!-- Outstanding Receipts (Debit) -->
                             <tr>
                                 <td>
-                                    <span t-field="o.partner_id.property_account_payable_id.code"/>
+                                    <span t-esc="'114100'"/>
                                 </td>
                                 <td>
-                                    <span t-esc="'Outstanding Receipts'"/>
+                                    <span t-esc="'ตั๋วเงินรับรอเรียกเก็บ'"/>
                                 </td>
                                 <td><span t-field="o.name"/></td>
                                 <td><span t-field="o.date"/></td>

@@ -11,6 +11,7 @@
                 <field name="amount_total" type="measure"/>
                 <field name="amount_untaxed" type="measure"/>
                 <field name="amount_tax" type="measure"/>
+                <field name="margin" type="measure"/>
             </pivot>
         </field>
     </record>

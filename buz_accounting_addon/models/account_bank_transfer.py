@@ -32,6 +32,17 @@ class AccountBankTransfer(models.Model):
     ref = fields.Char(string='Memo')
 
     @api.model
+    def default_get(self, fields_list):
+        vals = super().default_get(fields_list)
+        if not vals.get('amount'):
+            voucher_id = self._context.get('default_buz_payment_voucher_id') or self._context.get('buz_payment_voucher_id')
+            if voucher_id:
+                voucher = self.env['account.payment.voucher'].browse(voucher_id)
+                if voucher.exists():
+                    vals['amount'] = voucher.amount_total_net
+        return vals
+
+    @api.model
     def create(self, vals):
         if vals.get('name', '/') == '/':
             vals['name'] = self.env['ir.sequence'].next_by_code('account.bank.transfer') or '/'

@@ -45,7 +45,7 @@
             </xpath>
 
             <xpath expr="//field[@name='order_line']//tree//field[@name='product_id']" position="after">
-                <field name="hscode" optional="hide"/>
+                <field name="hscode" column_invisible="1"/>
             </xpath>
         </field>
     </record>

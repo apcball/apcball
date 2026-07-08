@@ -67,6 +67,21 @@ class PosLiteOrder(models.Model):
     amount_paid = fields.Monetary(compute='_compute_amounts', store=True)
     amount_residual = fields.Monetary(compute='_compute_amounts', store=True)
     amount_change = fields.Monetary(compute='_compute_amounts', store=True)
+    margin = fields.Monetary(
+        string="Margin",
+        compute='_compute_margin',
+        store=True,
+        currency_field='currency_id',
+        help="Sales margin = revenue − standard cost, sourced from the "
+             "company's Standard Cost Pricelist (same source as Sales Orders).",
+    )
+    margin_percent = fields.Float(
+        string="Margin %",
+        compute='_compute_margin',
+        store=True,
+        help="Margin as a fraction of the untaxed amount (margin / amount_untaxed), "
+             "displayed with the percentage widget. Matches Sales Orders.",
+    )
     invoice_id = fields.Many2one('account.move', readonly=True, copy=False)
     picking_id = fields.Many2one('stock.picking', readonly=True, copy=False)
     is_return = fields.Boolean(default=False, copy=False, tracking=True)
@@ -142,6 +157,17 @@ class PosLiteOrder(models.Model):
                 order.amount_paid = paid
                 order.amount_residual = max(total - paid, 0.0)
                 order.amount_change = max(paid - total, 0.0)
+
+    @api.depends('line_ids.margin', 'amount_untaxed', 'is_return')
+    def _compute_margin(self):
+        # Mirrors buz_sale_pricelist_standard_cost's sale.order margin: line
+        # margins summed, then margin_percent = margin / amount_untaxed.
+        # Returns reverse the profit impact (refund revenue + recover cost),
+        # consistent with how amount_untaxed is negated for return orders.
+        for order in self:
+            line_margin = sum(order.line_ids.mapped('margin'))
+            order.margin = -line_margin if order.is_return else line_margin
+            order.margin_percent = order.amount_untaxed and (order.margin / order.amount_untaxed) or 0.0
 
     @api.depends('is_return', 'is_exchange')
     def _compute_return_exchange_status(self):
@@ -880,6 +906,21 @@ class PosLiteOrderLine(models.Model):
     price_subtotal = fields.Monetary(compute='_compute_amounts', store=True)
     price_tax = fields.Monetary(compute='_compute_amounts', store=True)
     price_total = fields.Monetary(compute='_compute_amounts', store=True)
+    standard_cost_price = fields.Float(
+        string="Standard Cost",
+        compute='_compute_standard_cost_margin',
+        store=True,
+        digits='Product Price',
+        help="Per-unit standard cost pulled from the company's Standard Cost "
+             "Pricelist (same source and method as sale.order.line).",
+    )
+    margin = fields.Monetary(
+        string="Margin",
+        compute='_compute_standard_cost_margin',
+        store=True,
+        currency_field='currency_id',
+        help="Line margin = price subtotal − (standard cost × qty).",
+    )
 
     @api.depends('return_line_ids.qty')
     def _compute_returned_qty(self):
@@ -956,6 +997,41 @@ class PosLiteOrderLine(models.Model):
                 line.price_subtotal = subtotal
                 line.price_tax = 0.0
                 line.price_total = subtotal
+
+    @api.depends('product_id', 'qty', 'price_subtotal', 'currency_id', 'company_id',
+                 'order_id.date_order', 'order_id.company_id')
+    def _compute_standard_cost_margin(self):
+        # Pulls the standard cost from the same Standard Cost Pricelist (and the
+        # same helper) used by sale.order.line, so POS Lite margin == SO margin.
+        # standard_cost_price is per-unit (priced at qty=1); line margin spreads
+        # it over the line qty, exactly like sale_margin's
+        # price_subtotal − (purchase_price × product_uom_qty).
+        pricelists = {}
+        Pricelist = self.env['product.pricelist']
+        for line in self:
+            if not line.product_id or not line.order_id:
+                line.standard_cost_price = 0.0
+                line.margin = 0.0
+                continue
+
+            company = line.company_id or line.order_id.company_id
+            cid = company.id
+            if cid not in pricelists:
+                pricelists[cid] = Pricelist._get_standard_cost_pricelist(company)
+            pricelist = pricelists[cid]
+
+            if not pricelist:
+                line.standard_cost_price = 0.0
+                line.margin = 0.0
+                continue
+
+            date_order = line.order_id.date_order or fields.Date.today()
+            cost_price = pricelist._get_product_standard_cost_price(
+                line.product_id, line.currency_id,
+                company=company, date=date_order,
+            )
+            line.standard_cost_price = cost_price
+            line.margin = line.price_subtotal - (cost_price * (line.qty or 0.0))
 
     @api.onchange('product_id', 'qty', 'order_id.pricelist_id', 'order_id.partner_id')
     def _onchange_product_id(self):

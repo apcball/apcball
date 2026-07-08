@@ -18,7 +18,7 @@
                 <field name="bom_id" 
                        options="{'no_create': True, 'no_open': True}"
                        readonly="state in ['sale', 'done', 'cancel']"
-                       optional="show"
+                       optional="hide"
                        domain="[('product_tmpl_id', '=', product_template_id), ('company_id', 'in', [False, company_id]), ('active', '=', True)]"
                        decoration-warning="bom_override"/>
             </xpath>

@@ -1,6 +1,6 @@
 {
     'name': 'POS Lite',
-    'version': '17.0.3.5.0',
+    'version': '17.0.3.6.0',
     'category': 'Sales',
     'summary': 'Lightweight form-based order entry for phone, LINE, and walk-in orders',
     'description': """
@@ -18,6 +18,7 @@ Features:
 - Multi-size receipt (58mm, 80mm, A4)
 - Sales analytics (pivot, graph)
 - Multi-company support
+- Sales margin from Standard Cost Pricelist (matches SO)
     """,
     'author': 'AI-DEV-Module-Odoo17',
     'website': 'https://github.com/apcball/AI-DEV-Module-Odoo17',
@@ -32,6 +33,7 @@ Features:
         'sale_management',
         'hr',
         'buz_custom_invoice',
+        'buz_sale_pricelist_standard_cost',
     ],
     'data': [
         'security/security.xml',

@@ -15,6 +15,7 @@
                 <field name="amount_total" sum="Total" widget="monetary"/>
                 <field name="amount_paid" sum="Paid" widget="monetary"/>
                 <field name="amount_residual" sum="Due" widget="monetary" decoration-danger="amount_residual > 0"/>
+                <field name="margin" sum="Margin" widget="monetary"/>
                 <field name="return_status" widget="badge" decoration-danger="return_status == 'Return'" decoration-success="return_status == 'Sale'" optional="show"/>
                 <field name="exchange_status" widget="badge" decoration-warning="exchange_status == 'Exchange'" decoration-muted="exchange_status == 'Direct'" optional="show"/>
                 <field name="return_of_order_id" optional="hide"/>
@@ -207,6 +208,10 @@
                             <field name="amount_tax" readonly="1" widget="monetary" string="Tax"/>
                         </group>
                         <group class="oe_subtotal_footer oe_right" colspan="1">
+                            <field name="margin" readonly="1" widget="monetary" string="Margin"
+                                   decoration-success="margin &gt;= 0" decoration-danger="margin &lt; 0"/>
+                            <field name="margin_percent" readonly="1" widget="percentage" string="Margin %"
+                                   decoration-success="margin_percent &gt;= 0" decoration-danger="margin_percent &lt; 0"/>
                             <field name="amount_total" readonly="1" widget="monetary" string="Total" class="oe_inline"/>
                         </group>
                         <group>
@@ -236,6 +241,8 @@
                                     <field name="price_subtotal" readonly="1" sum="Subtotal"/>
                                     <field name="price_tax" readonly="1" sum="Tax"/>
                                     <field name="price_total" readonly="1" sum="Total"/>
+                                    <field name="standard_cost_price" readonly="1" optional="hide" string="Std Cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="margin" readonly="1" sum="Margin" widget="monetary"/>
                                 </tree>
                             </field>
                         </page>

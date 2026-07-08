@@ -52,7 +52,7 @@
         <field name="model">sale.order.line</field>
         <field name="arch" type="xml">
             <tree string="Sale Order Lines" create="false" edit="false"
-                  delete="false" class="o_sol_list">
+                  delete="false">
                 <field name="order_id"/>
                 <field name="order_partner_id"/>
                 <field name="product_id"/>
@@ -142,6 +142,7 @@
                 <field name="price_unit" type="measure"/>
                 <field name="product_uom_qty" type="measure"/>
                 <field name="price_subtotal" type="measure"/>
+                <field name="pending_amount" type="measure"/>
             </pivot>
         </field>
     </record>
@@ -248,7 +249,7 @@
         <field name="model">sale.order.line</field>
         <field name="arch" type="xml">
             <tree string="Pending Delivery Lines" create="false" edit="false"
-                  delete="false" class="o_sol_list">
+                  delete="false">
                 <field name="order_id"/>
                 <field name="team_id"/>
                 <field name="order_partner_id"/>
@@ -259,6 +260,8 @@
                 <field name="product_uom_qty" string="Qty"/>
                 <field name="qty_delivered"/>
                 <field name="qty_to_deliver" string="Pending Qty"/>
+                <field name="pending_amount" string="Pending Amount"
+                       sum="Total" widget="monetary"/>
                 <field name="reserve_qty"/>
                 <field name="product_uom" string="Unit of Measure"
                        groups="uom.group_uom"/>
