@@ -225,8 +225,7 @@
 
                             <t t-set="service_hour" t-value="int(o.service_time or 0)"/>
                             <t t-set="service_minute" t-value="int(round(((o.service_time or 0) - service_hour) * 60))"/>
-                            <t t-set="line_count" t-value="len(o.line_ids)"/>
-                            <t t-set="total_rows" t-value="max(line_count, 5)"/>
+                            <t t-set="line_count" t-value="min(len(o.line_ids), 5)"/>
 
                             <div class="sr-grid-bg"></div>
                             <div class="sr-content">
@@ -288,7 +287,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <t t-foreach="o.line_ids" t-as="line">
+                                        <t t-foreach="o.line_ids[:5]" t-as="line">
                                             <tr style="height: 30px;">
                                                 <td><span t-esc="line.description or line.product_id.display_name or ''"/></td>
                                                 <td style="text-align:center;"><span t-esc="line.quantity"/></td>
@@ -296,7 +295,7 @@
                                                 <td><span t-esc="line.appointment_detail or ''"/></td>
                                             </tr>
                                         </t>
-                                        <t t-foreach="range(max(9 - line_count, 0))" t-as="i">
+                                        <t t-foreach="range(max(5 - line_count, 0))" t-as="i">
                                             <tr style="height: 30px;">
                                                 <td></td>
                                                 <td></td>
@@ -433,6 +432,11 @@
                                         </td>
                                         <td style="width:50%;">
                                             ลงชื่อ<span class="dot" style="width:62%;" t-esc="o.customer_sign_name or ''"/>ผู้รับบริการ<br/>
+                                            (<span class="dot" style="width:78%;"></span>)<br/>
+                                            วันที่<span class="dot" style="width:76%;" t-esc="o.customer_sign_date.strftime('%d/%m/%Y') if o.customer_sign_date else ''"/>
+                                        </td>
+                                        <td style="width:50%;">
+                                            ลงชื่อ<span class="dot" style="width:62%;" t-esc="o.customer_sign_name or ''"/>ผู้อนุมัติ<br/>
                                             (<span class="dot" style="width:78%;"></span>)<br/>
                                             วันที่<span class="dot" style="width:76%;" t-esc="o.customer_sign_date.strftime('%d/%m/%Y') if o.customer_sign_date else ''"/>
                                         </td>
