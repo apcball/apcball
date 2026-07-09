@@ -203,7 +203,7 @@
                                     width: 100%;
                                     border-collapse: collapse;
                                     table-layout: fixed;
-                                    margin-top: 2mm;
+                                    margin-top: 24mm;
                                 }
                                 .sign-table td {
                                     height: 23mm;
@@ -215,6 +215,7 @@
                                     display: table;
                                     width: 100%;
                                     font-weight: 700;
+                                    margin-top: 10mm;
                                     padding-top: 10mm;
                                 }
                                 .sr-footer div {
