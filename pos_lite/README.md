@@ -13,7 +13,7 @@ POS Lite is a simplified Point-of-Sale module designed for manual order entry sc
 - **Standalone HTML page**: `/pos_lite/ui` with vanilla JS (no OWL dependencies)
 - **Customer info**: Name, phone, customer address, delivery address
 - **Order cart**: Add/remove items, adjust quantities, real-time totals
-- **Payment modal**: Cash/Transfer/Card with change calculation
+- **Process modal**: Posts invoice immediately
 - **API integration**: JSON endpoints for products and order creation
 
 ### Order Management
@@ -22,12 +22,12 @@ POS Lite is a simplified Point-of-Sale module designed for manual order entry sc
 - **Warehouse selection**: Per-order warehouse assignment
 - **Pricelist support**: Automatic price calculation based on pricelist
 - **Order lines**: Add products with quantity, price, discount
-- **Automatic calculations**: Subtotal, tax, total, paid amount, change
+- **Automatic calculations**: Subtotal, tax, total
 
-### Payment Processing
-- **Single payment per order**: Cash, Transfer, or Card
-- **Payment wizard**: Easy payment registration
-- **Journal selection**: Auto-select cash/bank journal from config
+### Processing
+- **Process-only sale flow**: invoice posts immediately; refunds still record a method
+- **No separate wizard**: process order directly
+- **Journal selection**: Uses default cash/bank journal for refund records
 
 ### Document Generation
 - **Invoice creation**: Automatic `account.move` (out_invoice)
@@ -38,7 +38,7 @@ POS Lite is a simplified Point-of-Sale module designed for manual order entry sc
   - A4 PDF
 
 ### Security & Permissions
-- **POS Lite User**: Can create/edit orders, register payments
+- **POS Lite User**: Can create/edit orders, process orders and view refund records
 - **POS Lite Manager**: Full access including configuration
 - **Multi-company support**: Record rules for data isolation
 
@@ -57,7 +57,7 @@ pos_lite/
 ├── models/
 │   ├── __init__.py
 │   ├── pos_order.py               # Main order model (pos.lite.order)
-│   ├── pos_payment.py             # Payment model (pos.lite.payment)
+│   ├── pos_payment.py             # Refund record model (pos.lite.payment)
 │   ├── pos_config.py              # Configuration model (pos.lite.config)
 │   ├── product_product.py         # Product search enhancement
 │   └── res_partner.py             # Partner search enhancement
@@ -75,8 +75,6 @@ pos_lite/
 │   └── pos_lite_terminal.xml      # POS Terminal standalone HTML template
 ├── wizard/
 │   ├── __init__.py
-│   ├── payment_wizard.py          # Payment wizard model
-│   ├── payment_wizard_view.xml    # Payment wizard form
 │   ├── return_wizard.py           # Return wizard model
 │   └── return_wizard_view.xml     # Return wizard form
 └── static/
@@ -103,7 +101,7 @@ Main order model with the following fields:
 | warehouse_id | Many2one | Warehouse |
 | pricelist_id | Many2one | Pricelist |
 | line_ids | One2many | Order lines |
-| payment_ids | One2many | Payments |
+| payment_ids | One2many | Refund records |
 | amount_untaxed | Monetary | Subtotal |
 | amount_tax | Monetary | Tax amount |
 | amount_total | Monetary | Total |
@@ -126,14 +124,14 @@ Main order model with the following fields:
 | price_tax | Monetary | Tax (computed) |
 | price_total | Monetary | Total (computed) |
 
-### `pos.lite.payment` (Payment)
+### `pos.lite.payment` (Refund Record)
 | Field | Type | Description |
 |-------|------|-------------|
 | order_id | Many2one | Parent order |
 | payment_method | Selection | Cash, Transfer, Card |
-| amount | Monetary | Payment amount |
+| amount | Monetary | Recorded amount |
 | journal_id | Many2one | Account journal |
-| note | Char | Payment note |
+| note | Char | Record note |
 
 ### `pos.lite.config` (Configuration)
 | Field | Type | Description |
@@ -142,13 +140,13 @@ Main order model with the following fields:
 | company_id | Many2one | Company |
 | warehouse_id | Many2one | Default warehouse |
 | pricelist_id | Many2one | Default pricelist |
-| journal_id | Many2one | Default payment journal |
+| journal_id | Many2one | Default cash/bank journal |
 
 ## 🔄 Order Workflow
 
 ```
-┌─────────┐    Register     ┌─────────┐    Process     ┌─────────┐
-│  Draft  │ ───Payment───→ │  Paid   │ ───Order────→ │  Done   │
+┌─────────┐    Process     ┌─────────┐    Order      ┌─────────┐
+│  Draft  │ ───→          │  Paid   │ ───→         │  Done   │
 └─────────┘                 └─────────┘                 └─────────┘
      │                           │
      │                           │
@@ -156,8 +154,8 @@ Main order model with the following fields:
 ```
 
 ### States:
-1. **Draft**: Initial state, can edit order lines and register payment
-2. **Paid**: Payment received, can process to create invoice/picking
+1. **Draft**: Initial state, can edit order lines and process order
+2. **Paid**: Invoice posted, can continue to stock completion
 3. **Done**: Order completed, invoice and picking created
 4. **Cancelled**: Order cancelled (cannot cancel if invoice posted or picking done)
 
@@ -165,7 +163,7 @@ Main order model with the following fields:
 
 ### User Groups
 - **POS Lite User** (`group_pos_lite_user`):
-  - Create/Edit orders, order lines, payments
+  - Create/Edit orders, order lines, refund records
   - Read-only access to configuration
   - Cannot delete records
 
@@ -177,7 +175,7 @@ Main order model with the following fields:
 All models have company-based record rules:
 - Orders: `[('company_id', 'in', company_ids)]`
 - Order Lines: `[('company_id', 'in', company_ids)]`
-- Payments: `[('company_id', 'in', company_ids)]`
+- Refund records: `[('company_id', 'in', company_ids)]`
 - Config: `[('company_id', 'in', company_ids)]`
 
 ## 📦 Dependencies
@@ -207,7 +205,7 @@ All models have company-based record rules:
 Navigate to **POS Lite > Configuration** to set default:
 - Warehouse
 - Pricelist  
-- Payment Journal
+- Journal
 
 This allows faster order creation by pre-filling these fields.
 
@@ -253,9 +251,9 @@ Three receipt formats are available:
    - Enter quantity
    - Price auto-fills from pricelist
    - Apply discount if needed
-5. Click **Register Payment**
-6. Enter payment amount and method
-7. Click **Confirm**
+5. Click **Process**
+6. Review the posted invoice
+7. Continue with printing / completion
 
 ### Processing the Order
 
@@ -281,7 +279,7 @@ Three receipt formats are available:
    - Creates return order linked to original
    - Creates Credit Note (out_refund)
    - Creates incoming picking for stock return
-   - Processes refund payment
+   - Records refund method
 6. Return order moves to **Done** state
 
 ### Creating an Exchange
@@ -291,20 +289,20 @@ Three receipt formats are available:
 3. Return wizard opens with Exchange mode:
    - Select products to return (quantity, reason)
    - Add new items in "Exchange — New Items" section
-   - Choose **Refund Payment Method** for the return credit
+   - Choose **Refund Method** for the return credit
    - View **Summary** box showing Return Total, Exchange Total, and Difference
 4. Click **Confirm Exchange**
 5. System automatically:
-   - Creates **Return Order** with Credit Note (out_refund) and refund payment
-   - Creates **Exchange Order** with Invoice (out_invoice) and full payment
+   - Creates **Return Order** with Credit Note (out_refund) and refund record
+   - Creates **Exchange Order** with Invoice (out_invoice) and settlement record
    - Both orders moved to Done state
 6. Accounting: return credit and exchange invoice are separate documents — net settlement happens during reconciliation
 
 ### Return & Exchange Features
 - **Full/Partial return**: Return any quantity from original order
-- **Refund payment method**: Select method for refund (Cash, Transfer, Card, PromptPay)
+- **Refund method**: Select method for refund (Cash, Transfer, Card, PromptPay)
 - **Exchange value summary**: See return total, exchange total, and difference before confirming
-- **Exchange with difference**: If new items cost more, customer pays full price (invoice basis)
+- **Exchange with difference**: If new items cost more, customer settles the difference (invoice basis)
 - **Exchange with credit back**: If returned items cost more, customer gets refund for returned items (credit note)
 - **Return tracking**: Track returned quantity per line with available_return_qty
 
@@ -345,15 +343,15 @@ LGPL-3
 **Date:** 2026-05-28  
 **Changes:**
 - ✅ **เปิดปุ่ม Return/Exchange** ใน form view สำหรับ Done orders (เปลี่ยนจาก `invisible="1"` → แสดงเมื่อ `state = 'done'`)
-- ✅ **เพิ่ม Refund Payment Method** — เลือกวิธีคืนเงินได้ (Cash/Transfer/Card/PromptPay) แทน hardcode cash
+- ✅ **เพิ่ม Refund Method** — เลือกวิธีคืนเงินได้ (Cash/Transfer/Card/PromptPay) แทน hardcode cash
 - ✅ **Exchange Summary** — wizard แสดง Return Total, Exchange Total, Difference ก่อน confirm
 - ✅ **Fix duplicate `discount_type`** — ลบ field ซ้ำใน return_wizard_view.xml
 - ✅ **Fix discount_type** — ส่ง discount_type ไปยัง exchange line command ให้ถูกต้อง
-- ✅ **เพิ่ม tests** — ทดสอบ refund payment method, journal, exchange summary, return value > exchange value
+- ✅ **เพิ่ม tests** — ทดสอบ refund method, journal, exchange summary, return value > exchange value
 
 **Technical:**
 - `wizard/return_wizard.py`: เพิ่ม `refund_payment_method`, `refund_journal_id`, computed `return_total`/`exchange_total`/`exchange_difference`/`is_customer_pays`/`is_customer_gets_refund`
-- `wizard/return_wizard_view.xml`: เพิ่ม Refund Payment group + Summary box + alert indicator for difference
+- `wizard/return_wizard_view.xml`: เพิ่ม Refund Method group + Summary box + alert indicator for difference
 - `views/pos_order_view.xml`: เปลี่ยนปุ่ม Return/Exchange visibility logic
 - `tests/test_return_exchange.py`: เพิ่ม 4 tests (refund method, refund journal, exchange summary, return higher value)
 

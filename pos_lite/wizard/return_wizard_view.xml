@@ -64,8 +64,8 @@
                         </field>
                     </group>
 
-                    <!-- Refund Payment Method -->
-                    <group string="Refund Payment">
+                    <!-- Refund Method -->
+                    <group string="Refund Method">
                         <field name="refund_payment_method"/>
                         <field name="refund_journal_id" domain="[('type', 'in', ('cash', 'bank')), ('company_id', '=', company_id)]"/>
                     </group>

@@ -14,7 +14,7 @@ class ThaiTaxReport(models.AbstractModel):
             ROW_NUMBER() OVER (ORDER BY tax_date, tax_invoice_number) AS row_number,
             company_id, account_id, partner_id, tax_invoice_number,
             TO_CHAR(tax_date, 'DD/MM/YYYY') AS tax_date,
-            name, sum(tax_base_amount) tax_base_amount,
+            name, referent, sum(tax_base_amount) tax_base_amount,
             sum(tax_amount) tax_amount
         """
 
@@ -43,13 +43,17 @@ class ThaiTaxReport(models.AbstractModel):
             END AS tax_amount,
             CASE 
                 WHEN ml.id IS NULL THEN COALESCE(t.name, '')
-                WHEN m.ref IS NOT NULL THEN m.ref
+                WHEN m.name IS NOT NULL AND m.name != '/' THEN m.name
                 ELSE ml.move_name
-            END AS name
+            END AS name,
+            COALESCE(NULLIF(NULLIF(m.name, ''), '/'), t.tax_invoice_number) AS referent
         """
 
     def _query_groupby_tax(self):
-        return "company_id, account_id, partner_id, tax_invoice_number, tax_date, name"
+        return (
+            "company_id, account_id, partner_id, tax_invoice_number, tax_date, "
+            "name, referent"
+        )
 
     def _domain_where_clause_tax(self, show_cancel):
         condition = "IN ('posted', 'cancel')" if show_cancel else "= 'posted'"
@@ -148,7 +152,9 @@ class ThaiTaxReport(models.AbstractModel):
         )
 
         # Add parameter to line
-        total_base, total_tax, total_amount, tax_report_data = self._add_data_line(tax_report_data)
+        total_base, total_tax, total_amount, tax_report_data = self._add_data_line(
+            tax_report_data
+        )
 
         return {
             "doc_ids": docids,

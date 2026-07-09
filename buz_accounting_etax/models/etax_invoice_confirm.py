@@ -99,18 +99,19 @@ class AccountMoveInherit(models.Model):
         etax_config = self.env['etax.config'].search([('active', '=', True)], limit=1)
         sale_order = self.env['sale.order'].search([('name', '=', move.sales_order_number)], limit=1)
 
-        # ตรวจสอบประเภท invoice จาก sale order หรือจากรายการสินค้า
-        invoice_type = move.advance_payment_method or 'delivered'
-
+        # คำนวณยอดมัดจำเฉพาะใบแจ้งหนี้ที่เป็น down payment จริงเท่านั้น
+        # เคส invoice ปกติที่มีสินค้า/บริการพิเศษ (เช่น service_policy = ordered_prepaid)
+        # ต้องไม่ถูกตีความเป็น deposit เพราะจะทำให้ tax basis กลายเป็น 0
         down_payment_lines = move.invoice_line_ids.filtered(lambda l: l.is_downpayment)
-    
-        # คำนวณผลรวม
-        total_amount = sum(down_payment_lines.mapped('price_subtotal'))
-        total_with_tax = sum(down_payment_lines.mapped('price_total'))
 
-        # คำนวณผลรวม Down payment สำหรับ invoice_type = delivered (ยอดเงินมัดจำ)
-        if invoice_type == 'delivered':
-            down_payment_product_lines = move.invoice_line_ids.filtered(lambda l: l.product_id.service_policy == 'ordered_prepaid')
+        total_amount = 0.0
+        if down_payment_lines:
+            total_amount = abs(sum(down_payment_lines.mapped('price_subtotal')))
+        elif move.advance_payment_method in ('percentage', 'fixed'):
+            # Fallback สำหรับข้อมูลเดิมที่อาจยังไม่มี is_downpayment บนบรรทัด
+            down_payment_product_lines = move.invoice_line_ids.filtered(
+                lambda l: l.product_id and getattr(l.product_id, 'service_policy', False) == 'ordered_prepaid'
+            )
             total_amount = abs(sum(down_payment_product_lines.mapped('price_subtotal')))
 
         if move.move_type == 'out_invoice': # Customers / Invoices
@@ -184,7 +185,7 @@ class AccountMoveInherit(models.Model):
             'amount_vat': move.amount_tax,
             'net_amount_total': move.amount_total,
             'amount_total': move.amount_total,
-            'deposit': total_amount
+            'deposit': total_amount,
             # 'notes': narration or "",
             # 'notes': invoice_type,
         })

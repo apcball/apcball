@@ -1,11 +1,48 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools.float_utils import float_compare, float_is_zero
 import logging
 
 _logger = logging.getLogger(__name__)
 
 WALK_IN_CUSTOMER_NAME = 'Walk-in Customer'
+
+# ─── Trade Channel Mapping ────────────────────────────────────
+# Auto-maps POS Lite channel → marketplace_settlement.trade_channel
+# when the user hasn't explicitly chosen a trade_channel.
+POS_CHANNEL_TO_TRADE_CHANNEL = {
+    'phone': 'online_line_fb',
+    'line': 'online_line_fb',
+    'walkin': 'offline_mogen_outlet',
+    'other': 'other',
+}
+
+
+def _get_trade_channel_selection(self):
+    """Return the selection marketplace.settlement injects into sale.order.trade_channel.
+
+    marketplace_settlement adds trade_channel to sale.order via _inherit.
+    If the module is installed, the field will carry the canonical selection;
+    if not, use a hardcoded fallback.
+    """
+    SO = self.env.get('sale.order')
+    if SO:
+        field = SO._fields.get('trade_channel')
+        if field and field.selection:
+            return field.selection
+    # Fallback if marketplace_settlement is not installed
+    return [
+        ('shopee', 'Shopee'),
+        ('lazada', 'Lazada'),
+        ('nocnoc', 'Noc Noc'),
+        ('tiktok', 'Tiktok'),
+        ('spx', 'SPX'),
+        ('online_line_fb', 'ONLINE/Line + Facebook'),
+        ('offline_mogen_outlet', 'OFFLINE/Mogen Outlet'),
+        ('after_sale_service', 'After sale service'),
+        ('installation_service', 'Installation service'),
+        ('own_channel_cdc', 'Own channel ( CDC )'),
+        ('other', 'Other'),
+    ]
 
 
 class PosLiteOrder(models.Model):
@@ -18,6 +55,12 @@ class PosLiteOrder(models.Model):
     name = fields.Char(default='/', copy=False, readonly=True, tracking=True)
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
     currency_id = fields.Many2one(related='company_id.currency_id', store=True, readonly=True)
+
+    @api.model
+    def _selection_trade_channel(self):
+        """Dynamic selection mirroring marketplace.settlement.trade_channel."""
+        return _get_trade_channel_selection(self)
+
     state = fields.Selection([
         ('draft', 'Draft'),
         ('held', 'Held'),
@@ -31,6 +74,13 @@ class PosLiteOrder(models.Model):
         ('walkin', 'Walk-in'),
         ('other', 'Other'),
     ], default='phone', required=True, tracking=True)
+    trade_channel = fields.Selection(
+        selection='_selection_trade_channel',
+        string='Trade Channel',
+        help="Marketplace trade channel for settlement grouping. "
+             "Auto-mapped from POS channel when empty.",
+        tracking=True,
+    )
     customer_name = fields.Char(tracking=True)
     partner_id = fields.Many2one('res.partner', tracking=True, check_company=True)
     partner_phone = fields.Char(tracking=True)
@@ -221,6 +271,12 @@ class PosLiteOrder(models.Model):
                 vals['name'] = self.env['ir.sequence']._safe_next_by_code(
                     'pos.lite.order', 'pos.lite.order', prefix='POS',
                 )
+            # Auto-set trade_channel from POS channel when not explicitly provided.
+            # This ensures terminal orders (created via controller) also get a trade_channel.
+            if not vals.get('trade_channel') and vals.get('channel'):
+                mapped = POS_CHANNEL_TO_TRADE_CHANNEL.get(vals['channel'])
+                if mapped:
+                    vals['trade_channel'] = mapped
         orders = super().create(vals_list)
         for order in orders:
             if order.is_return:
@@ -270,6 +326,14 @@ class PosLiteOrder(models.Model):
             self.partner_invoice_id = False
             self.partner_shipping_id = False
 
+    @api.onchange('channel')
+    def _onchange_channel(self):
+        """Auto-map trade_channel from POS channel when not explicitly chosen."""
+        if self.channel and not self.trade_channel:
+            mapped = POS_CHANNEL_TO_TRADE_CHANNEL.get(self.channel)
+            if mapped:
+                self.trade_channel = mapped
+
     @api.onchange('session_id')
     def _onchange_session_id(self):
         if self.session_id:
@@ -292,7 +356,7 @@ class PosLiteOrder(models.Model):
             self.warehouse_id = config.warehouse_id
             self.pricelist_id = config.pricelist_id
 
-    # ─── Helpers ────────────────────────────────────────────────
+    #  Helpers ────────────────────────────────────────────────
 
     def _get_walk_in_partner(self):
         self.ensure_one()
@@ -382,6 +446,7 @@ class PosLiteOrder(models.Model):
             'invoice_origin': self.name,
             'invoice_payment_term_id': False,
             'journal_id': journal.id,
+            'trade_channel': self.trade_channel,
             'invoice_line_ids': line_vals,
         }
         # Link refund to the original posted invoice so reconciliation/etax
@@ -490,26 +555,8 @@ class PosLiteOrder(models.Model):
                 raise UserError(_('Only held orders can be resumed.'))
         self.write({'state': 'draft'})
 
-    def action_register_payment(self):
-        self.ensure_one()
-        if self.state not in ('draft', 'held'):
-            raise UserError(_('Only draft or held orders can receive a payment.'))
-        default_journal = self._get_default_payment_journal()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Register Payment'),
-            'res_model': 'pos.lite.payment.wizard',
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'default_order_id': self.id,
-                'default_amount': max(self.amount_residual, 0.0),
-                'default_journal_id': default_journal.id if default_journal else False,
-            },
-        }
-
     def action_quick_pay_and_process(self):
-        """One-click: register full cash payment + process order in one step."""
+        """Process order: post invoice + validate picking. No payment registration."""
         self.ensure_one()
         if self.state not in ('draft', 'held'):
             raise UserError(_('Only draft or held orders can be processed.'))
@@ -517,33 +564,6 @@ class PosLiteOrder(models.Model):
             raise UserError(_('Please add at least one order line.'))
         if self.state == 'held':
             self.write({'state': 'draft'})
-        # Check if already fully paid (use absolute values for return orders)
-        abs_total = abs(self.amount_total)
-        abs_paid = abs(self.amount_paid)
-        if float_compare(abs_paid, abs_total, precision_rounding=self.currency_id.rounding) >= 0:
-            self.action_process_order()
-            return True
-        # Create full payment automatically
-        residual = abs_total - abs_paid
-        if residual <= 0:
-            self.action_process_order()
-            return True
-        default_journal = self._get_default_payment_journal()
-        payment_amount = -abs(residual) if self.is_return else residual
-        # Payment method is configurable via context (terminal quick-pay) and
-        # falls back to 'cash' for the backend button.
-        payment_method = self.env.context.get('default_payment_method', 'cash')
-        if payment_method not in dict(
-            self.env['pos.lite.payment']._fields['payment_method'].selection
-        ):
-            payment_method = 'cash'
-        self.env['pos.lite.payment'].create({
-            'order_id': self.id,
-            'payment_method': payment_method,
-            'amount': payment_amount,
-            'journal_id': default_journal.id if default_journal else False,
-            'note': _('Quick pay'),
-        })
         self.action_process_order()
         return True
 
@@ -569,19 +589,6 @@ class PosLiteOrder(models.Model):
         self.ensure_one()
         if not self.line_ids:
             raise UserError(_('Please add at least one order line.'))
-        paid_amount = sum(self.payment_ids.mapped('amount'))
-        # Allow exchange/return without separate payment if covered
-        if not self.payment_ids:
-            if not (self.is_exchange and self.exchange_of_order_id):
-                raise UserError(_('At least one payment is required.'))
-            paid_amount = self.amount_total
-        # For return: amount_total is negative, paid_amount is negative → compare absolute values
-        abs_total = abs(self.amount_total)
-        abs_paid = abs(paid_amount)
-        if float_compare(abs_paid, abs_total, precision_rounding=self.currency_id.rounding) < 0:
-            if self.is_return:
-                raise UserError(_('Refund payment must cover the full return total.'))
-            raise UserError(_('Payment must cover the full total before processing.'))
         # Stock check (skip service + returns)
         if not self.is_return:
             for line in self.line_ids.filtered(lambda l: l.product_id.type != 'service'):
@@ -758,6 +765,7 @@ class PosLiteOrder(models.Model):
         new_order = self.create({
             'company_id': self.company_id.id,
             'channel': self.channel,
+            'trade_channel': self.trade_channel,
             'customer_name': self.customer_name,
             'partner_id': self.partner_id.id if self.partner_id else False,
             'partner_phone': self.partner_phone,

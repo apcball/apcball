@@ -10,6 +10,7 @@
                     <group string="📋 ข้อมูล Session">
                         <field name="session_id" readonly="1"/>
                         <field name="channel" widget="radio"/>
+                        <field name="trade_channel"/>
                     </group>
                     <group string="🧑‍💼 เลือกพนักงานขาย">
                         <field name="allowed_employee_ids" invisible="1"/>

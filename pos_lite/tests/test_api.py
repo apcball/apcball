@@ -140,12 +140,10 @@ class TestOrderDetailApi(TestApiBase):
         self.assertEqual(order.line_ids[0].product_id.id, self.product.id)
         self.assertEqual(order.line_ids[0].qty, 2)
 
-    def test_order_detail_has_payments(self):
-        """order_detail ต้องมี payments"""
+    def test_order_detail_has_no_payments(self):
+        """order_detail สำหรับ order ที่ process แบบไม่ register payment ต้องไม่มี payments"""
         order = self._create_done_order()
-        self.assertTrue(order.payment_ids)
-        self.assertEqual(len(order.payment_ids), 1)
-        self.assertTrue(order.payment_ids[0].amount > 0)
+        self.assertFalse(order.payment_ids)
 
     def test_order_detail_has_employee(self):
         """order_detail ต้องมี employee_name"""

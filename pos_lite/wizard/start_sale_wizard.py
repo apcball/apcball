@@ -22,6 +22,21 @@ class PosLiteStartSaleWizard(models.TransientModel):
         ('walkin', 'Walk-in'),
         ('other', 'Other'),
     ], default='walkin', required=True, string='ช่องทาง')
+    trade_channel = fields.Selection(
+        selection='_selection_trade_channel',
+        string='Trade Channel',
+        help='Marketplace trade channel for settlement grouping.',
+    )
+
+    @api.model
+    def _selection_trade_channel(self):
+        """Dynamic selection mirroring sale.order.trade_channel (injected by marketplace_settlement)."""
+        SO = self.env.get('sale.order')
+        if SO:
+            field = SO._fields.get('trade_channel')
+            if field and field.selection:
+                return field.selection
+        return []
 
     @api.depends('session_id')
     def _compute_allowed_employees(self):
@@ -54,10 +69,13 @@ class PosLiteStartSaleWizard(models.TransientModel):
             if 'channel' in fields_list and not res.get('channel'):
                 if session.current_channel:
                     res['channel'] = session.current_channel
+            if 'trade_channel' in fields_list and not res.get('trade_channel'):
+                # Leave empty - user selects manually like in SO form
+                pass
         return res
 
     def action_confirm(self):
-        """ยืนยัน → จำค่าพนักงาน+ช่องทางลง session → เปิดหน้าสร้าง order"""
+        """ยืนยัน → จำค่าพนักงาน+ช่องทาง+trade channel ลง session → เปิดหน้าสร้าง order"""
         self.ensure_one()
         if not self.employee_id:
             raise UserError(_('กรุณาเลือกพนักงานขาย'))

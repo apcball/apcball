@@ -147,7 +147,7 @@
                                     <th
                                         rowspan="2"
                                         class="text-center"
-                                        style="width: 21%;"
+                                        style="width: 18%;"
                                     >
                                         <span
                                             class="text-center"
@@ -165,7 +165,7 @@
                                     <th
                                         rowspan="2"
                                         class="text-center"
-                                        style="width: 15%;"
+                                        style="width: 13%;"
                                     >
                                         <span
                                             class="text-center"
@@ -181,6 +181,13 @@
                                         >เลขประจำตัวผู้เสียภาษีอากรของคู่ค้า</span>
                                     </th>
                                     <th
+                                        rowspan="2"
+                                        class="text-center"
+                                        style="width: 10%;"
+                                    >
+                                        Referent
+                                    </th>
+                                    <th
                                         colspan="2"
                                         class="text-center"
                                         style="width: 12%;"
@@ -190,21 +197,21 @@
                                     <th
                                         rowspan="2"
                                         class="text-center"
-                                        style="width: 12%;"
+                                        style="width: 11%;"
                                     >
                                         มูลค่าสินค้าหรือบริการ
                                     </th>
                                     <th
                                         rowspan="2"
                                         class="text-center"
-                                        style="width: 12%;"
+                                        style="width: 11%;"
                                     >
                                         จำนวนเงินภาษีมูลค่าเพิ่ม
                                     </th>
                                     <th
                                         rowspan="2"
                                         class="text-center"
-                                        style="width: 12%;"
+                                        style="width: 11%;"
                                     >
                                         รวมเงิน
                                     </th>
@@ -240,6 +247,9 @@
                                         </td>
                                         <td class="text-center">
                                             <span t-out="line['tax_invoice_number']" />
+                                        </td>
+                                        <td class="text-center">
+                                            <span t-out="line['referent']" />
                                         </td>
                                         <td>
                                             <span t-out="line['partner_name']" />
@@ -285,7 +295,7 @@
                                 </t>
                                 <tr>
                                     <th
-                                        colspan="8"
+                                        colspan="9"
                                         class="text-center"
                                         style="border-left: 1px solid black;"
                                     >
@@ -310,7 +320,7 @@
                                 <t t-if="line['row_number'] == num_results">
                                     <tr>
                                         <th
-                                            colspan="8"
+                                            colspan="9"
                                             class="text-center"
                                             style="border-left: 1px solid black;"
                                         >

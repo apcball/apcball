@@ -147,10 +147,10 @@
                             <td class="text-end"><span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
                         </tr>
                     </table>
-                    <!-- Payments -->
+                    <!-- Money records -->
                     <t t-if="o.payment_ids">
                         <div style="border-top: 1px dashed #333; padding-top: 4px; margin-bottom: 4px;">
-                            <strong>Payment:</strong>
+                            <strong>ยอดเงิน:</strong>
                         </div>
                         <t t-foreach="o.payment_ids" t-as="pay">
                             <div style="display: flex; justify-content: space-between;">
@@ -164,7 +164,7 @@
                     </t>
                     <div style="margin-top: 4px;">
                         <div style="display: flex; justify-content: space-between;">
-                            <span t-esc="'Refund Paid' if o.is_return else 'Paid'"/>
+                            <span t-esc="'Refund Recorded' if o.is_return else 'Recorded'"/>
                             <span t-field="o.amount_paid" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                         </div>
                         <div t-if="o.amount_change > 0" style="display: flex; justify-content: space-between; font-weight: bold;">
@@ -438,10 +438,10 @@
                             </div>
                         </div>
 
-                        <!-- RIGHT: Payment Breakdown -->
+                        <!-- RIGHT: Money Breakdown -->
                         <div style="flex: 1;">
                             <div class="section-box">
-                                <div class="section-header payment">💳 รายการรับชำระ (Net)</div>
+                                <div class="section-header payment">💳 ยอดเงินตามวิธี (Net)</div>
                                 <div class="section-body">
                                     <table class="sum-table">
                                         <tr class="sub-header">
@@ -469,7 +469,7 @@
                                             <td class="value-col"><span t-field="s.payment_other" t-options='{"widget": "monetary", "display_currency": s.currency_id}'/></td>
                                         </tr>
                                         <tr style="border-top: 2px solid #333; font-weight: bold;">
-                                            <td class="label-col">รวมรับชำระ</td>
+                                            <td class="label-col">รวมสุทธิ</td>
                                             <td class="value-col">
                                                 <span t-esc="s.payment_cash + s.payment_transfer + s.payment_card + s.payment_promptpay + s.payment_other"
                                                       t-options='{"widget": "monetary", "display_currency": s.currency_id}'/>

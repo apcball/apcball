@@ -9,6 +9,7 @@
                 <field name="date_order" string="Date"/>
                 <field name="state" widget="badge" decoration-success="state in ('paid','done')" decoration-warning="state == 'held'" decoration-danger="state == 'cancelled'"/>
                 <field name="channel" widget="badge"/>
+                <field name="trade_channel" widget="badge" optional="show"/>
                 <field name="partner_id"/>
                 <field name="partner_shipping_id" optional="hide" string="Delivery"/>
                 <field name="warehouse_id"/>
@@ -38,6 +39,7 @@
                 <field name="partner_phone"/>
                 <field name="warehouse_id"/>
                 <field name="channel"/>
+                <field name="trade_channel"/>
                 <field name="session_id"/>
                 <field name="employee_id"/>
                 <separator/>
@@ -59,6 +61,7 @@
                 <filter string="Has Picking" name="has_picking" domain="[('picking_id', '!=', False)]"/>
                 <group expand="0" string="Group By">
                     <filter string="Channel" name="group_channel" context="{'group_by': 'channel'}"/>
+                    <filter string="Trade Channel" name="group_trade_channel" context="{'group_by': 'trade_channel'}"/>
                     <filter string="Warehouse" name="group_warehouse" context="{'group_by': 'warehouse_id'}"/>
                     <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
                     <filter string="Session" name="group_session" context="{'group_by': 'session_id'}"/>
@@ -76,9 +79,7 @@
             <form string="POS Lite Order">
                 <header>
                     <!-- Draft/Held actions -->
-                    <button name="action_quick_pay_and_process" type="object" string="Pay &amp; Process" class="oe_highlight" invisible="state not in ('draft', 'held')" groups="pos_lite.group_pos_lite_user"/>
-                    <button name="action_register_payment" type="object" string="Payment" class="btn-secondary" invisible="state not in ('draft', 'held')"/>
-                    <button name="action_process_order" type="object" string="Process" invisible="state != 'draft'" groups="pos_lite.group_pos_lite_user"/>
+                    <button name="action_quick_pay_and_process" type="object" string="Process" class="oe_highlight" invisible="state not in ('draft', 'held')" groups="pos_lite.group_pos_lite_user"/>
                     <button name="action_hold" type="object" string="Hold" invisible="state != 'draft'"/>
                     <button name="action_resume" type="object" string="Resume" class="oe_highlight" invisible="state != 'held'"/>
                     <!-- Paid actions -->
@@ -120,9 +121,9 @@
                                 <span class="o_stat_text">Exchanges</span>
                             </div>
                         </button>
-                        <button name="action_view_payments" type="object" class="oe_stat_button" icon="fa-money" invisible="state == 'draft'">
+                        <button name="action_view_payments" type="object" class="oe_stat_button" icon="fa-money" invisible="not payment_ids">
                             <div class="o_stat_info">
-                                <span class="o_stat_text">Payments</span>
+                                <span class="o_stat_text">Refund Records</span>
                             </div>
                         </button>
                     </div>
@@ -153,6 +154,7 @@
                     <group col="2" colspan="2">
                         <group string="Order Info">
                             <field name="channel"/>
+                            <field name="trade_channel"/>
                             <field name="date_order" readonly="state != 'draft'"/>
                             <field name="warehouse_id" options="{'no_create': True}"/>
                             <field name="pricelist_id"/>
@@ -246,7 +248,7 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="Payments" invisible="state == 'draft' and not payment_ids">
+                        <page string="Refund Records" invisible="not payment_ids">
                             <field name="payment_ids" nolabel="1">
                                 <tree editable="bottom" readonly="state not in ('draft', 'held')">
                                     <field name="state" invisible="1"/>

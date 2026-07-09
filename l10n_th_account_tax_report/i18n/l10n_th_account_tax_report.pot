@@ -534,6 +534,11 @@ msgid "Number"
 msgstr ""
 
 #. module: l10n_th_account_tax_report
+#: model_terms:ir.ui.view,arch_db:l10n_th_account_tax_report.report_tax_report_lines_header
+msgid "Referent"
+msgstr ""
+
+#. module: l10n_th_account_tax_report
 #: model:ir.model.fields.selection,name:l10n_th_account_tax_report.selection__withholding_tax_report_wizard__income_tax_form__pnd1
 msgid "PND1"
 msgstr ""

@@ -44,6 +44,7 @@ class TestTaxReport(AccountTestInvoicingCommon):
             }
         )
         cls.bill.action_post()
+        cls.bill_document_name = cls.bill.name
 
         cls.tax_purchase_report_wizard = cls.tax_report_wizard.create(
             {
@@ -59,10 +60,17 @@ class TestTaxReport(AccountTestInvoicingCommon):
             partner=cls.env.ref("base.res_partner_1"),
             invoice_date=cls.date_range.date_end,
             products=cls.env.ref("product.product_product_7"),
-            post=True,
             amounts=[100.0],
             taxes=cls.tax_sale_a,
         )
+        cls.invoice.tax_invoice_ids.write(
+            {
+                "tax_invoice_number": "SALE-TAX-001",
+                "tax_invoice_date": cls.date_range.date_end,
+            }
+        )
+        cls.invoice.action_post()
+        cls.invoice_document_name = cls.invoice.name
 
         cls.tax_sale_report_wizard = cls.tax_report_wizard.create(
             {
@@ -99,6 +107,20 @@ class TestTaxReport(AccountTestInvoicingCommon):
             report["report_name"],
             f"l10n_th_account_tax_report.report_thai_tax/{self.tax_purchase_report_wizard.id}",
         )
+        rendered_html = self.env.ref(
+            "l10n_th_account_tax_report.action_print_report_thai_tax_html"
+        )._render_qweb_html(self.tax_purchase_report_wizard.ids, data=report["data"])
+        rendered_html = (
+            rendered_html[0] if isinstance(rendered_html, tuple) else rendered_html
+        )
+        rendered_html = (
+            rendered_html.decode()
+            if isinstance(rendered_html, bytes)
+            else rendered_html
+        )
+        self.assertIn("TEST", rendered_html)
+        self.assertIn("Referent", rendered_html)
+        self.assertIn(self.bill_document_name, rendered_html)
 
     def test_02_button_export_pdf_std(self):
         # Check data query, it should have data
@@ -111,6 +133,10 @@ class TestTaxReport(AccountTestInvoicingCommon):
 
         # Get data query tax is 1
         self.assertEqual(len(res_data["tax_report_data"]), 1)
+        self.assertEqual(res_data["tax_report_data"][0]["tax_invoice_number"], "TEST")
+        self.assertEqual(
+            res_data["tax_report_data"][0]["referent"], self.bill_document_name
+        )
         self.assertEqual(res_data["tax_report_format"], "std")
         self.assertEqual(report["name"], "Thai TAX Report")
         self.assertEqual(report["report_type"], "qweb-pdf")
@@ -118,6 +144,19 @@ class TestTaxReport(AccountTestInvoicingCommon):
             report["report_name"],
             f"l10n_th_account_tax_report.report_thai_tax/{self.tax_purchase_report_wizard.id}",
         )
+        rendered_html = self.env.ref(
+            "l10n_th_account_tax_report.action_print_report_thai_tax_html"
+        )._render_qweb_html(self.tax_purchase_report_wizard.ids, data=report["data"])
+        rendered_html = (
+            rendered_html[0] if isinstance(rendered_html, tuple) else rendered_html
+        )
+        rendered_html = (
+            rendered_html.decode()
+            if isinstance(rendered_html, bytes)
+            else rendered_html
+        )
+        self.assertIn("TEST", rendered_html)
+        self.assertIn(self.bill_document_name, rendered_html)
 
     def test_03_button_export_pdf_rd(self):
         # Check change config standard to rd
@@ -130,6 +169,10 @@ class TestTaxReport(AccountTestInvoicingCommon):
 
         # Get data query tax is 1
         self.assertEqual(len(res_data["tax_report_data"]), 1)
+        self.assertEqual(res_data["tax_report_data"][0]["tax_invoice_number"], "TEST")
+        self.assertEqual(
+            res_data["tax_report_data"][0]["referent"], self.bill_document_name
+        )
         self.assertEqual(res_data["tax_report_format"], "rd")
         self.assertEqual(report["name"], "Thai TAX Report (RD)")
         self.assertEqual(report["report_type"], "qweb-pdf")
@@ -137,6 +180,19 @@ class TestTaxReport(AccountTestInvoicingCommon):
             report["report_name"],
             f"l10n_th_account_tax_report.report_rd_thai_tax/{self.tax_purchase_report_wizard.id}",
         )
+        rendered_html = self.env.ref(
+            "l10n_th_account_tax_report.action_print_report_rd_thai_tax_html"
+        )._render_qweb_html(self.tax_purchase_report_wizard.ids, data=report["data"])
+        rendered_html = (
+            rendered_html[0] if isinstance(rendered_html, tuple) else rendered_html
+        )
+        rendered_html = (
+            rendered_html.decode()
+            if isinstance(rendered_html, bytes)
+            else rendered_html
+        )
+        self.assertIn("TEST", rendered_html)
+        self.assertIn(self.bill_document_name, rendered_html)
 
         # Check file download should name tax + date
         report_name = self.tax_purchase_report_wizard._get_report_base_filename()
@@ -155,7 +211,19 @@ class TestTaxReport(AccountTestInvoicingCommon):
         )
         self.assertEqual(dict_format, ["มกราคม", "2544"])
 
-    def test_04_button_export_xlsx_purchase_vat(self):
+    def test_04_report_values_sale_referent(self):
+        report = self.tax_sale_report_wizard.button_export_pdf()
+        res_data = self.env[
+            "report.l10n_th_account_tax_report.report_thai_tax"
+        ]._get_report_values(self.tax_sale_report_wizard.ids, report["data"])
+
+        self.assertEqual(len(res_data["tax_report_data"]), 1)
+        self.assertEqual(res_data["tax_report_data"][0]["tax_invoice_number"], "SALE-TAX-001")
+        self.assertEqual(
+            res_data["tax_report_data"][0]["referent"], self.invoice_document_name
+        )
+
+    def test_05_button_export_xlsx_purchase_vat(self):
         # Test onchange date range
         self.assertEqual(
             self.tax_purchase_report_wizard.date_from, self.date_range.date_start
@@ -201,8 +269,27 @@ class TestTaxReport(AccountTestInvoicingCommon):
         model.create_xlsx_report(
             self.tax_purchase_report_wizard.ids, data=report["data"]
         )
+        self.assertEqual(
+            model._get_tax_template()["3_tax_invoice"]["data"]["value"],
+            model._render("tax_invoice_number"),
+        )
+        self.assertIn("4_referent", model._get_tax_template())
+        render_space = model._get_render_space(
+            {
+                "row_number": 1,
+                "tax_date": "31/01/2001",
+                "tax_invoice_number": "TEST",
+                "referent": self.bill_document_name,
+                "partner_name": self.bill.partner_id.display_name,
+                "partner_vat": self.bill.partner_id.vat,
+                "partner_branch": self.bill.partner_id.branch or "00000",
+                "tax_base_amount": 100.0,
+                "tax_amount": 7.0,
+            }
+        )
+        self.assertEqual(render_space["referent"], self.bill_document_name)
 
-    def test_05_button_export_xlsx_sale_vat(self):
+    def test_06_button_export_xlsx_sale_vat(self):
         # generate xlsx (Sale Vat)
         report = self.tax_sale_report_wizard.button_export_xlsx()
 
@@ -222,3 +309,8 @@ class TestTaxReport(AccountTestInvoicingCommon):
         model.create_xlsx_report(
             self.tax_purchase_report_wizard.ids, data=report["data"]
         )
+        sale_data = self.env[
+            "report.l10n_th_account_tax_report.report_thai_tax"
+        ]._get_report_values(self.tax_sale_report_wizard.ids, report["data"])
+        render_space = model._get_render_space(sale_data["tax_report_data"][0])
+        self.assertEqual(render_space["referent"], self.invoice_document_name)

@@ -10,7 +10,6 @@ _HANDLED_EXCEPTIONS = (UserError, ValidationError, MissingError, AccessError)
 # Field whitelists for controller-built O2M commands — defend against field
 # injection from the terminal client (no state/company_id/is_return/etc.).
 _ORDER_LINE_FIELDS = ('product_id', 'description', 'qty', 'price_unit', 'discount', 'discount_type')
-_PAYMENT_FIELDS = ('payment_method', 'amount', 'journal_id', 'reference', 'note', 'payment_date')
 
 
 def _sanitize_o2m_payload(raw, allowed_fields):
@@ -240,17 +239,17 @@ class PosLiteController(http.Controller):
                 'partner_phone': data.get('partner_phone', ''),
                 'partner_address': data.get('partner_address', ''),
                 'channel': data.get('channel', 'walkin'),
+                'trade_channel': data.get('trade_channel'),
                 'note': data.get('note', ''),
                 'warehouse_id': wh_id,
                 'pricelist_id': pricelist_id,
                 'session_id': session_id or False,
                 'employee_id': int(employee_id) if employee_id else False,
                 'line_ids': _sanitize_o2m_payload(data.get('line_ids'), _ORDER_LINE_FIELDS),
-                'payment_ids': _sanitize_o2m_payload(data.get('payment_ids'), _PAYMENT_FIELDS),
             }
 
             order = request.env['pos.lite.order'].create(order_vals)
-            order.action_quick_pay_and_process()
+            order.action_process_order()
             return {'success': True, 'order_id': order.id, 'name': order.name}
         except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
@@ -372,6 +371,7 @@ class PosLiteController(http.Controller):
                 'partner_phone': original.partner_phone,
                 'partner_address': original.partner_address,
                 'channel': original.channel,
+                'trade_channel': original.trade_channel,
                 'session_id': data.get('session_id') or original.session_id.id,
                 'employee_id': data.get('employee_id') or original.employee_id.id,
                 'warehouse_id': original.warehouse_id.id or data.get('warehouse_id'),
@@ -412,7 +412,7 @@ class PosLiteController(http.Controller):
             }])
 
             order = request.env['pos.lite.order'].create(return_vals)
-            order.action_quick_pay_and_process()
+            order.action_process_order()
             return {'success': True, 'order_id': order.id, 'name': order.name}
         except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}

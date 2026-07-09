@@ -1,5 +1,5 @@
 """Additional tests covering constraints, state transitions, cancel, reorder,
-payment wizard, config, and name_search overrides."""
+config, and name_search overrides."""
 
 from odoo.tests import common, tagged
 from odoo.exceptions import UserError, ValidationError
@@ -340,61 +340,6 @@ class TestReorder(TestAdditionalBase):
             order.action_reorder()
 
 
-# ─── Payment Wizard ─────────────────────────────────────────
-
-@tagged('-at_install', 'post_install')
-class TestPaymentWizard(TestAdditionalBase):
-    """Test pos.lite.payment.wizard."""
-
-    def test_wizard_confirm_creates_payment(self):
-        order = self._draft_order()
-        wizard = self.env['pos.lite.payment.wizard'].create({
-            'order_id': order.id,
-            'payment_method': 'cash',
-            'amount': 100.0,
-            'journal_id': self.cash_journal.id,
-            'auto_process': True,
-        })
-        wizard.action_confirm()
-        self.assertEqual(order.state, 'done')
-        self.assertTrue(order.payment_ids)
-
-    def test_wizard_zero_amount_raises(self):
-        order = self._draft_order()
-        with self.assertRaises(ValidationError):
-            self.env['pos.lite.payment.wizard'].create({
-                'order_id': order.id,
-                'payment_method': 'cash',
-                'amount': 0.0,
-                'journal_id': self.cash_journal.id,
-            })
-
-    def test_wizard_non_draft_raises(self):
-        order = self._process_order()
-        with self.assertRaises(UserError):
-            wizard = self.env['pos.lite.payment.wizard'].create({
-                'order_id': order.id,
-                'payment_method': 'cash',
-                'amount': 100.0,
-                'journal_id': self.cash_journal.id,
-            })
-            wizard.action_confirm()
-
-    def test_wizard_held_order_resumes(self):
-        order = self._draft_order()
-        order.action_hold()
-        self.assertEqual(order.state, 'held')
-        wizard = self.env['pos.lite.payment.wizard'].create({
-            'order_id': order.id,
-            'payment_method': 'cash',
-            'amount': 100.0,
-            'journal_id': self.cash_journal.id,
-            'auto_process': True,
-        })
-        wizard.action_confirm()
-        self.assertEqual(order.state, 'done')
-
-
 # ─── Config ─────────────────────────────────────────────────
 
 @tagged('-at_install', 'post_install')
@@ -714,18 +659,6 @@ class TestOrderOnchange(TestAdditionalBase):
                 })],
             })
 
-    def test_register_payment_action(self):
-        order = self._draft_order()
-        action = order.action_register_payment()
-        self.assertEqual(action['res_model'], 'pos.lite.payment.wizard')
-        self.assertEqual(action['type'], 'ir.actions.act_window')
-
-    def test_register_payment_non_draft_raises(self):
-        order = self._process_order()
-        with self.assertRaises(UserError):
-            order.action_register_payment()
-
-
 # ─── Stock Check ────────────────────────────────────────────
 
 @tagged('-at_install', 'post_install')
@@ -789,7 +722,7 @@ class TestQuickPayEdgeCases(TestAdditionalBase):
             order.action_quick_pay_and_process()
 
     def test_quick_pay_with_partial_payment(self):
-        """มี partial payment แล้ว → quick pay เติมส่วนที่เหลือ"""
+        """มี partial payment แล้ว → quick pay ไม่สร้าง payment เพิ่ม"""
         order = self._draft_order([(self.product_svc.id, 1, 100.0)])
         self.env['pos.lite.payment'].create({
             'order_id': order.id,
@@ -800,4 +733,4 @@ class TestQuickPayEdgeCases(TestAdditionalBase):
         result = order.action_quick_pay_and_process()
         self.assertTrue(result)
         self.assertEqual(order.state, 'done')
-        self.assertEqual(len(order.payment_ids), 2)
+        self.assertEqual(len(order.payment_ids), 1)

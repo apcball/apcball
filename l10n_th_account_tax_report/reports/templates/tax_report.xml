@@ -96,6 +96,7 @@
                 <div class="act_as_cell">#</div>
                 <div class="act_as_cell">Date</div>
                 <div class="act_as_cell">Number</div>
+                <div class="act_as_cell">Referent</div>
                 <div class="act_as_cell">Cust./Sup.</div>
                 <div class="act_as_cell">Tax ID</div>
                 <div class="act_as_cell">Branch ID</div>
@@ -116,6 +117,9 @@
             </div>
             <div class="act_as_cell left">
                 <t t-out="line['tax_invoice_number']" />
+            </div>
+            <div class="act_as_cell left">
+                <t t-out="line['referent']" />
             </div>
             <div class="act_as_cell left">
                 <t t-out="line['partner_name']" />
@@ -140,6 +144,7 @@
 
     <template id="report_tax_report_total_lines">
         <div class="act_as_row totals_table">
+            <div class="act_as_cell" />
             <div class="act_as_cell" />
             <div class="act_as_cell" />
             <div class="act_as_cell" />

@@ -25,7 +25,7 @@ class PosLiteConfig(models.Model):
         'account.journal',
         required=True,
         domain="[('type', 'in', ('cash', 'bank')), ('company_id', '=', company_id)]",
-        help='Default cash/bank journal for POS Lite payments',
+        help='Default cash/bank journal for POS Lite refund records',
         check_company=True,
     )
     branch_number = fields.Char(

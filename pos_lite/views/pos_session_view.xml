@@ -252,13 +252,13 @@
                             </div>
                         </div>
 
-                        <!-- Right: Payment Breakdown -->
+                        <!-- Right: Money Breakdown -->
                         <div class="col-lg-4">
                             <div class="card shadow-sm mb-3">
                                 <div class="card-header bg-light">
                                     <h5 class="card-title mb-0">
                                         <i class="fa fa-credit-card me-2"/>
-                                        ช่องทางการชำระ
+                                        ยอดตามวิธี
                                     </h5>
                                 </div>
                                 <div class="card-body">
