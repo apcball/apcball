@@ -1,130 +1,89 @@
-from odoo import models, fields, api, _
+from odoo import _, models
 from odoo.exceptions import UserError
+from odoo.tools.float_utils import float_compare
 
 
 class StockMove(models.Model):
     _inherit = 'stock.move'
 
-    # -------------------------------------------------------------------------
-    # Helper – manual reserve on a specific stock.move
-    # -------------------------------------------------------------------------
-    def action_manual_reserve(self, reserve_qty=None):
-        """
-        Manually reserve a specific quantity for this move.
-        If reserve_qty is None, reserve the full demand (product_uom_qty).
-        Works by creating/updating stock.move.line records.
-        """
+    def _reserve_manager_reserved_qty(self):
         self.ensure_one()
-        if self.state in ('done', 'cancel'):
-            raise UserError(_("Cannot reserve a move that is already done or cancelled."))
+        return sum(self.move_line_ids.mapped('quantity'))
 
-        already_reserved = sum(self.move_line_ids.mapped('quantity'))
-        remaining_demand = self.product_uom_qty - already_reserved
-
-        if remaining_demand <= 0:
-            raise UserError(_("No quantity to reserve (already fully reserved)."))
-
-        qty = reserve_qty if reserve_qty is not None else remaining_demand
-        qty = min(qty, remaining_demand)
-
-        if qty <= 0:
-            raise UserError(_("No quantity to reserve (already fully reserved)."))
-
-        available_qty = self._get_available_qty()
-        reserve_qty = min(qty, available_qty)
-
-        if reserve_qty <= 0:
-            raise UserError(_("No stock available to reserve for product '%s'.") % self.product_id.display_name)
-
-        # Create a stock.move.line to represent the manual reservation
-        # Try to find an existing SML for this move
-        existing_sml = self.move_line_ids.filtered(
-            lambda l: l.location_id == self.location_id
-            and l.location_dest_id == self.location_dest_id
-            and not l.lot_id
-        )[:1]
-
-        if existing_sml:
-            existing_sml.write({
-                'quantity': existing_sml.quantity + reserve_qty,
-                'product_uom_id': self.product_uom.id,
-            })
-        else:
-            self.env['stock.move.line'].create({
-                'move_id': self.id,
-                'product_id': self.product_id.id,
-                'product_uom_id': self.product_uom.id,
-                'quantity': reserve_qty,
-                'location_id': self.location_id.id,
-                'location_dest_id': self.location_dest_id.id,
-                'picking_id': self.picking_id.id,
-                'state': 'assigned',
-            })
-
-        # Recompute move state
-        self._recompute_state()
-
-        return reserve_qty
-
-    def action_unreserve_single(self):
-        """
-        Unreserve this specific stock move entirely.
-        """
+    def _reserve_manager_reserve_state(self):
         self.ensure_one()
-        if self.state not in ('assigned', 'partially_available'):
-            raise UserError(
-                _("Move '%s' cannot be unreserved: state is '%s'.")
-                % (self.display_name, self.state)
-            )
+        reserved_qty = self._reserve_manager_reserved_qty()
+        if not reserved_qty:
+            return 'none'
+        if float_compare(
+            reserved_qty,
+            self.product_uom_qty,
+            precision_rounding=self.product_uom.rounding,
+        ) >= 0:
+            return 'full'
+        return 'partial'
 
-        # Snapshot reserved qty before unreserving
-        reserved_qtys = {}
-        for ml in self.move_line_ids:
-            qty = ml.quantity
-            if qty:
-                reserved_qtys[ml.product_id] = reserved_qtys.get(ml.product_id, 0.0) + qty
-
-        # Call Odoo standard unreserve
-        self._do_unreserve()
-
-        # Write audit log (reuse stock.unreserve.log if available, else create our own)
-        self._log_unreserve(reserved_qtys, 'manual')
-
-        return True
-
-    def _get_available_qty(self):
-        """Get available stock quantity for this product/location."""
+    def _reserve_manager_available_qty(self):
         self.ensure_one()
         return self.env['stock.quant']._get_available_quantity(
             self.product_id,
             self.location_id,
         )
 
-    def _log_unreserve(self, product_qtys, unreserve_type='manual'):
-        """Write unreserve audit log."""
-        log_model = self.env.get('stock.unreserve.log')
-        if not log_model:
-            return
+    def _reserve_manager_snapshot(self):
+        self.ensure_one()
+        return {
+            'reserved_qty': self._reserve_manager_reserved_qty(),
+            'available_qty': self._reserve_manager_available_qty(),
+            'move_state': self.state,
+            'reserve_state': self._reserve_manager_reserve_state(),
+        }
 
-        log_vals = []
-        for product, qty in product_qtys.items():
-            log_vals.append({
-                'user_id': self.env.uid,
-                'picking_id': self.picking_id.id if self.picking_id else False,
-                'product_id': product.id,
-                'qty': qty,
-                'type': unreserve_type,
-                'reason': 'Reserve Manager - Single Unreserve',
-            })
+    def action_reserve_for_manager(self):
+        self.ensure_one()
+        if self.state in ('done', 'cancel'):
+            raise UserError(_("Cannot reserve a move that is already done or cancelled."))
+        before_reserved = self._reserve_manager_reserved_qty()
+        self._action_assign()
+        return before_reserved, self._reserve_manager_reserved_qty()
+    def action_unreserve_for_manager(self, unreserve_type='picking', reason=None):
+        self.ensure_one()
+        if self.state in ('done', 'cancel'):
+            raise UserError(_("Cannot unreserve a move that is already done or cancelled."))
 
-        if not log_vals:
-            log_vals.append({
-                'user_id': self.env.uid,
-                'picking_id': self.picking_id.id if self.picking_id else False,
-                'product_id': self.product_id.id,
-                'qty': 0.0,
-                'type': unreserve_type,
-                'reason': 'No reserved qty found (Reserve Manager)',
-            })
+        reserved_per_product = {}
+        for move_line in self.move_line_ids:
+            qty = move_line.quantity or 0.0
+            if qty:
+                reserved_per_product[move_line.product_id.id] = (
+                    reserved_per_product.get(move_line.product_id.id, 0.0) + qty
+                )
 
-        log_model.create(log_vals)
+        before_reserved = self._reserve_manager_reserved_qty()
+        self._do_unreserve()
+
+        log_model = self.env.registry.models.get('stock.unreserve.log')
+        if log_model:
+            log_vals = []
+            log_reason = reason or _('Reserve Manager')
+            for product_id, qty in reserved_per_product.items():
+                log_vals.append({
+                    'user_id': self.env.uid,
+                    'picking_id': self.picking_id.id if self.picking_id else False,
+                    'product_id': product_id,
+                    'qty': qty,
+                    'type': unreserve_type,
+                    'reason': log_reason,
+                })
+            if not log_vals:
+                log_vals.append({
+                    'user_id': self.env.uid,
+                    'picking_id': self.picking_id.id if self.picking_id else False,
+                    'product_id': self.product_id.id,
+                    'qty': 0.0,
+                    'type': unreserve_type,
+                    'reason': reason or _('Reserve Manager'),
+                })
+            self.env['stock.unreserve.log'].sudo().create(log_vals)
+
+        return before_reserved, self._reserve_manager_reserved_qty()

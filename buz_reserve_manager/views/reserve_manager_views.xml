@@ -1,166 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
-    <!-- ================================================================
-         Reserve Manager – Form View (Main Dashboard)
-    ================================================================ -->
     <record id="view_buz_reserve_manager_form" model="ir.ui.view">
         <field name="name">buz.reserve.manager.form</field>
         <field name="model">buz.reserve.manager</field>
         <field name="arch" type="xml">
             <form string="Reserve Manager">
                 <header>
-                    <button name="action_load_lines"
-                            string="Load Reservation Lines"
-                            type="object"
-                            class="btn-primary"
-                            icon="fa-search"
-                            data-hotkey="l"/>
-                    <button name="action_reload"
-                            string="Reload"
-                            type="object"
-                            class="btn-secondary"
-                            icon="fa-refresh"
-                            invisible="state != 'loaded'"/>
-                    <button name="action_clear_lines"
-                            string="Clear"
-                            type="object"
-                            class="btn-secondary"
-                            icon="fa-eraser"
-                            invisible="state != 'loaded'"/>
-                    <button name="action_unreserve_all"
-                            string="Unreserve All"
-                            type="object"
-                            class="btn-warning"
-                            icon="fa-undo"
-                            invisible="state != 'loaded'"
-                            confirm="This will unreserve ALL lines shown. Continue?"/>
+                    <button name="action_load_lines" string="Load" type="object" class="btn-primary" icon="fa-search"/>
+                    <button name="action_clear_lines" string="Clear" type="object" class="btn-secondary" invisible="state != 'loaded'"/>
+                    <button name="action_apply_schedule" string="Apply Schedule" type="object" class="btn-primary" invisible="state != 'loaded'"/>
+                    <button name="action_clear_schedule" string="Clear Schedule" type="object" class="btn-secondary" invisible="state != 'loaded'"/>
+                    <button name="action_reserve_all" string="Reserve All" type="object" class="btn-success" invisible="state != 'loaded'"/>
+                    <button name="action_unreserve_all" string="Unreserve All" type="object" class="btn-warning" invisible="state != 'loaded'" confirm="This will unreserve ALL lines shown. Continue?"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,loaded"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
                         <h1>Reserve Manager</h1>
                     </div>
-                    <group>
-                        <group string="Filters">
-                            <group>
-                                <field name="warehouse_id"
-                                       options="{'no_create': True}"
-                                       placeholder="All Warehouses"/>
-                            </group>
-                            <group string="Date Range">
-                                <field name="date_from" placeholder="Start Date"/>
-                                <field name="date_to" placeholder="End Date"/>
-                            </group>
-                            <group string="Products">
-                                <field name="product_ids"
-                                       widget="many2many_tags"
-                                       placeholder="Select Products (optional)"/>
-                            </group>
-                            <group string="Sale Orders (Optional)"
-                                   groups="base.group_user">
-                                <field name="sale_order_ids"
-                                       widget="many2many_tags"
-                                       placeholder="Leave empty to search all Sale Orders"/>
-                            </group>
-                        </group>
+                    <group col="4" string="Filters">
+                        <field name="company_id" options="{'no_create': True}"/>
+                        <field name="warehouse_id" options="{'no_create': True}"/>
+                        <field name="partner_id" options="{'no_create': True}"/>
+                        <field name="reservation_status"/>
+                        <field name="sale_order_ids" widget="many2many_tags" colspan="2"/>
+                        <field name="product_ids" widget="many2many_tags" colspan="2"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
                     </group>
-
-                    <div class="alert alert-info" role="alert"
-                         invisible="state != 'draft'">
-                        <i class="fa fa-info-circle me-2"/>
-                        Set your filter criteria above, then click
-                        <strong>"Load Reservation Lines"</strong> to display data.
+                    <group col="4" string="Reservation Policy" invisible="state != 'loaded'">
+                        <field name="reservation_horizon_days"/>
+                        <field name="force_reservation_override"/>
+                        <div class="text-muted" colspan="2">
+                            Paid orders or forced sessions can lock stock even if the delivery date is beyond the horizon.
+                        </div>
+                    </group>
+                    <group col="4" string="Schedule" invisible="state != 'loaded'">
+                        <field name="bulk_action"/>
+                        <field name="bulk_action_at"/>
+                        <div class="text-muted" colspan="2">
+                            Apply the selected action and time to the loaded lines, then let cron or Run Due execute it.
+                        </div>
+                    </group>
+                    <div class="alert alert-info" role="alert" invisible="state != 'draft'">
+                        Set your filters and click <strong>Load</strong>. Paid orders can lock stock immediately; long-dated orders need a force override in this session.
                     </div>
-
-                    <!-- Summary Bar -->
-                    <group string="Summary" col="4"
-                           invisible="state != 'loaded'">
+                    <group string="Summary" col="4" invisible="state != 'loaded'">
                         <field name="line_count" string="Lines" widget="statinfo"/>
                         <field name="summary_demand_qty" string="Total Demand" widget="statinfo"/>
                         <field name="summary_reserved_qty" string="Total Reserved" widget="statinfo"/>
                         <field name="summary_available_qty" string="Total Available" widget="statinfo"/>
                     </group>
-
-                    <!-- Reservation Lines Tree -->
-                    <field name="line_ids"
-                           invisible="state != 'loaded'"
-                           nolabel="1">
-                        <tree string="Reservation Lines"
-                              editable="false"
-                              multi_edit="1"
-                              default_order="scheduled_date asc">
-                            <field name="sale_order_id" string="Sale Order"
-                                   optional="show"/>
-                            <field name="product_id" string="Product"/>
-                            <field name="origin" string="Origin" optional="show"/>
-                            <field name="demand_qty" string="Demand"
-                                   sum="Total Demand" digits="[16,2]"/>
-                            <field name="reserved_qty" string="Reserved"
-                                   sum="Total Reserved" digits="[16,2]"/>
-                            <field name="available_qty" string="Available"
-                                   sum="Total Available" digits="[16,2]"/>
-                            <field name="scheduled_date" string="Scheduled"
-                                   optional="show"/>
-                            <field name="reserve_state" string="Status"
-                                   widget="badge" decoration-success="reserve_state == 'full'"
+                    <field name="line_ids" invisible="state != 'loaded'" nolabel="1">
+                        <tree string="Reservation Lines" default_order="scheduled_action_at asc, scheduled_date asc" create="0" edit="0">
+                            <field name="sale_order_id"/>
+                            <field name="picking_id" optional="show"/>
+                            <field name="product_id"/>
+                            <field name="move_state"/>
+                            <field name="origin" optional="show"/>
+                            <field name="demand_qty" sum="Total Demand"/>
+                            <field name="reserved_qty" sum="Total Reserved"/>
+                            <field name="available_qty" sum="Total Available"/>
+                            <field name="scheduled_date" optional="show"/>
+                            <field name="reserve_policy_state" widget="badge"
+                                   decoration-success="reserve_policy_state == 'allowed'"
+                                   decoration-warning="reserve_policy_state == 'paid'"
+                                   decoration-danger="reserve_policy_state == 'blocked'"/>
+                            <field name="reserve_policy_message" optional="show"/>
+                            <field name="scheduled_action" optional="show"/>
+                            <field name="scheduled_action_at" optional="show"/>
+                            <field name="scheduled_action_state" widget="badge" optional="show"
+                                   decoration-success="scheduled_action_state == 'done'"
+                                   decoration-info="scheduled_action_state == 'running'"
+                                   decoration-warning="scheduled_action_state == 'pending'"
+                                   decoration-danger="scheduled_action_state == 'failed'"/>
+                            <field name="scheduled_action_message" optional="show"/>
+                            <field name="reserve_state" widget="badge"
+                                   decoration-success="reserve_state == 'full'"
                                    decoration-warning="reserve_state == 'partial'"
                                    decoration-danger="reserve_state == 'none'"/>
-                            <!-- Action Buttons -->
-                            <button name="action_reserve"
-                                    string="Reserve"
-                                    type="object"
-                                    class="btn-success"
-                                    icon="fa-check"
-                                    invisible="reserve_state == 'full'"/>
-                            <button name="action_unreserve"
-                                    string="Unreserve"
-                                    type="object"
-                                    class="btn-secondary"
-                                    icon="fa-undo"
-                                    invisible="reserve_state == 'none'"
-                                    confirm="Unreserve this line? Stock will be released."/>
-                            <button name="action_unreserve_by_so"
-                                    string="Unreserve (SO)"
-                                    type="object"
-                                    class="btn-warning"
-                                    icon="fa-undo"
-                                    invisible="reserve_state == 'none'"
-                                    confirm="Unreserve ALL lines for this Sale Order? Stock will be released."/>
+                            <button name="action_reserve" string="Reserve" type="object" class="btn-success"
+                                    invisible="reserve_state == 'full' or move_state in ('done', 'cancel') or reserve_policy_state == 'blocked'"/>
+                            <button name="action_unreserve" string="Unreserve" type="object" class="btn-warning"
+                                    invisible="reserve_state == 'none' or move_state in ('done', 'cancel')"
+                                    confirm="Unreserve this move?"/>
+                            <button name="action_open_sale_order" string="SO" type="object" class="btn-secondary"/>
+                            <button name="action_open_picking" string="Delivery" type="object" class="btn-secondary"/>
                         </tree>
                     </field>
                 </sheet>
-                <footer>
-                    <div class="text-muted small">
-                        <i class="fa fa-lightbulb-o me-1"/>
-                        Select lines and use inline buttons to Reserve / Unreserve.
-                    </div>
-                </footer>
             </form>
         </field>
     </record>
 
-    <!-- ================================================================
-         Reserve Manager – Tree View
-    ================================================================ -->
     <record id="view_buz_reserve_manager_tree" model="ir.ui.view">
         <field name="name">buz.reserve.manager.tree</field>
         <field name="model">buz.reserve.manager</field>
         <field name="arch" type="xml">
             <tree string="Reserve Managers" default_order="create_date desc">
                 <field name="name"/>
-                <field name="state" widget="badge"
-                       decoration-success="state == 'loaded'"/>
+                <field name="company_id" optional="show"/>
+                <field name="warehouse_id" optional="show"/>
+                <field name="reservation_status" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'loaded'"/>
                 <field name="line_count" string="Lines"/>
                 <field name="create_date" string="Created"/>
-                <field name="create_uid" string="Created By"/>
+                <field name="create_uid" string="Created By" optional="show"/>
             </tree>
         </field>
     </record>
 
-    <!-- ================================================================
-         Reserve Manager – Search View
-    ================================================================ -->
     <record id="view_buz_reserve_manager_search" model="ir.ui.view">
         <field name="name">buz.reserve.manager.search</field>
         <field name="model">buz.reserve.manager</field>
@@ -168,20 +117,25 @@
             <search string="Search Reserve Manager">
                 <field name="name"/>
                 <field name="sale_order_ids"/>
+                <field name="partner_id"/>
                 <field name="product_ids"/>
+                <field name="warehouse_id"/>
+                <field name="reservation_status"/>
+                <field name="force_reservation_override"/>
                 <filter name="filter_draft" string="Draft" domain="[('state','=','draft')]"/>
                 <filter name="filter_loaded" string="Loaded" domain="[('state','=','loaded')]"/>
+                <filter name="filter_full" string="Fully Reserved" domain="[('reservation_status','=','full')]"/>
+                <filter name="filter_partial" string="Partially Reserved" domain="[('reservation_status','=','partial')]"/>
                 <group expand="0" string="Group By">
                     <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+                    <filter name="group_company" string="Company" context="{'group_by': 'company_id'}"/>
+                    <filter name="group_warehouse" string="Warehouse" context="{'group_by': 'warehouse_id'}"/>
                     <filter name="group_user" string="Created By" context="{'group_by': 'create_uid'}"/>
                 </group>
             </search>
         </field>
     </record>
 
-    <!-- ================================================================
-         Window Action
-    ================================================================ -->
     <record id="action_buz_reserve_manager" model="ir.actions.act_window">
         <field name="name">Reserve Manager</field>
         <field name="res_model">buz.reserve.manager</field>
@@ -189,57 +143,18 @@
         <field name="search_view_id" ref="view_buz_reserve_manager_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Create a new Reserve Manager session to manage stock reservations.
+                Create a reservation session to manage sale order stock reservations.
             </p>
             <p>
                 <strong>How it works:</strong>
             </p>
             <ul>
-                <li>Click <strong>Create</strong> to start a new session</li>
-                <li>Select Sale Orders, date range, and/or products</li>
-                <li>Click <strong>Load Reservation Lines</strong></li>
-                <li>Use the inline <strong>Reserve</strong> / <strong>Unreserve</strong> buttons</li>
-                <li>Use <strong>Unreserve (SO)</strong> to release all reservation for an SO</li>
+                <li>Create a session</li>
+                <li>Set filters for sale orders, customer, warehouse, products, or dates</li>
+                <li>Click <strong>Load</strong></li>
+                <li>Use the inline <strong>Reserve</strong> and <strong>Unreserve</strong> buttons</li>
+                <li>For long-dated orders, use the session override or let paid invoices lock stock automatically</li>
             </ul>
         </field>
     </record>
-
-    <!-- ================================================================
-         Manual Reserve Wizard – Form View
-    ================================================================ -->
-    <record id="view_manual_reserve_wizard_form" model="ir.ui.view">
-        <field name="name">buz.reserve.manual.wizard.form</field>
-        <field name="model">buz.reserve.manual.wizard</field>
-        <field name="arch" type="xml">
-            <form string="Manual Reserve">
-                <sheet>
-                    <div class="oe_title">
-                        <h1>Manual Reserve</h1>
-                    </div>
-                    <group>
-                        <group string="Product">
-                            <field name="product_id"/>
-                            <field name="demand_qty" string="Demand"/>
-                            <field name="reserved_qty" string="Already Reserved"/>
-                            <field name="available_qty" string="Available Stock"/>
-                        </group>
-                        <group string="Reserve">
-                            <field name="max_reserve_qty" string="Max to Reserve"/>
-                            <field name="reserve_qty" string="Qty to Reserve"
-                                   class="oe_inline"/>
-                        </group>
-                    </group>
-                </sheet>
-                <footer>
-                    <button name="action_confirm"
-                            string="Confirm Reserve"
-                            type="object"
-                            class="btn-primary"
-                            icon="fa-check"/>
-                    <button string="Cancel" class="btn-secondary" special="cancel"/>
-                </footer>
-            </form>
-        </field>
-    </record>
-
 </odoo>

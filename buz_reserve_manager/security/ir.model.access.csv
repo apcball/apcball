@@ -1,5 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_buz_reserve_manager_user,buz.reserve.manager user,model_buz_reserve_manager,stock.group_stock_user,1,1,1,0
-access_buz_reserve_manager_line_user,buz.reserve.manager.line user,model_buz_reserve_manager_line,stock.group_stock_user,1,0,0,0
+access_buz_reserve_manager_line_user,buz.reserve.manager.line user,model_buz_reserve_manager_line,stock.group_stock_user,1,1,1,0
+access_buz_reserve_manager_manager,buz.reserve.manager manager,model_buz_reserve_manager,group_reserve_manager,1,1,1,1
 access_buz_reserve_manager_line_manager,buz.reserve.manager.line manager,model_buz_reserve_manager_line,group_reserve_manager,1,1,1,1
-access_buz_reserve_manual_wizard_user,buz.reserve.manual.wizard,model_buz_reserve_manual_wizard,stock.group_stock_user,1,1,1,1
