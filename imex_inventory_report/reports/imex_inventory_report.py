@@ -195,20 +195,20 @@ class ImexInventoryReport(models.Model):
                         FROM stock_move move
                             LEFT JOIN (
                                 SELECT stock_move_id,
-                                       CASE WHEN SUM(ABS(quantity)) > 0
-                                            THEN SUM(ABS(value)) / SUM(ABS(quantity))
+                                       CASE WHEN SUM(quantity) != 0
+                                            THEN SUM(value) / SUM(quantity)
                                             ELSE 0 END as unit_cost
                                 FROM stock_valuation_layer
                                 WHERE quantity != 0
                                 GROUP BY stock_move_id
                             ) svl on move.id = svl.stock_move_id
-                            LEFT JOIN stock_location location_src 
+                            LEFT JOIN stock_location location_src
                                 on move.location_id = location_src.id
-                            LEFT JOIN product_product product 
+                            LEFT JOIN product_product product
                                 on move.product_id = product.id
-                                LEFT JOIN product_template template 
+                                LEFT JOIN product_template template
                                     on product.product_tmpl_id = template.id
-                        WHERE 
+                        WHERE
                             move.location_id in %s
                             and move.state = 'done'
                             and move.product_id in %s
@@ -216,11 +216,11 @@ class ImexInventoryReport(models.Model):
                             and CAST(move.date AS date) <= %s
                             and location_src.usage = 'internal'
                         UNION ALL
-                        SELECT 
-                            move.date, move.product_id, 
+                        SELECT
+                            move.date, move.product_id,
                             move.product_uom,
-                            move.location_dest_id as location, 
-                            move.location_id, 
+                            move.location_dest_id as location,
+                            move.location_id,
                             move.location_dest_id,
                             template.categ_id as product_category,
                             move.quantity,
@@ -228,8 +228,8 @@ class ImexInventoryReport(models.Model):
                         FROM stock_move move
                             LEFT JOIN (
                                 SELECT stock_move_id,
-                                       CASE WHEN SUM(ABS(quantity)) > 0
-                                            THEN SUM(ABS(value)) / SUM(ABS(quantity))
+                                       CASE WHEN SUM(quantity) != 0
+                                            THEN SUM(value) / SUM(quantity)
                                             ELSE 0 END as unit_cost
                                 FROM stock_valuation_layer
                                 WHERE quantity != 0
@@ -331,20 +331,20 @@ class ImexInventoryReport(models.Model):
                     FROM stock_move move
                         LEFT JOIN (
                             SELECT stock_move_id,
-                                   CASE WHEN SUM(ABS(quantity)) > 0
-                                        THEN SUM(ABS(value)) / SUM(ABS(quantity))
+                                   CASE WHEN SUM(quantity) != 0
+                                        THEN SUM(value) / SUM(quantity)
                                         ELSE 0 END as unit_cost
                             FROM stock_valuation_layer
                             WHERE quantity != 0
                             GROUP BY stock_move_id
                         ) svl on move.id = svl.stock_move_id
-                        LEFT JOIN stock_location location 
+                        LEFT JOIN stock_location location
                             on move.location_id = location.id
-                        LEFT JOIN stock_location location_dest 
+                        LEFT JOIN stock_location location_dest
                             on move.location_dest_id = location_dest.id
-                        LEFT JOIN product_product product 
+                        LEFT JOIN product_product product
                             on move.product_id = product.id
-                            LEFT JOIN product_template template 
+                            LEFT JOIN product_template template
                                 on product.product_tmpl_id = template.id
                     WHERE 
                         (move.location_id in %s or move.location_dest_id in %s)
