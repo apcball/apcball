@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_buz_it_ticket_search" model="ir.ui.view">
+        <field name="name">buz.it.ticket.search</field>
+        <field name="model">buz.it.ticket</field>
+        <field name="arch" type="xml">
+            <search string="IT Tickets">
+                <field name="ticket_no"/>
+                <field name="name"/>
+                <field name="requester_id"/>
+                <field name="ticket_category"/>
+                <field name="assigned_to_id"/>
+                <filter name="my_tickets" string="My Tickets" domain="[('requester_id', '=', uid)]"/>
+                <filter name="stage_new" string="New" domain="[('stage', '=', 'new')]"/>
+                <filter name="stage_progress" string="In Progress" domain="[('stage', '=', 'in_progress')]"/>
+                <filter name="stage_resolved" string="Resolved" domain="[('stage', '=', 'resolved')]"/>
+                <filter name="stage_closed" string="Closed" domain="[('stage', '=', 'closed')]"/>
+                <separator/>
+                <filter name="group_by_stage" string="Stage" context="{'group_by': 'stage'}"/>
+                <filter name="group_by_priority" string="Priority" context="{'group_by': 'priority'}"/>
+                <filter name="group_by_type" string="Category" context="{'group_by': 'ticket_category'}"/>
+                <filter name="group_by_requester" string="Requester" context="{'group_by': 'requester_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_buz_it_ticket_tree" model="ir.ui.view">
+        <field name="name">buz.it.ticket.tree</field>
+        <field name="model">buz.it.ticket</field>
+        <field name="arch" type="xml">
+            <tree string="IT Tickets">
+                <field name="ticket_no"/>
+                <field name="name"/>
+                <field name="ticket_category"/>
+                <field name="requester_id"/>
+                <field name="assigned_to_id"/>
+                <field name="priority"/>
+                <field name="opened_date"/>
+                <field name="stage"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_buz_it_ticket_form" model="ir.ui.view">
+        <field name="name">buz.it.ticket.form</field>
+        <field name="model">buz.it.ticket</field>
+        <field name="arch" type="xml">
+            <form string="IT Ticket">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Ticket subject"/>
+                        </h1>
+                    </div>
+                    <group col="2">
+                        <group string="Ticket Information">
+                            <field name="ticket_no" readonly="1"/>
+                            <field name="ticket_category"/>
+                            <field name="priority"/>
+                            <field name="requested_timeframe"/>
+                            <field name="opened_date" readonly="1"/>
+                            <field name="received_date" readonly="1"/>
+                            <field name="closed_date" readonly="1"/>
+                        </group>
+                        <group string="Requester &amp; Assignment">
+                            <field name="requester_id" widget="many2one_avatar_user"/>
+                            <field name="requester_name" readonly="1"/>
+                            <field name="requester_email" readonly="1"/>
+                            <field name="requester_phone" readonly="1"/>
+                            <field name="contact_channel"/>
+                            <field name="assigned_to_id" widget="many2one_avatar_user"/>
+                            <field name="stage"/>
+                        </group>
+                    </group>
+                    <group string="Symptom / Initial Details">
+                        <field name="symptom" nolabel="1" placeholder="Describe the symptom or issue here..."/>
+                    </group>
+                    <notebook>
+                        <page string="Additional Details">
+                            <field name="description" nolabel="1" placeholder="Describe the issue or request..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_buz_it_ticket_kanban" model="ir.ui.view">
+        <field name="name">buz.it.ticket.kanban</field>
+        <field name="model">buz.it.ticket</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_small_column">
+                <field name="ticket_no"/>
+                <field name="name"/>
+                <field name="requester_id"/>
+                <field name="ticket_category"/>
+                <field name="assigned_to_id"/>
+                <field name="priority"/>
+                <field name="stage"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click o_kanban_record">
+                            <div class="o_kanban_card_content">
+                                <div class="o_kanban_record_top">
+                                    <strong>
+                                        <field name="ticket_no"/>
+                                    </strong>
+                                    <span class="float-end">
+                                        <field name="priority"/>
+                                    </span>
+                                </div>
+                                <div>
+                                    <field name="name"/>
+                                </div>
+                                <div class="text-muted">
+                                    <field name="requester_id"/>
+                                </div>
+                                <div class="text-muted">
+                                    <field name="ticket_category"/>
+                                </div>
+                                <div class="text-muted">
+                                    <field name="assigned_to_id"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_buz_it_ticket_pivot" model="ir.ui.view">
+        <field name="name">buz.it.ticket.pivot</field>
+        <field name="model">buz.it.ticket</field>
+        <field name="arch" type="xml">
+            <pivot string="IT Tickets">
+                <field name="stage" type="row"/>
+                <field name="priority" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_buz_it_ticket_graph" model="ir.ui.view">
+        <field name="name">buz.it.ticket.graph</field>
+        <field name="model">buz.it.ticket</field>
+        <field name="arch" type="xml">
+            <graph string="IT Tickets" type="bar">
+                <field name="stage" type="row"/>
+                <field name="id" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_buz_it_ticket_dashboard" model="ir.actions.act_window">
+        <field name="name">Dashboard</field>
+        <field name="res_model">buz.it.ticket</field>
+        <field name="view_mode">graph,pivot,kanban,tree,form</field>
+        <field name="view_id" ref="view_buz_it_ticket_graph"/>
+        <field name="search_view_id" ref="view_buz_it_ticket_search"/>
+        <field name="context">{'search_default_group_by_stage': 1}</field>
+    </record>
+
+    <record id="action_buz_it_ticket_my_tickets" model="ir.actions.act_window">
+        <field name="name">My Tickets</field>
+        <field name="res_model">buz.it.ticket</field>
+        <field name="view_mode">kanban,tree,form,pivot,graph</field>
+        <field name="view_id" ref="view_buz_it_ticket_kanban"/>
+        <field name="search_view_id" ref="view_buz_it_ticket_search"/>
+        <field name="domain">[('requester_id', '=', uid)]</field>
+    </record>
+
+    <record id="action_buz_it_ticket_all_tickets" model="ir.actions.act_window">
+        <field name="name">All Tickets</field>
+        <field name="res_model">buz.it.ticket</field>
+        <field name="view_mode">kanban,tree,form,pivot,graph</field>
+        <field name="view_id" ref="view_buz_it_ticket_kanban"/>
+        <field name="search_view_id" ref="view_buz_it_ticket_search"/>
+    </record>
+</odoo>

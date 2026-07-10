@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_buz_it_helpdesk_root"
+              name="IT Helpdesk"
+              sequence="10"/>
+
+    <menuitem id="menu_buz_it_helpdesk_dashboard"
+              name="Dashboard"
+              parent="menu_buz_it_helpdesk_root"
+              action="action_buz_it_ticket_dashboard"
+              sequence="10"/>
+
+    <menuitem id="menu_buz_it_helpdesk_my_tickets"
+              name="My Tickets"
+              parent="menu_buz_it_helpdesk_root"
+              action="action_buz_it_ticket_my_tickets"
+              sequence="20"/>
+</odoo>

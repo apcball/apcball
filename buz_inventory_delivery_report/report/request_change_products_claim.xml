@@ -163,7 +163,7 @@
                             <!-- กล่องที่ 1: 35% -->
                             <div style="width: 35%; border-right: 1px solid black; padding: 8px;">
                                 <div><strong>รายละเอียดลูกค้า</strong></div>
-                                <hr style="margin: 4px 0; border: 1px solid black;">
+                                <hr style="margin: 4px 0; border: 1px solid black;"/>
                                 <div>ชื่อลูกค้า: <t t-esc="o.partner_id.name"/></div>
                                 <div style="margin: 0;">
                                     <strong>ที่อยู่:</strong>
@@ -172,7 +172,14 @@
                                     <span t-esc="(o.partner_id.city or '') + ' ' + (o.partner_id.state_id.name or '') + ' ' + (o.partner_id.zip or '')"/>
                                     <span t-esc="o.partner_id.country_id.name or ''"/>
                                 </div>
-                                </hr>
+                                <div style="margin-top: 8px;">
+                                    <strong>คลังต้นทาง:</strong>
+                                    <span t-esc="o.location_id.display_name or ''"/>
+                                </div>
+                                <div style="margin-top: 4px;">
+                                    <strong>คลังปลายทาง:</strong>
+                                    <span t-esc="o.location_dest_id.display_name or ''"/>
+                                </div>
                             </div>
 
                             <!-- กล่องที่ 2: 30% -->

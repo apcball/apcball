@@ -82,12 +82,12 @@
                         
 
                              <!-- Order Lines -->
-                         <t t-set="move_list" t-value="o.move_raw_ids"/>
-                         <t t-set="groups_of_7" t-value="[move_list[i:i+7] for i in range(0, len(move_list), 7)]"/>
+                         <t t-set="move_list" t-value="o.move_finished_ids"/>
+                         <t t-set="groups_of_11" t-value="[move_list[i:i+11] for i in range(0, len(move_list), 11)]"/>
                          <t t-set="page_number" t-value="1"/>
-                         <t t-set="total_pages" t-value="groups_of_7 and len(groups_of_7) or 0"/>
+                         <t t-set="total_pages" t-value="groups_of_11 and len(groups_of_11) or 0"/>
                          <t t-set="line_number" t-value="1"/>
-                         <t t-foreach="groups_of_7" t-as="group">
+                         <t t-foreach="groups_of_11" t-as="group">
                              <t t-set="total_qty" t-value="0"/>
                              <div t-attf-style="#{page_number != 1 and 'page-break-before: always;' or ''}">
                                  <div>
@@ -118,7 +118,7 @@
                                 </div>
                             </div>
                             <div class="col-4 text-end">
-                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
+                                <img src="/buz_manufacturing_report/static/img/LOGO MOGEN.png" style="width: 180px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
                         </div>
                         
@@ -205,8 +205,8 @@
                                         <t t-set="total_qty" t-value="total_qty + move.product_uom_qty"/>
                                         <t t-set="line_number" t-value="line_number + 1"/>
                                     </t>
-                                    <t t-if="len(group) &lt; 7">
-                                        <t t-set="empty_rows" t-value="7 - len(group)"/>
+                                    <t t-if="len(group) &lt; 11">
+                                        <t t-set="empty_rows" t-value="11 - len(group)"/>
                                         <t t-foreach="range(empty_rows)" t-as="i">
                                             <tr class="data-row" style="font-size: 20px; height: 50px; line-height: 50px;">
                                                 <td style="text-align: center;"/>
@@ -248,32 +248,22 @@
 
 
                         <!-- Signature section -->
-                        <div style="margin-top: 20px; min-height: 60px;">
-                            <div class="row">                        
-                                <div style="border: 1px solid black; padding: 10px;">
-                                    <table style="width: 100%; table-layout: fixed; margin-bottom: 4px;">
-                                        <tr>
-                                            <td style="width: 25%; text-align: center; padding: 10px;">
-                                                <p>_____________________</p>
-                                                <p style="margin: 5px 0;">ผู้บันทึกรายการ</p>
-                                                <p>____/____/____</p>
-                                            </td>
-                                            <td style="width: 25%; text-align: center; padding: 10px;">
-                                                <p>_____________________</p>
-                                                <p style="margin: 5px 0;">ผู้จรวจสอบ</p>
-                                                <p>____/____/____</p>
-                                            </td>
-                                            <td style="width: 25%; text-align: center; padding: 10px;">
-                                                <p>_____________________</p>
-                                                <p style="margin: 5px 0;">ผู้อนุมัติ</p>
-                                                <p>____/____/____</p>
-                                            </td>
-                                        </tr>
-                                    </table>
+                        <div style="margin-top: 20px; min-height: 60px; background-color: transparent !important; color: #000 !important;">
+                            <div style="display: flex; gap: 14px; align-items: flex-start; background-color: transparent !important; border: none !important;">
+                                <div style="flex: 1; text-align: center; padding: 8px 6px; background-color: transparent !important; color: #000 !important; border: none !important;">
+                                    <p style="margin: 6px 0 4px 0; color: #000 !important;">ผู้บันทึกรายการ</p>
+                                    <p style="margin: 0; color: #000 !important; line-height: 1.1;">____/____/____</p>
+                                </div>
+                                <div style="flex: 1; text-align: center; padding: 8px 6px; background-color: transparent !important; color: #000 !important; border: none !important;">
+                                    <p style="margin: 6px 0 4px 0; color: #000 !important;">ผู้ตรวจสอบ</p>
+                                    <p style="margin: 0; color: #000 !important; line-height: 1.1;">____/____/____</p>
+                                </div>
+                                <div style="flex: 1; text-align: center; padding: 8px 6px; background-color: transparent !important; color: #000 !important; border: none !important;">
+                                    <p style="margin: 6px 0 4px 0; color: #000 !important;">ผู้อนุมัติ</p>
+                                    <p style="margin: 0; color: #000 !important; line-height: 1.1;">____/____/____</p>
                                 </div>
                             </div>
                         </div>
-                    
                     </t>
                     </div>
                 </t>
