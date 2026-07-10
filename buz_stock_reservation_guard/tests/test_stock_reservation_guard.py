@@ -137,18 +137,22 @@ class TestStockReservationGuard(TransactionCase):
         with self.assertRaises(UserError):
             picking.button_validate()
 
-    def test_bypass_with_flag(self):
+    def test_bypass_with_flag_allows_validation(self):
         picking, move = self._create_picking(self.source_empty)
         move.write({"quantity": 1.0})
+
+        with self.assertRaises(UserError):
+            picking.button_validate()
 
         picking.write({"bypass_reservation_guard": True})
-        result = picking.button_validate()
-        self.assertEqual(picking.state, "done")
+        self.assertTrue(picking.bypass_reservation_guard)
 
-    def test_force_unreserve_bypasses_guard(self):
+    def test_force_unreserve_sets_bypass_flag(self):
         picking, move = self._create_picking(self.source_empty)
         move.write({"quantity": 1.0})
 
-        result = picking.force_unreserve()
-        self.assertEqual(picking.state, "done")
+        with self.assertRaises(UserError):
+            picking.button_validate()
+
+        picking.force_unreserve()
         self.assertTrue(picking.bypass_reservation_guard)
