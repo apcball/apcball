@@ -145,15 +145,31 @@ class TestStockReservationGuard(TransactionCase):
         picking.force_unreserve()
         self.assertTrue(picking.bypass_reservation_guard)
 
-    def test_allow_validate_with_partial_stock(self):
-        """Validates delivery when available > 0 but < needed (partial fulfillment allowed)"""
+    def test_allow_validate_when_already_reserved_covers_demand(self):
+        """A move already assigned (reserved_quantity == quantity, free pool == 0)
+        must still validate: physical on-hand covers the move's own reservation."""
+        picking, move = self._create_picking(self.source_with_stock)
+        move.write({"product_uom_qty": 5.0})
+        picking.action_assign()
+        self.assertEqual(picking.state, "assigned")
+
+        quant = self.env["stock.quant"].search(
+            [
+                ("product_id", "=", self.product.id),
+                ("location_id", "=", self.source_with_stock.id),
+            ]
+        )
+        self.assertEqual(quant.quantity, 5.0)
+        self.assertEqual(quant.reserved_quantity, 5.0)
+
+        picking.button_validate()
+        self.assertEqual(picking.state, "done")
+
+    def test_block_validate_when_physical_stock_below_demand(self):
+        """Genuine shortage: physical on-hand less than demand must still block."""
         picking, move = self._create_picking(self.source_with_stock)
         move.write({"product_uom_qty": 10.0})
         picking.action_confirm()
 
-        self.env["stock.quant"]._update_available_quantity(
-            self.product, self.source_with_stock, -3.0
-        )
-
-        picking.button_validate()
-        self.assertEqual(picking.state, "done")
+        with self.assertRaises(UserError):
+            picking.button_validate()

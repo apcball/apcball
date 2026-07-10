@@ -131,7 +131,7 @@ class StockPicking(models.Model):
                     demand_map[key]["quantity"] += move.quantity or move.product_uom_qty
 
             for values in demand_map.values():
-                available_qty = self.env["stock.quant"]._get_available_quantity(
+                quants = self.env["stock.quant"]._gather(
                     values["product"],
                     values["location"],
                     lot_id=values["lot"],
@@ -139,25 +139,29 @@ class StockPicking(models.Model):
                     owner_id=values["owner"],
                     strict=True,
                 )
+                physical_qty = sum(quants.mapped("quantity"))
                 if float_compare(
-                    available_qty,
-                    0.0,
+                    physical_qty,
+                    values["quantity"],
                     precision_rounding=values["product"].uom_id.rounding,
-                ) <= 0:
+                ) < 0:
                     errors.append(
                         _(
                             "%(picking)s: %(product)s ที่ %(location)s "
-                            "(ไม่มีสินค้าคงเหลือ)"
+                            "(ต้องใช้ %(need)s %(uom)s, สินค้าจริงคงเหลือ %(available)s %(uom)s)"
                         )
                         % {
                             "picking": picking.name,
                             "product": values["product"].display_name,
                             "location": values["location"].complete_name,
+                            "need": values["quantity"],
+                            "available": physical_qty,
+                            "uom": values["product"].uom_id.name,
                         }
                     )
 
         if errors:
             raise UserError(
-                _("ไม่สามารถตรวจรับ/โอนย้ายสินค้าได้ เนื่องจาก location ต้นทางไม่มีสินค้า:\n%s")
+                _("ไม่สามารถตรวจรับ/โอนย้ายสินค้าได้ เนื่องจาก location ต้นทางมีสินค้าจริงไม่เพียงพอ:\n%s")
                 % "\n".join(errors)
             )
