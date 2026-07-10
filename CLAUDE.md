@@ -75,23 +75,21 @@ Both CLI tools available on this machine:
 1. **Commit/push only after user confirmation**
 2. Deploy to DEV first, test, then PROD
 3. All rsync deploys must `chmod -R +r` after sync (rsync sets 600)
-4. Codex CLI sandbox blocks SSH — use Claude Code or Hermes terminal for deploy
+4. Deploy via `scripts/deploy.sh <dev|prod> <module>` — works for both Claude Code and Codex CLI with proper sandbox flag
 5. Module version bumps need manual confirm
 
 ---
 
-## Common commands
+### Common commands
 
 ### Deploy DEV
 ```bash
-rsync -az --delete "./<module>/" dev:/srv/docker/odoo/custom-addons/<module>/
-ssh dev "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
+bash scripts/deploy.sh dev <module>
 ```
 
 ### Deploy PROD
 ```bash
-rsync -az --delete "./<module>/" mog-prod:/opt/instance1/odoo17/custom-addons/<module>/
-ssh mog-prod "sudo systemctl restart instance1"
+bash scripts/deploy.sh prod <module>
 ```
 
 ### Test DEV live DB (irreversible)
@@ -105,7 +103,9 @@ pip install pylint pylint-odoo
 pylint --load-plugins=pylint_odoo <module>/
 ```
 
-**Sandbox note:** Codex CLI (`workspace-write`) blocks SSH/rsync network calls. Claude Code or Hermes terminal can run deploy. To deploy via Codex, use `--sandbox danger-full-access`.
+**Deploy agent notes:**
+- **Claude Code:** `claude -p "bash scripts/deploy.sh dev buz_xxx"` — SSH works natively
+- **Codex CLI:** `codex --sandbox danger-full-access -p "bash scripts/deploy.sh dev buz_xxx"` — must allow network in sandbox
 
 ### Production server access
 

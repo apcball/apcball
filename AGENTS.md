@@ -50,9 +50,14 @@ pip install pylint pylint-odoo
 pylint --load-plugins=pylint_odoo <module>/
 ```
 
-**Note:** Codex CLI sandbox (`workspace-write`) blocks SSH/rsync. Use Claude Code (`claude -p`) or Hermes terminal for deploy instead — or run Codex with `--sandbox danger-full-access` if you know the risk.
+### Deploy script
+Use `scripts/deploy.sh <dev|prod> <module_name>` — single entry point for both environments.
 
-## CI flow (GitHub Actions + GitLab CI self-hosted)
+- **Claude Code:** `claude -p "bash scripts/deploy.sh dev buz_xxx"` (SSH works natively)
+- **Codex CLI:** `codex --sandbox danger-full-access -p "bash scripts/deploy.sh dev buz_xxx"` (sandbox must allow network)
+- Both agents read SSH aliases from `~/.ssh/config` — no server IPs needed in code
+
+### CI flow (GitHub Actions + GitLab CI self-hosted)
 
 `detect → lint → test → deploy`
 
