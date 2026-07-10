@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="seq_buz_it_ticket" model="ir.sequence">
-        <field name="name">IT Helpdesk Ticket</field>
-        <field name="code">buz.it.ticket</field>
+    <record id="seq_helpdesk_ticket" model="ir.sequence">
+        <field name="name">Helpdesk Ticket</field>
+        <field name="code">it.helpdesk.ticket</field>
         <field name="prefix">TIC/%(year)s/%(month)s/</field>
         <field name="padding">5</field>
         <field name="company_id" eval="False"/>

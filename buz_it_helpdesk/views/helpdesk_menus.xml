@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_it_helpdesk_root" name="IT Management" sequence="10"/>
+    <menuitem id="menu_it_helpdesk_dashboard" name="Dashboard" parent="menu_it_helpdesk_root" action="action_helpdesk_dashboard" sequence="1"/>
+    <menuitem id="menu_it_helpdesk" name="Helpdesk" parent="menu_it_helpdesk_root" sequence="10"/>
+    <menuitem id="menu_it_helpdesk_tickets" name="Tickets" parent="menu_it_helpdesk" action="action_helpdesk_tickets" sequence="1"/>
+    <menuitem id="menu_it_helpdesk_my_tickets" name="My Tickets" parent="menu_it_helpdesk" action="action_helpdesk_my_tickets" sequence="2"/>
+    <menuitem id="menu_it_helpdesk_sla" name="SLA" parent="menu_it_helpdesk" action="action_helpdesk_slas" sequence="20" groups="buz_it_helpdesk.group_it_helpdesk_agent"/>
+    <menuitem id="menu_it_helpdesk_knowledge" name="Knowledge Base" parent="menu_it_helpdesk" action="action_helpdesk_articles" sequence="30"/>
+    <menuitem id="menu_it_helpdesk_settings" name="Settings" parent="menu_it_helpdesk_root" sequence="90" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+    <menuitem id="menu_it_helpdesk_settings_categories" name="Categories" parent="menu_it_helpdesk_settings" action="action_helpdesk_categories" sequence="10"/>
+    <menuitem id="menu_it_helpdesk_settings_priorities" name="Priorities" parent="menu_it_helpdesk_settings" action="action_helpdesk_priorities" sequence="20"/>
+    <menuitem id="menu_it_helpdesk_settings_stages" name="Stages" parent="menu_it_helpdesk_settings" action="action_helpdesk_stages" sequence="30"/>
+    <menuitem id="menu_it_helpdesk_settings_tags" name="Tags" parent="menu_it_helpdesk_settings" action="action_helpdesk_tags" sequence="40"/>
+</odoo>

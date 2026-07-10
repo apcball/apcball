@@ -158,7 +158,7 @@
 
 
 
-                         <div style="height: 38px;"></div>
+                         <div style="height: 15px;"></div>
                          <div style="display: flex; width: 100%; font-size: 18px; border: 1px solid black;">
                             <!-- กล่องที่ 1: 35% -->
                             <div style="width: 35%; border-right: 1px solid black; padding: 8px;">
@@ -320,9 +320,9 @@
                                    </table>
 
                                      <!-- หมายเหตุ -->
-                                  <div style="padding: 15px; font-size: 20px;  margin-top: 10px; line-height: 1.6;">
+                                  <div style="padding: 15px; font-size: 20px;  margin-top: 6px; line-height: 1.6;">
                                     <strong>หมายเหตุ: </strong>
-                                    <div t-if="o.note" style="margin-top: 10px; margin-left: 10px;">
+                                    <div t-if="o.note" style="margin-top: 6px; margin-left: 10px;">
                                         <span t-field="o.note"/>
                                     </div>
                                 </div>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_it_helpdesk" model="ir.module.category">
+        <field name="name">BUZ IT Management</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="group_it_helpdesk_requester" model="res.groups">
+        <field name="name">Requester</field>
+        <field name="category_id" ref="module_category_it_helpdesk"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="group_it_helpdesk_agent" model="res.groups">
+        <field name="name">Support Agent</field>
+        <field name="category_id" ref="module_category_it_helpdesk"/>
+        <field name="implied_ids" eval="[(4, ref('group_it_helpdesk_requester'))]"/>
+    </record>
+    <record id="group_it_helpdesk_manager" model="res.groups">
+        <field name="name">Helpdesk Manager</field>
+        <field name="category_id" ref="module_category_it_helpdesk"/>
+        <field name="implied_ids" eval="[(4, ref('group_it_helpdesk_agent'))]"/>
+    </record>
+    <record id="rule_ticket_requester" model="ir.rule">
+        <field name="name">Requester: own tickets</field>
+        <field name="model_id" ref="model_it_helpdesk_ticket"/>
+        <field name="groups" eval="[(4, ref('group_it_helpdesk_requester'))]"/>
+        <field name="domain_force">['|', ('requester_id', '=', user.id), ('assigned_to', '=', user.id)]</field>
+    </record>
+    <record id="rule_ticket_agent" model="ir.rule">
+        <field name="name">Agent: assigned tickets</field>
+        <field name="model_id" ref="model_it_helpdesk_ticket"/>
+        <field name="groups" eval="[(4, ref('group_it_helpdesk_agent'))]"/>
+        <field name="domain_force">['|', ('requester_id', '=', user.id), ('assigned_to', '=', user.id)]</field>
+    </record>
+    <record id="rule_ticket_manager" model="ir.rule">
+        <field name="name">Manager: all company tickets</field>
+        <field name="model_id" ref="model_it_helpdesk_ticket"/>
+        <field name="groups" eval="[(4, ref('group_it_helpdesk_manager'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

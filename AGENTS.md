@@ -19,13 +19,17 @@ Hosted on Contabo VPS. DEV: Dockerized (`odoo:17.0` base). PROD: systemd service
 ## Commands
 
 ```bash
-# Deploy to DEV server
-rsync -az --delete "./<module>/" root@217.216.32.33:/srv/docker/odoo/custom-addons/<module>/
+# Configure passwordless SSH from Windows PowerShell (run once)
+# Press Enter for an empty passphrase if unattended deploys must not prompt.
+ssh-keygen -t ed25519 -C odoo-dev -f $env:USERPROFILE\.ssh\id_ed25519
+Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@217.216.32.33 'umask 077; mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys'
+ssh -o PasswordAuthentication=no root@217.216.32.33 'echo SSH_KEY_OK'
+
+# Deploy to DEV server from Windows PowerShell (when rsync is unavailable)
+ssh root@217.216.32.33 "rm -rf /srv/docker/odoo/custom-addons/<module>"
+scp -r .\<module> root@217.216.32.33:/srv/docker/odoo/custom-addons/
 ssh root@217.216.32.33 "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
 
-# Deploy to PROD server 
-rsync -az --delete "./<module>/" mogenit@160.187.249.148:/opt/instance1/odoo17/custom-addons/<module>/
-ssh mogenit@160.187.249.148 "sudo systemctl restart instance1"
 
 # Test on live DB (DEV only) — IRREVERSIBLE SIDE EFFECTS. Use isolated test below instead.
 ssh root@217.216.32.33 "docker exec odoo odoo -d MOG_DEV -u <module> --test-enable --stop-after-init --no-http"

@@ -1,2 +1,15 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_buz_it_ticket_user,buz.it.ticket user,model_buz_it_ticket,base.group_user,1,1,1,1
+access_ticket_requester,ticket requester,model_it_helpdesk_ticket,buz_it_helpdesk.group_it_helpdesk_requester,1,1,1,0
+access_ticket_manager,ticket manager,model_it_helpdesk_ticket,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
+access_stage_agent,stage agent,model_it_helpdesk_stage,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
+access_stage_manager,stage manager,model_it_helpdesk_stage,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
+access_category_user,category user,model_it_helpdesk_category,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
+access_category_manager,category manager,model_it_helpdesk_category,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
+access_priority_user,priority user,model_it_helpdesk_priority,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
+access_priority_manager,priority manager,model_it_helpdesk_priority,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
+access_sla_agent,sla agent,model_it_helpdesk_sla,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
+access_sla_manager,sla manager,model_it_helpdesk_sla,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
+access_tag_user,tag user,model_it_helpdesk_tag,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
+access_tag_manager,tag manager,model_it_helpdesk_tag,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
+access_article_user,article user,model_it_helpdesk_knowledge_article,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
+access_article_manager,article manager,model_it_helpdesk_knowledge_article,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
