@@ -25,7 +25,7 @@ class TestStockReservationGuard(TransactionCase):
             }
         )
         product_vals = {
-            "name": "Reservation Guard Product",
+            "name": "Test Guard Prod",
             "detailed_type": "product",
             "categ_id": cls.env.ref("product.product_category_all").id,
         }
