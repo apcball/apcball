@@ -39,7 +39,7 @@ class AccountBankTransfer(models.Model):
             if voucher_id:
                 voucher = self.env['account.payment.voucher'].browse(voucher_id)
                 if voucher.exists():
-                    vals['amount'] = voucher.amount_total_net
+                    vals['amount'] = voucher.amount_total_net_display or voucher.amount_total_net
         return vals
 
     @api.model

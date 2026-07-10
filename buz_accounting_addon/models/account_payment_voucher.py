@@ -131,13 +131,7 @@ class AccountPaymentVoucher(models.Model):
             vals['name'] = self.env['ir.sequence'].next_by_code('buz.account.payment.voucher') or '/'
         return super().write(vals)
 
-    @api.depends(
-        "line_ids.amount_to_pay_gross",
-        "line_ids.wht_amount",
-        "bank_free_dis",
-        "other_income_dis",
-        "bank_transfer_ids.amount",
-    )
+    @api.depends("line_ids.amount_to_pay_gross", "line_ids.wht_amount", "bank_free_dis", "other_income_dis", "bank_transfer_ids.amount")
     def _compute_amount_totals(self):
         for voucher in self:
             line_total_gross = sum(line.amount_to_pay_gross for line in voucher.line_ids)
@@ -145,9 +139,9 @@ class AccountPaymentVoucher(models.Model):
             line_total_net = sum(line.amount_to_pay_net for line in voucher.line_ids)
             bank_transfer_total = sum(voucher.bank_transfer_ids.mapped("amount"))
 
-            voucher.amount_total_gross = line_total_gross or bank_transfer_total
+            voucher.amount_total_gross = line_total_gross
             voucher.amount_total_wht = line_total_wht
-            voucher.amount_total_net = line_total_net or bank_transfer_total
+            voucher.amount_total_net = line_total_net
             voucher.amount_total_net_display = line_total_net or bank_transfer_total
             voucher.amount_total_bank_fee = voucher.bank_free_dis or 0.0
             voucher.amount_total_other_income = voucher.other_income_dis or 0.0
@@ -169,16 +163,21 @@ class AccountPaymentVoucher(models.Model):
             else:
                 voucher.payment_state = 'not_paid'
 
-    @api.depends('line_ids.payment_ids', 'line_ids.payment_ids.state', 'bank_transfer_ids', 'bank_transfer_ids.state')
+    @api.depends('payment_ids.state', 'payment_ids.amount',
+                 'line_ids.payment_ids', 'line_ids.payment_ids.state',
+                 'bank_transfer_ids', 'bank_transfer_ids.state')
     def _compute_amount_paid(self):
         for voucher in self:
-            total_paid = 0
-            for line in voucher.line_ids:
-                for payment in line.payment_ids:
-                    if payment.state == 'posted':
-                        total_paid += payment.amount
+            # Union so the same payment linked to both the voucher and
+            # several lines is only counted once
+            payments = (voucher.payment_ids | voucher.line_ids.payment_ids).filtered(
+                lambda p: p.state == 'posted'
+            )
+            total_paid = sum(payments.mapped('amount'))
             for bt in voucher.bank_transfer_ids:
-                if bt.state == 'posted' and bt.payment_id and bt.payment_id.state == 'posted':
+                if (bt.state == 'posted' and bt.payment_id
+                        and bt.payment_id.state == 'posted'
+                        and bt.payment_id not in payments):
                     total_paid += bt.amount
             voucher.amount_paid = total_paid
 
@@ -795,26 +794,18 @@ class AccountPaymentVoucherLine(models.Model):
     currency_id = fields.Many2one(related="voucher_id.currency_id", store=True, readonly=True)
     company_id = fields.Many2one(related="voucher_id.company_id", store=True, readonly=True)
     
-    # Link to related payments
+    # Link to related payments (stored M2M — same pattern as the AR side).
+    # Must NOT be a non-stored compute: a compute here forces the ORM to
+    # re-evaluate every voucher line whenever any payment changes state,
+    # which caused 15k+ queries per Register Payment click.
     payment_ids = fields.Many2many(
         'account.payment',
+        'account_payment_voucher_line_payment_rel',
+        'voucher_line_id', 'payment_id',
         string='Related Payments',
-        compute='_compute_payment_ids',
         readonly=True,
     )
-    
-    @api.depends('move_id.payment_state')
-    def _compute_payment_ids(self):
-        for line in self:
-            payments = self.env['account.payment']
-            if line.move_id:
-                # 1. Try standard helper
-                payments |= line.move_id._get_reconciled_payments()
-                # 2. Try inverse search on payments (robust for batch/grouped payments)
-                payments |= self.env['account.payment'].search([('reconciled_invoice_ids', 'in', line.move_id.id)])
-            
-            line.payment_ids = payments
-    
+
     # Payment status for the line
     payment_state = fields.Selection([
         ('not_paid', 'Not Paid'),

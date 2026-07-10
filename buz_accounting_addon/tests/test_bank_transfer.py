@@ -71,7 +71,7 @@ class TestAccountBankTransfer(common.TransactionCase):
             }).action_confirm()
 
     def test_bank_transfer_amount_defaults_from_voucher(self):
-        """Inline bank transfer creation should inherit voucher net amount."""
+        """Inline bank transfer creation should inherit the voucher display amount."""
         vendor = self.env['res.partner'].create({
             'name': 'Voucher Vendor',
             'supplier_rank': 1,
@@ -95,8 +95,8 @@ class TestAccountBankTransfer(common.TransactionCase):
 
         self.assertEqual(transfer.amount, 1250.0)
 
-    def test_voucher_net_amount_follows_bank_transfer_when_no_lines(self):
-        """Voucher net amount should reflect the bank transfer amount when there are no bill lines."""
+    def test_voucher_net_amount_display_follows_bank_transfer_when_no_lines(self):
+        """Voucher display amount should follow bank transfers when there are no bill lines."""
         vendor = self.env['res.partner'].create({
             'name': 'Transfer Only Vendor',
             'supplier_rank': 1,
@@ -108,6 +108,7 @@ class TestAccountBankTransfer(common.TransactionCase):
         })
 
         self.assertEqual(voucher.amount_total_net, 0.0)
+        self.assertEqual(voucher.amount_total_net_display, 0.0)
 
         voucher.write({
             'bank_transfer_ids': [(0, 0, {
@@ -118,5 +119,5 @@ class TestAccountBankTransfer(common.TransactionCase):
             })]
         })
 
-        self.assertEqual(voucher.amount_total_net, 300.0)
+        self.assertEqual(voucher.amount_total_net, 0.0)
         self.assertEqual(voucher.amount_total_net_display, 300.0)
