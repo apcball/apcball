@@ -18,7 +18,39 @@ Hosted on Contabo VPS. DEV: Docker. PROD: systemd. Postgres 16. See `SERVER.md` 
 
 ## Commands
 
-See `SERVER.md` (local only, gitignored) for deploy/rsync/test commands — contains server IPs and paths.
+Requires SSH aliases in `~/.ssh/config`:
+- `dev` — DEV server (Docker `odoo:17.0`)
+- `mog-prod` — PROD server (systemd instance1)
+
+### Deploy DEV
+```bash
+rsync -az --delete "./<module>/" dev:/srv/docker/odoo/custom-addons/<module>/
+ssh dev "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
+```
+
+### Deploy PROD
+```bash
+rsync -az --delete "./<module>/" mog-prod:/opt/instance1/odoo17/custom-addons/<module>/
+ssh mog-prod "sudo systemctl restart instance1"
+```
+
+### Test DEV live DB (irreversible)
+```bash
+ssh dev "docker exec odoo odoo -d MOG_DEV -u <module> --test-enable --stop-after-init --no-http"
+```
+
+### Isolated test (local)
+```bash
+docker compose -f docker-compose.test.yml up --abort-on-container-exit
+```
+
+### Lint
+```bash
+pip install pylint pylint-odoo
+pylint --load-plugins=pylint_odoo <module>/
+```
+
+**Note:** Codex CLI sandbox (`workspace-write`) blocks SSH/rsync. Use Claude Code (`claude -p`) or Hermes terminal for deploy instead — or run Codex with `--sandbox danger-full-access` if you know the risk.
 
 ## CI flow (GitHub Actions + GitLab CI self-hosted)
 
