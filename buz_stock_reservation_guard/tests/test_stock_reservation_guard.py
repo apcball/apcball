@@ -3,30 +3,32 @@ from odoo.tests.common import TransactionCase
 
 
 class TestStockReservationGuard(TransactionCase):
-    def setUp(self):
-        super().setUp()
-        self.company = self.env.company
-        self.internal_type = self.env.ref("stock.picking_type_internal")
-        self.parent_location = self.env.ref("stock.stock_location_locations")
-        self.dest_location = self.env.ref("stock.stock_location_stock")
-        self.source_with_stock = self.env["stock.location"].create(
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company = cls.env.company
+        cls.internal_type = cls.env.ref("stock.picking_type_internal")
+        cls.parent_location = cls.env.ref("stock.stock_location_locations")
+        cls.dest_location = cls.env.ref("stock.stock_location_stock")
+        cls.source_with_stock = cls.env["stock.location"].create(
             {
-                "name": "With Stock",
-                "location_id": self.parent_location.id,
+                "name": "Guard Stock",
+                "location_id": cls.parent_location.id,
                 "usage": "internal",
             }
         )
-        self.source_empty = self.env["stock.location"].create(
+        cls.source_empty = cls.env["stock.location"].create(
             {
-                "name": "Empty Source",
-                "location_id": self.parent_location.id,
+                "name": "Guard Empty",
+                "location_id": cls.parent_location.id,
                 "usage": "internal",
             }
         )
-        self.product = self.env.ref("product.product_delivery_01")
-        self.env["stock.quant"]._update_available_quantity(
-            self.product, self.source_with_stock, 5.0
-        )
+        cls.product = cls.env["product.product"].search([("type", "=", "product")], limit=1)
+        if cls.product:
+            cls.env["stock.quant"]._update_available_quantity(
+                cls.product, cls.source_with_stock, 5.0
+            )
 
     def _create_picking(self, source_location):
         picking = self.env["stock.picking"].create(
