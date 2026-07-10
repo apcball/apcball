@@ -204,6 +204,8 @@ class ImexInventoryReport(models.Model):
                             ) svl on move.id = svl.stock_move_id
                             LEFT JOIN stock_location location_src
                                 on move.location_id = location_src.id
+                            LEFT JOIN stock_location location_dest
+                                on move.location_dest_id = location_dest.id
                             LEFT JOIN product_product product
                                 on move.product_id = product.id
                                 LEFT JOIN product_template template
@@ -215,6 +217,7 @@ class ImexInventoryReport(models.Model):
                             and template.categ_id in %s
                             and CAST(move.date AS date) <= %s
                             and location_src.usage = 'internal'
+                            and location_dest.usage = 'internal'
                         UNION ALL
                         SELECT
                             move.date, move.product_id,
