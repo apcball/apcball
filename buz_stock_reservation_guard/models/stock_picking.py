@@ -41,33 +41,25 @@ class StockPicking(models.Model):
                     move.location_id,
                     strict=True,
                 )
-                reserved_qty = self._get_move_reserved_qty(move)
-                needed_qty = max(
-                    move.product_uom_qty - reserved_qty,
-                    0.0,
-                )
                 if float_compare(
                     available_qty,
-                    needed_qty,
+                    0.0,
                     precision_rounding=move.product_uom.rounding,
-                ) < 0:
+                ) <= 0:
                     errors.append(
                         _(
                             "%(picking)s: %(product)s ที่ %(location)s "
-                            "(ต้องใช้ %(need)s %(uom)s, คงเหลือ %(available)s %(uom)s)"
+                            "(ไม่มีสินค้าคงเหลือ)"
                         )
                         % {
                             "picking": picking.name,
                             "product": move.product_id.display_name,
                             "location": move.location_id.complete_name,
-                            "need": needed_qty,
-                            "available": available_qty,
-                            "uom": move.product_uom.name,
                         }
                     )
         if errors:
             raise UserError(
-                _("ไม่สามารถจองสินค้าได้ เนื่องจาก location ต้นทางที่เลือกมีสินค้าไม่เพียงพอ:\n%s")
+                _("ไม่สามารถจองสินค้าได้ เนื่องจาก location ต้นทางไม่มีสินค้า:\n%s")
                 % "\n".join(errors)
             )
 
@@ -149,26 +141,23 @@ class StockPicking(models.Model):
                 )
                 if float_compare(
                     available_qty,
-                    values["quantity"],
+                    0.0,
                     precision_rounding=values["product"].uom_id.rounding,
-                ) < 0:
+                ) <= 0:
                     errors.append(
                         _(
                             "%(picking)s: %(product)s ที่ %(location)s "
-                            "(ต้องใช้ %(need)s %(uom)s, คงเหลือ %(available)s %(uom)s)"
+                            "(ไม่มีสินค้าคงเหลือ)"
                         )
                         % {
                             "picking": picking.name,
                             "product": values["product"].display_name,
                             "location": values["location"].complete_name,
-                            "need": values["quantity"],
-                            "available": available_qty,
-                            "uom": values["product"].uom_id.name,
                         }
                     )
 
         if errors:
             raise UserError(
-                _("ไม่สามารถตรวจรับ/โอนย้ายสินค้าได้ เนื่องจาก location ต้นทางที่เลือกมีสินค้าไม่เพียงพอ:\n%s")
+                _("ไม่สามารถตรวจรับ/โอนย้ายสินค้าได้ เนื่องจาก location ต้นทางไม่มีสินค้า:\n%s")
                 % "\n".join(errors)
             )

@@ -144,3 +144,16 @@ class TestStockReservationGuard(TransactionCase):
 
         picking.force_unreserve()
         self.assertTrue(picking.bypass_reservation_guard)
+
+    def test_allow_validate_with_partial_stock(self):
+        """Validates delivery when available > 0 but < needed (partial fulfillment allowed)"""
+        picking, move = self._create_picking(self.source_with_stock)
+        move.write({"product_uom_qty": 10.0})
+        picking.action_confirm()
+
+        self.env["stock.quant"]._update_available_quantity(
+            self.product, self.source_with_stock, -3.0
+        )
+
+        picking.button_validate()
+        self.assertEqual(picking.state, "done")
