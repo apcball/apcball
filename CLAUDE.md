@@ -83,6 +83,28 @@ Both CLI tools available on this machine:
 
 Refer to `SERVER.md` (local only) for deploy/rsync/test commands with actual server IPs and paths.
 
+### Production server access
+
+**SSH:** `ssh mog-prod` (alias configured in ~/.ssh/config)
+
+**Odoo shell** (live DB MOG_LIVE):
+```bash
+ssh mog-prod "cd /opt/instance1/odoo17 && source odoo17-venv/bin/activate && python3 odoo-bin shell -c /etc/instance1.conf -d MOG_LIVE --no-http"
+```
+
+**Direct psql** (credentials in `/etc/instance1.conf`):
+```bash
+ssh mog-prod "PGPASSWORD='<password>' psql -h localhost -U odoo MOG_LIVE -c 'SELECT ...'"
+```
+
+**Refresh report view** (imex_inventory_report, stock_valuation, etc.):
+```bash
+ssh mog-prod "cd /opt/instance1/odoo17 && source odoo17-venv/bin/activate && python3 odoo-bin shell -c /etc/instance1.conf -d MOG_LIVE --no-http 2>&1 << 'PYEOF'
+env['<model_name>'].init()
+PYEOF
+"
+```
+
 ---
 
 ## Do not edit
