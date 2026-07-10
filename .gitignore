@@ -17,3 +17,4 @@ internal_consume_request/*.md
 .vscode/
 .rpiv/
 mcp-odoo/claude_desktop_config.json
+SERVER.md

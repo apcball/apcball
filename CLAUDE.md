@@ -6,12 +6,7 @@
 
 ~230 Odoo 17 addons for Mogen Co., Thailand. Flat in repo root — each subdirectory is one addon.
 
-### Servers
-
-| Server | Host | Addons root | Config | Service |
-|--------|------|-------------|--------|---------|
-| DEV | `root@217.216.32.33` | `/srv/docker/odoo/custom-addons/` (Docker) | `%DOCKER_ROOT%/config/odoo.conf` | Docker (`odoo:17.0`) |
-| PROD | `mogenit@160.187.249.148` | `/opt/instance1/odoo17/custom-addons/` | `/etc/instance1.conf` | systemd (`instance1.service`, user `odoo`, venv `/opt/instance1/odoo17-venv`) |
+See `SERVER.md` (local only, gitignored) for server IPs, paths, and deploy commands.
 
 ### CI flow
 
@@ -86,33 +81,7 @@ Both CLI tools available on this machine:
 
 ## Common commands
 
-### Deploy DEV
-```bash
-rsync -az --delete "./<module>/" root@217.216.32.33:/srv/docker/odoo/custom-addons/<module>/
-ssh root@217.216.32.33 "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
-```
-
-### Deploy PROD
-```bash
-rsync -az --delete "./<module>/" mogenit@160.187.249.148:/opt/instance1/odoo17/custom-addons/<module>/
-ssh mogenit@160.187.249.148 "sudo systemctl restart instance1"
-```
-
-### Test on DEV live DB (irreversible)
-```bash
-ssh root@217.216.32.33 "docker exec odoo odoo -d MOG_DEV -u <module> --test-enable --stop-after-init --no-http"
-```
-
-### Isolated test (local docker-compose)
-```bash
-docker compose -f docker-compose.test.yml up --abort-on-container-exit
-```
-
-### Lint
-```bash
-pip install pylint pylint-odoo
-pylint --load-plugins=pylint_odoo <module>/
-```
+Refer to `SERVER.md` (local only) for deploy/rsync/test commands with actual server IPs and paths.
 
 ---
 

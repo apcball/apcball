@@ -4,7 +4,7 @@
 
 ~230 Odoo 17 addons for Mogen Co., Thailand. Flat in repo root — each subdirectory is one addon.
 
-Hosted on Contabo VPS. DEV: Dockerized (`odoo:17.0` base). PROD: systemd service (`instance1.service`, user `odoo`, venv `/opt/instance1/odoo17-venv`). Postgres 16.
+Hosted on Contabo VPS. DEV: Docker. PROD: systemd. Postgres 16. See `SERVER.md` (local only) for hosts/paths/commands.
 
 ## Key architecture
 
@@ -18,25 +18,7 @@ Hosted on Contabo VPS. DEV: Dockerized (`odoo:17.0` base). PROD: systemd service
 
 ## Commands
 
-```bash
-# Deploy to DEV server
-rsync -az --delete "./<module>/" root@217.216.32.33:/srv/docker/odoo/custom-addons/<module>/
-ssh root@217.216.32.33 "docker exec odoo odoo -d MOG_DEV -u <module> --stop-after-init --no-http"
-
-# Deploy to PROD server 
-rsync -az --delete "./<module>/" mogenit@160.187.249.148:/opt/instance1/odoo17/custom-addons/<module>/
-ssh mogenit@160.187.249.148 "sudo systemctl restart instance1"
-
-# Test on live DB (DEV only) — IRREVERSIBLE SIDE EFFECTS. Use isolated test below instead.
-ssh root@217.216.32.33 "docker exec odoo odoo -d MOG_DEV -u <module> --test-enable --stop-after-init --no-http"
-
-# Isolated test (local docker-compose with fresh Postgres)
-docker compose -f docker-compose.test.yml up --abort-on-container-exit
-
-# Lint
-pip install pylint pylint-odoo
-pylint --load-plugins=pylint_odoo <module>/
-```
+See `SERVER.md` (local only, gitignored) for deploy/rsync/test commands — contains server IPs and paths.
 
 ## CI flow (GitHub Actions + GitLab CI self-hosted)
 
@@ -102,9 +84,4 @@ Connect to live Odoo DB via MCP. Available tools:
 - ใช้ `odoo_query('sale_order_search', ...)` ตอนต้องการ fields ที่ `odoo_search` ไม่มี (เช่น `delivery_status`, `invoice_status`)
 - ใช้ `odoo_query('account_move_search', ...)` เช็คสถานะการชำเงินของ invoice (`payment_state`, `amount_residual`)
 
-## Server paths
 
-| Server | Host | Addons root | Config | Service |
-| ------ | ---- | ----------- | ------ | ------- |
-| DEV | `root@217.216.32.33` | `(Docker)/srv/docker/odoo/custom-addons/` | `%DOCKER_ROOT%/config/odoo.conf` | Docker (`odoo:17.0`) |
-| PROD | `mogenit@160.187.249.148` | `/opt/instance1/odoo17/custom-addons/` | `/etc/instance1.conf` | systemd (`instance1.service`, user `odoo`, venv `/opt/instance1/odoo17-venv`) |
