@@ -35,6 +35,7 @@ class StockCurrentReport(models.Model):
     price_with_vat = fields.Float('Price incl. VAT', readonly=True, digits=(16, 2))
     name_eng = fields.Char(string='Name (Eng)', readonly=True)
     default_code = fields.Char(string='Internal Reference', readonly=True)
+    sku = fields.Char(string='SKU', readonly=True)
     product_name = fields.Char(string='Product Name', compute='_compute_product_name')
     product_tag_ids = fields.Many2many('product.tag', string='Tags', related='product_id.product_tmpl_id.product_tag_ids', readonly=True)
 
@@ -228,71 +229,198 @@ class StockCurrentReport(models.Model):
             _logger.info(f"Using price column: {price_column}")
             
             _logger.info("Creating stock.current.report view")
-            sql_query = f"""
-                CREATE OR REPLACE VIEW {self._table} AS (
-                    SELECT
-                        sq.id AS id,
-                        sq.product_id,
-                        sq.location_id,
-                        COALESCE(sl.warehouse_id, w.id) AS warehouse_id,
-                        pt.categ_id AS category_id,
-                        pt.uom_id,
-                        COALESCE(sq.quantity, 0) AS quantity,
-                        GREATEST(COALESCE(sq.quantity, 0) + COALESCE(incoming.qty, 0) - COALESCE(outgoing.qty, 0), 0) AS free_to_use,
-                        COALESCE(incoming.qty, 0) AS incoming,
-                        COALESCE(outgoing.qty, 0) AS outgoing,
-                        COALESCE(pt.{price_column}, 0) AS unit_cost,
-                        COALESCE(sq.quantity, 0) * COALESCE(pt.{price_column}, 0) AS total_value,
-                        COALESCE(pt.sale_ok, false) AS sale_ok,
-                        ROUND(COALESCE(pt.{price_column}, 0) * 1.07, 2) AS price_with_vat,
-                        COALESCE(pt.name_eng, '') AS name_eng,
-                        COALESCE(pp.default_code, '') AS default_code,
-                        sl.usage AS location_usage,
-                        CASE
-                            WHEN sl.usage = 'internal' THEN 'Internal'
+
+            # Check if mrp_bom table exists (MRP module installed)
+            self._cr.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'mrp_bom')")
+            has_mrp = self._cr.fetchone()[0]
+            _logger.info(f"MRP module installed: {has_mrp}")
+
+            # Common field projection (shared by all UNION parts)
+            common_fields = f"""
+                pt.categ_id AS category_id,
+                pt.uom_id,
+                COALESCE(pt.{price_column}, 0) AS unit_cost,
+                COALESCE(pt.sale_ok, false) AS sale_ok,
+                ROUND(COALESCE(pt.{price_column}, 0) * 1.07, 2) AS price_with_vat,
+                COALESCE(pt.name_eng, '') AS name_eng,
+                COALESCE(pp.default_code, '') AS default_code,
+                COALESCE(pt.sku, '') AS sku,
+                false AS product_selection,
+                CURRENT_DATE AS stock_date
+            """
+
+            base_id = "(SELECT COALESCE(MAX(id), 0) FROM stock_quant)"
+
+            # Products with physical stock (for exclusion in other parts)
+            products_with_stock = """
+                SELECT DISTINCT sq.product_id
+                FROM stock_quant sq
+                JOIN stock_location sl ON sl.id = sq.location_id
+                WHERE sl.usage IN ('internal', 'production', 'inventory', 'transit')
+            """
+
+            parts = []
+
+            # Part 1: Products with physical stock
+            parts.append(f"""
+                SELECT sq.id AS id,
+                       sq.product_id,
+                       sq.location_id,
+                       COALESCE(sl.warehouse_id, w.id) AS warehouse_id,
+                       {common_fields},
+                       COALESCE(sq.quantity, 0) AS quantity,
+                       GREATEST(COALESCE(sq.quantity, 0) + COALESCE(incoming.qty, 0) - COALESCE(outgoing.qty, 0), 0) AS free_to_use,
+                       COALESCE(incoming.qty, 0) AS incoming,
+                       COALESCE(outgoing.qty, 0) AS outgoing,
+                       COALESCE(sq.quantity, 0) * COALESCE(pt.{price_column}, 0) AS total_value,
+                       sl.usage AS location_usage,
+                       CASE WHEN sl.usage = 'internal' THEN 'Internal'
                             WHEN sl.usage = 'production' THEN 'Production'
                             WHEN sl.usage = 'inventory' THEN 'Inventory'
                             WHEN sl.usage = 'transit' THEN 'Transit'
                             ELSE sl.usage
-                        END AS location_type_name,
-                        false AS product_selection,
-                        CURRENT_DATE AS stock_date
-                    FROM stock_quant sq
-                    JOIN product_product pp ON pp.id = sq.product_id
+                       END AS location_type_name
+                FROM stock_quant sq
+                JOIN product_product pp ON pp.id = sq.product_id
+                JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                JOIN stock_location sl ON sl.id = sq.location_id
+                LEFT JOIN stock_warehouse w ON (
+                    sl.id = w.lot_stock_id OR sl.id = w.wh_input_stock_loc_id OR
+                    sl.id = w.wh_output_stock_loc_id OR sl.id = w.wh_pack_stock_loc_id OR
+                    sl.id = w.wh_qc_stock_loc_id)
+                LEFT JOIN (
+                    SELECT sml.location_dest_id, sml.product_id, SUM(sml.quantity) AS qty
+                    FROM stock_move_line sml
+                    JOIN stock_move sm ON sm.id = sml.move_id
+                    WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
+                    AND sml.location_dest_id IS NOT NULL
+                    GROUP BY sml.location_dest_id, sml.product_id
+                ) incoming ON incoming.location_dest_id = sq.location_id AND incoming.product_id = sq.product_id
+                LEFT JOIN (
+                    SELECT sml.location_id, sml.product_id, SUM(sml.quantity) AS qty
+                    FROM stock_move_line sml
+                    JOIN stock_move sm ON sm.id = sml.move_id
+                    WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
+                    AND sml.location_id IS NOT NULL
+                    GROUP BY sml.location_id, sml.product_id
+                ) outgoing ON outgoing.location_id = sq.location_id AND outgoing.product_id = sq.product_id
+                WHERE sl.usage IN ('internal', 'production', 'inventory', 'transit')
+            """)
+
+            if has_mrp:
+                # Part 2a: BoM total available (NULL warehouse, across all warehouses)
+                bom_total = f"""
+                    SELECT pp.id AS product_id,
+                           MIN(FLOOR(component_total.qty / NULLIF(bom_line.product_qty, 0))) AS bom_qty
+                    FROM mrp_bom bom
+                    JOIN mrp_bom_line bom_line ON bom_line.bom_id = bom.id
+                    JOIN product_product pp ON pp.product_tmpl_id = bom.product_tmpl_id
+                        AND (bom.product_id IS NULL OR bom.product_id = pp.id)
+                    JOIN (
+                        SELECT sq.product_id, SUM(sq.quantity) AS qty
+                        FROM stock_quant sq
+                        JOIN stock_location sl ON sl.id = sq.location_id
+                        WHERE sl.usage = 'internal'
+                        GROUP BY sq.product_id
+                    ) component_total ON component_total.product_id = bom_line.product_id
+                    WHERE bom.active = true AND bom.type IN ('normal', 'phantom')
+                    GROUP BY pp.id
+                    HAVING MIN(FLOOR(component_total.qty / NULLIF(bom_line.product_qty, 0))) > 0
+                """
+
+                parts.append(f"""
+                    UNION ALL
+                    SELECT {base_id} + ROW_NUMBER() OVER (ORDER BY bom_t.product_id) AS id,
+                           bom_t.product_id,
+                           NULL::integer AS location_id,
+                           NULL::integer AS warehouse_id,
+                           {common_fields},
+                           bom_t.bom_qty AS quantity,
+                           bom_t.bom_qty AS free_to_use,
+                           0.0 AS incoming, 0.0 AS outgoing,
+                           0.0 AS total_value,
+                           NULL::varchar AS location_usage,
+                           'BoM Total'::varchar AS location_type_name
+                    FROM ({bom_total}) bom_t
+                    JOIN product_product pp ON pp.id = bom_t.product_id
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                    JOIN stock_location sl ON sl.id = sq.location_id
-                    LEFT JOIN stock_warehouse w ON (
-                        sl.id = w.lot_stock_id OR
-                        sl.id = w.wh_input_stock_loc_id OR
-                        sl.id = w.wh_output_stock_loc_id OR
-                        sl.id = w.wh_pack_stock_loc_id OR
-                        sl.id = w.wh_qc_stock_loc_id
-                    )
+                    WHERE bom_t.product_id NOT IN ({products_with_stock})
+                """)
+
+                # Part 2b: BoM per warehouse where ALL components have stock
+                bom_products_with_wh = f"""
+                    SELECT pp.id AS product_id,
+                           w.id AS warehouse_id,
+                           MIN(FLOOR(COALESCE(component_wh.qty, 0) / NULLIF(bom_line.product_qty, 0))) AS bom_qty
+                    FROM mrp_bom bom
+                    JOIN mrp_bom_line bom_line ON bom_line.bom_id = bom.id
+                    JOIN product_product pp ON pp.product_tmpl_id = bom.product_tmpl_id
+                        AND (bom.product_id IS NULL OR bom.product_id = pp.id)
+                    CROSS JOIN stock_warehouse w
                     LEFT JOIN (
-                        SELECT
-                            sml.location_dest_id,
-                            sml.product_id,
-                            SUM(sml.quantity) AS qty
-                        FROM stock_move_line sml
-                        JOIN stock_move sm ON sm.id = sml.move_id
-                        WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
-                        AND sml.location_dest_id IS NOT NULL
-                        GROUP BY sml.location_dest_id, sml.product_id
-                    ) incoming ON incoming.location_dest_id = sq.location_id AND incoming.product_id = sq.product_id
-                    LEFT JOIN (
-                        SELECT
-                            sml.location_id,
-                            sml.product_id,
-                            SUM(sml.quantity) AS qty
-                        FROM stock_move_line sml
-                        JOIN stock_move sm ON sm.id = sml.move_id
-                        WHERE sm.state IN ('confirmed', 'assigned', 'partially_available')
-                        AND sml.location_id IS NOT NULL
-                        GROUP BY sml.location_id, sml.product_id
-                    ) outgoing ON outgoing.location_id = sq.location_id AND outgoing.product_id = sq.product_id
-                    WHERE sl.usage IN ('internal', 'production', 'inventory', 'transit')
-                )
-            """
+                        SELECT sq.product_id, sl.warehouse_id, SUM(sq.quantity) AS qty
+                        FROM stock_quant sq
+                        JOIN stock_location sl ON sl.id = sq.location_id
+                        WHERE sl.usage = 'internal'
+                        GROUP BY sq.product_id, sl.warehouse_id
+                    ) component_wh ON component_wh.product_id = bom_line.product_id
+                        AND component_wh.warehouse_id = w.id
+                    WHERE bom.active = true AND bom.type IN ('normal', 'phantom')
+                    AND pp.id NOT IN ({products_with_stock})
+                    GROUP BY pp.id, w.id
+                    HAVING MIN(FLOOR(COALESCE(component_wh.qty, 0) / NULLIF(bom_line.product_qty, 0))) > 0
+                """
+
+                parts.append(f"""
+                    UNION ALL
+                    SELECT {base_id} + (SELECT COUNT(*) FROM ({bom_total}) _bt)
+                        + ROW_NUMBER() OVER (ORDER BY bom_wh.product_id, bom_wh.warehouse_id) AS id,
+                           bom_wh.product_id,
+                           NULL::integer AS location_id,
+                           bom_wh.warehouse_id,
+                           {common_fields},
+                           bom_wh.bom_qty AS quantity,
+                           bom_wh.bom_qty AS free_to_use,
+                           0.0 AS incoming, 0.0 AS outgoing,
+                           0.0 AS total_value,
+                           'internal'::varchar AS location_usage,
+                           'Internal'::varchar AS location_type_name
+                    FROM ({bom_products_with_wh}) bom_wh
+                    JOIN product_product pp ON pp.id = bom_wh.product_id
+                    JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                """)
+
+                # Products already in Part 1, 2a, or 2b (exclude from Part 3)
+                bom_products_in_stock_or_wh = f"""
+                    SELECT product_id FROM ({products_with_stock}) _ps
+                    UNION
+                    SELECT product_id FROM ({bom_total}) _bt
+                    UNION
+                    SELECT product_id FROM ({bom_products_with_wh}) _bw
+                """
+            else:
+                bom_products_in_stock_or_wh = f"SELECT product_id FROM ({products_with_stock}) _ps"
+
+            # Part 3: Products with NO stock and NOT a BoM set — NULL warehouse, qty=0
+            parts.append(f"""
+                UNION ALL
+                SELECT {base_id} + ROW_NUMBER() OVER (ORDER BY pp.id) AS id,
+                       pp.id AS product_id,
+                       NULL::integer AS location_id,
+                       NULL::integer AS warehouse_id,
+                       {common_fields},
+                       0.0 AS quantity,
+                       0.0 AS free_to_use,
+                       0.0 AS incoming, 0.0 AS outgoing,
+                       0.0 AS total_value,
+                       NULL::varchar AS location_usage,
+                       ''::varchar AS location_type_name
+                FROM product_product pp
+                JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                WHERE pp.id NOT IN ({bom_products_in_stock_or_wh})
+            """)
+
+            sql_query = "CREATE OR REPLACE VIEW " + self._table + " AS (\n" + "\n".join(parts) + "\n)"
             _logger.info(f"SQL Query to be executed (using {price_column}):\n{sql_query}")
             self._cr.execute(sql_query)
             _logger.info(f"Successfully created {self._table} view")

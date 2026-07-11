@@ -9,6 +9,8 @@
                 <field name="location_id"/>
                 <field name="location_type_name" string="Location Type" optional="show"/>
                 <field name="product_id"/>
+                <field name="sku" string="SKU" optional="show"/>
+                <field name="default_code" string="Internal Ref." optional="show"/>
                 <field name="quantity" string="On Hand" sum="Total"/>
                 <field name="free_to_use" string="Free to Use" sum="Total" optional="show"/>
                 <field name="incoming" sum="Total" optional="show"/>
@@ -85,6 +87,7 @@
                 
                 <!-- Search Fields -->
                 <field name="product_id" string="Product"/>
+                <field name="sku" string="SKU"/>
                 <field name="warehouse_id" string="Warehouse"/>
                 <field name="location_id" string="Location"/>
                 <field name="sale_ok" string="Can be Sold" invisible="1"/>
