@@ -113,7 +113,7 @@ pylint --load-plugins=pylint_odoo <module>/
 
 **Odoo shell** (live DB MOG_LIVE):
 ```bash
-ssh mog-prod "cd /opt/instance1/odoo17 && source odoo17-venv/bin/activate && python3 odoo-bin shell -c /etc/instance1.conf -d MOG_LIVE --no-http"
+ssh mog-prod "cd /opt/instance1/odoo17 && source /opt/instance1/odoo17-venv/bin/activate && python3 odoo-bin shell -c /etc/instance1.conf -d MOG_LIVE --no-http"
 ```
 
 **Direct psql** (credentials in `/etc/instance1.conf`):
@@ -123,7 +123,7 @@ ssh mog-prod "PGPASSWORD='<password>' psql -h localhost -U odoo MOG_LIVE -c 'SEL
 
 **Refresh report view** (imex_inventory_report, stock_valuation, etc.):
 ```bash
-ssh mog-prod "cd /opt/instance1/odoo17 && source odoo17-venv/bin/activate && python3 odoo-bin shell -c /etc/instance1.conf -d MOG_LIVE --no-http 2>&1 << 'PYEOF'
+ssh mog-prod "cd /opt/instance1/odoo17 && source /opt/instance1/odoo17-venv/bin/activate && python3 odoo-bin shell -c /etc/instance1.conf -d MOG_LIVE --no-http 2>&1 << 'PYEOF'
 env['<model_name>'].init()
 PYEOF
 "

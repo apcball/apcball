@@ -76,9 +76,11 @@ class StockCurrentTransferWizard(models.TransientModel):
                 
                 source_locations.add(location_id)
                 
-                # Look up actual available quantity from stock quants
+                # Look up actual available quantity from stock quants.
+                # _get_available_quantity requires recordsets, not raw ids.
                 actual_qty = self.env['stock.quant']._get_available_quantity(
-                    product_id, location_id
+                    self.env['product.product'].browse(product_id),
+                    self.env['stock.location'].browse(location_id),
                 ) if product_id and location_id else 0.0
                 
                 context_qty = product_data.get('quantity', 0)
@@ -217,13 +219,15 @@ class StockCurrentTransferWizard(models.TransientModel):
                 try:
                     picking.action_confirm()
                     picking.action_assign()
-                    
-                    # Set quantities done and validate
+
+                    # Set quantities done and validate (Odoo 17 API: the done
+                    # quantity lives on move.quantity and moves must be picked;
+                    # move_line.qty_done no longer exists)
                     for move in picking.move_ids:
-                        if move.state in ['assigned', 'partially_available']:
-                            for move_line in move.move_line_ids:
-                                move_line.qty_done = move_line.product_uom_qty
-                    
+                        if move.state in ('assigned', 'partially_available', 'confirmed'):
+                            move.quantity = move.product_uom_qty
+                            move.picked = True
+
                     picking.button_validate()
                     _logger.info("Transfer %s automatically validated", picking.name)
                 except Exception as e:

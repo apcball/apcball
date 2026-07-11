@@ -90,18 +90,33 @@ class StockCurrentReportXlsx(models.AbstractModel):
                 category_ids=category_ids if category_ids else None
             )
             _logger.info(f"Found {len(stock_lines)} stock lines for report")
-            
+
+            # Prefetch all referenced records in one recordset per model so the
+            # row loop reads from cache instead of issuing one query per cell.
+            products = self.env['product.product'].browse(
+                {r['product_id'] for r in stock_lines})
+            locations_all = self.env['stock.location'].browse(
+                {r['location_id'] for r in stock_lines if r['location_id']})
+            categories_all = self.env['product.category'].browse(
+                {r['category_id'] for r in stock_lines if r['category_id']})
+            uoms_all = self.env['uom.uom'].browse(
+                {r['uom_id'] for r in stock_lines if r['uom_id']})
+            product_map = {p.id: p for p in products}
+            location_map = {l.id: l for l in locations_all}
+            category_map = {c.id: c for c in categories_all}
+            uom_map = {u.id: u for u in uoms_all}
+
             # Write data rows
             total_value = 0
             for rec in stock_lines:
-                product = self.env['product.product'].browse(rec['product_id'])
-                location = self.env['stock.location'].browse(rec['location_id'])
-                category = self.env['product.category'].browse(rec['category_id'])
-                uom = self.env['uom.uom'].browse(rec['uom_id'])
+                product = product_map[rec['product_id']]
+                location = location_map.get(rec['location_id'])
+                category = category_map.get(rec['category_id'])
+                uom = uom_map.get(rec['uom_id'])
                 location_type = rec.get('location_type_name') or rec.get('location_usage') or ''
                 
                 col_index = 0
-                sheet.write(row, col_index, location.display_name); col_index += 1
+                sheet.write(row, col_index, location.display_name if location else ''); col_index += 1
                 sheet.write(row, col_index, location_type); col_index += 1
                 sheet.write(row, col_index, product.default_code or ''); col_index += 1
                 sheet.write(row, col_index, product.display_name); col_index += 1

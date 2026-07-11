@@ -244,6 +244,12 @@
     border: 1px solid #fecaca;
 }
 
+.o_kanban_view.stock_current_report_kanban .o_sc_badge_hot {
+    background: #fff7ed;
+    color: #9a3412;
+    border: 1px solid #fed7aa;
+}
+
 /* ── Footer: Location ── */
 
 .o_kanban_view.stock_current_report_kanban .o_sc_footer {

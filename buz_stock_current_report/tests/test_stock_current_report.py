@@ -97,8 +97,9 @@ class TestStockCurrentReport(TransactionCase):
     def test_export_wizard(self):
         """Test export wizard functionality"""
         try:
+            self.assertIn('stock.current.export.wizard', self.env,
+                          "Export wizard model should be registered")
             wizard_model = self.env['stock.current.export.wizard']
-            self.assertTrue(wizard_model, "Export wizard model should exist")
             
             # Create wizard instance
             wizard = wizard_model.create({

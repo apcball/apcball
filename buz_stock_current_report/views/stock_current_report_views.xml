@@ -11,6 +11,7 @@
                 <field name="product_id"/>
                 <field name="sku" string="SKU" optional="show"/>
                 <field name="default_code" string="Internal Ref." optional="show"/>
+                <field name="sales_qty_90d" string="Sold (90 Days)" sum="Total" optional="show"/>
                 <field name="quantity" string="On Hand" sum="Total"/>
                 <field name="free_to_use" string="Free to Use" sum="Total" optional="show"/>
                 <field name="incoming" sum="Total" optional="show"/>
@@ -65,12 +66,15 @@
         <field name="arch" type="xml">
             <search string="Stock Filters">
                 <!-- Sidebar with Warehouse and Internal Location Hierarchy -->
+                <!-- Counters disabled: each counter runs a full aggregate over the
+                     report view on every load, which makes kanban/tree open slowly. -->
                 <searchpanel>
-                    <field name="warehouse_id" string="Warehouse" icon="fa-building" enable_counters="1" hierarchize="1"/>
-                    <field name="location_id" string="Location" icon="fa-map-marker" enable_counters="1" hierarchize="1"/>
+                    <field name="warehouse_id" string="Warehouse" icon="fa-building" hierarchize="1"/>
+                    <field name="location_id" string="Location" icon="fa-map-marker" hierarchize="1"/>
                 </searchpanel>
                 
                 <!-- Quick Filters -->
+                <filter string="Best Sellers" name="best_sellers" domain="[('sales_qty_90d', '&gt;', 0)]"/>
                 <filter string="Can be Sold" name="can_be_sold" domain="[('sale_ok', '=', True)]"/>
                 <filter string="Low Stock" name="low_stock" domain="[('quantity', '&lt;', 10)]"/>
                 <filter string="Out of Stock" name="out_of_stock" domain="[('quantity', '&lt;=', 0)]"/>
@@ -122,6 +126,7 @@
                 <field name="uom_id"/>
                 <field name="sale_ok"/>
                 <field name="price_with_vat"/>
+                <field name="sales_qty_90d"/>
                 <templates>
                     <t t-name="kanban-box">
                         <a class="o_stock_card" type="object" name="action_open_product">
@@ -147,6 +152,9 @@
                             </div>
                             <!-- Movement badges -->
                             <div class="o_sc_moves">
+                                <t t-if="record.sales_qty_90d.raw_value &gt; 0">
+                                    <span class="o_sc_badge o_sc_badge_hot" title="Sold in last 90 days">🔥 <field name="sales_qty_90d"/></span>
+                                </t>
                                 <t t-if="record.incoming.raw_value &gt; 0">
                                     <span class="o_sc_badge o_sc_badge_in">+<field name="incoming"/></span>
                                 </t>
@@ -192,7 +200,9 @@
             (0, 0, {'view_mode': 'kanban', 'view_id': ref('view_stock_current_report_kanban')}),
             (0, 0, {'view_mode': 'form', 'view_id': ref('view_stock_current_report_form')})
         ]"/>
-        <field name="context">{'search_default_can_be_sold': 1, 'search_default_group_location': 1}</field>
+        <!-- No default group by location: records are ordered by sales_qty_90d desc
+             (model _order) so best-selling products appear first for the sales team. -->
+        <field name="context">{'search_default_can_be_sold': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Current Stock Report with Warehouse Navigation

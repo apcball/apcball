@@ -1,4 +1,5 @@
 from odoo import models, fields, tools, api
+from odoo.exceptions import UserError
 import logging
 _logger = logging.getLogger(__name__)
 
@@ -6,7 +7,7 @@ class StockCurrentReport(models.Model):
     _name = 'stock.current.report'
     _description = 'Current Stock Report (by Date)'
     _auto = False
-    _order = 'location_id, product_id'
+    _order = 'sales_qty_90d desc, location_id, product_id'
 
     product_id = fields.Many2one('product.product', string='Product', readonly=True)
     location_id = fields.Many2one('stock.location', string='Location', readonly=True)
@@ -38,6 +39,9 @@ class StockCurrentReport(models.Model):
     sku = fields.Char(string='SKU', readonly=True)
     product_name = fields.Char(string='Product Name', compute='_compute_product_name')
     product_tag_ids = fields.Many2many('product.tag', string='Tags', related='product_id.product_tmpl_id.product_tag_ids', readonly=True)
+    sales_qty_90d = fields.Float('Sold (90 Days)', readonly=True, digits='Product Unit of Measure',
+                                 help='Net quantity delivered to customers in the last 90 days (returns deducted). '
+                                      'Used to rank best-selling products first.')
 
     @api.depends('product_id')
     def _compute_product_name(self):
@@ -60,9 +64,8 @@ class StockCurrentReport(models.Model):
         _logger.info(f"action_view_product_moves called with ids: {self.ids}")
         
         # Handle case where no record is selected
-        if not self or len(self) == 0:
+        if not self:
             _logger.warning("action_view_product_moves called with no record")
-            from odoo.exceptions import UserError
             raise UserError('Please select a product to view moves')
         
         # Get the first record
@@ -86,9 +89,8 @@ class StockCurrentReport(models.Model):
         _logger.info(f"action_transfer_single_product called with ids: {self.ids}, context: {self.env.context}")
         
         # Handle case where no record is selected
-        if not self or len(self) == 0:
+        if not self:
             _logger.warning("action_transfer_single_product called with no record")
-            from odoo.exceptions import UserError
             raise UserError('Please select a product to transfer')
         
         # Get the first record
@@ -125,33 +127,27 @@ class StockCurrentReport(models.Model):
         
         if not active_ids:
             _logger.warning("No active_ids in context for bulk transfer")
-            from odoo.exceptions import UserError
             raise UserError('Please select at least one product to transfer')
-        
+
         selected_records = self.env['stock.current.report'].search([
             ('id', 'in', active_ids)
         ])
-        
+
         if not selected_records:
-            from odoo.exceptions import UserError
             raise UserError('Please select at least one product to transfer')
-        
+
         _logger.info(f"Bulk transferring {len(selected_records)} records")
-        
+
         products_data = []
         for record in selected_records:
-            product_data = {
+            products_data.append({
                 'productId': record.product_id.id,
                 'locationId': record.location_id.id,
                 'quantity': record.quantity,
                 'uomId': record.uom_id.id,
                 'productName': record.product_id.name,
                 'locationName': record.location_id.name
-            }
-            _logger.info(f"Adding to bulk transfer: {product_data}")
-            products_data.append(product_data)
-        
-        _logger.info(f"Total products for transfer: {len(products_data)}")
+            })
         
         return {
             'name': 'Bulk Transfer',
@@ -246,18 +242,37 @@ class StockCurrentReport(models.Model):
                 COALESCE(pp.default_code, '') AS default_code,
                 COALESCE(pt.sku, '') AS sku,
                 false AS product_selection,
-                CURRENT_DATE AS stock_date
+                CURRENT_DATE AS stock_date,
+                COALESCE(psales.qty, 0) AS sales_qty_90d
             """
 
             base_id = "(SELECT COALESCE(MAX(id), 0) FROM stock_quant)"
 
-            # Products with physical stock (for exclusion in other parts)
-            products_with_stock = """
-                SELECT DISTINCT sq.product_id
-                FROM stock_quant sq
-                JOIN stock_location sl ON sl.id = sq.location_id
-                WHERE sl.usage IN ('internal', 'production', 'inventory', 'transit')
-            """
+            # Shared CTEs: each heavy aggregate is declared once and reused by
+            # every UNION part, so PostgreSQL materializes it a single time
+            # instead of recomputing it per reference.
+            ctes = ["""
+                products_with_stock AS (
+                    SELECT DISTINCT sq.product_id
+                    FROM stock_quant sq
+                    JOIN stock_location sl ON sl.id = sq.location_id
+                    WHERE sl.usage IN ('internal', 'production', 'inventory', 'transit')
+                )
+            """, """
+                product_sales AS (
+                    SELECT sml.product_id,
+                           SUM(CASE WHEN dest.usage = 'customer'
+                                    THEN sml.quantity ELSE -sml.quantity END) AS qty
+                    FROM stock_move_line sml
+                    JOIN stock_move sm ON sm.id = sml.move_id
+                    JOIN stock_location src ON src.id = sml.location_id
+                    JOIN stock_location dest ON dest.id = sml.location_dest_id
+                    WHERE sm.state = 'done'
+                      AND sm.date >= (CURRENT_DATE - INTERVAL '90 days')
+                      AND (dest.usage = 'customer') != (src.usage = 'customer')
+                    GROUP BY sml.product_id
+                )
+            """]
 
             parts = []
 
@@ -269,7 +284,10 @@ class StockCurrentReport(models.Model):
                        COALESCE(sl.warehouse_id, w.id) AS warehouse_id,
                        {common_fields},
                        COALESCE(sq.quantity, 0) AS quantity,
-                       GREATEST(COALESCE(sq.quantity, 0) + COALESCE(incoming.qty, 0) - COALESCE(outgoing.qty, 0), 0) AS free_to_use,
+                       -- Free to Use is the quantity currently available at this
+                       -- location.  Pending incoming/outgoing moves are displayed
+                       -- separately and must not change the physical availability.
+                       GREATEST(COALESCE(sq.quantity, 0) - COALESCE(sq.reserved_quantity, 0), 0) AS free_to_use,
                        COALESCE(incoming.qty, 0) AS incoming,
                        COALESCE(outgoing.qty, 0) AS outgoing,
                        COALESCE(sq.quantity, 0) * COALESCE(pt.{price_column}, 0) AS total_value,
@@ -283,6 +301,7 @@ class StockCurrentReport(models.Model):
                 FROM stock_quant sq
                 JOIN product_product pp ON pp.id = sq.product_id
                 JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                LEFT JOIN product_sales psales ON psales.product_id = pp.id
                 JOIN stock_location sl ON sl.id = sq.location_id
                 LEFT JOIN stock_warehouse w ON (
                     sl.id = w.lot_stock_id OR sl.id = w.wh_input_stock_loc_id OR
@@ -308,103 +327,100 @@ class StockCurrentReport(models.Model):
             """)
 
             if has_mrp:
-                # Part 2a: BoM total available (NULL warehouse, across all warehouses)
-                bom_total = f"""
-                    SELECT pp.id AS product_id,
-                           MIN(FLOOR(component_total.qty / NULLIF(bom_line.product_qty, 0))) AS bom_qty
-                    FROM mrp_bom bom
-                    JOIN mrp_bom_line bom_line ON bom_line.bom_id = bom.id
-                    JOIN product_product pp ON pp.product_tmpl_id = bom.product_tmpl_id
-                        AND (bom.product_id IS NULL OR bom.product_id = pp.id)
-                    JOIN (
-                        SELECT sq.product_id, SUM(sq.quantity) AS qty
+                # Part 2: BoM kits available at the exact internal location where
+                # every component is available.  Do not aggregate components across
+                # locations: a kit can only be prepared where all components exist.
+                # Completeness is enforced by requiring one matched stock row per
+                # requirement line (COUNT(*) = n_lines) instead of cross-joining
+                # every location, which exploded to products x locations.
+                ctes.append("""
+                    kit_requirement AS (
+                        SELECT pp.id AS kit_product_id,
+                               bl.bom_id,
+                               bl.product_id AS component_id,
+                               SUM(bl.product_qty) AS component_qty
+                        FROM mrp_bom bom
+                        JOIN product_product pp ON pp.product_tmpl_id = bom.product_tmpl_id
+                            AND (bom.product_id IS NULL OR bom.product_id = pp.id)
+                        JOIN mrp_bom_line bl ON bl.bom_id = bom.id
+                        WHERE bom.active = true
+                        AND bom.type IN ('normal', 'phantom')
+                        AND NOT EXISTS (
+                            SELECT 1 FROM products_with_stock ps WHERE ps.product_id = pp.id)
+                        GROUP BY pp.id, bl.bom_id, bl.product_id
+                    )
+                """)
+                ctes.append("""
+                    kit_requirement_size AS (
+                        SELECT kit_product_id, COUNT(*) AS n_lines
+                        FROM kit_requirement
+                        GROUP BY kit_product_id
+                    )
+                """)
+                ctes.append("""
+                    component_stock AS (
+                        SELECT sq.product_id,
+                               sq.location_id,
+                               SUM(GREATEST(COALESCE(sq.quantity, 0) - COALESCE(sq.reserved_quantity, 0), 0)) AS qty
                         FROM stock_quant sq
                         JOIN stock_location sl ON sl.id = sq.location_id
-                        WHERE sl.usage = 'internal'
-                        GROUP BY sq.product_id
-                    ) component_total ON component_total.product_id = bom_line.product_id
-                    WHERE bom.active = true AND bom.type IN ('normal', 'phantom')
-                    GROUP BY pp.id
-                    HAVING MIN(FLOOR(component_total.qty / NULLIF(bom_line.product_qty, 0))) > 0
-                """
-
-                parts.append(f"""
-                    UNION ALL
-                    SELECT {base_id} + ROW_NUMBER() OVER (ORDER BY bom_t.product_id) AS id,
-                           bom_t.product_id,
-                           NULL::integer AS location_id,
-                           NULL::integer AS warehouse_id,
-                           {common_fields},
-                           bom_t.bom_qty AS quantity,
-                           bom_t.bom_qty AS free_to_use,
-                           0.0 AS incoming, 0.0 AS outgoing,
-                           0.0 AS total_value,
-                           NULL::varchar AS location_usage,
-                           'BoM Total'::varchar AS location_type_name
-                    FROM ({bom_total}) bom_t
-                    JOIN product_product pp ON pp.id = bom_t.product_id
-                    JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                    WHERE bom_t.product_id NOT IN ({products_with_stock})
+                        WHERE sl.usage = 'internal' AND sl.active = true
+                        GROUP BY sq.product_id, sq.location_id
+                    )
+                """)
+                ctes.append("""
+                    bom_available_by_location AS (
+                        SELECT kr.kit_product_id AS product_id,
+                               cs.location_id,
+                               MIN(FLOOR(cs.qty / NULLIF(kr.component_qty, 0))) AS bom_qty
+                        FROM kit_requirement kr
+                        JOIN kit_requirement_size krs ON krs.kit_product_id = kr.kit_product_id
+                        JOIN component_stock cs ON cs.product_id = kr.component_id AND cs.qty > 0
+                        GROUP BY kr.kit_product_id, cs.location_id, krs.n_lines
+                        HAVING COUNT(*) = krs.n_lines
+                           AND MIN(FLOOR(cs.qty / NULLIF(kr.component_qty, 0))) > 0
+                    )
                 """)
 
-                # Part 2b: BoM per warehouse where ALL components have stock
-                bom_products_with_wh = f"""
-                    SELECT pp.id AS product_id,
-                           w.id AS warehouse_id,
-                           MIN(FLOOR(COALESCE(component_wh.qty, 0) / NULLIF(bom_line.product_qty, 0))) AS bom_qty
-                    FROM mrp_bom bom
-                    JOIN mrp_bom_line bom_line ON bom_line.bom_id = bom.id
-                    JOIN product_product pp ON pp.product_tmpl_id = bom.product_tmpl_id
-                        AND (bom.product_id IS NULL OR bom.product_id = pp.id)
-                    CROSS JOIN stock_warehouse w
-                    LEFT JOIN (
-                        SELECT sq.product_id, sl.warehouse_id, SUM(sq.quantity) AS qty
-                        FROM stock_quant sq
-                        JOIN stock_location sl ON sl.id = sq.location_id
-                        WHERE sl.usage = 'internal'
-                        GROUP BY sq.product_id, sl.warehouse_id
-                    ) component_wh ON component_wh.product_id = bom_line.product_id
-                        AND component_wh.warehouse_id = w.id
-                    WHERE bom.active = true AND bom.type IN ('normal', 'phantom')
-                    AND pp.id NOT IN ({products_with_stock})
-                    GROUP BY pp.id, w.id
-                    HAVING MIN(FLOOR(COALESCE(component_wh.qty, 0) / NULLIF(bom_line.product_qty, 0))) > 0
-                """
-
                 parts.append(f"""
                     UNION ALL
-                    SELECT {base_id} + (SELECT COUNT(*) FROM ({bom_total}) _bt)
-                        + ROW_NUMBER() OVER (ORDER BY bom_wh.product_id, bom_wh.warehouse_id) AS id,
-                           bom_wh.product_id,
-                           NULL::integer AS location_id,
-                           bom_wh.warehouse_id,
+                    SELECT {base_id} + ROW_NUMBER() OVER (ORDER BY bom_l.product_id, bom_l.location_id) AS id,
+                           bom_l.product_id,
+                           bom_l.location_id,
+                           COALESCE(sl.warehouse_id, w.id) AS warehouse_id,
                            {common_fields},
-                           bom_wh.bom_qty AS quantity,
-                           bom_wh.bom_qty AS free_to_use,
+                           bom_l.bom_qty AS quantity,
+                           bom_l.bom_qty AS free_to_use,
                            0.0 AS incoming, 0.0 AS outgoing,
                            0.0 AS total_value,
                            'internal'::varchar AS location_usage,
                            'Internal'::varchar AS location_type_name
-                    FROM ({bom_products_with_wh}) bom_wh
-                    JOIN product_product pp ON pp.id = bom_wh.product_id
+                    FROM bom_available_by_location bom_l
+                    JOIN product_product pp ON pp.id = bom_l.product_id
                     JOIN product_template pt ON pt.id = pp.product_tmpl_id
+                    LEFT JOIN product_sales psales ON psales.product_id = pp.id
+                    JOIN stock_location sl ON sl.id = bom_l.location_id
+                    LEFT JOIN stock_warehouse w ON (
+                        sl.id = w.lot_stock_id OR sl.id = w.wh_input_stock_loc_id OR
+                        sl.id = w.wh_output_stock_loc_id OR sl.id = w.wh_pack_stock_loc_id OR
+                        sl.id = w.wh_qc_stock_loc_id)
+                """)
+            else:
+                ctes.append("""
+                    bom_available_by_location AS (
+                        SELECT NULL::integer AS product_id,
+                               NULL::integer AS location_id,
+                               NULL::numeric AS bom_qty
+                        WHERE false
+                    )
                 """)
 
-                # Products already in Part 1, 2a, or 2b (exclude from Part 3)
-                bom_products_in_stock_or_wh = f"""
-                    SELECT product_id FROM ({products_with_stock}) _ps
-                    UNION
-                    SELECT product_id FROM ({bom_total}) _bt
-                    UNION
-                    SELECT product_id FROM ({bom_products_with_wh}) _bw
-                """
-            else:
-                bom_products_in_stock_or_wh = f"SELECT product_id FROM ({products_with_stock}) _ps"
-
-            # Part 3: Products with NO stock and NOT a BoM set — NULL warehouse, qty=0
+            # Part 3: Products with neither physical stock nor an available kit
+            # location — NULL warehouse, qty=0.
             parts.append(f"""
                 UNION ALL
-                SELECT {base_id} + ROW_NUMBER() OVER (ORDER BY pp.id) AS id,
+                SELECT {base_id} + (SELECT COUNT(*) FROM bom_available_by_location)
+                    + ROW_NUMBER() OVER (ORDER BY pp.id) AS id,
                        pp.id AS product_id,
                        NULL::integer AS location_id,
                        NULL::integer AS warehouse_id,
@@ -417,11 +433,19 @@ class StockCurrentReport(models.Model):
                        ''::varchar AS location_type_name
                 FROM product_product pp
                 JOIN product_template pt ON pt.id = pp.product_tmpl_id
-                WHERE pp.id NOT IN ({bom_products_in_stock_or_wh})
+                LEFT JOIN product_sales psales ON psales.product_id = pp.id
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM products_with_stock ps WHERE ps.product_id = pp.id)
+                AND NOT EXISTS (
+                    SELECT 1 FROM bom_available_by_location bl WHERE bl.product_id = pp.id)
             """)
 
-            sql_query = "CREATE OR REPLACE VIEW " + self._table + " AS (\n" + "\n".join(parts) + "\n)"
-            _logger.info(f"SQL Query to be executed (using {price_column}):\n{sql_query}")
+            sql_query = (
+                "CREATE OR REPLACE VIEW " + self._table + " AS (\n"
+                + "WITH " + ",\n".join(ctes) + "\n"
+                + "\n".join(parts) + "\n)"
+            )
+            _logger.debug(f"SQL Query to be executed (using {price_column}):\n{sql_query}")
             self._cr.execute(sql_query)
             _logger.info(f"Successfully created {self._table} view")
         except Exception as e:
@@ -432,9 +456,9 @@ class StockCurrentReport(models.Model):
     def check_access(self):
         """Debug method to check if model is accessible"""
         try:
-            self._cr.execute(f"SELECT COUNT(*) FROM {self._table} LIMIT 1")
-            count = self._cr.fetchone()[0]
-            _logger.info(f"Model {self._table} is accessible, found {count} records")
+            self._cr.execute(f"SELECT 1 FROM {self._table} LIMIT 1")
+            self._cr.fetchone()
+            _logger.info(f"Model {self._table} is accessible")
             return True
         except Exception as e:
             _logger.error(f"Error accessing model {self._table}: {e}")
@@ -503,49 +527,42 @@ class StockCurrentReport(models.Model):
         """
         self._cr.execute(query)
         warehouses = self._cr.dictfetchall()
-        
-        # Get internal locations for each warehouse
+
+        # Fetch every warehouse's locations in one pass instead of two
+        # queries per warehouse (each of which scanned the report view).
+        location_query = """
+            SELECT
+                l.warehouse_id,
+                l.id,
+                l.name,
+                l.complete_name,
+                l.usage,
+                COUNT(DISTINCT scr.product_id) as product_count,
+                COALESCE(SUM(scr.quantity), 0) as total_quantity,
+                COALESCE(SUM(scr.total_value), 0) as total_value
+            FROM stock_location l
+            LEFT JOIN stock_current_report scr ON scr.location_id = l.id
+            WHERE l.warehouse_id IS NOT NULL
+              AND l.usage IN ('internal', 'transit')
+              AND l.active = true
+            GROUP BY l.warehouse_id, l.id, l.name, l.complete_name, l.usage
+            ORDER BY l.name
+        """
+        self._cr.execute(location_query)
+        locations_by_warehouse = {}
+        for loc in self._cr.dictfetchall():
+            bucket = locations_by_warehouse.setdefault(
+                loc.pop('warehouse_id'), {'internal': [], 'transit': []})
+            bucket[loc['usage']].append(loc)
+
         for warehouse in warehouses:
-            internal_location_query = """
-                SELECT
-                    l.id,
-                    l.name,
-                    l.complete_name,
-                    l.usage,
-                    COUNT(DISTINCT scr.product_id) as product_count,
-                    COALESCE(SUM(scr.quantity), 0) as total_quantity,
-                    COALESCE(SUM(scr.total_value), 0) as total_value
-                FROM stock_location l
-                LEFT JOIN stock_current_report scr ON scr.location_id = l.id
-                WHERE l.warehouse_id = %s AND l.usage = 'internal' AND l.active = true
-                GROUP BY l.id, l.name, l.complete_name, l.usage
-                ORDER BY l.name
-            """
-            self._cr.execute(internal_location_query, (warehouse['id'],))
-            warehouse['internal_locations'] = self._cr.dictfetchall()
-            
-            # Get transit locations for each warehouse
-            transit_location_query = """
-                SELECT
-                    l.id,
-                    l.name,
-                    l.complete_name,
-                    l.usage,
-                    COUNT(DISTINCT scr.product_id) as product_count,
-                    COALESCE(SUM(scr.quantity), 0) as total_quantity,
-                    COALESCE(SUM(scr.total_value), 0) as total_value
-                FROM stock_location l
-                LEFT JOIN stock_current_report scr ON scr.location_id = l.id
-                WHERE l.warehouse_id = %s AND l.usage = 'transit' AND l.active = true
-                GROUP BY l.id, l.name, l.complete_name, l.usage
-                ORDER BY l.name
-            """
-            self._cr.execute(transit_location_query, (warehouse['id'],))
-            warehouse['transit_locations'] = self._cr.dictfetchall()
-            
+            bucket = locations_by_warehouse.get(
+                warehouse['id'], {'internal': [], 'transit': []})
+            warehouse['internal_locations'] = bucket['internal']
+            warehouse['transit_locations'] = bucket['transit']
             # For backward compatibility, keep the old locations field with internal locations
             warehouse['locations'] = warehouse['internal_locations']
-        
+
         return warehouses
 
     @api.model
@@ -603,23 +620,18 @@ class StockCurrentReport(models.Model):
     def get_warehouse_location_summary(self):
         """Get summary data for warehouse sidebar"""
         warehouses = self.env['stock.warehouse'].search([('active', '=', True)])
-        total_warehouses = len(warehouses)
-        total_locations = 0
-        total_products = 0
-        
-        for warehouse in warehouses:
-            locations = self.env['stock.location'].search([
-                ('warehouse_id', '=', warehouse.id),
-                ('usage', 'in', ['internal', 'transit']),
-                ('active', '=', True)
-            ])
-            total_locations += len(locations)
-            
-            for location in locations:
-                total_products += self.search_count([('location_id', '=', location.id)])
-        
+        locations = self.env['stock.location'].search([
+            ('warehouse_id', 'in', warehouses.ids),
+            ('usage', 'in', ['internal', 'transit']),
+            ('active', '=', True)
+        ])
+        total_products = (
+            self.search_count([('location_id', 'in', locations.ids)])
+            if locations else 0
+        )
+
         return {
-            'total_warehouses': total_warehouses,
-            'total_locations': total_locations,
+            'total_warehouses': len(warehouses),
+            'total_locations': len(locations),
             'total_products': total_products
         }

@@ -1,6 +1,6 @@
 {
     'name': 'Current Stock Report',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.0.1',
     'summary': 'View and Export Current Stock by Location and Date with Enhanced UI',
     'category': 'Inventory/Reports',
     'depends': ['stock', 'report_xlsx'],
