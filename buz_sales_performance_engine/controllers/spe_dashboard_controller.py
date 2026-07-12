@@ -224,6 +224,7 @@ class SpeDashboardController(http.Controller):
                 "name": "Posted Invoices",
                 "res_model": "account.move",
                 "view_mode": "tree,form",
+                "views": [[False, "list"], [False, "form"]],
                 "domain": [
                     ("move_type", "=", "out_invoice"),
                     ("state", "=", "posted"),
@@ -239,6 +240,7 @@ class SpeDashboardController(http.Controller):
                 "name": "Credit Notes",
                 "res_model": "account.move",
                 "view_mode": "tree,form",
+                "views": [[False, "list"], [False, "form"]],
                 "domain": [
                     ("move_type", "=", "out_refund"),
                     ("state", "=", "posted"),
@@ -254,6 +256,7 @@ class SpeDashboardController(http.Controller):
                 "name": "Deliveries",
                 "res_model": "stock.picking",
                 "view_mode": "tree,form",
+                "views": [[False, "list"], [False, "form"]],
                 "domain": [
                     ("state", "=", "done"),
                     "|",
@@ -268,6 +271,7 @@ class SpeDashboardController(http.Controller):
                     "name": "POS Orders",
                     "res_model": "pos.lite.order",
                     "view_mode": "tree,form",
+                    "views": [[False, "list"], [False, "form"]],
                     "domain": [("id", "in", pos_order_ids)],
                 }
             return {
@@ -275,6 +279,7 @@ class SpeDashboardController(http.Controller):
                 "name": "Sale Orders",
                 "res_model": "sale.order",
                 "view_mode": "tree,form",
+                "views": [[False, "list"], [False, "form"]],
                 "domain": [("id", "in", so_ids)],
             }
         if kind == "results":
@@ -283,6 +288,7 @@ class SpeDashboardController(http.Controller):
                 "name": "Performance Results",
                 "res_model": "buz.sales.performance.result",
                 "view_mode": "tree,pivot,graph,form",
+                "views": [[False, "list"], [False, "pivot"], [False, "graph"], [False, "form"]],
                 "domain": domain,
             }
         return {"type": "ir.actions.act_window_close"}
