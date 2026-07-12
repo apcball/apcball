@@ -6,6 +6,17 @@
             <div class="spe-filter-bar">
                 <div class="spe-filters">
                     <div class="spe-field">
+                        <label>Source</label>
+                        <div class="spe-chips">
+                            <button t-att-class="state.filters.source === '' ? 'spe-chip active' : 'spe-chip'"
+                                    t-on-click="() => this.setSource('')">All</button>
+                            <button t-att-class="state.filters.source === 'sale' ? 'spe-chip active' : 'spe-chip'"
+                                    t-on-click="() => this.setSource('sale')">Sales</button>
+                            <button t-att-class="state.filters.source === 'pos' ? 'spe-chip active' : 'spe-chip'"
+                                    t-on-click="() => this.setSource('pos')">POS</button>
+                        </div>
+                    </div>
+                    <div class="spe-field">
                         <label>From</label>
                         <input type="date" name="date_from"
                                t-att-value="state.filters.date_from"
@@ -78,41 +89,72 @@
             <div t-else="">
                 <!-- KPI cards -->
                 <div class="spe-kpi-row">
-                    <div class="spe-kpi-card" t-on-click="() =&gt; drill('orders')">
-                        <div class="spe-kpi-label">Target</div>
-                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.target)"/>
+                    <div class="spe-kpi-card spe-accent-slate spe-clickable" t-on-click="() =&gt; drill('orders')">
+                        <div class="spe-kpi-icon"><i class="fa fa-bullseye"/></div>
+                        <div class="spe-kpi-body">
+                            <div class="spe-kpi-label">Target</div>
+                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.target)"/>
+                        </div>
                     </div>
-                    <div class="spe-kpi-card spe-clickable" t-on-click="() =&gt; drill('results')">
-                        <div class="spe-kpi-label">Actual</div>
-                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.actual)"/>
+                    <div class="spe-kpi-card spe-accent-teal spe-clickable" t-on-click="() =&gt; drill('results')">
+                        <div class="spe-kpi-icon"><i class="fa fa-line-chart"/></div>
+                        <div class="spe-kpi-body">
+                            <div class="spe-kpi-label">Actual</div>
+                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.actual)"/>
+                            <div t-att-class="deltaClass('actual')" t-esc="fmtDelta('actual')"/>
+                        </div>
                     </div>
-                    <div class="spe-kpi-card">
-                        <div class="spe-kpi-label">Achievement</div>
-                        <div class="spe-kpi-value" t-esc="fmtPct(state.kpi.achievement)"/>
+                    <div class="spe-kpi-card spe-accent-teal">
+                        <div class="spe-kpi-ring"
+                             t-attf-style="--pct: {{ cap100(state.kpi.achievement) }}">
+                            <span t-esc="fmtPct(state.kpi.achievement)"/>
+                        </div>
+                        <div class="spe-kpi-body">
+                            <div class="spe-kpi-label">Achievement</div>
+                        </div>
                     </div>
-                    <div class="spe-kpi-card">
-                        <div class="spe-kpi-label">Forecast</div>
-                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.forecast)"/>
+                    <div class="spe-kpi-card spe-accent-indigo">
+                        <div class="spe-kpi-icon"><i class="fa fa-flag-checkered"/></div>
+                        <div class="spe-kpi-body">
+                            <div class="spe-kpi-label">Forecast</div>
+                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.forecast)"/>
+                        </div>
                     </div>
-                    <div class="spe-kpi-card spe-clickable" t-on-click="() =&gt; drill('invoices')">
-                        <div class="spe-kpi-label">Invoice</div>
-                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.invoice_amount)"/>
+                    <div class="spe-kpi-card spe-accent-green spe-clickable" t-on-click="() =&gt; drill('invoices')">
+                        <div class="spe-kpi-icon"><i class="fa fa-file-text-o"/></div>
+                        <div class="spe-kpi-body">
+                            <div class="spe-kpi-label">Invoice</div>
+                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.invoice_amount)"/>
+                            <div t-att-class="deltaClass('invoice_amount')" t-esc="fmtDelta('invoice_amount')"/>
+                        </div>
                     </div>
-                    <div class="spe-kpi-card spe-clickable" t-on-click="() =&gt; drill('credit_notes')">
-                        <div class="spe-kpi-label">Refund</div>
-                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.refund_amount)"/>
+                    <div class="spe-kpi-card spe-accent-red spe-clickable" t-on-click="() =&gt; drill('credit_notes')">
+                        <div class="spe-kpi-icon"><i class="fa fa-undo"/></div>
+                        <div class="spe-kpi-body">
+                            <div class="spe-kpi-label">Refund</div>
+                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.refund_amount)"/>
+                        </div>
                     </div>
-                    <div class="spe-kpi-card spe-clickable" t-on-click="() =&gt; drill('deliveries')">
-                        <div class="spe-kpi-label">Delivery %</div>
-                        <div class="spe-kpi-value" t-esc="fmtPct(state.kpi.delivery_pct)"/>
+                    <div class="spe-kpi-card spe-accent-amber spe-clickable" t-on-click="() =&gt; drill('deliveries')">
+                        <div class="spe-kpi-icon"><i class="fa fa-truck"/></div>
+                        <div class="spe-kpi-body">
+                            <div class="spe-kpi-label">Delivery %</div>
+                            <div class="spe-kpi-value" t-esc="fmtPct(state.kpi.delivery_pct)"/>
+                        </div>
                     </div>
-                    <div class="spe-kpi-card">
-                        <div class="spe-kpi-label">Remaining</div>
-                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.remaining)"/>
+                    <div class="spe-kpi-card spe-accent-slate">
+                        <div class="spe-kpi-icon"><i class="fa fa-hourglass-half"/></div>
+                        <div class="spe-kpi-body">
+                            <div class="spe-kpi-label">Remaining</div>
+                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.remaining)"/>
+                        </div>
                     </div>
-                    <div class="spe-kpi-card">
-                        <div class="spe-kpi-label">Avg Daily</div>
-                        <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.avg_daily)"/>
+                    <div class="spe-kpi-card spe-accent-indigo">
+                        <div class="spe-kpi-icon"><i class="fa fa-calendar-o"/></div>
+                        <div class="spe-kpi-body">
+                            <div class="spe-kpi-label">Avg Daily</div>
+                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.avg_daily)"/>
+                        </div>
                     </div>
                 </div>
 
@@ -198,7 +240,7 @@
                             <tbody>
                                 <tr t-foreach="state.leaderboardSalespersons" t-as="row"
                                     t-key="row.id">
-                                    <td t-esc="row_index + 1"/>
+                                    <td><span t-att-class="rankClass(row_index)" t-esc="row_index + 1"/></td>
                                     <td t-esc="row.name"/>
                                     <td class="spe-num" t-esc="fmtMoney(row.net)"/>
                                     <td class="spe-num" t-esc="fmtMoney(row.refund)"/>
@@ -217,7 +259,7 @@
                             <tbody>
                                 <tr t-foreach="state.leaderboardTeams" t-as="row"
                                     t-key="row.id">
-                                    <td t-esc="row_index + 1"/>
+                                    <td><span t-att-class="rankClass(row_index)" t-esc="row_index + 1"/></td>
                                     <td t-esc="row.name"/>
                                     <td class="spe-num" t-esc="fmtMoney(row.net)"/>
                                     <td class="spe-num" t-esc="fmtMoney(row.refund)"/>

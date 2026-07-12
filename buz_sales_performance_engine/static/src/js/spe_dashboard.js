@@ -26,6 +26,8 @@ class SpeDashboard extends Component {
             topTeams: useRef("topTeamsChart"),
         };
         this.charts = {};
+        this.palette = ["#017e84", "#22a2a9", "#66c7cc", "#f2a541", "#e57373",
+                        "#7986cb", "#4db6ac", "#9575cd"];
 
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -41,9 +43,11 @@ class SpeDashboard extends Component {
                 product_id: "",
                 categ_id: "",
                 company_id: "",
+                source: "",
             },
             options: { salespersons: [], teams: [], partners: [], products: [], categories: [], companies: [] },
             kpi: {},
+            kpiPrev: {},
             leaderboardSalespersons: [],
             leaderboardTeams: [],
         });
@@ -68,6 +72,8 @@ class SpeDashboard extends Component {
     fmtNum(v) { return (v || 0).toLocaleString(undefined, {maximumFractionDigits: 0}); }
     fmtMoney(v) { return (v || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
     fmtPct(v) { return `${(v || 0).toFixed(1)}%`; }
+    cap100(v) { return Math.min(v || 0, 100); }
+    rankClass(i) { return "spe-rank spe-rank-" + Math.min(i + 1, 4); }
 
     async loadOptions() {
         try {
@@ -96,6 +102,7 @@ class SpeDashboard extends Component {
                 this.rpc("/spe/dashboard/series", {filters: this.state.filters, kind: "leaderboard", field: "team_id"}),
             ]);
             this.state.kpi = kpi;
+            this.state.kpiPrev = await this._loadPrevKpi();
             this._daily = daily;
             this._monthly = monthly;
             this._delivery = delivery;
@@ -113,10 +120,49 @@ class SpeDashboard extends Component {
         }
     }
 
+    async _loadPrevKpi() {
+        const f = this.state.filters;
+        if (!f.date_from || !f.date_to) { return {}; }
+        const from = new Date(f.date_from);
+        const to = new Date(f.date_to);
+        const spanMs = to.getTime() - from.getTime() + 24 * 3600 * 1000;
+        const prevTo = new Date(from.getTime() - 24 * 3600 * 1000);
+        const prevFrom = new Date(from.getTime() - spanMs);
+        try {
+            return await this.rpc("/spe/dashboard/kpi", {
+                filters: {...f, date_from: this._fmt(prevFrom), date_to: this._fmt(prevTo)},
+            });
+        } catch (e) { return {}; }
+    }
+
+    delta(field) {
+        const cur = (this.state.kpi || {})[field] || 0;
+        const prev = (this.state.kpiPrev || {})[field] || 0;
+        if (!prev) { return null; }
+        return ((cur - prev) / Math.abs(prev)) * 100.0;
+    }
+
+    fmtDelta(field) {
+        const d = this.delta(field);
+        if (d === null) { return ""; }
+        const arrow = d >= 0 ? "▲" : "▼";
+        return `${arrow} ${Math.abs(d).toFixed(1)}%`;
+    }
+
+    deltaClass(field) {
+        const d = this.delta(field);
+        if (d === null) { return "spe-delta"; }
+        return d >= 0 ? "spe-delta spe-up" : "spe-delta spe-down";
+    }
+
     async applyFilters() { await this.loadAll(); }
     async onFilter(ev) {
         const el = ev.target;
         this.state.filters[el.name] = el.value;
+    }
+    async setSource(src) {
+        this.state.filters.source = src;
+        await this.loadAll();
     }
 
     drill(kind) {
@@ -168,7 +214,18 @@ class SpeDashboard extends Component {
     _chart(ref, type, data) {
         const el = this.chartRefs[ref] && this.chartRefs[ref].el;
         if (!el) return;
-        this.charts[ref] = new Chart(el.getContext("2d"), {type, data, options: {responsive: true, maintainAspectRatio: false}});
+        this.charts[ref] = new Chart(el.getContext("2d"), {
+            type, data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {legend: {labels: {boxWidth: 12, usePointStyle: true}}},
+                scales: type === "doughnut" ? {} : {
+                    y: {grid: {color: "rgba(0,0,0,0.05)"}},
+                    x: {grid: {display: false}},
+                },
+            },
+        });
     }
     _pie(ref, data) {
         const el = this.chartRefs[ref] && this.chartRefs[ref].el;
@@ -179,7 +236,7 @@ class SpeDashboard extends Component {
             data: {
                 labels: items.map(r => r.name),
                 datasets: [{data: items.map(r => r.value),
-                            backgroundColor: ["#017e84","#5a9ea8","#e57373","#ffb74d","#9575cd","#4db6ac","#f06292","#7986cb"]}],
+                            backgroundColor: this.palette}],
             },
             options: {responsive: true, maintainAspectRatio: false},
         });
