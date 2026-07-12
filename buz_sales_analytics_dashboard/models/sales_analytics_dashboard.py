@@ -1,13 +1,7 @@
-import json
-import logging
-import math
-
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 from odoo.tools import float_round
-
-_logger = logging.getLogger(__name__)
 
 
 class SalesAnalyticsDashboard(models.TransientModel):
@@ -64,49 +58,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
     @api.model
     def _get_sale_order_domain(self, filters):
         domain = [
-            ("state", "=", "sale"),
-            ("company_id", "=", self.env.company.id),
-        ]
-        if filters.get("date_from"):
-            domain.append(("date_order", ">=", filters["date_from"]))
-        if filters.get("date_to"):
-            end = filters["date_to"]
-            if len(end) == 10:
-                end += " 23:59:59"
-            domain.append(("date_order", "<=", end))
-        if filters.get("salesperson_id"):
-            domain.append(("user_id", "=", filters["salesperson_id"]))
-        if filters.get("team_id"):
-            domain.append(("team_id", "=", filters["team_id"]))
-        if filters.get("partner_id"):
-            domain.append(("partner_id", "=", filters["partner_id"]))
-        return domain
-
-    @api.model
-    def _get_quotation_domain(self, filters):
-        domain = [
-            ("state", "=", "draft"),
-            ("company_id", "=", self.env.company.id),
-        ]
-        if filters.get("date_from"):
-            domain.append(("date_order", ">=", filters["date_from"]))
-        if filters.get("date_to"):
-            end = filters["date_to"]
-            if len(end) == 10:
-                end += " 23:59:59"
-            domain.append(("date_order", "<=", end))
-        if filters.get("salesperson_id"):
-            domain.append(("user_id", "=", filters["salesperson_id"]))
-        if filters.get("team_id"):
-            domain.append(("team_id", "=", filters["team_id"]))
-        if filters.get("partner_id"):
-            domain.append(("partner_id", "=", filters["partner_id"]))
-        return domain
-
-    @api.model
-    def _get_cancelled_domain(self, filters):
-        domain = [
-            ("state", "=", "cancel"),
+            ("state", "in", ["sale", "done"]),
             ("company_id", "=", self.env.company.id),
         ]
         if filters.get("date_from"):
@@ -127,10 +79,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
     @api.model
     def _get_order_line_domain(self, filters):
         so_domain = self._get_sale_order_domain(filters)
-        so_domain[0] = ("order_id.state", "=", "sale")
-        if filters.get("category_id"):
-            so_domain.append(("product_id.categ_id", "child_of", filters["category_id"]))
-        line_domain = [("order_id.state", "=", "sale")]
+        line_domain = [("order_id.state", "in", ["sale", "done"])]
         for cond in so_domain[1:]:
             if isinstance(cond, (list, tuple)) and len(cond) >= 2:
                 field = cond[0]
@@ -191,25 +140,6 @@ class SalesAnalyticsDashboard(models.TransientModel):
         return domain
 
     @api.model
-    def _get_pos_cancelled_domain(self, filters):
-        domain = [
-            ("state", "=", "cancelled"),
-            ("company_id", "=", self.env.company.id),
-        ]
-        if filters.get("date_from"):
-            domain.append(("date_order", ">=", filters["date_from"]))
-        if filters.get("date_to"):
-            end = filters["date_to"]
-            if len(end) == 10:
-                end += " 23:59:59"
-            domain.append(("date_order", "<=", end))
-        if filters.get("salesperson_id"):
-            domain.append(("employee_id.user_id", "=", filters["salesperson_id"]))
-        if filters.get("partner_id"):
-            domain.append(("partner_id", "=", filters["partner_id"]))
-        return domain
-
-    @api.model
     def _aggregate_pos(self, domain):
         pos_model = self.env["pos.lite.order"].sudo()
         agg = pos_model.read_group(domain, ["amount_untaxed:sum"], [])[0]
@@ -222,7 +152,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
     def _get_invoice_domain(self, filters):
         domain = [
             ("move_type", "in", ["out_invoice", "out_refund"]),
-            ("state", "!=", "cancel"),
+            ("state", "=", "posted"),
             ("company_id", "=", self.env.company.id),
         ]
         if filters.get("date_from"):
@@ -263,7 +193,6 @@ class SalesAnalyticsDashboard(models.TransientModel):
         so_domain = self._get_sale_order_domain(filters)
         so_model = self.env["sale.order"].sudo()
         inv_model = self.env["account.move"].sudo()
-        cache_model = self.env["buz.sales.analytics.cache"]
 
         so_agg = so_model.read_group(so_domain, ["amount_untaxed:sum"], [])[0]
         so_revenue = so_agg.get("amount_untaxed") or 0.0
@@ -277,43 +206,27 @@ class SalesAnalyticsDashboard(models.TransientModel):
         total_orders = so_orders + pos_data["count"]
         avg_order = total_revenue / total_orders if total_orders else 0.0
 
+        # Previous period = same range length, immediately preceding the
+        # current range, so growth is comparable for any custom date span.
         prev_filters = dict(filters)
-        today = fields.Date.context_today(self)
         if filters.get("date_from") and filters.get("date_to"):
             df = fields.Date.from_string(filters["date_from"])
             dt = fields.Date.from_string(filters["date_to"])
-            period_type = filters.get("period_type", "monthly")
-            if period_type == "weekly":
-                prev_filters["date_from"] = str(df - relativedelta(weeks=1))
-                prev_filters["date_to"] = str(dt - relativedelta(weeks=1))
-            elif period_type == "quarterly":
-                prev_filters["date_from"] = str(df - relativedelta(months=3))
-                prev_filters["date_to"] = str(dt - relativedelta(months=3))
-            elif period_type == "yearly":
-                prev_filters["date_from"] = str(df - relativedelta(years=1))
-                prev_filters["date_to"] = str(dt - relativedelta(years=1))
-            else:
-                prev_filters["date_from"] = str(df - relativedelta(months=1))
-                prev_filters["date_to"] = str(dt - relativedelta(months=1))
-
-        # Growth rate uses all closed orders (sale+done) for fair period-over-period comparison
-        growth_curr_domain = self._get_sale_order_domain(filters)
-        growth_curr_domain[0] = ("state", "in", ["sale", "done"])
-        growth_curr_agg = so_model.read_group(growth_curr_domain, ["amount_untaxed:sum"], [])[0]
-        growth_curr_revenue = growth_curr_agg.get("amount_untaxed") or 0.0
+            span = dt - df
+            prev_to = df - relativedelta(days=1)
+            prev_filters["date_from"] = str(prev_to - span)
+            prev_filters["date_to"] = str(prev_to)
 
         prev_so_domain = self._get_sale_order_domain(prev_filters)
-        prev_so_domain[0] = ("state", "in", ["sale", "done"])
         prev_so_agg = so_model.read_group(prev_so_domain, ["amount_untaxed:sum"], [])[0]
         prev_so_revenue = prev_so_agg.get("amount_untaxed") or 0.0
 
         prev_pos_domain = self._get_pos_order_domain(prev_filters)
         prev_pos_data = self._aggregate_pos(prev_pos_domain)
 
-        growth_curr_total = growth_curr_revenue + pos_data["revenue"]
         prev_revenue = prev_so_revenue + prev_pos_data["revenue"]
         growth_rate = (
-            ((growth_curr_total - prev_revenue) / prev_revenue * 100.0)
+            ((total_revenue - prev_revenue) / prev_revenue * 100.0)
             if prev_revenue
             else 0.0
         )
@@ -383,11 +296,6 @@ class SalesAnalyticsDashboard(models.TransientModel):
         cr.execute(in_sql, sql_params)
         in_amt = cr.fetchone()[0] or 0.0
         delivered_amount = out_amt - in_amt
-
-        _logger.warning("DELIVERY AMOUNT company=%s date_from=%s date_to=%s out_amt=%s in_amt=%s net=%s sql=%s",
-                        self.env.company.id,
-                        filters.get("date_from"), filters.get("date_to"),
-                        out_amt, in_amt, delivered_amount, out_sql)
 
         return {
             "total_revenue": float_round(total_revenue, 2),
@@ -510,9 +418,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
     def get_top_customers(self, filters, limit=10):
         so_model = self.env["sale.order"].sudo()
         pos_model = self.env["pos.lite.order"].sudo()
-        # Use all closed orders (sale+done) for customer ranking charts
         so_domain = self._get_sale_order_domain(filters)
-        so_domain[0] = ("state", "in", ["sale", "done"])
         pos_domain = self._get_pos_order_domain(filters)
 
         so_groups = so_model.read_group(
@@ -550,7 +456,6 @@ class SalesAnalyticsDashboard(models.TransientModel):
         sol_model = self.env["sale.order.line"].sudo()
         pol_model = self.env["pos.lite.order.line"].sudo()
         so_domain = self._get_order_line_domain(filters)
-        so_domain = [d if d[0] != "order_id.state" else ("order_id.state", "in", ["sale", "done"]) for d in so_domain]
         pos_domain = self._get_pos_order_line_domain(filters)
 
         so_groups = sol_model.read_group(
@@ -582,12 +487,17 @@ class SalesAnalyticsDashboard(models.TransientModel):
             combined[pid]["qty_sold"] += g.get("qty") or 0.0
             combined[pid]["revenue"] += g.get("price_subtotal") or 0.0
 
-        # Fetch SKU for each product
+        # Fetch SKU for each product; sku field only exists when
+        # buzcustom_product_sku is installed, fall back to default_code.
         pids = [r["product_id"] for r in combined.values() if r["product_id"] > 0]
         sku_map = {}
         if pids:
             products = self.env["product.product"].sudo().browse(pids)
-            sku_map = {p.id: p.sku or "" for p in products}
+            has_sku = "sku" in products._fields
+            sku_map = {
+                p.id: (p.sku if has_sku else p.default_code) or ""
+                for p in products
+            }
 
         result = sorted(combined.values(), key=lambda x: x["revenue"], reverse=True)
         for r in result[:limit]:
@@ -601,7 +511,6 @@ class SalesAnalyticsDashboard(models.TransientModel):
         sol_model = self.env["sale.order.line"].sudo()
         pol_model = self.env["pos.lite.order.line"].sudo()
         so_domain = self._get_order_line_domain(filters)
-        so_domain = [d if d[0] != "order_id.state" else ("order_id.state", "in", ["sale", "done"]) for d in so_domain]
         pos_domain = self._get_pos_order_line_domain(filters)
 
         so_groups = sol_model.read_group(
@@ -642,14 +551,14 @@ class SalesAnalyticsDashboard(models.TransientModel):
         pos_cat_map = _build_category_map(pos_groups)
 
         combined = {}
-        for pid, info in so_cat_map.items():
+        for info in so_cat_map.values():
             combined[info["category_id"]] = combined.get(info["category_id"], {
                 "category_id": info["category_id"],
                 "category_name": info["category_name"],
                 "revenue": 0.0,
             })
             combined[info["category_id"]]["revenue"] += info["revenue"]
-        for pid, info in pos_cat_map.items():
+        for info in pos_cat_map.values():
             combined[info["category_id"]] = combined.get(info["category_id"], {
                 "category_id": info["category_id"],
                 "category_name": info["category_name"],
@@ -933,7 +842,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
         lookback = today - relativedelta(months=12)
 
         so_domain = [
-            ("state", "=", "sale"),
+            ("state", "in", ["sale", "done"]),
             ("company_id", "=", self.env.company.id),
             ("date_order", ">=", str(lookback)),
             ("date_order", "<=", str(today)),
@@ -1035,7 +944,7 @@ class SalesAnalyticsDashboard(models.TransientModel):
             month_end = month_start + relativedelta(months=1) - relativedelta(days=1)
 
             so_domain = [
-                ("state", "=", "sale"),
+                ("state", "in", ["sale", "done"]),
                 ("company_id", "=", self.env.company.id),
                 ("date_order", ">=", str(month_start)),
                 ("date_order", "<=", str(month_end) + " 23:59:59"),
@@ -1100,11 +1009,18 @@ class SalesAnalyticsDashboard(models.TransientModel):
 
     @api.model
     def _sanitize_filters(self, filters):
+        # Normalize falsy values to False so JS ("") and server (False)
+        # produce identical cache keys.
         sanitized = dict(filters)
         for key in ("team_id", "salesperson_id", "partner_id", "category_id"):
             val = sanitized.get(key)
             if val and isinstance(val, str) and val.isdigit():
                 sanitized[key] = int(val)
+            elif not val:
+                sanitized[key] = False
+        for key in ("date_from", "date_to"):
+            if not sanitized.get(key):
+                sanitized[key] = False
         return sanitized
 
     @api.model
@@ -1122,13 +1038,36 @@ class SalesAnalyticsDashboard(models.TransientModel):
         return data
 
     @api.model
+    def refresh_dashboard_data(self, filters=None):
+        if filters is None:
+            filters = {}
+        filters = self._sanitize_filters(filters)
+        cache_model = self.env["buz.sales.analytics.cache"]
+        key = cache_model._make_key(filters)
+        cache_model.invalidate_key(key)
+        data = self._compute_dashboard_data(filters)
+        cache_model.set_cached(key, data, ttl=30)
+        return data
+
+    @api.model
     def get_filter_options(self):
+        company = self.env.company
         users = (
             self.env["res.users"]
             .sudo()
-            .search([("share", "=", False)], order="name")
+            .search(
+                [("share", "=", False), ("company_ids", "in", company.id)],
+                order="name",
+            )
         )
-        teams = self.env["crm.team"].sudo().search([], order="name")
+        teams = (
+            self.env["crm.team"]
+            .sudo()
+            .search(
+                ["|", ("company_id", "=", False), ("company_id", "=", company.id)],
+                order="name",
+            )
+        )
         categories = self.env["product.category"].sudo().search([], order="name")
         return {
             "salespersons": [

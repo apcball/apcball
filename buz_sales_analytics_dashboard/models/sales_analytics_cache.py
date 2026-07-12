@@ -1,6 +1,8 @@
 import hashlib
 import json
 
+from psycopg2 import IntegrityError
+
 from odoo import api, fields, models
 
 
@@ -21,7 +23,13 @@ class SalesAnalyticsCache(models.Model):
 
     @api.model
     def _make_key(self, params):
-        raw = json.dumps(params, sort_keys=True, default=str)
+        # Scope by company so identical filters in different companies
+        # never share cache entries.
+        raw = json.dumps(
+            {"company_id": self.env.company.id, "params": params},
+            sort_keys=True,
+            default=str,
+        )
         return hashlib.md5(raw.encode()).hexdigest()
 
     @api.model
@@ -42,19 +50,29 @@ class SalesAnalyticsCache(models.Model):
 
     @api.model
     def set_cached(self, key, data, ttl=30):
-        existing = self.sudo().search([("cache_key", "=", key)], limit=1)
         vals = {
             "cache_data": json.dumps(data, default=str),
             "date_computed": fields.Datetime.now(),
             "is_valid": True,
             "ttl_minutes": ttl,
         }
+        existing = self.sudo().search([("cache_key", "=", key)], limit=1)
         if existing:
             existing.write(vals)
         else:
-            vals["cache_key"] = key
-            self.sudo().create(vals)
+            try:
+                with self.env.cr.savepoint():
+                    self.sudo().create(dict(vals, cache_key=key))
+            except IntegrityError:
+                # Concurrent request created the same key first.
+                existing = self.sudo().search([("cache_key", "=", key)], limit=1)
+                if existing:
+                    existing.write(vals)
         return data
+
+    @api.model
+    def invalidate_key(self, key):
+        self.sudo().search([("cache_key", "=", key)]).write({"is_valid": False})
 
     @api.model
     def invalidate_all(self):
@@ -62,17 +80,27 @@ class SalesAnalyticsCache(models.Model):
         self.sudo().search([("is_valid", "=", False)]).unlink()
 
     @api.model
+    def _purge_stale(self, keep_keys=None):
+        keep_keys = keep_keys or []
+        stale = self.sudo().search([("is_valid", "=", False), ("cache_key", "not in", keep_keys)])
+        expired = self.sudo().search([
+            ("is_valid", "=", True),
+            ("cache_key", "not in", keep_keys),
+        ]).filtered(
+            lambda r: not r.date_computed
+            or (fields.Datetime.now() - r.date_computed).total_seconds() / 60.0 > r.ttl_minutes
+        )
+        (stale | expired).unlink()
+
+    @api.model
     def cron_refresh_cache(self):
         dashboard = self.env["buz.sales.analytics.dashboard"]
-        default_filters = dashboard._get_default_filters()
+        default_filters = dashboard._sanitize_filters(dashboard._get_default_filters())
         key = self._make_key(default_filters)
         data = dashboard._compute_dashboard_data(default_filters)
         self.set_cached(key, data, ttl=60)
-        prev_filters = dashboard._get_previous_period_filters()
-        if prev_filters:
-            prev_key = self._make_key(prev_filters)
-            prev_data = dashboard._compute_dashboard_data(prev_filters)
-            self.set_cached(prev_key, prev_data, ttl=60)
-        self.sudo().search(
-            [("is_valid", "=", False), ("cache_key", "!=", key)]
-        ).unlink()
+        prev_filters = dashboard._sanitize_filters(dashboard._get_previous_period_filters())
+        prev_key = self._make_key(prev_filters)
+        prev_data = dashboard._compute_dashboard_data(prev_filters)
+        self.set_cached(prev_key, prev_data, ttl=60)
+        self._purge_stale(keep_keys=[key, prev_key])

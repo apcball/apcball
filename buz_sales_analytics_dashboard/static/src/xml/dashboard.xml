@@ -213,7 +213,7 @@
                                                     <span class="funnel-stage-name"><t t-esc="stage.name"/></span>
                                                 </div>
                                                 <div class="o_sa_funnel_metrics">
-                                                    <span class="funnel-count"><t t-esc="formatNumber(stage.count)"/> leads</span>
+                                                    <span class="funnel-count"><t t-esc="formatNumber(stage.count)"/></span>
                                                     <span class="funnel-value"><t t-esc="formatCurrency(stage.value)"/></span>
                                                     <t t-if="stage_index > 0">
                                                         <span class="funnel-conversion"><t t-esc="formatPercent(stage.conversion)"/> conversion</span>

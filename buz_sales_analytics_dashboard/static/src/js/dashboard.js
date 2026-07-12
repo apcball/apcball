@@ -588,12 +588,22 @@ export class SalesAnalyticsDashboard extends Component {
     }
 
     async openOrders() {
-        const domain = [["state", "=", "sale"]];
-        if (this.state.filters.date_from) {
-            domain.push(["date_order", ">=", this.state.filters.date_from]);
+        const f = this.state.filters;
+        const domain = [["state", "in", ["sale", "done"]]];
+        if (f.date_from) {
+            domain.push(["date_order", ">=", f.date_from]);
         }
-        if (this.state.filters.date_to) {
-            domain.push(["date_order", "<=", this.state.filters.date_to + " 23:59:59"]);
+        if (f.date_to) {
+            domain.push(["date_order", "<=", f.date_to + " 23:59:59"]);
+        }
+        if (f.salesperson_id) {
+            domain.push(["user_id", "=", parseInt(f.salesperson_id)]);
+        }
+        if (f.team_id) {
+            domain.push(["team_id", "=", parseInt(f.team_id)]);
+        }
+        if (f.partner_id) {
+            domain.push(["partner_id", "=", parseInt(f.partner_id)]);
         }
         await this.action.doAction({
             type: "ir.actions.act_window",
@@ -606,10 +616,34 @@ export class SalesAnalyticsDashboard extends Component {
     }
 
     async openInvoices() {
-        await this.action.doAction("account.action_move_out_invoice_type", {
-            additionalContext: {
-                search_default_outstanding: true,
-            },
+        const f = this.state.filters;
+        const domain = [
+            ["move_type", "in", ["out_invoice", "out_refund"]],
+            ["state", "=", "posted"],
+            ["payment_state", "in", ["not_paid", "partial"]],
+        ];
+        if (f.date_from) {
+            domain.push(["invoice_date", ">=", f.date_from]);
+        }
+        if (f.date_to) {
+            domain.push(["invoice_date", "<=", f.date_to]);
+        }
+        if (f.salesperson_id) {
+            domain.push(["invoice_user_id", "=", parseInt(f.salesperson_id)]);
+        }
+        if (f.team_id) {
+            domain.push(["team_id", "=", parseInt(f.team_id)]);
+        }
+        if (f.partner_id) {
+            domain.push(["partner_id", "=", parseInt(f.partner_id)]);
+        }
+        await this.action.doAction({
+            type: "ir.actions.act_window",
+            name: "Outstanding Invoices",
+            res_model: "account.move",
+            views: [[false, "list"], [false, "form"]],
+            domain: domain,
+            context: {},
         });
     }
 }

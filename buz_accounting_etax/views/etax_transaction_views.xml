@@ -30,11 +30,17 @@
                             <field name="etax_config_id" readonly="state == 'sent'"/>
                             <field name="sale_order_ref" placeholder="Select a sale order..." readonly="state == 'sent'"/>
 
+                            <field name="is_substitute" readonly="state == 'sent'"/>
+                            <field name="substitute_number"
+                                readonly="not is_substitute or state == 'sent'"
+                                invisible="not is_substitute"/>
+
                             <field name="invoice_ids" invisible="1"/>
                             <field name="selected_invoice_id" 
                                 options="{'no_create': True, 'no_open': True}"
                                 placeholder="Select an invoice..."
                                 domain="[('id', 'in', invoice_ids)]"
+                                force_save="1"
                                 readonly="state == 'sent' or document_type == 'T04' or document_type == 'T03'"/>
 
                              <field name="delivery_ids" invisible="1"/>
@@ -132,6 +138,17 @@
                                 <label for="remark_dbn" string="เหตุผลในการเพิ่มหนี้ : "/>
                                 <field name="remark_dbn"/>
                                 <br/>
+                            </div>
+                            
+                             <div invisible="not is_substitute">
+                                <label for="substitute_reason_code" string="สาเหตุการออกเอกสารแทน : "/>
+                                <field name="substitute_reason_code"/>
+                                <br/>
+                                <div invisible="substitute_reason_code != 'TIVC99'">
+                                    <label for="substitute_reason" string="สาเหตุใบแทน : "/>
+                                    <field name="substitute_reason" placeholder="ระบุสาเหตุ"/>
+                                    <br/>
+                                </div>
                             </div>
                             
                             <label for="notes" string="เหตุผล : "/>

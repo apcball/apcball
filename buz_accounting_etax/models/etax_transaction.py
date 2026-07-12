@@ -85,6 +85,15 @@ class EtaxTransaction(models.Model):
         domain="[('partner_id', '=', partner_id), ('state', 'in', ['sale', 'done'])]"
     )
     
+    is_substitute = fields.Boolean('ใบแทน')
+    substitute_number = fields.Char('เลขที่ใบแทน')
+    substitute_reason_code = fields.Selection([
+        ('TIVC01', 'ชื่อผิด'),
+        ('TIVC02', 'ที่อยู่ผิด'),
+        ('TIVC99', 'อื่นๆ ระบุ'),
+    ], 'สาเหตุการออกเอกสารแทน')
+    substitute_reason = fields.Char('สาเหตุใบแทน')
+    
     # วันที่
     document_date = fields.Datetime('วันที่เอกสาร', default=fields.Datetime.now)
     payment_term = fields.Integer('เงื่อนไขการชำระเงิน')
@@ -177,6 +186,21 @@ class EtaxTransaction(models.Model):
                     'sale_order_ref': [('id', '=', False)]  # ไม่แสดงอะไรเลยถ้าไม่เลือก customer
                 }
             }
+    @api.onchange('is_substitute', 'invoice_id')
+    def _onchange_is_substitute(self):
+        # เมื่อติ๊ก checkbox ใบแทน ให้นำเลขที่ใบแจ้งหนี้มาต่อท้ายด้วยเลข running
+        for record in self:
+            if record.is_substitute and record.invoice_id:
+                base_number = record.invoice_id.name
+                # นับจำนวนใบแทนที่มีเลขฐานเดียวกันเพื่อสร้างเลข running
+                running = self.env['etax.transaction'].search_count([
+                    ('substitute_number', '=like', base_number + '-%'),
+                ]) + 1
+                record.substitute_number = '%s-%s' % (base_number, running)
+                record.selected_invoice_id = record.invoice_id
+            elif not record.is_substitute:
+                record.substitute_number = False
+                record.selected_invoice_id = False        
 
     @api.onchange('sale_order_ref')
     def _onchange_sale_order_ref(self):
@@ -396,31 +420,44 @@ class EtaxTransaction(models.Model):
                 "H03-DOCUMENT_ID": self.invoice_id.name or "", # เลขที่เอกสาร
                 "H04-DOCUMENT_ISSUE_DTM": self.document_date.strftime("%Y-%m-%dT00:00:00"), # วันที่ออกเอกสาร
                 "H05-CREATE_PURPOSE_CODE": (
-                    self.remark_dbn if self.document_type == '80'
+                    self.substitute_reason_code if self.document_type == 'T03' and self.is_substitute
                     else self.remark_cdn if self.document_type == '81'
                     else ''
                 ),  # เหตุผลในการเพิ่ม/ลดหนี้
                 "H06-CREATE_PURPOSE": (
-                    dbn_label if self.document_type == '80'
+                    (self.substitute_reason if self.substitute_reason_code == 'TIVC99' else (dict(self._fields['substitute_reason_code'].selection).get(self.substitute_reason_code) or ''))
+                    if self.document_type == 'T03' and self.is_substitute
                     else cdn_label if self.document_type == '81'
                     else ''
                 ), # เหตุผลในการเพิ่ม/ลดหนี้
 
                 "H07-ADDITIONAL_REF_ASSIGN_ID": (
-                    self.selected_invoice_id.name
-                    if self.selected_invoice_id
-                    else self.invoice_id.original_invoice_number
-                    if hasattr(self.invoice_id, 'original_invoice_number') and self.invoice_id.original_invoice_number
-                    else self.invoice_id.name
-                ) if self.document_type in ('80', '81') else "", # อ้างอิงใบกำกับภาษีเดิม [CN, DN]
+                    self.invoice_id.name
+                    if self.document_type == 'T03' and self.is_substitute
+                    else (
+                        self.selected_invoice_id.name
+                        if self.selected_invoice_id
+                        else self.invoice_id.original_invoice_number
+                        if hasattr(self.invoice_id, 'original_invoice_number') and self.invoice_id.original_invoice_number
+                        else self.invoice_id.name
+                    ) if self.document_type in ('80', '81') else ""
+                ), # อ้างอิงใบกำกับภาษีเดิม [CN, DN]
                 "H08-ADDITIONAL_REF_ISSUE_DTM": (
-                    self.selected_invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")
-                    if self.selected_invoice_id
-                    else self.invoice_id.original_invoice_date.strftime("%Y-%m-%dT00:00:00")
-                    if hasattr(self.invoice_id, 'original_invoice_date') and self.invoice_id.original_invoice_date
-                    else self.invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")
-                ) if self.document_type in ('80', '81') else "", # วันที่ใบกำกับภาษีเดิม [CN, DN]
-                "H09-ADDITIONAL_REF_TYPE_CODE": self.document_type if self.document_type in ('80', '81') else "", # T03 = ว่าง
+                    fields.Date.context_today(self).strftime("%Y-%m-%dT00:00:00")
+                    if self.document_type == 'T03' and self.is_substitute
+                    else (
+                        self.selected_invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")
+                        if self.selected_invoice_id
+                        else self.invoice_id.original_invoice_date.strftime("%Y-%m-%dT00:00:00")
+                        if hasattr(self.invoice_id, 'original_invoice_date') and self.invoice_id.original_invoice_date
+                        else self.invoice_id.invoice_date.strftime("%Y-%m-%dT00:00:00")
+                    ) if self.document_type in ('80', '81') else ""
+                ), # วันที่ใบกำกับภาษีเดิม [CN, DN]
+                "H09-ADDITIONAL_REF_TYPE_CODE": (
+                    'T03' if self.document_type == 'T03' and self.is_substitute
+                    else self.document_type if self.document_type in ('80', '81')
+                    else ""
+                ), # T03 = ว่าง
                 "H10-ADDITIONAL_REF_DOCUMENT_NAME": "",
                 "H11-DELIVERY_TYPE_CODE": "",
                 "H12-BUYER_ORDER_ASSIGN_ID": f"{self.sale_order_ref.client_order_ref or ''}", #invoice.custom_reference or "", # self.sale_order_ref.name or "", # ใบสั่งซื้อเลขที่ [T03]
