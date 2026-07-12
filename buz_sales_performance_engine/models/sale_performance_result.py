@@ -324,6 +324,9 @@ class SalePerformanceResult(models.Model):
             return self.env["buz.sales.performance.result"]
 
         env = self.env
+        # Raw SQL below - make sure pending ORM writes (order state, new
+        # lines) are visible to the cursor.
+        env.flush_all()
         env.cr.execute(
             """
             SELECT

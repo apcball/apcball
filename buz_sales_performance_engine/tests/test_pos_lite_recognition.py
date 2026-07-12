@@ -22,12 +22,39 @@ class TestPosLiteRecognition(TransactionCase):
         cls.warehouse = cls.env["stock.warehouse"].search(
             [("company_id", "=", cls.company.id)], limit=1,
         )
+        cls.pricelist = cls.env["product.pricelist"].search(
+            ["|", ("company_id", "=", cls.company.id), ("company_id", "=", False)],
+            limit=1,
+        )
+        # Non-return orders require an open POS session.
+        cls.session = cls.env["pos.lite.session"].search(
+            [("state", "=", "opened"), ("company_id", "=", cls.company.id)],
+            limit=1,
+        )
+        if not cls.session:
+            journal = cls.env["account.journal"].search(
+                [("type", "in", ("cash", "bank")),
+                 ("company_id", "=", cls.company.id)], limit=1,
+            )
+            config = cls.env["pos.lite.config"].create({
+                "name": "SPE Test POS",
+                "company_id": cls.company.id,
+                "warehouse_id": cls.warehouse.id,
+                "pricelist_id": cls.pricelist.id,
+                "journal_id": journal.id,
+            })
+            cls.session = cls.env["pos.lite.session"].create({
+                "company_id": cls.company.id,
+                "config_id": config.id,
+            })
 
     def _make_order(self, is_return=False, state="draft"):
         order = self.env["pos.lite.order"].create({
             "company_id": self.company.id,
             "partner_id": self.partner.id,
             "warehouse_id": self.warehouse.id,
+            "pricelist_id": self.pricelist.id,
+            "session_id": self.session.id,
             "is_return": is_return,
             "line_ids": [fields.Command.create({
                 "product_id": self.product.id,
@@ -70,11 +97,22 @@ class TestPosLiteRecognition(TransactionCase):
         self.assertAlmostEqual(res.refund_amount, order.line_ids.price_subtotal)
         self.assertAlmostEqual(res.net_sales, -order.line_ids.price_subtotal)
 
-    def test_04_cancel_removes_rows(self):
-        order = self._make_order(state="done")
-        self.assertTrue(self._results_for(order))
+    def test_04_removed_order_drops_rows(self):
+        # done -> cancelled is forbidden by pos_lite transition rules (cancel
+        # goes through the return flow), so exercise the two removal paths
+        # that can actually happen:
+        # 1. draft -> cancelled: never recognized.
+        order = self._make_order()
         order.write({"state": "cancelled"})
         self.assertFalse(self._results_for(order))
+        # 2. unlink of a recognized order cascades its result rows.
+        order2 = self._make_order(state="done")
+        line_ids = order2.line_ids.ids
+        self.assertTrue(self._results_for(order2))
+        order2.unlink()
+        self.assertFalse(self.Result.search(
+            [("pos_order_line_id", "in", line_ids)]
+        ))
 
     def test_05_sale_flow_untouched(self):
         # Constraint coexistence: creating an SO-based row still works and
