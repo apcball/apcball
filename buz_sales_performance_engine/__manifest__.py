@@ -1,7 +1,7 @@
 {
     "name": "BUZ Sales Performance Engine",
-    "version": "17.0.1.0.0",
-    "summary": "Measure REAL sales performance: recognized only when delivered AND invoice posted.",
+    "version": "17.0.2.0.0",
+    "summary": "Measure REAL sales performance: recognized only when delivered AND invoice posted. Includes POS Lite sales.",
     "description": """
 BUZ Sales Performance Engine
 ===========================
