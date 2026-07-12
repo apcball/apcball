@@ -274,9 +274,23 @@ class PosLiteController(http.Controller):
                 if pricelist:
                     pricelist_id = pricelist.id
 
+            # Optional pre-selected partner (created via create_customer);
+            # validated against the active company before it is trusted.
+            partner_id = False
+            raw_partner_id = data.get('partner_id')
+            if raw_partner_id:
+                try:
+                    partner = request.env['res.partner'].sudo().browse(int(raw_partner_id))
+                except (ValueError, TypeError):
+                    raise ValidationError('Invalid partner')
+                if not partner.exists() or partner.company_id.id not in (False, cid):
+                    raise ValidationError('Invalid partner')
+                partner_id = partner.id
+
             # Whitelisted vals only — no state, company_id, is_return injection
             order_vals = {
                 'company_id': cid,
+                'partner_id': partner_id,
                 'customer_name': data.get('customer_name', ''),
                 'partner_phone': data.get('partner_phone', ''),
                 'partner_address': data.get('partner_address', ''),
@@ -293,6 +307,35 @@ class PosLiteController(http.Controller):
             order = request.env['pos.lite.order'].create(order_vals)
             order.action_process_order()
             return {'success': True, 'order_id': order.id, 'name': order.name}
+        except _HANDLED_EXCEPTIONS as e:
+            return {'success': False, 'error': str(e)}
+
+    # ─── Create Customer ────────────────────────────────────────
+
+    @http.route('/pos_lite/api/create_customer', type='json', auth='user', methods=['POST'], csrf=False)
+    def create_customer(self, **kwargs):
+        """Create a customer with full tax-invoice details from the terminal.
+
+        Runs as sudo: cashiers (group_pos_lite_user) are not partner managers,
+        same reasoning as the sudo partner creation in
+        pos.lite.order._get_or_create_customer_partner. Input is whitelisted
+        field-by-field below — nothing from the payload is passed through raw.
+        """
+        try:
+            data = self._get_json_data()
+            cid = self._get_company_id()
+            partner = request.env['res.partner'].sudo().pos_lite_create_customer(data, cid)
+            address = ' '.join(filter(None, [
+                partner.street, partner.city, partner.zip]))
+            return {
+                'success': True,
+                'partner': {
+                    'id': partner.id,
+                    'name': partner.name,
+                    'phone': partner.phone or '',
+                    'address': address,
+                },
+            }
         except _HANDLED_EXCEPTIONS as e:
             return {'success': False, 'error': str(e)}
 

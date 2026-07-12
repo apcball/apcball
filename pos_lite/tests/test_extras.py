@@ -1,6 +1,8 @@
 """Additional tests covering constraints, state transitions, cancel, reorder,
 config, and name_search overrides."""
 
+import uuid
+
 from odoo.tests import common, tagged
 from odoo.exceptions import UserError, ValidationError
 
@@ -387,12 +389,15 @@ class TestPickingTypeConfig(TestAdditionalBase):
 
     def test_config_out_picking_type_used_when_set(self):
         """เมื่อ config ตั้ง out_picking_type_id → ใช้ค่านั้นแทน warehouse default"""
+        # Unique sequence_code per run: MOG_DEV already holds pickings named
+        # FG10/POSOUT/00001 from earlier runs, and stock_picking_name_uniq
+        # would reject a fresh sequence that restarts at 1.
         custom_type = self.env['stock.picking.type'].create({
             'name': 'POS Delivery Custom',
             'code': 'outgoing',
             'warehouse_id': self.warehouse.id,
             'company_id': self.company.id,
-            'sequence_code': 'POSOUT',
+            'sequence_code': 'PO%s' % uuid.uuid4().hex[:6].upper(),
         })
         self.config.out_picking_type_id = custom_type.id
 
@@ -410,7 +415,7 @@ class TestPickingTypeConfig(TestAdditionalBase):
             'code': 'incoming',
             'warehouse_id': self.warehouse.id,
             'company_id': self.company.id,
-            'sequence_code': 'POSRET',
+            'sequence_code': 'PR%s' % uuid.uuid4().hex[:6].upper(),
         })
         self.config.return_picking_type_id = custom_return_type.id
 

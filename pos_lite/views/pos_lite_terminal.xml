@@ -366,6 +366,15 @@ input, select, textarea { font-family: inherit; color: var(--text); }
 }
 .pos-form-group input:focus, .pos-form-group textarea:focus, .pos-form-group select:focus { border-color: var(--primary); }
 .pos-form-group textarea { resize: vertical; min-height: 56px; }
+.pos-nc-row { display: flex; gap: 10px; }
+.pos-nc-row .pos-form-group { flex: 1; }
+.pos-partner-badge {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 6px 10px; margin-bottom: 7px; border-radius: 9px;
+    background: var(--primary-bg); border: 1px solid var(--primary);
+    font-size: 12px; font-weight: 700; color: var(--primary);
+}
+.pos-partner-badge button { border: none; background: none; color: var(--primary); cursor: pointer; font-size: 12px; line-height: 1; padding: 2px; }
 .pos-modal-footer { display: flex; gap: 10px; padding: 4px 20px 20px; }
 .pos-modal-footer button {
     flex: 1; padding: 13px; border-radius: 12px; font-size: 14.5px;
@@ -563,10 +572,17 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                                 <div class="pos-customer-section">
                                     <div class="pos-section-title">
                                         <span>👤 ลูกค้า</span>
-                                        <button type="button" class="pos-toggle-link" id="custToggle" onclick="toggleCustomer()">ซ่อน</button>
+                                        <span>
+                                            <button type="button" class="pos-toggle-link" onclick="openNewCustomer()">➕ ลูกค้าใหม่</button>
+                                            <button type="button" class="pos-toggle-link" id="custToggle" onclick="toggleCustomer()">ซ่อน</button>
+                                        </span>
                                     </div>
                                     <div id="custFields">
-                                        <input type="text" id="custName" placeholder="ชื่อลูกค้า (เว้นว่าง = Walk-in Customer)"/>
+                                        <div class="pos-partner-badge" id="custPartnerBadge" style="display:none;">
+                                            <span id="custPartnerBadgeName"></span>
+                                            <button type="button" onclick="clearSelectedPartner(true)" title="ยกเลิกการเลือกลูกค้า">✕</button>
+                                        </div>
+                                        <input type="text" id="custName" placeholder="ชื่อลูกค้า (เว้นว่าง = Walk-in Customer)" oninput="clearSelectedPartner()"/>
                                         <input type="tel" id="custPhone" placeholder="เบอร์โทร"/>
                                         <textarea id="custAddress" placeholder="ที่อยู่" rows="1"></textarea>
                                     </div>
@@ -615,6 +631,56 @@ input, select, textarea { font-family: inherit; color: var(--text); }
                         <div class="pos-modal-footer">
                             <button class="pos-btn-cancel" onclick="closeProcessModal()">ยกเลิก</button>
                             <button class="pos-btn-confirm" id="confirmProcessBtn" onclick="confirmProcess()">ยืนยันการขาย</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- New Customer Modal -->
+                <div class="pos-modal-overlay" id="posNewCustomerModal">
+                    <div class="pos-modal" style="width:440px;">
+                        <div class="pos-modal-header">
+                            <h2>➕ สร้างลูกค้าใหม่</h2>
+                            <button class="pos-modal-close" onclick="closeNewCustomer()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+                        <div class="pos-modal-body">
+                            <div class="pos-form-group">
+                                <label>ชื่อลูกค้า *</label>
+                                <input type="text" id="ncName" placeholder="ชื่อบุคคล / บริษัท"/>
+                            </div>
+                            <div class="pos-nc-row">
+                                <div class="pos-form-group">
+                                    <label>เลขประจำตัวผู้เสียภาษี</label>
+                                    <input type="text" id="ncVat" placeholder="13 หลัก" maxlength="13" inputmode="numeric"/>
+                                </div>
+                                <div class="pos-form-group" style="max-width:130px;">
+                                    <label>สาขา</label>
+                                    <input type="text" id="ncBranch" value="00000" placeholder="00000" maxlength="5" inputmode="numeric" title="00000 = สำนักงานใหญ่"/>
+                                </div>
+                            </div>
+                            <div class="pos-form-group">
+                                <label>เบอร์โทร</label>
+                                <input type="tel" id="ncPhone" placeholder="เบอร์โทร"/>
+                            </div>
+                            <div class="pos-form-group">
+                                <label>ที่อยู่</label>
+                                <textarea id="ncStreet" placeholder="บ้านเลขที่ ถนน ตำบล/แขวง" rows="2"></textarea>
+                            </div>
+                            <div class="pos-nc-row">
+                                <div class="pos-form-group">
+                                    <label>อำเภอ/เขต จังหวัด</label>
+                                    <input type="text" id="ncCity" placeholder="อำเภอ/เขต จังหวัด"/>
+                                </div>
+                                <div class="pos-form-group" style="max-width:130px;">
+                                    <label>รหัสไปรษณีย์</label>
+                                    <input type="text" id="ncZip" placeholder="10xxx" maxlength="5" inputmode="numeric"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pos-modal-footer">
+                            <button class="pos-btn-cancel" onclick="closeNewCustomer()">ยกเลิก</button>
+                            <button class="pos-btn-confirm" id="ncSaveBtn" onclick="saveNewCustomer()">บันทึกลูกค้า</button>
                         </div>
                     </div>
                 </div>
@@ -755,6 +821,7 @@ const state = {
     returnOrderId: null, historyOrders: [],
     submitting: false, returnSubmitting: false,
     customerVisible: true,
+    selectedPartnerId: null, creatingCustomer: false,
 };
 
 // ─── Helpers ────────────────────────────────────────────────
@@ -894,6 +961,84 @@ function toggleCustomer() {
     state.customerVisible = !state.customerVisible;
     document.getElementById('custFields').style.display = state.customerVisible ? '' : 'none';
     document.getElementById('custToggle').textContent = state.customerVisible ? 'ซ่อน' : 'แสดง';
+}
+
+// ─── New Customer ──────────────────────────────────────────
+function openNewCustomer() {
+    document.getElementById('ncName').value = document.getElementById('custName').value.trim();
+    document.getElementById('ncPhone').value = document.getElementById('custPhone').value.trim();
+    document.getElementById('ncVat').value = '';
+    document.getElementById('ncBranch').value = '00000';
+    document.getElementById('ncStreet').value = '';
+    document.getElementById('ncCity').value = '';
+    document.getElementById('ncZip').value = '';
+    document.getElementById('posNewCustomerModal').classList.add('open');
+    document.getElementById('ncName').focus();
+}
+function closeNewCustomer() {
+    if (state.creatingCustomer) return;
+    document.getElementById('posNewCustomerModal').classList.remove('open');
+}
+function setSelectedPartner(partner) {
+    state.selectedPartnerId = partner ? partner.id : null;
+    const badge = document.getElementById('custPartnerBadge');
+    if (partner) {
+        document.getElementById('custPartnerBadgeName').textContent = '✓ ' + partner.name;
+        badge.style.display = '';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+function clearSelectedPartner(clearFields) {
+    if (!state.selectedPartnerId) return;
+    setSelectedPartner(null);
+    if (clearFields === true) {
+        document.getElementById('custName').value = '';
+        document.getElementById('custPhone').value = '';
+        document.getElementById('custAddress').value = '';
+    }
+}
+async function saveNewCustomer() {
+    if (state.creatingCustomer) return;
+    const name = document.getElementById('ncName').value.trim();
+    if (!name) { showToast('กรุณากรอกชื่อลูกค้า', 'error'); return; }
+    const vat = document.getElementById('ncVat').value.trim();
+    if (vat && !/^\d{13}$/.test(vat)) { showToast('เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก', 'error'); return; }
+
+    state.creatingCustomer = true;
+    const btn = document.getElementById('ncSaveBtn');
+    btn.disabled = true;
+    // Static markup only — no user data goes through innerHTML here.
+    btn.innerHTML = '<span class="pos-spinner"></span>กำลังบันทึก...';
+    try {
+        const data = await jsonRpc('/pos_lite/api/create_customer', {
+            name: name,
+            vat: vat,
+            branch: document.getElementById('ncBranch').value.trim(),
+            phone: document.getElementById('ncPhone').value.trim(),
+            street: document.getElementById('ncStreet').value.trim(),
+            city: document.getElementById('ncCity').value.trim(),
+            zip: document.getElementById('ncZip').value.trim(),
+        });
+        if (data.success) {
+            const p = data.partner;
+            document.getElementById('custName').value = p.name;
+            document.getElementById('custPhone').value = p.phone;
+            document.getElementById('custAddress').value = p.address;
+            setSelectedPartner(p);
+            state.creatingCustomer = false;
+            closeNewCustomer();
+            showToast('สร้างลูกค้า ' + p.name + ' สำเร็จ', 'success');
+        } else {
+            showToast('เกิดข้อผิดพลาด: ' + (data.error || 'ไม่ทราบสาเหตุ'), 'error');
+        }
+    } catch (e) {
+        showToast('ไม่สามารถสร้างลูกค้าได้: ' + e.message, 'error');
+    } finally {
+        state.creatingCustomer = false;
+        btn.disabled = false;
+        btn.textContent = 'บันทึกลูกค้า';
+    }
 }
 
 // ─── Terminal Start ────────────────────────────────────────
@@ -1218,6 +1363,7 @@ async function confirmProcess() {
     btn.innerHTML = '<span class="pos-spinner"></span>กำลังบันทึก...';
 
     const params = {
+        partner_id: state.selectedPartnerId,
         customer_name: document.getElementById('custName').value.trim(),
         partner_phone: document.getElementById('custPhone').value.trim(),
         partner_address: document.getElementById('custAddress').value.trim(),
@@ -1244,6 +1390,7 @@ async function confirmProcess() {
             document.getElementById('custName').value = '';
             document.getElementById('custPhone').value = '';
             document.getElementById('custAddress').value = '';
+            setSelectedPartner(null);
             closeProcessModalForce();
             showToast('บันทึกออเดอร์ ' + data.name + ' สำเร็จ', 'success');
             await loadAndShowPrintDetail(data.order_id, data.name);

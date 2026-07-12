@@ -435,3 +435,73 @@ class TestControllerHelpers(common.TransactionCase):
         self.assertEqual(_sanitize_o2m_payload(None, _ORDER_LINE_FIELDS), [])
         self.assertEqual(_sanitize_o2m_payload('junk', _ORDER_LINE_FIELDS), [])
         self.assertEqual(_sanitize_o2m_payload([{'qty': 3}], _ORDER_LINE_FIELDS), [])
+
+
+@tagged('-at_install', 'post_install')
+class TestCreateCustomerApi(TestApiBase):
+    """ทดสอบ res.partner.pos_lite_create_customer (backend ของ /pos_lite/api/create_customer)"""
+
+    def _create(self, **data):
+        return self.env['res.partner'].pos_lite_create_customer(data, self.company.id)
+
+    def test_create_customer_minimal(self):
+        partner = self._create(name='ลูกค้าทดสอบ POS')
+        self.assertEqual(partner.name, 'ลูกค้าทดสอบ POS')
+        self.assertEqual(partner.customer_rank, 1)
+        self.assertEqual(partner.company_id, self.company)
+
+    def test_create_customer_full_tax_details(self):
+        partner = self._create(
+            name='บริษัท ทดสอบ จำกัด',
+            vat='0105536112233',
+            branch='00000',
+            phone='021234567',
+            street='99 ถ.ทดสอบ แขวงทดสอบ',
+            city='เขตทดสอบ กรุงเทพฯ',
+            zip='10110',
+        )
+        self.assertEqual(partner.vat, '0105536112233')
+        self.assertEqual(partner.phone, '021234567')
+        self.assertEqual(partner.street, '99 ถ.ทดสอบ แขวงทดสอบ')
+        self.assertEqual(partner.zip, '10110')
+        if 'branch' in partner._fields:
+            self.assertEqual(partner.branch, '00000')
+
+    def test_create_customer_requires_name(self):
+        from odoo.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self._create(name='   ')
+
+    def test_create_customer_rejects_bad_vat(self):
+        from odoo.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self._create(name='Bad VAT', vat='12345')
+        with self.assertRaises(ValidationError):
+            self._create(name='Bad VAT', vat='12345678901ab')
+
+    def test_create_customer_rejects_duplicate_vat(self):
+        from odoo.exceptions import ValidationError
+        self._create(name='ต้นฉบับ', vat='0105536199999', branch='00000')
+        with self.assertRaises(ValidationError):
+            self._create(name='ตัวซ้ำ', vat='0105536199999', branch='00000')
+
+    def test_order_uses_preselected_partner(self):
+        """Order ที่ส่ง partner_id มาแล้วต้องใช้ partner นั้นตรงๆ ไม่ match ตามชื่อ"""
+        partner = self._create(
+            name='ลูกค้าใบกำกับ', vat='0105536188888', branch='00000')
+        order = self.env['pos.lite.order'].create({
+            'company_id': self.company.id,
+            'channel': 'walkin',
+            'partner_id': partner.id,
+            'customer_name': 'ชื่ออื่นที่พิมพ์ทับ',
+            'employee_id': self.emp1.id,
+            'warehouse_id': self.warehouse.id,
+            'pricelist_id': self.pricelist.id,
+            'session_id': self.session.id,
+            'line_ids': [(0, 0, {
+                'product_id': self.product.id,
+                'qty': 1,
+                'price_unit': 100.0,
+            })],
+        })
+        self.assertEqual(order._get_or_create_customer_partner(), partner)
