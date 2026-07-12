@@ -31,12 +31,8 @@ class PosLiteStartSaleWizard(models.TransientModel):
     @api.model
     def _selection_trade_channel(self):
         """Dynamic selection mirroring sale.order.trade_channel (injected by marketplace_settlement)."""
-        SO = self.env.get('sale.order')
-        if SO:
-            field = SO._fields.get('trade_channel')
-            if field and field.selection:
-                return field.selection
-        return []
+        from odoo.addons.pos_lite.models.pos_order import _get_trade_channel_selection
+        return _get_trade_channel_selection(self)
 
     @api.depends('session_id')
     def _compute_allowed_employees(self):
@@ -70,8 +66,10 @@ class PosLiteStartSaleWizard(models.TransientModel):
                 if session.current_channel:
                     res['channel'] = session.current_channel
             if 'trade_channel' in fields_list and not res.get('trade_channel'):
-                # Leave empty - user selects manually like in SO form
-                pass
+                if session.current_trade_channel:
+                    res['trade_channel'] = session.current_trade_channel
+                elif session.config_id.default_trade_channel:
+                    res['trade_channel'] = session.config_id.default_trade_channel
         return res
 
     def action_confirm(self):
@@ -86,6 +84,7 @@ class PosLiteStartSaleWizard(models.TransientModel):
         self.session_id.write({
             'current_employee_id': self.employee_id.id,
             'current_channel': self.channel,
+            'current_trade_channel': self.trade_channel,
         })
 
         return self.session_id.action_new_order()

@@ -12,6 +12,7 @@
                 <field name="employee_ids" string="Employees" widget="many2many_tags"/>
                 <field name="current_employee_id" string="พนักงานขายปัจจุบัน" optional="show"/>
                 <field name="current_channel" string="ช่องทาง" optional="show"/>
+                <field name="current_trade_channel" string="Trade Channel" optional="show"/>
                 <field name="user_id" string="Cashier"/>
                 <field name="date_open" string="วันที่เปิด"/>
                 <field name="date_close" string="วันที่ปิด" optional="hide"/>
@@ -43,7 +44,7 @@
                     <button name="action_open_terminal" type="object"
                             string="🖥 Terminal"
                             class="btn-secondary ms-2"
-                            invisible="1"/>
+                            invisible="state != 'opened'"/>
                     <!-- Change Employee / Channel -->
                     <button name="action_start_sale" type="object"
                             string="🔄 เปลี่ยนพนักงาน"
@@ -97,7 +98,7 @@
                         <button name="action_open_terminal" type="object"
                                 class="oe_stat_button"
                                 icon="fa-desktop"
-                                invisible="1">
+                                invisible="state != 'opened'">
                             <div class="o_stat_info">
                                 <span class="o_stat_text">Terminal</span>
                             </div>
@@ -244,6 +245,12 @@
                                             <span class="o_form_label text-muted small">ช่องทางปัจจุบัน</span>
                                             <div>
                                                 <field name="current_channel"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <span class="o_form_label text-muted small">Trade Channel ปัจจุบัน</span>
+                                            <div>
+                                                <field name="current_trade_channel"/>
                                             </div>
                                         </div>
                                         <field name="company_id" invisible="1"/>

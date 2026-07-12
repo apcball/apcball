@@ -155,6 +155,8 @@ class TestStandardCostMargin(MarginTestBase):
 
     def test_parity_with_sale_order(self):
         """POS Lite margin must equal the equivalent SO margin (เหมือนกับ SO)."""
+        if 'margin' not in self.env['sale.order.line']._fields:
+            self.skipTest('sale_margin not installed — SO parity not applicable')
         pos = self._draft_pos_order([(self.product.id, 2, 100.0)])
         pos.invalidate_recordset()
         so = self._sale_order([(self.product.id, 2, 100.0)])
@@ -211,6 +213,8 @@ class TestStandardCostMargin(MarginTestBase):
             'list_price': 50.0,
             'taxes_id': [(5, 0, 0)],
         })
+        if 'margin' not in self.env['sale.order.line']._fields:
+            self.skipTest('sale_margin not installed — SO parity not applicable')
         pos = self._draft_pos_order([(other.id, 1, 50.0)])
         pos.invalidate_recordset()
         so = self._sale_order([(other.id, 1, 50.0)])

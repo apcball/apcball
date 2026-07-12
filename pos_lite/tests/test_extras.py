@@ -400,7 +400,7 @@ class TestPickingTypeConfig(TestAdditionalBase):
             (self.product_storable.id, 1, 200.0),
         ])
         self.assertTrue(order.picking_id)
-        self.assertEqual(order.picking_id.picking_type_id, custom_type.id)
+        self.assertEqual(order.picking_id.picking_type_id.id, custom_type.id)
         self.assertNotEqual(order.picking_id.picking_type_id, self.warehouse.out_type_id)
 
     def test_config_return_picking_type_used_when_set(self):
@@ -425,7 +425,7 @@ class TestPickingTypeConfig(TestAdditionalBase):
         wizard._onchange_order_id()
         # เติม return line ด้วย storable product
         wizard.line_ids.write({
-            'returned_from_line_id': original.line_ids[0].id,
+            'order_line_id': original.line_ids[0].id,
         })
         wizard.action_confirm()
 
@@ -434,7 +434,7 @@ class TestPickingTypeConfig(TestAdditionalBase):
         ], limit=1)
         self.assertTrue(return_order)
         self.assertTrue(return_order.picking_id)
-        self.assertEqual(return_order.picking_id.picking_type_id, custom_return_type.id)
+        self.assertEqual(return_order.picking_id.picking_type_id.id, custom_return_type.id)
         self.assertNotEqual(return_order.picking_id.picking_type_id, self.warehouse.in_type_id)
 
 

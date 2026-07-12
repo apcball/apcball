@@ -25,9 +25,9 @@ def _get_trade_channel_selection(self):
     if not, use a hardcoded fallback.
     """
     SO = self.env.get('sale.order')
-    if SO:
+    if SO is not None:  # empty recordset is falsy — check against None
         field = SO._fields.get('trade_channel')
-        if field and field.selection:
+        if field is not None and isinstance(field.selection, list) and field.selection:
             return field.selection
     # Fallback if marketplace_settlement is not installed
     return [
@@ -355,8 +355,10 @@ class PosLiteOrder(models.Model):
         if config:
             self.warehouse_id = config.warehouse_id
             self.pricelist_id = config.pricelist_id
+            if config.default_trade_channel and not self.trade_channel:
+                self.trade_channel = config.default_trade_channel
 
-    #  Helpers ────────────────────────────────────────────────
+    # ─── Helpers ────────────────────────────────────────────────
 
     def _get_walk_in_partner(self):
         self.ensure_one()
@@ -585,7 +587,14 @@ class PosLiteOrder(models.Model):
         return True
 
     def _process_one_order(self):
-        """Single-order body of action_process_order, wrapped in a savepoint by the caller."""
+        """Single-order body of action_process_order, wrapped in a savepoint by the caller.
+
+        Invoice posting and picking validation run as sudo: POS users
+        (group_pos_lite_user) are cashiers without Invoicing/Inventory groups,
+        and other modules hook posting with their own ACLs (e.g. accounting
+        date policies). Authorization is already enforced at the order level
+        by the record rules; the follow-up documents are system-generated.
+        """
         self.ensure_one()
         if not self.line_ids:
             raise UserError(_('Please add at least one order line.'))
@@ -597,21 +606,22 @@ class PosLiteOrder(models.Model):
                         _('Insufficient stock for "%s": available %s, requested %s.')
                         % (line.product_id.display_name, line.qty_available, line.qty)
                     )
+        order_su = self.sudo()
         # Ensure partner
         if not self.partner_id:
-            self.partner_id = self._get_or_create_customer_partner().id
+            self.partner_id = order_su._get_or_create_customer_partner().id
         # Create invoice
         if not self.invoice_id:
-            invoice = self.env['account.move'].create(self._prepare_invoice_vals())
+            invoice = self.env['account.move'].sudo().create(order_su._prepare_invoice_vals())
             invoice.action_post()
             self.invoice_id = invoice.id
         # Create picking
         if not self.picking_id:
-            picking_vals = self._prepare_picking_vals()
+            picking_vals = order_su._prepare_picking_vals()
             if picking_vals.get('move_ids_without_package'):
-                picking = self.env['stock.picking'].create(picking_vals)
+                picking = self.env['stock.picking'].sudo().create(picking_vals)
                 self.picking_id = picking.id
-                self._process_stock_picking(picking)
+                order_su._process_stock_picking(picking)
         # Invoice is posted only — no account.payment creation, no reconciliation.
         # pos.lite.payment rows stay as internal records; accounting settles separately.
         self.state = 'paid'
@@ -762,6 +772,14 @@ class PosLiteOrder(models.Model):
             'price_unit': l.price_unit,
             'discount': l.discount,
         }) for l in self.line_ids]
+        # Carry the session when it is still open; otherwise create() falls
+        # back to the current user's open session (and errors if none).
+        session = self.session_id if self.session_id.state == 'opened' else self.env['pos.lite.session']
+        if not session:
+            session = self.env['pos.lite.session'].search([
+                ('state', '=', 'opened'),
+                ('company_id', '=', self.company_id.id),
+            ], limit=1)
         new_order = self.create({
             'company_id': self.company_id.id,
             'channel': self.channel,
@@ -774,6 +792,8 @@ class PosLiteOrder(models.Model):
             'partner_tax_id': self.partner_tax_id,
             'warehouse_id': self.warehouse_id.id,
             'pricelist_id': self.pricelist_id.id,
+            'session_id': session.id or False,
+            'employee_id': self.employee_id.id if self.employee_id else False,
             'note': _('Re-order from %s') % self.name,
             'line_ids': line_commands,
         })
@@ -1029,8 +1049,10 @@ class PosLiteOrderLine(models.Model):
             pricelist = pricelists[cid]
 
             if not pricelist:
+                # Parity with buz_sale_pricelist_standard_cost: no cost
+                # pricelist means cost 0 → margin equals the full subtotal.
                 line.standard_cost_price = 0.0
-                line.margin = 0.0
+                line.margin = line.price_subtotal
                 continue
 
             date_order = line.order_id.date_order or fields.Date.today()

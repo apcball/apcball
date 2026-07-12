@@ -397,3 +397,41 @@ class TestTerminalReturnFlow(TestApiBase):
             reason='สินค้ามีตำหนิ',
         )
         self.assertEqual(return_order.return_reason, 'สินค้ามีตำหนิ')
+
+
+@tagged('-at_install', 'post_install')
+class TestControllerHelpers(common.TransactionCase):
+    """ทดสอบ helper functions ของ controller (pure functions)"""
+
+    def test_sanitize_o2m_accepts_dicts_and_commands(self):
+        from odoo.addons.pos_lite.controllers.main import (
+            _sanitize_o2m_payload, _ORDER_LINE_FIELDS,
+        )
+        raw = [
+            {'product_id': 1, 'qty': 2, 'price_unit': 50.0},
+            [0, 0, {'product_id': 2, 'qty': 1, 'price_unit': 10.0}],
+        ]
+        commands = _sanitize_o2m_payload(raw, _ORDER_LINE_FIELDS)
+        self.assertEqual(len(commands), 2)
+        self.assertEqual(commands[0][2]['product_id'], 1)
+        self.assertEqual(commands[1][2]['product_id'], 2)
+
+    def test_sanitize_o2m_drops_non_whitelisted_fields(self):
+        from odoo.addons.pos_lite.controllers.main import (
+            _sanitize_o2m_payload, _ORDER_LINE_FIELDS,
+        )
+        raw = [{'product_id': 1, 'qty': 1, 'state': 'done', 'company_id': 99, 'is_return': True}]
+        commands = _sanitize_o2m_payload(raw, _ORDER_LINE_FIELDS)
+        self.assertEqual(len(commands), 1)
+        vals = commands[0][2]
+        self.assertNotIn('state', vals)
+        self.assertNotIn('company_id', vals)
+        self.assertNotIn('is_return', vals)
+
+    def test_sanitize_o2m_rejects_garbage(self):
+        from odoo.addons.pos_lite.controllers.main import (
+            _sanitize_o2m_payload, _ORDER_LINE_FIELDS,
+        )
+        self.assertEqual(_sanitize_o2m_payload(None, _ORDER_LINE_FIELDS), [])
+        self.assertEqual(_sanitize_o2m_payload('junk', _ORDER_LINE_FIELDS), [])
+        self.assertEqual(_sanitize_o2m_payload([{'qty': 3}], _ORDER_LINE_FIELDS), [])

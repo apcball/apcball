@@ -57,6 +57,29 @@ class PosLiteConfig(models.Model):
         help='Stock operation type used for POS return orders. '
              'Leave empty to use the default incoming type from the warehouse.',
     )
+    default_trade_channel = fields.Selection(
+        selection='_selection_trade_channel',
+        string='Default Trade Channel',
+        help='Default marketplace trade channel for new orders.',
+    )
+    marketplace_profile_id = fields.Many2one(
+        'marketplace.settlement.profile',
+        string='Marketplace Profile',
+        domain="[('company_id', '=', company_id), ('active', '=', True)]",
+        check_company=True,
+        help='Marketplace profile to auto-set trade channel and accounting defaults.',
+    )
+
+    @api.model
+    def _selection_trade_channel(self):
+        """Dynamic selection mirroring sale.order.trade_channel (injected by marketplace_settlement)."""
+        from .pos_order import _get_trade_channel_selection
+        return _get_trade_channel_selection(self)
+
+    @api.onchange('marketplace_profile_id')
+    def _onchange_marketplace_profile_id(self):
+        if self.marketplace_profile_id:
+            self.default_trade_channel = self.marketplace_profile_id.trade_channel
 
     @api.model
     def get_default_config(self, company=None):

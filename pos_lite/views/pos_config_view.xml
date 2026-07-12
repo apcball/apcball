@@ -10,6 +10,7 @@
                 <field name="warehouse_id"/>
                 <field name="pricelist_id"/>
                 <field name="journal_id"/>
+                <field name="default_trade_channel" optional="show"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -39,6 +40,12 @@
                             <field name="vat_number"/>
                             <field name="branch_number"/>
                             <field name="employee_id"/>
+                        </group>
+                    </group>
+                    <group string="Marketplace Integration">
+                        <group>
+                            <field name="marketplace_profile_id"/>
+                            <field name="default_trade_channel"/>
                         </group>
                     </group>
                     <group string="Stock Operation">

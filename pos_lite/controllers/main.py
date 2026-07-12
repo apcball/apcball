@@ -37,9 +37,26 @@ class PosLiteController(http.Controller):
     # ─── Helpers ────────────────────────────────────────────────
 
     def _get_json_data(self):
-        """Extract JSON body from request."""
-        data = request.jsonrequest if hasattr(request, 'jsonrequest') else {}
-        return data if isinstance(data, dict) else {}
+        """Extract JSON-RPC params from the request body (Odoo 17).
+
+        Odoo 17 removed `request.jsonrequest`; the parsed body is available via
+        `request.get_json_data()` and the RPC params also land in
+        `request.params`. Support both plain-dict and JSON-RPC envelopes.
+        """
+        data = {}
+        try:
+            data = request.get_json_data()
+        except Exception:
+            data = {}
+        if isinstance(data, dict) and isinstance(data.get('params'), dict):
+            data = data['params']
+        if not isinstance(data, dict):
+            data = {}
+        # Merge dispatcher params (covers odoo.jsonRpc-style clients)
+        params = getattr(request, 'params', None)
+        if isinstance(params, dict):
+            data = {**params, **data}
+        return data
 
     def _get_company_id(self):
         """Current user's active company ID."""
@@ -61,8 +78,20 @@ class PosLiteController(http.Controller):
     @http.route('/pos_lite/ui', type='http', auth='user')
     def pos_lite_ui(self, **kwargs):
         session_id = kwargs.get('session_id')
+        try:
+            session_id = int(session_id) if session_id else False
+        except (ValueError, TypeError):
+            session_id = False
+        if not session_id:
+            # No session in the URL — fall back to the user's open session so
+            # the terminal can be bookmarked directly at /pos_lite/ui.
+            session = request.env['pos.lite.session'].search([
+                ('state', '=', 'opened'),
+                ('company_id', '=', request.env.company.id),
+            ], order='id desc', limit=1)
+            session_id = session.id or False
         response = request.render('pos_lite.pos_lite_terminal', {
-            'session_id': session_id and int(session_id) or False,
+            'session_id': session_id,
         })
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
@@ -86,8 +115,10 @@ class PosLiteController(http.Controller):
             if session_id:
                 session = request.env['pos.lite.session'].sudo().browse(int(session_id))
                 if session.exists() and session.company_id.id in request.env.companies.ids:
+                    result['session_name'] = session.name
+                    result['session_state'] = session.state
                     # Only show employees assigned to this session
-                    employees = session.employee_ids or session.employee_id
+                    employees = session.employee_ids | session.employee_id
                     if employees:
                         result['employees'] = [{'id': e.id, 'name': e.name} for e in employees]
                     if session.config_id.warehouse_id:
@@ -98,6 +129,17 @@ class PosLiteController(http.Controller):
                         p = session.config_id.pricelist_id
                         result['default_pricelist_id'] = p.id
                         result['default_pricelist_name'] = p.name
+                    if session.config_id.default_trade_channel:
+                        result['default_trade_channel'] = session.config_id.default_trade_channel
+                    else:
+                        result['default_trade_channel'] = session.current_trade_channel or False
+                    # Trade channel options for the terminal dropdown — the
+                    # dynamic selection lives on pos.lite.order itself.
+                    fg = request.env['pos.lite.order'].fields_get(['trade_channel'])
+                    selection = fg.get('trade_channel', {}).get('selection') or []
+                    result['trade_channel_options'] = [
+                        {'key': k, 'value': v} for k, v in selection
+                    ]
             # No session_id → no employees (terminal requires a session to start)
             return {'success': True, **result}
         except _HANDLED_EXCEPTIONS as e:
@@ -243,7 +285,7 @@ class PosLiteController(http.Controller):
                 'note': data.get('note', ''),
                 'warehouse_id': wh_id,
                 'pricelist_id': pricelist_id,
-                'session_id': session_id or False,
+                'session_id': int(session_id) if session_id else False,
                 'employee_id': int(employee_id) if employee_id else False,
                 'line_ids': _sanitize_o2m_payload(data.get('line_ids'), _ORDER_LINE_FIELDS),
             }
@@ -292,6 +334,7 @@ class PosLiteController(http.Controller):
             }
             for line in order.line_ids:
                 order_data['lines'].append({
+                    'id': line.id,
                     'product_id': line.product_id.id,
                     'product_name': line.product_id.display_name,
                     'default_code': line.product_id.default_code or '',
@@ -299,6 +342,8 @@ class PosLiteController(http.Controller):
                     'price_unit': line.price_unit,
                     'discount': line.discount,
                     'price_total': line.price_total,
+                    'returned_qty': line.returned_qty,
+                    'available_return_qty': line.available_return_qty,
                 })
             for pay in order.payment_ids:
                 order_data['payments'].append({
@@ -353,7 +398,10 @@ class PosLiteController(http.Controller):
             if original.state != 'done':
                 return {'success': False, 'error': 'Only completed orders can be returned'}
 
-            # Validate return qty against available_return_qty
+            # Validate return qty against available_return_qty and remember the
+            # original line so returned_from_line_id links the return back
+            # (otherwise available_return_qty never decreases for API returns).
+            matched_lines = []
             for line_data in lines:
                 product_id = line_data.get('product_id')
                 return_qty = line_data.get('qty', 1)
@@ -361,9 +409,12 @@ class PosLiteController(http.Controller):
                 if not orig_line:
                     return {'success': False, 'error': 'Product %s not found in original order' % product_id}
                 available = orig_line[0].available_return_qty
+                if return_qty <= 0:
+                    return {'success': False, 'error': 'Return qty must be positive'}
                 if return_qty > available:
                     return {'success': False, 'error': 'Return qty for %s exceeds available (%s > %s)' % (
                         orig_line[0].product_id.display_name, return_qty, available)}
+                matched_lines.append(orig_line[0])
 
             return_vals = {
                 'company_id': original.company_id.id,
@@ -384,11 +435,18 @@ class PosLiteController(http.Controller):
                 'payment_ids': [],
             }
 
-            for line_data in lines:
+            for line_data, orig_line in zip(lines, matched_lines):
+                # Refund at the effective (discounted) price actually paid,
+                # matching the backend return wizard behaviour.
+                refund_price = (
+                    orig_line.price_subtotal / orig_line.qty
+                    if orig_line.qty else line_data.get('price_unit', 0)
+                )
                 return_vals['line_ids'].append([0, 0, {
+                    'returned_from_line_id': orig_line.id,
                     'product_id': line_data.get('product_id'),
                     'qty': line_data.get('qty', 1),
-                    'price_unit': line_data.get('price_unit', 0),
+                    'price_unit': refund_price,
                     'discount': 0,
                     'discount_type': 'fixed',
                 }])
@@ -405,13 +463,17 @@ class PosLiteController(http.Controller):
                         'discount_type': 'fixed',
                     }])
 
-            return_vals['payment_ids'].append([0, 0, {
-                'payment_method': data.get('payment_method', 'cash'),
-                'amount': -abs(data.get('amount', 0)),
-                'reference': data.get('reference', ''),
-            }])
-
+            return_vals.pop('payment_ids', None)
             order = request.env['pos.lite.order'].create(return_vals)
+            # Refund amount computed server-side from the created order — the
+            # client-provided figure may not include taxes/discounts correctly.
+            request.env['pos.lite.payment'].create({
+                'order_id': order.id,
+                'payment_method': data.get('payment_method', 'cash'),
+                'amount': -abs(order.amount_total),
+                'reference': data.get('reference', ''),
+                'note': data.get('reason', '') or 'Customer return refund',
+            })
             order.action_process_order()
             return {'success': True, 'order_id': order.id, 'name': order.name}
         except _HANDLED_EXCEPTIONS as e:

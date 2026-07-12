@@ -3,14 +3,29 @@
     <menuitem id="menu_pos_lite_root"
               name="POS Lite"
               sequence="60"
+              action="action_pos_lite_session"
               web_icon="pos_lite,static/description/icon.png"
               groups="pos_lite.group_pos_lite_user"/>
+
+    <!-- Open the POS terminal directly; /pos_lite/ui auto-resolves the
+         user's open session when no session_id is given. -->
+    <record id="action_pos_lite_open_terminal" model="ir.actions.act_url">
+        <field name="name">🖥 Terminal</field>
+        <field name="url">/pos_lite/ui</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_pos_lite_terminal"
+              name="🖥 Terminal"
+              parent="menu_pos_lite_root"
+              action="action_pos_lite_open_terminal"
+              sequence="15"/>
 
     <menuitem id="menu_pos_lite_session"
               name="Sessions"
               parent="menu_pos_lite_root"
               action="action_pos_lite_session"
-              sequence="10"/>
+              sequence="5"/>
 
     <menuitem id="menu_pos_lite_orders"
               name="Orders"

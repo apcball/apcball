@@ -108,6 +108,8 @@ class TestReturnExchangeBase(common.TransactionCase):
             'partner_id': self.partner.id,
             'warehouse_id': self.warehouse.id,
             'pricelist_id': self.pricelist.id,
+            'session_id': self.session.id,
+            'employee_id': self.employee.id,
             'line_ids': lines,
         })
         order.action_quick_pay_and_process()
@@ -133,6 +135,8 @@ class TestReturnFlow(TestReturnExchangeBase):
             'partner_id': self.partner.id,
             'warehouse_id': self.warehouse.id,
             'pricelist_id': self.pricelist.id,
+            'session_id': self.session.id,
+            'employee_id': self.employee.id,
             'line_ids': [(0, 0, {
                 'product_id': self.product_a.id,
                 'qty': 1,
