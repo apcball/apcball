@@ -86,10 +86,11 @@ class SpeDashboard extends Component {
     async loadAll() {
         this.state.loading = true;
         try {
-            const [kpi, daily, monthly, delivery, invoiceRefund,
+            const [kpi, kpiPrev, daily, monthly, delivery, invoiceRefund,
                    topCustomers, topProducts, topSalespersons, topTeams,
                    lbSalespersons, lbTeams] = await Promise.all([
                 this.rpc("/spe/dashboard/kpi", {filters: this.state.filters}),
+                this._loadPrevKpi(),
                 this.rpc("/spe/dashboard/series", {filters: this.state.filters, kind: "daily"}),
                 this.rpc("/spe/dashboard/series", {filters: this.state.filters, kind: "monthly"}),
                 this.rpc("/spe/dashboard/series", {filters: this.state.filters, kind: "delivery_trend"}),
@@ -102,7 +103,7 @@ class SpeDashboard extends Component {
                 this.rpc("/spe/dashboard/series", {filters: this.state.filters, kind: "leaderboard", field: "team_id"}),
             ]);
             this.state.kpi = kpi;
-            this.state.kpiPrev = await this._loadPrevKpi();
+            this.state.kpiPrev = kpiPrev;
             this._daily = daily;
             this._monthly = monthly;
             this._delivery = delivery;

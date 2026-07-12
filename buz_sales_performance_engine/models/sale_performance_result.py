@@ -48,7 +48,7 @@ class SalePerformanceResult(models.Model):
     pos_order_line_id = fields.Many2one(
         "pos.lite.order.line", string="POS Order Line", index=True, ondelete="cascade",
     )
-    display_label = fields.Char(compute="_compute_display_label")
+    display_label = fields.Char(compute="_compute_display_label", store=True)
 
     # ------------------------------------------------------------------
     # Measures (company-currency, signed - refunds are negative on net)
