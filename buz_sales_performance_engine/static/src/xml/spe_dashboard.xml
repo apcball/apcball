@@ -89,14 +89,14 @@
             <div t-else="">
                 <!-- KPI cards -->
                 <div class="spe-kpi-row">
-                    <div class="spe-kpi-card spe-accent-slate spe-clickable" t-on-click="() =&gt; drill('orders')">
+                    <div class="spe-kpi-card spe-accent-slate spe-clickable" t-on-click="() =&gt; this.drill('orders')">
                         <div class="spe-kpi-icon"><i class="fa fa-bullseye"/></div>
                         <div class="spe-kpi-body">
                             <div class="spe-kpi-label">Target</div>
                             <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.target)"/>
                         </div>
                     </div>
-                    <div class="spe-kpi-card spe-accent-teal spe-clickable" t-on-click="() =&gt; drill('results')">
+                    <div class="spe-kpi-card spe-accent-teal spe-clickable" t-on-click="() =&gt; this.drill('results')">
                         <div class="spe-kpi-icon"><i class="fa fa-line-chart"/></div>
                         <div class="spe-kpi-body">
                             <div class="spe-kpi-label">Actual</div>
@@ -120,7 +120,7 @@
                             <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.forecast)"/>
                         </div>
                     </div>
-                    <div class="spe-kpi-card spe-accent-green spe-clickable" t-on-click="() =&gt; drill('invoices')">
+                    <div class="spe-kpi-card spe-accent-green spe-clickable" t-on-click="() =&gt; this.drill('invoices')">
                         <div class="spe-kpi-icon"><i class="fa fa-file-text-o"/></div>
                         <div class="spe-kpi-body">
                             <div class="spe-kpi-label">Invoice</div>
@@ -128,14 +128,14 @@
                             <div t-att-class="deltaClass('invoice_amount')" t-esc="fmtDelta('invoice_amount')"/>
                         </div>
                     </div>
-                    <div class="spe-kpi-card spe-accent-red spe-clickable" t-on-click="() =&gt; drill('credit_notes')">
+                    <div class="spe-kpi-card spe-accent-red spe-clickable" t-on-click="() =&gt; this.drill('credit_notes')">
                         <div class="spe-kpi-icon"><i class="fa fa-undo"/></div>
                         <div class="spe-kpi-body">
                             <div class="spe-kpi-label">Refund</div>
                             <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.refund_amount)"/>
                         </div>
                     </div>
-                    <div class="spe-kpi-card spe-accent-amber spe-clickable" t-on-click="() =&gt; drill('deliveries')">
+                    <div class="spe-kpi-card spe-accent-amber spe-clickable" t-on-click="() =&gt; this.drill('deliveries')">
                         <div class="spe-kpi-icon"><i class="fa fa-truck"/></div>
                         <div class="spe-kpi-body">
                             <div class="spe-kpi-label">Delivery %</div>
