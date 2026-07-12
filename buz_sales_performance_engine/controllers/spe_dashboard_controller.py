@@ -26,6 +26,8 @@ class SpeDashboardController(http.Controller):
             domain.append(("product_id", "=", int(filters["product_id"])))
         if filters.get("categ_id"):
             domain.append(("categ_id", "=", int(filters["categ_id"])))
+        if filters.get("source") in ("sale", "pos"):
+            domain.append(("source", "=", filters["source"]))
         return domain
 
     @staticmethod
@@ -206,9 +208,15 @@ class SpeDashboardController(http.Controller):
         kind = kw.get("kind")  # invoices | credit_notes | deliveries | results
         Result = request.env["buz.sales.performance.result"].sudo()
         domain = self._base_result_domain(filters)
-        rows = Result.search_read(domain, ["sale_order_line_id", "sale_order_id"], limit=None)
+        rows = Result.search_read(
+            domain, ["sale_order_line_id", "sale_order_id", "pos_order_id"], limit=None,
+        )
         sol_ids = [r["sale_order_line_id"][0] for r in rows if r["sale_order_line_id"]]
         so_ids = list({r["sale_order_id"][0] for r in rows if r["sale_order_id"]})
+        pos_order_ids = list({r["pos_order_id"][0] for r in rows if r["pos_order_id"]})
+        pos_orders = request.env["pos.lite.order"].sudo().browse(pos_order_ids)
+        pos_invoice_ids = pos_orders.mapped("invoice_id").ids
+        pos_picking_ids = pos_orders.mapped("picking_id").ids
 
         if kind == "invoices":
             return {
@@ -219,7 +227,9 @@ class SpeDashboardController(http.Controller):
                 "domain": [
                     ("move_type", "=", "out_invoice"),
                     ("state", "=", "posted"),
+                    "|",
                     ("line_ids.sale_line_ids", "in", sol_ids),
+                    ("id", "in", pos_invoice_ids),
                 ],
                 "context": {"default_move_type": "out_invoice"},
             }
@@ -232,7 +242,9 @@ class SpeDashboardController(http.Controller):
                 "domain": [
                     ("move_type", "=", "out_refund"),
                     ("state", "=", "posted"),
+                    "|",
                     ("line_ids.sale_line_ids", "in", sol_ids),
+                    ("id", "in", pos_invoice_ids),
                 ],
                 "context": {"default_move_type": "out_refund"},
             }
@@ -242,9 +254,22 @@ class SpeDashboardController(http.Controller):
                 "name": "Deliveries",
                 "res_model": "stock.picking",
                 "view_mode": "tree,form",
-                "domain": [("state", "=", "done"), ("move_ids.sale_line_id", "in", sol_ids)],
+                "domain": [
+                    ("state", "=", "done"),
+                    "|",
+                    ("move_ids.sale_line_id", "in", sol_ids),
+                    ("id", "in", pos_picking_ids),
+                ],
             }
         if kind == "orders":
+            if filters.get("source") == "pos":
+                return {
+                    "type": "ir.actions.act_window",
+                    "name": "POS Orders",
+                    "res_model": "pos.lite.order",
+                    "view_mode": "tree,form",
+                    "domain": [("id", "in", pos_order_ids)],
+                }
             return {
                 "type": "ir.actions.act_window",
                 "name": "Sale Orders",

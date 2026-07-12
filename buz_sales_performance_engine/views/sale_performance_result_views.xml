@@ -8,7 +8,11 @@
             <tree string="Performance Results" decoration-info="refund_amount &gt; 0">
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="date_invoiced"/>
+                <field name="source" widget="badge"
+                       decoration-info="source == 'sale'"
+                       decoration-success="source == 'pos'"/>
                 <field name="sale_order_id"/>
+                <field name="pos_order_id" optional="hide"/>
                 <field name="partner_id"/>
                 <field name="product_id"/>
                 <field name="salesperson_id"/>
@@ -31,16 +35,20 @@
         <field name="arch" type="xml">
             <form string="Performance Result">
                 <header>
-                    <button name="action_open_invoices" string="Invoices" type="object" class="btn-primary"/>
-                    <button name="action_open_credit_notes" string="Credit Notes" type="object"/>
-                    <button name="action_open_deliveries" string="Deliveries" type="object"/>
-                    <button name="action_open_sale_order" string="Sale Order" type="object"/>
+                    <button name="action_open_invoices" string="Invoices" type="object" class="btn-primary" invisible="source == 'pos'"/>
+                    <button name="action_open_credit_notes" string="Credit Notes" type="object" invisible="source == 'pos'"/>
+                    <button name="action_open_deliveries" string="Deliveries" type="object" invisible="source == 'pos'"/>
+                    <button name="action_open_sale_order" string="Sale Order" type="object" invisible="source == 'pos'"/>
+                    <button name="action_open_pos_order" string="POS Order" type="object" class="btn-primary" invisible="source != 'pos'"/>
                 </header>
                 <sheet>
                     <group>
                         <group string="Source">
-                            <field name="sale_order_id"/>
-                            <field name="sale_order_line_id"/>
+                            <field name="source"/>
+                            <field name="sale_order_id" invisible="source == 'pos'"/>
+                            <field name="sale_order_line_id" invisible="source == 'pos'"/>
+                            <field name="pos_order_id" invisible="source != 'pos'"/>
+                            <field name="pos_order_line_id" invisible="source != 'pos'"/>
                             <field name="date_order"/>
                             <field name="date_delivered"/>
                             <field name="date_invoiced"/>
@@ -91,6 +99,11 @@
                 <filter string="Has Refund" name="filter_has_refund"
                         domain="[('refund_amount','&gt;', 0)]"/>
                 <separator/>
+                <filter string="Sales Orders" name="filter_source_sale"
+                        domain="[('source','=','sale')]"/>
+                <filter string="POS Lite" name="filter_source_pos"
+                        domain="[('source','=','pos')]"/>
+                <separator/>
                 <filter string="By Salesperson" name="groupby_salesperson_id"
                         context="{'group_by': 'salesperson_id'}"/>
                 <filter string="By Team" name="groupby_team_id"
@@ -101,6 +114,8 @@
                         context="{'group_by': 'product_id'}"/>
                 <filter string="By Category" name="groupby_categ_id"
                         context="{'group_by': 'categ_id'}"/>
+                <filter string="By Source" name="groupby_source"
+                        context="{'group_by': 'source'}"/>
                 <filter string="Invoice Month" name="groupby_month"
                         context="{'group_by': 'date_invoiced:month'}"/>
             </search>
