@@ -26,8 +26,8 @@ class SpeDashboard extends Component {
             topTeams: useRef("topTeamsChart"),
         };
         this.charts = {};
-        this.palette = ["#017e84", "#22a2a9", "#66c7cc", "#f2a541", "#e57373",
-                        "#7986cb", "#4db6ac", "#9575cd"];
+        this.palette = ["#0d9488", "#6366f1", "#f59e0b", "#f43f5e", "#10b981",
+                        "#0ea5e9", "#a855f7", "#f97316"];
 
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -177,33 +177,36 @@ class SpeDashboard extends Component {
         this._chart("salesVsTarget", "bar", {
             labels: (this._monthly || []).map(r => r.label),
             datasets: [
-                {label: "Net Sales", data: (this._monthly || []).map(r => r.net), backgroundColor: "#017e84"},
-                {label: "Invoice", data: (this._monthly || []).map(r => r.invoice), backgroundColor: "#5a9ea8"},
-                {label: "Refund", data: (this._monthly || []).map(r => r.refund), backgroundColor: "#e57373"},
+                {label: "Net Sales", data: (this._monthly || []).map(r => r.net), backgroundColor: "#0d9488", borderRadius: 4},
+                {label: "Invoice", data: (this._monthly || []).map(r => r.invoice), backgroundColor: "#67e8f9", borderRadius: 4},
+                {label: "Refund", data: (this._monthly || []).map(r => r.refund), backgroundColor: "#fda4af", borderRadius: 4},
             ],
         });
         this._chart("daily", "line", {
             labels: (this._daily || []).map(r => r.label),
             datasets: [{label: "Daily Net Sales", data: (this._daily || []).map(r => r.net),
-                        borderColor: "#017e84", backgroundColor: "rgba(1,126,132,0.15)", fill: true}],
+                        borderColor: "#0d9488", backgroundColor: "rgba(13,148,136,0.12)",
+                        fill: true, tension: 0.35, pointRadius: 2, pointBackgroundColor: "#0d9488"}],
         });
         this._chart("monthly", "bar", {
             labels: (this._monthly || []).map(r => r.label),
             datasets: [{label: "Monthly Net Sales", data: (this._monthly || []).map(r => r.net),
-                        backgroundColor: "#017e84"}],
+                        backgroundColor: "#0d9488", borderRadius: 4}],
         });
         this._chart("delivery", "line", {
             labels: (this._delivery || []).map(r => r.label),
             datasets: [
-                {label: "Delivered Qty", data: (this._delivery || []).map(r => r.delivered), borderColor: "#2e7d32"},
-                {label: "Invoiced Qty", data: (this._delivery || []).map(r => r.invoiced), borderColor: "#1565c0"},
+                {label: "Delivered Qty", data: (this._delivery || []).map(r => r.delivered),
+                 borderColor: "#10b981", backgroundColor: "#10b981", tension: 0.35, pointRadius: 2},
+                {label: "Invoiced Qty", data: (this._delivery || []).map(r => r.invoiced),
+                 borderColor: "#6366f1", backgroundColor: "#6366f1", tension: 0.35, pointRadius: 2},
             ],
         });
         this._chart("invoiceRefund", "bar", {
             labels: (this._invoiceRefund || []).map(r => r.label),
             datasets: [
-                {label: "Invoice", data: (this._invoiceRefund || []).map(r => r.invoice), backgroundColor: "#2e7d32"},
-                {label: "Refund", data: (this._invoiceRefund || []).map(r => r.refund), backgroundColor: "#e57373"},
+                {label: "Invoice", data: (this._invoiceRefund || []).map(r => r.invoice), backgroundColor: "#10b981", borderRadius: 4},
+                {label: "Refund", data: (this._invoiceRefund || []).map(r => r.refund), backgroundColor: "#f43f5e", borderRadius: 4},
             ],
         });
         this._pie("topCustomers", this._topCustomers);
@@ -237,9 +240,13 @@ class SpeDashboard extends Component {
             data: {
                 labels: items.map(r => r.name),
                 datasets: [{data: items.map(r => r.value),
-                            backgroundColor: this.palette}],
+                            backgroundColor: this.palette,
+                            borderColor: "#ffffff", borderWidth: 2, hoverOffset: 6}],
             },
-            options: {responsive: true, maintainAspectRatio: false},
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: "62%",
+                plugins: {legend: {position: "right", labels: {boxWidth: 10, usePointStyle: true}}},
+            },
         });
     }
     destroyCharts() {
