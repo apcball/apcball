@@ -35,6 +35,7 @@ Features
         "sale_stock",
         "account",
         "crm",
+        "pos_lite",
     ],
     "data": [
         "security/ir_module_category_data.xml",
