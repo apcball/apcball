@@ -30,6 +30,9 @@ class HelpdeskTicket(models.Model):
     response_deadline = fields.Datetime(readonly=True, tracking=True)
     first_response_at = fields.Datetime(readonly=True, tracking=True)
     resolved_at = fields.Datetime(readonly=True, tracking=True)
+    sla_paused_at = fields.Datetime(readonly=True, tracking=True)
+    sla_paused_hours = fields.Float(readonly=True, tracking=True)
+    sla_overdue_notified_at = fields.Datetime(readonly=True)
     first_response_hours = fields.Float(compute="_compute_metrics", store=True)
     resolution_hours_elapsed = fields.Float(compute="_compute_metrics", store=True)
     sla_compliant = fields.Boolean(compute="_compute_metrics", store=True)
@@ -116,13 +119,36 @@ class HelpdeskTicket(models.Model):
                 if ticket.stage_id != resolved:
                     raise UserError("A ticket must be Resolved before it can be Closed.")
     def write(self, vals):
+        if not self.env.su and not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"):
+            protected = {"requester_id", "department", "company_id", "branch_id", "team_id", "assigned_to", "assignee_ids", "stage_id", "sla_id", "sla_deadline", "response_deadline", "first_response_at", "resolved_at", "sla_paused_at", "sla_paused_hours", "sla_overdue_notified_at"}
+            if protected.intersection(vals):
+                raise AccessError("Requesters cannot change assignment, workflow, SLA, or company fields.")
+        stage_updates = {}
         if "stage_id" in vals:
+            target = self.env["it.helpdesk.stage"].browse(vals["stage_id"])
+            now = fields.Datetime.now()
+            for ticket in self:
+                if target.name == "Pending User" and ticket.stage_id.name != "Pending User":
+                    stage_updates[ticket.id] = {"sla_paused_at": now}
+                elif ticket.stage_id.name == "Pending User" and target.name != "Pending User" and ticket.sla_paused_at:
+                    paused = ticket._get_work_hours(ticket.sla_paused_at, now)
+                    update = {"sla_paused_at": False, "sla_paused_hours": ticket.sla_paused_hours + paused}
+                    calendar = ticket.company_id.resource_calendar_id
+                    if calendar and paused:
+                        if ticket.sla_deadline:
+                            update["sla_deadline"] = calendar.plan_hours(paused, ticket.sla_deadline, compute_leaves=True)
+                        if ticket.response_deadline and not ticket.first_response_at:
+                            update["response_deadline"] = calendar.plan_hours(paused, ticket.response_deadline, compute_leaves=True)
+                    stage_updates[ticket.id] = update
             self._check_stage_change(vals["stage_id"])
         if vals.get("stage_id"):
             target_stage = self.env["it.helpdesk.stage"].browse(vals["stage_id"])
             if target_stage.name == "Resolved":
+                vals = dict(vals)
                 vals.setdefault("resolved_at", fields.Datetime.now())
         result = super().write(vals)
+        for ticket_id, update in stage_updates.items():
+            super(HelpdeskTicket, self.browse(ticket_id).with_context(skip_sla=True)).write(update)
         if {"category_id", "priority_id", "company_id"} & set(vals):
             self._apply_sla()
         return result
@@ -143,8 +169,8 @@ class HelpdeskTicket(models.Model):
         now = fields.Datetime.now()
         for ticket in self:
             start = ticket.create_date or now
-            ticket.first_response_hours = ((ticket.first_response_at - start).total_seconds() / 3600) if ticket.first_response_at else 0.0
-            ticket.resolution_hours_elapsed = ((ticket.resolved_at - start).total_seconds() / 3600) if ticket.resolved_at else 0.0
+            ticket.first_response_hours = ticket._get_work_hours(start, ticket.first_response_at) - ticket.sla_paused_hours if ticket.first_response_at else 0.0
+            ticket.resolution_hours_elapsed = ticket._get_work_hours(start, ticket.resolved_at) - ticket.sla_paused_hours if ticket.resolved_at else 0.0
             ticket.sla_compliant = bool(ticket.sla_deadline and ticket.resolved_at and ticket.resolved_at <= ticket.sla_deadline)
 
     @api.depends("sla_deadline", "stage_id.is_closed")
@@ -178,9 +204,21 @@ class HelpdeskTicket(models.Model):
             values = {"sla_id": sla.id or False, "response_deadline": False, "sla_deadline": False}
             if sla:
                 now = fields.Datetime.now()
-                values["response_deadline"] = now + timedelta(hours=sla.response_hours)
-                values["sla_deadline"] = now + timedelta(hours=sla.resolution_hours)
-            ticket.with_context(skip_sla=True).write(values)
+                calendar = ticket.company_id.resource_calendar_id
+                if calendar:
+                    values["response_deadline"] = calendar.plan_hours(sla.response_hours, now, compute_leaves=True)
+                    values["sla_deadline"] = calendar.plan_hours(sla.resolution_hours, now, compute_leaves=True)
+                else:
+                    values["response_deadline"] = now + timedelta(hours=sla.response_hours)
+                    values["sla_deadline"] = now + timedelta(hours=sla.resolution_hours)
+            ticket.sudo().with_context(skip_sla=True).write(values)
+
+    def _get_work_hours(self, start, end):
+        self.ensure_one()
+        calendar = self.company_id.resource_calendar_id
+        if calendar and start and end and end > start:
+            return calendar.get_work_hours_count(start, end, compute_leaves=True)
+        return max((end - start).total_seconds() / 3600, 0) if start and end else 0.0
 
     @api.depends("response_deadline", "first_response_at", "stage_id.is_closed")
     def _compute_is_response_overdue(self):
@@ -259,6 +297,22 @@ class HelpdeskTicket(models.Model):
             values["requester_id"] = author.user_ids[0].id
         return super().message_new(msg_dict, custom_values=values)
 
+    @api.model
+    def message_update(self, msg_dict, update_vals=None):
+        values = dict(update_vals or {})
+        values.pop("subject", None)
+        return super().message_update(msg_dict, values)
+
+    @api.model
+    def _cron_check_sla(self):
+        overdue = self.search([("is_overdue", "=", True), ("sla_overdue_notified_at", "=", False)])
+        manager_group = self.env.ref("buz_it_helpdesk.group_it_helpdesk_manager", raise_if_not_found=False)
+        for ticket in overdue:
+            partners = ticket.team_id.member_ids.mapped("partner_id")
+            if manager_group:
+                partners |= manager_group.users.filtered(lambda user: ticket.company_id in user.company_ids).mapped("partner_id")
+            ticket.message_post(body="SLA deadline exceeded. Please review and escalate this ticket.", partner_ids=partners.ids, subtype_xmlid="mail.mt_note")
+            ticket.sudo().with_context(skip_sla=True).write({"sla_overdue_notified_at": fields.Datetime.now()})
     def action_assign_automatically(self):
         self._ensure_agent()
         for ticket in self:

@@ -21,5 +21,6 @@
     <record id="alias_helpdesk" model="mail.alias"><field name="alias_name">helpdesk</field><field name="alias_model_id" ref="model_it_helpdesk_ticket"/><field name="alias_contact">everyone</field></record>
     <record id="sla_default" model="it.helpdesk.sla"><field name="name">Standard SLA</field><field name="response_hours">4</field><field name="resolution_hours">24</field></record>
     <record id="team_default" model="it.helpdesk.team"><field name="name">IT Helpdesk</field><field name="sequence">1</field><field name="alias_id" ref="alias_helpdesk"/></record>
+    <record id="ir_cron_helpdesk_sla" model="ir.cron"><field name="name">Helpdesk SLA overdue check</field><field name="model_id" ref="model_it_helpdesk_ticket"/><field name="state">code</field><field name="code">model._cron_check_sla()</field><field name="interval_number">15</field><field name="interval_type">minutes</field><field name="numbercall">-1</field><field name="active">1</field></record>
 
 </odoo>
