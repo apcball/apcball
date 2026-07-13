@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_web_api_integration_tree" model="ir.ui.view">
+        <field name="name">web.api.integration.tree</field>
+        <field name="model">web.api.integration</field>
+        <field name="arch" type="xml">
+            <tree string="Web API Integrations">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="key_name"/>
+                <field name="active"/>
+                <field name="last_generated_at"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_web_api_integration_form" model="ir.ui.view">
+        <field name="name">web.api.integration.form</field>
+        <field name="model">web.api.integration</field>
+        <field name="arch" type="xml">
+            <form string="Web API Integration">
+                <header>
+                    <button name="action_generate_api_key" type="object"
+                            string="Generate API Key" class="oe_highlight"
+                            groups="base.group_system"/>
+                    <button name="action_revoke_api_key" type="object"
+                            string="Revoke API Key" confirm="Revoke the current API key?"
+                            groups="base.group_system"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Warranty Website"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="key_name" readonly="1"/>
+                            <field name="last_generated_at" readonly="1"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-warning" role="alert">
+                        The API secret is never stored by this module and is shown only once after generation.
+                        Copy it to the web backend environment variable ODOO_API_KEY.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_web_api_key_show_form" model="ir.ui.view">
+        <field name="name">web.api.key.show.form</field>
+        <field name="model">web.api.key.show</field>
+        <field name="arch" type="xml">
+            <form string="API Key Ready">
+                <sheet>
+                    <div class="alert alert-danger" role="alert">
+                        Copy this key now. It will not be shown again.
+                    </div>
+                    <group>
+                        <field name="integration_name" readonly="1"/>
+                        <field name="user_login" readonly="1"/>
+                        <field name="key" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_web_api_integration" model="ir.actions.act_window">
+        <field name="name">Web API Integrations</field>
+        <field name="res_model">web.api.integration</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create a web API integration</p>
+            <p>Generate a native Odoo API key for the selected integration user.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_web_api_integration"
+              name="Web API Integrations"
+              parent="base.menu_custom"
+              action="action_web_api_integration"
+              groups="base.group_system"
+              sequence="20"/>
+</odoo>
