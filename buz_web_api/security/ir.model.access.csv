@@ -1,2 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_web_api_integration_system,web.api.integration.system,model_web_api_integration,base.group_system,1,1,1,1
+access_web_api_key_show_system,web.api.key.show.system,model_web_api_key_show,base.group_system,1,1,1,1

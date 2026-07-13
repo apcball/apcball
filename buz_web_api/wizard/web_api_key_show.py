@@ -1,7 +1,7 @@
 from odoo import fields, models
 
 
-class WebApiKeyShow(models.AbstractModel):
+class WebApiKeyShow(models.TransientModel):
     _name = 'web.api.key.show'
     _description = 'Show Web API Key'
 

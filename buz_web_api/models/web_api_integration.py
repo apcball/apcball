@@ -50,6 +50,7 @@ class WebApiIntegration(models.Model):
         return self.env['res.users.apikeys'].sudo().search([
             ('user_id', '=', self.user_id.id),
             ('name', '=', self.key_name),
+            ('scope', '=', 'rpc'),
         ])
 
     def _revoke_native_keys(self):
@@ -65,7 +66,7 @@ class WebApiIntegration(models.Model):
             raise ValidationError(_('Activate the integration before generating an API key.'))
 
         self._revoke_native_keys()
-        key = self.env['res.users.apikeys'].with_user(self.user_id)._generate(None, self.key_name)
+        key = self.env['res.users.apikeys'].with_user(self.user_id)._generate('rpc', self.key_name)
         self.write({'last_generated_at': fields.Datetime.now()})
 
         return {

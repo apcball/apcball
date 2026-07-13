@@ -28,6 +28,14 @@ class TestWebApiIntegration(TransactionCase):
             self.integration_user.id,
         )
 
+        # Verify the generated key has the correct scope.
+        apikey = self.env['res.users.apikeys'].sudo().search([
+            ('user_id', '=', self.integration_user.id),
+            ('name', '=', self.integration.key_name),
+            ('scope', '=', 'rpc'),
+        ])
+        self.assertTrue(apikey)
+
     def test_revoke_key_invalidates_native_key(self):
         action = self.integration.action_generate_api_key()
         key = action['context']['default_key']
