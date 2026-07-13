@@ -18,5 +18,8 @@
     <record id="category_printer" model="it.helpdesk.category"><field name="name">Printer</field></record>
     <record id="category_access" model="it.helpdesk.category"><field name="name">Access Request</field></record>
     <record id="category_other" model="it.helpdesk.category"><field name="name">Other</field></record>
+    <record id="alias_helpdesk" model="mail.alias"><field name="alias_name">helpdesk</field><field name="alias_model_id" ref="model_it_helpdesk_ticket"/><field name="alias_contact">everyone</field></record>
     <record id="sla_default" model="it.helpdesk.sla"><field name="name">Standard SLA</field><field name="response_hours">4</field><field name="resolution_hours">24</field></record>
+    <record id="team_default" model="it.helpdesk.team"><field name="name">IT Helpdesk</field><field name="sequence">1</field><field name="alias_id" ref="alias_helpdesk"/></record>
+
 </odoo>

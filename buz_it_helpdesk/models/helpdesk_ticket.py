@@ -21,13 +21,22 @@ class HelpdeskTicket(models.Model):
     priority_code = fields.Selection(related="priority_id.code", string="Priority Code", readonly=True)
     stage_id = fields.Many2one("it.helpdesk.stage", tracking=True, required=True, index=True, check_company=True, default=lambda self: self._default_stage_id())
     assigned_to = fields.Many2one("res.users", string="Assigned To", tracking=True)
-    follower_ids = fields.Many2many("res.users", string="Followers")
+    assignee_ids = fields.Many2many("res.users", string="Additional Assignees", tracking=True)
+    team_id = fields.Many2one("it.helpdesk.team", string="Helpdesk Team", tracking=True, check_company=True)
     created_date = fields.Datetime(default=fields.Datetime.now, readonly=True)
     due_date = fields.Datetime()
     sla_id = fields.Many2one("it.helpdesk.sla", string="SLA", readonly=True, check_company=True)
     sla_deadline = fields.Datetime(readonly=True, tracking=True)
     response_deadline = fields.Datetime(readonly=True, tracking=True)
     first_response_at = fields.Datetime(readonly=True, tracking=True)
+    resolved_at = fields.Datetime(readonly=True, tracking=True)
+    first_response_hours = fields.Float(compute="_compute_metrics", store=True)
+    resolution_hours_elapsed = fields.Float(compute="_compute_metrics", store=True)
+    sla_compliant = fields.Boolean(compute="_compute_metrics", store=True)
+    due_today = fields.Boolean(compute="_compute_due_today", search="_search_due_today")
+    attachment_ids = fields.Many2many("ir.attachment", "it_helpdesk_ticket_attachment_rel", "ticket_id", "attachment_id", string="Attachments")
+    knowledge_article_ids = fields.Many2many("it.helpdesk.knowledge.article", string="Knowledge Articles Used")
+    suggested_article_ids = fields.Many2many("it.helpdesk.knowledge.article", compute="_compute_suggested_articles", string="Suggested Articles")
     is_response_overdue = fields.Boolean(compute="_compute_is_response_overdue", search="_search_is_response_overdue")
     tag_ids = fields.Many2many("it.helpdesk.tag", string="Tags")
     source = fields.Selection(
@@ -76,8 +85,14 @@ class HelpdeskTicket(models.Model):
             vals.setdefault("priority_id", priority.id)
             vals.setdefault("requester_id", requester_id)
             vals.setdefault("department", self._get_requester_department_name(requester))
+            if not vals.get("team_id"):
+                team = self.env["it.helpdesk.team"].search([( "company_id", "=", vals.get("company_id", self.env.company.id)), ("active", "=", True)], order="sequence, id", limit=1)
+                vals["team_id"] = team.id
         records = super().create(vals_list)
         records._apply_sla()
+        for ticket in records:
+            if ticket.requester_id.partner_id:
+                ticket.message_subscribe(partner_ids=[ticket.requester_id.partner_id.id])
         return records
 
     def _ensure_agent(self):
@@ -103,10 +118,48 @@ class HelpdeskTicket(models.Model):
     def write(self, vals):
         if "stage_id" in vals:
             self._check_stage_change(vals["stage_id"])
+        if vals.get("stage_id"):
+            target_stage = self.env["it.helpdesk.stage"].browse(vals["stage_id"])
+            if target_stage.name == "Resolved":
+                vals.setdefault("resolved_at", fields.Datetime.now())
         result = super().write(vals)
         if {"category_id", "priority_id", "company_id"} & set(vals):
             self._apply_sla()
         return result
+
+    @api.depends("category_id", "subject")
+    def _compute_suggested_articles(self):
+        Article = self.env["it.helpdesk.knowledge.article"]
+        for ticket in self:
+            domain = [("state", "=", "published"), ("company_id", "in", [ticket.company_id.id, False])]
+            if ticket.category_id:
+                domain += [("category_id", "in", [ticket.category_id.id, False])]
+            if ticket.subject:
+                domain += [("name", "ilike", ticket.subject.split()[0])]
+            ticket.suggested_article_ids = Article.search(domain, limit=5)
+
+    @api.depends("create_date", "first_response_at", "resolved_at", "sla_deadline")
+    def _compute_metrics(self):
+        now = fields.Datetime.now()
+        for ticket in self:
+            start = ticket.create_date or now
+            ticket.first_response_hours = ((ticket.first_response_at - start).total_seconds() / 3600) if ticket.first_response_at else 0.0
+            ticket.resolution_hours_elapsed = ((ticket.resolved_at - start).total_seconds() / 3600) if ticket.resolved_at else 0.0
+            ticket.sla_compliant = bool(ticket.sla_deadline and ticket.resolved_at and ticket.resolved_at <= ticket.sla_deadline)
+
+    @api.depends("sla_deadline", "stage_id.is_closed")
+    def _compute_due_today(self):
+        today = fields.Date.context_today(self)
+        for ticket in self:
+            ticket.due_today = bool(ticket.sla_deadline and ticket.sla_deadline.date() == today and not ticket.stage_id.is_closed)
+
+    @api.model
+    def _search_due_today(self, operator, value):
+        today = fields.Date.context_today(self)
+        start = fields.Datetime.to_datetime(today)
+        end = start + timedelta(days=1)
+        domain = [("sla_deadline", ">=", start), ("sla_deadline", "<", end), ("stage_id.is_closed", "=", False)]
+        return domain if ((operator in ("=", "==") and value) or (operator == "!=" and not value)) else ["!"] + domain
 
     def _apply_sla(self):
         for ticket in self:
@@ -197,6 +250,24 @@ class HelpdeskTicket(models.Model):
         ):
             self.with_context(skip_first_response=True).write({"first_response_at": fields.Datetime.now()})
         return message
+    @api.model
+    def message_new(self, msg_dict, custom_values=None):
+        values = dict(custom_values or {})
+        values.update({"subject": msg_dict.get("subject") or "Email Helpdesk Ticket", "description": msg_dict.get("body") or "", "source": "email"})
+        author = self.env["res.partner"].browse(msg_dict.get("author_id"))
+        if author and author.user_ids:
+            values["requester_id"] = author.user_ids[0].id
+        return super().message_new(msg_dict, custom_values=values)
+
+    def action_assign_automatically(self):
+        self._ensure_agent()
+        for ticket in self:
+            users = ticket.team_id.member_ids
+            if users:
+                counts = {user: self.search_count([( "assigned_to", "=", user.id), ("stage_id.is_closed", "=", False)]) for user in users}
+                assignee = min(counts, key=counts.get)
+                ticket.write({"assigned_to": assignee.id, "assignee_ids": fields.Command.link(assignee.id)})
+
     def action_assign(self):
         self._ensure_agent()
         for ticket in self:
