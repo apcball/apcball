@@ -4,11 +4,12 @@ from odoo import fields, models
 class HelpdeskKnowledgeArticle(models.Model):
     _name = "it.helpdesk.knowledge.article"
     _description = "Helpdesk Knowledge Article"
+    _check_company_auto = True
     _order = "write_date desc, name"
 
     name = fields.Char(string="Article Title", required=True)
     content = fields.Html(required=True)
-    category_id = fields.Many2one("it.helpdesk.category", ondelete="set null")
+    category_id = fields.Many2one("it.helpdesk.category", ondelete="set null", check_company=True)
     tag_ids = fields.Many2many("it.helpdesk.tag", string="Tags")
     state = fields.Selection([("draft", "Unpublished"), ("published", "Published")], default="draft", required=True)
     active = fields.Boolean(default=True)

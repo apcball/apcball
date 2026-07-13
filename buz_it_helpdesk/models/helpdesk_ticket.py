@@ -6,6 +6,7 @@ from odoo import api, fields, models
 class HelpdeskTicket(models.Model):
     _name = "it.helpdesk.ticket"
     _description = "IT Helpdesk Ticket"
+    _check_company_auto = True
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "priority_id desc, create_date desc"
 
@@ -14,15 +15,15 @@ class HelpdeskTicket(models.Model):
     description = fields.Html()
     requester_id = fields.Many2one("res.users", required=True, default=lambda self: self.env.user, tracking=True)
     department = fields.Char(string="Department")
-    category_id = fields.Many2one("it.helpdesk.category", tracking=True, required=True)
-    priority_id = fields.Many2one("it.helpdesk.priority", tracking=True, required=True)
+    category_id = fields.Many2one("it.helpdesk.category", tracking=True, required=True, check_company=True)
+    priority_id = fields.Many2one("it.helpdesk.priority", tracking=True, required=True, check_company=True)
     priority_code = fields.Selection(related="priority_id.code", string="Priority Code", readonly=True)
-    stage_id = fields.Many2one("it.helpdesk.stage", tracking=True, required=True, index=True, default=lambda self: self._default_stage_id())
+    stage_id = fields.Many2one("it.helpdesk.stage", tracking=True, required=True, index=True, check_company=True, default=lambda self: self._default_stage_id())
     assigned_to = fields.Many2one("res.users", string="Assigned To", tracking=True)
     follower_ids = fields.Many2many("res.users", string="Followers")
     created_date = fields.Datetime(default=fields.Datetime.now, readonly=True)
     due_date = fields.Datetime()
-    sla_id = fields.Many2one("it.helpdesk.sla", string="SLA", readonly=True)
+    sla_id = fields.Many2one("it.helpdesk.sla", string="SLA", readonly=True, check_company=True)
     sla_deadline = fields.Datetime(readonly=True, tracking=True)
     tag_ids = fields.Many2many("it.helpdesk.tag", string="Tags")
     source = fields.Selection(

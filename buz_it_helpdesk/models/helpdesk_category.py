@@ -4,6 +4,7 @@ from odoo import fields, models
 class HelpdeskCategory(models.Model):
     _name = "it.helpdesk.category"
     _description = "Helpdesk Category"
+    _check_company_auto = True
     _order = "sequence, name"
 
     name = fields.Char(required=True, translate=True)

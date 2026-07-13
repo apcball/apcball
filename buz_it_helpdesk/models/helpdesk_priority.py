@@ -4,6 +4,7 @@ from odoo import fields, models
 class HelpdeskPriority(models.Model):
     _name = "it.helpdesk.priority"
     _description = "Helpdesk Priority"
+    _check_company_auto = True
     _order = "sequence, id"
 
     name = fields.Char(required=True, translate=True)

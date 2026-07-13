@@ -4,6 +4,7 @@ from odoo import fields, models
 class HelpdeskTag(models.Model):
     _name = "it.helpdesk.tag"
     _description = "Helpdesk Tag"
+    _check_company_auto = True
     _order = "name"
 
     name = fields.Char(required=True)
