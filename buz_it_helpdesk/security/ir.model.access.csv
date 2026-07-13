@@ -1,7 +1,7 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_ticket_requester,ticket requester,model_it_helpdesk_ticket,buz_it_helpdesk.group_it_helpdesk_requester,1,1,1,0
 access_ticket_manager,ticket manager,model_it_helpdesk_ticket,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
-access_stage_agent,stage agent,model_it_helpdesk_stage,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
+access_stage_user,stage user,model_it_helpdesk_stage,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
 access_stage_manager,stage manager,model_it_helpdesk_stage,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
 access_category_user,category user,model_it_helpdesk_category,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
 access_category_manager,category manager,model_it_helpdesk_category,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1

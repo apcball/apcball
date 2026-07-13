@@ -62,7 +62,7 @@ class HelpdeskTicket(models.Model):
 
     @api.model
     def _default_stage_id(self):
-        stage = self._get_stage_for_company(self.env.company, "New")
+        stage = self._get_stage_for_company(self.env.company, "Draft")
         return stage.id if stage else False
     @api.model
     def _get_requester_department_name(self, user):
@@ -103,11 +103,17 @@ class HelpdeskTicket(models.Model):
             raise AccessError("Only Helpdesk Agents and Managers can change ticket status.")
 
     def _check_stage_change(self, stage_id):
-        self._ensure_agent()
+        confirm_mode = self.env.context.get("helpdesk_confirm")
+        if not confirm_mode:
+            self._ensure_agent()
         target_stage = self.env["it.helpdesk.stage"].browse(stage_id).exists()
         if not target_stage:
             raise UserError("The selected ticket stage does not exist.")
+        if confirm_mode and target_stage.name != "New":
+            raise AccessError("A requester can only confirm a Draft ticket.")
         for ticket in self:
+            if confirm_mode and (ticket.requester_id != self.env.user or ticket.stage_id.name != "Draft"):
+                raise AccessError("Only the requester can confirm their own Draft ticket.")
             if ticket.stage_id == target_stage:
                 continue
             in_progress = self._get_stage_for_company(ticket.company_id, "In Progress")
@@ -119,7 +125,7 @@ class HelpdeskTicket(models.Model):
                 if ticket.stage_id != resolved:
                     raise UserError("A ticket must be Resolved before it can be Closed.")
     def write(self, vals):
-        if not self.env.su and not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"):
+        if not self.env.su and not self.env.context.get("helpdesk_confirm") and not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"): 
             protected = {"requester_id", "department", "company_id", "branch_id", "team_id", "assigned_to", "assignee_ids", "stage_id", "sla_id", "sla_deadline", "response_deadline", "first_response_at", "resolved_at", "sla_paused_at", "sla_paused_hours", "sla_overdue_notified_at"}
             if protected.intersection(vals):
                 raise AccessError("Requesters cannot change assignment, workflow, SLA, or company fields.")
@@ -313,6 +319,17 @@ class HelpdeskTicket(models.Model):
                 partners |= manager_group.users.filtered(lambda user: ticket.company_id in user.company_ids).mapped("partner_id")
             ticket.message_post(body="SLA deadline exceeded. Please review and escalate this ticket.", partner_ids=partners.ids, subtype_xmlid="mail.mt_note")
             ticket.sudo().with_context(skip_sla=True).write({"sla_overdue_notified_at": fields.Datetime.now()})
+    def action_confirm(self):
+        for ticket in self:
+            if ticket.requester_id != self.env.user:
+                raise AccessError("Only the requester can confirm this ticket.")
+            if ticket.stage_id.name != "Draft":
+                raise UserError("Only Draft tickets can be confirmed.")
+            stage = ticket._get_stage_for_company(ticket.company_id, "New")
+            if not stage:
+                raise UserError("The New stage is not configured for this company.")
+            ticket.with_context(helpdesk_confirm=True).write({"stage_id": stage.id})
+
     def action_assign_automatically(self):
         self._ensure_agent()
         for ticket in self:
