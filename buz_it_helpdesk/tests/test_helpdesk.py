@@ -22,6 +22,44 @@ class TestHelpdeskTicket(TransactionCase):
         self.assertFalse("follower_ids" in self.ticket_model._fields)
         self.assertIn(self.agent.partner_id, ticket.message_follower_ids.mapped("partner_id"))
 
+    def test_requester_can_create_ticket_with_default_team(self):
+        requester = self.env["res.users"].create({
+            "name": "Helpdesk Requester Test",
+            "login": "helpdesk.requester.test",
+            "groups_id": [fields.Command.set([
+                self.env.ref("base.group_user").id,
+                self.env.ref("buz_it_helpdesk.group_it_helpdesk_requester").id,
+            ])],
+        })
+
+        ticket = self.ticket_model.with_user(requester).create({
+            "subject": "Requester save test",
+            "category_id": self.category.id,
+            "priority_id": self.priority.id,
+        })
+
+        self.assertEqual(ticket.requester_id, requester)
+        self.assertTrue(ticket.team_id)
+        self.assertTrue(ticket.can_confirm)
+        self.assertTrue(ticket.can_edit_ticket)
+
+        ticket.write({"subject": "Edited while Draft"})
+        ticket.with_user(requester).action_confirm()
+        self.assertEqual(ticket.with_user(self.agent).stage_id.name, "New")
+        self.assertFalse(ticket.can_confirm)
+        self.assertFalse(ticket.can_edit_ticket)
+
+        with self.assertRaises(AccessError):
+            ticket.write({"subject": "Edit after Confirm"})
+
+    def test_requester_must_confirm_draft_ticket(self):
+        ticket = self.ticket_model.with_user(self.agent).create({
+            "subject": "Confirmation test", "category_id": self.category.id, "priority_id": self.priority.id,
+        })
+        self.assertEqual(ticket.stage_id.name, "Draft")
+        ticket.with_user(self.agent).action_confirm()
+        self.assertEqual(ticket.with_user(self.agent).stage_id.name, "New")
+
     def test_overdue_and_sla_metrics(self):
         ticket = self.ticket_model.create({
             "subject": "SLA test", "category_id": self.category.id, "priority_id": self.priority.id,

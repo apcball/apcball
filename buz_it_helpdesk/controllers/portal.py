@@ -26,6 +26,14 @@ class HelpdeskPortal(CustomerPortal):
             return request.redirect("/my/helpdesk")
         return request.render("buz_it_helpdesk.portal_helpdesk_new", {"categories": request.env["it.helpdesk.category"].search([]), "priorities": request.env["it.helpdesk.priority"].search([])})
 
+    @http.route("/my/helpdesk/<int:ticket_id>/confirm", type="http", auth="user", website=True, methods=["POST"])
+    def portal_helpdesk_confirm(self, ticket_id, **post):
+        ticket = request.env["it.helpdesk.ticket"].search([("id", "=", ticket_id), ("requester_id", "=", request.env.user.id)], limit=1)
+        if not ticket:
+            return request.not_found()
+        ticket.action_confirm()
+        return request.redirect("/my/helpdesk/%s" % ticket.id)
+
     @http.route("/my/helpdesk/<int:ticket_id>/reply", type="http", auth="user", website=True, methods=["POST"])
     def portal_helpdesk_reply(self, ticket_id, **post):
         ticket = request.env["it.helpdesk.ticket"].search([("id", "=", ticket_id), ("requester_id", "=", request.env.user.id)], limit=1)

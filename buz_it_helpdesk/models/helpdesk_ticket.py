@@ -47,11 +47,24 @@ class HelpdeskTicket(models.Model):
         default="manual",
         required=True,
     )
+    can_confirm = fields.Boolean(compute="_compute_can_confirm")
+    can_edit_ticket = fields.Boolean(compute="_compute_can_edit_ticket")
     company_id = fields.Many2one("res.company", default=lambda self: self.env.company, required=True, index=True)
     branch_id = fields.Many2one("res.company", string="Company / Branch")
     is_overdue = fields.Boolean(compute="_compute_is_overdue", search="_search_is_overdue")
     active = fields.Boolean(default=True)
 
+    @api.depends("stage_id", "requester_id")
+    def _compute_can_confirm(self):
+        current_user = self.env.user
+        is_requester = current_user.has_group("buz_it_helpdesk.group_it_helpdesk_requester")
+        for ticket in self:
+            ticket.can_confirm = is_requester and ticket.stage_id.name == "Draft" and ticket.requester_id == current_user
+    @api.depends("stage_id")
+    def _compute_can_edit_ticket(self):
+        is_agent = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
+        for ticket in self:
+            ticket.can_edit_ticket = is_agent or not ticket.stage_id or ticket.stage_id.name == "Draft"
     @api.model
     def _get_stage_for_company(self, company, stage_name):
         return self.env["it.helpdesk.stage"].search(
@@ -79,7 +92,10 @@ class HelpdeskTicket(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         priority = self.env["it.helpdesk.priority"].search([("company_id", "=", self.env.company.id)], order="sequence", limit=1)
+        requester_mode = not self.env.su and not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
         for vals in vals_list:
+            if requester_mode:
+                vals["stage_id"] = self._default_stage_id()
             requester_id = vals.get("requester_id") or self.env.user.id
             requester = self.env["res.users"].browse(requester_id)
             if vals.get("name", "New") == "New":
@@ -92,7 +108,7 @@ class HelpdeskTicket(models.Model):
                 team = self.env["it.helpdesk.team"].search([( "company_id", "=", vals.get("company_id", self.env.company.id)), ("active", "=", True)], order="sequence, id", limit=1)
                 vals["team_id"] = team.id
         records = super().create(vals_list)
-        records._apply_sla()
+        records.filtered(lambda ticket: ticket.stage_id.name != "Draft")._apply_sla()
         for ticket in records:
             if ticket.requester_id.partner_id:
                 ticket.message_subscribe(partner_ids=[ticket.requester_id.partner_id.id])
@@ -125,9 +141,13 @@ class HelpdeskTicket(models.Model):
                 if ticket.stage_id != resolved:
                     raise UserError("A ticket must be Resolved before it can be Closed.")
     def write(self, vals):
-        if not self.env.su and not self.env.context.get("helpdesk_confirm") and not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"): 
+        is_agent = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
+        if not self.env.su and not is_agent:
+            if any(ticket.stage_id.name != "Draft" for ticket in self):
+                raise AccessError("Requesters cannot edit a confirmed ticket.")
             protected = {"requester_id", "department", "company_id", "branch_id", "team_id", "assigned_to", "assignee_ids", "stage_id", "sla_id", "sla_deadline", "response_deadline", "first_response_at", "resolved_at", "sla_paused_at", "sla_paused_hours", "sla_overdue_notified_at"}
-            if protected.intersection(vals):
+            confirm_only_stage = self.env.context.get("helpdesk_confirm") and set(vals) <= {"stage_id"}
+            if protected.intersection(vals) and not confirm_only_stage:
                 raise AccessError("Requesters cannot change assignment, workflow, SLA, or company fields.")
         stage_updates = {}
         if "stage_id" in vals:
@@ -194,10 +214,11 @@ class HelpdeskTicket(models.Model):
         return domain if ((operator in ("=", "==") and value) or (operator == "!=" and not value)) else ["!"] + domain
 
     def _apply_sla(self):
+        sla_model = self.env["it.helpdesk.sla"].sudo()
         for ticket in self:
             if not ticket.category_id or not ticket.priority_id:
                 continue
-            sla = self.env["it.helpdesk.sla"].search(
+            sla = sla_model.search(
                 [
                     ("company_id", "=", ticket.company_id.id),
                     ("active", "=", True),
@@ -320,6 +341,8 @@ class HelpdeskTicket(models.Model):
             ticket.message_post(body="SLA deadline exceeded. Please review and escalate this ticket.", partner_ids=partners.ids, subtype_xmlid="mail.mt_note")
             ticket.sudo().with_context(skip_sla=True).write({"sla_overdue_notified_at": fields.Datetime.now()})
     def action_confirm(self):
+        if not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_requester"):
+            raise AccessError("Only Helpdesk Requesters can confirm tickets.")
         for ticket in self:
             if ticket.requester_id != self.env.user:
                 raise AccessError("Only the requester can confirm this ticket.")
@@ -329,6 +352,7 @@ class HelpdeskTicket(models.Model):
             if not stage:
                 raise UserError("The New stage is not configured for this company.")
             ticket.with_context(helpdesk_confirm=True).write({"stage_id": stage.id})
+            ticket._apply_sla()
 
     def action_assign_automatically(self):
         self._ensure_agent()
