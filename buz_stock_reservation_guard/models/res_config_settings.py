@@ -36,3 +36,11 @@ class ResConfigSettings(models.TransientModel):
             record.stock_reservation_guard_bypass_location_ids_str = ",".join(
                 str(id) for id in ids_list
             )
+
+    @api.onchange("stock_reservation_guard_bypass_location_ids")
+    def _onchange_bypass_location_ids(self):
+        """Sync m2m to char field on UI change."""
+        ids_list = self.stock_reservation_guard_bypass_location_ids.ids
+        self.stock_reservation_guard_bypass_location_ids_str = ",".join(
+            str(id) for id in ids_list
+        )
