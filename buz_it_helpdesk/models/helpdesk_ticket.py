@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from odoo import api, fields, models
+from odoo.exceptions import AccessError, UserError
 
 
 class HelpdeskTicket(models.Model):
@@ -25,6 +26,9 @@ class HelpdeskTicket(models.Model):
     due_date = fields.Datetime()
     sla_id = fields.Many2one("it.helpdesk.sla", string="SLA", readonly=True, check_company=True)
     sla_deadline = fields.Datetime(readonly=True, tracking=True)
+    response_deadline = fields.Datetime(readonly=True, tracking=True)
+    first_response_at = fields.Datetime(readonly=True, tracking=True)
+    is_response_overdue = fields.Boolean(compute="_compute_is_response_overdue", search="_search_is_response_overdue")
     tag_ids = fields.Many2many("it.helpdesk.tag", string="Tags")
     source = fields.Selection(
         [("web", "Web"), ("email", "Email"), ("phone", "Phone"), ("manual", "Manual")],
@@ -37,16 +41,17 @@ class HelpdeskTicket(models.Model):
     active = fields.Boolean(default=True)
 
     @api.model
-    def _default_stage_id(self):
-        stage = self.env.ref("buz_it_helpdesk.stage_new", raise_if_not_found=False)
-        if not stage:
-            stage = self.env["it.helpdesk.stage"].search(
-                [("name", "=", "New"), ("company_id", "in", [self.env.company.id, False])],
-                order="company_id desc, sequence, id",
-                limit=1,
-            )
-        return stage.id if stage else False
+    def _get_stage_for_company(self, company, stage_name):
+        return self.env["it.helpdesk.stage"].search(
+            [("name", "=", stage_name), ("company_id", "in", [company.id, False])],
+            order="company_id desc, sequence, id",
+            limit=1,
+        )
 
+    @api.model
+    def _default_stage_id(self):
+        stage = self._get_stage_for_company(self.env.company, "New")
+        return stage.id if stage else False
     @api.model
     def _get_requester_department_name(self, user):
         employee = user.employee_id
@@ -75,7 +80,29 @@ class HelpdeskTicket(models.Model):
         records._apply_sla()
         return records
 
+    def _ensure_agent(self):
+        if not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"):
+            raise AccessError("Only Helpdesk Agents and Managers can change ticket status.")
+
+    def _check_stage_change(self, stage_id):
+        self._ensure_agent()
+        target_stage = self.env["it.helpdesk.stage"].browse(stage_id).exists()
+        if not target_stage:
+            raise UserError("The selected ticket stage does not exist.")
+        for ticket in self:
+            if ticket.stage_id == target_stage:
+                continue
+            in_progress = self._get_stage_for_company(ticket.company_id, "In Progress")
+            if ticket.stage_id.is_closed and target_stage != in_progress:
+                raise UserError("A closed or cancelled ticket can only be reopened to In Progress.")
+            closed = self._get_stage_for_company(ticket.company_id, "Closed")
+            if target_stage == closed:
+                resolved = self._get_stage_for_company(ticket.company_id, "Resolved")
+                if ticket.stage_id != resolved:
+                    raise UserError("A ticket must be Resolved before it can be Closed.")
     def write(self, vals):
+        if "stage_id" in vals:
+            self._check_stage_change(vals["stage_id"])
         result = super().write(vals)
         if {"category_id", "priority_id", "company_id"} & set(vals):
             self._apply_sla()
@@ -95,11 +122,48 @@ class HelpdeskTicket(models.Model):
                 order="category_id desc, priority_id desc, sequence",
                 limit=1,
             )
-            values = {"sla_id": sla.id or False, "sla_deadline": False}
+            values = {"sla_id": sla.id or False, "response_deadline": False, "sla_deadline": False}
             if sla:
-                values["sla_deadline"] = fields.Datetime.now() + timedelta(hours=sla.resolution_hours)
+                now = fields.Datetime.now()
+                values["response_deadline"] = now + timedelta(hours=sla.response_hours)
+                values["sla_deadline"] = now + timedelta(hours=sla.resolution_hours)
             ticket.with_context(skip_sla=True).write(values)
 
+    @api.depends("response_deadline", "first_response_at", "stage_id.is_closed")
+    def _compute_is_response_overdue(self):
+        now = fields.Datetime.now()
+        for ticket in self:
+            ticket.is_response_overdue = bool(
+                ticket.response_deadline
+                and not ticket.first_response_at
+                and ticket.response_deadline < now
+                and not ticket.stage_id.is_closed
+            )
+
+    @api.model
+    def _search_is_response_overdue(self, operator, value):
+        now = fields.Datetime.now()
+        overdue_domain = [
+            ("response_deadline", "!=", False),
+            ("response_deadline", "<", now),
+            ("first_response_at", "=", False),
+            ("stage_id.is_closed", "=", False),
+        ]
+        not_overdue_domain = [
+            "|",
+            ("response_deadline", "=", False),
+            "|",
+            ("response_deadline", ">=", now),
+            "|",
+            ("first_response_at", "!=", False),
+            ("stage_id.is_closed", "=", True),
+        ]
+
+        if operator in ("=", "=="):
+            return overdue_domain if value else not_overdue_domain
+        if operator == "!=":
+            return not_overdue_domain if value else overdue_domain
+        raise ValueError("Unsupported operator for is_response_overdue search")
     @api.depends("sla_deadline", "stage_id.is_closed")
     def _compute_is_overdue(self):
         now = fields.Datetime.now()
@@ -122,23 +186,53 @@ class HelpdeskTicket(models.Model):
             return not_overdue_domain if value else overdue_domain
         raise ValueError("Unsupported operator for is_overdue search")
 
+    def message_post(self, **kwargs):
+        self.ensure_one()
+        message = super().message_post(**kwargs)
+        if (
+            not self.first_response_at
+            and message.message_type == "comment"
+            and self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
+            and not self.env.context.get("skip_first_response")
+        ):
+            self.with_context(skip_first_response=True).write({"first_response_at": fields.Datetime.now()})
+        return message
     def action_assign(self):
-        self.write({"assigned_to": self.env.user.id})
-        assigned_stage = self.env["it.helpdesk.stage"].search([("name", "=", "Assigned")], limit=1)
-        if assigned_stage:
-            self.write({"stage_id": assigned_stage.id})
+        self._ensure_agent()
+        for ticket in self:
+            if ticket.stage_id.is_closed:
+                raise UserError("A closed or cancelled ticket cannot be assigned.")
+            stage = self._get_stage_for_company(ticket.company_id, "Assigned")
+            if not stage:
+                raise UserError("The Assigned stage is not configured for this company.")
+            ticket.write({"assigned_to": self.env.user.id, "stage_id": stage.id})
 
     def action_resolve(self):
-        stage = self.env["it.helpdesk.stage"].search([("name", "=", "Resolved")], limit=1)
-        if stage:
-            self.write({"stage_id": stage.id})
+        self._ensure_agent()
+        for ticket in self:
+            if ticket.stage_id.is_closed:
+                raise UserError("A closed or cancelled ticket cannot be resolved.")
+            stage = self._get_stage_for_company(ticket.company_id, "Resolved")
+            if not stage:
+                raise UserError("The Resolved stage is not configured for this company.")
+            ticket.write({"stage_id": stage.id})
 
     def action_close(self):
-        stage = self.env["it.helpdesk.stage"].search([("name", "=", "Closed")], limit=1)
-        if stage:
-            self.write({"stage_id": stage.id})
-
+        self._ensure_agent()
+        for ticket in self:
+            resolved = self._get_stage_for_company(ticket.company_id, "Resolved")
+            if ticket.stage_id != resolved:
+                raise UserError("A ticket must be Resolved before it can be Closed.")
+            stage = self._get_stage_for_company(ticket.company_id, "Closed")
+            if not stage:
+                raise UserError("The Closed stage is not configured for this company.")
+            ticket.write({"stage_id": stage.id})
     def action_reopen(self):
-        stage = self.env["it.helpdesk.stage"].search([("name", "=", "In Progress")], limit=1)
-        if stage:
-            self.write({"stage_id": stage.id})
+        self._ensure_agent()
+        for ticket in self:
+            if not ticket.stage_id.is_closed:
+                raise UserError("Only closed or cancelled tickets can be reopened.")
+            stage = self._get_stage_for_company(ticket.company_id, "In Progress")
+            if not stage:
+                raise UserError("The In Progress stage is not configured for this company.")
+            ticket.write({"stage_id": stage.id})
