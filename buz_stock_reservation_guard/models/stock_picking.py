@@ -34,6 +34,7 @@ class StockPicking(models.Model):
                 lambda m: m.state not in ("done", "cancel")
                 and m.product_id.type == "product"
                 and m.location_id.usage in ("internal", "transit")
+                and not m.location_id._is_reservation_guard_bypassed()
                 and not m._should_bypass_reservation()
             ):
                 available_qty = self.env["stock.quant"]._get_available_quantity(
@@ -81,6 +82,7 @@ class StockPicking(models.Model):
             for move_line in picking.move_line_ids.filtered(
                 lambda ml: ml.product_id.type == "product"
                 and ml.location_id.usage in ("internal", "transit")
+                and not ml.location_id._is_reservation_guard_bypassed()
                 and ml.quantity > 0
                 and ml.state != "cancel"
             ):
@@ -109,6 +111,7 @@ class StockPicking(models.Model):
                     lambda m: m.state not in ("done", "cancel")
                     and m.product_id.type == "product"
                     and m.location_id.usage in ("internal", "transit")
+                    and not m.location_id._is_reservation_guard_bypassed()
                 ):
                     key = (
                         move.product_id.id,

@@ -113,6 +113,8 @@ class StockMoveLine(models.Model):
             return None
         if location.usage not in ("internal", "transit"):
             return None
+        if location._is_reservation_guard_bypassed():
+            return None
         if effective_picking and effective_picking.picking_type_code not in ("internal", "outgoing"):
             return None
         if effective_picking and effective_picking.bypass_reservation_guard:
