@@ -14,6 +14,7 @@
                             <field name="stock_reservation_guard_bypass_location_ids"
                                    nolabel="1"
                                    groups="stock.group_stock_manager"
+                                   domain="[('usage', 'in', ('internal', 'transit'))]"
                                    widget="many2many_tags"/>
                         </setting>
                     </block>
