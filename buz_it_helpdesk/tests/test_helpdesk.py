@@ -43,7 +43,8 @@ class TestHelpdeskTicket(TransactionCase):
         self.assertTrue(ticket.can_confirm)
         self.assertTrue(ticket.can_edit_ticket)
 
-        ticket.write({"subject": "Edited while Draft"})
+        ticket.write({"subject": "Edited while Draft", "description": "<p>Draft details</p>", "category_id": self.category.id, "priority_id": self.priority.id, "requester_id": requester.id, "team_id": ticket.team_id.id, "assigned_to": requester.id, "company_id": ticket.company_id.id})
+        self.assertFalse(ticket.sla_id)
         ticket.with_user(requester).action_confirm()
         self.assertEqual(ticket.with_user(self.agent).stage_id.name, "New")
         self.assertFalse(ticket.can_confirm)

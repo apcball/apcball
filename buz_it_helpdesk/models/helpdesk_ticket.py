@@ -49,6 +49,7 @@ class HelpdeskTicket(models.Model):
     )
     can_confirm = fields.Boolean(compute="_compute_can_confirm")
     can_edit_ticket = fields.Boolean(compute="_compute_can_edit_ticket")
+    can_edit_protected_fields = fields.Boolean(compute="_compute_can_edit_protected_fields")
     company_id = fields.Many2one("res.company", default=lambda self: self.env.company, required=True, index=True)
     branch_id = fields.Many2one("res.company", string="Company / Branch")
     is_overdue = fields.Boolean(compute="_compute_is_overdue", search="_search_is_overdue")
@@ -65,6 +66,12 @@ class HelpdeskTicket(models.Model):
         is_agent = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
         for ticket in self:
             ticket.can_edit_ticket = is_agent or not ticket.stage_id or ticket.stage_id.name == "Draft"
+    @api.depends("stage_id")
+    def _compute_can_edit_protected_fields(self):
+        is_agent = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
+        for ticket in self:
+            ticket.can_edit_protected_fields = is_agent
+
     @api.model
     def _get_stage_for_company(self, company, stage_name):
         return self.env["it.helpdesk.stage"].search(
@@ -145,8 +152,11 @@ class HelpdeskTicket(models.Model):
         if not self.env.su and not is_agent:
             if any(ticket.stage_id.name != "Draft" for ticket in self):
                 raise AccessError("Requesters cannot edit a confirmed ticket.")
-            protected = {"requester_id", "department", "company_id", "branch_id", "team_id", "assigned_to", "assignee_ids", "stage_id", "sla_id", "sla_deadline", "response_deadline", "first_response_at", "resolved_at", "sla_paused_at", "sla_paused_hours", "sla_overdue_notified_at"}
+            protected = {"stage_id", "sla_id", "sla_deadline", "response_deadline", "first_response_at", "resolved_at", "sla_paused_at", "sla_paused_hours", "sla_overdue_notified_at"}
             confirm_only_stage = self.env.context.get("helpdesk_confirm") and set(vals) <= {"stage_id"}
+            attachment_fields = {"attachment_ids", "message_main_attachment_id"}
+            if attachment_fields.intersection(vals):
+                vals = {key: value for key, value in vals.items() if key not in protected}
             if protected.intersection(vals) and not confirm_only_stage:
                 raise AccessError("Requesters cannot change assignment, workflow, SLA, or company fields.")
         stage_updates = {}
@@ -176,7 +186,7 @@ class HelpdeskTicket(models.Model):
         for ticket_id, update in stage_updates.items():
             super(HelpdeskTicket, self.browse(ticket_id).with_context(skip_sla=True)).write(update)
         if {"category_id", "priority_id", "company_id"} & set(vals):
-            self._apply_sla()
+            self.filtered(lambda ticket: ticket.stage_id.name != "Draft")._apply_sla()
         return result
 
     @api.depends("category_id", "subject")
