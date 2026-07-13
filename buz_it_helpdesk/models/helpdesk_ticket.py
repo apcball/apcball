@@ -16,6 +16,7 @@ class HelpdeskTicket(models.Model):
     department = fields.Char(string="Department")
     category_id = fields.Many2one("it.helpdesk.category", tracking=True, required=True)
     priority_id = fields.Many2one("it.helpdesk.priority", tracking=True, required=True)
+    priority_code = fields.Selection(related="priority_id.code", string="Priority Code", readonly=True)
     stage_id = fields.Many2one("it.helpdesk.stage", tracking=True, required=True, index=True, default=lambda self: self._default_stage_id())
     assigned_to = fields.Many2one("res.users", string="Assigned To", tracking=True)
     follower_ids = fields.Many2many("res.users", string="Followers")
