@@ -18,6 +18,7 @@ class HelpdeskTicket(models.Model):
     description = fields.Html()
     requester_id = fields.Many2one("res.users", required=True, default=lambda self: self.env.user, tracking=True)
     department = fields.Char(string="Department")
+    line_contact = fields.Char(string="Line Contact", tracking=True)
     category_id = fields.Many2one("it.helpdesk.category", tracking=True, required=True, check_company=True)
     priority_id = fields.Many2one("it.helpdesk.priority", tracking=True, required=True, check_company=True)
     priority_code = fields.Selection(related="priority_id.code", string="Priority Code", readonly=True)
