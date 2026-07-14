@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from odoo import api, fields, models
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 class HelpdeskTicket(models.Model):
@@ -23,6 +23,7 @@ class HelpdeskTicket(models.Model):
     assigned_to = fields.Many2one("res.users", string="Assigned To", tracking=True)
     assignee_ids = fields.Many2many("res.users", string="Additional Assignees", tracking=True)
     team_id = fields.Many2one("it.helpdesk.team", string="Helpdesk Team", tracking=True, check_company=True)
+    team_member_ids = fields.Many2many("res.users", related="team_id.member_ids", string="Available Assignees", readonly=True)
     created_date = fields.Datetime(default=fields.Datetime.now, readonly=True)
     due_date = fields.Datetime()
     sla_id = fields.Many2one("it.helpdesk.sla", string="SLA", readonly=True, check_company=True)
@@ -98,6 +99,17 @@ class HelpdeskTicket(models.Model):
         for ticket in self:
             ticket.can_edit_protected_fields = is_agent
 
+    @api.onchange("team_id")
+    def _onchange_team_id_clear_assigned_to(self):
+        for ticket in self:
+            if ticket.assigned_to and ticket.assigned_to not in ticket.team_member_ids:
+                ticket.assigned_to = False
+
+    @api.constrains("assigned_to", "team_id")
+    def _check_assigned_to_in_team(self):
+        for ticket in self:
+            if ticket.assigned_to and ticket.assigned_to not in ticket.team_member_ids:
+                raise ValidationError("Assigned To must be a member of the selected Helpdesk Team.")
     @api.model
     def _get_stage_for_company(self, company, stage_name):
         return self.env["it.helpdesk.stage"].search(
@@ -408,6 +420,8 @@ class HelpdeskTicket(models.Model):
         for ticket in self:
             if ticket.stage_id.is_closed:
                 raise UserError("A closed or cancelled ticket cannot be assigned.")
+            if self.env.user not in ticket.team_member_ids:
+                raise UserError("You must be a member of the selected Helpdesk Team to assign this ticket to yourself.")
             stage = self._get_stage_for_company(ticket.company_id, "In Progress")
             if not stage:
                 raise UserError("The In Progress stage is not configured for this company.")
