@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="buz_it_helpdesk.HelpdeskAttachmentPreviewField">
+        <div t-attf-class="oe_fileupload o_helpdesk_attachment_preview {{props.className ? props.className : ''}}" aria-atomic="true">
+            <div class="o_attachments">
+                <t t-foreach="files" t-as="file" t-key="file.id">
+                    <t t-set="editable" t-value="!props.readonly"/>
+                    <t t-set="ext" t-value="getExtension(file)"/>
+                    <div name="attachment"
+                         t-attf-class="o_attachment o_attachment_many2many #{editable ? 'o_attachment_editable' : ''}"
+                         t-att-title="file.name">
+                        <div class="o_attachment_wrap">
+                            <div class="o_image_box float-start cursor-pointer"
+                                 t-att-data-tooltip="'Preview ' + file.name"
+                                 t-on-click.stop="() => this.openPreview(file)">
+                                <img t-if="isImage(file)"
+                                     t-att-src="getThumbnailUrl(file)"
+                                     t-att-alt="file.name"
+                                     style="width: 42px; height: 42px; object-fit: cover; cursor: zoom-in;"/>
+                                <span t-else="" class="o_image o_hover"
+                                      t-att-data-mimetype="file.mimetype"
+                                      t-att-data-ext="ext"
+                                      role="img"/>
+                            </div>
+                            <div class="caption">
+                                <button type="button"
+                                        class="btn btn-link p-0 text-start text-truncate"
+                                        style="max-width: 160px;"
+                                        t-att-data-tooltip="'Preview ' + file.name"
+                                        t-on-click.stop="() => this.openPreview(file)">
+                                    <t t-esc="file.name"/>
+                                </button>
+                            </div>
+                            <div class="caption small">
+                                <button type="button"
+                                        class="btn btn-link p-0 small text-uppercase"
+                                        t-on-click.stop="() => this.openPreview(file)">
+                                    <b><t t-esc="ext"/></b>
+                                </button>
+                                <div t-if="editable" class="progress o_attachment_progress_bar">
+                                    <div class="progress-bar progress-bar-striped active" style="width: 100%">Uploading</div>
+                                </div>
+                            </div>
+                            <div class="o_attachment_uploaded">
+                                <i class="text-success fa fa-check" role="img" aria-label="Uploaded" title="Uploaded"/>
+                            </div>
+                            <div t-if="editable" class="o_attachment_delete"
+                                 t-on-click.stop="() => this.onFileRemove(file.id)">
+                                <span role="img" aria-label="Delete" title="Delete">×</span>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </div>
+            <div t-if="!props.readonly &amp;&amp; (!props.numberOfFiles or files.length &lt; props.numberOfFiles)" class="oe_add">
+                <FileInput acceptedFileExtensions="props.acceptedFileExtensions"
+                           multiUpload="true"
+                           onUpload.bind="onFileUploaded"
+                           resModel="props.record.resModel"
+                           resId="props.record.resId or 0">
+                    <button class="btn btn-secondary o_attach" data-tooltip="Attach">
+                        <span class="fa fa-paperclip" aria-label="Attach"/> <t t-esc="uploadText"/>
+                    </button>
+                </FileInput>
+            </div>
+        </div>
+    </t>
+</templates>

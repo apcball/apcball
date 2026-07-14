@@ -19,6 +19,12 @@
         "views/helpdesk_report_views.xml",
         "views/helpdesk_portal_templates.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "buz_it_helpdesk/static/src/js/helpdesk_attachment_preview_field.js",
+            "buz_it_helpdesk/static/src/xml/helpdesk_attachment_preview_field.xml",
+        ],
+    },
     "application": True,
     "installable": True,
 }
