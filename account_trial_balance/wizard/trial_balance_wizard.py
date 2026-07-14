@@ -111,17 +111,17 @@ class TrialBalanceWizard(models.TransientModel):
             aid = r['account_id']
             info = account_info.get(aid, {})
             lines.append({
-                'code': info.get('code', ''),
+                'code': info.get('code') or '',
                 'name': info.get('name', ''),
                 'type': info.get('type', 'Uncategorized'),
-                'type_seq': info.get('type_seq', 9999),
+                'type_seq': info.get('type_seq') or 'zzz',
                 'debit': r['debit'] or 0.0,
                 'credit': r['credit'] or 0.0,
                 'balance': r['balance'] or 0.0,
             })
 
         # Sort by account type sequence, then code
-        lines.sort(key=lambda l: (l['type_seq'], l['code']))
+        lines.sort(key=lambda l: (str(l['type_seq']), str(l['code'])))
 
         # Group by type
         grouped = []
