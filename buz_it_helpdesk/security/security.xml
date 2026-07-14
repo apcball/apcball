@@ -30,13 +30,13 @@
         <field name="name">Agent: all tickets in allowed companies</field>
         <field name="model_id" ref="model_it_helpdesk_ticket"/>
         <field name="groups" eval="[(4, ref('group_it_helpdesk_agent'))]"/>
-        <field name="domain_force">[('company_id', 'in', company_ids), ('stage_id.name', '!=', 'Draft')]</field>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
     <record id="rule_ticket_manager" model="ir.rule">
         <field name="name">Manager: all company tickets</field>
         <field name="model_id" ref="model_it_helpdesk_ticket"/>
         <field name="groups" eval="[(4, ref('group_it_helpdesk_manager'))]"/>
-        <field name="domain_force">[('company_id', 'in', company_ids), ('stage_id.name', '!=', 'Draft')]</field>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
 
     <record id="rule_stage_company" model="ir.rule">

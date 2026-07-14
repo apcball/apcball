@@ -21,7 +21,7 @@ services:
       --db_user=odoo
       --db_password=odoo
       --addons-path=/mnt/extra-addons
-      -u buz_commercial_invoice
+      -u buz_it_helpdesk
       --test-enable
       --stop-after-init
       --no-http

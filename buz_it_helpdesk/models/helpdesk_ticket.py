@@ -1,3 +1,4 @@
+import base64
 from datetime import timedelta
 
 from odoo import api, fields, models
@@ -156,30 +157,64 @@ class HelpdeskTicket(models.Model):
         records = super().create(vals_list)
         records.filtered(lambda ticket: ticket.stage_id.name != "Draft")._apply_sla()
         for ticket in records:
-            partners = ticket._get_notification_partners()
-            if partners:
-                ticket.message_subscribe(partner_ids=partners.ids)
+            ticket._sync_responsible_notifications()
         return records
+
+    def _get_responsible_users(self):
+        self.ensure_one()
+        return (self.requester_id | self.assigned_to | self.assignee_ids).filtered("active")
 
     def _get_notification_partners(self):
         self.ensure_one()
-        users = self.requester_id | self.assigned_to | self.assignee_ids
-        return users.mapped("partner_id")
+        return self._get_responsible_users().mapped("partner_id")
+
+    def _sync_responsible_notifications(self, previous_users=None):
+        self.ensure_one()
+        current_users = self._get_responsible_users()
+        previous_users = previous_users or self.env["res.users"]
+        new_users = current_users - previous_users
+        partners = new_users.mapped("partner_id")
+        if partners:
+            self.message_subscribe(partner_ids=partners.ids)
+        activity_users = new_users - self.requester_id
+        if self.stage_id.name != "Draft" and activity_users:
+            self._schedule_new_ticket_activities(users=activity_users)
+
+    def _add_uploaded_attachments(self, uploads):
+        self.ensure_one()
+        Attachment = self.env["ir.attachment"].sudo()
+        attachments = self.env["ir.attachment"]
+        for upload in uploads:
+            if upload and upload.filename:
+                attachment = Attachment.create({
+                    "name": upload.filename,
+                    "datas_fname": upload.filename,
+                    "datas": base64.b64encode(upload.read()),
+                    "res_model": self._name,
+                    "res_id": self.id,
+                    "type": "binary",
+                    "company_id": self.company_id.id,
+                })
+                attachments |= attachment
+        if attachments:
+            self.sudo().write({"attachment_ids": [fields.Command.link(attachment.id) for attachment in attachments]})
+        return attachments
 
     def _ensure_agent(self):
         if not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"):
             raise AccessError("Only Helpdesk Agents and Managers can change ticket status.")
 
-    def _schedule_new_ticket_activities(self):
+    def _schedule_new_ticket_activities(self, users=None):
         activity_type = self.env.ref("mail.mail_activity_data_todo")
         summary = self._NEW_TICKET_ACTIVITY_SUMMARY
         for ticket in self:
-            team_members = (ticket.team_member_ids | ticket.assigned_to | ticket.assignee_ids).filtered("active")
+            ticket_users = users if users is not None else (ticket.team_member_ids | ticket.assigned_to | ticket.assignee_ids)
+            ticket_users = ticket_users.filtered("active")
             existing_user_ids = ticket.activity_ids.filtered(
                 lambda activity: activity.activity_type_id == activity_type
                 and activity.summary == summary
             ).mapped("user_id").ids
-            for member in team_members.filtered(lambda user: user.id not in existing_user_ids):
+            for member in ticket_users.filtered(lambda user: user.id not in existing_user_ids):
                 ticket.sudo().activity_schedule(
                     "mail.mail_activity_data_todo",
                     user_id=member.id,
@@ -237,6 +272,9 @@ class HelpdeskTicket(models.Model):
                 if protected.intersection(vals) and not confirm_only_stage:
                     raise AccessError("Requesters cannot change assignment, workflow, SLA, or company fields.")
         stage_updates = {}
+        previous_users_map = {}
+        if {"assigned_to", "assignee_ids"} & set(vals):
+            previous_users_map = {ticket.id: ticket._get_responsible_users() for ticket in self}
         if "stage_id" in vals:
             target = self.env["it.helpdesk.stage"].browse(vals["stage_id"])
             now = fields.Datetime.now()
@@ -262,6 +300,9 @@ class HelpdeskTicket(models.Model):
         result = super().write(vals)
         for ticket_id, update in stage_updates.items():
             super(HelpdeskTicket, self.browse(ticket_id).with_context(skip_sla=True)).write(update)
+        if {"assigned_to", "assignee_ids"} & set(vals):
+            for ticket in self:
+                ticket._sync_responsible_notifications(previous_users_map.get(ticket.id))
         if {"category_id", "priority_id", "company_id"} & set(vals):
             self.filtered(lambda ticket: ticket.stage_id.name != "Draft")._apply_sla()
         return result
