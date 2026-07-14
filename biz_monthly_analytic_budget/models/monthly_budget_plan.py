@@ -410,11 +410,16 @@ class MonthlyBudgetPlan(models.Model):
         return synced_count
 
     def _sync_existing_po_reservations(self):
-        """Backfill/update used commitments for confirmed POs that already exist."""
-        BudgetLine = self.env['monthly.budget.line']
-        Commitment = self.env['budget.commitment'].sudo()
+        """Backfill/update commitments for confirmed POs that already exist.
+
+        Delegates to purchase.order._consume_monthly_analytic_budget() so the
+        backfill applies the exact same rules as the live flow: the PO (via its
+        PR identity) only reserves the UNBILLED portion of each line, while
+        draft/posted bills carry their own commitments. Recreating full-amount
+        'used' commitments here double-counted every billed PO.
+        """
         PurchaseOrder = self.env['purchase.order'].sudo()
-        engine = self.env['budget.engine']
+        Commitment = self.env['budget.commitment'].sudo()
 
         synced_count = 0
         for plan in self:
@@ -438,73 +443,21 @@ class MonthlyBudgetPlan(models.Model):
                 continue
 
             for po in pos:
-                analytic_totals = {}
-                for line in po.order_line:
-                    for account_id, amount in extract_analytic_amounts(line, BudgetLine):
-                        analytic_totals[account_id] = analytic_totals.get(account_id, 0.0) + amount
-
-                analytic_totals, _ignored_totals = plan._filter_plan_analytic_totals(analytic_totals)
-                if not analytic_totals:
-                    continue
-
                 document_model, document_id = po._get_budget_document_identity()
-                po_date = po.payment_date or (po.date_order.date() if po.date_order else plan.date_from)
-                for account_id, amount in analytic_totals.items():
-                    if not amount:
-                        continue
-
-                    budget_line = BudgetLine._find_budget_line(
-                        plan, {'analytic_account_id': account_id}, log_fallback=False
-                    )
-                    if not budget_line:
-                        continue
-
-                    used_commitments = Commitment.search([
-                        ('document_model', '=', document_model),
-                        ('document_id', '=', document_id),
-                        ('analytic_account_id', '=', account_id),
-                        ('budget_source', '=', 'monthly'),
-                        ('state', '=', 'used'),
-                    ], order='id asc')
-
-                    note = _('Consumed by PO %s - %s') % (
-                        po.name,
-                        self.env['account.analytic.account'].sudo().browse(account_id).display_name,
-                    )
-                    if used_commitments:
-                        primary = used_commitments[0]
-                        duplicate_used = used_commitments - primary
-                        if duplicate_used:
-                            duplicate_used.action_release()
-                        primary.write({
-                            'amount': amount,
-                            'date': po_date,
-                            'company_id': po.company_id.id,
-                            'note': note,
-                        })
-                    else:
-                        engine.consume_budget({
-                            'budget_source': 'monthly',
-                            'document_model': document_model,
-                            'document_id': document_id,
-                            'amount': amount,
-                            'date': po_date,
-                            'company_id': po.company_id.id,
-                            'analytic_account_id': account_id,
-                            'note': note,
-                        })
-                        
-                    # Also clean up stale reserved
-                    stale_reserved = Commitment.search([
-                        ('document_model', '=', document_model),
-                        ('document_id', '=', document_id),
-                        ('analytic_account_id', '=', account_id),
-                        ('budget_source', '=', 'monthly'),
-                        ('state', '=', 'reserved'),
-                    ])
-                    if stale_reserved:
-                        stale_reserved.action_release()
-                        
+                before = Commitment.search_count([
+                    ('document_model', '=', document_model),
+                    ('document_id', '=', document_id),
+                    ('budget_source', '=', 'monthly'),
+                    ('state', 'in', ('reserved', 'used')),
+                ])
+                po._consume_monthly_analytic_budget()
+                after = Commitment.search_count([
+                    ('document_model', '=', document_model),
+                    ('document_id', '=', document_id),
+                    ('budget_source', '=', 'monthly'),
+                    ('state', 'in', ('reserved', 'used')),
+                ])
+                if after > before:
                     synced_count += 1
 
         return synced_count

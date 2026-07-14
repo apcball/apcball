@@ -610,7 +610,7 @@ class PurchaseOrder(models.Model):
         engine = self.env['budget.engine']
         AnalyticAccount = self.env['account.analytic.account']
 
-        target_date = self.payment_date
+        target_date = self.payment_date or (self.date_order.date() if self.date_order else False)
         if not target_date:
             return
 
