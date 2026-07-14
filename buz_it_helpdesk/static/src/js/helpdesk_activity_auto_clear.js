@@ -11,6 +11,11 @@ patch(ActivityController.prototype, {
                 "action_clear_new_ticket_activity",
                 [[record.resId]]
             );
+            if (this.model?.load) {
+                await this.model.load();
+            } else if (this.model?.reload) {
+                await this.model.reload();
+            }
         }
         return super.openRecord(record, mode);
     },
