@@ -378,7 +378,7 @@ class HelpdeskTicket(models.Model):
         for ticket in self:
             if ticket.stage_id.is_closed:
                 raise UserError("A closed or cancelled ticket cannot be assigned.")
-            stage = self._get_stage_for_company(ticket.company_id, "Assigned")
+            stage = self._get_stage_for_company(ticket.company_id, "In Progress")
             if not stage:
                 raise UserError("The Assigned stage is not configured for this company.")
             ticket.write({"assigned_to": self.env.user.id, "stage_id": stage.id})
