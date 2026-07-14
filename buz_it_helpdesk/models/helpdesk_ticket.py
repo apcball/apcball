@@ -23,6 +23,20 @@ class HelpdeskTicket(models.Model):
     priority_id = fields.Many2one("it.helpdesk.priority", tracking=True, required=True, check_company=True)
     priority_code = fields.Selection(related="priority_id.code", string="Priority Code", readonly=True)
     stage_id = fields.Many2one("it.helpdesk.stage", tracking=True, required=True, index=True, check_company=True, default=lambda self: self._default_stage_id())
+    stage_code = fields.Selection(
+        [
+            ("draft", "Draft"),
+            ("new", "New"),
+            ("in_progress", "In Progress"),
+            ("pending_user", "Pending User"),
+            ("resolved", "Resolved"),
+            ("closed", "Closed"),
+            ("cancelled", "Cancelled"),
+            ("other", "Other"),
+        ],
+        compute="_compute_stage_code",
+        readonly=True,
+    )
     assigned_to = fields.Many2one("res.users", string="Assigned To", tracking=True)
     assignee_ids = fields.Many2many("res.users", string="Additional Assignees", tracking=True)
     team_id = fields.Many2one("it.helpdesk.team", string="Helpdesk Team", tracking=True, check_company=True)
@@ -101,6 +115,29 @@ class HelpdeskTicket(models.Model):
         is_agent = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
         for ticket in self:
             ticket.can_edit_protected_fields = is_agent
+
+    @api.depends("stage_id", "stage_id.sequence", "stage_id.is_closed")
+    def _compute_stage_code(self):
+        for ticket in self:
+            stage = ticket.stage_id
+            if not stage:
+                ticket.stage_code = False
+            elif stage.sequence == 0:
+                ticket.stage_code = "draft"
+            elif stage.sequence == 1:
+                ticket.stage_code = "new"
+            elif stage.sequence == 3:
+                ticket.stage_code = "in_progress"
+            elif stage.sequence == 4:
+                ticket.stage_code = "pending_user"
+            elif stage.sequence == 5:
+                ticket.stage_code = "resolved"
+            elif stage.sequence == 6 and stage.is_closed:
+                ticket.stage_code = "closed"
+            elif stage.sequence >= 7 and stage.is_closed:
+                ticket.stage_code = "cancelled"
+            else:
+                ticket.stage_code = "other"
 
     @api.onchange("team_id")
     def _onchange_team_id_clear_assigned_to(self):
