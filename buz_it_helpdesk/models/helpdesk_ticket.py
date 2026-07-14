@@ -49,6 +49,7 @@ class HelpdeskTicket(models.Model):
     )
     can_confirm = fields.Boolean(compute="_compute_can_confirm")
     can_assign_to_me = fields.Boolean(compute="_compute_can_assign_to_me")
+    can_set_pending_user = fields.Boolean(compute="_compute_can_set_pending_user")
     can_edit_ticket = fields.Boolean(compute="_compute_can_edit_ticket")
     can_edit_protected_fields = fields.Boolean(compute="_compute_can_edit_protected_fields")
     company_id = fields.Many2one("res.company", default=lambda self: self.env.company, required=True, index=True)
@@ -67,6 +68,12 @@ class HelpdeskTicket(models.Model):
     def _compute_can_assign_to_me(self):
         for ticket in self:
             ticket.can_assign_to_me = ticket.stage_id.name == "New"
+
+    @api.depends("stage_id")
+    def _compute_can_set_pending_user(self):
+        for ticket in self:
+            ticket.can_set_pending_user = ticket.stage_id.name == "In Progress"
+
     @api.depends("stage_id")
     def _compute_can_edit_ticket(self):
         is_agent = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
@@ -389,6 +396,15 @@ class HelpdeskTicket(models.Model):
                 raise UserError("The In Progress stage is not configured for this company.")
             ticket.write({"assigned_to": self.env.user.id, "stage_id": stage.id})
 
+    def action_pending_user(self):
+        self._ensure_agent()
+        for ticket in self:
+            if ticket.stage_id.name != "In Progress":
+                raise UserError("Only an In Progress ticket can be set to Pending User.")
+            stage = self._get_stage_for_company(ticket.company_id, "Pending User")
+            if not stage:
+                raise UserError("The Pending User stage is not configured for this company.")
+            ticket.write({"stage_id": stage.id})
     def action_resolve(self):
         self._ensure_agent()
         for ticket in self:
