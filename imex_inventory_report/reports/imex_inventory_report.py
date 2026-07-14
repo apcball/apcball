@@ -116,8 +116,20 @@ class ImexInventoryReport(models.Model):
                 internal_picking_type = (-1,)
         return internal_picking_type
 
+    def _get_cutoff_date(self):
+        """Opening balance cutoff: moves before this date are excluded
+        from the report entirely (set via system parameter
+        imex_inventory_report.cutoff_date, e.g. after re-entering
+        opening stock)."""
+        cutoff = self.env["ir.config_parameter"].sudo().get_param(
+            "imex_inventory_report.cutoff_date")
+        return fields.Date.to_date(cutoff) if cutoff else fields.Date.to_date("1900-01-01")
+
     def init_results(self, filters):
-        date_from = filters.date_from or "1900-01-01"
+        cutoff_date = self._get_cutoff_date()
+        date_from = filters.date_from or fields.Date.to_date("1900-01-01")
+        if date_from < cutoff_date:
+            date_from = cutoff_date
         date_to = filters.date_to or fields.Date.context_today(self)
         is_groupby_location = filters.is_groupby_location
 
@@ -183,14 +195,14 @@ class ImexInventoryReport(models.Model):
                             THEN move_group_location.quantity*move_group_location.unit_cost
                             ELSE 0 END) as product_out_amount
                     FROM(
-                        SELECT 
-                            move.date, move.product_id, 
-                            move.product_uom,
-                            move.location_id as location, 
-                            move.location_id, 
-                            move.location_dest_id,                        
+                        SELECT
+                            move.date, move.product_id,
+                            template.uom_id as product_uom,
+                            move.location_id as location,
+                            move.location_id,
+                            move.location_dest_id,
                             template.categ_id as product_category,
-                            move.quantity,
+                            (move.quantity / uom_move.factor * uom_prod.factor) as quantity,
                             svl.unit_cost
                         FROM stock_move move
                             LEFT JOIN (
@@ -210,22 +222,27 @@ class ImexInventoryReport(models.Model):
                                 on move.product_id = product.id
                                 LEFT JOIN product_template template
                                     on product.product_tmpl_id = template.id
+                            LEFT JOIN uom_uom uom_move
+                                on move.product_uom = uom_move.id
+                            LEFT JOIN uom_uom uom_prod
+                                on template.uom_id = uom_prod.id
                         WHERE
                             move.location_id in %s
                             and move.state = 'done'
                             and move.product_id in %s
                             and template.categ_id in %s
                             and CAST(move.date AS date) <= %s
+                            and CAST(move.date AS date) >= %s
                             and location_src.usage = 'internal'
                         UNION ALL
                         SELECT
                             move.date, move.product_id,
-                            move.product_uom,
+                            template.uom_id as product_uom,
                             move.location_dest_id as location,
                             move.location_id,
                             move.location_dest_id,
                             template.categ_id as product_category,
-                            move.quantity,
+                            (move.quantity / uom_move.factor * uom_prod.factor) as quantity,
                             svl.unit_cost
                         FROM stock_move move
                             LEFT JOIN (
@@ -237,18 +254,23 @@ class ImexInventoryReport(models.Model):
                                 WHERE quantity != 0
                                 GROUP BY stock_move_id
                             ) svl on move.id = svl.stock_move_id
-                            LEFT JOIN stock_location location_dest 
+                            LEFT JOIN stock_location location_dest
                                 on move.location_dest_id = location_dest.id
-                            LEFT JOIN product_product product 
+                            LEFT JOIN product_product product
                                 on move.product_id = product.id
-                                LEFT JOIN product_template template 
+                                LEFT JOIN product_template template
                                     on product.product_tmpl_id = template.id
-                        WHERE 
+                            LEFT JOIN uom_uom uom_move
+                                on move.product_uom = uom_move.id
+                            LEFT JOIN uom_uom uom_prod
+                                on template.uom_id = uom_prod.id
+                        WHERE
                             move.location_dest_id in %s
                             and move.state = 'done'
                             and move.product_id in %s
                             and template.categ_id in %s
                             and CAST(move.date AS date) <= %s
+                            and CAST(move.date AS date) >= %s
                             and location_dest.usage = 'internal'
                         ) as move_group_location
                     GROUP BY 
@@ -275,60 +297,63 @@ class ImexInventoryReport(models.Model):
                       product_ids,
                       product_category_ids,
                       date_to,
+                      cutoff_date,
                       locations,
                       product_ids,
                       product_category_ids,
-                      date_to)
+                      date_to,
+                      cutoff_date)
         else:
             query_ = """ 
                 SELECT *, (a.initial + a.product_in - a.product_out) as balance,
                     (a.initial_amount + a.product_in_amount - a.product_out_amount) as amount
                 FROM(
                     SELECT row_number() over () as id,
-                        move.product_id, move.product_uom,
+                        move.product_id,
+                        template.uom_id as product_uom,
                         null as location,
                         template.categ_id as product_category,
-                        (sum(CASE WHEN 
-                                CAST(move.date AS date) < %s 
+                        (sum(CASE WHEN
+                                CAST(move.date AS date) < %s
                                 and location_dest.usage = 'internal'
-                            THEN move.quantity
+                            THEN move.quantity / uom_move.factor * uom_prod.factor
                             ELSE 0 END)
                         -
-                        sum(CASE WHEN 
-                                CAST(move.date AS date) < %s  
+                        sum(CASE WHEN
+                                CAST(move.date AS date) < %s
                                 and location.usage = 'internal'
-                            THEN move.quantity
+                            THEN move.quantity / uom_move.factor * uom_prod.factor
                             ELSE 0 END)) as initial,
-                        (sum(CASE WHEN 
-                                CAST(move.date AS date) < %s 
+                        (sum(CASE WHEN
+                                CAST(move.date AS date) < %s
                                 and location_dest.usage = 'internal'
-                            THEN move.quantity*svl.unit_cost
+                            THEN move.quantity / uom_move.factor * uom_prod.factor * svl.unit_cost
                             ELSE 0 END)
                         -
-                        sum(CASE WHEN 
-                                CAST(move.date AS date) < %s  
+                        sum(CASE WHEN
+                                CAST(move.date AS date) < %s
                                 and location.usage = 'internal'
-                            THEN move.quantity*svl.unit_cost
+                            THEN move.quantity / uom_move.factor * uom_prod.factor * svl.unit_cost
                             ELSE 0 END)) as initial_amount,
-                        sum(CASE WHEN 
-                                CAST(move.date AS date) >= %s  
+                        sum(CASE WHEN
+                                CAST(move.date AS date) >= %s
                                 and location_dest.usage = 'internal'
-                            THEN move.quantity
+                            THEN move.quantity / uom_move.factor * uom_prod.factor
                             ELSE 0 END) as product_in,
-                        sum(CASE WHEN 
-                                CAST(move.date AS date) >= %s  
+                        sum(CASE WHEN
+                                CAST(move.date AS date) >= %s
                                 and location_dest.usage = 'internal'
-                            THEN move.quantity*svl.unit_cost
+                            THEN move.quantity / uom_move.factor * uom_prod.factor * svl.unit_cost
                             ELSE 0 END) as product_in_amount,
-                        sum(CASE WHEN 
-                                CAST(move.date AS date) >= %s  
+                        sum(CASE WHEN
+                                CAST(move.date AS date) >= %s
                                 and location.usage = 'internal'
-                            THEN move.quantity
+                            THEN move.quantity / uom_move.factor * uom_prod.factor
                             ELSE 0 END) as product_out,
-                        sum(CASE WHEN 
-                                CAST(move.date AS date) >= %s  
+                        sum(CASE WHEN
+                                CAST(move.date AS date) >= %s
                                 and location.usage = 'internal'
-                            THEN move.quantity*svl.unit_cost
+                            THEN move.quantity / uom_move.factor * uom_prod.factor * svl.unit_cost
                             ELSE 0 END) as product_out_amount
                     FROM stock_move move
                         LEFT JOIN (
@@ -348,17 +373,22 @@ class ImexInventoryReport(models.Model):
                             on move.product_id = product.id
                             LEFT JOIN product_template template
                                 on product.product_tmpl_id = template.id
-                    WHERE 
+                        LEFT JOIN uom_uom uom_move
+                            on move.product_uom = uom_move.id
+                        LEFT JOIN uom_uom uom_prod
+                            on template.uom_id = uom_prod.id
+                    WHERE
                         (move.location_id in %s or move.location_dest_id in %s)
                         and (move.picking_type_id not in %s or move.picking_type_id is null)
                         and move.state = 'done'
                         and move.product_id in %s
                         and template.categ_id in %s
                         and CAST(move.date AS date) <= %s
-                    GROUP BY 
+                        and CAST(move.date AS date) >= %s
+                    GROUP BY
                         move.product_id,
-                        move.product_uom,
-                        template.categ_id     
+                        template.uom_id,
+                        template.categ_id
                     ORDER BY move.product_id
                     ) as a
                 """
@@ -375,7 +405,8 @@ class ImexInventoryReport(models.Model):
                       internal_picking_type,
                       product_ids,
                       product_category_ids,
-                      date_to)
+                      date_to,
+                      cutoff_date)
         tools.drop_view_if_exists(self._cr, self._table)
         res = self._cr.execute(
             """CREATE VIEW {} as ({})""".format(self._table, query_), params)

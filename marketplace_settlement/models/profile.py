@@ -25,6 +25,17 @@ class MarketplaceSettlementProfile(models.Model):
     marketplace_partner_id = fields.Many2one('res.partner', string='Marketplace Partner')
     journal_id = fields.Many2one('account.journal', string='Default Journal')
     settlement_account_id = fields.Many2one('account.account', string='Default Settlement Account')
+
+    # Vendor Bill Configuration
+    vendor_partner_id = fields.Many2one('res.partner', string='Vendor Partner',
+                                        help='Default vendor partner for marketplace fee bills')
+    purchase_journal_id = fields.Many2one('account.journal', string='Purchase Journal',
+                                          domain="[('type', '=', 'purchase')]",
+                                          help='Default journal for marketplace fee vendor bills')
+    default_vat_rate = fields.Float('Default VAT Rate (%)', default=7.0,
+                                    help='Default VAT rate for vendor bill lines')
+    default_wht_rate = fields.Float('Default WHT Rate (%)', default=3.0,
+                                    help='Default withholding tax rate for vendor bill lines')
     
     # Default Expense Accounts - Allow all account types
     commission_account_id = fields.Many2one('account.account', string='Commission Account',

@@ -74,7 +74,10 @@ class ImexInventoryDetailsReport(models.Model):
         return locations
 
     def init_results(self, filter_fields):
-        date_from = filter_fields.date_from or "1900-01-01"
+        cutoff_date = self.env["imex.inventory.report"]._get_cutoff_date()
+        date_from = filter_fields.date_from or fields.Date.to_date("1900-01-01")
+        if date_from < cutoff_date:
+            date_from = cutoff_date
         date_to = filter_fields.date_to or fields.Date.context_today(self)
         is_groupby_location = filter_fields.is_groupby_location
 
@@ -84,17 +87,17 @@ class ImexInventoryDetailsReport(models.Model):
 
         query_ = """
             SELECT row_number() OVER () AS id,* FROM(
-                SELECT 
+                SELECT
                     (SUM(CASE WHEN move.location_dest_id IN %s
-                        THEN move.quantity ELSE 0 END)
+                        THEN move.quantity / uom_move.factor * uom_prod.factor ELSE 0 END)
                     -
                     SUM(CASE WHEN move.location_id IN %s
-                        THEN move.quantity ELSE 0 END)) AS initial,
+                        THEN move.quantity / uom_move.factor * uom_prod.factor ELSE 0 END)) AS initial,
                     (SUM(CASE WHEN move.location_dest_id IN %s
-                        THEN move.quantity*svl.unit_cost ELSE 0 END)
+                        THEN move.quantity / uom_move.factor * uom_prod.factor * svl.unit_cost ELSE 0 END)
                     -
                     SUM(CASE WHEN move.location_id IN %s
-                        THEN move.quantity*svl.unit_cost ELSE 0 END)) AS initial_amount,
+                        THEN move.quantity / uom_move.factor * uom_prod.factor * svl.unit_cost ELSE 0 END)) AS initial_amount,
                     null AS date, 
                     null AS product_id, 
                     null AS product_qty, 
@@ -119,11 +122,16 @@ class ImexInventoryDetailsReport(models.Model):
                         WHERE quantity != 0
                         GROUP BY stock_move_id
                     ) svl on move.id = svl.stock_move_id
-                WHERE 
+                    LEFT JOIN product_product product on move.product_id = product.id
+                        LEFT JOIN product_template template on product.product_tmpl_id = template.id
+                    LEFT JOIN uom_uom uom_move on move.product_uom = uom_move.id
+                    LEFT JOIN uom_uom uom_prod on template.uom_id = uom_prod.id
+                WHERE
                     (move.location_id in %s or move.location_dest_id in %s)
                     and move.state = 'done'
                     and move.product_id in %s
-                    and CAST(move.date AS date) < %s 
+                    and CAST(move.date AS date) < %s
+                    and CAST(move.date AS date) >= %s
                 UNION ALL
                 SELECT
                     null as initial, null as initial_amount,
@@ -171,6 +179,7 @@ class ImexInventoryDetailsReport(models.Model):
                   locations,
                   product_ids,
                   date_from,
+                  cutoff_date,
                   locations,
                   locations,
                   locations,

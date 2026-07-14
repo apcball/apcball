@@ -9,8 +9,8 @@ class SettlementPreviewWizard(models.TransientModel):
     _description = 'Settlement Net-off Preview'
 
     preview_text = fields.Text(string="Preview", readonly=True)
-    warning_message = fields.Text(string="Warning", readonly=True)
-    can_perform_netting = fields.Boolean(string="Can Perform Netting", readonly=True)
+    warning_message = fields.Text(string="Warning", compute='_compute_warnings', readonly=True)
+    can_perform_netting = fields.Boolean(string="Can Perform Netting", compute='_compute_can_perform_netting', readonly=True)
     settlement_id = fields.Many2one('marketplace.settlement', string='Settlement', readonly=True)
     
     # Amount fields for netting preview
@@ -186,26 +186,30 @@ class MarketplaceSettlementPreviewWizard(models.TransientModel):
         
         return res
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         """Create wizard and invoice detail lines"""
-        wizard = super().create(vals)
-        
-        if wizard.settlement_id:
+        wizards = super().create(vals_list)
+
+        for wizard in wizards:
+            if not wizard.settlement_id:
+                continue
             # Get preview data
             preview_data = wizard.settlement_id._calculate_settlement_preview()
-            
+
             # Create invoice detail lines
-            for detail in preview_data['invoice_details']:
-                self.env['marketplace.settlement.preview.line'].create({
+            self.env['marketplace.settlement.preview.line'].create([
+                {
                     'wizard_id': wizard.id,
                     'invoice_name': detail['invoice_name'],
                     'partner_name': detail['partner_name'],
                     'amount': detail['amount'],
                     'currency_id': detail['currency_id'],
-                })
-        
-        return wizard
+                }
+                for detail in preview_data['invoice_details']
+            ])
+
+        return wizards
 
     def action_create_settlement(self):
         """Create the settlement after preview confirmation"""

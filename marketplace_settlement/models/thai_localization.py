@@ -44,20 +44,38 @@ class MarketplaceSettlementThaiLocalization(models.TransientModel):
             _logger.debug("Thai localization check failed: %s", e)
             return False
 
-    def create_thai_wht_certificate(self):
-        """Create Thai WHT certificate if Thai localization is available"""
+    @api.model
+    def create_thai_wht_certificate(self, settlement_id=False, partner_id=False,
+                                    wht_amount=0.0, income_tax_form=False,
+                                    wht_income_type=False, invoice_move_id=False):
+        """Create Thai WHT certificate if Thai localization is available.
+
+        Called from marketplace.settlement.action_create_wht_certificate().
+        Automatic certificate creation is not implemented yet; guide the user
+        to create the certificate manually instead of crashing.
+        """
         if not self.is_thai_localization_available():
             _logger.warning("Thai localization modules not available")
             return False
-            
-        try:
-            # Only attempt to create WHT certificate if Thai modules are available
-            # This would be implemented when Thai modules are actually installed
-            _logger.info("Thai WHT certificate creation requested but Thai modules not installed")
-            return True
-        except Exception as e:
-            _logger.error("Failed to create Thai WHT certificate: %s", e)
-            return False
+
+        _logger.info(
+            "Thai WHT certificate requested for settlement %s, partner %s, amount %s",
+            settlement_id, partner_id, wht_amount,
+        )
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('WHT Certificate'),
+                'message': _(
+                    'Automatic WHT certificate creation is not available yet. '
+                    'Please create the certificate manually in the Thai WHT module. '
+                    'Calculated WHT amount: %(amount).2f', amount=wht_amount,
+                ),
+                'type': 'warning',
+                'sticky': True,
+            },
+        }
 
     def process_thai_tax_integration(self):
         """Process Thai tax integration if available"""

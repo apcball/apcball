@@ -77,6 +77,18 @@
                                 </group>
                             </group>
                             
+                            <group string="Vendor Bill Defaults">
+                                <group>
+                                    <field name="vendor_partner_id"
+                                           context="{'default_is_company': True, 'default_supplier_rank': 1}"/>
+                                    <field name="purchase_journal_id"/>
+                                </group>
+                                <group>
+                                    <field name="default_vat_rate"/>
+                                    <field name="default_wht_rate"/>
+                                </group>
+                            </group>
+
                             <group string="Default Expense Accounts">
                                 <group>
                                     <field name="commission_account_id"/>

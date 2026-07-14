@@ -4,21 +4,21 @@ from odoo.exceptions import ValidationError
 class StockLandedCost(models.Model):
     _inherit = 'stock.landed.cost'
 
-    batch_id = fields.Many2one(
-        'stock.picking.batch', 
-        string='Batch Transfer',
-        help='Batch Transfer to populate picking lines from.'
+    batch_ids = fields.Many2many(
+        'stock.picking.batch',
+        string='Batch Transfers',
+        help='Batch Transfers to populate picking lines from.'
     )
 
-    @api.onchange('batch_id')
-    def _onchange_batch_id(self):
-        if self.batch_id:
-            # Load all stock.picking in that batch
+    @api.onchange('batch_ids')
+    def _onchange_batch_ids(self):
+        if self.batch_ids:
+            # Load all stock.picking across selected batches
             # Filter only: state = 'done', picking_type_id.code = 'incoming'
-            valid_pickings = self.batch_id.picking_ids.filtered(
+            valid_pickings = self.batch_ids.picking_ids.filtered(
                 lambda p: p.state == 'done' and p.picking_type_id.code == 'incoming'
             )
-            
+
             # Auto assign all filtered pickings to picking_ids
             # Using (6, 0, ids) command to replace existing list
             self.picking_ids = [(6, 0, valid_pickings.ids)]

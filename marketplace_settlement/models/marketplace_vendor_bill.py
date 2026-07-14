@@ -70,11 +70,12 @@ class MarketplaceVendorBill(models.Model):
     
     notes = fields.Text('Notes')
 
-    @api.model
-    def create(self, vals):
-        if vals.get('name', 'New') == 'New':
-            vals['name'] = self.env['ir.sequence'].next_by_code('marketplace.vendor.bill') or 'New'
-        return super().create(vals)
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('name', 'New') == 'New':
+                vals['name'] = self.env['ir.sequence'].next_by_code('marketplace.vendor.bill') or 'New'
+        return super().create(vals_list)
 
     @api.depends('line_ids.amount', 'line_ids.vat_amount', 'line_ids.wht_amount')
     def _compute_amounts(self):
@@ -234,10 +235,8 @@ class MarketplaceVendorBill(models.Model):
                 }
             ]
         
-        # Create lines
-        for line_data in lines_data:
-            line_data['bill_id'] = self.id
-            self.env['marketplace.vendor.bill.line'].create(line_data)
+        # Assign as commands so this also works from onchange (record may not exist yet)
+        self.line_ids = [(0, 0, line_data) for line_data in lines_data]
 
     def _add_profile_default_lines(self):
         """Add default lines based on profile configuration"""
@@ -300,10 +299,8 @@ class MarketplaceVendorBill(models.Model):
                     'sequence': 20
                 })
         
-        # Create lines
-        for line_data in lines_data:
-            line_data['bill_id'] = self.id
-            self.env['marketplace.vendor.bill.line'].create(line_data)
+        # Assign as commands so this also works from onchange (record may not exist yet)
+        self.line_ids = [(0, 0, line_data) for line_data in lines_data]
 
     @api.onchange('document_reference')
     def _onchange_document_reference(self):

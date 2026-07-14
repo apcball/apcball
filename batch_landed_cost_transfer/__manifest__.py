@@ -1,10 +1,10 @@
 {
     'name': 'BUZ Batch Transfer Landed Cost Helper',
-    'version': '17.0.1.0.0',
-    'summary': 'Auto-populate Landed Cost Transfers from Batch Transfer',
+    'version': '17.0.1.1.0',
+    'summary': 'Auto-populate Landed Cost Transfers from Batch Transfer(s)',
     'description': """
-        Updates Landed Cost UX to allow selecting a Batch Transfer.
-        Automatically pulls all valid incoming transfers from the batch into the Landed Cost.
+        Updates Landed Cost UX to allow selecting one or more Batch Transfers.
+        Automatically pulls all valid incoming transfers from the selected batches into the Landed Cost.
     """,
     'category': 'Inventory/Inventory',
     'author': 'Your Company',

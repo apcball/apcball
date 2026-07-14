@@ -175,14 +175,14 @@ class MarketplaceFeeAllocation(models.Model):
         for record in self:
             record.total_deductions_alloc = (record.base_fee_alloc or 0.0) + (record.vat_input_alloc or 0.0) + (record.wht_alloc or 0.0)
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         # Auto-populate allocation base amount from invoice if not provided
-        if not vals.get('allocation_base_amount') and vals.get('invoice_id'):
-            invoice = self.env['account.move'].browse(vals['invoice_id'])
-            vals['allocation_base_amount'] = invoice.amount_untaxed
-        
-        return super().create(vals)
+        for vals in vals_list:
+            if not vals.get('allocation_base_amount') and vals.get('invoice_id'):
+                invoice = self.env['account.move'].browse(vals['invoice_id'])
+                vals['allocation_base_amount'] = invoice.amount_untaxed
+        return super().create(vals_list)
 
     @api.constrains('settlement_id', 'invoice_id')
     def _check_invoice_in_settlement(self):
