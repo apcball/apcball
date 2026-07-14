@@ -51,6 +51,7 @@ class HelpdeskTicket(models.Model):
     can_assign_to_me = fields.Boolean(compute="_compute_can_assign_to_me")
     can_set_pending_user = fields.Boolean(compute="_compute_can_set_pending_user")
     can_resume_in_progress = fields.Boolean(compute="_compute_can_resume_in_progress")
+    can_attach_files = fields.Boolean(compute="_compute_can_attach_files")
     can_edit_ticket = fields.Boolean(compute="_compute_can_edit_ticket")
     can_edit_protected_fields = fields.Boolean(compute="_compute_can_edit_protected_fields")
     company_id = fields.Many2one("res.company", default=lambda self: self.env.company, required=True, index=True)
@@ -79,6 +80,12 @@ class HelpdeskTicket(models.Model):
     def _compute_can_resume_in_progress(self):
         for ticket in self:
             ticket.can_resume_in_progress = ticket.stage_id.name == "Pending User"
+
+    @api.depends("stage_id")
+    def _compute_can_attach_files(self):
+        allowed_stages = {"Draft", "New", "In Progress", "Pending User"}
+        for ticket in self:
+            ticket.can_attach_files = ticket.stage_id.name in allowed_stages
 
     @api.depends("stage_id")
     def _compute_can_edit_ticket(self):
@@ -169,15 +176,19 @@ class HelpdeskTicket(models.Model):
     def write(self, vals):
         is_agent = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
         if not self.env.su and not is_agent:
-            if any(ticket.stage_id.name != "Draft" for ticket in self):
-                raise AccessError("Requesters cannot edit a confirmed ticket.")
-            protected = {"stage_id", "sla_id", "sla_deadline", "response_deadline", "first_response_at", "resolved_at", "sla_paused_at", "sla_paused_hours", "sla_overdue_notified_at"}
-            confirm_only_stage = self.env.context.get("helpdesk_confirm") and set(vals) <= {"stage_id"}
             attachment_fields = {"attachment_ids", "message_main_attachment_id"}
-            if attachment_fields.intersection(vals):
-                vals = {key: value for key, value in vals.items() if key not in protected}
-            if protected.intersection(vals) and not confirm_only_stage:
-                raise AccessError("Requesters cannot change assignment, workflow, SLA, or company fields.")
+            attachment_only = bool(vals) and set(vals) <= attachment_fields
+            if attachment_only:
+                allowed_stages = {"Draft", "New", "In Progress", "Pending User"}
+                if any(ticket.stage_id.name not in allowed_stages for ticket in self):
+                    raise AccessError("Attachments can only be added from Draft through Pending User.")
+            else:
+                if any(ticket.stage_id.name != "Draft" for ticket in self):
+                    raise AccessError("Requesters cannot edit a confirmed ticket.")
+                protected = {"stage_id", "sla_id", "sla_deadline", "response_deadline", "first_response_at", "resolved_at", "sla_paused_at", "sla_paused_hours", "sla_overdue_notified_at"}
+                confirm_only_stage = self.env.context.get("helpdesk_confirm") and set(vals) <= {"stage_id"}
+                if protected.intersection(vals) and not confirm_only_stage:
+                    raise AccessError("Requesters cannot change assignment, workflow, SLA, or company fields.")
         stage_updates = {}
         if "stage_id" in vals:
             target = self.env["it.helpdesk.stage"].browse(vals["stage_id"])
