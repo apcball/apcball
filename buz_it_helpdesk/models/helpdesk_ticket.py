@@ -156,9 +156,15 @@ class HelpdeskTicket(models.Model):
         records = super().create(vals_list)
         records.filtered(lambda ticket: ticket.stage_id.name != "Draft")._apply_sla()
         for ticket in records:
-            if ticket.requester_id.partner_id:
-                ticket.message_subscribe(partner_ids=[ticket.requester_id.partner_id.id])
+            partners = ticket._get_notification_partners()
+            if partners:
+                ticket.message_subscribe(partner_ids=partners.ids)
         return records
+
+    def _get_notification_partners(self):
+        self.ensure_one()
+        users = self.requester_id | self.assigned_to | self.assignee_ids
+        return users.mapped("partner_id")
 
     def _ensure_agent(self):
         if not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"):
@@ -168,7 +174,7 @@ class HelpdeskTicket(models.Model):
         activity_type = self.env.ref("mail.mail_activity_data_todo")
         summary = self._NEW_TICKET_ACTIVITY_SUMMARY
         for ticket in self:
-            team_members = ticket.team_member_ids.filtered("active")
+            team_members = (ticket.team_member_ids | ticket.assigned_to | ticket.assignee_ids).filtered("active")
             existing_user_ids = ticket.activity_ids.filtered(
                 lambda activity: activity.activity_type_id == activity_type
                 and activity.summary == summary
