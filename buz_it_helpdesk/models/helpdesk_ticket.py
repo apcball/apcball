@@ -163,6 +163,24 @@ class HelpdeskTicket(models.Model):
         if not self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent"):
             raise AccessError("Only Helpdesk Agents and Managers can change ticket status.")
 
+    def _schedule_new_ticket_activities(self):
+        activity_type = self.env.ref("mail.mail_activity_data_todo")
+        summary = "New IT Helpdesk Ticket"
+        for ticket in self:
+            team_members = ticket.team_member_ids.filtered("active")
+            existing_user_ids = ticket.activity_ids.filtered(
+                lambda activity: activity.activity_type_id == activity_type
+                and activity.summary == summary
+            ).mapped("user_id").ids
+            for member in team_members.filtered(lambda user: user.id not in existing_user_ids):
+                ticket.sudo().activity_schedule(
+                    "mail.mail_activity_data_todo",
+                    user_id=member.id,
+                    date_deadline=fields.Date.context_today(ticket),
+                    summary=summary,
+                    note="A new ticket from a user is waiting for the IT team.",
+                )
+
     def _check_stage_change(self, stage_id):
         confirm_mode = self.env.context.get("helpdesk_confirm")
         if not confirm_mode:
@@ -405,6 +423,7 @@ class HelpdeskTicket(models.Model):
                 raise UserError("The New stage is not configured for this company.")
             ticket.with_context(helpdesk_confirm=True).write({"stage_id": stage.id})
             ticket._apply_sla()
+            ticket._schedule_new_ticket_activities()
 
     def action_assign_automatically(self):
         self._ensure_agent()

@@ -42,6 +42,7 @@ class TestHelpdeskTicket(TransactionCase):
         self.assertTrue(ticket.team_id)
         self.assertTrue(ticket.can_confirm)
         self.assertTrue(ticket.can_edit_ticket)
+        ticket.team_id.write({"member_ids": [fields.Command.link(self.agent.id)]})
 
         ticket.write({"subject": "Edited while Draft", "description": "<p>Draft details</p>", "category_id": self.category.id, "priority_id": self.priority.id, "requester_id": requester.id, "team_id": ticket.team_id.id, "company_id": ticket.company_id.id})
         self.assertFalse(ticket.sla_id)
@@ -49,6 +50,11 @@ class TestHelpdeskTicket(TransactionCase):
         self.assertEqual(ticket.with_user(self.agent).stage_id.name, "New")
         self.assertFalse(ticket.can_confirm)
         self.assertFalse(ticket.can_edit_ticket)
+        activities = ticket.with_user(self.agent).activity_ids.filtered(
+            lambda activity: activity.activity_type_id == self.env.ref("mail.mail_activity_data_todo")
+            and activity.summary == "New IT Helpdesk Ticket"
+        )
+        self.assertIn(self.agent, activities.mapped("user_id"))
 
         with self.assertRaises(AccessError):
             ticket.write({"subject": "Edit after Confirm"})
