@@ -48,6 +48,7 @@ class HelpdeskTicket(models.Model):
         required=True,
     )
     can_confirm = fields.Boolean(compute="_compute_can_confirm")
+    can_assign_to_me = fields.Boolean(compute="_compute_can_assign_to_me")
     can_edit_ticket = fields.Boolean(compute="_compute_can_edit_ticket")
     can_edit_protected_fields = fields.Boolean(compute="_compute_can_edit_protected_fields")
     company_id = fields.Many2one("res.company", default=lambda self: self.env.company, required=True, index=True)
@@ -61,6 +62,11 @@ class HelpdeskTicket(models.Model):
         is_requester = current_user.has_group("buz_it_helpdesk.group_it_helpdesk_requester")
         for ticket in self:
             ticket.can_confirm = is_requester and ticket.stage_id.name == "Draft" and ticket.requester_id == current_user
+
+    @api.depends("stage_id")
+    def _compute_can_assign_to_me(self):
+        for ticket in self:
+            ticket.can_assign_to_me = ticket.stage_id.name == "New"
     @api.depends("stage_id")
     def _compute_can_edit_ticket(self):
         is_agent = self.env.user.has_group("buz_it_helpdesk.group_it_helpdesk_agent")
@@ -380,7 +386,7 @@ class HelpdeskTicket(models.Model):
                 raise UserError("A closed or cancelled ticket cannot be assigned.")
             stage = self._get_stage_for_company(ticket.company_id, "In Progress")
             if not stage:
-                raise UserError("The Assigned stage is not configured for this company.")
+                raise UserError("The In Progress stage is not configured for this company.")
             ticket.write({"assigned_to": self.env.user.id, "stage_id": stage.id})
 
     def action_resolve(self):

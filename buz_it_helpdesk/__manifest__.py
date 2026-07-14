@@ -12,6 +12,7 @@
         "security/ir.model.access.csv",
         "data/sequence.xml",
         "data/helpdesk_data.xml",
+        'data/helpdesk_migration.xml',
         "views/helpdesk_views.xml",
         "views/helpdesk_menus.xml",
         "views/helpdesk_team_views.xml",

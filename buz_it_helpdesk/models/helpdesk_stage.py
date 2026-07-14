@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class HelpdeskStage(models.Model):
@@ -14,3 +14,8 @@ class HelpdeskStage(models.Model):
     description = fields.Text()
     active = fields.Boolean(default=True)
     company_id = fields.Many2one("res.company", default=lambda self: self.env.company)
+    @api.model
+    def _archive_assigned_stage(self):
+        """Hide the legacy Assigned stage from standalone Helpdesk."""
+        stages = self.with_context(active_test=False).search([("name", "=", "Assigned")])
+        stages.write({"active": False})

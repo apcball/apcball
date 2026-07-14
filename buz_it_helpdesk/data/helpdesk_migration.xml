@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <function model="it.helpdesk.stage" name="_archive_assigned_stage"/>
+</odoo>
