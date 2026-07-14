@@ -118,26 +118,31 @@ class TestStockReservationGuard(TransactionCase):
         self.assertEqual(picking.state, "confirmed")
         self.assertFalse(picking.move_line_ids)
 
+    def _create_move_line_at_empty_location(self, picking, move, qty=1.0):
+        """Temp bypass guard to create move line from empty location."""
+        picking.write({"bypass_reservation_guard": True})
+        move.write({"quantity": qty})
+        picking.write({"bypass_reservation_guard": False})
+
     def test_block_validate_from_empty_location(self):
         picking, move = self._create_picking(self.source_empty)
-        move.write({"quantity": 1.0})
+        self._create_move_line_at_empty_location(picking, move)
 
         with self.assertRaises(UserError):
             picking.button_validate()
 
     def test_bypass_with_flag_allows_validation(self):
         picking, move = self._create_picking(self.source_empty)
+        picking.write({"bypass_reservation_guard": True})
         move.write({"quantity": 1.0})
 
-        with self.assertRaises(UserError):
-            picking.button_validate()
-
-        picking.write({"bypass_reservation_guard": True})
+        picking.button_validate()
+        self.assertEqual(picking.state, "done")
         self.assertTrue(picking.bypass_reservation_guard)
 
     def test_force_unreserve_sets_bypass_flag(self):
         picking, move = self._create_picking(self.source_empty)
-        move.write({"quantity": 1.0})
+        self._create_move_line_at_empty_location(picking, move)
 
         with self.assertRaises(UserError):
             picking.button_validate()
@@ -167,9 +172,83 @@ class TestStockReservationGuard(TransactionCase):
 
     def test_block_validate_when_physical_stock_below_demand(self):
         """Genuine shortage: physical on-hand less than demand must still block."""
-        picking, move = self._create_picking(self.source_with_stock)
-        move.write({"product_uom_qty": 10.0})
+        picking = self.env["stock.picking"].create(
+            {
+                "picking_type_id": self.internal_type.id,
+                "location_id": self.source_with_stock.id,
+                "location_dest_id": self.dest_location.id,
+            }
+        )
+        move = self.env["stock.move"].create(
+            {
+                "name": self.product.display_name,
+                "product_id": self.product.id,
+                "product_uom_qty": 10.0,
+                "product_uom": self.product.uom_id.id,
+                "picking_id": picking.id,
+                "location_id": self.source_with_stock.id,
+                "location_dest_id": self.dest_location.id,
+            }
+        )
         picking.action_confirm()
+        # Some Odoo environments auto-create move lines during confirm
+        # (e.g. partially available). Remove them to test demand vs supply.
+        if picking.move_line_ids:
+            picking.move_line_ids.unlink()
 
         with self.assertRaises(UserError):
             picking.button_validate()
+
+    def test_bypass_location_allows_create_line_from_empty(self):
+        """Bypass location setting allows creating move line from empty location."""
+        bypass_loc = self.env['stock.location'].create({
+            'name': 'Bypass Loc',
+            'location_id': self.parent_location.id,
+            'usage': 'internal',
+        })
+        self.env.company.write({
+            'bypass_reservation_guard_location_ids': [(4, bypass_loc.id)],
+        })
+        picking, move = self._create_picking(bypass_loc)
+        line = self.env['stock.move.line'].create({
+            'picking_id': picking.id,
+            'move_id': move.id,
+            'product_id': self.product.id,
+            'location_id': bypass_loc.id,
+            'location_dest_id': self.dest_location.id,
+            'quantity': 1.0,
+        })
+        self.assertEqual(line.quantity, 1.0)
+
+    def test_bypass_location_skips_assignment_block(self):
+        """Bypass location skips action_assign guard for empty location."""
+        bypass_loc = self.env['stock.location'].create({
+            'name': 'Bypass Loc Assign',
+            'location_id': self.parent_location.id,
+            'usage': 'internal',
+        })
+        self.env.company.write({
+            'bypass_reservation_guard_location_ids': [(4, bypass_loc.id)],
+        })
+        picking, move = self._create_picking(bypass_loc)
+        move.write({'product_uom_qty': 1.0})
+        picking.action_assign()
+        self.assertIn(picking.state, ('assigned', 'confirmed'))
+
+    def test_bypass_location_skips_validation_block(self):
+        """Bypass location skips button_validate guard for empty location."""
+        bypass_loc = self.env['stock.location'].create({
+            'name': 'Bypass Loc Val',
+            'location_id': self.parent_location.id,
+            'usage': 'internal',
+        })
+        self.env.company.write({
+            'bypass_reservation_guard_location_ids': [(4, bypass_loc.id)],
+        })
+        picking, move = self._create_picking(bypass_loc)
+        # Create move line via bypass location (not via action_assign which
+        # needs stock). Location in bypass list → guard skips check.
+        move.write({"quantity": 1.0})
+        # Should validate without raising UserError
+        picking.button_validate()
+        self.assertEqual(picking.state, 'done')

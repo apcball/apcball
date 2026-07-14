@@ -8,6 +8,13 @@ class WarrantyCard(models.Model):
     _description = 'Warranty Card'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'create_date desc'
+    _sql_constraints = [
+        (
+            'external_request_id_uniq',
+            'unique(external_request_id)',
+            'A warranty registration can only be imported once.',
+        ),
+    ]
 
     name = fields.Char(
         string='Warranty Number',
@@ -133,6 +140,11 @@ class WarrantyCard(models.Model):
         string='Proof of Purchase')
     registration_date = fields.Datetime(
         string='Submitted On', readonly=True, copy=False)
+    external_request_id = fields.Char(
+        string='Website Request ID', index=True, readonly=True, copy=False)
+    product_model_input = fields.Char(
+        string='Product Model / Code',
+        help='Product model or code entered by the customer on the website')
 
     @api.depends('start_date', 'product_id.product_tmpl_id.warranty_duration', 'product_id.product_tmpl_id.warranty_period_unit')
     def _compute_end_date(self):

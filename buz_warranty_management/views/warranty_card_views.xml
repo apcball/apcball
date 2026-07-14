@@ -96,6 +96,9 @@
                                         <field name="serial_number_input"
                                                invisible="source != 'portal'"
                                                placeholder="Typed by customer"/>
+                                        <field name="product_model_input"
+                                               invisible="source != 'portal'"
+                                               placeholder="Product model or code"/>
                                         <field name="product_description"
                                                invisible="source != 'portal'"
                                                placeholder="Typed by customer"/>
@@ -118,6 +121,7 @@
                                         <field name="dealer_name"/>
                                         <field name="invoice_number"/>
                                         <field name="registration_date" invisible="not registration_date"/>
+                                        <field name="external_request_id" invisible="1"/>
                                     </group>
                                     <field name="proof_attachment_ids" widget="many2many_binary"
                                            nolabel="1"/>

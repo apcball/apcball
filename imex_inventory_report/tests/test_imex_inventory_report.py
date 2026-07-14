@@ -69,6 +69,69 @@ class TestImexInventoryReport(TransactionCase):
         self.env.invalidate_all()
         return self.env["stock.move"].browse(move.id)
 
+    def _create_done_move(self, source, destination, quantity, date, reference):
+        move = self.env["stock.move"].create({
+            "name": reference,
+            "company_id": self.env.company.id,
+            "product_id": self.product.id,
+            "product_uom": self.uom_unit.id,
+            "product_uom_qty": quantity,
+            "location_id": source.id,
+            "location_dest_id": destination.id,
+            "reference": reference,
+        })
+        self.env["stock.move.line"].create({
+            "move_id": move.id,
+            "company_id": self.env.company.id,
+            "product_id": self.product.id,
+            "product_uom_id": self.uom_unit.id,
+            "quantity": quantity,
+            "quantity_product_uom": quantity,
+            "location_id": source.id,
+            "location_dest_id": destination.id,
+            "reference": reference,
+            "date": date,
+        })
+        move.write({
+            "state": "done",
+            "date": date,
+        })
+        self.env.cr.execute(
+            "UPDATE stock_move SET quantity = %s WHERE id = %s",
+            (quantity, move.id),
+        )
+        self.env.invalidate_all()
+        return self.env["stock.move"].browse(move.id)
+
+    def test_summary_initial_subtracts_outbound_external_moves(self):
+        self._create_done_move(
+            self.location_production,
+            self.location_stock,
+            5.0,
+            "2026-04-01 08:00:00",
+            "IMEX/OPENING/IN",
+        )
+        self._create_done_move(
+            self.location_stock,
+            self.location_production,
+            2.0,
+            "2026-04-02 08:00:00",
+            "IMEX/OPENING/OUT",
+        )
+        wizard = self._create_wizard(is_groupby_location=True)
+
+        self.env["imex.inventory.report"].init_results(wizard)
+        report_line = self.env["imex.inventory.report"].search(
+            [
+                ("product_id", "=", self.product.id),
+                ("location", "=", self.location_stock.id),
+            ],
+            limit=1,
+        )
+
+        self.assertTrue(report_line, "Expected report line for stock location")
+        self.assertEqual(report_line.initial, 3.0)
+
     def test_summary_report_uses_done_quantity(self):
         self._create_partial_done_move()
         wizard = self._create_wizard(is_groupby_location=False)
@@ -96,3 +159,21 @@ class TestImexInventoryReport(TransactionCase):
         self.assertTrue(report_line, "Expected detail line for test product")
         self.assertEqual(report_line.product_qty, 2.0)
         self.assertEqual(report_line.product_out, 2.0)
+
+    def test_report_details_without_filters_context(self):
+        self._create_partial_done_move()
+        wizard = self._create_wizard(is_groupby_location=True)
+        self.env["imex.inventory.report"].init_results(wizard)
+        report_line = self.env["imex.inventory.report"].search(
+            [("product_id", "=", self.product.id)],
+            limit=1,
+        )
+        self.assertTrue(report_line, "Expected report line for test product")
+
+        action = report_line.with_context(filters=None).report_details()
+
+        self.assertEqual(action["type"], "ir.actions.report")
+        self.assertEqual(
+            action["report_name"],
+            "imex_inventory_report.imex_inventory_details_report_html",
+        )

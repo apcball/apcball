@@ -25,6 +25,7 @@ class StockPicking(models.Model):
 
     def _check_exact_source_availability_for_assignment(self):
         errors = []
+        bypass_loc_ids = self.env.company.bypass_reservation_guard_location_ids.ids
         for picking in self.filtered(
             lambda p: p.picking_type_code in ("internal", "outgoing")
             and p.state not in ("done", "cancel")
@@ -34,7 +35,7 @@ class StockPicking(models.Model):
                 lambda m: m.state not in ("done", "cancel")
                 and m.product_id.type == "product"
                 and m.location_id.usage in ("internal", "transit")
-                and not m.location_id._is_reservation_guard_bypassed()
+                and m.location_id.id not in bypass_loc_ids
                 and not m._should_bypass_reservation()
             ):
                 available_qty = self.env["stock.quant"]._get_available_quantity(
@@ -73,6 +74,7 @@ class StockPicking(models.Model):
 
     def _check_exact_source_availability_for_validation(self):
         errors = []
+        bypass_loc_ids = self.env.company.bypass_reservation_guard_location_ids.ids
         for picking in self.filtered(
             lambda p: p.picking_type_code in ("internal", "outgoing")
             and p.state not in ("done", "cancel")
@@ -82,7 +84,7 @@ class StockPicking(models.Model):
             for move_line in picking.move_line_ids.filtered(
                 lambda ml: ml.product_id.type == "product"
                 and ml.location_id.usage in ("internal", "transit")
-                and not ml.location_id._is_reservation_guard_bypassed()
+                and ml.location_id.id not in bypass_loc_ids
                 and ml.quantity > 0
                 and ml.state != "cancel"
             ):
@@ -111,7 +113,7 @@ class StockPicking(models.Model):
                     lambda m: m.state not in ("done", "cancel")
                     and m.product_id.type == "product"
                     and m.location_id.usage in ("internal", "transit")
-                    and not m.location_id._is_reservation_guard_bypassed()
+                    and m.location_id.id not in bypass_loc_ids
                 ):
                     key = (
                         move.product_id.id,

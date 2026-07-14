@@ -217,7 +217,6 @@ class ImexInventoryReport(models.Model):
                             and template.categ_id in %s
                             and CAST(move.date AS date) <= %s
                             and location_src.usage = 'internal'
-                            and location_dest.usage = 'internal'
                         UNION ALL
                         SELECT
                             move.date, move.product_id,
@@ -383,6 +382,6 @@ class ImexInventoryReport(models.Model):
         return res
 
     def report_details(self):
-        filters = self._context.get("filters")
+        filters = dict(self._context.get("filters") or {})
         filters["product_ids"] = [(6, 0, self.product_id.ids)]
         return self.env["imex.inventory.details.report"].view_report_details(filters)
