@@ -10,6 +10,7 @@ class HelpdeskTicket(models.Model):
     _check_company_auto = True
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "priority_id desc, create_date desc"
+    _NEW_TICKET_ACTIVITY_SUMMARY = "New IT Helpdesk Ticket"
 
     name = fields.Char(string="Ticket No", required=True, copy=False, readonly=True, default="New", index=True)
     subject = fields.Char(required=True, tracking=True)
@@ -165,7 +166,7 @@ class HelpdeskTicket(models.Model):
 
     def _schedule_new_ticket_activities(self):
         activity_type = self.env.ref("mail.mail_activity_data_todo")
-        summary = "New IT Helpdesk Ticket"
+        summary = self._NEW_TICKET_ACTIVITY_SUMMARY
         for ticket in self:
             team_members = ticket.team_member_ids.filtered("active")
             existing_user_ids = ticket.activity_ids.filtered(
@@ -180,6 +181,16 @@ class HelpdeskTicket(models.Model):
                     summary=summary,
                     note="A new ticket from a user is waiting for the IT team.",
                 )
+
+    def action_clear_new_ticket_activity(self):
+        activity_type = self.env.ref("mail.mail_activity_data_todo")
+        activities = self.mapped("activity_ids").filtered(
+            lambda activity: activity.user_id == self.env.user
+            and activity.activity_type_id == activity_type
+            and activity.summary == self._NEW_TICKET_ACTIVITY_SUMMARY
+        )
+        activities.unlink()
+        return True
 
     def _check_stage_change(self, stage_id):
         confirm_mode = self.env.context.get("helpdesk_confirm")

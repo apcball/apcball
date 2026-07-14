@@ -21,6 +21,7 @@
     ],
     "assets": {
         "web.assets_backend": [
+            "buz_it_helpdesk/static/src/js/helpdesk_activity_auto_clear.js",
             "buz_it_helpdesk/static/src/js/helpdesk_attachment_preview_field.js",
             "buz_it_helpdesk/static/src/xml/helpdesk_attachment_preview_field.xml",
         ],

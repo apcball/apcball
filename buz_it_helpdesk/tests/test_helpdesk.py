@@ -55,6 +55,8 @@ class TestHelpdeskTicket(TransactionCase):
             and activity.summary == "New IT Helpdesk Ticket"
         )
         self.assertIn(self.agent, activities.mapped("user_id"))
+        ticket.with_user(self.agent).action_clear_new_ticket_activity()
+        self.assertFalse(activities.exists())
 
         with self.assertRaises(AccessError):
             ticket.write({"subject": "Edit after Confirm"})
