@@ -18,6 +18,7 @@
         'data/etax_data.xml',
         'views/etax_config_views.xml',
         'views/etax_transaction_views.xml',
+        'views/partner_views.xml',
     ],
     'demo': [],
     'installable': True,

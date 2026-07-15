@@ -6,15 +6,25 @@
             <div class="spe-filter-bar">
                 <div class="spe-filters">
                     <div class="spe-field">
-                        <label>Source</label>
-                        <div class="spe-chips">
-                            <button t-att-class="state.filters.source === '' ? 'spe-chip active' : 'spe-chip'"
-                                    t-on-click="() => this.setSource('')">All</button>
-                            <button t-att-class="state.filters.source === 'sale' ? 'spe-chip active' : 'spe-chip'"
-                                    t-on-click="() => this.setSource('sale')">Sales</button>
-                            <button t-att-class="state.filters.source === 'pos' ? 'spe-chip active' : 'spe-chip'"
-                                    t-on-click="() => this.setSource('pos')">POS</button>
-                        </div>
+                        <label>Company</label>
+                        <select name="company_id" t-on-change="onFilter">
+                            <option value="">All Companies</option>
+                            <option t-foreach="state.options.companies" t-as="c"
+                                    t-key="c.id" t-att-value="c.id"
+                                    t-att-selected="state.filters.company_id == c.id ? 'selected' : undefined">
+                                <t t-esc="c.name"/>
+                            </option>
+                        </select>
+                    </div>
+                    <div class="spe-field">
+                        <label>Period</label>
+                        <select name="period" t-on-change="onPeriod">
+                            <option value="this_month" t-att-selected="state.filters.period === 'this_month' ? 'selected' : undefined">This Month</option>
+                            <option value="last_month" t-att-selected="state.filters.period === 'last_month' ? 'selected' : undefined">Last Month</option>
+                            <option value="this_quarter" t-att-selected="state.filters.period === 'this_quarter' ? 'selected' : undefined">This Quarter</option>
+                            <option value="this_year" t-att-selected="state.filters.period === 'this_year' ? 'selected' : undefined">This Year</option>
+                            <option value="custom" t-att-selected="state.filters.period === 'custom' ? 'selected' : undefined">Custom</option>
+                        </select>
                     </div>
                     <div class="spe-field">
                         <label>From</label>
@@ -29,22 +39,12 @@
                                t-on-change="onFilter"/>
                     </div>
                     <div class="spe-field">
-                        <label>Company</label>
-                        <select name="company_id" t-on-change="onFilter">
-                            <option value="">All</option>
-                            <option t-foreach="state.options.companies" t-as="c"
-                                    t-key="c.id" t-att-value="c.id">
-                                <t t-esc="c.name"/>
-                            </option>
-                        </select>
-                    </div>
-                    <div class="spe-field">
-                        <label>Team</label>
+                        <label>Sales Team</label>
                         <select name="team_id" t-on-change="onFilter">
                             <option value="">All</option>
-                            <option t-foreach="state.options.teams" t-as="t"
-                                    t-key="t.id" t-att-value="t.id">
-                                <t t-esc="t.name"/>
+                            <option t-foreach="state.options.teams" t-as="tm"
+                                    t-key="tm.id" t-att-value="tm.id">
+                                <t t-esc="tm.name"/>
                             </option>
                         </select>
                     </div>
@@ -69,203 +69,262 @@
                         </select>
                     </div>
                     <div class="spe-field">
-                        <label>Category</label>
-                        <select name="categ_id" t-on-change="onFilter">
-                            <option value="">All</option>
-                            <option t-foreach="state.options.categories" t-as="c"
-                                    t-key="c.id" t-att-value="c.id">
-                                <t t-esc="c.name"/>
-                            </option>
-                        </select>
+                        <label>Source</label>
+                        <div class="spe-chips">
+                            <button t-att-class="state.filters.source === '' ? 'spe-chip active' : 'spe-chip'"
+                                    t-on-click="() => this.setSource('')">All</button>
+                            <button t-att-class="state.filters.source === 'sale' ? 'spe-chip active' : 'spe-chip'"
+                                    t-on-click="() => this.setSource('sale')">Sales</button>
+                            <button t-att-class="state.filters.source === 'pos' ? 'spe-chip active' : 'spe-chip'"
+                                    t-on-click="() => this.setSource('pos')">POS</button>
+                        </div>
                     </div>
                     <div class="spe-field spe-apply">
-                        <button class="btn btn-primary" t-on-click="applyFilters">Apply</button>
+                        <button class="btn btn-primary" t-on-click="applyFilters">
+                            <i class="fa fa-filter me-1"/>Filters
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div t-if="state.loading" class="spe-loading">Loading…</div>
+            <div t-if="state.loading" class="spe-loading">
+                <i class="fa fa-spinner fa-spin me-2"/>Loading…
+            </div>
 
             <div t-else="">
                 <!-- KPI cards -->
                 <div class="spe-kpi-row">
-                    <div class="spe-kpi-card spe-accent-slate spe-clickable" t-on-click="() =&gt; this.drill('orders')">
-                        <div class="spe-kpi-icon"><i class="fa fa-bullseye"/></div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() => this.drill('so')">
+                        <div class="spe-kpi-icon spe-ic-blue"><i class="fa fa-file-text-o"/></div>
                         <div class="spe-kpi-body">
-                            <div class="spe-kpi-label">Target</div>
-                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.target)"/>
+                            <div class="spe-kpi-label">Sales Order</div>
+                            <div class="spe-kpi-value"><t t-esc="fmtCompact(kpiAmount('so'))"/> <span class="spe-kpi-cur">THB</span></div>
+                            <div t-att-class="deltaClass('so')" t-esc="fmtDelta('so')"/>
+                            <div class="spe-kpi-sub"><t t-esc="fmtNum(kpiCount('so'))"/> Orders</div>
                         </div>
                     </div>
-                    <div class="spe-kpi-card spe-accent-teal spe-clickable" t-on-click="() =&gt; this.drill('results')">
-                        <div class="spe-kpi-icon"><i class="fa fa-line-chart"/></div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() => this.drill('do')">
+                        <div class="spe-kpi-icon spe-ic-purple"><i class="fa fa-truck"/></div>
                         <div class="spe-kpi-body">
-                            <div class="spe-kpi-label">Actual</div>
-                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.actual)"/>
-                            <div t-att-class="deltaClass('actual')" t-esc="fmtDelta('actual')"/>
+                            <div class="spe-kpi-label">Delivery Order</div>
+                            <div class="spe-kpi-value"><t t-esc="fmtCompact(kpiAmount('delivery'))"/> <span class="spe-kpi-cur">THB</span></div>
+                            <div t-att-class="deltaClass('delivery')" t-esc="fmtDelta('delivery')"/>
+                            <div class="spe-kpi-sub"><t t-esc="fmtNum(kpiCount('delivery'))"/> Deliveries</div>
                         </div>
                     </div>
-                    <div class="spe-kpi-card spe-accent-teal">
-                        <div class="spe-kpi-ring"
-                             t-attf-style="--pct: {{ cap100(state.kpi.achievement) }}">
-                            <span t-esc="fmtPct(state.kpi.achievement)"/>
-                        </div>
-                        <div class="spe-kpi-body">
-                            <div class="spe-kpi-label">Achievement</div>
-                        </div>
-                    </div>
-                    <div class="spe-kpi-card spe-accent-indigo">
-                        <div class="spe-kpi-icon"><i class="fa fa-flag-checkered"/></div>
-                        <div class="spe-kpi-body">
-                            <div class="spe-kpi-label">Forecast</div>
-                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.forecast)"/>
-                        </div>
-                    </div>
-                    <div class="spe-kpi-card spe-accent-green spe-clickable" t-on-click="() =&gt; this.drill('invoices')">
-                        <div class="spe-kpi-icon"><i class="fa fa-file-text-o"/></div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() => this.drill('invoice')">
+                        <div class="spe-kpi-icon spe-ic-orange"><i class="fa fa-file-o"/></div>
                         <div class="spe-kpi-body">
                             <div class="spe-kpi-label">Invoice</div>
-                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.invoice_amount)"/>
-                            <div t-att-class="deltaClass('invoice_amount')" t-esc="fmtDelta('invoice_amount')"/>
+                            <div class="spe-kpi-value"><t t-esc="fmtCompact(kpiAmount('invoice'))"/> <span class="spe-kpi-cur">THB</span></div>
+                            <div t-att-class="deltaClass('invoice')" t-esc="fmtDelta('invoice')"/>
+                            <div class="spe-kpi-sub"><t t-esc="fmtNum(kpiCount('invoice'))"/> Invoices</div>
                         </div>
                     </div>
-                    <div class="spe-kpi-card spe-accent-red spe-clickable" t-on-click="() =&gt; this.drill('credit_notes')">
-                        <div class="spe-kpi-icon"><i class="fa fa-undo"/></div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() => this.drill('payment')">
+                        <div class="spe-kpi-icon spe-ic-green"><i class="fa fa-money"/></div>
                         <div class="spe-kpi-body">
-                            <div class="spe-kpi-label">Refund</div>
-                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.refund_amount)"/>
+                            <div class="spe-kpi-label">Payment Received</div>
+                            <div class="spe-kpi-value"><t t-esc="fmtCompact(kpiAmount('payment'))"/> <span class="spe-kpi-cur">THB</span></div>
+                            <div t-att-class="deltaClass('payment')" t-esc="fmtDelta('payment')"/>
+                            <div class="spe-kpi-sub"><t t-esc="fmtNum(kpiCount('payment'))"/> Invoices</div>
                         </div>
                     </div>
-                    <div class="spe-kpi-card spe-accent-amber spe-clickable" t-on-click="() =&gt; this.drill('deliveries')">
-                        <div class="spe-kpi-icon"><i class="fa fa-truck"/></div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() => this.drill('backlog')">
+                        <div class="spe-kpi-icon spe-ic-amber"><i class="fa fa-cube"/></div>
                         <div class="spe-kpi-body">
-                            <div class="spe-kpi-label">Delivery %</div>
-                            <div class="spe-kpi-value" t-esc="fmtPct(state.kpi.delivery_pct)"/>
+                            <div class="spe-kpi-label">Backlog (Not Delivered)</div>
+                            <div class="spe-kpi-value"><t t-esc="fmtCompact(kpiAmount('backlog'))"/> <span class="spe-kpi-cur">THB</span></div>
+                            <div t-att-class="deltaClass('backlog', true)" t-esc="fmtDelta('backlog')"/>
+                            <div class="spe-kpi-sub"><t t-esc="fmtNum(kpiCount('backlog'))"/> Orders</div>
                         </div>
                     </div>
-                    <div class="spe-kpi-card spe-accent-slate">
-                        <div class="spe-kpi-icon"><i class="fa fa-hourglass-half"/></div>
+                    <div class="spe-kpi-card spe-clickable" t-on-click="() => this.drill('overdue')">
+                        <div class="spe-kpi-icon spe-ic-red"><i class="fa fa-exclamation-triangle"/></div>
                         <div class="spe-kpi-body">
-                            <div class="spe-kpi-label">Remaining</div>
-                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.remaining)"/>
-                        </div>
-                    </div>
-                    <div class="spe-kpi-card spe-accent-indigo">
-                        <div class="spe-kpi-icon"><i class="fa fa-calendar-o"/></div>
-                        <div class="spe-kpi-body">
-                            <div class="spe-kpi-label">Avg Daily</div>
-                            <div class="spe-kpi-value" t-esc="fmtMoney(state.kpi.avg_daily)"/>
+                            <div class="spe-kpi-label">Overdue (Not Paid)</div>
+                            <div class="spe-kpi-value"><t t-esc="fmtCompact(kpiAmount('overdue'))"/> <span class="spe-kpi-cur">THB</span></div>
+                            <div t-att-class="deltaClass('overdue', true)" t-esc="fmtDelta('overdue')"/>
+                            <div class="spe-kpi-sub"><t t-esc="fmtNum(kpiCount('overdue'))"/> Invoices</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Sales vs Target -->
-                <div class="spe-chart-block">
-                    <div class="spe-chart-title">Sales vs Target</div>
-                    <div class="spe-chart-box">
-                        <canvas t-ref="salesVsTargetChart"/>
+                <!-- Funnel | Trend | By Company -->
+                <div class="spe-grid-3">
+                    <div class="spe-card">
+                        <div class="spe-card-title">Sales Funnel</div>
+                        <div class="spe-funnel">
+                            <div t-foreach="state.funnel" t-as="stage" t-key="stage.key"
+                                 class="spe-funnel-row">
+                                <div class="spe-funnel-info">
+                                    <div class="spe-funnel-label" t-esc="stage.label"/>
+                                    <div class="spe-funnel-amount">
+                                        <t t-esc="fmtCompact(stage.amount)"/> THB
+                                    </div>
+                                </div>
+                                <div class="spe-funnel-bar-wrap">
+                                    <div t-attf-class="spe-funnel-bar spe-funnel-{{stage_index}}"
+                                         t-attf-style="width: {{funnelWidth(stage_index)}}%"/>
+                                </div>
+                                <div class="spe-funnel-pct" t-if="stage_index > 0"
+                                     t-esc="fmtPct(stage.pct)"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="spe-card spe-span-2">
+                        <div class="spe-card-title">Sales Trend</div>
+                        <div class="spe-chart-box">
+                            <canvas t-ref="trendChart"/>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Two columns -->
+                <div class="spe-grid-3">
+                    <div class="spe-card spe-span-2">
+                        <div class="spe-card-title">Sales by Company</div>
+                        <div class="spe-chart-box">
+                            <canvas t-ref="byCompanyChart"/>
+                        </div>
+                    </div>
+                    <div class="spe-card">
+                        <div class="spe-card-title">Sales by Category</div>
+                        <div class="spe-chart-box">
+                            <canvas t-ref="byCategoryChart"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Salesperson table | Top customers -->
                 <div class="spe-grid-2">
-                    <div class="spe-chart-block">
-                        <div class="spe-chart-title">Daily Sales</div>
-                        <div class="spe-chart-box">
-                            <canvas t-ref="dailyChart"/>
+                    <div class="spe-card">
+                        <div class="spe-card-title">Performance by Salesperson</div>
+                        <div class="spe-table-wrap">
+                            <table class="spe-table">
+                                <thead>
+                                    <tr>
+                                        <th>Salesperson</th>
+                                        <th class="spe-num">Sales Order</th>
+                                        <th class="spe-num">DO</th>
+                                        <th class="spe-num">Invoice</th>
+                                        <th class="spe-num">Payment</th>
+                                        <th class="spe-num">Target</th>
+                                        <th>Achieve (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="state.salespersonRows" t-as="row" t-key="row.id">
+                                        <td t-esc="row.name"/>
+                                        <td class="spe-num" t-esc="fmtCompact(row.so)"/>
+                                        <td class="spe-num" t-esc="fmtCompact(row.delivery)"/>
+                                        <td class="spe-num" t-esc="fmtCompact(row.invoice)"/>
+                                        <td class="spe-num" t-esc="fmtCompact(row.payment)"/>
+                                        <td class="spe-num" t-esc="fmtCompact(row.target)"/>
+                                        <td>
+                                            <div class="spe-progress" t-att-title="fmtPct(row.achieve)">
+                                                <div t-attf-class="spe-progress-fill {{row.achieve >= 100 ? 'spe-pg-green' : (row.achieve >= 70 ? 'spe-pg-amber' : 'spe-pg-red')}}"
+                                                     t-attf-style="width: {{cap100(row.achieve)}}%"/>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="!state.salespersonRows.length">
+                                        <td colspan="7" class="spe-empty">No data</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    <div class="spe-chart-block">
-                        <div class="spe-chart-title">Monthly Sales</div>
-                        <div class="spe-chart-box">
-                            <canvas t-ref="monthlyChart"/>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="spe-grid-2">
-                    <div class="spe-chart-block">
-                        <div class="spe-chart-title">Delivery Trend</div>
-                        <div class="spe-chart-box">
-                            <canvas t-ref="deliveryChart"/>
-                        </div>
-                    </div>
-                    <div class="spe-chart-block">
-                        <div class="spe-chart-title">Invoice / Credit Note</div>
-                        <div class="spe-chart-box">
-                            <canvas t-ref="invoiceRefundChart"/>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="spe-grid-2">
-                    <div class="spe-chart-block">
-                        <div class="spe-chart-title">Top Customers</div>
-                        <div class="spe-chart-box">
+                    <div class="spe-card">
+                        <div class="spe-card-title">Top 10 Customers by Sales Order</div>
+                        <div class="spe-chart-box spe-chart-tall">
                             <canvas t-ref="topCustomersChart"/>
                         </div>
                     </div>
-                    <div class="spe-chart-block">
-                        <div class="spe-chart-title">Top Products</div>
-                        <div class="spe-chart-box">
-                            <canvas t-ref="topProductsChart"/>
-                        </div>
-                    </div>
                 </div>
 
-                <div class="spe-grid-2">
-                    <div class="spe-chart-block">
-                        <div class="spe-chart-title">Top Salespersons</div>
-                        <div class="spe-chart-box">
-                            <canvas t-ref="topSalespersonsChart"/>
+                <!-- Follow-up tabs | Comparison -->
+                <div class="spe-grid-3">
+                    <div class="spe-card spe-span-2">
+                        <div class="spe-tabs">
+                            <button t-att-class="state.activeTab === 'so_follow_up' ? 'spe-tab active' : 'spe-tab'"
+                                    t-on-click="() => this.setTab('so_follow_up')">Sales Orders to Follow Up</button>
+                            <button t-att-class="state.activeTab === 'deliveries' ? 'spe-tab active' : 'spe-tab'"
+                                    t-on-click="() => this.setTab('deliveries')">Deliveries to Process</button>
+                            <button t-att-class="state.activeTab === 'invoices_to_process' ? 'spe-tab active' : 'spe-tab'"
+                                    t-on-click="() => this.setTab('invoices_to_process')">Invoices to Process</button>
+                            <button t-att-class="state.activeTab === 'overdue' ? 'spe-tab active' : 'spe-tab'"
+                                    t-on-click="() => this.setTab('overdue')">Overdue Invoices</button>
+                        </div>
+                        <div class="spe-table-wrap">
+                            <table class="spe-table">
+                                <thead>
+                                    <tr>
+                                        <th>Document</th>
+                                        <th>Customer</th>
+                                        <th>Date</th>
+                                        <th>Salesperson</th>
+                                        <th>Company</th>
+                                        <th class="spe-num">Total</th>
+                                        <th>Status</th>
+                                        <th>Next Activity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="state.followups" t-as="row"
+                                        t-key="row.res_model + '-' + row.id"
+                                        class="spe-clickable"
+                                        t-on-click="() => this.openRecord(row)">
+                                        <td class="spe-doc" t-esc="row.name"/>
+                                        <td t-esc="row.partner"/>
+                                        <td t-esc="row.date"/>
+                                        <td t-esc="row.salesperson"/>
+                                        <td t-esc="row.company"/>
+                                        <td class="spe-num" t-esc="fmtMoney(row.amount)"/>
+                                        <td>
+                                            <span t-attf-class="spe-badge spe-badge-{{row.status_class}}"
+                                                  t-esc="row.status"/>
+                                        </td>
+                                        <td>
+                                            <span t-if="row.activity">
+                                                <i class="fa fa-clock-o me-1"/>
+                                                <t t-esc="row.activity"/>
+                                                <span class="spe-muted" t-if="row.activity_date">
+                                                    (<t t-esc="row.activity_date"/>)
+                                                </span>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="!state.followups.length">
+                                        <td colspan="8" class="spe-empty">Nothing to follow up 🎉</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    <div class="spe-chart-block">
-                        <div class="spe-chart-title">Top Teams</div>
-                        <div class="spe-chart-box">
-                            <canvas t-ref="topTeamsChart"/>
+                    <div class="spe-card">
+                        <div class="spe-card-title">Comparison (This Month vs Last Month)</div>
+                        <div class="spe-comparison">
+                            <div class="spe-comp-row">
+                                <div class="spe-comp-label">Sales Order</div>
+                                <div t-att-class="compDeltaClass('so')" t-esc="fmtCompDelta('so')"/>
+                                <div class="spe-spark"><canvas t-ref="sparkSo"/></div>
+                            </div>
+                            <div class="spe-comp-row">
+                                <div class="spe-comp-label">Delivery Order</div>
+                                <div t-att-class="compDeltaClass('delivery')" t-esc="fmtCompDelta('delivery')"/>
+                                <div class="spe-spark"><canvas t-ref="sparkDelivery"/></div>
+                            </div>
+                            <div class="spe-comp-row">
+                                <div class="spe-comp-label">Invoice</div>
+                                <div t-att-class="compDeltaClass('invoice')" t-esc="fmtCompDelta('invoice')"/>
+                                <div class="spe-spark"><canvas t-ref="sparkInvoice"/></div>
+                            </div>
+                            <div class="spe-comp-row">
+                                <div class="spe-comp-label">Payment</div>
+                                <div t-att-class="compDeltaClass('payment')" t-esc="fmtCompDelta('payment')"/>
+                                <div class="spe-spark"><canvas t-ref="sparkPayment"/></div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Leaderboards -->
-                <div class="spe-grid-2">
-                    <div class="spe-leaderboard">
-                        <div class="spe-chart-title">Salesperson Ranking</div>
-                        <table class="spe-table">
-                            <thead>
-                                <tr><th>#</th><th>Salesperson</th>
-                                    <th class="spe-num">Net</th>
-                                    <th class="spe-num">Refund</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="state.leaderboardSalespersons" t-as="row"
-                                    t-key="row.id">
-                                    <td><span t-att-class="rankClass(row_index)" t-esc="row_index + 1"/></td>
-                                    <td t-esc="row.name"/>
-                                    <td class="spe-num" t-esc="fmtMoney(row.net)"/>
-                                    <td class="spe-num" t-esc="fmtMoney(row.refund)"/>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="spe-leaderboard">
-                        <div class="spe-chart-title">Team Ranking</div>
-                        <table class="spe-table">
-                            <thead>
-                                <tr><th>#</th><th>Team</th>
-                                    <th class="spe-num">Net</th>
-                                    <th class="spe-num">Refund</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="state.leaderboardTeams" t-as="row"
-                                    t-key="row.id">
-                                    <td><span t-att-class="rankClass(row_index)" t-esc="row_index + 1"/></td>
-                                    <td t-esc="row.name"/>
-                                    <td class="spe-num" t-esc="fmtMoney(row.net)"/>
-                                    <td class="spe-num" t-esc="fmtMoney(row.refund)"/>
-                                </tr>
-                            </tbody>
-                        </table>
                     </div>
                 </div>
             </div>

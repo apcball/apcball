@@ -18,10 +18,12 @@ automatically at the sale-order-line granularity via a summary table
 Features
 --------
 * Salesperson / Sales Team / Company targets (daily, monthly, quarterly, yearly)
-* Real-time OWL dashboard (Chart.js, no extra JS dependency)
-* KPI cards, sales-vs-target, delivery / invoice / refund trends,
-  top customers / products / salespersons / teams, leaderboards
-* Drill-downs to invoices, deliveries, sale orders, credit notes
+* Real-time OWL pipeline dashboard (Chart.js, no extra JS dependency):
+  KPI cards (Sales Order / Delivery / Invoice / Payment / Backlog / Overdue),
+  sales funnel, sales trend, sales by company / category,
+  performance by salesperson with target achievement,
+  top customers, follow-up work lists, month-over-month comparison
+* Drill-downs to sale orders, deliveries, invoices, overdue invoices
 * Event-driven incremental recompute + nightly safety-net cron
 * Multi-company, multi-currency
 * 3-tier security: own records / own team / all
