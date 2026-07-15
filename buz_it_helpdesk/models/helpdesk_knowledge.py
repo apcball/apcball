@@ -16,11 +16,23 @@ class HelpdeskKnowledgeArticle(models.Model):
     company_id = fields.Many2one("res.company", default=lambda self: self.env.company, required=True)
     published_date = fields.Datetime(readonly=True)
     ticket_ids = fields.Many2many("it.helpdesk.ticket", string="Tickets Using This Article", readonly=True)
-    usage_count = fields.Integer(compute="_compute_usage_count")
+    usage_count = fields.Integer(compute="_compute_usage_count", search="_search_usage_count")
 
     def _compute_usage_count(self):
         for article in self:
             article.usage_count = len(article.ticket_ids)
+
+    def _search_usage_count(self, operator, value):
+        """Search articles by whether they are used on at least one ticket."""
+        if operator not in (">", ">=", "=", "!=", "<", "<="):
+            return [("id", "in", [])]
+        used_ids = self.env["it.helpdesk.ticket"].search([( "knowledge_article_ids", "!=", False)]).mapped("knowledge_article_ids").ids
+        value = int(value)
+        if (operator in (">", ">=") and value <= 0) or (operator == "!=" and value == 0):
+            return [("id", "in", used_ids)]
+        if operator in ("=", "<", "<=") and value == 0:
+            return [("id", "not in", used_ids)]
+        return [("id", "in", used_ids)]
 
     def action_create_ticket(self):
         self.ensure_one()

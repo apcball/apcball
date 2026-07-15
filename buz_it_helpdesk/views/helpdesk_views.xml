@@ -79,6 +79,7 @@
     <record id="action_helpdesk_categories" model="ir.actions.act_window"><field name="name">Categories</field><field name="res_model">it.helpdesk.category</field><field name="view_mode">tree,form</field></record>
     <record id="action_helpdesk_priorities" model="ir.actions.act_window"><field name="name">Priorities</field><field name="res_model">it.helpdesk.priority</field><field name="view_mode">tree,form</field></record>
     <record id="action_helpdesk_slas" model="ir.actions.act_window"><field name="name">SLA</field><field name="res_model">it.helpdesk.sla</field><field name="view_mode">tree,form</field></record>
-    <record id="action_helpdesk_articles" model="ir.actions.act_window"><field name="name">Knowledge Base</field><field name="res_model">it.helpdesk.knowledge.article</field><field name="view_mode">tree,form</field></record>
+    <record id="action_helpdesk_articles" model="ir.actions.act_window"><field name="name">All Articles</field><field name="res_model">it.helpdesk.knowledge.article</field><field name="view_mode">tree,form</field></record>
+    <record id="action_helpdesk_articles_used" model="ir.actions.act_window"><field name="name">Knowledge Articles Used</field><field name="res_model">it.helpdesk.knowledge.article</field><field name="view_mode">tree,form</field><field name="domain">[("usage_count", "&gt;", 0)]</field></record>
     <record id="action_helpdesk_tags" model="ir.actions.act_window"><field name="name">Tags</field><field name="res_model">it.helpdesk.tag</field><field name="view_mode">tree,form</field></record>
 </odoo>
