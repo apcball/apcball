@@ -1,6 +1,13 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_ticket_requester,ticket requester,model_it_helpdesk_ticket,buz_it_helpdesk.group_it_helpdesk_requester,1,1,1,0
 access_ticket_manager,ticket manager,model_it_helpdesk_ticket,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
+access_ticket_agent,ticket agent,model_it_helpdesk_ticket,buz_it_helpdesk.group_it_helpdesk_agent,1,1,1,0
+access_stage_agent,stage agent,model_it_helpdesk_stage,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
+access_category_agent,category agent,model_it_helpdesk_category,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
+access_priority_agent,priority agent,model_it_helpdesk_priority,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
+access_tag_agent,tag agent,model_it_helpdesk_tag,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
+access_article_agent,article agent,model_it_helpdesk_knowledge_article,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
+access_team_agent,team agent,model_it_helpdesk_team,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
 access_stage_user,stage user,model_it_helpdesk_stage,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
 access_stage_manager,stage manager,model_it_helpdesk_stage,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
 access_category_user,category user,model_it_helpdesk_category,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
@@ -16,3 +23,4 @@ access_article_manager,article manager,model_it_helpdesk_knowledge_article,buz_i
 access_team_user,team user,model_it_helpdesk_team,buz_it_helpdesk.group_it_helpdesk_requester,1,0,0,0
 access_team_manager,team manager,model_it_helpdesk_team,buz_it_helpdesk.group_it_helpdesk_manager,1,1,1,1
 access_report_agent,report agent,model_it_helpdesk_ticket_report,buz_it_helpdesk.group_it_helpdesk_agent,1,0,0,0
+access_report_manager,report manager,model_it_helpdesk_ticket_report,buz_it_helpdesk.group_it_helpdesk_manager,1,0,0,0

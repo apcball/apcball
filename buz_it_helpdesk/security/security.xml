@@ -12,12 +12,12 @@
     <record id="group_it_helpdesk_agent" model="res.groups">
         <field name="name">Support Agent</field>
         <field name="category_id" ref="module_category_it_helpdesk"/>
-        <field name="implied_ids" eval="[(4, ref('group_it_helpdesk_requester'))]"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
     </record>
     <record id="group_it_helpdesk_manager" model="res.groups">
         <field name="name">Helpdesk Manager</field>
         <field name="category_id" ref="module_category_it_helpdesk"/>
-        <field name="implied_ids" eval="[(4, ref('group_it_helpdesk_agent'))]"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
     </record>
 
     <record id="rule_ticket_requester" model="ir.rule">

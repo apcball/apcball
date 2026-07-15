@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_it_helpdesk_root" name="IT Management" sequence="10" groups="buz_it_helpdesk.group_it_helpdesk_requester,buz_it_helpdesk.group_it_helpdesk_agent"/>
+    <menuitem id="menu_it_helpdesk_root" name="IT Management" sequence="10" groups="buz_it_helpdesk.group_it_helpdesk_requester,buz_it_helpdesk.group_it_helpdesk_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_it_helpdesk_dashboard" name="Dashboard" parent="menu_it_helpdesk_root" action="action_helpdesk_dashboard" sequence="1" groups="buz_it_helpdesk.group_it_helpdesk_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_it_helpdesk" name="Helpdesk" parent="menu_it_helpdesk_root" sequence="10" groups="buz_it_helpdesk.group_it_helpdesk_requester,buz_it_helpdesk.group_it_helpdesk_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_it_helpdesk_tickets" name="Tickets" parent="menu_it_helpdesk" action="action_helpdesk_tickets" sequence="1" groups="buz_it_helpdesk.group_it_helpdesk_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
