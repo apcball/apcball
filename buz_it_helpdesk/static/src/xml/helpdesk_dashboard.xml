@@ -1,10 +1,10 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="buz_it_helpdesk.HelpdeskDashboard">
         <div class="o_helpdesk_dashboard container-fluid py-3">
             <div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="mb-0">IT Helpdesk Overview</h2><span class="text-muted">Ticket and SLA summary</span></div><button class="btn btn-outline-secondary" t-on-click="resetFilters"><i class="fa fa-refresh me-1"/> Reset</button></div>
             <div class="card shadow-sm mb-3"><div class="card-body"><div class="row g-2">
-                <t t-foreach="[['company_id','Company','companies'],['team_id','Helpdesk Team','teams'],['assignee_id','Assignee','assignees'],['priority_id','Priority','priorities'],['category_id','Category','categories']]" t-as="filter" t-key="filter[0]"><div class="col-12 col-md-2"><label class="form-label" t-esc="filter[1]"/><select class="form-select" t-att-name="filter[0]" t-on-change="onFilterChange"><option value="">All</option><t t-foreach="state.data?.options?.[filter[2]] || []" t-as="option" t-key="option.id"><option t-att-value="option.id" t-att-selected="String(state.filters[filter[0]]) === String(option.id)" t-esc="option.label"/></t></select></div></t>
+                <t t-foreach="[['company_id','Company','companies'],['team_id','Helpdesk Team','teams'],['assignee_id','Assignee','assignees'],['priority_id','Priority','priorities'],['category_id','Category','categories']]" t-as="filter" t-key="filter[0]"><div class="col-12 col-md-2"><label class="form-label" t-esc="filter[1]"/><select class="form-select" t-att-name="filter[0]" t-on-change="onFilterChange"><option value="">All</option><t t-foreach="state.data?.options?.[filter[2]] || []" t-as="option" t-key="option.id"><option t-att-value="option.id" t-att-selected="state.filters[filter[0]] == option.id" t-esc="option.label"/></t></select></div></t>
                 <div class="col-12 col-md-2"><label class="form-label">Date From</label><input class="form-control" type="date" name="date_from" t-att-value="state.filters.date_from" t-on-change="onFilterChange"/></div><div class="col-12 col-md-2"><label class="form-label">Date To</label><input class="form-control" type="date" name="date_to" t-att-value="state.filters.date_to" t-on-change="onFilterChange"/></div>
             </div></div></div>
             <div t-if="state.loading" class="text-center py-5"><i class="fa fa-spinner fa-spin fa-2x"/></div>
