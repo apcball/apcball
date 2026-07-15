@@ -1,8 +1,403 @@
-﻿.o_helpdesk_dashboard .o_helpdesk_kpi { border: 0; transition: transform .15s ease, box-shadow .15s ease; }
-.o_helpdesk_dashboard .o_helpdesk_kpi:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.12) !important; }
-.o_helpdesk_dashboard .o_helpdesk_bar-row { display: flex; align-items: center; gap: .75rem; width: 100%; border: 0; background: transparent; padding: .35rem 0; text-align: left; }
-.o_helpdesk_dashboard .o_helpdesk_bar-row:hover { background: rgba(0,0,0,.03); }
-.o_helpdesk_dashboard .o_helpdesk_bar-label { width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.o_helpdesk_dashboard .o_helpdesk_bar-track { flex: 1; height: .7rem; background: #e9ecef; border-radius: 1rem; overflow: hidden; }
-.o_helpdesk_dashboard .o_helpdesk_bar-fill { display: block; height: 100%; border-radius: 1rem; }
-.o_helpdesk_dashboard .o_helpdesk_bar-value { width: 3rem; text-align: right; font-weight: 600; }
+.o_helpdesk_dashboard {
+    --helpdesk-bg: #f4f7fb;
+    --helpdesk-surface: #ffffff;
+    --helpdesk-border: #e3e9f2;
+    --helpdesk-text: #172033;
+    --helpdesk-muted: #667085;
+    --helpdesk-primary: #2563eb;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--helpdesk-bg);
+    color: var(--helpdesk-text);
+}
+
+.o_helpdesk_dashboard .o_helpdesk_dashboard_content {
+    max-width: 1680px;
+    padding: 1.5rem;
+    margin: 0 auto;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_dashboard_header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_dashboard_eyebrow {
+    margin-bottom: .35rem;
+    color: var(--helpdesk-primary);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_dashboard_header h1 {
+    margin: 0;
+    font-size: clamp(1.6rem, 2vw, 2.15rem);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_dashboard_header p {
+    margin: .4rem 0 0;
+    color: var(--helpdesk-muted);
+    font-size: .95rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_reset_button {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    flex: 0 0 auto;
+    padding: .65rem .95rem;
+    border: 1px solid var(--helpdesk-border);
+    border-radius: .7rem;
+    background: var(--helpdesk-surface);
+    color: #344054;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+}
+
+.o_helpdesk_dashboard .o_helpdesk_reset_button:hover,
+.o_helpdesk_dashboard .o_helpdesk_reset_button:focus-visible {
+    border-color: #b7c5dc;
+    background: #f8fafc;
+    color: var(--helpdesk-primary);
+}
+
+.o_helpdesk_dashboard .o_helpdesk_panel {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--helpdesk-border);
+    border-radius: 1rem;
+    background: var(--helpdesk-surface);
+    box-shadow: 0 4px 16px rgba(16, 24, 40, .045);
+}
+
+.o_helpdesk_dashboard .o_helpdesk_panel_heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 3.25rem;
+    padding: .85rem 1rem;
+    border-bottom: 1px solid #edf1f6;
+    color: #344054;
+    font-weight: 700;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_panel_heading > div {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_panel_heading i {
+    color: var(--helpdesk-primary);
+}
+
+.o_helpdesk_dashboard .o_helpdesk_filter_panel {
+    margin-bottom: 1.25rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_filter_hint {
+    color: var(--helpdesk-muted);
+    font-size: .78rem;
+    font-weight: 400;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_filter_grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(9rem, 1fr));
+    gap: .85rem;
+    padding: 1rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_filter_field {
+    min-width: 0;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_filter_field label {
+    display: block;
+    margin-bottom: .4rem;
+    color: #475467;
+    font-size: .78rem;
+    font-weight: 600;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_filter_field .form-select,
+.o_helpdesk_dashboard .o_helpdesk_filter_field .form-control {
+    width: 100%;
+    min-height: 2.55rem;
+    border-color: #d5ddea;
+    border-radius: .65rem;
+    color: #344054;
+    background-color: #fff;
+    font-size: .875rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_filter_field .form-select:focus,
+.o_helpdesk_dashboard .o_helpdesk_filter_field .form-control:focus {
+    border-color: #84aaf8;
+    box-shadow: 0 0 0 .2rem rgba(37, 99, 235, .12);
+}
+
+.o_helpdesk_dashboard .o_helpdesk_kpi_grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_kpi {
+    --kpi-color: #2563eb;
+    --kpi-soft: #eff6ff;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+    min-width: 0;
+    min-height: 7.4rem;
+    padding: 1rem;
+    overflow: hidden;
+    border: 1px solid var(--helpdesk-border);
+    border-radius: 1rem;
+    background: var(--helpdesk-surface);
+    color: var(--helpdesk-text);
+    text-align: left;
+    box-shadow: 0 4px 16px rgba(16, 24, 40, .045);
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_kpi::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: .25rem;
+    background: var(--kpi-color);
+    content: "";
+}
+
+.o_helpdesk_dashboard .o_helpdesk_kpi:hover,
+.o_helpdesk_dashboard .o_helpdesk_kpi:focus-visible {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--kpi-color) 35%, #d9e1ee);
+    outline: none;
+    box-shadow: 0 10px 24px rgba(16, 24, 40, .1);
+}
+
+.o_helpdesk_dashboard .o_helpdesk_kpi:focus-visible {
+    box-shadow: 0 0 0 .2rem rgba(37, 99, 235, .18), 0 10px 24px rgba(16, 24, 40, .1);
+}
+
+.o_helpdesk_dashboard .o_helpdesk_kpi_icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 2.75rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: .8rem;
+    background: var(--kpi-soft);
+    color: var(--kpi-color);
+    font-size: 1.2rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_kpi_content {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_kpi_label {
+    overflow: hidden;
+    color: var(--helpdesk-muted);
+    font-size: .8rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_kpi_content strong {
+    margin-top: .2rem;
+    color: var(--kpi-color);
+    font-size: clamp(1.75rem, 2.3vw, 2.25rem);
+    line-height: 1;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_kpi_arrow {
+    flex: 0 0 auto;
+    color: #c0c9d7;
+    font-size: .75rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_kpi--new { --kpi-color: #0ea5e9; --kpi-soft: #e8f7fd; }
+.o_helpdesk_dashboard .o_helpdesk_kpi--in_progress { --kpi-color: #2563eb; --kpi-soft: #eaf1ff; }
+.o_helpdesk_dashboard .o_helpdesk_kpi--pending_user { --kpi-color: #8b5cf6; --kpi-soft: #f2edff; }
+.o_helpdesk_dashboard .o_helpdesk_kpi--resolved { --kpi-color: #16a34a; --kpi-soft: #eaf8ef; }
+.o_helpdesk_dashboard .o_helpdesk_kpi--closed { --kpi-color: #64748b; --kpi-soft: #f0f3f6; }
+.o_helpdesk_dashboard .o_helpdesk_kpi--sla_overdue,
+.o_helpdesk_dashboard .o_helpdesk_kpi--response_sla_overdue { --kpi-color: #dc2626; --kpi-soft: #fdf0f0; }
+
+.o_helpdesk_dashboard .o_helpdesk_overview_grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    padding-bottom: 1.5rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_chart_scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_chart {
+    min-width: 31rem;
+    min-height: 13rem;
+    padding: .85rem 1rem 1rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_bar_row {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    width: 100%;
+    min-height: 2.4rem;
+    padding: .35rem .4rem;
+    border: 0;
+    border-radius: .5rem;
+    background: transparent;
+    color: #344054;
+    text-align: left;
+    transition: background .14s ease, box-shadow .14s ease;
+}
+
+.o_helpdesk_dashboard button.o_helpdesk_bar_row:hover,
+.o_helpdesk_dashboard button.o_helpdesk_bar_row:focus-visible {
+    background: #f5f8fc;
+    outline: none;
+    box-shadow: inset 0 0 0 1px #e5ebf4;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_bar_row--static {
+    cursor: default;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_bar_label {
+    flex: 0 0 9.5rem;
+    overflow: hidden;
+    color: #475467;
+    font-size: .82rem;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_bar_track {
+    position: relative;
+    flex: 1 1 auto;
+    height: .65rem;
+    overflow: hidden;
+    border-radius: 1rem;
+    background: #edf1f6;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_bar_fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    transition: width .25s ease;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_bar_fill--status { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+.o_helpdesk_dashboard .o_helpdesk_bar_fill--trend { background: linear-gradient(90deg, #0891b2, #22d3ee); }
+.o_helpdesk_dashboard .o_helpdesk_bar_fill--group { background: linear-gradient(90deg, #64748b, #94a3b8); }
+
+.o_helpdesk_dashboard .o_helpdesk_bar_value {
+    flex: 0 0 2.75rem;
+    color: #344054;
+    font-size: .84rem;
+    text-align: right;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_empty_state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: .65rem;
+    min-height: 11rem;
+    color: #98a2b3;
+    font-size: .875rem;
+    text-align: center;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_empty_state i {
+    font-size: 1.6rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_loading_panel,
+.o_helpdesk_dashboard .o_helpdesk_error_panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    min-height: 26rem;
+    padding: 2rem;
+    border: 1px solid var(--helpdesk-border);
+    border-radius: 1rem;
+    background: var(--helpdesk-surface);
+    color: var(--helpdesk-muted);
+    text-align: left;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_loading_panel > i,
+.o_helpdesk_dashboard .o_helpdesk_error_panel > i {
+    color: var(--helpdesk-primary);
+    font-size: 1.75rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_loading_panel div,
+.o_helpdesk_dashboard .o_helpdesk_error_panel div {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_loading_panel strong,
+.o_helpdesk_dashboard .o_helpdesk_error_panel strong {
+    color: #344054;
+}
+
+.o_helpdesk_dashboard .o_helpdesk_error_panel > i {
+    color: #dc2626;
+}
+
+@media (max-width: 1199.98px) {
+    .o_helpdesk_dashboard .o_helpdesk_filter_grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .o_helpdesk_dashboard .o_helpdesk_kpi_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767.98px) {
+    .o_helpdesk_dashboard .o_helpdesk_dashboard_content { padding: 1rem; }
+    .o_helpdesk_dashboard .o_helpdesk_dashboard_header { align-items: stretch; flex-direction: column; }
+    .o_helpdesk_dashboard .o_helpdesk_reset_button { align-self: flex-start; }
+    .o_helpdesk_dashboard .o_helpdesk_filter_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .o_helpdesk_dashboard .o_helpdesk_kpi_grid,
+    .o_helpdesk_dashboard .o_helpdesk_overview_grid { grid-template-columns: minmax(0, 1fr); }
+    .o_helpdesk_dashboard .o_helpdesk_filter_hint { display: none; }
+}
+
+@media (max-width: 479.98px) {
+    .o_helpdesk_dashboard .o_helpdesk_dashboard_content { padding: .75rem; }
+    .o_helpdesk_dashboard .o_helpdesk_filter_grid { grid-template-columns: minmax(0, 1fr); }
+    .o_helpdesk_dashboard .o_helpdesk_kpi_grid { grid-template-columns: minmax(0, 1fr); }
+    .o_helpdesk_dashboard .o_helpdesk_chart { min-width: 28rem; }
+    .o_helpdesk_dashboard .o_helpdesk_loading_panel,
+    .o_helpdesk_dashboard .o_helpdesk_error_panel { align-items: flex-start; flex-direction: column; min-height: 20rem; }
+}

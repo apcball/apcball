@@ -1,20 +1,163 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="buz_it_helpdesk.HelpdeskDashboard">
-        <div class="o_helpdesk_dashboard container-fluid py-3">
-            <div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="mb-0">IT Helpdesk Overview</h2><span class="text-muted">Ticket and SLA summary</span></div><button class="btn btn-outline-secondary" t-on-click="resetFilters"><i class="fa fa-refresh me-1"/> Reset</button></div>
-            <div class="card shadow-sm mb-3"><div class="card-body"><div class="row g-2">
-                <t t-foreach="[['company_id','Company','companies'],['team_id','Helpdesk Team','teams'],['assignee_id','Assignee','assignees'],['priority_id','Priority','priorities'],['category_id','Category','categories']]" t-as="filter" t-key="filter[0]"><div class="col-12 col-md-2"><label class="form-label" t-esc="filter[1]"/><select class="form-select" t-att-name="filter[0]" t-on-change="onFilterChange"><option value="">All</option><t t-foreach="state.data?.options?.[filter[2]] || []" t-as="option" t-key="option.id"><option t-att-value="option.id" t-att-selected="state.filters[filter[0]] == option.id" t-esc="option.label"/></t></select></div></t>
-                <div class="col-12 col-md-2"><label class="form-label">Date From</label><input class="form-control" type="date" name="date_from" t-att-value="state.filters.date_from" t-on-change="onFilterChange"/></div><div class="col-12 col-md-2"><label class="form-label">Date To</label><input class="form-control" type="date" name="date_to" t-att-value="state.filters.date_to" t-on-change="onFilterChange"/></div>
-            </div></div></div>
-            <div t-if="state.loading" class="text-center py-5"><i class="fa fa-spinner fa-spin fa-2x"/></div>
-            <t t-if="state.data and !state.loading">
-                <div class="row g-3 mb-3"><t t-foreach="state.data.kpis" t-as="kpi" t-key="kpi.code"><div class="col-12 col-sm-6 col-xl-3"><button class="o_helpdesk_kpi card shadow-sm w-100 text-start" t-on-click="() => openTickets(kpi, kpi.label)"><div class="card-body"><div class="text-muted small" t-esc="kpi.label"/><div class="fs-2 fw-bold" t-esc="kpi.count"/></div></button></div></t></div>
-                <div class="row g-3"><div class="col-12 col-xl-6"><div class="card shadow-sm h-100"><div class="card-header fw-bold">Ticket Status Overview</div><div class="card-body"><t t-foreach="state.data.status_overview" t-as="item" t-key="item.code"><button class="o_helpdesk_bar-row" t-on-click="() => openTickets(item, item.label)"><span class="o_helpdesk_bar-label" t-esc="item.label"/><span class="o_helpdesk_bar-track"><span class="o_helpdesk_bar-fill bg-primary" t-att-style="'width: ' + barWidth(item.count)"/></span><span class="o_helpdesk_bar-value" t-esc="item.count"/></button></t></div></div></div>
-                    <div class="col-12 col-xl-6"><div class="card shadow-sm h-100"><div class="card-header fw-bold">Ticket Trend</div><div class="card-body"><t t-if="state.data.trend.length"><t t-foreach="state.data.trend" t-as="item" t-key="item.label"><div class="o_helpdesk_bar-row"><span class="o_helpdesk_bar-label" t-esc="item.label"/><span class="o_helpdesk_bar-track"><span class="o_helpdesk_bar-fill bg-info" t-att-style="'width: ' + barWidth(item.count)"/></span><span class="o_helpdesk_bar-value" t-esc="item.count"/></div></t></t><span t-else="" class="text-muted">No tickets in this period.</span></div></div></div>
-                    <t t-foreach="[['by_team','Tickets by Team'],['by_assignee','Tickets by Assignee'],['by_priority','Tickets by Priority'],['by_category','Tickets by Category']]" t-as="section" t-key="section[0]"><div class="col-12 col-md-6"><div class="card shadow-sm h-100"><div class="card-header fw-bold" t-esc="section[1]"/><div class="card-body"><t t-foreach="state.data[section[0]]" t-as="item" t-key="item.id || item.label"><button class="o_helpdesk_bar-row" t-on-click="() => openTickets(item, item.label)"><span class="o_helpdesk_bar-label" t-esc="item.label"/><span class="o_helpdesk_bar-track"><span class="o_helpdesk_bar-fill bg-secondary" t-att-style="'width: ' + barWidth(item.count)"/></span><span class="o_helpdesk_bar-value" t-esc="item.count"/></button></t><span t-if="!state.data[section[0]].length" class="text-muted">No data.</span></div></div></div></t>
+        <div class="o_helpdesk_dashboard">
+            <div class="o_helpdesk_dashboard_content container-fluid">
+                <header class="o_helpdesk_dashboard_header">
+                    <div>
+                        <div class="o_helpdesk_dashboard_eyebrow">IT MANAGEMENT</div>
+                        <h1>IT Helpdesk Overview</h1>
+                        <p>Monitor ticket workload, service status, and SLA performance in one place.</p>
+                    </div>
+                    <button type="button" class="btn o_helpdesk_reset_button" t-on-click="resetFilters" t-att-disabled="state.loading">
+                        <i class="fa fa-refresh" aria-hidden="true"/>
+                        <span>Reset Filters</span>
+                    </button>
+                </header>
+
+                <section class="o_helpdesk_panel o_helpdesk_filter_panel" aria-label="Dashboard filters">
+                    <div class="o_helpdesk_panel_heading">
+                        <div><i class="fa fa-filter" aria-hidden="true"/><span>Filters</span></div>
+                        <span class="o_helpdesk_filter_hint">All metrics update automatically</span>
+                    </div>
+                    <div class="o_helpdesk_filter_grid">
+                        <div class="o_helpdesk_filter_field">
+                            <label for="helpdesk_filter_company">Company</label>
+                            <select id="helpdesk_filter_company" class="form-select" name="company_id" t-on-change="onFilterChange" t-att-disabled="state.loading">
+                                <option value="" t-att-selected="!state.filters.company_id">All</option>
+                                <t t-foreach="state.data?.options?.companies || []" t-as="option" t-key="option.id">
+                                    <option t-att-value="option.id" t-att-selected="state.filters.company_id == option.id" t-esc="option.label"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="o_helpdesk_filter_field">
+                            <label for="helpdesk_filter_date_from">Date From</label>
+                            <input id="helpdesk_filter_date_from" class="form-control" type="date" name="date_from" t-att-value="state.filters.date_from" t-on-change="onFilterChange" t-att-disabled="state.loading"/>
+                        </div>
+                        <div class="o_helpdesk_filter_field">
+                            <label for="helpdesk_filter_date_to">Date To</label>
+                            <input id="helpdesk_filter_date_to" class="form-control" type="date" name="date_to" t-att-value="state.filters.date_to" t-on-change="onFilterChange" t-att-disabled="state.loading"/>
+                        </div>
+                        <div class="o_helpdesk_filter_field">
+                            <label for="helpdesk_filter_team">Helpdesk Team</label>
+                            <select id="helpdesk_filter_team" class="form-select" name="team_id" t-on-change="onFilterChange" t-att-disabled="state.loading">
+                                <option value="" t-att-selected="!state.filters.team_id">All</option>
+                                <t t-foreach="state.data?.options?.teams || []" t-as="option" t-key="option.id">
+                                    <option t-att-value="option.id" t-att-selected="state.filters.team_id == option.id" t-esc="option.label"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="o_helpdesk_filter_field">
+                            <label for="helpdesk_filter_assignee">Assignee</label>
+                            <select id="helpdesk_filter_assignee" class="form-select" name="assignee_id" t-on-change="onFilterChange" t-att-disabled="state.loading">
+                                <option value="" t-att-selected="!state.filters.assignee_id">All</option>
+                                <t t-foreach="state.data?.options?.assignees || []" t-as="option" t-key="option.id">
+                                    <option t-att-value="option.id" t-att-selected="state.filters.assignee_id == option.id" t-esc="option.label"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="o_helpdesk_filter_field">
+                            <label for="helpdesk_filter_priority">Priority</label>
+                            <select id="helpdesk_filter_priority" class="form-select" name="priority_id" t-on-change="onFilterChange" t-att-disabled="state.loading">
+                                <option value="" t-att-selected="!state.filters.priority_id">All</option>
+                                <t t-foreach="state.data?.options?.priorities || []" t-as="option" t-key="option.id">
+                                    <option t-att-value="option.id" t-att-selected="state.filters.priority_id == option.id" t-esc="option.label"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="o_helpdesk_filter_field">
+                            <label for="helpdesk_filter_category">Category</label>
+                            <select id="helpdesk_filter_category" class="form-select" name="category_id" t-on-change="onFilterChange" t-att-disabled="state.loading">
+                                <option value="" t-att-selected="!state.filters.category_id">All</option>
+                                <t t-foreach="state.data?.options?.categories || []" t-as="option" t-key="option.id">
+                                    <option t-att-value="option.id" t-att-selected="state.filters.category_id == option.id" t-esc="option.label"/>
+                                </t>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <div t-if="state.loading" class="o_helpdesk_loading_panel" role="status">
+                    <i class="fa fa-circle-o-notch fa-spin" aria-hidden="true"/>
+                    <div><strong>Loading dashboard</strong><span>Preparing ticket and SLA insights…</span></div>
                 </div>
-            </t>
+
+                <div t-elif="state.error" class="o_helpdesk_error_panel" role="alert">
+                    <i class="fa fa-exclamation-circle" aria-hidden="true"/>
+                    <div><strong>Dashboard data could not be loaded</strong><span>Please try again. If the problem continues, contact your system administrator.</span></div>
+                    <button type="button" class="btn btn-outline-danger" t-on-click="load">Try Again</button>
+                </div>
+
+                <t t-elif="state.data">
+                    <section class="o_helpdesk_kpi_grid" aria-label="Ticket KPIs">
+                        <t t-foreach="state.data.kpis" t-as="kpi" t-key="kpi.code">
+                            <button type="button" class="o_helpdesk_kpi" t-att-class="'o_helpdesk_kpi--' + kpi.code" t-on-click="() => openTickets(kpi, kpi.label)">
+                                <span class="o_helpdesk_kpi_icon"><i t-att-class="'fa ' + kpiIcon(kpi.code)" aria-hidden="true"/></span>
+                                <span class="o_helpdesk_kpi_content"><span class="o_helpdesk_kpi_label" t-esc="kpi.label"/><strong t-esc="kpi.count"/></span>
+                                <i class="fa fa-chevron-right o_helpdesk_kpi_arrow" aria-hidden="true"/>
+                            </button>
+                        </t>
+                    </section>
+
+                    <section class="o_helpdesk_overview_grid">
+                        <article class="o_helpdesk_panel">
+                            <div class="o_helpdesk_panel_heading"><div><i class="fa fa-tasks" aria-hidden="true"/><span>Ticket Status Overview</span></div></div>
+                            <div class="o_helpdesk_chart_scroll">
+                                <div class="o_helpdesk_chart">
+                                    <t t-if="state.data.status_overview.length">
+                                        <t t-foreach="state.data.status_overview" t-as="item" t-key="item.code">
+                                            <button type="button" class="o_helpdesk_bar_row" t-on-click="() => openTickets(item, item.label)">
+                                                <span class="o_helpdesk_bar_label" t-esc="item.label"/>
+                                                <span class="o_helpdesk_bar_track"><span class="o_helpdesk_bar_fill o_helpdesk_bar_fill--status" t-att-style="'width: ' + barWidth(item.count, state.data.status_overview)"/></span>
+                                                <strong class="o_helpdesk_bar_value" t-esc="item.count"/>
+                                            </button>
+                                        </t>
+                                    </t>
+                                    <div t-else="" class="o_helpdesk_empty_state"><i class="fa fa-inbox"/><span>No ticket status data for the selected filters.</span></div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="o_helpdesk_panel">
+                            <div class="o_helpdesk_panel_heading"><div><i class="fa fa-line-chart" aria-hidden="true"/><span>Ticket Trend</span></div></div>
+                            <div class="o_helpdesk_chart_scroll">
+                                <div class="o_helpdesk_chart">
+                                    <t t-if="state.data.trend.length">
+                                        <t t-foreach="state.data.trend" t-as="item" t-key="item.label">
+                                            <div class="o_helpdesk_bar_row o_helpdesk_bar_row--static">
+                                                <span class="o_helpdesk_bar_label" t-esc="item.label"/>
+                                                <span class="o_helpdesk_bar_track"><span class="o_helpdesk_bar_fill o_helpdesk_bar_fill--trend" t-att-style="'width: ' + barWidth(item.count, state.data.trend)"/></span>
+                                                <strong class="o_helpdesk_bar_value" t-esc="item.count"/>
+                                            </div>
+                                        </t>
+                                    </t>
+                                    <div t-else="" class="o_helpdesk_empty_state"><i class="fa fa-calendar-o"/><span>No tickets were created in this period.</span></div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <t t-foreach="[['by_team','Tickets by Team','fa-users'],['by_assignee','Tickets by Assignee','fa-user'],['by_priority','Tickets by Priority','fa-flag'],['by_category','Tickets by Category','fa-tags']]" t-as="section" t-key="section[0]">
+                            <article class="o_helpdesk_panel">
+                                <div class="o_helpdesk_panel_heading"><div><i t-att-class="'fa ' + section[2]" aria-hidden="true"/><span t-esc="section[1]"/></div></div>
+                                <div class="o_helpdesk_chart_scroll">
+                                    <div class="o_helpdesk_chart">
+                                        <t t-if="state.data[section[0]].length">
+                                            <t t-foreach="state.data[section[0]]" t-as="item" t-key="section[0] + '-' + (item.id || 'none')">
+                                                <button type="button" class="o_helpdesk_bar_row" t-on-click="() => openTickets(item, item.label)">
+                                                    <span class="o_helpdesk_bar_label" t-att-title="item.label" t-esc="item.label"/>
+                                                    <span class="o_helpdesk_bar_track"><span class="o_helpdesk_bar_fill o_helpdesk_bar_fill--group" t-att-style="'width: ' + barWidth(item.count, state.data[section[0]])"/></span>
+                                                    <strong class="o_helpdesk_bar_value" t-esc="item.count"/>
+                                                </button>
+                                            </t>
+                                        </t>
+                                        <div t-else="" class="o_helpdesk_empty_state"><i class="fa fa-folder-open-o"/><span>No data for the selected filters.</span></div>
+                                    </div>
+                                </div>
+                            </article>
+                        </t>
+                    </section>
+                </t>
+            </div>
         </div>
     </t>
 </templates>
