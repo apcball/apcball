@@ -8,8 +8,7 @@
     <menuitem id="menu_it_helpdesk_sla" name="SLA" parent="menu_it_helpdesk" action="action_helpdesk_slas" sequence="20" groups="buz_it_helpdesk.group_it_helpdesk_agent,buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_it_helpdesk_knowledge" name="Knowledge Base" parent="menu_it_helpdesk" sequence="30" groups="buz_it_helpdesk.group_it_helpdesk_requester"/>
     <menuitem id="menu_it_helpdesk_knowledge_all" name="All Articles" parent="menu_it_helpdesk_knowledge" action="action_helpdesk_articles" sequence="10" groups="buz_it_helpdesk.group_it_helpdesk_requester"/>
-    <menuitem id="menu_it_helpdesk_knowledge_used" name="Knowledge Articles Used" parent="menu_it_helpdesk_knowledge" action="action_helpdesk_articles_used" sequence="20" groups="buz_it_helpdesk.group_it_helpdesk_requester"/>
-    <menuitem id="menu_it_helpdesk_settings" name="Settings" parent="menu_it_helpdesk" sequence="90" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
+<menuitem id="menu_it_helpdesk_settings" name="Settings" parent="menu_it_helpdesk" sequence="90" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_it_helpdesk_settings_categories" name="Categories" parent="menu_it_helpdesk_settings" action="action_helpdesk_categories" sequence="10" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_it_helpdesk_settings_priorities" name="Priorities" parent="menu_it_helpdesk_settings" action="action_helpdesk_priorities" sequence="20" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>
     <menuitem id="menu_it_helpdesk_settings_stages" name="Stages" parent="menu_it_helpdesk_settings" action="action_helpdesk_stages" sequence="30" groups="buz_it_helpdesk.group_it_helpdesk_manager"/>

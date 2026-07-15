@@ -56,7 +56,6 @@ class HelpdeskTicket(models.Model):
     sla_compliant = fields.Boolean(compute="_compute_metrics", store=True)
     due_today = fields.Boolean(compute="_compute_due_today", search="_search_due_today")
     attachment_ids = fields.Many2many("ir.attachment", "it_helpdesk_ticket_attachment_rel", "ticket_id", "attachment_id", string="Attachments")
-    knowledge_article_ids = fields.Many2many("it.helpdesk.knowledge.article", string="Knowledge Articles Used")
     suggested_article_ids = fields.Many2many("it.helpdesk.knowledge.article", compute="_compute_suggested_articles", string="Suggested Articles")
     is_response_overdue = fields.Boolean(compute="_compute_is_response_overdue", search="_search_is_response_overdue")
     tag_ids = fields.Many2many("it.helpdesk.tag", string="Tags")
