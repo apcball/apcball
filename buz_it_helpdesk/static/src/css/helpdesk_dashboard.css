@@ -1,0 +1,8 @@
+﻿.o_helpdesk_dashboard .o_helpdesk_kpi { border: 0; transition: transform .15s ease, box-shadow .15s ease; }
+.o_helpdesk_dashboard .o_helpdesk_kpi:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.12) !important; }
+.o_helpdesk_dashboard .o_helpdesk_bar-row { display: flex; align-items: center; gap: .75rem; width: 100%; border: 0; background: transparent; padding: .35rem 0; text-align: left; }
+.o_helpdesk_dashboard .o_helpdesk_bar-row:hover { background: rgba(0,0,0,.03); }
+.o_helpdesk_dashboard .o_helpdesk_bar-label { width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.o_helpdesk_dashboard .o_helpdesk_bar-track { flex: 1; height: .7rem; background: #e9ecef; border-radius: 1rem; overflow: hidden; }
+.o_helpdesk_dashboard .o_helpdesk_bar-fill { display: block; height: 100%; border-radius: 1rem; }
+.o_helpdesk_dashboard .o_helpdesk_bar-value { width: 3rem; text-align: right; font-weight: 600; }

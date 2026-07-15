@@ -85,6 +85,13 @@ class TestHelpdeskTicket(TransactionCase):
             ticket.action_close()
         self.assertTrue(closed)
 
+    def test_dashboard_is_readonly_and_group_limited(self):
+        data = self.ticket_model.with_user(self.agent).get_dashboard_data({"date_from": "2020-01-01", "date_to": "2030-12-31"})
+        self.assertIn("kpis", data)
+        self.assertIn("status_overview", data)
+        with self.assertRaises(AccessError):
+            self.ticket_model.with_user(self.env.user).get_dashboard_data({})
+
     def test_unassigned_ticket_is_supported(self):
         ticket = self.ticket_model.create({
             "subject": "Unassigned", "category_id": self.category.id, "priority_id": self.priority.id,
