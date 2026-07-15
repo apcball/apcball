@@ -28,16 +28,16 @@ class ResPartner(models.Model):
         missing_fields = []
 
         required_field_map = {
-            'street': 'Address (Line 1)',
-            'street2': 'Address (Line 2)',
-            'city': 'City',
-            'state_id': 'State',
-            'zip': 'Zip Code',
-            'country_id': 'Country',
-            'vat': 'Tax ID',
-            'phone': 'Phone',
-            'email': 'Email',
-            'branch': 'Tax Branch',
+            'street': 'ที่อยู่ (บรรทัดที่ 1)',
+            'street2': 'ที่อยู่ (บรรทัดที่ 2)',
+            'city': 'เมือง/ตำบล',
+            'state_id': 'จังหวัด',
+            'zip': 'รหัสไปรษณีย์',
+            'country_id': 'ประเทศ',
+            'vat': 'เลขประจำตัวผู้เสียภาษีอากร',
+            'phone': 'โทรศัพท์',
+            'email': 'อีเมล',
+            'branch': 'สาขา',
         }
 
         for field_name, field_label in required_field_map.items():
@@ -49,13 +49,13 @@ class ResPartner(models.Model):
 
         if missing_fields:
             raise ValidationError(
-                f"Company partner '{partner_name}' missing required fields: {', '.join(missing_fields)}"
+                f"บริษัท '{partner_name}' ต้องกรอกข้อมูลต่อไปนี้: {', '.join(missing_fields)}"
             )
 
         vat = vals.get('vat')
         if vat and not self._validate_vat_format(vat):
             raise ValidationError(
-                f"Tax ID for '{partner_name}' must be exactly 13 digits (current: {vat})"
+                f"เลขประจำตัวผู้เสียภาษีอากรของ '{partner_name}' ต้องเป็นตัวเลข 13 หลักพอดี (ปัจจุบัน: {vat})"
             )
 
     @staticmethod
