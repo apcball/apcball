@@ -56,7 +56,6 @@ class HelpdeskTicket(models.Model):
     sla_compliant = fields.Boolean(compute="_compute_metrics", store=True)
     due_today = fields.Boolean(compute="_compute_due_today", search="_search_due_today")
     attachment_ids = fields.Many2many("ir.attachment", "it_helpdesk_ticket_attachment_rel", "ticket_id", "attachment_id", string="Attachments")
-    suggested_article_ids = fields.Many2many("it.helpdesk.knowledge.article", compute="_compute_suggested_articles", string="Suggested Articles")
     is_response_overdue = fields.Boolean(compute="_compute_is_response_overdue", search="_search_is_response_overdue")
     tag_ids = fields.Many2many("it.helpdesk.tag", string="Tags")
     source = fields.Selection(
@@ -343,17 +342,6 @@ class HelpdeskTicket(models.Model):
         if {"category_id", "priority_id", "company_id"} & set(vals):
             self.filtered(lambda ticket: ticket.stage_id.name != "Draft")._apply_sla()
         return result
-
-    @api.depends("category_id", "subject")
-    def _compute_suggested_articles(self):
-        Article = self.env["it.helpdesk.knowledge.article"]
-        for ticket in self:
-            domain = [("state", "=", "published"), ("company_id", "in", [ticket.company_id.id, False])]
-            if ticket.category_id:
-                domain += [("category_id", "in", [ticket.category_id.id, False])]
-            if ticket.subject:
-                domain += [("name", "ilike", ticket.subject.split()[0])]
-            ticket.suggested_article_ids = Article.search(domain, limit=5)
 
     @api.depends("create_date", "first_response_at", "resolved_at", "sla_deadline")
     def _compute_metrics(self):
