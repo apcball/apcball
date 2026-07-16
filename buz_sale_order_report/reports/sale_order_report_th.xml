@@ -105,17 +105,23 @@
                                         <strong style="width: 35%; display: inline-block;">สถานที่จัดส่ง / Delivery Address:</strong>
                                         <div class="delivery-address">
                                             <div t-if="doc.partner_shipping_id.name" t-field="doc.partner_shipping_id.name"/>
-                                            <div t-if="doc.partner_shipping_id.street" t-field="doc.partner_shipping_id.street"/>
-                                            <div t-if="doc.partner_shipping_id.street2" t-field="doc.partner_shipping_id.street2"/>
-                                            <div t-if="doc.partner_shipping_id.city" t-field="doc.partner_shipping_id.city"/>
-                                            <div t-if="doc.partner_shipping_id.state_id" t-field="doc.partner_shipping_id.state_id.name"/>
-                                            <div t-if="doc.partner_shipping_id.zip" t-field="doc.partner_shipping_id.zip"/>
-                                            <div t-if="doc.partner_shipping_id.country_id" t-field="doc.partner_shipping_id.country_id.name"/>
+                                            <div>
+                                                <span t-if="doc.partner_shipping_id.street" t-field="doc.partner_shipping_id.street"/>
+                                                <span t-if="doc.partner_shipping_id.street2" t-field="doc.partner_shipping_id.street2"/>
+                                                <span t-if="doc.partner_shipping_id.city" t-field="doc.partner_shipping_id.city"/>
+                                                <span t-if="doc.partner_shipping_id.state_id" t-field="doc.partner_shipping_id.state_id.name"/>
+                                                <span t-if="doc.partner_shipping_id.zip" t-field="doc.partner_shipping_id.zip"/>
+                                                <span t-if="doc.partner_shipping_id.country_id" t-field="doc.partner_shipping_id.country_id.name"/>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="mb-2">
                                         <strong style="width: 35%; display: inline-block;">เลขประจำตัวผู้เสียภาษี:</strong>
                                         <span t-field="doc.partner_id.vat"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 35%; display: inline-block;">เครดิต / Payment Term:</strong>
+                                        <span t-field="doc.payment_term_id.name"/>
                                     </div>
                                 </div>
                             </div>
