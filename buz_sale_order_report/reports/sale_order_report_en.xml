@@ -37,6 +37,10 @@
                                 border: 1px solid #000 !important;
                                 padding: 10px;
                             }
+                            .col-6:last-child .info-box {
+                                width: 90%;
+                                margin-left: auto;
+                            }
                         </style>
                         <t t-set="items_per_page" t-value="15"/>
                         <t t-set="total_items" t-value="len(doc.order_line)"/>
