@@ -33,7 +33,7 @@
                             .info-box {
                                 background-color: #f8f9fa !important;
                                 color: black !important;
-                                font-size: 16px !important;
+                                font-size: 18px !important;
                                 border: 1px solid #000 !important;
                                 padding: 10px;
                             }
@@ -49,6 +49,13 @@
                             .info-box > div > span {
                                 flex: 1 1 auto;
                                 min-width: 0;
+                            }
+                            .delivery-address {
+                                flex: 1 1 auto;
+                                min-width: 0;
+                            }
+                            .delivery-address > div {
+                                min-height: 1.2em;
                             }
                         </style>
                         <t t-set="items_per_page" t-value="15"/>
@@ -96,10 +103,15 @@
                                     </div>
                                     <div class="mb-2">
                                         <strong style="width: 35%; display: inline-block;">สถานที่จัดส่ง / Delivery Address:</strong>
-                                        <span t-field="doc.partner_shipping_id.street"/>
-                                        <span t-field="doc.partner_shipping_id.city"/>
-                                        <span t-field="doc.partner_shipping_id.state_id.name"/>
-                                        <span t-field="doc.partner_shipping_id.zip"/>
+                                        <div class="delivery-address">
+                                            <div t-if="doc.partner_shipping_id.name" t-field="doc.partner_shipping_id.name"/>
+                                            <div t-if="doc.partner_shipping_id.street" t-field="doc.partner_shipping_id.street"/>
+                                            <div t-if="doc.partner_shipping_id.street2" t-field="doc.partner_shipping_id.street2"/>
+                                            <div t-if="doc.partner_shipping_id.city" t-field="doc.partner_shipping_id.city"/>
+                                            <div t-if="doc.partner_shipping_id.state_id" t-field="doc.partner_shipping_id.state_id.name"/>
+                                            <div t-if="doc.partner_shipping_id.zip" t-field="doc.partner_shipping_id.zip"/>
+                                            <div t-if="doc.partner_shipping_id.country_id" t-field="doc.partner_shipping_id.country_id.name"/>
+                                        </div>
                                     </div>
                                     <div class="mb-2">
                                         <strong style="width: 35%; display: inline-block;">เลขประจำตัวผู้เสียภาษี:</strong>
