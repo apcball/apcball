@@ -1065,10 +1065,7 @@ class PosLiteOrderLine(models.Model):
             company = line.company_id or line.order_id.company_id
             cid = company.id
             if cid not in pricelists:
-                try:
-                    pricelists[cid] = Pricelist._get_standard_cost_pricelist(company)
-                except AttributeError:
-                    pricelists[cid] = None
+                pricelists[cid] = Pricelist._get_standard_cost_pricelist(company)
             pricelist = pricelists[cid]
 
             if not pricelist:
