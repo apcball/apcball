@@ -5,3 +5,4 @@ from . import ir_sequence
 from . import pos_payment
 from . import pos_session
 from . import pos_order
+from . import account_move

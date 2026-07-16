@@ -39,6 +39,9 @@ class ReportInvoiceExcel(models.AbstractModel):
                 sale_lines = line.sale_line_ids
                 sale_order = sale_lines[0].order_id if sale_lines else self.env["sale.order"]
 
+                pos_line = getattr(line, "pos_lite_order_line_id", False)
+                pos_order = pos_line.order_id if pos_line else self.env["pos.lite.order"]
+
                 pickings = self.env["stock.picking"]
                 has_bom_line = False
                 parent_bom_text = ""
@@ -65,31 +68,71 @@ class ReportInvoiceExcel(models.AbstractModel):
 
                 uom = line.product_uom_id or (product.uom_id if product else self.env["uom.uom"])
 
-                # Extract purchase price / margin from first linked sale order line
-                sale_line = sale_lines[:1] if sale_lines else self.env["sale.order.line"]
-                purchase_price = sale_line.purchase_price if sale_line else 0.0
-                margin_percent = sale_line.margin_percent if sale_line else 0.0
-                margin = sale_line.margin if sale_line else 0.0
+                # Extract purchase price / margin from first linked sale order line or POS line
+                if sale_lines:
+                    sale_line = sale_lines[:1]
+                    purchase_price = sale_line.purchase_price
+                    margin_percent = sale_line.margin_percent
+                    margin = sale_line.margin
+                elif pos_line:
+                    purchase_price = pos_line.standard_cost_price or 0.0
+                    margin = pos_line.margin or 0.0
+                    margin_percent = (pos_line.margin / pos_line.price_subtotal) if pos_line.price_subtotal else 0.0
+                else:
+                    purchase_price = 0.0
+                    margin_percent = 0.0
+                    margin = 0.0
+
+                # Determine sales reference (sale.order or pos.lite.order)
+                if sale_order:
+                    ref_order = sale_order
+                    ref_is_sale = True
+                elif pos_order:
+                    ref_order = pos_order
+                    ref_is_sale = False
+                else:
+                    ref_order = self.env["sale.order"]
+                    ref_is_sale = True
+
+                # Add picking from POS order if applicable
+                if pos_order and pos_order.picking_id:
+                    pickings |= pos_order.picking_id
+
+                # Build row with fallback logic
+                so_ref = ""
+                salesperson = ""
+                sale_team = ""
+                shipping_address = ""
+                if ref_is_sale and ref_order:
+                    so_ref = self._safe_text(ref_order.client_order_ref)
+                    salesperson = self._safe_text(ref_order.user_id.name)
+                    sale_team = self._safe_text(ref_order.team_id.name)
+                    shipping_address = self._safe_text(ref_order.partner_shipping_id.contact_address)
+                elif not ref_is_sale and ref_order:
+                    so_ref = self._safe_text(ref_order.name)
+                    salesperson = self._safe_text(ref_order.employee_id.name)
+                    sale_team = self._safe_text(ref_order.location_id.display_name or "")
+                    shipping_address = self._safe_text(
+                        ref_order.partner_shipping_id.contact_address if ref_order.partner_shipping_id else ""
+                    )
 
                 rows.append({
                     "sequence": sequence,
                     "date": self._format_date(invoice.invoice_date),
                     "iv_number": self._safe_text(invoice.name),
-                    "sale_order": self._safe_text(sale_order.name) if sale_order else "",
+                    "sale_order": self._safe_text(ref_order.name) if ref_order else "",
                     "dp_no": ", ".join(filter(None, pickings.mapped("name"))),
                     "dispatch_doc": ", ".join(filter(None, pickings.mapped("buz_dispatch_document_name"))),
                     "partner_code": self._safe_text(
-                        sale_order.partner_id.partner_code
-                    ) if sale_order else self._safe_text(invoice.partner_id.partner_code),
+                        ref_order.partner_id.partner_code if ref_order else invoice.partner_id.partner_code
+                    ),
                     "customer": self._safe_text(
-                        sale_order.partner_id.name
-                    ) if sale_order else self._safe_text(invoice.partner_id.name),
-                    "salesperson": self._safe_text(sale_order.user_id.name) if sale_order else "",
-                    "sale_team": self._safe_text(sale_order.team_id.name) if sale_order else "",
-                    "so_ref": self._safe_text(sale_order.client_order_ref) if sale_order else "",
-                    "shipping_address": self._safe_text(
-                        sale_order.partner_shipping_id.contact_address
-                    ) if sale_order else "",
+                        ref_order.partner_id.name if ref_order else invoice.partner_id.name
+                    ),
+                    "salesperson": salesperson,
+                    "sale_team": sale_team,
+                    "so_ref": so_ref,
+                    "shipping_address": shipping_address,
                     "parent_bom": self._safe_text(parent_bom_text),
                     "product_code": self._safe_text(product.default_code) if product else "",
                     "description": self._safe_text(

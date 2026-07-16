@@ -445,6 +445,7 @@ class PosLiteOrder(models.Model):
                 'discount': inv_discount,
                 'tax_ids': [fields.Command.set(taxes.ids)],
                 'product_uom_id': line.product_id.uom_id.id,
+                'pos_lite_order_line_id': line.id,
             }))
         invoice_partner = self.partner_invoice_id or partner
         vals = {
