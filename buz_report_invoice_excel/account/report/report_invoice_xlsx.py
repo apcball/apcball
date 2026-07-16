@@ -120,7 +120,8 @@ class ReportInvoiceExcel(models.AbstractModel):
                     "sequence": sequence,
                     "date": self._format_date(invoice.invoice_date),
                     "iv_number": self._safe_text(invoice.name),
-                    "sale_order": self._safe_text(ref_order.name) if ref_order else "",
+                    "sale_order": self._safe_text(sale_order.name) if sale_order else "",
+                    "pos_order": self._safe_text(pos_order.name) if pos_order else "",
                     "dp_no": ", ".join(filter(None, pickings.mapped("name"))),
                     "dispatch_doc": ", ".join(filter(None, pickings.mapped("buz_dispatch_document_name"))),
                     "partner_code": self._safe_text(
@@ -265,6 +266,7 @@ class ReportInvoiceExcel(models.AbstractModel):
             ("Date", 14),
             ("IV number", 18),
             ("SALE ORDER", 16),
+            ("POS Order", 16),
             ("Picking Doc", 18),
             ("Dispatch Doc", 18),
             ("Partner Code", 16),
@@ -310,26 +312,27 @@ class ReportInvoiceExcel(models.AbstractModel):
             sheet.write(row_idx, 1, row["date"], center_format)
             sheet.write(row_idx, 2, row["iv_number"], text_format)
             sheet.write(row_idx, 3, row["sale_order"], text_format)
-            sheet.write(row_idx, 4, row["dp_no"], text_format)
-            sheet.write(row_idx, 5, row["dispatch_doc"], text_format)
-            sheet.write(row_idx, 6, row["partner_code"], text_format)
-            sheet.write(row_idx, 7, row["customer"], text_format)
-            sheet.write(row_idx, 8, row["salesperson"], text_format)
-            sheet.write(row_idx, 9, row["sale_team"], text_format)
-            sheet.write(row_idx, 10, row["so_ref"], text_format)
-            sheet.write(row_idx, 11, row["shipping_address"], text_format)
-            sheet.write(row_idx, 12, row["parent_bom"], text_format)
-            sheet.write(row_idx, 13, row["product_code"], text_format)
-            sheet.write(row_idx, 14, row["description"], text_format)
-            sheet.write_number(row_idx, 15, row["quantity"] or 0.0, number_format)
-            sheet.write(row_idx, 16, row["uom"], center_format)
-            sheet.write_number(row_idx, 17, row["unit_price"] or 0.0, number_format)
-            sheet.write_number(row_idx, 18, row["purchase_price"] or 0.0, number_format)
-            sheet.write_number(row_idx, 19, row["margin_percent"] or 0.0, percent_format)
-            sheet.write_number(row_idx, 20, row["margin"] or 0.0, number_format)
-            sheet.write_number(row_idx, 21, row["sum_amount"] or 0.0, number_format)
-            sheet.write(row_idx, 22, row["note"], text_format)
-            sheet.write(row_idx, 23, row["trade_channel"], text_format)
+            sheet.write(row_idx, 4, row["pos_order"], text_format)
+            sheet.write(row_idx, 5, row["dp_no"], text_format)
+            sheet.write(row_idx, 6, row["dispatch_doc"], text_format)
+            sheet.write(row_idx, 7, row["partner_code"], text_format)
+            sheet.write(row_idx, 8, row["customer"], text_format)
+            sheet.write(row_idx, 9, row["salesperson"], text_format)
+            sheet.write(row_idx, 10, row["sale_team"], text_format)
+            sheet.write(row_idx, 11, row["so_ref"], text_format)
+            sheet.write(row_idx, 12, row["shipping_address"], text_format)
+            sheet.write(row_idx, 13, row["parent_bom"], text_format)
+            sheet.write(row_idx, 14, row["product_code"], text_format)
+            sheet.write(row_idx, 15, row["description"], text_format)
+            sheet.write_number(row_idx, 16, row["quantity"] or 0.0, number_format)
+            sheet.write(row_idx, 17, row["uom"], center_format)
+            sheet.write_number(row_idx, 18, row["unit_price"] or 0.0, number_format)
+            sheet.write_number(row_idx, 19, row["purchase_price"] or 0.0, number_format)
+            sheet.write_number(row_idx, 20, row["margin_percent"] or 0.0, percent_format)
+            sheet.write_number(row_idx, 21, row["margin"] or 0.0, number_format)
+            sheet.write_number(row_idx, 22, row["sum_amount"] or 0.0, number_format)
+            sheet.write(row_idx, 23, row["note"], text_format)
+            sheet.write(row_idx, 24, row["trade_channel"], text_format)
             row_idx += 1
 
         if not rows:
