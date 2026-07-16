@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <template id="report_sale_order_document_th">
         <t t-call="web.html_container">
@@ -92,7 +92,7 @@
                         <!-- Customer and Document Info -->
                         <div class="row mb-3">
                             <div class="col-8">
-                                <div class="info-box" style="height: 175px;">
+                                <div class="info-box">
                                     <div class="mb-2">
                                         <strong style="width: 35%; display: inline-block;">นามผู้ซื้อ / Customer:</strong>
                                         <span t-field="doc.partner_id.name"/>
@@ -126,7 +126,7 @@
                                 </div>
                             </div>
                             <div class="col-4">
-                                <div class="info-box" style="height: 175px;">
+                                <div class="info-box">
                                     <div class="mb-2">
                                         <strong style="width: 35%; display: inline-block;">เลขที่ / No.:</strong>
                                         <span t-field="doc.name"/>
