@@ -93,6 +93,13 @@ class PosLiteOrder(models.Model):
         domain="[('company_id', '=', company_id)]",
         tracking=True, check_company=True,
     )
+    location_id = fields.Many2one(
+        'stock.location', related='session_id.location_id',
+        store=True, readonly=True, string='Location',
+        help='Stock location this order was sold from, inherited from the '
+             'session configuration. Picking source/destination follows this '
+             'location when set; otherwise falls back to warehouse.lot_stock_id.',
+    )
     pricelist_id = fields.Many2one(
         'product.pricelist', required=True,
         domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
@@ -462,8 +469,14 @@ class PosLiteOrder(models.Model):
     def _prepare_picking_vals(self):
         self.ensure_one()
         partner = self._get_or_create_customer_partner()
-        # Resolve picking type: config override → warehouse default
-        config = self.env['pos.lite.config'].get_default_config(self.company_id)
+        # Resolve picking type: session config → default config override → warehouse default.
+        # Per-location configs live on the session; fall back to the company default
+        # for session-less (internal) orders.
+        config = (
+            self.session_id.config_id
+            if self.session_id and self.session_id.config_id
+            else self.env['pos.lite.config'].get_default_config(self.company_id)
+        )
         if self.is_return:
             picking_type = (
                 config.return_picking_type_id
@@ -485,10 +498,13 @@ class PosLiteOrder(models.Model):
             customer_location = self.env['stock.location'].search([('usage', '=', 'customer')], limit=1)
         if not customer_location:
             raise UserError(_('No customer location found for stock delivery.'))
+        # Source/destination stock location follows the per-location config when
+        # set, otherwise the warehouse stock location (legacy behaviour).
+        stock_location = self.location_id or self.warehouse_id.lot_stock_id
         moves = []
         for line in self.line_ids.filtered(lambda l: l.product_id.type != 'service' and l.qty > 0):
-            location_id = customer_location.id if self.is_return else self.warehouse_id.lot_stock_id.id
-            location_dest_id = self.warehouse_id.lot_stock_id.id if self.is_return else customer_location.id
+            location_id = customer_location.id if self.is_return else stock_location.id
+            location_dest_id = stock_location.id if self.is_return else customer_location.id
             moves.append(fields.Command.create({
                 'name': line.description or line.product_id.display_name,
                 'product_id': line.product_id.id,
@@ -502,8 +518,8 @@ class PosLiteOrder(models.Model):
             'partner_id': (self.partner_shipping_id or partner).id,
             'origin': self.name,
             'company_id': self.company_id.id,
-            'location_id': self.warehouse_id.lot_stock_id.id if not self.is_return else customer_location.id,
-            'location_dest_id': customer_location.id if not self.is_return else self.warehouse_id.lot_stock_id.id,
+            'location_id': customer_location.id if self.is_return else stock_location.id,
+            'location_dest_id': stock_location.id if self.is_return else customer_location.id,
             'move_ids_without_package': moves,
         }
 
@@ -957,9 +973,12 @@ class PosLiteOrderLine(models.Model):
             line.returned_qty = returned_qty
             line.available_return_qty = max(line.qty - returned_qty, 0.0)
 
-    @api.depends('product_id', 'qty', 'order_id.warehouse_id')
+    @api.depends('product_id', 'qty', 'order_id.warehouse_id', 'order_id.location_id')
     def _compute_qty_available(self):
-        # Batch: collect all (product_id, warehouse.lot_stock_id) pairs
+        # Batch: collect all (product_id, effective_location) pairs.
+        # The effective stock location follows the per-location config
+        # (order.location_id), falling back to the warehouse stock location
+        # for legacy/session-less orders — matching _prepare_picking_vals.
         lines_by_key = {}
         for line in self:
             product = line.product_id
@@ -967,12 +986,13 @@ class PosLiteOrderLine(models.Model):
                 line.qty_available = 0.0
                 line.is_low_stock = False
                 continue
-            warehouse = line.order_id.warehouse_id
-            if not warehouse:
+            order = line.order_id
+            location = order.location_id or (order.warehouse_id and order.warehouse_id.lot_stock_id)
+            if not location:
                 line.qty_available = 0.0
                 line.is_low_stock = False
                 continue
-            key = (product.id, warehouse.lot_stock_id.id)
+            key = (product.id, location.id)
             lines_by_key.setdefault(key, []).append(line)
 
         if not lines_by_key:
@@ -1045,7 +1065,10 @@ class PosLiteOrderLine(models.Model):
             company = line.company_id or line.order_id.company_id
             cid = company.id
             if cid not in pricelists:
-                pricelists[cid] = Pricelist._get_standard_cost_pricelist(company)
+                try:
+                    pricelists[cid] = Pricelist._get_standard_cost_pricelist(company)
+                except AttributeError:
+                    pricelists[cid] = None
             pricelist = pricelists[cid]
 
             if not pricelist:
