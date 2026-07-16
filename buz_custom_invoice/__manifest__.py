@@ -20,7 +20,7 @@
         'views/account_move_views.xml',
         'report/paperformat.xml',
         'report/invoice_template.xml',
-        'report/report_action.xml',
+        'report/invoice.xml',
         'report/ecommerce_receipt_report.xml',
         'report/cerdit_note.xml',
         'report/invoice_tax.xml',
