@@ -46,7 +46,7 @@ class StockPicking(models.Model):
                     'start_date': picking.scheduled_date.date() if picking.scheduled_date else fields.Date.today(),
                     'sale_order_id': sale_order.id if sale_order else False,
                     'picking_id': picking.id,
-                    'state': 'active',
+                    'state': 'draft',
                 }
                 
                 warranty_card = WarrantyCard.create(warranty_vals)

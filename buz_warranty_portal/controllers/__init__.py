@@ -1,1 +1,0 @@
-from . import warranty_portal

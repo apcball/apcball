@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_warranty_card_tree_service_receipt" model="ir.ui.view">
+        <field name="name">warranty.card.tree.service.receipt</field>
+        <field name="model">warranty.card</field>
+        <field name="inherit_id" ref="buz_warranty_management.view_warranty_card_tree"/>
+        <field name="arch" type="xml">
+            <field name="claim_count" position="replace">
+                <field name="service_receipt_count" string="Claims"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_warranty_card_form_service_receipt" model="ir.ui.view">
+        <field name="name">warranty.card.form.service.receipt</field>
+        <field name="model">warranty.card</field>
+        <field name="inherit_id" ref="buz_warranty_management.view_warranty_card_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <div class="oe_button_box o_button_box">
+                    <button name="action_view_claims" type="object"
+                            class="oe_stat_button" icon="fa-exclamation-triangle">
+                        <field name="service_receipt_count" widget="statinfo" string="Claims"/>
+                    </button>
+                </div>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Claims" name="service_claims">
+                    <field name="service_receipt_ids" nolabel="1">
+                        <tree>
+                            <field name="claim_number"/>
+                            <field name="request_date"/>
+                            <field name="partner_id"/>
+                            <field name="state" widget="badge"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_service_receipt_form_warranty_card" model="ir.ui.view">
+        <field name="name">service.receipt.form.warranty.card</field>
+        <field name="model">service.receipt</field>
+        <field name="inherit_id" ref="buz_service_receipt.view_service_receipt_form"/>
+        <field name="arch" type="xml">
+            <field name="warranty_no" position="after">
+                <field name="warranty_card_id" options="{'no_create': True}"/>
+                <field name="is_under_warranty" readonly="1"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_service_claim_form_warranty_card" model="ir.ui.view">
+        <field name="name">service.claim.form.warranty.card</field>
+        <field name="model">service.receipt</field>
+        <field name="inherit_id" ref="buz_service_receipt.view_service_claim_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[field[@name='requester_name']]/field[@name='partner_id']" position="after">
+                <field name="warranty_card_id" options="{'no_create': True}"/>
+                <field name="is_under_warranty" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

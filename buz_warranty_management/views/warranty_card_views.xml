@@ -6,7 +6,7 @@
         <field name="name">warranty.card.tree</field>
         <field name="model">warranty.card</field>
         <field name="arch" type="xml">
-            <tree string="Warranty Cards" decoration-danger="is_expired" decoration-warning="days_remaining &lt; 30">
+            <tree string="Warranty Cards" decoration-danger="is_expired" decoration-warning="not is_expired and days_remaining &lt; 30 and state == 'active'" decoration-info="state == 'draft'" decoration-success="state == 'active' and not is_expired">
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="product_id"/>
@@ -14,7 +14,7 @@
                 <field name="start_date"/>
                 <field name="end_date"/>
                 <field name="days_remaining"/>
-                <field name="state" widget="badge" decoration-success="state == 'active'" decoration-muted="state == 'expired'"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'active'" decoration-muted="state == 'expired'" decoration-danger="state == 'cancelled'"/>
                 <field name="claim_count"/>
                 <field name="is_expired" invisible="1"/>
             </tree>
@@ -28,140 +28,175 @@
         <field name="arch" type="xml">
             <form string="Warranty Card" class="warranty-card">
                 <header>
-                    <div class="o_statusbar_status o_statusbar_visible">
-                        <div class="btn-group">
-                            <button name="action_activate" string="Activate" type="object"
-                                    invisible="state != 'draft'" class="oe_highlight btn-primary"/>
-                            <button name="action_print_certificate" string="Print Certificate" type="object"
-                                    class="btn-info"/>
-                            <button name="action_cancel" string="Cancel" type="object"
-                                    invisible="state not in ['draft', 'active']" class="btn-danger"/>
-                        </div>
-                        <field name="state" widget="statusbar" statusbar_visible="draft,active,expired"/>
-                    </div>
+                    <button name="action_activate" string="Activate" type="object"
+                            invisible="state != 'draft'" class="oe_highlight btn-primary"/>
+                    <button name="action_print_certificate" string="Print Certificate" type="object"
+                            class="btn-secondary"/>
+                    <button name="action_cancel" string="Cancel" type="object"
+                            invisible="state not in ['draft', 'active']" class="btn-danger"/>
+                    <button name="action_reset_to_draft" string="Reset to Draft" type="object"
+                            invisible="state == 'draft'" class="btn-warning"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,expired"/>
                 </header>
                 <sheet>
                     <!-- Title row -->
                     <div class="oe_title mb-3">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <h1 class="mb-0">
-                                    <field name="name" readonly="1"/>
-                                </h1>
-                            </div>
-                            <div class="col-md-4 text-right">
-                                <field name="source" widget="badge"
-                                       decoration-success="source == 'portal'"
-                                       decoration-info="source == 'manual'"/>
-                            </div>
+                        <div class="d-flex align-items-center">
+                            <span class="wc_title_icon fa fa-shield me-2" title="Warranty"/>
+                            <h1 class="mb-0">
+                                <field name="name" readonly="1"/>
+                            </h1>
+                            <field name="state" widget="badge"
+                                   decoration-success="state == 'active'"
+                                   decoration-info="state == 'draft'"
+                                   decoration-danger="state == 'cancelled'"
+                                   decoration-muted="state == 'expired'"
+                                   class="ms-3"/>
+                        </div>
+                        <div class="wc_meta_line text-muted mt-1">
+                            <span class="fa fa-calendar-o me-1"/>Created <field name="create_date" readonly="1" class="me-3"/>
+                            <span class="fa fa-clock-o me-1"/>Updated <field name="write_date" readonly="1" class="me-3"/>
+                            <span class="fa fa-user-o me-1"/>By <field name="create_uid" readonly="1"/>
                         </div>
                     </div>
 
-                    <!-- Claims stat button -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="oe_button_box o_button_box">
-                                <button name="action_view_claims" type="object"
-                                        class="oe_stat_button" icon="fa-exclamation-triangle">
-                                    <field name="claim_count" widget="statinfo" string="Claims"/>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Row 1: Customer + Product -->
                     <div class="row">
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-light border-bottom">
-                                    <h5 class="mb-0">Customer Information</h5>
+                        <!-- Left column -->
+                        <div class="col-lg-5 d-flex flex-column">
+                            <!-- Customer Information -->
+                            <div class="card border-0 shadow-sm mb-3">
+                                <div class="card-header bg-white border-bottom">
+                                    <h5 class="mb-0"><span class="fa fa-user text-primary me-2"/>Customer Information</h5>
                                 </div>
                                 <div class="card-body">
-                                    <group>
-                                        <field name="partner_id"/>
-                                    </group>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <span class="wc_avatar fa fa-user me-3" title="Customer"/>
+                                        <field name="partner_id" class="wc_partner_name" nolabel="1"
+                                               options="{'no_quick_create': True}"/>
+                                    </div>
+                                    <div class="wc_contact_line" invisible="not partner_phone">
+                                        <span class="fa fa-phone text-primary me-2" title="Phone"/>
+                                        <field name="partner_phone" widget="phone" nolabel="1"/>
+                                    </div>
+                                    <div class="wc_contact_line" invisible="not partner_email">
+                                        <span class="fa fa-envelope-o text-primary me-2" title="Email"/>
+                                        <field name="partner_email" widget="email" nolabel="1"/>
+                                    </div>
+                                    <div class="wc_contact_line wc_address" invisible="not partner_address">
+                                        <span class="fa fa-map-marker text-primary me-2" title="Address"/>
+                                        <field name="partner_address" nolabel="1"/>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-light border-bottom">
-                                    <h5 class="mb-0">Product Details</h5>
-                                </div>
-                                <div class="card-body">
-                                    <group>
-                                        <field name="product_id"/>
-                                        <field name="lot_id"/>
-                                        <field name="warranty_type"/>
-                                        <field name="serial_number_input"
-                                               invisible="source != 'portal'"
-                                               placeholder="Typed by customer"/>
-                                        <field name="product_model_input"
-                                               invisible="source != 'portal'"
-                                               placeholder="Product model or code"/>
-                                        <field name="product_description"
-                                               invisible="source != 'portal'"
-                                               placeholder="Typed by customer"/>
-                                    </group>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Row 2: Purchase + Warranty -->
-                    <div class="row mt-3">
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-light border-bottom">
-                                    <h5 class="mb-0">Purchase Details</h5>
+                            <!-- Purchase Details -->
+                            <div class="card border-0 shadow-sm mb-3">
+                                <div class="card-header bg-white border-bottom">
+                                    <h5 class="mb-0"><span class="fa fa-file-text-o text-primary me-2"/>Purchase Details</h5>
                                 </div>
                                 <div class="card-body">
                                     <group>
-                                        <field name="start_date"/>
+                                        <field name="start_date" string="Purchase Date"/>
                                         <field name="dealer_name"/>
                                         <field name="invoice_number"/>
-                                        <field name="registration_date" invisible="not registration_date"/>
-                                        <field name="external_request_id" invisible="1"/>
                                     </group>
-                                    <field name="proof_attachment_ids" widget="many2many_binary"
-                                           nolabel="1"/>
+                                    <field name="proof_attachment_ids" widget="many2many_binary" nolabel="1"/>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-light border-bottom">
-                                    <h5 class="mb-0">Warranty Period</h5>
+
+                            <!-- Warranty Period -->
+                            <div class="card border-0 shadow-sm mb-3">
+                                <div class="card-header bg-white border-bottom">
+                                    <h5 class="mb-0"><span class="fa fa-check-circle text-primary me-2"/>Warranty Period</h5>
                                 </div>
                                 <div class="card-body">
                                     <group>
-                                        <field name="end_date"/>
+                                        <field name="start_date" string="Warranty Start"/>
+                                        <field name="end_date" string="Warranty End"/>
                                     </group>
-                                    <div class="row">
-                                        <div class="col-md-6">
+                                    <div class="row mb-2">
+                                        <div class="col-md-8">
                                             <label for="warranty_duration" string="Duration"/>
                                             <div class="input-group">
                                                 <field name="warranty_duration" class="form-control"/>
                                                 <field name="warranty_period_unit" class="form-control"/>
                                             </div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <field name="days_remaining" string="Days Remaining"
-                                                   widget="statinfo"/>
-                                            <field name="is_expired" invisible="1"/>
+                                    </div>
+                                    <div class="wc_days_remaining_box" invisible="is_expired">
+                                        <div class="wc_days_label">
+                                            <span class="fa fa-clock-o me-1"/>Days Remaining
+                                        </div>
+                                        <div class="text-center">
+                                            <field name="days_remaining" class="wc_days_value" nolabel="1"/>
+                                            <span class="wc_days_unit ms-1">days</span>
+                                            <div class="wc_days_subtext">
+                                                <field name="days_remaining_text" nolabel="1"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="wc_expired_box" invisible="not is_expired">
+                                        <span class="fa fa-exclamation-triangle me-2"/>Warranty Expired
+                                    </div>
+                                    <field name="is_expired" invisible="1"/>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right column -->
+                        <div class="col-lg-7 d-flex flex-column">
+                            <!-- Product Details -->
+                            <div class="card border-0 shadow-sm mb-3">
+                                <div class="card-header bg-white border-bottom">
+                                    <h5 class="mb-0"><span class="fa fa-cube text-primary me-2"/>Product Details</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-7">
+                                            <group>
+                                                <field name="product_id"/>
+                                                <field name="lot_id" string="Serial/Lot Number"/>
+                                                <field name="warranty_type"/>
+                                                <field name="product_description"/>
+                                            </group>
+                                        </div>
+                                        <div class="col-md-5 text-center">
+                                            <div class="wc_product_image_box">
+                                                <field name="product_image" widget="image"
+                                                       class="wc_product_image" options="{'size': [180, 180]}"/>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Row 3: Reference Documents -->
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-light border-bottom">
-                                    <h5 class="mb-0">Reference Documents</h5>
+                            <!-- Proof of Purchase PDF preview -->
+                            <div class="card border-0 shadow-sm mb-3 flex-grow-1" invisible="not proof_pdf">
+                                <div class="card-header bg-white border-bottom">
+                                    <h5 class="mb-0"><span class="fa fa-file-pdf-o text-primary me-2"/>Proof of Purchase (PDF)</h5>
+                                </div>
+                                <div class="card-body wc_pdf_preview p-2">
+                                    <field name="proof_pdf" widget="pdf_viewer" nolabel="1"
+                                           filename="proof_pdf_filename" readonly="1"/>
+                                    <field name="proof_pdf_filename" invisible="1"/>
+                                </div>
+                            </div>
+
+                            <!-- Proof of Purchase Image preview -->
+                            <div class="card border-0 shadow-sm mb-3 flex-grow-1" invisible="not proof_image">
+                                <div class="card-header bg-white border-bottom">
+                                    <h5 class="mb-0"><span class="fa fa-file-image-o text-primary me-2"/>Proof of Purchase (Image)</h5>
+                                </div>
+                                <div class="card-body wc_pdf_preview p-2 text-center">
+                                    <field name="proof_image" widget="image" nolabel="1"
+                                           options="{'size': [400, 400]}"/>
+                                </div>
+                            </div>
+
+                            <!-- Reference Documents -->
+                            <div class="card border-0 shadow-sm mb-3">
+                                <div class="card-header bg-white border-bottom">
+                                    <h5 class="mb-0"><span class="fa fa-link text-primary me-2"/>Reference Documents</h5>
                                 </div>
                                 <div class="card-body">
                                     <group col="2">
@@ -174,21 +209,10 @@
                     </div>
 
                     <!-- Notebook -->
-                    <div class="mt-3">
+                    <div class="mt-1">
                         <notebook>
                             <page string="Warranty Terms &amp; Conditions">
                                 <field name="condition" nolabel="1"/>
-                            </page>
-                            <page string="Claims" name="claims">
-                                <field name="claim_ids" nolabel="1">
-                                    <tree>
-                                        <field name="name"/>
-                                        <field name="claim_date"/>
-                                        <field name="claim_type"/>
-                                        <field name="is_under_warranty" widget="boolean"/>
-                                        <field name="status" widget="badge"/>
-                                    </tree>
-                                </field>
                             </page>
                         </notebook>
                     </div>

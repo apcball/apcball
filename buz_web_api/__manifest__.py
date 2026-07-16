@@ -1,6 +1,6 @@
 {
     'name': 'Web API Integration for Odoo',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Technical Settings',
     'summary': 'Secure native Odoo API key provisioning for web integrations',
     'description': """
@@ -14,6 +14,7 @@ The addon also exposes a protected health endpoint for web-to-Odoo checks.
     'license': 'LGPL-3',
     'depends': [
         'base',
+        'crm',
         'buz_warranty_management',
     ],
     'data': [

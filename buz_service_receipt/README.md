@@ -11,6 +11,7 @@ Manage service visits, technician scheduling, product claims with stock pickings
 - Service receipt form with technician calendar sync
 - PDF reports: Service Receipt, Service Claim, Repair Notification
 - **Claim Workflow**: Draft → Confirm → Product Return (return picking) → Replacement Delivery (replacement picking) → Done
+- Claims can be linked to Warranty Cards from `buz_warranty_management`; the Warranty Card shows linked Service Receipt claims.
 - **Charge Customer Workflow**: Draft → Confirm → Create SO → Done
 - Smart buttons for Return Picking, Replacement Delivery, Sale Order, and Invoice
 - Stock pickings auto-created from service receipt lines

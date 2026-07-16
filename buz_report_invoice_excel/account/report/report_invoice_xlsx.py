@@ -267,32 +267,39 @@ class ReportInvoiceExcel(models.AbstractModel):
             }
         )
 
+        show_cost = self.env.user.has_group(
+            "buz_report_invoice_excel.group_invoice_report_manager"
+        )
+
         columns = [
-            ("No.", 8),
-            ("Date", 14),
-            ("IV number", 18),
-            ("SALE ORDER", 16),
-            ("POS Order", 16),
-            ("Picking Doc", 18),
-            ("Dispatch Doc", 18),
-            ("Partner Code", 16),
-            ("Customer", 24),
-            ("Salesperson", 18),
-            ("Sale Team", 18),
-            ("SO.ref No.", 18),
-            ("Shipping Address", 30),
-            ("Parent BOM", 34),
-            ("Product Code", 16),
-            ("Description", 34),
-            ("Quantity", 12),
-            ("UoM", 10),
-            ("Unit Price", 14),
-            ("Cost", 14),
-            ("Margin %", 12),
-            ("Margin", 14),
-            ("SUM", 14),
-            ("Note", 24),
-            ("Trade Channel", 16),
+            ("No.", 8, "sequence", center_format, False),
+            ("Date", 14, "date", center_format, False),
+            ("IV number", 18, "iv_number", text_format, False),
+            ("SALE ORDER", 16, "sale_order", text_format, False),
+            ("POS Order", 16, "pos_order", text_format, False),
+            ("Picking Doc", 18, "dp_no", text_format, False),
+            ("Dispatch Doc", 18, "dispatch_doc", text_format, False),
+            ("Partner Code", 16, "partner_code", text_format, False),
+            ("Customer", 24, "customer", text_format, False),
+            ("Salesperson", 18, "salesperson", text_format, False),
+            ("Sale Team", 18, "sale_team", text_format, False),
+            ("SO.ref No.", 18, "so_ref", text_format, False),
+            ("Shipping Address", 30, "shipping_address", text_format, False),
+            ("Parent BOM", 34, "parent_bom", text_format, False),
+            ("Product Code", 16, "product_code", text_format, False),
+            ("Description", 34, "description", text_format, False),
+            ("Quantity", 12, "quantity", number_format, True),
+            ("UoM", 10, "uom", center_format, False),
+            ("Unit Price", 14, "unit_price", number_format, True),
+        ]
+        if show_cost:
+            columns.append(("Cost", 14, "purchase_price", number_format, True))
+        columns += [
+            ("Margin %", 12, "margin_percent", percent_format, True),
+            ("Margin", 14, "margin", number_format, True),
+            ("SUM", 14, "sum_amount", number_format, True),
+            ("Note", 24, "note", text_format, False),
+            ("Trade Channel", 16, "trade_channel", text_format, False),
         ]
 
         sheet = workbook.add_worksheet("Invoice Report")
@@ -304,41 +311,22 @@ class ReportInvoiceExcel(models.AbstractModel):
         sheet.set_row(0, 28)
         sheet.set_row(1, 24)
 
-        for index, (_, width) in enumerate(columns):
-            sheet.set_column(index, index, width)
+        for index, col in enumerate(columns):
+            sheet.set_column(index, index, col[1])
 
         last_col = len(columns) - 1
         sheet.merge_range(0, 0, 0, last_col, "รายงาน Invoice", title_format)
-        for col, (label, _) in enumerate(columns):
-            sheet.write(1, col, label, header_format)
+        for col, entry in enumerate(columns):
+            sheet.write(1, col, entry[0], header_format)
 
         row_idx = 2
         for row in rows:
-            sheet.write(row_idx, 0, row["sequence"], center_format)
-            sheet.write(row_idx, 1, row["date"], center_format)
-            sheet.write(row_idx, 2, row["iv_number"], text_format)
-            sheet.write(row_idx, 3, row["sale_order"], text_format)
-            sheet.write(row_idx, 4, row["pos_order"], text_format)
-            sheet.write(row_idx, 5, row["dp_no"], text_format)
-            sheet.write(row_idx, 6, row["dispatch_doc"], text_format)
-            sheet.write(row_idx, 7, row["partner_code"], text_format)
-            sheet.write(row_idx, 8, row["customer"], text_format)
-            sheet.write(row_idx, 9, row["salesperson"], text_format)
-            sheet.write(row_idx, 10, row["sale_team"], text_format)
-            sheet.write(row_idx, 11, row["so_ref"], text_format)
-            sheet.write(row_idx, 12, row["shipping_address"], text_format)
-            sheet.write(row_idx, 13, row["parent_bom"], text_format)
-            sheet.write(row_idx, 14, row["product_code"], text_format)
-            sheet.write(row_idx, 15, row["description"], text_format)
-            sheet.write_number(row_idx, 16, row["quantity"] or 0.0, number_format)
-            sheet.write(row_idx, 17, row["uom"], center_format)
-            sheet.write_number(row_idx, 18, row["unit_price"] or 0.0, number_format)
-            sheet.write_number(row_idx, 19, row["purchase_price"] or 0.0, number_format)
-            sheet.write_number(row_idx, 20, row["margin_percent"] or 0.0, percent_format)
-            sheet.write_number(row_idx, 21, row["margin"] or 0.0, number_format)
-            sheet.write_number(row_idx, 22, row["sum_amount"] or 0.0, number_format)
-            sheet.write(row_idx, 23, row["note"], text_format)
-            sheet.write(row_idx, 24, row["trade_channel"], text_format)
+            for col, (_label, _width, key, fmt, is_num) in enumerate(columns):
+                value = row.get(key, "")
+                if is_num:
+                    sheet.write_number(row_idx, col, value or 0.0, fmt)
+                else:
+                    sheet.write(row_idx, col, value, fmt)
             row_idx += 1
 
         if not rows:

@@ -1,16 +1,15 @@
 {
     'name': 'Warranty Management',
-    'version': '17.0.1.2.0',
+    'version': '17.0.1.3.0',
     'category': 'Sales/Warranty',
-    'summary': 'Complete Warranty Management System with Claims and Certificate Generation',
+    'summary': 'Warranty cards linked to Service Receipt claims',
     'description': """
         Warranty Management System
         ===========================
         * Product-level warranty configuration
         * Manual warranty card creation from Sale Order
-        * Warranty claim management (under & out-of-warranty)
+        * Service Receipt claim integration (under & out-of-warranty)
         * RMA workflows with stock operations
-        * Claim lines for parts and consumables tracking
         * RMA IN/OUT pickings with serial/lot support
         * Multi-product RMA IN returns with part selection
         * Replacement issue with SO integration
@@ -47,16 +46,10 @@
         'views/product_template_views.xml',
         'views/sale_order_views.xml',
         'views/warranty_card_views.xml',
-        'views/warranty_claim_views.xml',
         'views/warranty_dashboard_views.xml',
         'views/res_partner_views.xml',
         'views/res_config_settings_views.xml',
-        'wizard/warranty_out_wizard_view.xml',
-        'wizard/warranty_rma_receive_wizard_view.xml',
-        'wizard/warranty_replacement_issue_wizard_view.xml',
-        'wizard/warranty_invoice_wizard_view.xml',
         'report/report_warranty_certificate.xml',
-        'report/report_warranty_claim_form.xml',
         'report/report_warranty_rma_slip.xml',
         'data/warranty_dashboard_cron.xml',
         'views/menu.xml',

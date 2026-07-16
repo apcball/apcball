@@ -81,7 +81,7 @@
 
     <menuitem id="menu_web_api_integration"
               name="Web API Integrations"
-              parent="base.menu_custom"
+              parent="base.menu_administration"
               action="action_web_api_integration"
               groups="base.group_system"
               sequence="20"/>

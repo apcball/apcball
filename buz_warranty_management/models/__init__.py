@@ -2,8 +2,6 @@ from . import product_template
 from . import product
 from . import res_partner
 from . import warranty_card
-from . import warranty_claim
-from . import warranty_claim_line
 from . import warranty_dashboard
 from . import warranty_dashboard_cache
 from . import stock_picking

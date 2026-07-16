@@ -230,10 +230,11 @@ class WarrantyDashboard(models.Model):
                     ('end_date', '<=', near_expiry_date)
                 ])
                 record.claimed_warranties = self.env['warranty.card'].search_count([
-                    ('claim_ids', '!=', False)
+                    ('claim_count', '>', 0)
                 ])
-                record.claims_this_month = self.env['warranty.claim'].search_count([
-                    ('claim_date', '>=', fields.Date.today().replace(day=1))
+                record.claims_this_month = self.env['service.receipt'].search_count([
+                    ('request_date', '>=', fields.Date.today().replace(day=1)),
+                    ('service_case_type', '=', 'replacement'),
                 ])
 
                 if today.month == 1:
@@ -241,9 +242,10 @@ class WarrantyDashboard(models.Model):
                 else:
                     last_month_start = today.replace(month=today.month - 1, day=1)
                 last_month_end = today.replace(day=1) - timedelta(days=1)
-                record.claims_last_month = self.env['warranty.claim'].search_count([
-                    ('claim_date', '>=', last_month_start),
-                    ('claim_date', '<=', last_month_end)
+                record.claims_last_month = self.env['service.receipt'].search_count([
+                    ('request_date', '>=', last_month_start),
+                    ('request_date', '<=', last_month_end),
+                    ('service_case_type', '=', 'replacement'),
                 ])
             except Exception as e:
                 _logger.error("Error in _compute_kpis_fallback for dashboard %s: %s",
@@ -401,7 +403,9 @@ class WarrantyDashboard(models.Model):
 
     def action_view_claimed_warranties(self):
         self.ensure_one()
-        return self.env.ref('buz_warranty_management.action_warranty_claim').read()[0]
+        action = self.env.ref('buz_warranty_management.action_warranty_card').read()[0]
+        action['domain'] = [('claim_count', '>', 0)]
+        return action
 
     def action_view_all_warranties(self):
         self.ensure_one()
@@ -438,12 +442,12 @@ class WarrantyDashboard(models.Model):
 
     @api.model
     def _build_claim_domain(self, filters):
-        """Build search domain for warranty.claim from filters."""
+        """Build search domain for Service Receipt claims from filters."""
         domain = []
         if filters.get('date_from'):
-            domain.append(('claim_date', '>=', filters['date_from']))
+            domain.append(('request_date', '>=', filters['date_from']))
         if filters.get('date_to'):
-            domain.append(('claim_date', '<=', filters['date_to'] + ' 23:59:59'))
+            domain.append(('request_date', '<=', filters['date_to']))
         if filters.get('product_id'):
             domain.append(('warranty_card_id.product_id', '=', int(filters['product_id'])))
         if filters.get('customer_id'):
@@ -465,7 +469,7 @@ class WarrantyDashboard(models.Model):
         near_expiry = today + timedelta(days=30)
 
         card = self.env['warranty.card']
-        claim = self.env['warranty.claim']
+        claim = self.env['service.receipt']
 
         all_ids = card.search(w_domain)
         total = len(all_ids)
@@ -483,7 +487,7 @@ class WarrantyDashboard(models.Model):
         claimed_pct = (claimed / total * 100) if total else 0
 
         first_this = today.replace(day=1)
-        c_domain_this = c_domain + [('claim_date', '>=', first_this)]
+        c_domain_this = c_domain + [('request_date', '>=', first_this)]
         claims_this = claim.search_count(c_domain_this)
 
         if today.month == 1:
@@ -491,7 +495,7 @@ class WarrantyDashboard(models.Model):
         else:
             first_last = today.replace(month=today.month - 1, day=1)
         last_day_last = today.replace(day=1) - timedelta(days=1)
-        c_domain_last = c_domain + [('claim_date', '>=', first_last), ('claim_date', '<=', last_day_last)]
+        c_domain_last = c_domain + [('request_date', '>=', first_last), ('request_date', '<=', last_day_last)]
         claims_last = claim.search_count(c_domain_last)
 
         return {
@@ -525,15 +529,15 @@ class WarrantyDashboard(models.Model):
     def _compute_filtered_trend(self, filters, months=12):
         """Compute claims trend data with filters."""
         domain = self._build_claim_domain(filters)
-        claim = self.env['warranty.claim']
+        claim = self.env['service.receipt']
         today = fields.Date.today()
         cutoff = today - timedelta(days=months * 30)
-        domain.append(('claim_date', '>=', cutoff))
+        domain.append(('request_date', '>=', cutoff))
 
-        results = claim.search(domain, order='claim_date')
+        results = claim.search(domain, order='request_date')
         monthly = {}
         for r in results:
-            key = r.claim_date.strftime('%b %Y') if r.claim_date else 'Unknown'
+            key = r.request_date.strftime('%b %Y') if r.request_date else 'Unknown'
             if key not in monthly:
                 monthly[key] = {'period': key, 'under_warranty': 0, 'out_of_warranty': 0}
             if r.is_under_warranty:
@@ -548,7 +552,7 @@ class WarrantyDashboard(models.Model):
         w_domain = self._build_warranty_domain(filters)
         c_domain = self._build_claim_domain(filters)
         card = self.env['warranty.card']
-        claim = self.env['warranty.claim']
+        claim = self.env['service.receipt']
         today = fields.Date.today()
         monthly = {}
         for i in range(months - 1, -1, -1):
@@ -561,8 +565,8 @@ class WarrantyDashboard(models.Model):
             if key in monthly:
                 monthly[key]['warranties'] += 1
 
-        for r in claim.search(c_domain + [('claim_date', '>=', today - timedelta(days=months * 30))]):
-            key = r.claim_date.strftime('%b %Y') if r.claim_date else 'Unknown'
+        for r in claim.search(c_domain + [('request_date', '>=', today - timedelta(days=months * 30))]):
+            key = r.request_date.strftime('%b %Y') if r.request_date else 'Unknown'
             if key in monthly:
                 monthly[key]['claims'] += 1
 

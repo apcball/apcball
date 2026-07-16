@@ -62,6 +62,17 @@ class ServiceReceipt(models.Model):
     requester_name = fields.Char(string='Service Requester', tracking=True)
     requester_phone = fields.Char(string='Requester Phone')
     warranty_no = fields.Char(string='Warranty Number')
+    warranty_card_id = fields.Many2one(
+        'warranty.card',
+        string='Warranty Card',
+        tracking=True,
+        ondelete='set null',
+    )
+    is_under_warranty = fields.Boolean(
+        string='Under Warranty',
+        compute='_compute_is_under_warranty',
+        store=True,
+    )
     shop_name = fields.Char(string='Purchased From')
     partner_id = fields.Many2one('res.partner', string='Customer', tracking=True)
     service_address = fields.Text(string='Service Address')
@@ -232,6 +243,42 @@ class ServiceReceipt(models.Model):
         for record in self:
             record.line_count = len(record.line_ids)
 
+    @api.depends('warranty_card_id', 'warranty_card_id.end_date', 'request_date')
+    def _compute_is_under_warranty(self):
+        for record in self:
+            record.is_under_warranty = bool(
+                record.warranty_card_id
+                and record.warranty_card_id.end_date
+                and (record.request_date or fields.Date.today()) <= record.warranty_card_id.end_date
+            )
+
+    def _apply_warranty_card_data(self):
+        for record in self.filtered('warranty_card_id'):
+            card = record.warranty_card_id
+            vals = {'warranty_no': card.name}
+            if not record.partner_id:
+                vals['partner_id'] = card.partner_id.id
+            record.with_context(skip_warranty_card_sync=True).write(vals)
+
+    @api.onchange('warranty_card_id')
+    def _onchange_warranty_card_id(self):
+        if not self.warranty_card_id:
+            self.warranty_no = False
+            self.is_under_warranty = False
+            return {}
+
+        warning = {}
+        card = self.warranty_card_id
+        if self.partner_id and self.partner_id != card.partner_id:
+            warning = {
+                'title': _('Customer mismatch'),
+                'message': _('The customer was changed to match the selected Warranty Card.'),
+            }
+        self.partner_id = card.partner_id
+        self.warranty_no = card.name
+        self.product_in_warranty = self.is_under_warranty
+        return {'warning': warning} if warning else {}
+
     @api.depends('return_picking_id', 'replacement_picking_id')
     def _compute_picking_counts(self):
         for record in self:
@@ -340,6 +387,8 @@ class ServiceReceipt(models.Model):
         if vals.get('name', 'New') == 'New':
             vals['name'] = self.env['ir.sequence'].next_by_code('service.receipt') or 'New'
         record = super().create(vals)
+        if record.warranty_card_id:
+            record._apply_warranty_card_data()
         record._sync_calendar_event()
         return record
 
@@ -354,6 +403,8 @@ class ServiceReceipt(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
+        if 'warranty_card_id' in vals and not self.env.context.get('skip_warranty_card_sync'):
+            self._apply_warranty_card_data()
         tracked_fields = {
             'name', 'requester_name', 'partner_id', 'service_address', 'schedule_start',
             'schedule_end', 'technician_id', 'technician_ids', 'state', 'active',

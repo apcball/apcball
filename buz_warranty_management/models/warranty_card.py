@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from dateutil.relativedelta import relativedelta
 from datetime import date, timedelta
 
@@ -8,14 +8,6 @@ class WarrantyCard(models.Model):
     _description = 'Warranty Card'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'create_date desc'
-    _sql_constraints = [
-        (
-            'external_request_id_uniq',
-            'unique(external_request_id)',
-            'A warranty registration can only be imported once.',
-        ),
-    ]
-
     name = fields.Char(
         string='Warranty Number',
         required=True,
@@ -90,16 +82,6 @@ class WarrantyCard(models.Model):
         related='product_id.product_tmpl_id.warranty_period_unit',
         readonly=True
     )
-    claim_ids = fields.One2many(
-        'warranty.claim',
-        'warranty_card_id',
-        string='Claims'
-    )
-    claim_count = fields.Integer(
-        string='Claim Count',
-        compute='_compute_claim_count',
-        search='_search_claim_count'
-    )
     is_expired = fields.Boolean(
         string='Is Expired',
         compute='_compute_is_expired',
@@ -115,6 +97,11 @@ class WarrantyCard(models.Model):
         compute='_compute_days_since_expiry',
         search='_search_days_since_expiry'
     )
+    claim_count = fields.Integer(
+        string='Claim Count',
+        compute='_compute_claim_count',
+        search='_search_claim_count',
+    )
     last_claim_date = fields.Date(
         string='Last Claim Date',
         compute='_compute_last_claim_date',
@@ -122,29 +109,33 @@ class WarrantyCard(models.Model):
     )
     product_description = fields.Char(
         string='Product Description',
-        help='Free-text product name entered by customer via portal',
+        help='Additional product description for manually managed warranty cards',
     )
 
-    # === Fields collected via portal (also usable for manual cards) ===
-    source = fields.Selection(
-        [('manual', 'Manual / Office'),
-         ('portal', 'Customer Portal')],
-        string='Source', default='manual', tracking=True)
     dealer_name = fields.Char(string='Dealer / Shop')
     invoice_number = fields.Char(string='Invoice No.')
-    serial_number_input = fields.Char(
-        string='Serial (customer-entered)',
-        help='Typed by customer on the portal; used when no matching stock.lot is found')
     proof_attachment_ids = fields.Many2many(
         'ir.attachment', 'warranty_card_proof_rel', 'card_id', 'attachment_id',
         string='Proof of Purchase')
-    registration_date = fields.Datetime(
-        string='Submitted On', readonly=True, copy=False)
-    external_request_id = fields.Char(
-        string='Website Request ID', index=True, readonly=True, copy=False)
-    product_model_input = fields.Char(
-        string='Product Model / Code',
-        help='Product model or code entered by the customer on the website')
+
+    proof_pdf = fields.Binary(
+        string='Proof of Purchase Preview',
+        compute='_compute_proof_pdf',
+    )
+    proof_pdf_filename = fields.Char(compute='_compute_proof_pdf')
+    proof_image = fields.Image(
+        string='Proof of Purchase Image',
+        compute='_compute_proof_image',
+    )
+    days_remaining_text = fields.Char(
+        string='Remaining Period',
+        compute='_compute_days_remaining_text',
+    )
+
+    partner_phone = fields.Char(related='partner_id.phone', string='Phone', readonly=True)
+    partner_email = fields.Char(related='partner_id.email', string='Email', readonly=True)
+    partner_address = fields.Char(related='partner_id.contact_address', string='Address', readonly=True)
+    product_image = fields.Image(related='product_id.image_1024', string='Product Image', readonly=True)
 
     @api.depends('start_date', 'product_id.product_tmpl_id.warranty_duration', 'product_id.product_tmpl_id.warranty_period_unit')
     def _compute_end_date(self):
@@ -164,11 +155,6 @@ class WarrantyCard(models.Model):
             else:
                 record.end_date = False
 
-    @api.depends('claim_ids')
-    def _compute_claim_count(self):
-        for record in self:
-            record.claim_count = len(record.claim_ids)
-
     @api.depends('end_date')
     def _compute_is_expired(self):
         today = fields.Date.today()
@@ -185,6 +171,38 @@ class WarrantyCard(models.Model):
             else:
                 record.days_remaining = 0
 
+    @api.depends('proof_attachment_ids', 'proof_attachment_ids.mimetype', 'proof_attachment_ids.datas')
+    def _compute_proof_pdf(self):
+        for record in self:
+            pdf = record.proof_attachment_ids.filtered(
+                lambda a: a.mimetype == 'application/pdf')[:1]
+            record.proof_pdf = pdf.datas if pdf else False
+            record.proof_pdf_filename = pdf.name if pdf else False
+
+    @api.depends('proof_attachment_ids', 'proof_attachment_ids.mimetype', 'proof_attachment_ids.datas')
+    def _compute_proof_image(self):
+        for record in self:
+            image = record.proof_attachment_ids.filtered(
+                lambda a: a.mimetype and a.mimetype.startswith('image/'))[:1]
+            record.proof_image = image.datas if image else False
+
+    @api.depends('end_date')
+    def _compute_days_remaining_text(self):
+        today = fields.Date.today()
+        for record in self:
+            if record.end_date and record.end_date > today:
+                delta = relativedelta(record.end_date, today)
+                parts = []
+                if delta.years:
+                    parts.append(_('%s year(s)') % delta.years)
+                if delta.months:
+                    parts.append(_('%s month(s)') % delta.months)
+                if delta.days:
+                    parts.append(_('%s day(s)') % delta.days)
+                record.days_remaining_text = _('approx. %s') % ' '.join(parts) if parts else ''
+            else:
+                record.days_remaining_text = ''
+
     @api.depends('end_date')
     def _compute_days_since_expiry(self):
         """Compute days since expiry for expired warranties"""
@@ -195,15 +213,27 @@ class WarrantyCard(models.Model):
             else:
                 record.days_since_expiry = 0
 
-    @api.depends('claim_ids')
-    def _compute_last_claim_date(self):
-        """Compute the date of the last claim"""
+    def _compute_claim_count(self):
+        if 'service.receipt' not in self.env.registry.models:
+            self.update({'claim_count': 0})
+            return
+        receipt_model = self.env['service.receipt'].sudo()
         for record in self:
-            if record.claim_ids:
-                last_claim = record.claim_ids.sorted('claim_date', reverse=True)[0]
-                record.last_claim_date = last_claim.claim_date
-            else:
-                record.last_claim_date = False
+            record.claim_count = receipt_model.search_count([
+                ('warranty_card_id', '=', record.id),
+                ('service_case_type', '=', 'replacement'),
+            ])
+
+    def _compute_last_claim_date(self):
+        if 'service.receipt' not in self.env.registry.models:
+            self.update({'last_claim_date': False})
+            return
+        receipt_model = self.env['service.receipt'].sudo()
+        for record in self:
+            receipt = receipt_model.search([
+                ('warranty_card_id', '=', record.id),
+            ], order='request_date desc, id desc', limit=1)
+            record.last_claim_date = receipt.request_date if receipt else False
 
     def action_activate(self):
         self.write({'state': 'active'})
@@ -211,12 +241,8 @@ class WarrantyCard(models.Model):
     def action_cancel(self):
         self.write({'state': 'cancelled'})
 
-    def action_view_claims(self):
-        self.ensure_one()
-        action = self.env.ref('buz_warranty_management.action_warranty_claim').read()[0]
-        action['domain'] = [('warranty_card_id', '=', self.id)]
-        action['context'] = {'default_warranty_card_id': self.id}
-        return action
+    def action_reset_to_draft(self):
+        self.write({'state': 'draft'})
 
     def action_print_certificate(self):
         self.ensure_one()
@@ -250,6 +276,23 @@ class WarrantyCard(models.Model):
         self.env['warranty.dashboard.cache']._trigger_update('warranty_card_deleted', self)
         return super().unlink()
 
+    def _search_claim_count(self, operator, value):
+        if 'service.receipt' not in self.env.registry.models:
+            return [('id', '=', 0)]
+        cards = self.search([]).filtered(
+            lambda card: card.claim_count > value if operator in ('>', '>=')
+            else card.claim_count < value if operator in ('<', '<=')
+            else card.claim_count == value
+        )
+        return [('id', 'in', cards.ids)]
+
+    def _search_last_claim_date(self, operator, value):
+        if 'service.receipt' not in self.env.registry.models:
+            return [('id', '=', 0)]
+        receipt_model = self.env['service.receipt'].sudo()
+        receipts = receipt_model.search([('request_date', operator, value)])
+        return [('id', 'in', receipts.mapped('warranty_card_id').ids)]
+
     @api.model
     def cron_update_expired_warranties(self):
         today = fields.Date.today()
@@ -264,22 +307,6 @@ class WarrantyCard(models.Model):
             self.env['warranty.dashboard.cache']._trigger_update('warranty_cards_expired')
         
         return True
-
-    @api.model
-    def _search_claim_count(self, operator, value):
-        """Search method for claim_count field — uses SQL for performance."""
-        query = """
-            SELECT wc.id
-            FROM warranty_card wc
-            GROUP BY wc.id
-            HAVING (
-                SELECT COUNT(*) FROM warranty_claim wcl
-                WHERE wcl.warranty_card_id = wc.id
-            ) %s %%s
-        """ % operator
-        self.env.cr.execute(query, (value,))
-        ids = [row[0] for row in self.env.cr.fetchall()]
-        return [('id', 'in', ids)]
 
     @api.model
     def _search_days_remaining(self, operator, value):
@@ -336,9 +363,3 @@ class WarrantyCard(models.Model):
                 target_end = today - timedelta(days=value-1)
                 return ['|', ('end_date', '>=', today), ('end_date', '<', target_start), ('end_date', '>=', target_end)]
         return [('id', '=', False)]
-
-    @api.model
-    def _search_last_claim_date(self, operator, value):
-        """Search method for last_claim_date field"""
-        # Search warranty cards with last claim date
-        return [('claim_ids.claim_date', operator, value)]

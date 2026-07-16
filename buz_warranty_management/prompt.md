@@ -72,7 +72,7 @@ Add full **RMA flow** with stock movements to support picking parts from warehou
 
   - `warranty.claim.rma.receive.wizard`: create **RMA IN** picking (customer → repair location) with optional lot capture & return label.
   - `warranty.claim.replacement.issue.wizard`: create **Replacement OUT** picking (repair location → customer). Supports:
-    - Under-warranty: zero-price delivery (no SO) or zero-price SO for portal tracking.
+    - Under-warranty: zero-price delivery (no SO) or zero-price SO for replacement tracking.
     - Out-of-warranty: generate SO lines from claim lines (parts + labor) → confirm → delivery.
   - `warranty.claim.invoice.wizard`: convert claim lines (parts/labor) to **Draft Invoice** directly (for quick-charge jobs) or attach to existing SO.
 - **Accounting/Costing Rules:**
@@ -288,7 +288,6 @@ buz_warranty_management/
 
 ## 🧰 Optional Enhancements
 
-- Portal view for customers to check their warranties.
 - Auto email when warranty is near expiration.
 - Barcode scanning for quick warranty lookup.
 - Integration with `buz_account_receipt` for billing out-of-warranty claims.
@@ -304,7 +303,7 @@ buz_warranty_management/
 > ### Functional Scope
 > - Product-level warranty configuration fields (duration, type, conditions, auto flag, default service product).
 > - Auto-create `warranty.card` records when Delivery Orders are validated; start date = delivery done date; end date = start + months.
-> - Warranty Claim management (`warranty.claim`) with statuses and portal chatter.
+> - Warranty Claim management (`warranty.claim`) with statuses and chatter.
 > - **RMA & Stock Flows:**
 >   - RMA IN (customer → repair location) via wizard, capturing serial/lot.
 >   - Replacement OUT (repair location → customer) via wizard; supports under-warranty (zero price) and out-of-warranty (SO/Invoice) flows.

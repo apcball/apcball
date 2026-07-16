@@ -103,7 +103,7 @@ class SaleOrder(models.Model):
                     'start_date': picking.date_done.date() if picking.date_done else fields.Date.today(),
                     'sale_order_id': self.id,
                     'picking_id': picking.id,
-                    'state': 'active',
+                    'state': 'draft',
                 }
                 
                 warranty_card = WarrantyCard.create(warranty_vals)

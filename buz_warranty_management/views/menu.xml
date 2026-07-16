@@ -21,23 +21,10 @@
               action="action_warranty_card"
               sequence="10"/>
 
-    <!-- Warranty Claims Menu -->
-    <menuitem id="menu_warranty_claims" 
-              name="Warranty Claims"
-              parent="menu_warranty_root"
-              action="action_warranty_claim"
-              sequence="20"/>
-
     <!-- Reporting Menu -->
     <menuitem id="menu_warranty_reporting" 
               name="Reporting"
               parent="menu_warranty_root"
               sequence="90"/>
-
-    <!-- Configuration Menu -->
-    <menuitem id="menu_warranty_configuration" 
-              name="Configuration"
-              parent="menu_warranty_root"
-              sequence="100"/>
 
 </odoo>

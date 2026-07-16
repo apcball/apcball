@@ -21,17 +21,15 @@ export class WarrantyDashboard extends Component {
         this.rpc = useService("rpc");
         this.action = useService("action");
         this.notification = useService("notification");
+        this.user = useService("user");
 
+        this.rootRef = useRef("root");
         this.chartRefs = {
             warrantyStatus: useRef("warrantyStatusChart"),
             claimsTrend: useRef("claimsTrendChart"),
-            monthlyComparison: useRef("monthlyComparisonChart"),
-            topProducts: useRef("topProductsChart"),
-            topCustomers: useRef("topCustomersChart"),
-            claimTypes: useRef("claimTypesChart"),
-            warrantyExpiry: useRef("warrantyExpiryChart"),
         };
         this.charts = {};
+        this.sparkCharts = [];
 
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -75,6 +73,10 @@ export class WarrantyDashboard extends Component {
         onWillUnmount(() => this.destroyAllCharts());
     }
 
+    get userName() {
+        return (this.user && this.user.name) || "Admin";
+    }
+
     formatDate(d) {
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -92,6 +94,57 @@ export class WarrantyDashboard extends Component {
     formatPercent(value) {
         return `${(value || 0).toFixed(1)}%`;
     }
+
+    nearExpiryPercent() {
+        const kpi = this.state.data.kpi || {};
+        const total = kpi.total_warranties || 0;
+        if (!total) return "0.0%";
+        return this.formatPercent(((kpi.near_expiry_warranties || 0) / total) * 100);
+    }
+
+    // --- Derived rows for template ---
+
+    statusLegend() {
+        const rows = this.state.data.warranty_status || [];
+        const total = rows.reduce((s, r) => s + (r.value || 0), 0) || 1;
+        const colorMap = {
+            active: "#3b82f6",
+            expired: "#ef4444",
+            claimed: "#f59e0b",
+            "near expiry": "#06b6d4",
+            draft: "#94a3b8",
+            cancelled: "#64748b",
+        };
+        return rows.map((r) => ({
+            label: r.label,
+            value: r.value || 0,
+            pct: this.formatPercent(((r.value || 0) / total) * 100),
+            color: colorMap[(r.label || "").toLowerCase()] || r.color || "#6366f1",
+        }));
+    }
+
+    _rankRows(rows) {
+        const data = (rows || []).slice(0, 10);
+        const total = data.reduce((s, r) => s + (r.warranties || 0), 0) || 1;
+        const max = Math.max(...data.map((r) => r.warranties || 0), 1);
+        return data.map((r, i) => ({
+            rank: i + 1,
+            name: r.name,
+            value: r.warranties || 0,
+            barPct: Math.round(((r.warranties || 0) / max) * 100),
+            sharePct: this.formatPercent(((r.warranties || 0) / total) * 100),
+        }));
+    }
+
+    topProductRows() {
+        return this._rankRows(this.state.data.top_products);
+    }
+
+    topCustomerRows() {
+        return this._rankRows(this.state.data.top_customers);
+    }
+
+    // --- Data loading ---
 
     async loadFilterOptions() {
         try {
@@ -168,27 +221,13 @@ export class WarrantyDashboard extends Component {
         }
     }
 
-    async onRebuildCache() {
-        try {
-            await this.rpc("/warranty/dashboard/rebuild", {});
-            const data = await this.rpc("/warranty/dashboard/data", {
-                filters: this.state.filters,
-            });
-            this.state.data = data;
-            this.notification.add("Cache rebuilt successfully", {
-                type: "success",
-            });
-        } catch (e) {
-            console.error("Failed to rebuild cache:", e);
-            this.notification.add("Failed to rebuild cache", {
-                type: "danger",
-            });
-        }
-    }
+    // --- Charts ---
 
     destroyAllCharts() {
         Object.values(this.charts).forEach((c) => c && c.destroy());
         this.charts = {};
+        this.sparkCharts.forEach((c) => c && c.destroy());
+        this.sparkCharts = [];
     }
 
     renderAllCharts() {
@@ -196,60 +235,34 @@ export class WarrantyDashboard extends Component {
         this.destroyAllCharts();
         this.renderWarrantyStatusChart();
         this.renderClaimsTrendChart();
-        this.renderMonthlyComparisonChart();
-        this.renderTopProductsChart();
-        this.renderTopCustomersChart();
-        this.renderClaimTypesChart();
-        this.renderWarrantyExpiryChart();
+        this.renderSparklines();
     }
-
-    getChartColors() {
-        return {
-            primary: "rgba(99, 102, 241, 0.85)",
-            primaryLight: "rgba(99, 102, 241, 0.15)",
-            success: "rgba(16, 185, 129, 0.85)",
-            successLight: "rgba(16, 185, 129, 0.15)",
-            warning: "rgba(245, 158, 11, 0.85)",
-            warningLight: "rgba(245, 158, 11, 0.15)",
-            danger: "rgba(239, 68, 68, 0.85)",
-            dangerLight: "rgba(239, 68, 68, 0.15)",
-            info: "rgba(6, 182, 212, 0.85)",
-            purple: "rgba(139, 92, 246, 0.85)",
-            orange: "rgba(249, 115, 22, 0.85)",
-            teal: "rgba(20, 184, 166, 0.85)",
-            palette: [
-                "#6366f1", "#10b981", "#f59e0b", "#ef4444",
-                "#06b6d4", "#8b5cf6", "#f97316", "#14b8a6",
-                "#ec4899", "#84cc16", "#a855f7", "#0ea5e9",
-            ],
-        };
-    }
-
-    // --- Chart renderers ---
 
     renderWarrantyStatusChart() {
         const el = this.chartRefs.warrantyStatus.el;
         if (!el || !window.Chart) return;
-        const d = this.state.data.warranty_status || [];
-        if (!d.length) return;
-        const c = this.getChartColors();
+        const legend = this.statusLegend();
+        if (!legend.length) return;
         this.charts.warrantyStatus = new window.Chart(el, {
             type: "doughnut",
             data: {
-                labels: d.map((r) => r.label),
+                labels: legend.map((r) => r.label),
                 datasets: [
                     {
-                        data: d.map((r) => r.value),
-                        backgroundColor: c.palette.slice(0, d.length),
-                        hoverOffset: 8,
+                        data: legend.map((r) => r.value),
+                        backgroundColor: legend.map((r) => r.color),
+                        borderWidth: 2,
+                        borderColor: "#ffffff",
+                        hoverOffset: 6,
                     },
                 ],
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: "68%",
                 plugins: {
-                    legend: { position: "right" },
+                    legend: { display: false },
                 },
             },
         });
@@ -260,27 +273,30 @@ export class WarrantyDashboard extends Component {
         if (!el || !window.Chart) return;
         const d = this.state.data.claims_trend || [];
         if (!d.length) return;
-        const c = this.getChartColors();
+        const ctx = el.getContext("2d");
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, "rgba(139, 92, 246, 0.35)");
+        gradient.addColorStop(1, "rgba(139, 92, 246, 0.02)");
         this.charts.claimsTrend = new window.Chart(el, {
             type: "line",
             data: {
                 labels: d.map((r) => r.period),
                 datasets: [
                     {
-                        label: "Under Warranty",
-                        data: d.map((r) => r.under_warranty || 0),
-                        borderColor: c.success,
-                        backgroundColor: c.successLight,
+                        label: "Claims",
+                        data: d.map(
+                            (r) => (r.under_warranty || 0) + (r.out_of_warranty || 0)
+                        ),
+                        borderColor: "#8b5cf6",
+                        backgroundColor: gradient,
+                        pointBackgroundColor: "#8b5cf6",
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
                         fill: true,
                         tension: 0.4,
-                    },
-                    {
-                        label: "Out of Warranty",
-                        data: d.map((r) => r.out_of_warranty || 0),
-                        borderColor: c.danger,
-                        backgroundColor: c.dangerLight,
-                        fill: true,
-                        tension: 0.4,
+                        borderWidth: 2.5,
                     },
                 ],
             },
@@ -288,191 +304,76 @@ export class WarrantyDashboard extends Component {
                 responsive: true,
                 maintainAspectRatio: false,
                 interaction: { mode: "index", intersect: false },
-                plugins: { legend: { position: "top" } },
-                scales: { y: { beginAtZero: true } },
-            },
-        });
-    }
-
-    renderMonthlyComparisonChart() {
-        const el = this.chartRefs.monthlyComparison.el;
-        if (!el || !window.Chart) return;
-        const d = this.state.data.monthly_comparison || [];
-        if (!d.length) return;
-        const c = this.getChartColors();
-        this.charts.monthlyComparison = new window.Chart(el, {
-            type: "bar",
-            data: {
-                labels: d.map((r) => r.period),
-                datasets: [
-                    {
-                        label: "New Warranties",
-                        data: d.map((r) => r.warranties || 0),
-                        backgroundColor: c.primary,
-                        borderRadius: 6,
-                    },
-                    {
-                        label: "Claims",
-                        data: d.map((r) => r.claims || 0),
-                        backgroundColor: c.warning,
-                        borderRadius: 6,
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: "top" } },
-                scales: { y: { beginAtZero: true } },
-            },
-        });
-    }
-
-    renderTopProductsChart() {
-        const el = this.chartRefs.topProducts.el;
-        if (!el || !window.Chart) return;
-        const d = this.state.data.top_products || [];
-        if (!d.length) return;
-        const c = this.getChartColors();
-        this.charts.topProducts = new window.Chart(el, {
-            type: "bar",
-            data: {
-                labels: d.map((r) => r.name),
-                datasets: [
-                    {
-                        label: "Warranties",
-                        data: d.map((r) => r.warranties || 0),
-                        backgroundColor: c.primary,
-                        borderRadius: 6,
-                    },
-                    {
-                        label: "Claims",
-                        data: d.map((r) => r.claims || 0),
-                        backgroundColor: c.danger,
-                        borderRadius: 6,
-                    },
-                ],
-            },
-            options: {
-                indexAxis: "y",
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: "top" } },
-                scales: { x: { beginAtZero: true } },
-            },
-        });
-    }
-
-    renderTopCustomersChart() {
-        const el = this.chartRefs.topCustomers.el;
-        if (!el || !window.Chart) return;
-        const d = this.state.data.top_customers || [];
-        if (!d.length) return;
-        const c = this.getChartColors();
-        this.charts.topCustomers = new window.Chart(el, {
-            type: "bar",
-            data: {
-                labels: d.map((r) => r.name),
-                datasets: [
-                    {
-                        label: "Warranties",
-                        data: d.map((r) => r.warranties || 0),
-                        backgroundColor: c.success,
-                        borderRadius: 6,
-                    },
-                    {
-                        label: "Claims",
-                        data: d.map((r) => r.claims || 0),
-                        backgroundColor: c.warning,
-                        borderRadius: 6,
-                    },
-                ],
-            },
-            options: {
-                indexAxis: "y",
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: "top" } },
-                scales: { x: { beginAtZero: true } },
-            },
-        });
-    }
-
-    renderClaimTypesChart() {
-        const el = this.chartRefs.claimTypes.el;
-        if (!el || !window.Chart) return;
-        const d = this.state.data.claim_types || [];
-        if (!d.length) return;
-        const c = this.getChartColors();
-        this.charts.claimTypes = new window.Chart(el, {
-            type: "line",
-            data: {
-                labels: d.map((r) => r.period),
-                datasets: [
-                    {
-                        label: "Repair",
-                        data: d.map((r) => r.repair || 0),
-                        borderColor: c.primary,
-                        backgroundColor: c.primaryLight,
-                        fill: true,
-                        tension: 0.4,
-                    },
-                    {
-                        label: "Replace",
-                        data: d.map((r) => r.replace || 0),
-                        borderColor: c.success,
-                        backgroundColor: c.successLight,
-                        fill: true,
-                        tension: 0.4,
-                    },
-                    {
-                        label: "Refund",
-                        data: d.map((r) => r.refund || 0),
-                        borderColor: c.warning,
-                        backgroundColor: c.warningLight,
-                        fill: true,
-                        tension: 0.4,
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: "index", intersect: false },
-                plugins: { legend: { position: "top" } },
+                plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, stacked: true },
-                    x: { stacked: true },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: "rgba(148, 163, 184, 0.15)" },
+                        ticks: { color: "#94a3b8" },
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: "#94a3b8" },
+                    },
                 },
             },
         });
     }
 
-    renderWarrantyExpiryChart() {
-        const el = this.chartRefs.warrantyExpiry.el;
-        if (!el || !window.Chart) return;
-        const d = this.state.data.warranty_expiry || [];
-        if (!d.length) return;
-        const c = this.getChartColors();
-        this.charts.warrantyExpiry = new window.Chart(el, {
-            type: "bar",
-            data: {
-                labels: d.map((r) => r.period),
-                datasets: [
-                    {
-                        label: "Expiring",
-                        data: d.map((r) => r.count || 0),
-                        backgroundColor: c.danger,
-                        borderRadius: 6,
+    renderSparklines() {
+        const root = this.rootRef.el;
+        if (!root || !window.Chart) return;
+        const monthly = this.state.data.monthly_comparison || [];
+        const trend = this.state.data.claims_trend || [];
+        const series = {
+            warranties: monthly.map((r) => r.warranties || 0),
+            claims: trend.map(
+                (r) => (r.under_warranty || 0) + (r.out_of_warranty || 0)
+            ),
+        };
+        root.querySelectorAll("canvas.o_wd_spark").forEach((el) => {
+            const color = el.dataset.color || "#6366f1";
+            const data = series[el.dataset.series] || [];
+            if (data.length < 2) {
+                el.style.display = "none";
+                return;
+            }
+            el.style.display = "";
+            el.width = el.clientWidth || 220;
+            el.height = el.clientHeight || 40;
+            const ctx = el.getContext("2d");
+            const gradient = ctx.createLinearGradient(0, 0, 0, 40);
+            gradient.addColorStop(0, color + "33");
+            gradient.addColorStop(1, color + "05");
+            this.sparkCharts.push(
+                new window.Chart(el, {
+                    type: "line",
+                    data: {
+                        labels: data.map((_, i) => i),
+                        datasets: [
+                            {
+                                data,
+                                borderColor: color,
+                                backgroundColor: gradient,
+                                fill: true,
+                                tension: 0.45,
+                                borderWidth: 1.5,
+                                pointRadius: 0,
+                            },
+                        ],
                     },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } },
-            },
+                    options: {
+                        responsive: false,
+                        maintainAspectRatio: false,
+                        events: [],
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                        scales: {
+                            x: { display: false },
+                            y: { display: false },
+                        },
+                    },
+                })
+            );
         });
     }
 
@@ -486,6 +387,15 @@ export class WarrantyDashboard extends Component {
             views: [[false, "list"], [false, "form"]],
             domain: domain || [],
             context: {},
+        });
+    }
+
+    async openWarrantyCard(id) {
+        await this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "warranty.card",
+            res_id: id,
+            views: [[false, "form"]],
         });
     }
 
@@ -524,11 +434,11 @@ export class WarrantyDashboard extends Component {
     async openWarrantyClaims() {
         await this.action.doAction({
             type: "ir.actions.act_window",
-            name: "Warranty Claims",
-            res_model: "warranty.claim",
+            name: "Claims",
+            res_model: "service.receipt",
             views: [[false, "list"], [false, "form"]],
-            domain: [],
-            context: {},
+            domain: [["service_case_type", "=", "replacement"]],
+            context: {default_service_case_type: "replacement"},
         });
     }
 }

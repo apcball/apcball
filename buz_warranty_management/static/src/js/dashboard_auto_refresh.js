@@ -292,12 +292,12 @@ export class WarrantyDashboardController extends FormController {
         if (dateRange) {
             this.actionService.doAction({
                 type: 'ir.actions.act_window',
-                res_model: 'warranty.claim',
+                res_model: 'service.receipt',
                 view_mode: 'tree,form',
                 domain: [
-                    ['claim_date', '>=', dateRange.start],
-                    ['claim_date', '<=', dateRange.end],
-                    ['claim_type', '=', claimType.toLowerCase()]
+                    ['request_date', '>=', dateRange.start],
+                    ['request_date', '<=', dateRange.end],
+                    ['service_case_type', '=', 'replacement']
                 ],
                 name: `${claimType} Claims for ${monthLabel}`
             });
@@ -346,11 +346,12 @@ export class WarrantyDashboardController extends FormController {
             if (dateRange) {
                 this.actionService.doAction({
                     type: 'ir.actions.act_window',
-                    res_model: 'warranty.claim',
+                    res_model: 'service.receipt',
                     view_mode: 'tree,form',
                     domain: [
-                        ['claim_date', '>=', dateRange.start],
-                        ['claim_date', '<=', dateRange.end]
+                        ['request_date', '>=', dateRange.start],
+                        ['request_date', '<=', dateRange.end],
+                        ['service_case_type', '=', 'replacement']
                     ],
                     name: `Claims filed in ${monthLabel}`
                 });

@@ -98,7 +98,7 @@ class WarrantyDashboardCache(models.Model):
                     COUNT(CASE WHEN state = 'active' AND end_date >= %s
                              AND end_date <= %s THEN 1 END) as near_expiry,
                     COUNT(CASE WHEN EXISTS(
-                        SELECT 1 FROM warranty_claim wc
+                        SELECT 1 FROM service_receipt wc
                         WHERE wc.warranty_card_id = warranty_card.id
                     ) THEN 1 END) as claimed
                 FROM warranty_card
@@ -130,7 +130,7 @@ class WarrantyDashboardCache(models.Model):
             # --- Claims metrics ---
             first_day_this_month = today.replace(day=1)
             self._cr.execute(
-                "SELECT COUNT(*) FROM warranty_claim WHERE claim_date >= %s",
+                "SELECT COUNT(*) FROM service_receipt WHERE request_date >= %s AND service_case_type = 'replacement'",
                 (first_day_this_month,),
             )
             claims_this_month = self._cr.fetchone()[0]
@@ -141,7 +141,7 @@ class WarrantyDashboardCache(models.Model):
                 first_day_last_month = today.replace(month=today.month - 1, day=1)
             last_day_last_month = today.replace(day=1) - timedelta(days=1)
             self._cr.execute(
-                "SELECT COUNT(*) FROM warranty_claim WHERE claim_date >= %s AND claim_date <= %s",
+                "SELECT COUNT(*) FROM service_receipt WHERE request_date >= %s AND request_date <= %s AND service_case_type = 'replacement'",
                 (first_day_last_month, last_day_last_month),
             )
             claims_last_month = self._cr.fetchone()[0]
@@ -234,11 +234,11 @@ class WarrantyDashboardCache(models.Model):
     def _build_claims_trend_chart(self, months=12):
         months_back = fields.Date.today() - timedelta(days=months * 30)
         self._cr.execute("""
-            SELECT DATE_TRUNC('month', claim_date) AS month,
+            SELECT DATE_TRUNC('month', request_date) AS month,
                    COUNT(*) AS cnt,
                    COUNT(CASE WHEN is_under_warranty THEN 1 END) AS w_claims,
                    COUNT(CASE WHEN NOT is_under_warranty THEN 1 END) AS o_claims
-            FROM warranty_claim WHERE claim_date >= %s
+            FROM service_receipt WHERE request_date >= %s AND service_case_type = 'replacement'
             GROUP BY month ORDER BY month
         """, (months_back,))
         results = self._cr.fetchall()
@@ -263,8 +263,8 @@ class WarrantyDashboardCache(models.Model):
         self._cr.execute("""
             WITH mw AS (SELECT DATE_TRUNC('month', create_date) AS m, COUNT(*) AS c
                         FROM warranty_card WHERE create_date >= %s GROUP BY m),
-                 mc AS (SELECT DATE_TRUNC('month', claim_date) AS m, COUNT(*) AS c
-                        FROM warranty_claim WHERE claim_date >= %s GROUP BY m)
+                 mc AS (SELECT DATE_TRUNC('month', request_date) AS m, COUNT(*) AS c
+                        FROM service_receipt WHERE request_date >= %s AND service_case_type = 'replacement' GROUP BY m)
             SELECT COALESCE(w.m, c.m),
                    COALESCE(w.c, 0), COALESCE(c.c, 0)
             FROM mw w FULL OUTER JOIN mc c ON w.m = c.m ORDER BY 1
@@ -291,7 +291,7 @@ class WarrantyDashboardCache(models.Model):
             FROM warranty_card wc
             JOIN product_product pp ON wc.product_id = pp.id
             JOIN product_template pt ON pp.product_tmpl_id = pt.id
-            LEFT JOIN warranty_claim wc2 ON wc.id = wc2.warranty_card_id
+            LEFT JOIN service_receipt wc2 ON wc.id = wc2.warranty_card_id
             GROUP BY pt.name ORDER BY 2 DESC LIMIT %s
         """, (limit,))
         results = self._cr.fetchall()
@@ -314,7 +314,7 @@ class WarrantyDashboardCache(models.Model):
             SELECT rp.name, COUNT(wc.id), COUNT(wc2.id)
             FROM warranty_card wc
             JOIN res_partner rp ON wc.partner_id = rp.id
-            LEFT JOIN warranty_claim wc2 ON wc.id = wc2.warranty_card_id
+            LEFT JOIN service_receipt wc2 ON wc.id = wc2.warranty_card_id
             GROUP BY rp.name ORDER BY 2 DESC LIMIT %s
         """, (limit,))
         results = self._cr.fetchall()
@@ -335,15 +335,15 @@ class WarrantyDashboardCache(models.Model):
     def _build_claim_types_chart(self, months=12):
         d = fields.Date.today() - timedelta(days=months * 30)
         self._cr.execute("""
-            SELECT DATE_TRUNC('month', claim_date) AS m, claim_type, COUNT(*)
-            FROM warranty_claim WHERE claim_date >= %s
-            GROUP BY m, claim_type ORDER BY m, claim_type
+            SELECT DATE_TRUNC('month', request_date) AS m, service_case_type, COUNT(*)
+            FROM service_receipt WHERE request_date >= %s AND service_case_type = 'replacement'
+            GROUP BY m, service_case_type ORDER BY m, service_case_type
         """, (d,))
         results = self._cr.fetchall()
         months_list = sorted(set(r[0] for r in results))
-        colors = {'repair': '#007bff', 'replace': '#28a745', 'refund': '#ffc107'}
+        colors = {'replacement': '#28a745'}
         datasets = []
-        for ct in ['repair', 'replace', 'refund']:
+        for ct in ['replacement']:
             data = [next((r[2] for r in results if r[0] == m and r[1] == ct), 0) for m in months_list]
             datasets.append({
                 'label': ct.title(), 'data': data,

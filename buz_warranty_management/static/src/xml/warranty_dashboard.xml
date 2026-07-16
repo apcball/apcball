@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <templates xml:space="preserve">
     <t t-name="buz_warranty_management.WarrantyDashboard">
-        <div class="o_warranty_dashboard" style="height:100%; overflow-y:auto; overflow-x:hidden;">
+        <div class="o_warranty_dashboard" t-ref="root">
 
-            <!-- FILTER BAR -->
-            <div class="o_wd_filter_bar">
-                <div class="o_wd_filters_row">
+            <!-- HEADER -->
+            <div class="o_wd_header">
+                <div class="o_wd_welcome">
+                    <h2 class="o_wd_welcome_title">Welcome back, <t t-esc="userName"/>! 👋</h2>
+                    <div class="o_wd_welcome_sub">Here's what's happening with your warranty program today.</div>
+                </div>
+                <div class="o_wd_header_controls">
                     <div class="o_wd_date_filters">
+                        <i class="fa fa-calendar text-muted" title="Date range"/>
                         <input type="date" class="form-control form-control-sm"
                                t-model="state.filters.date_from"
                                t-on-change="onFilterChange"/>
@@ -15,31 +20,26 @@
                                t-model="state.filters.date_to"
                                t-on-change="onFilterChange"/>
                     </div>
-                    <div class="o_wd_quick_buttons">
-                        <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('week')">This Week</button>
-                        <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('month')">This Month</button>
-                        <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('quarter')">This Quarter</button>
-                        <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('year')">This Year</button>
+                    <div class="o_wd_quick_buttons btn-group">
+                        <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('week')">Week</button>
+                        <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('month')">Month</button>
+                        <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('quarter')">Quarter</button>
+                        <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.onQuickPeriod('year')">Year</button>
                     </div>
-                    <div class="o_wd_filter_selects">
-                        <select class="form-select form-select-sm" t-model="state.filters.product_id" t-on-change="onFilterChange">
-                            <option value="">All Products</option>
-                            <option t-foreach="state.filterOptions.products" t-as="p" t-key="p.id" t-att-value="p.id">
-                                <t t-esc="p.name"/>
-                            </option>
-                        </select>
-                        <select class="form-select form-select-sm" t-model="state.filters.customer_id" t-on-change="onFilterChange">
-                            <option value="">All Customers</option>
-                            <option t-foreach="state.filterOptions.customers" t-as="c" t-key="c.id" t-att-value="c.id">
-                                <t t-esc="c.name"/>
-                            </option>
-                        </select>
-                    </div>
+                    <select class="form-select form-select-sm o_wd_select" t-model="state.filters.product_id" t-on-change="onFilterChange">
+                        <option value="">All Products</option>
+                        <option t-foreach="state.filterOptions.products" t-as="p" t-key="p.id" t-att-value="p.id">
+                            <t t-esc="p.name"/>
+                        </option>
+                    </select>
+                    <select class="form-select form-select-sm o_wd_select" t-model="state.filters.customer_id" t-on-change="onFilterChange">
+                        <option value="">All Customers</option>
+                        <option t-foreach="state.filterOptions.customers" t-as="c" t-key="c.id" t-att-value="c.id">
+                            <t t-esc="c.name"/>
+                        </option>
+                    </select>
                     <button class="btn btn-sm btn-primary" t-on-click="onRefresh">
                         <i class="fa fa-refresh me-1"/> Refresh
-                    </button>
-                    <button class="btn btn-sm btn-outline-warning" t-on-click="onRebuildCache">
-                        <i class="fa fa-database me-1"/> Rebuild
                     </button>
                 </div>
             </div>
@@ -56,79 +56,105 @@
             <t t-else="">
 
                 <!-- ROW 1: KPI CARDS -->
-                <div class="row g-3 mb-4">
-                    <div class="col-12 col-md-4 col-xl">
-                        <div class="o_wd_kpi_card kpi-primary" t-on-click="openAllWarranties">
-                            <div class="kpi-icon"><i class="fa fa-shield"/></div>
+                <div class="o_wd_kpi_row">
+                    <div class="o_wd_kpi_card" t-on-click="openAllWarranties">
+                        <div class="kpi-top">
+                            <div class="kpi-icon kpi-icon-primary"><i class="fa fa-shield" title="Total"/></div>
                             <div class="kpi-content">
                                 <div class="kpi-title">Total Warranties</div>
                                 <div class="kpi-value"><t t-esc="formatNumber(state.data.kpi.total_warranties)"/></div>
+                                <div class="kpi-subtitle">All time</div>
                             </div>
                         </div>
+                        <canvas class="o_wd_spark" data-color="#6366f1" data-series="warranties"/>
                     </div>
-                    <div class="col-12 col-md-4 col-xl">
-                        <div class="o_wd_kpi_card kpi-success" t-on-click="openActiveWarranties">
-                            <div class="kpi-icon"><i class="fa fa-check-circle"/></div>
+                    <div class="o_wd_kpi_card" t-on-click="openActiveWarranties">
+                        <div class="kpi-top">
+                            <div class="kpi-icon kpi-icon-success"><i class="fa fa-check-circle" title="Active"/></div>
                             <div class="kpi-content">
                                 <div class="kpi-title">Active Warranties</div>
                                 <div class="kpi-value"><t t-esc="formatNumber(state.data.kpi.active_warranties)"/></div>
-                                <div class="kpi-subtitle"><t t-esc="formatPercent(state.data.kpi.active_percentage)"/></div>
+                                <div class="kpi-subtitle"><t t-esc="formatPercent(state.data.kpi.active_percentage)"/> of total</div>
                             </div>
                         </div>
+                        <canvas class="o_wd_spark" data-color="#10b981" data-series="warranties"/>
                     </div>
-                    <div class="col-12 col-md-4 col-xl">
-                        <div class="o_wd_kpi_card kpi-danger" t-on-click="openExpiredWarranties">
-                            <div class="kpi-icon"><i class="fa fa-times-circle"/></div>
+                    <div class="o_wd_kpi_card" t-on-click="openExpiredWarranties">
+                        <div class="kpi-top">
+                            <div class="kpi-icon kpi-icon-danger"><i class="fa fa-times-circle" title="Expired"/></div>
                             <div class="kpi-content">
                                 <div class="kpi-title">Expired Warranties</div>
                                 <div class="kpi-value"><t t-esc="formatNumber(state.data.kpi.expired_warranties)"/></div>
-                                <div class="kpi-subtitle"><t t-esc="formatPercent(state.data.kpi.expired_percentage)"/></div>
+                                <div class="kpi-subtitle"><t t-esc="formatPercent(state.data.kpi.expired_percentage)"/> of total</div>
                             </div>
                         </div>
+                        <canvas class="o_wd_spark" data-color="#ef4444" data-series="claims"/>
                     </div>
-                    <div class="col-12 col-md-4 col-xl">
-                        <div class="o_wd_kpi_card kpi-warning" t-on-click="openClaimedWarranties">
-                            <div class="kpi-icon"><i class="fa fa-exclamation-triangle"/></div>
+                    <div class="o_wd_kpi_card" t-on-click="openClaimedWarranties">
+                        <div class="kpi-top">
+                            <div class="kpi-icon kpi-icon-warning"><i class="fa fa-exclamation-triangle" title="Claimed"/></div>
                             <div class="kpi-content">
                                 <div class="kpi-title">Claimed Warranties</div>
                                 <div class="kpi-value"><t t-esc="formatNumber(state.data.kpi.claimed_warranties)"/></div>
-                                <div class="kpi-subtitle"><t t-esc="formatPercent(state.data.kpi.claimed_percentage)"/></div>
+                                <div class="kpi-subtitle"><t t-esc="formatPercent(state.data.kpi.claimed_percentage)"/> of total</div>
                             </div>
                         </div>
+                        <canvas class="o_wd_spark" data-color="#f59e0b" data-series="claims"/>
                     </div>
-                    <div class="col-12 col-md-4 col-xl">
-                        <div class="o_wd_kpi_card kpi-info" t-on-click="openNearExpiryWarranties">
-                            <div class="kpi-icon"><i class="fa fa-clock-o"/></div>
+                    <div class="o_wd_kpi_card" t-on-click="openNearExpiryWarranties">
+                        <div class="kpi-top">
+                            <div class="kpi-icon kpi-icon-info"><i class="fa fa-clock-o" title="Near expiry"/></div>
                             <div class="kpi-content">
-                                <div class="kpi-title">Near Expiry (30d)</div>
+                                <div class="kpi-title">Near Expiry (30 Days)</div>
                                 <div class="kpi-value"><t t-esc="formatNumber(state.data.kpi.near_expiry_warranties)"/></div>
+                                <div class="kpi-subtitle"><t t-esc="nearExpiryPercent()"/> of total</div>
                             </div>
                         </div>
+                        <canvas class="o_wd_spark" data-color="#06b6d4" data-series="warranties"/>
                     </div>
-                    <div class="col-12 col-md-4 col-xl">
-                        <div class="o_wd_kpi_card kpi-purple" t-on-click="openWarrantyClaims">
-                            <div class="kpi-icon"><i class="fa fa-wrench"/></div>
+                    <div class="o_wd_kpi_card" t-on-click="openWarrantyClaims">
+                        <div class="kpi-top">
+                            <div class="kpi-icon kpi-icon-purple"><i class="fa fa-wrench" title="Claims"/></div>
                             <div class="kpi-content">
                                 <div class="kpi-title">Claims This Month</div>
                                 <div class="kpi-value"><t t-esc="formatNumber(state.data.kpi.claims_this_month)"/></div>
+                                <div class="kpi-subtitle">Current month</div>
                             </div>
                         </div>
+                        <canvas class="o_wd_spark" data-color="#8b5cf6" data-series="claims"/>
                     </div>
                 </div>
 
-                <!-- ROW 2: WARRANTY STATUS + CLAIMS TREND -->
-                <div class="row g-3 mb-4">
+                <!-- ROW 2: STATUS OVERVIEW + CLAIMS TREND -->
+                <div class="row g-3 mb-3">
                     <div class="col-12 col-xl-4">
                         <div class="o_wd_panel card h-100">
-                            <div class="card-header"><i class="fa fa-pie-chart me-2"/>Warranty Status</div>
-                            <div class="card-body o_wd_chart_body">
-                                <canvas t-ref="warrantyStatusChart"/>
+                            <div class="card-header">
+                                <i class="fa fa-pie-chart me-2 text-primary" title="Status"/>Warranty Status Overview
+                            </div>
+                            <div class="card-body">
+                                <div class="o_wd_donut_wrap">
+                                    <div class="o_wd_donut_chart">
+                                        <canvas t-ref="warrantyStatusChart"/>
+                                    </div>
+                                    <div class="o_wd_donut_legend">
+                                        <div class="o_wd_legend_item" t-foreach="statusLegend()" t-as="row" t-key="row.label">
+                                            <span class="o_wd_legend_dot" t-attf-style="background-color: {{row.color}}"/>
+                                            <span class="o_wd_legend_label"><t t-esc="row.label"/></span>
+                                            <span class="o_wd_legend_value">
+                                                <t t-esc="formatNumber(row.value)"/> (<t t-esc="row.pct"/>)
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-12 col-xl-8">
                         <div class="o_wd_panel card h-100">
-                            <div class="card-header"><i class="fa fa-line-chart me-2"/>Claims Trend (12 months)</div>
+                            <div class="card-header">
+                                <i class="fa fa-line-chart me-2 text-primary" title="Trend"/>Claims Trend (Last 12 Months)
+                            </div>
                             <div class="card-body o_wd_chart_body">
                                 <canvas t-ref="claimsTrendChart"/>
                             </div>
@@ -136,103 +162,101 @@
                     </div>
                 </div>
 
-                <!-- ROW 3: TOP PRODUCTS + TOP CUSTOMERS -->
-                <div class="row g-3 mb-4">
-                    <div class="col-12 col-xl-6">
-                        <div class="o_wd_panel card h-100">
-                            <div class="card-header"><i class="fa fa-cube me-2"/>Top 10 Products by Warranties</div>
-                            <div class="card-body o_wd_chart_body">
-                                <canvas t-ref="topProductsChart"/>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-xl-6">
-                        <div class="o_wd_panel card h-100">
-                            <div class="card-header"><i class="fa fa-users me-2"/>Top 10 Customers by Warranties</div>
-                            <div class="card-body o_wd_chart_body">
-                                <canvas t-ref="topCustomersChart"/>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ROW 4: MONTHLY COMPARISON + CLAIM TYPES -->
-                <div class="row g-3 mb-4">
-                    <div class="col-12 col-xl-6">
-                        <div class="o_wd_panel card h-100">
-                            <div class="card-header"><i class="fa fa-bar-chart me-2"/>Monthly Comparison</div>
-                            <div class="card-body o_wd_chart_body">
-                                <canvas t-ref="monthlyComparisonChart"/>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-xl-6">
-                        <div class="o_wd_panel card h-100">
-                            <div class="card-header"><i class="fa fa-tags me-2"/>Claim Types by Month</div>
-                            <div class="card-body o_wd_chart_body">
-                                <canvas t-ref="claimTypesChart"/>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ROW 5: WARRANTY EXPIRY + RECENT WARRANTIES TABLE -->
-                <div class="row g-3 mb-4">
+                <!-- ROW 3: TOP PRODUCTS + TOP CUSTOMERS + RECENT -->
+                <div class="row g-3 mb-3">
                     <div class="col-12 col-xl-4">
                         <div class="o_wd_panel card h-100">
-                            <div class="card-header"><i class="fa fa-hourglass-end me-2"/>Upcoming Expiries</div>
-                            <div class="card-body o_wd_chart_body">
-                                <canvas t-ref="warrantyExpiryChart"/>
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="fa fa-cube me-2 text-primary" title="Products"/>Top 10 Products by Warranties</span>
+                                <a href="#" class="o_wd_view_all" t-on-click.prevent="openAllWarranties">View All</a>
+                            </div>
+                            <div class="card-body">
+                                <t t-if="!topProductRows().length">
+                                    <div class="o_wd_empty text-muted">No data</div>
+                                </t>
+                                <div class="o_wd_rank_row" t-foreach="topProductRows()" t-as="row" t-key="row.rank">
+                                    <span class="o_wd_rank_num"><t t-esc="row.rank"/></span>
+                                    <span class="o_wd_rank_name" t-att-title="row.name"><t t-esc="row.name"/></span>
+                                    <div class="o_wd_rank_bar">
+                                        <div class="o_wd_rank_bar_fill bar-primary" t-attf-style="width: {{row.barPct}}%"/>
+                                    </div>
+                                    <span class="o_wd_rank_value">
+                                        <t t-esc="formatNumber(row.value)"/> (<t t-esc="row.sharePct"/>)
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-xl-8">
-                        <div class="o_wd_panel card">
-                            <div class="card-header"><i class="fa fa-list me-2"/>Recent Warranties</div>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Code</th>
-                                            <th>Customer</th>
-                                            <th>Product</th>
-                                            <th>Start</th>
-                                            <th>End</th>
-                                            <th>Status</th>
-                                            <th class="text-end">Claims</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr t-foreach="state.data.recent_warranties" t-as="w" t-key="w.id">
-                                            <td class="fw-semibold"><t t-esc="w.name"/></td>
-                                            <td><t t-esc="w.partner_name"/></td>
-                                            <td><t t-esc="w.product_name"/></td>
-                                            <td><t t-esc="w.start_date"/></td>
-                                            <td><t t-esc="w.end_date"/></td>
-                                            <td>
-                                                <t t-if="w.state == 'active'">
-                                                    <span class="badge bg-success">Active</span>
-                                                </t>
-                                                <t t-elif="w.state == 'expired'">
-                                                    <span class="badge bg-danger">Expired</span>
-                                                </t>
-                                                <t t-elif="w.state == 'draft'">
-                                                    <span class="badge bg-secondary">Draft</span>
-                                                </t>
-                                                <t t-elif="w.state == 'cancelled'">
-                                                    <span class="badge bg-warning">Cancelled</span>
-                                                </t>
-                                                <t t-else="">
-                                                    <span class="badge bg-info"><t t-esc="w.state"/></span>
-                                                </t>
-                                            </td>
-                                            <td class="text-end"><t t-esc="w.claim_count"/></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                    <div class="col-12 col-xl-4">
+                        <div class="o_wd_panel card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="fa fa-users me-2 text-primary" title="Customers"/>Top 10 Customers by Warranties</span>
+                                <a href="#" class="o_wd_view_all" t-on-click.prevent="openAllWarranties">View All</a>
+                            </div>
+                            <div class="card-body">
+                                <t t-if="!topCustomerRows().length">
+                                    <div class="o_wd_empty text-muted">No data</div>
+                                </t>
+                                <div class="o_wd_rank_row" t-foreach="topCustomerRows()" t-as="row" t-key="row.rank">
+                                    <span class="o_wd_rank_num"><t t-esc="row.rank"/></span>
+                                    <span class="o_wd_rank_name" t-att-title="row.name"><t t-esc="row.name"/></span>
+                                    <div class="o_wd_rank_bar">
+                                        <div class="o_wd_rank_bar_fill bar-info" t-attf-style="width: {{row.barPct}}%"/>
+                                    </div>
+                                    <span class="o_wd_rank_value"><t t-esc="formatNumber(row.value)"/></span>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <div class="col-12 col-xl-4">
+                        <div class="o_wd_panel card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="fa fa-file-text-o me-2 text-primary" title="Recent"/>Recent Warranty Registrations</span>
+                                <a href="#" class="o_wd_view_all" t-on-click.prevent="openAllWarranties">View All</a>
+                            </div>
+                            <div class="card-body p-0">
+                                <t t-if="!state.data.recent_warranties.length">
+                                    <div class="o_wd_empty text-muted p-3">No data</div>
+                                </t>
+                                <div class="o_wd_recent_row" t-foreach="state.data.recent_warranties.slice(0, 6)" t-as="w" t-key="w.id"
+                                     t-on-click="() => this.openWarrantyCard(w.id)">
+                                    <div class="o_wd_recent_icon"><i class="fa fa-cube" title="Product"/></div>
+                                    <div class="o_wd_recent_main">
+                                        <div class="o_wd_recent_name"><t t-esc="w.name"/></div>
+                                        <div class="o_wd_recent_sub"><t t-esc="w.product_name"/></div>
+                                    </div>
+                                    <div class="o_wd_recent_side">
+                                        <div class="o_wd_recent_partner"><t t-esc="w.partner_name"/></div>
+                                        <div class="o_wd_recent_date"><t t-esc="w.start_date"/></div>
+                                    </div>
+                                    <t t-if="w.state == 'active'">
+                                        <span class="badge o_wd_badge_active">Active</span>
+                                    </t>
+                                    <t t-elif="w.state == 'expired'">
+                                        <span class="badge o_wd_badge_expired">Expired</span>
+                                    </t>
+                                    <t t-elif="w.state == 'draft'">
+                                        <span class="badge bg-secondary">Draft</span>
+                                    </t>
+                                    <t t-else="">
+                                        <span class="badge bg-light text-dark"><t t-esc="w.state"/></span>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FOOTER BANNER -->
+                <div class="o_wd_banner">
+                    <div class="o_wd_banner_icon"><i class="fa fa-check-circle" title="Happy customers"/></div>
+                    <div class="o_wd_banner_text">
+                        <div class="o_wd_banner_title">Keep Your Customers Happy</div>
+                        <div class="o_wd_banner_sub">Quick response to warranty claims builds trust and loyalty.</div>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm ms-auto" t-on-click="openWarrantyClaims">
+                        View All Claims <i class="fa fa-arrow-right ms-1"/>
+                    </button>
                 </div>
 
             </t>

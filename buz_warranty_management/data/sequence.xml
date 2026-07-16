@@ -10,15 +10,6 @@
         <field name="company_id" eval="False"/>
     </record>
 
-    <!-- Warranty Claim Sequence -->
-    <record id="sequence_warranty_claim" model="ir.sequence">
-        <field name="name">Warranty Claim</field>
-        <field name="code">warranty.claim</field>
-        <field name="prefix">WCL/%(year)s/</field>
-        <field name="padding">5</field>
-        <field name="company_id" eval="False"/>
-    </record>
-
     <!-- Scheduled Action: Update Expired Warranties -->
     <record id="cron_update_expired_warranties" model="ir.cron">
         <field name="name">Warranty: Update Expired Status</field>

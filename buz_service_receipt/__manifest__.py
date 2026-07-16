@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'BUZ Service Receipt',
-    'version': '17.0.1.2.0',
+    'version': '17.0.1.3.0',
     'category': 'Services',
     'summary': 'Service receipt form with PDF print and technician calendar sync',
     'author': 'BUZ',
@@ -16,6 +16,7 @@
         'account',
         'stock',
         'sale',
+        'buz_warranty_management',
     ],
     'data': [
         'security/security.xml',
@@ -31,6 +32,7 @@
         'views/service_team_views.xml',
         'views/service_receipt_menu.xml',
         'views/service_claim_views.xml',
+        'views/warranty_card_service_receipt_views.xml',
     ],
     'installable': True,
     'application': True,

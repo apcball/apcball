@@ -262,7 +262,6 @@ buz_warranty_management/
 From the prompt, these were marked as optional - implementation status:
 
 ### Not Yet Implemented (Future Enhancements)
-- ⏳ Portal view for customers to check warranties
 - ⏳ Auto email when warranty near expiration
 - ⏳ Barcode scanning for quick warranty lookup
 - ⏳ Integration with `buz_account_receipt` for billing

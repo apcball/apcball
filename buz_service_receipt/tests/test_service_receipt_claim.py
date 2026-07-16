@@ -189,6 +189,7 @@ class TestServiceReceiptClaim(TransactionCase):
         # Create sale order
         receipt.action_create_sale_order()
         self.assertTrue(receipt.sale_order_id)
+
         self.assertEqual(len(receipt.sale_order_id.order_line), 1)
         self.assertEqual(receipt.sale_order_id.order_line[0].price_unit, 500.0)
         self.assertEqual(receipt.sale_order_id.partner_id.id, self.partner.id)
@@ -196,6 +197,46 @@ class TestServiceReceiptClaim(TransactionCase):
         # View sale order
         action = receipt.action_view_sale_order()
         self.assertEqual(action['res_id'], receipt.sale_order_id.id)
+
+    def test_12_warranty_card_links_bidirectionally(self):
+        """A claim links to its warranty card and is visible from the card."""
+        warranty_card = self.env['warranty.card'].create({
+            'partner_id': self.partner.id,
+            'product_id': self.product_original.id,
+            'start_date': fields.Date.today(),
+            'end_date': fields.Date.today(),
+            'state': 'active',
+        })
+
+        receipt = self._create_receipt('replacement')
+        receipt.write({'warranty_card_id': warranty_card.id})
+
+        self.assertEqual(receipt.warranty_card_id, warranty_card)
+        self.assertIn(receipt, warranty_card.service_receipt_ids)
+        self.assertEqual(warranty_card.service_receipt_count, 1)
+
+    def test_13_warranty_card_populates_claim_customer_and_number(self):
+        """Selecting a warranty card supplies the claim customer and warranty number."""
+        warranty_card = self.env['warranty.card'].create({
+            'partner_id': self.partner.id,
+            'product_id': self.product_original.id,
+            'start_date': fields.Date.today(),
+            'end_date': fields.Date.today(),
+            'state': 'active',
+        })
+
+        receipt = self.env['service.receipt'].new({
+            'partner_id': self.partner.id,
+            'warranty_card_id': warranty_card.id,
+        })
+        receipt._onchange_warranty_card_id()
+
+        self.assertEqual(receipt.partner_id, self.partner)
+        self.assertEqual(receipt.warranty_no, warranty_card.name)
+
+    def test_14_legacy_warranty_claim_model_is_removed(self):
+        """The old warranty.claim model is no longer part of the registry."""
+        self.assertNotIn('warranty.claim', self.env)
 
     def test_05_view_actions(self):
         """View actions for pickings and sale order."""

@@ -437,7 +437,6 @@ Warranty Claim
 
 ## 📈 Future Enhancements (Not Yet Implemented)
 
-- Portal view for customers to check RMA status
 - Auto-email notifications for RMA status changes
 - Barcode scanning for quick RMA receiving
 - Integration with buz_account_receipt for receipts

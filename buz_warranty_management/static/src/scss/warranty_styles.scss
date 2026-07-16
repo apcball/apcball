@@ -6,21 +6,28 @@
             font-size: 1.5rem;
             color: #2c3e50;
         }
+
+        .wc_title_icon {
+            font-size: 1.4rem;
+            color: #1a56db;
+        }
     }
 
     .card {
-        border-radius: 0.375rem;
+        border-radius: 0.5rem;
         margin-bottom: 0;
 
         .card-header {
-            padding: 0.5rem 1rem;
+            padding: 0.6rem 1rem;
 
             h5 {
-                font-size: 0.9rem;
-                font-weight: 600;
+                font-size: 0.85rem;
+                font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 0.03em;
                 color: #495057;
+                display: flex;
+                align-items: center;
             }
         }
 
@@ -30,6 +37,117 @@
             .input-group {
                 flex-wrap: nowrap;
             }
+        }
+    }
+
+    .wc_meta_line {
+        font-size: 0.8rem;
+
+        .o_field_widget {
+            display: inline-block;
+            font-size: 0.8rem;
+        }
+    }
+
+    .wc_avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background-color: #e7f0fe;
+        color: #1a56db;
+        font-size: 1.2rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .wc_partner_name {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .wc_contact_line {
+        display: flex;
+        align-items: baseline;
+        padding: 0.3rem 0;
+        border-bottom: 1px solid #f1f3f5;
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        &.wc_address {
+            align-items: flex-start;
+        }
+    }
+
+    .wc_product_image_box {
+        background-color: #f0f6ff;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        display: inline-block;
+    }
+
+    .wc_product_image {
+        max-width: 180px;
+        max-height: 180px;
+        border-radius: 0.5rem;
+    }
+
+    .wc_days_remaining_box {
+        background-color: #eafbea;
+        border: 1px solid #b7e4c7;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        text-align: center;
+
+        .wc_days_label {
+            color: #495057;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .wc_days_value {
+            color: #2f9e44;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .wc_days_unit {
+            color: #2f9e44;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .wc_days_subtext {
+            color: #6c757d;
+            font-size: 0.8rem;
+
+            .o_field_widget {
+                font-size: 0.8rem;
+            }
+        }
+    }
+
+    .wc_expired_box {
+        background-color: #fdecec;
+        border: 1px solid #f5c2c7;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        color: #c92a2a;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .wc_pdf_preview {
+        .o_field_pdfviewer,
+        iframe {
+            width: 100%;
+            min-height: 420px;
+            border: none;
+            border-radius: 0.4rem;
         }
     }
 
