@@ -33,13 +33,22 @@
                             .info-box {
                                 background-color: #f8f9fa !important;
                                 color: black !important;
-                                font-size: 20px !important;
+                                font-size: 16px !important;
                                 border: 1px solid #000 !important;
                                 padding: 10px;
                             }
-                            .col-6:last-child .info-box {
-                                width: 90%;
-                                margin-left: auto;
+                            .info-box > div {
+                                display: flex;
+                                align-items: flex-start;
+                                margin-bottom: 8px;
+                            }
+                            .info-box > div > strong {
+                                flex: 0 0 34%;
+                                white-space: nowrap;
+                            }
+                            .info-box > div > span {
+                                flex: 1 1 auto;
+                                min-width: 0;
                             }
                         </style>
                         <t t-set="items_per_page" t-value="15"/>
@@ -75,7 +84,7 @@
 
                         <!-- Customer and Document Info -->
                         <div class="row mb-3">
-                            <div class="col-6">
+                            <div class="col-8">
                                 <div class="info-box" style="height: 175px;">
                                     <div class="mb-2">
                                         <strong style="width: 35%; display: inline-block;">นามผู้ซื้อ / Customer:</strong>
@@ -98,7 +107,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-6">
+                            <div class="col-4">
                                 <div class="info-box" style="height: 175px;">
                                     <div class="mb-2">
                                         <strong style="width: 35%; display: inline-block;">เลขที่ / No.:</strong>
