@@ -40,10 +40,13 @@
                             .info-box > div {
                                 display: flex;
                                 align-items: flex-start;
-                                margin-bottom: 8px;
+                                gap: 8px;
+                                margin-bottom: 6px;
                             }
                             .info-box > div > strong {
-                                flex: 0 0 34%;
+                                flex: 0 0 27%;
+                                width: auto !important;
+                                display: block !important;
                                 white-space: nowrap;
                             }
                             .info-box > div > span {
@@ -70,13 +73,13 @@
 
                         <!-- Company Info Section -->
                         <div class="row mb-2">
-                            <div class="col-8">
+                            <div class="col-6">
                                 <div class="company-header mb-1">บริษัท โมเก้น จำกัด (สำนักงานใหญ่)</div>
                                 <div class="company-info">9 หมู่ 12 ตําบลบึงคําพร้อย อําเภอลําลูกกา จ.ปทุมธานี 12150</div>
                                 <div class="company-info">เลขที่ประจําตัวผู้เสียภาษี 0105547076103</div>
                                 <div class="company-info">โทร 02 1509710 แฟกซ์ 02 1528803 E-mail: contact@mogen.co.th</div>
                             </div>
-                            <div class="col-4 text-end">
+                            <div class="col-6 text-end">
                                 <img t-if="doc.company_id.logo" t-att-src="image_data_uri(doc.company_id.logo)" 
                                      style="width: 150px; height: auto; object-fit: contain;" alt="Company Logo"/>
                             </div>
@@ -91,24 +94,20 @@
 
                         <!-- Customer and Document Info -->
                         <div class="row mb-3">
-                            <div class="col-8">
+                            <div class="col-6">
                                 <div class="info-box" style="height: 250px; overflow: hidden;">
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">นามผู้ซื้อ / Customer:</strong>
+                                        <strong style="width: 30%; display: inline-block;">นามผู้ซื้อ:</strong>
                                         <span t-field="doc.partner_id.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">ที่อยู่ / Address:</strong>
-                                        <span t-field="doc.partner_id.street"/>
-                                    </div>
-                                    <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">สถานที่จัดส่ง / Delivery Address:</strong>
+                                        <strong style="width: 30%; display: inline-block;">สถานที่จัดส่ง:</strong>
                                         <div class="delivery-address">
                                             <div t-if="doc.partner_shipping_id.name" t-field="doc.partner_shipping_id.name"/>
                                             <div>
                                                 <span t-if="doc.partner_shipping_id.street" t-field="doc.partner_shipping_id.street"/>
                                                 <span t-if="doc.partner_shipping_id.street2" t-field="doc.partner_shipping_id.street2"/>
-                                                <span t-if="doc.partner_shipping_id.city" t-field="doc.partner_shipping_id.city"/>
+                                                </div><div><span t-if="doc.partner_shipping_id.city" t-field="doc.partner_shipping_id.city"/>
                                                 <span t-if="doc.partner_shipping_id.state_id" t-field="doc.partner_shipping_id.state_id.name"/>
                                                 <span t-if="doc.partner_shipping_id.zip" t-field="doc.partner_shipping_id.zip"/>
                                                 <span t-if="doc.partner_shipping_id.country_id" t-field="doc.partner_shipping_id.country_id.name"/>
@@ -116,32 +115,32 @@
                                         </div>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">เลขประจำตัวผู้เสียภาษี:</strong>
+                                        <strong style="width: 30%; display: inline-block;">เลขประจำตัวผู้เสียภาษี:</strong>
                                         <span t-field="doc.partner_id.vat"/>
                                     </div>
-                                    <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">เครดิต / Payment Term:</strong>
-                                        <span t-field="doc.payment_term_id.name"/>
                                     </div>
-                                </div>
                             </div>
-                            <div class="col-4">
+                            <div class="col-6">
                                 <div class="info-box" style="min-height: 250px;">
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">เลขที่ / No.:</strong>
+                                        <strong style="width: 30%; display: inline-block;">เลขที่:</strong>
                                         <span t-field="doc.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">วันที่ / Date:</strong>
+                                        <strong style="width: 30%; display: inline-block;">วันที่:</strong>
                                         <span t-field="doc.date_order" t-options='{"widget": "date"}'/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">พนักงานขาย:</strong>
+                                        <strong style="width: 30%; display: inline-block;">พนักงานขาย:</strong>
                                         <span t-field="doc.user_id.name"/>
                                     </div>
                                     <div class="mb-2">
-                                        <strong style="width: 35%; display: inline-block;">Customer PO:</strong>
+                                        <strong style="width: 30%; display: inline-block;">Customer PO:</strong>
                                         <span t-field="doc.client_order_ref"/>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong style="width: 30%; display: inline-block;">เครดิต:</strong>
+                                        <span t-field="doc.payment_term_id.name"/>
                                     </div>
                                 </div>
                             </div>
@@ -232,21 +231,21 @@
 
                         <!-- Signatures -->
                         <div class="row mt-4">
-                            <div class="col-4">
+                            <div class="col-6">
                                 <div class="text-center">
                                     <p>____________________</p>
                                     <p>ผู้จัดทำ / Prepared By</p>
                                     <p>วันที่ / Date: ____________</p>
                                 </div>
                             </div>
-                            <div class="col-4">
+                            <div class="col-6">
                                 <div class="text-center">
                                     <p>____________________</p>
                                     <p>ผู้อนุมัติ / Approved By</p>
                                     <p>วันที่ / Date: ____________</p>
                                 </div>
                             </div>
-                            <div class="col-4">
+                            <div class="col-6">
                                 <div class="text-center">
                                     <p>____________________</p>
                                     <p>ผู้รับสินค้า / Customer Signature</p>
