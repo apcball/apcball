@@ -30,6 +30,9 @@ class AccountMove(models.Model):
     invoice = fields.Char(string="Invoice Ref")  
     picking_id = fields.Many2one('stock.picking', string="ใบรับคืนสินค้า")
     invoice_partner_ref = fields.Char(string="Customer Reference")
+    original_invoice_number = fields.Char(string="เลขที่ใบกำกับภาษีเดิม")
+    original_invoice_date = fields.Date(string="วันที่ใบกำกับภาษีเดิม")
+    show_original_invoice = fields.Boolean(string="ระบุเลขที่ใบกำกับภาษีเดิม")
 
     @api.depends('invoice_line_ids.tax_line_id')
     def _compute_has_vat(self):

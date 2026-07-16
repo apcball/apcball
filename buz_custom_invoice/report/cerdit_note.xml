@@ -224,11 +224,13 @@
                                         <div style="display: flex; justify-content: space-between; margin-top: 10px;">
                                             <div style="width: 65%;">
                                                 <strong>เลขที่ใบกำกับภาษีเดิม:</strong>
-                                                <span t-esc="doc.reversed_entry_id.name"/>
+                                                <span t-if="doc.reversed_entry_id" t-esc="doc.reversed_entry_id.name"/>
+                                                <span t-else="" t-esc="doc.original_invoice_number or ''"/>
                                             </div>
                                             <div style="width: 35%;">
                                                 <strong>ลงวันที่:</strong>
                                                 <span t-if="doc.reversed_entry_id" t-field="doc.reversed_entry_id.invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
+                                                <span t-else="" t-field="doc.original_invoice_date" t-options='{"format": "dd/MM/yyyy"}'/>
                                             </div>
                                         </div>
 
@@ -353,7 +355,7 @@
                                             <div>
                                                 <!-- ดึงข้อมูลที่ถูกต้อง -->
                                                 <t t-set="origin_invoice" t-value="doc.reversed_entry_id"/>
-                                                <t t-set="origin_amount_untaxed" t-value="origin_invoice and origin_invoice.amount_untaxed or 0.0"/>
+                                                <t t-set="origin_amount_untaxed" t-value="doc.original_tax_invoice_amount or origin_invoice and origin_invoice.amount_untaxed or 0.0"/>
                                         
                                                 <t t-set="correct_amount_untaxed" t-value="doc.amount_untaxed or 0.0"/>
                                                 <t t-set="amount_tax" t-value="doc.amount_tax or 0.0"/>

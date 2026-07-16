@@ -10,6 +10,10 @@
                     <group name="custom_fields" string="Custom Information">
                         <field name="custom_reference"/>
                         <field name="delivery_note"/>
+                        <field name="show_original_invoice"/>
+                        <field name="original_invoice_number" invisible="not show_original_invoice" required="show_original_invoice"/>
+                        <field name="original_invoice_date" invisible="not show_original_invoice"/>
+                        <field name="original_tax_invoice_amount"/>
                         <field name="purchase_order_number"/>
                     </group>
                 </xpath>
